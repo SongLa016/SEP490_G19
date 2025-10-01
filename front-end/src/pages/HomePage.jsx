@@ -224,6 +224,21 @@ export default function HomePage({ user }) {
      };
 
      const handleSearch = () => {
+          try {
+               const locationMap = {
+                    quan1: "Quận 1",
+                    quan3: "Quận 3",
+                    quan7: "Quận 7",
+                    quan10: "Quận 10",
+               };
+               const preset = {
+                    searchQuery: searchQuery || "",
+                    selectedLocation: selectedLocation ? (locationMap[selectedLocation] || "") : "",
+                    selectedPrice: selectedPrice || "",
+                    sortBy: "relevance",
+               };
+               window.localStorage.setItem("searchPreset", JSON.stringify(preset));
+          } catch { }
           navigate("/search");
      };
 
@@ -262,7 +277,7 @@ export default function HomePage({ user }) {
                     <Container className="relative h-full py-52 mx-auto flex z-10">
                          <div className="text-start ml-24">
                               <h1 className="text-5xl md:text-7xl w-8/12  font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-teal-300 to-teal-500">Khám phá và đặt sân dễ dàng</h1>
-                              <p className="text-lg md:text-xl mb-2  text-cyan-50">Tìm sân phù hợp, đặt lịch nhanh chóng</p>
+                              <p className="text-lg md:text-xl mb-2  text-teal-50">Tìm sân phù hợp, đặt lịch nhanh chóng</p>
                               <div className="max-w-2xl w-full">
                                    <Card className="rounded-2xl bg-white/50 border-none backdrop-blur-sm">
                                         <CardContent className="p-4">
@@ -420,7 +435,7 @@ export default function HomePage({ user }) {
                <Container ref={suggestRef} className="relative border border-gray-400 py-10 my-10 rounded-2xl overflow-hidden">
                     <div
                          className="suggest-parallax-bg absolute inset-0 bg-cover bg-center"
-                         style={{ backgroundImage: "url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1920&h=1080&fit=crop')", willChange: 'transform' }}
+                         style={{ backgroundImage: "url('https://i.pinimg.com/originals/a3/c7/79/a3c779e5d5b622eeb598ac1d50c05cb8.png')", willChange: 'transform' }}
                     />
                     <div className="absolute inset-0 bg-white/30" />
                     <Container className="relative z-10">
@@ -567,28 +582,28 @@ export default function HomePage({ user }) {
                {/* Why choose us */}
                <div className="py-16">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                         <h2 className="text-3xl md:text-4xl font-extrabold text-center text-gray-900 mb-10">Vì sao chọn chúng tôi?</h2>
+                         <h2 className="text-3xl md:text-4xl font-extrabold text-center text-teal-800 mb-10">Vì sao chọn chúng tôi?</h2>
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
                               <div>
-                                   <div className="mx-auto w-16 h-16 rounded-2xl bg-cyan-50 flex items-center justify-center mb-4">
-                                        <DollarSign className="w-7 h-7 text-cyan-600" />
+                                   <div className="mx-auto w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center mb-4">
+                                        <DollarSign className="w-7 h-7 text-teal-600" />
                                    </div>
-                                   <div className="font-semibold text-gray-900">Giá cạnh tranh</div>
-                                   <p className="mt-2 text-gray-600 leading-relaxed text-sm">Giá minh bạch, ưu đãi thường xuyên cho người dùng mới và thân thiết</p>
+                                   <div className="font-semibold text-teal-900">Giá cạnh tranh</div>
+                                   <p className="mt-2 text-teal-600 leading-relaxed text-sm">Giá minh bạch, ưu đãi thường xuyên cho người dùng mới và thân thiết</p>
                               </div>
                               <div>
-                                   <div className="mx-auto w-16 h-16 rounded-2xl bg-cyan-50 flex items-center justify-center mb-4">
-                                        <ShieldCheck className="w-7 h-7 text-cyan-600" />
+                                   <div className="mx-auto w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center mb-4">
+                                        <ShieldCheck className="w-7 h-7 text-teal-600" />
                                    </div>
-                                   <div className="font-semibold text-gray-900">Đặt chỗ an toàn</div>
-                                   <p className="mt-2 text-gray-600 leading-relaxed text-sm">Xác nhận nhanh, bảo vệ thông tin và hỗ trợ khi có sự cố</p>
+                                   <div className="font-semibold text-teal-900">Đặt chỗ an toàn</div>
+                                   <p className="mt-2 text-teal-600 leading-relaxed text-sm">Xác nhận nhanh, bảo vệ thông tin và hỗ trợ khi có sự cố</p>
                               </div>
                               <div>
-                                   <div className="mx-auto w-16 h-16 rounded-2xl bg-cyan-50 flex items-center justify-center mb-4">
-                                        <Sparkles className="w-7 h-7 text-cyan-600" />
+                                   <div className="mx-auto w-16 h-16 rounded-2xl bg-teal-50 flex items-center justify-center mb-4">
+                                        <Sparkles className="w-7 h-7 text-teal-600" />
                                    </div>
-                                   <div className="font-semibold text-gray-900">Trải nghiệm liền mạch</div>
-                                   <p className="mt-2 text-gray-600 leading-relaxed text-sm">Tìm kiếm – chọn giờ – đặt sân nhanh chóng chỉ trong vài bước</p>
+                                   <div className="font-semibold text-teal-900">Trải nghiệm liền mạch</div>
+                                   <p className="mt-2 text-teal-600 leading-relaxed text-sm">Tìm kiếm – chọn giờ – đặt sân nhanh chóng chỉ trong vài bước</p>
                               </div>
                          </div>
                     </div>
@@ -613,8 +628,8 @@ export default function HomePage({ user }) {
                <div className="py-16" >
                     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                          <div className="text-center mb-10">
-                              <h2 className="text-3xl font-bold text-gray-900 mb-3">Câu hỏi thường gặp</h2>
-                              <p className="text-gray-600">Một số thắc mắc phổ biến khi đặt sân</p>
+                              <h2 className="text-3xl font-bold text-teal-900 mb-3">Câu hỏi thường gặp</h2>
+                              <p className="text-teal-600">Một số thắc mắc phổ biến khi đặt sân</p>
                          </div>
                          <div className="space-y-4 ">
                               {[
@@ -622,9 +637,9 @@ export default function HomePage({ user }) {
                                    { q: "Có thể hủy/đổi giờ không?", a: "Phụ thuộc chính sách từng sân. Bạn xem chi tiết trong mục đặt sân của mình." },
                                    { q: "Thanh toán thế nào?", a: "Hỗ trợ nhiều phương thức: Momo, VNPay, ZaloPay, v.v." },
                               ].map((item, idx) => (
-                                   <div key={idx} className="border border-gray-200 p-4 rounded-xl">
-                                        <div className="font-semibold text-gray-900">{item.q}</div>
-                                        <div className="text-gray-600 mt-1">{item.a}</div>
+                                   <div key={idx} className="border border-teal-200 p-4 rounded-xl">
+                                        <div className="font-semibold text-teal-900">{item.q}</div>
+                                        <div className="text-teal-600 mt-1">{item.a}</div>
                                    </div>
                               ))}
                          </div>
