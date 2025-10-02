@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, MapPin, Star, Clock, Grid, List, Heart, Eye, SlidersHorizontal, ChevronLeft, ChevronRight, Sparkles, User } from "lucide-react";
+import { Search, MapPin, Star, Clock, Grid, List, Heart, SlidersHorizontal, ChevronLeft, ChevronRight, Sparkles, User, Map } from "lucide-react";
 import { Section, Container, Card, CardContent, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button } from "../../components/ui";
 import { useNavigate } from "react-router-dom";
-
+import MapSearch from "../../components/MapSearch";
 export default function FieldSearch({ user }) {
      const navigate = useNavigate();
      const [searchQuery, setSearchQuery] = useState("");
@@ -14,8 +14,10 @@ export default function FieldSearch({ user }) {
      const [sortBy, setSortBy] = useState("relevance");
      const [activeTab, setActiveTab] = useState("all"); // all | near | best-price | top-rated | favorites
      const [page, setPage] = useState(1);
-     const [pageSize] = useState(4);
+     const [pageSize] = useState(12);
      const [forceList, setForceList] = useState(false);
+     const [showMapSearch, setShowMapSearch] = useState(false);
+     const [mapLocation, setMapLocation] = useState(null);
 
      // Helper functions to convert between "all" and empty string
      const handleLocationChange = (value) => {
@@ -267,13 +269,19 @@ export default function FieldSearch({ user }) {
           toggleFavorite(fieldId);
      };
 
-     const handleBook = () => {
+     const handleBook = (fieldId) => {
           if (!user) {
                alert("Bạn cần đăng nhập để đặt sân.");
                navigate("/auth");
                return;
           }
-          navigate("/booking");
+          navigate(`/booking/${fieldId}`);
+     };
+
+     const handleMapLocationSelect = (location) => {
+          setMapLocation(location);
+          // You can add logic here to filter fields by location
+          console.log('Selected location:', location);
      };
 
      const formatPrice = (price) => {
@@ -344,7 +352,7 @@ export default function FieldSearch({ user }) {
                          </div>
                     </Container>
                </div>
-               <Container className="py-8">
+               <Container className="py-8 bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center bg-gray-50 relative" >
                     {/* SaaS-style header */}
                     <div className="mb-6">
                          <div className="flex items-center justify-between">
@@ -399,10 +407,18 @@ export default function FieldSearch({ user }) {
                               </div>
                               <Button
                                    onClick={() => setShowFilters(!showFilters)}
-                                   className="px-4 py-2 rounded-xl transition-all bg-teal-100 hover:bg-teal-100 text-teal-700 border border-teal-200 flex items-center shadow-sm"
+                                   variant="outline"
+                                   className="px-4 py-2 rounded-xl transition-all bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 flex items-center shadow-sm"
                               >
                                    <SlidersHorizontal className="w-5 h-5 mr-2" />
                                    Bộ lọc
+                              </Button>
+                              <Button
+                                   onClick={() => setShowMapSearch(true)}
+                                   className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold transition-colors flex items-center gap-2 shadow-sm"
+                              >
+                                   <Map className="w-4 h-4" />
+                                   Tìm bằng bản đồ
                               </Button>
                               <Button
                                    onClick={() => { setSearchQuery(""); setSelectedLocation(""); setSelectedPrice(""); setSelectedRating(""); setActiveTab("all"); setSortBy("relevance"); setPage(1); }}
@@ -549,29 +565,37 @@ export default function FieldSearch({ user }) {
                                         <h2 className="text-lg flex gap-1 font-semibold text-teal-800">
                                              <MapPin />
                                              <p> Gần bạn </p></h2>
+                                        <Button
+                                             type="button"
+                                             onClick={() => { setActiveTab("near"); setForceList(true); setPage(1); }}
+
+                                             className="px-3 py-1 rounded-2xl hover:border-b-2 bg-transparent hover:bg-teal-50 hover:border-teal-300 text-teal-700 text-sm"
+                                        >
+                                             Xem tất cả
+                                        </Button>
                                    </div>
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                                         {nearGroup.map((field) => (
-                                             <div key={field.id} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col">
+                                             <div key={field.id} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.id}`)}>
                                                   <div className="relative overflow-hidden">
-                                                       <img src={field.image} alt={field.name} className="w-full h-40 object-cover transition-transform duration-300 ease-out group-hover:scale-105" />
+                                                       <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" />
                                                        <div className="absolute top-4 right-4 flex space-x-2">
-                                                            <div className="bg-white/95 backdrop-blur px-2 py-1 rounded-full text-sm font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{field.availableSlots} slot trống </p></div>
+                                                            <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{field.availableSlots} slot trống </p></div>
                                                        </div>
                                                   </div>
-                                                  <div className="p-5 flex-1 flex flex-col">
-                                                       <h3 className="text-base font-semibold text-teal-800 mb-2 line-clamp-1">{field.name}</h3>
-                                                       <div className="flex items-center text-teal-700 mb-2">
+                                                  <div className="px-2 py-3 flex-1 flex flex-col">
+                                                       <div className="flex bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2">
                                                             <MapPin className="w-4 h-4 mr-1" />
-                                                            <span className="text-sm line-clamp-1">{field.location}</span>
+                                                            <span className="text-xs font-semibold line-clamp-1">{field.location}</span>
                                                        </div>
+
                                                        <div className="flex items-center justify-between mb-3">
+                                                            <h3 className="text-lg font-bold text-teal-800 line-clamp-1">{field.name}</h3>
                                                             <div className="flex items-center">
-                                                                 <Star className="w-4 h-4 text-teal-400 mr-1" />
-                                                                 <span className="text-sm font-semibold">{field.rating}</span>
-                                                                 <span className="text-sm text-gray-500 ml-1">({field.reviewCount})</span>
+                                                                 <MapPin className="w-4 h-4 text-red-500 mr-1" />
+                                                                 <span className="text-sm font-bold text-red-600">{field.distance}</span>
                                                             </div>
-                                                            <div className="text-sm font-bold text-teal-500">{formatPrice(field.price)}/giờ</div>
+
                                                        </div>
                                                        <div className="flex items-center gap-2 mb-4">
                                                             <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{field.amenities[0]}</span>
@@ -579,20 +603,15 @@ export default function FieldSearch({ user }) {
                                                                  <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">+{field.amenities.length - 1}</span>
                                                             )}
                                                        </div>
-                                                       <div className="mt-auto flex space-x-2">
+                                                       <div className="mt-auto flex items-center justify-between">
+                                                            <div className="text-lg font-bold text-teal-500">{formatPrice(field.price)}/trận</div>
                                                             <Button
                                                                  type="button"
-                                                                 onClick={() => navigate(`/field/${field.id}`)}
-                                                                 className="flex-1 border border-teal-300 text-teal-700 hover:bg-teal-500 hover:text-white bg-teal-50 py-2 px-4 rounded-xl font-semibold"
-                                                            >
-                                                                 Xem chi tiết
-                                                            </Button>
-                                                            <Button
-                                                                 type="button"
-                                                                 onClick={handleBook}
-                                                                 variant="outline"
-                                                                 className="flex-1 bg-teal-500 hover:bg-teal-50 hover:text-teal-500 hover:border-teal-500 text-white py-2 px-4 rounded-xl font-semibold"
-
+                                                                 onClick={(e) => {
+                                                                      e.stopPropagation();
+                                                                      handleBook(field.id);
+                                                                 }}
+                                                                 className="w-fit hover:scale-90 duration-200 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full font-semibold transition-colors"
                                                             >
                                                                  Đặt sân
                                                             </Button>
@@ -605,29 +624,35 @@ export default function FieldSearch({ user }) {
                               <div>
                                    <div className="flex items-center justify-between mb-4">
                                         <h2 className="text-lg font-semibold text-teal-800">Giá tốt</h2>
+                                        <Button
+                                             type="button"
+                                             onClick={() => { setActiveTab("best-price"); setForceList(true); setPage(1); }}
+
+                                             className="px-3 py-1 rounded-2xl hover:border-b-2 bg-transparent hover:bg-teal-50 hover:border-teal-300 text-teal-700 text-sm"
+                                        >
+                                             Xem tất cả
+                                        </Button>
                                    </div>
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                                         {bestPriceGroup.map((field) => (
-                                             <div key={field.id} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col">
+                                             <div key={field.id} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.id}`)}>
                                                   <div className="relative overflow-hidden">
-                                                       <img src={field.image} alt={field.name} className="w-full h-40 object-cover transition-transform duration-300 ease-out group-hover:scale-105" />
+                                                       <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" />
                                                        <div className="absolute top-4 right-4 flex space-x-2">
-                                                            <div className="bg-white/95 backdrop-blur px-2 py-1 rounded-full text-sm font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{field.availableSlots} slot trống </p></div>
+                                                            <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{field.availableSlots} slot trống </p></div>
                                                        </div>
                                                   </div>
-                                                  <div className="p-5 flex-1 flex flex-col">
-                                                       <h3 className="text-base font-semibold text-teal-800 mb-2 line-clamp-1">{field.name}</h3>
-                                                       <div className="flex items-center text-teal-700 mb-2">
+                                                  <div className="px-2 py-3 flex-1 flex flex-col">
+                                                       <div className="flex bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2">
                                                             <MapPin className="w-4 h-4 mr-1" />
-                                                            <span className="text-sm line-clamp-1">{field.location}</span>
+                                                            <span className="text-xs font-semibold line-clamp-1">{field.location}</span>
                                                        </div>
+
                                                        <div className="flex items-center justify-between mb-3">
+                                                            <h3 className="text-lg font-bold text-teal-800 line-clamp-1">{field.name}</h3>
                                                             <div className="flex items-center">
-                                                                 <Star className="w-4 h-4 text-teal-400 mr-1" />
-                                                                 <span className="text-sm font-semibold">{field.rating}</span>
-                                                                 <span className="text-sm text-gray-500 ml-1">({field.reviewCount})</span>
+                                                                 <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full">Giá tốt nhất</span>
                                                             </div>
-                                                            <div className="text-sm font-bold text-teal-500">{formatPrice(field.price)}/giờ</div>
                                                        </div>
                                                        <div className="flex items-center gap-2 mb-4">
                                                             <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{field.amenities[0]}</span>
@@ -635,20 +660,15 @@ export default function FieldSearch({ user }) {
                                                                  <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">+{field.amenities.length - 1}</span>
                                                             )}
                                                        </div>
-                                                       <div className="mt-auto flex space-x-2">
+                                                       <div className="mt-auto flex items-center justify-between">
+                                                            <div className="text-lg font-bold text-teal-500">{formatPrice(field.price)}/trận</div>
                                                             <Button
                                                                  type="button"
-                                                                 onClick={() => navigate(`/field/${field.id}`)}
-                                                                 className="flex-1 border border-teal-300 text-teal-700 hover:bg-teal-500 hover:text-white bg-teal-50 py-2 px-4 rounded-xl font-semibold"
-                                                            >
-                                                                 Xem chi tiết
-                                                            </Button>
-                                                            <Button
-                                                                 type="button"
-                                                                 onClick={handleBook}
-                                                                 variant="outline"
-                                                                 className="flex-1 bg-teal-500 hover:bg-teal-50 hover:text-teal-500 hover:border-teal-500 text-white py-2 px-4 rounded-xl font-semibold"
-
+                                                                 onClick={(e) => {
+                                                                      e.stopPropagation();
+                                                                      handleBook(field.id);
+                                                                 }}
+                                                                 className="w-fit hover:scale-90 duration-200 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full font-semibold transition-colors"
                                                             >
                                                                  Đặt sân
                                                             </Button>
@@ -661,29 +681,36 @@ export default function FieldSearch({ user }) {
                               <div>
                                    <div className="flex items-center justify-between mb-4">
                                         <h2 className="text-lg font-semibold text-teal-800">Đánh giá cao</h2>
+                                        <Button
+                                             type="button"
+                                             onClick={() => { setActiveTab("top-rated"); setForceList(true); setPage(1); }}
+                                             className="px-3 py-1 rounded-2xl hover:border-b-2 bg-transparent hover:bg-teal-50 hover:border-teal-300 text-teal-700 text-sm"
+                                        >
+                                             Xem tất cả
+                                        </Button>
                                    </div>
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                                         {topRatedGroup.map((field) => (
-                                             <div key={field.id} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col">
+                                             <div key={field.id} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.id}`)}>
                                                   <div className="relative overflow-hidden">
-                                                       <img src={field.image} alt={field.name} className="w-full h-40 object-cover transition-transform duration-300 ease-out group-hover:scale-105" />
+                                                       <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" />
                                                        <div className="absolute top-4 right-4 flex space-x-2">
-                                                            <div className="bg-white/95 backdrop-blur px-2 py-1 rounded-full text-sm font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{field.availableSlots} slot trống </p></div>
+                                                            <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{field.availableSlots} slot trống </p></div>
                                                        </div>
                                                   </div>
-                                                  <div className="p-5 flex-1 flex flex-col">
-                                                       <h3 className="text-base font-semibold text-teal-800 mb-2 line-clamp-1">{field.name}</h3>
-                                                       <div className="flex items-center text-teal-700 mb-2">
+                                                  <div className="px-2 py-3 flex-1 flex flex-col">
+                                                       <div className="flex bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2">
                                                             <MapPin className="w-4 h-4 mr-1" />
-                                                            <span className="text-sm line-clamp-1">{field.location}</span>
+                                                            <span className="text-xs font-semibold line-clamp-1">{field.location}</span>
                                                        </div>
+
                                                        <div className="flex items-center justify-between mb-3">
+                                                            <h3 className="text-lg font-bold text-teal-800 line-clamp-1">{field.name}</h3>
                                                             <div className="flex items-center">
-                                                                 <Star className="w-4 h-4 text-teal-400 mr-1" />
-                                                                 <span className="text-sm font-semibold">{field.rating}</span>
-                                                                 <span className="text-sm text-gray-500 ml-1">({field.reviewCount})</span>
+                                                                 <Star className="w-4 h-4 text-red-500 mr-1" />
+                                                                 <span className="text-sm font-bold text-red-600">{field.rating}</span>
+                                                                 <span className="text-sm text-red-500 ml-1">({field.reviewCount})</span>
                                                             </div>
-                                                            <div className="text-sm font-bold text-teal-500">{formatPrice(field.price)}/giờ</div>
                                                        </div>
                                                        <div className="flex items-center gap-2 mb-4">
                                                             <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{field.amenities[0]}</span>
@@ -691,20 +718,15 @@ export default function FieldSearch({ user }) {
                                                                  <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">+{field.amenities.length - 1}</span>
                                                             )}
                                                        </div>
-                                                       <div className="mt-auto flex space-x-2">
+                                                       <div className="mt-auto flex items-center justify-between">
+                                                            <div className="text-lg font-bold text-teal-500">{formatPrice(field.price)}/trận</div>
                                                             <Button
                                                                  type="button"
-                                                                 onClick={() => navigate(`/field/${field.id}`)}
-                                                                 className="flex-1 border border-teal-300 text-teal-700 hover:bg-teal-500 hover:text-white bg-teal-50 py-2 px-4 rounded-xl font-semibold"
-                                                            >
-                                                                 Xem chi tiết
-                                                            </Button>
-                                                            <Button
-                                                                 type="button"
-                                                                 onClick={handleBook}
-                                                                 variant="outline"
-                                                                 className="flex-1 bg-teal-500 hover:bg-teal-50 hover:text-teal-500 hover:border-teal-500 text-white py-2 px-4 rounded-xl font-semibold"
-
+                                                                 onClick={(e) => {
+                                                                      e.stopPropagation();
+                                                                      handleBook(field.id);
+                                                                 }}
+                                                                 className="w-fit hover:scale-90 duration-200 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full font-semibold transition-colors"
                                                             >
                                                                  Đặt sân
                                                             </Button>
@@ -719,7 +741,7 @@ export default function FieldSearch({ user }) {
                          viewMode === "grid" ? (
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                                    {pageItems.map((field) => (
-                                        <div key={field.id} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col">
+                                        <div key={field.id} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.id}`)}>
                                              <div className="relative overflow-hidden">
                                                   <img
                                                        src={field.image}
@@ -729,7 +751,10 @@ export default function FieldSearch({ user }) {
                                                   <div className="absolute top-4 right-4 flex space-x-2">
                                                        <Button
                                                             type="button"
-                                                            onClick={() => handleToggleFavorite(field.id)}
+                                                            onClick={(e) => {
+                                                                 e.stopPropagation();
+                                                                 handleToggleFavorite(field.id);
+                                                            }}
                                                             variant="outline"
                                                             className={`h-8 w-8 p-0 rounded-full shadow-sm transition-colors border ${field.isFavorite ? "bg-teal-500 text-white border-teal-500" : "bg-white text-teal-700 border-teal-200 hover:bg-teal-50"}`}
                                                        >
@@ -748,11 +773,28 @@ export default function FieldSearch({ user }) {
                                                   </div>
                                                   <div className="flex items-center justify-between mb-4">
                                                        <div className="flex items-center">
-                                                            <Star className="w-4 h-4 text-teal-400 mr-1" />
-                                                            <span className="text-sm font-semibold">{field.rating}</span>
-                                                            <span className="text-sm text-gray-500 ml-1">({field.reviewCount})</span>
+                                                            {activeTab === "near" ? (
+                                                                 <>
+                                                                      <MapPin className="w-4 h-4 text-red-500 mr-1" />
+                                                                      <span className="text-sm font-bold text-red-600">{field.distance}</span>
+                                                                 </>
+                                                            ) : activeTab === "best-price" ? (
+                                                                 <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full">Giá tốt nhất</span>
+                                                            ) : activeTab === "top-rated" ? (
+                                                                 <>
+                                                                      <Star className="w-4 h-4 text-red-500 mr-1" />
+                                                                      <span className="text-sm font-bold text-red-600">{field.rating}</span>
+                                                                      <span className="text-sm text-red-500 ml-1">({field.reviewCount})</span>
+                                                                 </>
+                                                            ) : (
+                                                                 <>
+                                                                      <Star className="w-4 h-4 text-teal-400 mr-1" />
+                                                                      <span className="text-sm font-semibold">{field.rating}</span>
+                                                                      <span className="text-sm text-gray-500 ml-1">({field.reviewCount})</span>
+                                                                 </>
+                                                            )}
                                                        </div>
-                                                       <div className="text-lg font-bold text-teal-600">{formatPrice(field.price)}/giờ</div>
+                                                       <div className={`text-lg font-bold ${activeTab === "best-price" ? "text-red-500" : "text-teal-600"}`}>{formatPrice(field.price)}/trận</div>
                                                   </div>
                                                   <div className="flex items-center gap-2 mb-4">
                                                        <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200">{field.amenities[0]}</span>
@@ -760,20 +802,14 @@ export default function FieldSearch({ user }) {
                                                             <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200">+{field.amenities.length - 1}</span>
                                                        )}
                                                   </div>
-                                                  <div className="mt-auto flex space-x-2">
+                                                  <div className="mt-auto">
                                                        <Button
                                                             type="button"
-                                                            onClick={() => navigate(`/field/${field.id}`)}
-                                                            className="flex-1 border border-teal-300 text-teal-700 hover:bg-teal-500 hover:text-white bg-teal-50 py-2 px-4 rounded-xl font-semibold"
-                                                       >
-                                                            Xem chi tiết
-                                                       </Button>
-                                                       <Button
-                                                            type="button"
-                                                            onClick={handleBook}
-                                                            variant="outline"
-                                                            className="flex-1 bg-teal-500 hover:bg-teal-50 hover:text-teal-500 hover:border-teal-500 text-white py-2 px-4 rounded-xl font-semibold"
-
+                                                            onClick={(e) => {
+                                                                 e.stopPropagation();
+                                                                 handleBook(field.id);
+                                                            }}
+                                                            className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-xl font-semibold transition-colors"
                                                        >
                                                             Đặt sân
                                                        </Button>
@@ -785,38 +821,43 @@ export default function FieldSearch({ user }) {
                          ) : (
                               <div className="space-y-4">
                                    {pageItems.map((field) => (
-                                        <div key={field.id} className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all border border-teal-100 hover:border-teal-200">
+                                        <div key={field.id} className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden hover:scale-105 duration-300 transition-all border border-teal-100 hover:border-teal-200 cursor-pointer" onClick={() => navigate(`/field/${field.id}`)}>
                                              <div className="flex">
-                                                  <div className="w-72 h-52 flex-shrink-0">
+                                                  <div className="w-96 h-52 flex-shrink-0">
                                                        <img
                                                             src={field.image}
                                                             alt={field.name}
-                                                            className="w-full h-full object-cover"
+                                                            className="w-full h-full rounded-2xl object-cover"
                                                        />
                                                   </div>
                                                   <div className="flex-1 px-4 py-1">
-                                                       <div className="flex justify-between items-start mt-2">
-                                                            <h3 className="text-xl font-semibold text-teal-800">{field.name}</h3>
+                                                       <div className="flex justify-between items-start">
+                                                            <div className="flex  bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-1">
+                                                                 <MapPin className="w-4 h-4 mr-1" />
+                                                                 <span className="text-xs font-semibold">{field.address}</span>
+                                                            </div>
                                                             <Button
-                                                                 onClick={() => handleToggleFavorite(field.id)}
+                                                                 onClick={(e) => {
+                                                                      e.stopPropagation();
+                                                                      handleToggleFavorite(field.id);
+                                                                 }}
                                                                  className={`px-3 rounded-full ${field.isFavorite ? "bg-red-500 text-white hover:bg-red-600" : "bg-teal-100 text-teal-700 hover:border-red-100 hover:border hover:text-red-600 hover:bg-red-50"}`}
                                                             >
                                                                  <Heart className="w-4 h-4" />
                                                             </Button>
                                                        </div>
-                                                       <div className="flex items-center text-teal-700 mb-2">
-                                                            <MapPin className="w-4 h-4 mr-1" />
-                                                            <span className="text-sm">{field.address}</span>
-                                                       </div>
-                                                       <div className="flex items-center justify-between mb-3s">
-                                                            <div className="flex items-center">
-                                                                 <Star className="w-4 h-4 text-teal-400 mr-1" />
-                                                                 <span className="text-sm font-semibold">{field.rating}</span>
-                                                                 <span className="text-sm text-gray-500 ml-1">({field.reviewCount} đánh giá)</span>
+
+                                                       <div className="flex items-center justify-between mb-3">
+                                                            <div className="flex-1 items-center">
+                                                                 <h3 className="text-2xl font-bold text-teal-800 px-2">{field.name}</h3>
+                                                                 <div className="flex items-center"> <Star className="w-4 h-4 text-teal-400 mr-1" />
+                                                                      <span className="text-sm font-semibold">{field.rating}</span>
+                                                                      <span className="text-sm text-gray-500 ml-1">({field.reviewCount} đánh giá)</span>
+                                                                 </div>
                                                             </div>
-                                                            <div className="text-lg font-bold text-teal-600">{formatPrice(field.price)}/giờ</div>
+                                                            <div className="text-xl font-bold text-teal-600">{formatPrice(field.price)}/trận</div>
                                                        </div>
-                                                       <div className="flex flex-wrap gap-2 mb-4">
+                                                       <div className="flex flex-wrap gap-2 mb-7">
                                                             {field.amenities.map((amenity, index) => (
                                                                  <span
                                                                       key={index}
@@ -834,16 +875,10 @@ export default function FieldSearch({ user }) {
                                                             <div className="flex space-x-2">
                                                                  <Button
                                                                       type="button"
-                                                                      onClick={() => navigate(`/field/${field.id}`)}
-                                                                      variant="outline"
-                                                                      className="border border-teal-300 text-teal-700 hover:bg-teal-50 py-1 px-4 rounded-xl font-semibold flex items-center"
-                                                                 >
-                                                                      <Eye className="w-4 h-4 mr-2" />
-                                                                      Xem chi tiết
-                                                                 </Button>
-                                                                 <Button
-                                                                      type="button"
-                                                                      onClick={handleBook}
+                                                                      onClick={(e) => {
+                                                                           e.stopPropagation();
+                                                                           handleBook(field.id);
+                                                                      }}
                                                                       className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-4 rounded-xl font-semibold"
                                                                  >
                                                                       Đặt sân
@@ -858,18 +893,96 @@ export default function FieldSearch({ user }) {
                          )}
 
                     {/* Pagination */}
-                    {filteredFields.length > 0 && (
-                         <div className="mt-8 flex items-center justify-between">
+                    {filteredFields.length > 0 && !isGroupedView && (
+                         <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
                               <div className="text-sm text-teal-700">
                                    Trang {currentPage}/{totalPages} • {Math.min(endIdx, totalItems)} trên {totalItems} sân
                               </div>
                               <div className="flex items-center gap-2">
-                                   <button onClick={handlePrev} disabled={currentPage === 1} className={`px-3 py-2 rounded-xl border ${currentPage === 1 ? "bg-gray-50 text-gray-300 border-gray-200" : "bg-white text-teal-600 border-gray-200 hover:border-gray-300"}`}>
-                                        <ChevronLeft className="w-4 h-4 inline" /> Trước
-                                   </button>
-                                   <button onClick={handleNext} disabled={currentPage === totalPages} className={`px-3 py-2 rounded-xl border ${currentPage === totalPages ? "bg-gray-50 text-gray-300 border-gray-200" : "bg-white text-teal-600 border-gray-200 hover:border-gray-300"}`}>
-                                        Sau <ChevronRight className="w-4 h-4 inline" />
-                                   </button>
+                                   <Button
+                                        type="button"
+                                        onClick={handlePrev}
+                                        disabled={currentPage === 1}
+                                        className={`px-3 py-1 rounded-full items-center justify-center border transition-colors ${currentPage === 1 ? "bg-gray-50 text-gray-400 border-gray-300 cursor-not-allowed" : "bg-white text-teal-600 border-teal-200 hover:border-teal-300 hover:bg-teal-50"}`}
+                                   >
+                                        <ChevronLeft className="w-4 h-4" />
+                                   </Button>
+
+                                   {/* Page numbers */}
+                                   <div className="flex items-center gap-1">
+                                        {(() => {
+                                             const pages = [];
+                                             const maxVisiblePages = 5;
+                                             let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+                                             let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+                                             if (endPage - startPage + 1 < maxVisiblePages) {
+                                                  startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                                             }
+
+                                             // First page
+                                             if (startPage > 1) {
+                                                  pages.push(
+                                                       <Button
+                                                            key={1}
+                                                            onClick={() => setPage(1)}
+                                                            className="px-3 py-1 rounded-full border border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300 transition-colors"
+                                                       >
+                                                            1
+                                                       </Button>
+                                                  );
+                                                  if (startPage > 2) {
+                                                       pages.push(
+                                                            <span key="ellipsis1" className="px-2 text-teal-400">...</span>
+                                                       );
+                                                  }
+                                             }
+
+                                             // Middle pages
+                                             for (let i = startPage; i <= endPage; i++) {
+                                                  pages.push(
+                                                       <Button
+                                                            key={i}
+                                                            onClick={() => setPage(i)}
+                                                            className={`px-4 py-1 rounded-full border transition-colors ${i === currentPage
+                                                                 ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600"
+                                                                 : "border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300"
+                                                                 }`}
+                                                       >
+                                                            {i}
+                                                       </Button>
+                                                  );
+                                             }
+
+                                             // Last page
+                                             if (endPage < totalPages) {
+                                                  if (endPage < totalPages - 1) {
+                                                       pages.push(
+                                                            <span key="ellipsis2" className="px-2 text-teal-400">...</span>
+                                                       );
+                                                  }
+                                                  pages.push(
+                                                       <Button
+                                                            key={totalPages}
+                                                            onClick={() => setPage(totalPages)}
+                                                            className="px-3 py-1 rounded-full border border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300 transition-colors"
+                                                       >
+                                                            {totalPages}
+                                                       </Button>
+                                                  );
+                                             }
+
+                                             return pages;
+                                        })()}
+                                   </div>
+
+                                   <Button
+                                        onClick={handleNext}
+                                        disabled={currentPage === totalPages}
+                                        className={`px-3 py-1 rounded-full border transition-colors ${currentPage === totalPages ? "bg-gray-50 text-gray-400 border-gray-300 cursor-not-allowed" : "bg-white text-teal-600 border-teal-200 hover:border-teal-300 hover:bg-teal-50"}`}
+                                   >
+                                        <ChevronRight className="w-4 h-4 " />
+                                   </Button>
                               </div>
                          </div>
                     )}
@@ -898,6 +1011,13 @@ export default function FieldSearch({ user }) {
                          </div>
                     )}
                </Container>
-          </Section >
+
+               {/* Map Search Modal */}
+               <MapSearch
+                    isOpen={showMapSearch}
+                    onClose={() => setShowMapSearch(false)}
+                    onLocationSelect={handleMapLocationSelect}
+               />
+          </Section>
      );
 }
