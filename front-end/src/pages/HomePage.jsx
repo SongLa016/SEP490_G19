@@ -37,7 +37,7 @@ export default function HomePage({ user }) {
           {
                id: 1,
                name: "Sân bóng đá ABC",
-               location: "Quận 1, TP.HCM",
+               location: "Quận Hoàn Kiếm, Hà Nội",
                price: "200,000 VNĐ",
                rating: 4.8,
                image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
@@ -47,7 +47,7 @@ export default function HomePage({ user }) {
           {
                id: 2,
                name: "Sân bóng đá XYZ",
-               location: "Quận 3, TP.HCM",
+               location: "Quận Ba Đình, Hà Nội",
                price: "180,000 VNĐ",
                rating: 4.6,
                image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
@@ -57,7 +57,7 @@ export default function HomePage({ user }) {
           {
                id: 3,
                name: "Sân bóng đá DEF",
-               location: "Quận 7, TP.HCM",
+               location: "Quận Đống Đa, Hà Nội",
                price: "220,000 VNĐ",
                rating: 4.9,
                image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
@@ -67,7 +67,7 @@ export default function HomePage({ user }) {
           {
                id: 4,
                name: "Sân bóng đá GHI",
-               location: "Quận 7, TP.HCM",
+               location: "Quận Đống Đa, Hà Nội",
                price: "220,000 VNĐ",
                rating: 4.9,
                image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
@@ -77,7 +77,7 @@ export default function HomePage({ user }) {
           {
                id: 5,
                name: "Sân bóng đá DEF",
-               location: "Quận 7, TP.HCM",
+               location: "Quận Đống Đa, Hà Nội",
                price: "220,000 VNĐ",
                rating: 4.9,
                image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
@@ -87,7 +87,7 @@ export default function HomePage({ user }) {
           {
                id: 6,
                name: "Sân bóng đá DEF",
-               location: "Quận 7, TP.HCM",
+               location: "Quận Đống Đa, Hà Nội",
                price: "220,000 VNĐ",
                rating: 4.9,
                image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
@@ -97,7 +97,7 @@ export default function HomePage({ user }) {
           {
                id: 7,
                name: "Sân bóng đá DEF",
-               location: "Quận 7, TP.HCM",
+               location: "Quận Đống Đa, Hà Nội",
                price: "220,000 VNĐ",
                rating: 4.9,
                image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
@@ -108,7 +108,7 @@ export default function HomePage({ user }) {
           {
                id: 8,
                name: "Sân bóng đá DEF",
-               location: "Quận 7, TP.HCM",
+               location: "Quận Đống Đa, Hà Nội",
                price: "220,000 VNĐ",
                rating: 4.9,
                image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
@@ -226,10 +226,10 @@ export default function HomePage({ user }) {
      const handleSearch = () => {
           try {
                const locationMap = {
-                    quan1: "Quận 1",
-                    quan3: "Quận 3",
-                    quan7: "Quận 7",
-                    quan10: "Quận 10",
+                    quan1: "Quận Hoàn Kiếm",
+                    quan3: "Quận Ba Đình",
+                    quan7: "Quận Đống Đa",
+                    quan10: "Quận Hoàn Kiếm0",
                };
                const preset = {
                     searchQuery: searchQuery || "",
@@ -293,10 +293,10 @@ export default function HomePage({ user }) {
                                                        </SelectTrigger>
                                                        <SelectContent>
                                                             <SelectItem value="all">All Locations</SelectItem>
-                                                            <SelectItem value="quan1">Quận 1</SelectItem>
-                                                            <SelectItem value="quan3">Quận 3</SelectItem>
-                                                            <SelectItem value="quan7">Quận 7</SelectItem>
-                                                            <SelectItem value="quan10">Quận 10</SelectItem>
+                                                            <SelectItem value="quan1">Quận Hoàn Kiếm</SelectItem>
+                                                            <SelectItem value="quan3">Quận Ba Đình</SelectItem>
+                                                            <SelectItem value="quan7">Quận Đống Đa</SelectItem>
+                                                            <SelectItem value="quan10">Quận Hoàn Kiếm0</SelectItem>
                                                        </SelectContent>
                                                   </Select>
                                                   <hr className="w-[1px] h-10 bg-white" />

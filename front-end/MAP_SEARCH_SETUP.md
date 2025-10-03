@@ -18,24 +18,31 @@
 Create a `.env` file in the root directory:
 
 ```env
-REACT_APP_GOOGLE_MAPS_API_KEY=your_actual_api_key_here
+REACT_APP_GOOGLE_MAPS_API_KEY=AIzaSyA0Mdo-7p3D4zwP8QSCn55Rj8rTy-PCJ8o
 ```
+
+**Note**: The API key is already configured in the MapSearch component for immediate use.
 
 ### 3. Features
 
 - **Interactive Map**: Click on field markers to view details
-- **Search by Location**: Type to search for fields by name or address
+- **Google Places Autocomplete**: Real-time search suggestions from Google Places API
 - **Current Location**: Get your current location automatically
+- **Radius Search**: Filter fields within customizable radius (1-20 km)
 - **Field Markers**: Visual representation of all available fields
+- **Nearby Fields List**: Shows fields within selected radius with distances
+- **Smart Filtering**: Automatically applies location filters to main search
 - **Responsive Design**: Works on desktop and mobile
 
 ### 4. Usage
 
 1. Click "Tìm bằng bản đồ" button in the search header
-2. Use the search bar to find specific fields
-3. Click on map markers to select fields
-4. Use "Vị trí hiện tại" to center map on your location
-5. Click "Chọn vị trí này" to confirm selection
+2. Use the search bar to find specific fields or locations (Google Places autocomplete)
+3. Adjust search radius using the dropdown (1-20 km)
+4. Click on map markers to select fields
+5. Use "Vị trí hiện tại" to center map on your location
+6. View nearby fields list with distances
+7. Click "Chọn vị trí này" to confirm selection and apply filters
 
 ### 5. Customization
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Search, X } from 'lucide-react';
-import { Button } from './ui';
+import { Button, Input } from './ui';
 
 const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
      const [searchQuery, setSearchQuery] = useState('');
@@ -8,18 +8,54 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
      const [selectedLocation, setSelectedLocation] = useState(null);
      const [map, setMap] = useState(null);
      const [markers, setMarkers] = useState([]);
+     const [searchRadius, setSearchRadius] = useState(5); // km
+     const [filteredFields, setFilteredFields] = useState([]);
      const mapRef = useRef(null);
      const autocompleteRef = useRef(null);
+
+     // Format price
+     const formatPrice = (price) => {
+          return new Intl.NumberFormat('vi-VN', {
+               style: 'currency',
+               currency: 'VND'
+          }).format(price).replace('₫', 'đ');
+     };
+
+     // Calculate distance between two points
+     const calculateDistance = (lat1, lon1, lat2, lon2) => {
+          const R = 6371; // Radius of the Earth in kilometers
+          const dLat = (lat2 - lat1) * Math.PI / 180;
+          const dLon = (lon2 - lon1) * Math.PI / 180;
+          const a =
+               Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+               Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+               Math.sin(dLon / 2) * Math.sin(dLon / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          const distance = R * c;
+          return distance;
+     };
+
+     // Filter fields by radius
+     const filterFieldsByRadius = (centerLat, centerLng, radius) => {
+          return mockFields.filter(field => {
+               const distance = calculateDistance(centerLat, centerLng, field.lat, field.lng);
+               return distance <= radius;
+          }).sort((a, b) => {
+               const distanceA = calculateDistance(centerLat, centerLng, a.lat, a.lng);
+               const distanceB = calculateDistance(centerLat, centerLng, b.lat, b.lng);
+               return distanceA - distanceB;
+          });
+     };
 
      // Mock field data with coordinates
      const mockFields = [
           {
                id: 1,
                name: "Sân bóng đá ABC",
-               location: "Quận 1, TP.HCM",
-               address: "123 Đường ABC, Phường Bến Nghé",
-               lat: 10.7769,
-               lng: 106.7009,
+               location: "Quận Hoàn Kiếm, Hà Nội",
+               address: "123 Phố Hàng Bạc, Phường Hàng Bạc",
+               lat: 21.0285,
+               lng: 105.8542,
                price: 200000,
                rating: 4.8,
                availableSlots: 3
@@ -27,10 +63,10 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           {
                id: 2,
                name: "Sân thể thao XYZ",
-               location: "Quận 2, TP.HCM",
-               address: "456 Đường XYZ, Phường Thủ Thiêm",
-               lat: 10.7870,
-               lng: 106.7485,
+               location: "Quận Ba Đình, Hà Nội",
+               address: "456 Đường Kim Mã, Phường Kim Mã",
+               lat: 21.0333,
+               lng: 105.8167,
                price: 180000,
                rating: 4.6,
                availableSlots: 5
@@ -38,10 +74,10 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           {
                id: 3,
                name: "Sân bóng đá DEF",
-               location: "Quận 3, TP.HCM",
-               address: "789 Đường DEF, Phường Võ Thị Sáu",
-               lat: 10.7829,
-               lng: 106.6881,
+               location: "Quận Đống Đa, Hà Nội",
+               address: "789 Đường Láng, Phường Láng Thượng",
+               lat: 21.0167,
+               lng: 105.8167,
                price: 220000,
                rating: 4.9,
                availableSlots: 2
@@ -49,10 +85,10 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           {
                id: 4,
                name: "Sân thể thao GHI",
-               location: "Quận 7, TP.HCM",
-               address: "321 Đường GHI, Phường Tân Phong",
-               lat: 10.7374,
-               lng: 106.7223,
+               location: "Quận Cầu Giấy, Hà Nội",
+               address: "321 Đường Trần Duy Hưng, Phường Trung Hòa",
+               lat: 21.0167,
+               lng: 105.8000,
                price: 160000,
                rating: 4.4,
                availableSlots: 8
@@ -60,10 +96,10 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           {
                id: 5,
                name: "Sân bóng đá JKL",
-               location: "Quận 10, TP.HCM",
-               address: "654 Đường JKL, Phường 15",
-               lat: 10.7679,
-               lng: 106.6668,
+               location: "Quận Hai Bà Trưng, Hà Nội",
+               address: "654 Đường Bạch Mai, Phường Bạch Mai",
+               lat: 21.0167,
+               lng: 105.8500,
                price: 190000,
                rating: 4.7,
                availableSlots: 4
@@ -71,10 +107,10 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           {
                id: 6,
                name: "Sân thể thao MNO",
-               location: "Quận 1, TP.HCM",
-               address: "987 Đường MNO, Phường Đa Kao",
-               lat: 10.7889,
-               lng: 106.6969,
+               location: "Quận Tây Hồ, Hà Nội",
+               address: "987 Đường Âu Cơ, Phường Quảng An",
+               lat: 21.0667,
+               lng: 105.8167,
                price: 250000,
                rating: 4.9,
                availableSlots: 1
@@ -86,11 +122,14 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           if (isOpen && !map) {
                const initMap = () => {
                     const mapInstance = new window.google.maps.Map(mapRef.current, {
-                         center: { lat: 10.7769, lng: 106.7009 }, // Ho Chi Minh City center
-                         zoom: 12,
-                         mapTypeControl: false,
-                         streetViewControl: false,
-                         fullscreenControl: false,
+                         center: { lat: 21.0285, lng: 105.8542 }, // Hanoi center
+                         zoom: 13,
+                         mapTypeControl: true,
+                         streetViewControl: true,
+                         fullscreenControl: true,
+                         zoomControl: true,
+                         scaleControl: true,
+                         rotateControl: true,
                          styles: [
                               {
                                    featureType: "poi",
@@ -103,7 +142,8 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                     setMap(mapInstance);
 
                     // Add field markers
-                    const fieldMarkers = mockFields.map(field => {
+                    const fieldsToShow = filteredFields.length > 0 ? filteredFields : mockFields;
+                    const fieldMarkers = fieldsToShow.map(field => {
                          const marker = new window.google.maps.Marker({
                               position: { lat: field.lat, lng: field.lng },
                               map: mapInstance,
@@ -142,7 +182,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                     initMap();
                } else {
                     const script = document.createElement('script');
-                    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.REACT_APP_GOOGLE_MAPS_API_KEY}&libraries=places`;
+                    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyA0Mdo-7p3D4zwP8QSCn55Rj8rTy-PCJ8o&libraries=places`;
                     script.async = true;
                     script.defer = true;
                     script.onload = initMap;
@@ -151,70 +191,287 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           }
      }, [isOpen, map, onLocationSelect]);
 
+     // Update markers when filtered fields change
+     useEffect(() => {
+          if (map && markers.length > 0) {
+               // Clear existing markers
+               markers.forEach(marker => marker.setMap(null));
+
+               // Add new markers based on filtered fields
+               const fieldsToShow = filteredFields.length > 0 ? filteredFields : mockFields;
+               const newMarkers = fieldsToShow.map(field => {
+                    const marker = new window.google.maps.Marker({
+                         position: { lat: field.lat, lng: field.lng },
+                         map: map,
+                         title: field.name,
+                         icon: {
+                              url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+                                   <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="20" cy="20" r="18" fill="#14b8a6" stroke="white" stroke-width="2"/>
+                                        <text x="20" y="26" text-anchor="middle" fill="white" font-size="12" font-weight="bold">⚽</text>
+                                   </svg>
+                              `)}`,
+                              scaledSize: new window.google.maps.Size(40, 40),
+                              anchor: new window.google.maps.Point(20, 20)
+                         }
+                    });
+
+                    // Add click listener
+                    marker.addListener('click', () => {
+                         onLocationSelect({
+                              lat: field.lat,
+                              lng: field.lng,
+                              address: field.address,
+                              name: field.name,
+                              field: field
+                         });
+                    });
+
+                    return marker;
+               });
+
+               setMarkers(newMarkers);
+          }
+     }, [filteredFields, map, onLocationSelect]);
+
      // Handle search input
      const handleSearchChange = (e) => {
           const query = e.target.value;
           setSearchQuery(query);
 
           if (query.length > 2) {
-               // Mock suggestions based on search query
-               const filteredSuggestions = mockFields.filter(field =>
-                    field.name.toLowerCase().includes(query.toLowerCase()) ||
-                    field.location.toLowerCase().includes(query.toLowerCase()) ||
-                    field.address.toLowerCase().includes(query.toLowerCase())
-               ).slice(0, 5);
+               // Use Google Places API for autocomplete
+               if (window.google && window.google.maps && window.google.maps.places) {
+                    const service = new window.google.maps.places.AutocompleteService();
+                    service.getPlacePredictions({
+                         input: query,
+                         componentRestrictions: { country: 'vn' },
+                         types: ['establishment', 'geocode']
+                    }, (predictions, status) => {
+                         if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+                              const placesSuggestions = predictions.slice(0, 5).map(prediction => ({
+                                   id: prediction.place_id,
+                                   name: prediction.structured_formatting.main_text,
+                                   address: prediction.structured_formatting.secondary_text || prediction.description,
+                                   place_id: prediction.place_id
+                              }));
 
-               setSuggestions(filteredSuggestions);
+                              // Combine with field suggestions
+                              const fieldSuggestions = mockFields.filter(field =>
+                                   field.name.toLowerCase().includes(query.toLowerCase()) ||
+                                   field.location.toLowerCase().includes(query.toLowerCase()) ||
+                                   field.address.toLowerCase().includes(query.toLowerCase())
+                              ).slice(0, 3);
+
+                              setSuggestions([...placesSuggestions, ...fieldSuggestions]);
+                         } else {
+                              // Fallback to mock suggestions
+                              const filteredSuggestions = mockFields.filter(field =>
+                                   field.name.toLowerCase().includes(query.toLowerCase()) ||
+                                   field.location.toLowerCase().includes(query.toLowerCase()) ||
+                                   field.address.toLowerCase().includes(query.toLowerCase())
+                              ).slice(0, 5);
+                              setSuggestions(filteredSuggestions);
+                         }
+                    });
+               } else {
+                    // Mock suggestions based on search query
+                    const filteredSuggestions = mockFields.filter(field =>
+                         field.name.toLowerCase().includes(query.toLowerCase()) ||
+                         field.location.toLowerCase().includes(query.toLowerCase()) ||
+                         field.address.toLowerCase().includes(query.toLowerCase())
+                    ).slice(0, 5);
+                    setSuggestions(filteredSuggestions);
+               }
           } else {
                setSuggestions([]);
           }
      };
 
      // Handle suggestion selection
-     const handleSuggestionClick = (field) => {
-          setSelectedLocation({
-               lat: field.lat,
-               lng: field.lng,
-               address: field.address,
-               name: field.name,
-               field: field
-          });
-          setSearchQuery(field.name);
-          setSuggestions([]);
+     const handleSuggestionClick = (suggestion) => {
+          if (suggestion.place_id) {
+               // Handle Google Places suggestion
+               const geocoder = new window.google.maps.Geocoder();
+               geocoder.geocode({ placeId: suggestion.place_id }, (results, status) => {
+                    if (status === 'OK' && results[0]) {
+                         const location = results[0].geometry.location;
+                         const address = results[0].formatted_address;
 
-          // Move map to selected location
-          if (map) {
-               map.setCenter({ lat: field.lat, lng: field.lng });
-               map.setZoom(15);
+                         setSelectedLocation({
+                              lat: location.lat(),
+                              lng: location.lng(),
+                              address: address,
+                              name: suggestion.name,
+                              place_id: suggestion.place_id
+                         });
+                         setSearchQuery(suggestion.name);
+                         setSuggestions([]);
+
+                         // Move map to selected location
+                         if (map) {
+                              map.setCenter({ lat: location.lat(), lng: location.lng() });
+                              map.setZoom(16);
+
+                              // Clear previous user location markers
+                              if (window.userLocationMarkers) {
+                                   window.userLocationMarkers.forEach(marker => {
+                                        if (marker.setMap) marker.setMap(null);
+                                   });
+                                   window.userLocationMarkers = [];
+                              }
+                         }
+
+                         // Filter fields by radius
+                         const nearbyFields = filterFieldsByRadius(location.lat(), location.lng(), searchRadius);
+                         setFilteredFields(nearbyFields);
+                    }
+               });
+          } else {
+               // Handle field suggestion
+               setSelectedLocation({
+                    lat: suggestion.lat,
+                    lng: suggestion.lng,
+                    address: suggestion.address,
+                    name: suggestion.name,
+                    field: suggestion
+               });
+               setSearchQuery(suggestion.name);
+               setSuggestions([]);
+
+               // Move map to selected location
+               if (map) {
+                    map.setCenter({ lat: suggestion.lat, lng: suggestion.lng });
+                    map.setZoom(16);
+
+                    // Clear previous user location markers
+                    if (window.userLocationMarkers) {
+                         window.userLocationMarkers.forEach(marker => {
+                              if (marker.setMap) marker.setMap(null);
+                         });
+                         window.userLocationMarkers = [];
+                    }
+               }
+
+               // Filter fields by radius
+               const nearbyFields = filterFieldsByRadius(suggestion.lat, suggestion.lng, searchRadius);
+               setFilteredFields(nearbyFields);
           }
      };
 
      // Handle current location
      const handleCurrentLocation = () => {
           if (navigator.geolocation) {
+               // Show loading state
+               const loadingToast = document.createElement('div');
+               loadingToast.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg z-50';
+               loadingToast.textContent = 'Đang lấy vị trí...';
+               document.body.appendChild(loadingToast);
+
+               const options = {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 60000
+               };
+
                navigator.geolocation.getCurrentPosition(
                     (position) => {
-                         const { latitude, longitude } = position.coords;
+                         document.body.removeChild(loadingToast);
+                         const { latitude, longitude, accuracy } = position.coords;
+
+                         // Create a more accurate location object
                          const location = {
                               lat: latitude,
                               lng: longitude,
-                              address: "Vị trí hiện tại của bạn",
-                              name: "Vị trí hiện tại"
+                              address: `Vị trí hiện tại (độ chính xác: ±${Math.round(accuracy)}m)`,
+                              name: "Vị trí hiện tại của bạn",
+                              accuracy: accuracy
                          };
                          setSelectedLocation(location);
 
                          if (map) {
+                              // Center map on user location
                               map.setCenter({ lat: latitude, lng: longitude });
-                              map.setZoom(15);
+                              map.setZoom(16); // Higher zoom for current location
+
+                              // Add user location marker
+                              const userMarker = new window.google.maps.Marker({
+                                   position: { lat: latitude, lng: longitude },
+                                   map: map,
+                                   title: "Vị trí của bạn",
+                                   icon: {
+                                        url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+                                             <svg width="30" height="30" viewBox="0 0 30 30" xmlns="http://www.w3.org/2000/svg">
+                                                  <circle cx="15" cy="15" r="12" fill="#3b82f6" stroke="white" stroke-width="3"/>
+                                                  <circle cx="15" cy="15" r="6" fill="white"/>
+                                             </svg>
+                                        `)}`,
+                                        scaledSize: new window.google.maps.Size(30, 30),
+                                        anchor: new window.google.maps.Point(15, 15)
+                                   }
+                              });
+
+                              // Add accuracy circle
+                              const accuracyCircle = new window.google.maps.Circle({
+                                   strokeColor: "#3b82f6",
+                                   strokeOpacity: 0.8,
+                                   strokeWeight: 2,
+                                   fillColor: "#3b82f6",
+                                   fillOpacity: 0.1,
+                                   map: map,
+                                   center: { lat: latitude, lng: longitude },
+                                   radius: accuracy
+                              });
+
+                              // Store references to remove later
+                              if (!window.userLocationMarkers) {
+                                   window.userLocationMarkers = [];
+                              }
+                              window.userLocationMarkers.push(userMarker, accuracyCircle);
                          }
+
+                         // Filter fields by radius
+                         const nearbyFields = filterFieldsByRadius(latitude, longitude, searchRadius);
+                         setFilteredFields(nearbyFields);
+
+                         // Show success message
+                         const successToast = document.createElement('div');
+                         successToast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg z-50';
+                         successToast.textContent = `Đã lấy vị trí! Tìm thấy ${nearbyFields.length} sân gần đây`;
+                         document.body.appendChild(successToast);
+                         setTimeout(() => document.body.removeChild(successToast), 3000);
                     },
                     (error) => {
+                         document.body.removeChild(loadingToast);
                          console.error('Error getting location:', error);
-                         alert('Không thể lấy vị trí hiện tại');
-                    }
+
+                         let errorMessage = 'Không thể lấy vị trí hiện tại';
+                         switch (error.code) {
+                              case error.PERMISSION_DENIED:
+                                   errorMessage = 'Bạn đã từ chối quyền truy cập vị trí';
+                                   break;
+                              case error.POSITION_UNAVAILABLE:
+                                   errorMessage = 'Vị trí không khả dụng';
+                                   break;
+                              case error.TIMEOUT:
+                                   errorMessage = 'Hết thời gian chờ lấy vị trí';
+                                   break;
+                         }
+
+                         const errorToast = document.createElement('div');
+                         errorToast.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg z-50';
+                         errorToast.textContent = errorMessage;
+                         document.body.appendChild(errorToast);
+                         setTimeout(() => document.body.removeChild(errorToast), 5000);
+                    },
+                    options
                );
           } else {
-               alert('Trình duyệt không hỗ trợ định vị');
+               const errorToast = document.createElement('div');
+               errorToast.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg z-50';
+               errorToast.textContent = 'Trình duyệt không hỗ trợ định vị';
+               document.body.appendChild(errorToast);
+               setTimeout(() => document.body.removeChild(errorToast), 3000);
           }
      };
 
@@ -229,10 +486,10 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
      if (!isOpen) return null;
 
      return (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col">
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2">
+               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl h-[90vh] flex flex-col">
                     {/* Header */}
-                    <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                    <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200">
                          <h2 className="text-2xl font-bold text-teal-800">Tìm kiếm bằng bản đồ</h2>
                          <Button
                               variant="outline"
@@ -244,32 +501,51 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                     </div>
 
                     {/* Search Bar */}
-                    <div className="p-6 border-b border-gray-200">
+                    <div className="p-4 border-b border-gray-200">
                          <div className="relative">
-                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                              <input
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-teal-500 w-5 h-5" />
+                              <Input
                                    type="text"
-                                   placeholder="Tìm kiếm sân bóng hoặc địa chỉ..."
+                                   placeholder="Tìm kiếm sân bóng, địa chỉ, quận..."
                                    value={searchQuery}
                                    onChange={handleSearchChange}
-                                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none"
+                                   className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition-all"
                               />
+                              {searchQuery && (
+                                   <button
+                                        onClick={() => {
+                                             setSearchQuery('');
+                                             setSuggestions([]);
+                                        }}
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                   >
+                                        <X className="w-5 h-5" />
+                                   </button>
+                              )}
                          </div>
 
                          {/* Suggestions */}
                          {suggestions.length > 0 && (
                               <div className="mt-2 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                                   {suggestions.map((field) => (
+                                   {suggestions.map((suggestion) => (
                                         <div
-                                             key={field.id}
-                                             onClick={() => handleSuggestionClick(field)}
-                                             className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                             key={suggestion.id || suggestion.place_id}
+                                             onClick={() => handleSuggestionClick(suggestion)}
+                                             className="p-3 hover:bg-teal-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
                                         >
                                              <div className="flex items-center">
-                                                  <MapPin className="w-4 h-4 text-teal-500 mr-2" />
-                                                  <div>
-                                                       <div className="font-semibold text-gray-900">{field.name}</div>
-                                                       <div className="text-sm text-gray-600">{field.address}</div>
+                                                  <MapPin className="w-4 h-4 text-teal-500 mr-2 flex-shrink-0" />
+                                                  <div className="flex-1 min-w-0">
+                                                       <div className="font-semibold text-gray-900 truncate">{suggestion.name}</div>
+                                                       <div className="text-sm text-gray-600 truncate">{suggestion.address}</div>
+                                                       {suggestion.place_id && (
+                                                            <div className="text-xs text-blue-600 mt-1">📍 Địa điểm từ Google</div>
+                                                       )}
+                                                       {!suggestion.place_id && suggestion.price && (
+                                                            <div className="text-xs text-teal-600 mt-1">
+                                                                 ⚽ Sân bóng • {formatPrice(suggestion.price)}/trận
+                                                            </div>
+                                                       )}
                                                   </div>
                                              </div>
                                         </div>
@@ -277,16 +553,77 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                               </div>
                          )}
 
-                         {/* Current Location Button */}
-                         <div className="mt-4 flex gap-3">
-                              <Button
-                                   onClick={handleCurrentLocation}
-                                   variant="outline"
-                                   className="flex items-center gap-2 border-teal-200 text-teal-600 hover:bg-teal-50"
-                              >
-                                   <MapPin className="w-4 h-4" />
-                                   Vị trí hiện tại
-                              </Button>
+                         {/* Control Panel */}
+                         <div className="mt-2 flex items-center justify-between space-y-3">
+                              {/* Location Controls */}
+                              <div className="flex flex-col sm:flex-row gap-3">
+                                   <Button
+                                        onClick={handleCurrentLocation}
+                                        variant="outline"
+                                        className="flex items-center justify-center rounded-xl gap-2 border-teal-200 text-teal-600 hover:bg-teal-50 px-4 py-2 flex-1 sm:flex-none"
+                                   >
+                                        <MapPin className="w-4 h-4" />
+                                        Vị trí hiện tại
+                                   </Button>
+
+                                   <Button
+                                        onClick={() => {
+                                             if (map) {
+                                                  map.setCenter({ lat: 21.0285, lng: 105.8542 });
+                                                  map.setZoom(13);
+                                                  setFilteredFields([]);
+                                                  setSelectedLocation(null);
+                                                  setSearchQuery('');
+                                                  setSuggestions([]);
+                                                  // Clear user location markers
+                                                  if (window.userLocationMarkers) {
+                                                       window.userLocationMarkers.forEach(marker => {
+                                                            if (marker.setMap) marker.setMap(null);
+                                                       });
+                                                       window.userLocationMarkers = [];
+                                                  }
+                                             }
+                                        }}
+                                        variant="outline"
+                                        className="flex items-center rounded-xl gap-2 border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-2 flex-1 sm:flex-none"
+                                   >
+                                        <MapPin className="w-4 h-4" />
+                                        Xem toàn bộ
+                                   </Button>
+                              </div>
+
+                              {/* Radius Control */}
+                              <div className="flex items-center gap-3">
+                                   <label className="text-sm font-medium text-gray-700 whitespace-nowrap">Bán kính tìm kiếm:</label>
+                                   <select
+                                        value={searchRadius}
+                                        onChange={(e) => {
+                                             const newRadius = Number(e.target.value);
+                                             setSearchRadius(newRadius);
+                                             // Re-filter if location is selected
+                                             if (selectedLocation) {
+                                                  const nearbyFields = filterFieldsByRadius(selectedLocation.lat, selectedLocation.lng, newRadius);
+                                                  setFilteredFields(nearbyFields);
+                                             }
+                                        }}
+                                        className="px-3 py-2 border rounded-xl border-gray-300 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-200 outline-none bg-white flex-1 sm:flex-none"
+                                   >
+                                        <option value={1}>1 km</option>
+                                        <option value={2}>2 km</option>
+                                        <option value={3}>3 km</option>
+                                        <option value={5}>5 km</option>
+                                        <option value={10}>10 km</option>
+                                        <option value={15}>15 km</option>
+                                        <option value={20}>20 km</option>
+                                        <option value={30}>30 km</option>
+                                   </select>
+
+                                   {filteredFields.length > 0 && (
+                                        <div className="text-sm text-teal-600 font-medium bg-teal-50 px-3 py-1 rounded-full">
+                                             {filteredFields.length} sân
+                                        </div>
+                                   )}
+                              </div>
                          </div>
                     </div>
 
@@ -296,19 +633,94 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
 
                          {/* Selected Location Info */}
                          {selectedLocation && (
-                              <div className="absolute bottom-4 left-4 right-4 bg-white rounded-xl shadow-lg p-4 border border-gray-200">
-                                   <div className="flex items-center justify-between">
-                                        <div>
-                                             <div className="font-semibold text-gray-900">{selectedLocation.name}</div>
+                              <div className="absolute bottom-4 left-4 right-4 bg-white rounded-xl shadow-lg p-4 border border-gray-200 max-w-md">
+                                   <div className="flex items-center justify-between mb-3">
+                                        <div className="flex-1">
+                                             <div className="font-semibold text-gray-900 text-lg">{selectedLocation.name}</div>
                                              <div className="text-sm text-gray-600">{selectedLocation.address}</div>
+                                             {selectedLocation.accuracy && (
+                                                  <div className="text-xs text-blue-600 mt-1 flex items-center">
+                                                       <MapPin className="w-3 h-3 mr-1" />
+                                                       Độ chính xác: ±{Math.round(selectedLocation.accuracy)}m
+                                                  </div>
+                                             )}
                                         </div>
-                                        <Button
-                                             onClick={handleConfirm}
-                                             className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-semibold"
-                                        >
-                                             Chọn vị trí này
-                                        </Button>
+                                        <div className="flex gap-2 ml-3">
+                                             <Button
+                                                  onClick={() => {
+                                                       setSelectedLocation(null);
+                                                       setFilteredFields([]);
+                                                  }}
+                                                  variant="outline"
+                                                  className="px-3 py-2 text-gray-600 hover:bg-gray-50"
+                                             >
+                                                  Hủy
+                                             </Button>
+                                             <Button
+                                                  onClick={handleConfirm}
+                                                  className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 font-semibold"
+                                             >
+                                                  Chọn
+                                             </Button>
+                                        </div>
                                    </div>
+
+                                   {/* Nearby Fields List */}
+                                   {filteredFields.length > 0 && (
+                                        <div className="border-t border-gray-200 pt-3">
+                                             <div className="flex items-center justify-between mb-2">
+                                                  <div className="text-sm font-medium text-gray-700">
+                                                       Sân bóng gần đây ({filteredFields.length} sân):
+                                                  </div>
+                                                  <div className="text-xs text-gray-500">
+                                                       Bán kính: {searchRadius}km
+                                                  </div>
+                                             </div>
+                                             <div className="max-h-40 overflow-y-auto space-y-2">
+                                                  {filteredFields.slice(0, 6).map((field) => {
+                                                       const distance = calculateDistance(
+                                                            selectedLocation.lat, selectedLocation.lng,
+                                                            field.lat, field.lng
+                                                       );
+                                                       return (
+                                                            <div key={field.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                                                                 onClick={() => handleSuggestionClick(field)}
+                                                            >
+                                                                 <div className="flex-1">
+                                                                      <div className="text-sm font-medium text-gray-900">{field.name}</div>
+                                                                      <div className="text-xs text-gray-600">{field.address}</div>
+                                                                      <div className="text-xs text-gray-500">
+                                                                           {formatPrice(field.price)}/trận • ⭐ {field.rating}
+                                                                      </div>
+                                                                 </div>
+                                                                 <div className="text-xs text-teal-600 font-medium bg-teal-50 px-2 py-1 rounded">
+                                                                      {distance.toFixed(1)} km
+                                                                 </div>
+                                                            </div>
+                                                       );
+                                                  })}
+                                             </div>
+                                             {filteredFields.length > 6 && (
+                                                  <div className="text-xs text-gray-500 text-center mt-2">
+                                                       Và {filteredFields.length - 6} sân khác...
+                                                  </div>
+                                             )}
+                                        </div>
+                                   )}
+
+                                   {filteredFields.length === 0 && selectedLocation && (
+                                        <div className="border-t border-gray-200 pt-3">
+                                             <div className="text-center py-4">
+                                                  <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                                  <div className="text-sm text-gray-600">
+                                                       Không có sân bóng nào trong bán kính {searchRadius}km
+                                                  </div>
+                                                  <div className="text-xs text-gray-500 mt-1">
+                                                       Thử tăng bán kính tìm kiếm
+                                                  </div>
+                                             </div>
+                                        </div>
+                                   )}
                               </div>
                          )}
                     </div>

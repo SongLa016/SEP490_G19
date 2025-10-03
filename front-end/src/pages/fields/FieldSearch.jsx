@@ -18,6 +18,7 @@ export default function FieldSearch({ user }) {
      const [forceList, setForceList] = useState(false);
      const [showMapSearch, setShowMapSearch] = useState(false);
      const [mapLocation, setMapLocation] = useState(null);
+     const [mapSearchKey, setMapSearchKey] = useState(0); // Key to force MapSearch reset
 
      // Helper functions to convert between "all" and empty string
      const handleLocationChange = (value) => {
@@ -49,8 +50,8 @@ export default function FieldSearch({ user }) {
           {
                id: 1,
                name: "Sân bóng đá ABC",
-               location: "Quận 1, TP.HCM",
-               address: "123 Đường ABC, Phường Bến Nghé",
+               location: "Quận Hoàn Kiếm, Hà Nội",
+               address: "123 Phố Hàng Bạc, Phường Hàng Bạc",
                price: 200000,
                rating: 4.8,
                reviewCount: 156,
@@ -63,8 +64,8 @@ export default function FieldSearch({ user }) {
           {
                id: 2,
                name: "Sân bóng đá XYZ",
-               location: "Quận 3, TP.HCM",
-               address: "456 Đường XYZ, Phường Võ Thị Sáu",
+               location: "Quận Ba Đình, Hà Nội",
+               address: "456 Đường Kim Mã, Phường Kim Mã",
                price: 180000,
                rating: 4.6,
                reviewCount: 89,
@@ -77,8 +78,8 @@ export default function FieldSearch({ user }) {
           {
                id: 3,
                name: "Sân bóng đá DEF",
-               location: "Quận 7, TP.HCM",
-               address: "789 Đường DEF, Phường Tân Phú",
+               location: "Quận Đống Đa, Hà Nội",
+               address: "789 Đường Láng, Phường Láng Thượng",
                price: 220000,
                rating: 4.9,
                reviewCount: 203,
@@ -91,8 +92,8 @@ export default function FieldSearch({ user }) {
           {
                id: 4,
                name: "Sân bóng đá GHI",
-               location: "Quận 10, TP.HCM",
-               address: "321 Đường GHI, Phường 15",
+               location: "Quận Cầu Giấy, Hà Nội",
+               address: "321 Đường Trần Duy Hưng, Phường Trung Hòa",
                price: 150000,
                rating: 4.4,
                reviewCount: 67,
@@ -105,8 +106,8 @@ export default function FieldSearch({ user }) {
           {
                id: 5,
                name: "Sân bóng đá JKL",
-               location: "Quận 1, TP.HCM",
-               address: "654 Đường JKL, Phường Đa Kao",
+               location: "Quận Hai Bà Trưng, Hà Nội",
+               address: "654 Đường Bạch Mai, Phường Bạch Mai",
                price: 250000,
                rating: 4.7,
                reviewCount: 134,
@@ -280,8 +281,24 @@ export default function FieldSearch({ user }) {
 
      const handleMapLocationSelect = (location) => {
           setMapLocation(location);
-          // You can add logic here to filter fields by location
-          console.log('Selected location:', location);
+
+          // Apply location filter based on selected map location
+          if (location.field) {
+               // If a specific field was selected, filter to show only that field
+               setSearchQuery(location.field.name);
+               setSelectedLocation(location.field.location);
+          } else {
+               // If a general location was selected, filter by area
+               const locationParts = location.address.split(',');
+               const district = locationParts.find(part => part.includes('Quận'));
+               if (district) {
+                    setSelectedLocation(district.trim());
+               }
+          }
+
+          // Reset to first page when applying new filter
+          setPage(1);
+          setForceList(true);
      };
 
      const formatPrice = (price) => {
@@ -384,10 +401,11 @@ export default function FieldSearch({ user }) {
                                         </SelectTrigger>
                                         <SelectContent>
                                              <SelectItem value="all">Tất cả khu vực</SelectItem>
-                                             <SelectItem value="Quận 1">Quận 1</SelectItem>
-                                             <SelectItem value="Quận 3">Quận 3</SelectItem>
-                                             <SelectItem value="Quận 7">Quận 7</SelectItem>
-                                             <SelectItem value="Quận 10">Quận 10</SelectItem>
+                                             <SelectItem value="Quận Hoàn Kiếm">Quận Hoàn Kiếm</SelectItem>
+                                             <SelectItem value="Quận Ba Đình">Quận Ba Đình</SelectItem>
+                                             <SelectItem value="Quận Đống Đa">Quận Đống Đa</SelectItem>
+                                             <SelectItem value="Quận Cầu Giấy">Quận Cầu Giấy</SelectItem>
+                                             <SelectItem value="Quận Hai Bà Trưng">Quận Hai Bà Trưng</SelectItem>
                                         </SelectContent>
                                    </Select>
                               </div>
@@ -421,7 +439,20 @@ export default function FieldSearch({ user }) {
                                    Tìm bằng bản đồ
                               </Button>
                               <Button
-                                   onClick={() => { setSearchQuery(""); setSelectedLocation(""); setSelectedPrice(""); setSelectedRating(""); setActiveTab("all"); setSortBy("relevance"); setPage(1); }}
+                                   onClick={() => {
+                                        setSearchQuery("");
+                                        setSelectedLocation("");
+                                        setSelectedPrice("");
+                                        setSelectedRating("");
+                                        setActiveTab("all");
+                                        setSortBy("relevance");
+                                        setPage(1);
+                                        setMapLocation(null);
+                                        setForceList(false);
+                                        setMapSearchKey(prev => prev + 1); // Force MapSearch reset
+                                        // Clear localStorage search preset
+                                        localStorage.removeItem('searchPreset');
+                                   }}
                                    variant="outline"
                                    className="px-4 py-3 rounded-xl border border-red-200 text-red-700 hover:text-red-700 hover:bg-red-50"
                               >
@@ -1003,6 +1034,11 @@ export default function FieldSearch({ user }) {
                                         setActiveTab("all");
                                         setViewMode("grid");
                                         setPage(1);
+                                        setMapLocation(null);
+                                        setForceList(false);
+                                        setMapSearchKey(prev => prev + 1); // Force MapSearch reset
+                                        // Clear localStorage search preset
+                                        localStorage.removeItem('searchPreset');
                                    }}
                                    className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-xl font-semibold transition-colors"
                               >
@@ -1014,6 +1050,7 @@ export default function FieldSearch({ user }) {
 
                {/* Map Search Modal */}
                <MapSearch
+                    key={mapSearchKey}
                     isOpen={showMapSearch}
                     onClose={() => setShowMapSearch(false)}
                     onLocationSelect={handleMapLocationSelect}
