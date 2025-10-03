@@ -3,8 +3,10 @@ import { Search, MapPin, Star, Clock, Grid, List, Heart, SlidersHorizontal, Chev
 import { Section, Container, Card, CardContent, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button } from "../../components/ui";
 import { useNavigate } from "react-router-dom";
 import MapSearch from "../../components/MapSearch";
+import { fetchComplexes, fetchFields, fetchTimeSlots } from "../../services/fields";
 export default function FieldSearch({ user }) {
      const navigate = useNavigate();
+     const [entityTab, setEntityTab] = useState("fields"); // complexes | fields
      const [searchQuery, setSearchQuery] = useState("");
      const [selectedLocation, setSelectedLocation] = useState("all");
      const [selectedPrice, setSelectedPrice] = useState("all");
@@ -14,11 +16,16 @@ export default function FieldSearch({ user }) {
      const [sortBy, setSortBy] = useState("relevance");
      const [activeTab, setActiveTab] = useState("all"); // all | near | best-price | top-rated | favorites
      const [page, setPage] = useState(1);
-     const [pageSize] = useState(12);
+     const [pageComplex, setPageComplex] = useState(1);
+     const fieldPageSize = 12;    // sân nhỏ
+     const complexPageSize = 9;   // khu sân
      const [forceList, setForceList] = useState(false);
      const [showMapSearch, setShowMapSearch] = useState(false);
-     const [mapLocation, setMapLocation] = useState(null);
+     // removed unused mapLocation state
      const [mapSearchKey, setMapSearchKey] = useState(0); // Key to force MapSearch reset
+     const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+     const [slotId, setSlotId] = useState("");
+     const [timeSlots, setTimeSlots] = useState([]);
 
      // Helper functions to convert between "all" and empty string
      const handleLocationChange = (value) => {
@@ -45,81 +52,14 @@ export default function FieldSearch({ user }) {
           return selectedRating === "" ? "all" : selectedRating;
      };
 
-     // Mock data for fields
-     const [fields, setFields] = useState([
-          {
-               id: 1,
-               name: "Sân bóng đá ABC",
-               location: "Quận Hoàn Kiếm, Hà Nội",
-               address: "123 Phố Hàng Bạc, Phường Hàng Bạc",
-               price: 200000,
-               rating: 4.8,
-               reviewCount: 156,
-               image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
-               amenities: ["Có nước uống", "Có WC", "Có chỗ đậu xe", "Có thay đồ"],
-               availableSlots: 3,
-               isFavorite: false,
-               distance: "0.5 km"
-          },
-          {
-               id: 2,
-               name: "Sân bóng đá XYZ",
-               location: "Quận Ba Đình, Hà Nội",
-               address: "456 Đường Kim Mã, Phường Kim Mã",
-               price: 180000,
-               rating: 4.6,
-               reviewCount: 89,
-               image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
-               amenities: ["Có nước uống", "Có WC"],
-               availableSlots: 5,
-               isFavorite: false,
-               distance: "1.2 km"
-          },
-          {
-               id: 3,
-               name: "Sân bóng đá DEF",
-               location: "Quận Đống Đa, Hà Nội",
-               address: "789 Đường Láng, Phường Láng Thượng",
-               price: 220000,
-               rating: 4.9,
-               reviewCount: 203,
-               image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
-               amenities: ["Có nước uống", "Có WC", "Có chỗ đậu xe", "Có thay đồ", "Có máy lạnh"],
-               availableSlots: 2,
-               isFavorite: false,
-               distance: "2.1 km"
-          },
-          {
-               id: 4,
-               name: "Sân bóng đá GHI",
-               location: "Quận Cầu Giấy, Hà Nội",
-               address: "321 Đường Trần Duy Hưng, Phường Trung Hòa",
-               price: 150000,
-               rating: 4.4,
-               reviewCount: 67,
-               image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
-               amenities: ["Có nước uống", "Có WC"],
-               availableSlots: 8,
-               isFavorite: false,
-               distance: "3.5 km"
-          },
-          {
-               id: 5,
-               name: "Sân bóng đá JKL",
-               location: "Quận Hai Bà Trưng, Hà Nội",
-               address: "654 Đường Bạch Mai, Phường Bạch Mai",
-               price: 250000,
-               rating: 4.7,
-               reviewCount: 134,
-               image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
-               amenities: ["Có nước uống", "Có WC", "Có chỗ đậu xe", "Có thay đồ", "Có máy lạnh", "Có wifi"],
-               availableSlots: 1,
-               isFavorite: false,
-               distance: "0.8 km"
-          }
-     ]);
+     const getSlotValue = () => {
+          return slotId === "" ? "all" : String(slotId);
+     };
 
-     const [filteredFields, setFilteredFields] = useState(fields);
+     const [fields, setFields] = useState([]);
+     const [complexes, setComplexes] = useState([]);
+     const [filteredFields, setFilteredFields] = useState([]);
+     // removed unused isLoading state
 
      const didInitRef = useRef(false);
 
@@ -157,9 +97,43 @@ export default function FieldSearch({ user }) {
                     if (prefs.viewMode) setViewMode(prefs.viewMode);
                     if (prefs.activeTab) setActiveTab(prefs.activeTab);
                     if (prefs.page) setPage(prefs.page);
+                    if (prefs.entityTab) setEntityTab(prefs.entityTab);
+                    if (prefs.date) setDate(prefs.date);
+                    if (prefs.slotId) setSlotId(prefs.slotId);
                }
           } catch { }
      }, []);
+
+     // Load time slots once
+     useEffect(() => {
+          let mounted = true;
+          fetchTimeSlots().then((slots) => {
+               if (!mounted) return;
+               setTimeSlots(slots);
+          });
+          return () => { mounted = false; };
+     }, []);
+
+     // Load data whenever key filters change (fetch both complexes and fields to support grouped view)
+     useEffect(() => {
+          let ignore = false;
+          async function load() {
+               try {
+                    const [cList, fList] = await Promise.all([
+                         fetchComplexes({ query: searchQuery, date, slotId }),
+                         fetchFields({ query: searchQuery, date, slotId, sortBy })
+                    ]);
+                    if (!ignore) {
+                         setComplexes(cList);
+                         setFields(fList);
+                    }
+               } finally {
+                    // no-op
+               }
+          }
+          load();
+          return () => { ignore = true; };
+     }, [searchQuery, date, slotId, sortBy]);
 
      useEffect(() => {
           let filtered = fields;
@@ -168,30 +142,29 @@ export default function FieldSearch({ user }) {
           if (searchQuery) {
                filtered = filtered.filter(field =>
                     field.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    field.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    field.address.toLowerCase().includes(searchQuery.toLowerCase())
+                    (field.address || "").toLowerCase().includes(searchQuery.toLowerCase())
                );
           }
 
           // Filter by location
           if (selectedLocation) {
-               filtered = filtered.filter(field => field.location.includes(selectedLocation));
+               filtered = filtered.filter(field => (field.address || "").includes(selectedLocation));
           }
 
           // Filter by price
           if (selectedPrice) {
                switch (selectedPrice) {
                     case "under100":
-                         filtered = filtered.filter(field => field.price < 100000);
+                         filtered = filtered.filter(field => (field.priceForSelectedSlot || 0) < 100000);
                          break;
                     case "100-200":
-                         filtered = filtered.filter(field => field.price >= 100000 && field.price <= 200000);
+                         filtered = filtered.filter(field => (field.priceForSelectedSlot || 0) >= 100000 && (field.priceForSelectedSlot || 0) <= 200000);
                          break;
                     case "200-300":
-                         filtered = filtered.filter(field => field.price >= 200000 && field.price <= 300000);
+                         filtered = filtered.filter(field => (field.priceForSelectedSlot || 0) >= 200000 && (field.priceForSelectedSlot || 0) <= 300000);
                          break;
                     case "over300":
-                         filtered = filtered.filter(field => field.price > 300000);
+                         filtered = filtered.filter(field => (field.priceForSelectedSlot || 0) > 300000);
                          break;
                     default:
                          break;
@@ -207,16 +180,16 @@ export default function FieldSearch({ user }) {
           // Sort
           switch (sortBy) {
                case "price-low":
-                    filtered.sort((a, b) => a.price - b.price);
+                    filtered.sort((a, b) => (a.priceForSelectedSlot || 0) - (b.priceForSelectedSlot || 0));
                     break;
                case "price-high":
-                    filtered.sort((a, b) => b.price - a.price);
+                    filtered.sort((a, b) => (b.priceForSelectedSlot || 0) - (a.priceForSelectedSlot || 0));
                     break;
                case "rating":
                     filtered.sort((a, b) => b.rating - a.rating);
                     break;
                case "distance":
-                    filtered.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+                    filtered.sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
                     break;
                default:
                     // relevance - keep original order
@@ -226,10 +199,10 @@ export default function FieldSearch({ user }) {
           // Apply tab presets (computed filtering helper)
           switch (activeTab) {
                case "near":
-                    filtered = [...filtered].sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+                    filtered = [...filtered].sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
                     break;
                case "best-price":
-                    filtered = [...filtered].sort((a, b) => a.price - b.price);
+                    filtered = [...filtered].sort((a, b) => (a.priceForSelectedSlot || 0) - (b.priceForSelectedSlot || 0));
                     break;
                case "top-rated":
                     filtered = [...filtered].sort((a, b) => b.rating - a.rating);
@@ -250,14 +223,14 @@ export default function FieldSearch({ user }) {
      // Persist preferences
      useEffect(() => {
           try {
-               const prefs = { viewMode, activeTab, page };
+               const prefs = { viewMode, activeTab, page, entityTab, date, slotId };
                window.localStorage.setItem("fieldSearchPrefs", JSON.stringify(prefs));
           } catch { }
-     }, [viewMode, activeTab, page]);
+     }, [viewMode, activeTab, page, entityTab, date, slotId]);
 
      const toggleFavorite = (fieldId) => {
           setFields(prev => prev.map(field =>
-               field.id === fieldId ? { ...field, isFavorite: !field.isFavorite } : field
+               field.fieldId === fieldId ? { ...field, isFavorite: !field.isFavorite } : field
           ));
      };
 
@@ -280,13 +253,11 @@ export default function FieldSearch({ user }) {
      };
 
      const handleMapLocationSelect = (location) => {
-          setMapLocation(location);
-
           // Apply location filter based on selected map location
           if (location.field) {
                // If a specific field was selected, filter to show only that field
                setSearchQuery(location.field.name);
-               setSelectedLocation(location.field.location);
+               setSelectedLocation("");
           } else {
                // If a general location was selected, filter by area
                const locationParts = location.address.split(',');
@@ -309,15 +280,26 @@ export default function FieldSearch({ user }) {
      };
 
      // Pagination helpers
+     // Fields pagination (sân nhỏ)
      const totalItems = filteredFields.length;
-     const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+     const totalPages = Math.max(1, Math.ceil(totalItems / fieldPageSize));
      const currentPage = Math.min(page, totalPages);
-     const startIdx = (currentPage - 1) * pageSize;
-     const endIdx = startIdx + pageSize;
+     const startIdx = (currentPage - 1) * fieldPageSize;
+     const endIdx = startIdx + fieldPageSize;
      const pageItems = filteredFields.slice(startIdx, endIdx);
+
+     // Complexes pagination (khu sân)
+     const totalComplex = complexes.length;
+     const totalPagesComplex = Math.max(1, Math.ceil(totalComplex / complexPageSize));
+     const currentPageComplex = Math.min(pageComplex, totalPagesComplex);
+     const startIdxComplex = (currentPageComplex - 1) * complexPageSize;
+     const endIdxComplex = startIdxComplex + complexPageSize;
+     const pageItemsComplex = complexes.slice(startIdxComplex, endIdxComplex);
 
      const handlePrev = () => setPage(prev => Math.max(1, prev - 1));
      const handleNext = () => setPage(prev => Math.min(totalPages, prev + 1));
+     const handlePrevComplex = () => setPageComplex(prev => Math.max(1, prev - 1));
+     const handleNextComplex = () => setPageComplex(prev => Math.min(totalPagesComplex, prev + 1));
 
      const quickPresets = [
           { key: "near", label: "Gần bạn" },
@@ -326,7 +308,7 @@ export default function FieldSearch({ user }) {
      ];
 
      const isNoFilter = !searchQuery && !selectedLocation && !selectedPrice && !selectedRating;
-     const isGroupedView = activeTab === "all" && isNoFilter && !forceList;
+     const isGroupedView = activeTab === "all" && isNoFilter && !forceList && entityTab === "fields";
 
      // Flip to list view whenever user adjusts any filter/search/sort or tab is not "all"
      useEffect(() => {
@@ -344,8 +326,40 @@ export default function FieldSearch({ user }) {
           }
      };
 
-     const nearGroup = [...filteredFields].sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance)).slice(0, 4);
-     const bestPriceGroup = [...filteredFields].sort((a, b) => a.price - b.price).slice(0, 4);
+     // Compute user distance for complexes (using geolocation if available) and propagate to fields
+     useEffect(() => {
+          let cancelled = false;
+          function haversineKm(lat1, lng1, lat2, lng2) {
+               const R = 6371;
+               const dLat = (lat2 - lat1) * Math.PI / 180;
+               const dLng = (lng2 - lng1) * Math.PI / 180;
+               const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+               const d = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+               return R * d;
+          }
+          function updateDistances(lat, lng) {
+               setComplexes(prev => prev.map(c => (typeof c.lat === "number" && typeof c.lng === "number") ? { ...c, distanceKm: haversineKm(lat, lng, c.lat, c.lng) } : c));
+               setFields(prev => prev.map(f => {
+                    const cx = complexes.find(cc => cc.complexId === f.complexId);
+                    return cx && typeof cx.lat === "number" && typeof cx.lng === "number" ? { ...f, distanceKm: haversineKm(lat, lng, cx.lat, cx.lng) } : f;
+               }));
+          }
+          const fallbackLat = 21.0285; // Hà Nội center
+          const fallbackLng = 105.8542;
+          if (navigator.geolocation) {
+               navigator.geolocation.getCurrentPosition(
+                    pos => { if (!cancelled) updateDistances(pos.coords.latitude, pos.coords.longitude); },
+                    () => { if (!cancelled) updateDistances(fallbackLat, fallbackLng); },
+                    { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
+               );
+          } else {
+               if (!cancelled) updateDistances(fallbackLat, fallbackLng);
+          }
+          return () => { cancelled = true; };
+     }, [complexes]);
+
+     // const nearGroup = [...filteredFields].sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0)).slice(0, 4);
+     const bestPriceGroup = [...filteredFields].sort((a, b) => (a.priceForSelectedSlot || 0) - (b.priceForSelectedSlot || 0)).slice(0, 4);
      const topRatedGroup = [...filteredFields].sort((a, b) => b.rating - a.rating).slice(0, 4);
 
      return (
@@ -379,14 +393,36 @@ export default function FieldSearch({ user }) {
                                    <p className="text-teal-700 mt-2">Dành cho {user ? "người dùng đã đăng nhập" : "khách truy cập"}</p>
                               </div>
                               <div className="hidden md:flex items-center gap-2">
-                                   <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 shadow-sm">{filteredFields.length} kết quả</span>
+                                   <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 shadow-sm">
+                                        {entityTab === "complexes" ? complexes.length : filteredFields.length} kết quả
+                                   </span>
                               </div>
                          </div>
 
 
                     </div>
                     {/* Search Header */}
-                    <Card className="mb-6 border p-4 bg-white/60 backdrop-blur rounded-xl shadow-sm ring-1 ring-teal-100 border-teal-200"><CardContent>
+                    <Card className="mb-4 border p-1 bg-white/60 backdrop-blur rounded-xl shadow-sm ring-1 ring-teal-100 border-teal-200"><CardContent>
+                         <div className="lg:w-64 pt-4 mb-4">
+                              <div className="inline-flex rounded-xl overflow-hidden border border-teal-200 bg-white/80">
+                                   <Button
+                                        type="button"
+                                        onClick={() => setEntityTab("fields")}
+                                        variant={entityTab === "fields" ? "default" : "outline"}
+                                        className={`${entityTab === "fields" ? "bg-teal-500 text-white hover:bg-teal-600" : "border-0 text-teal-700 hover:bg-teal-50"} rounded-none px-4 py-2 text-sm font-medium`}
+                                   >
+                                        Sân nhỏ
+                                   </Button>
+                                   <Button
+                                        type="button"
+                                        onClick={() => setEntityTab("complexes")}
+                                        variant={entityTab === "complexes" ? "default" : "outline"}
+                                        className={`${entityTab === "complexes" ? "bg-teal-500 text-white hover:bg-teal-600" : "border-l border-teal-200 text-teal-700 hover:bg-teal-50"} rounded-none px-4 py-2 text-sm font-medium`}
+                                   >
+                                        Khu vực
+                                   </Button>
+                              </div>
+                         </div>
                          <div className="flex flex-col lg:flex-row gap-4">
                               <div className="flex-1">
                                    <div className="relative">
@@ -394,6 +430,7 @@ export default function FieldSearch({ user }) {
                                         <Input placeholder="Tìm kiếm sân bóng..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 border rounded-xl border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0 focus-visible:outline-none" />
                                    </div>
                               </div>
+
                               <div className="lg:w-48">
                                    <Select value={getLocationValue()} onValueChange={handleLocationChange}>
                                         <SelectTrigger className="border rounded-xl border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0 bg-white/80">
@@ -423,6 +460,7 @@ export default function FieldSearch({ user }) {
                                         </SelectContent>
                                    </Select>
                               </div>
+
                               <Button
                                    onClick={() => setShowFilters(!showFilters)}
                                    variant="outline"
@@ -447,10 +485,12 @@ export default function FieldSearch({ user }) {
                                         setActiveTab("all");
                                         setSortBy("relevance");
                                         setPage(1);
-                                        setMapLocation(null);
+
                                         setForceList(false);
+                                        setEntityTab("fields");
+                                        setDate(new Date().toISOString().split('T')[0]);
+                                        setSlotId("");
                                         setMapSearchKey(prev => prev + 1); // Force MapSearch reset
-                                        // Clear localStorage search preset
                                         localStorage.removeItem('searchPreset');
                                    }}
                                    variant="outline"
@@ -463,13 +503,13 @@ export default function FieldSearch({ user }) {
                          {/* Quick presets */}
                          <div className="mt-4 flex flex-wrap gap-2">
                               {quickPresets.map(p => (
-                                   <button
+                                   <Button
                                         key={p.key}
                                         onClick={() => setActiveTab(p.key)}
-                                        className={`px-3 py-1.5 rounded-full text-xs border ${activeTab === p.key ? "bg-teal-50 text-teal-700 border-teal-200" : "bg-white text-teal-600 border-gray-200 hover:border-gray-300"}`}
+                                        className={`px-2 h-8 rounded-full text-xs border ${activeTab === p.key ? "bg-teal-50 text-teal-700 border-teal-200" : "bg-white text-teal-600 border-gray-200 hover:border-gray-300"}`}
                                    >
-                                        <Sparkles className="w-3.5 h-3.5 inline mr-1" /> {p.label}
-                                   </button>
+                                        <Sparkles className="w-3 h-3 inline mr-1" /> {p.label}
+                                   </Button>
                               ))}
                          </div>
 
@@ -486,7 +526,12 @@ export default function FieldSearch({ user }) {
                                         </div>
                                         <div className="flex items-center gap-2">
                                              <Button
-                                                  onClick={() => { setSelectedRating(""); setSortBy("relevance"); }}
+                                                  onClick={() => {
+                                                       setSelectedRating("");
+                                                       setSortBy("relevance");
+                                                       setDate(new Date().toISOString().split('T')[0]);
+                                                       setSlotId("");
+                                                  }}
                                                   variant="outline"
                                                   className="h-9 px-3 rounded-xl border border-teal-200 text-teal-700 hover:bg-teal-50"
                                              >
@@ -501,7 +546,30 @@ export default function FieldSearch({ user }) {
                                         </div>
                                    </div>
 
-                                   <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                   <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        <div>
+                                             <label className="block text-sm font-medium text-teal-600 mb-2">Ngày</label>
+                                             <input
+                                                  type="date"
+                                                  value={date}
+                                                  onChange={(e) => setDate(e.target.value)}
+                                                  className="w-full h-10 border rounded-xl border-teal-300 bg-white/80 px-3"
+                                             />
+                                        </div>
+                                        <div>
+                                             <label className="block text-sm font-medium text-teal-600 mb-2">Slot</label>
+                                             <Select value={getSlotValue()} onValueChange={(v) => setSlotId(v === "all" ? "" : v)}>
+                                                  <SelectTrigger className="border border-teal-300 rounded-xl focus-visible:border-teal-500 focus-visible:ring-0 bg-white/80">
+                                                       <SelectValue placeholder="Tất cả slot" />
+                                                  </SelectTrigger>
+                                                  <SelectContent>
+                                                       <SelectItem value="all">Tất cả slot</SelectItem>
+                                                       {timeSlots.map((s) => (
+                                                            <SelectItem key={s.slotId} value={String(s.slotId)}>{s.name}</SelectItem>
+                                                       ))}
+                                                  </SelectContent>
+                                             </Select>
+                                        </div>
                                         <div>
                                              <label className="block text-sm font-medium text-teal-600 mb-2">Đánh giá tối thiểu</label>
                                              <Select value={getRatingValue()} onValueChange={handleRatingChange}>
@@ -532,7 +600,7 @@ export default function FieldSearch({ user }) {
                                                   </SelectContent>
                                              </Select>
                                         </div>
-                                        <div>
+                                        <div className="md:col-span-4">
                                              <label className="block text-sm font-medium text-teal-600 mb-2">Đang chọn</label>
                                              <div className="flex flex-wrap gap-2">
                                                   {searchQuery && (
@@ -541,13 +609,19 @@ export default function FieldSearch({ user }) {
                                                   {selectedLocation && (
                                                        <span className="px-2 py-1 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Khu vực</span>
                                                   )}
+                                                  {date && (
+                                                       <span className="px-2 py-1 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Ngày: {date}</span>
+                                                  )}
+                                                  {slotId && (
+                                                       <span className="px-2 py-1 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Slot: {timeSlots.find(s => String(s.slotId) === String(slotId))?.name}</span>
+                                                  )}
                                                   {selectedPrice && (
                                                        <span className="px-2 py-1 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Giá</span>
                                                   )}
                                                   {selectedRating && selectedRating !== "all" && (
                                                        <span className="px-2 py-1 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Đánh giá {selectedRating}+</span>
                                                   )}
-                                                  {!searchQuery && !selectedLocation && !selectedPrice && (!selectedRating || selectedRating === "all") && (
+                                                  {!searchQuery && !selectedLocation && !selectedPrice && (!selectedRating || selectedRating === "all") && !slotId && (
                                                        <span className="text-xs text-gray-500">Chưa có bộ lọc nào được chọn</span>
                                                   )}
                                              </div>
@@ -555,14 +629,20 @@ export default function FieldSearch({ user }) {
                                    </div>
                               </div>
                          )}
+
                     </CardContent></Card>
 
                     {/* Results Header */
                     }
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex justify-between items-center mb-5">
                          <div>
                               <h1 className="text-2xl font-bold text-teal-800">
-                                   Tìm thấy {filteredFields.length} sân bóng
+                                   {(() => {
+                                        const count = entityTab === "complexes" ? complexes.length : filteredFields.length;
+                                        const noun = entityTab === "complexes" ? "khu sân" : "sân bóng";
+                                        const filterLabel = activeTab === "near" ? "• Gần bạn" : activeTab === "best-price" ? "• Giá tốt" : activeTab === "top-rated" ? "• Đánh giá cao" : activeTab === "favorites" ? "• Yêu thích" : "";
+                                        return `Tìm thấy ${count} ${noun} ${filterLabel}`.trim();
+                                   })()}
                               </h1>
                               <div className="mt-1 h-1.5 w-44 bg-gradient-to-l from-teal-500 via-emerald-400 to-transparent rounded-full justify-self-end" />
 
@@ -589,7 +669,70 @@ export default function FieldSearch({ user }) {
                     </div>
 
                     {/* Results */}
-                    {isGroupedView ? (
+                    {entityTab === "complexes" ? (
+                         <>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+                                   {pageItemsComplex.map((c) => (
+                                        <div key={c.complexId} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/complex/${c.complexId}`)}>
+                                             <div className="relative overflow-hidden">
+                                                  <img src={c.image} alt={c.name} className="w-full h-40 object-cover" />
+                                             </div>
+                                             <div className="p-5 flex-1 flex flex-col">
+                                                  <h3 className="text-xl font-semibold text-teal-800 mb-1">{c.name}</h3>
+                                                  <div className="flex items-center text-teal-700 mb-2">
+                                                       <MapPin className="w-4 h-4 mr-1" />
+                                                       <span className="text-sm">{c.address}</span>
+                                                  </div>
+                                                  <div className="flex items-center justify-between mb-3">
+                                                       <span className="text-sm bg-teal-50 text-teal-700 px-2 py-1 rounded-full border border-teal-200">{c.availableFields}/{c.totalFields} sân trống</span>
+                                                       <span className="text-lg font-bold text-teal-600">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(c.minPriceForSelectedSlot)}</span>
+                                                  </div>
+                                                  <div className="mt-auto">
+                                                       <Button onClick={(e) => { e.stopPropagation(); navigate(`/complex/${c.complexId}`); }} className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-xl font-semibold">Xem chi tiết</Button>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                   ))}
+                              </div>
+                              {/* Pagination for complexes */}
+                              {totalComplex > 0 && (
+                                   <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                        <div className="text-sm text-teal-700">
+                                             Trang {currentPageComplex}/{totalPagesComplex} • {Math.min(endIdxComplex, totalComplex)} trên {totalComplex} khu sân
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                             <Button type="button" onClick={handlePrevComplex} disabled={currentPageComplex === 1} className={`px-3 py-1 rounded-full items-center justify-center border transition-colors ${currentPageComplex === 1 ? "bg-gray-50 text-gray-400 border-gray-300 cursor-not-allowed" : "bg-white text-teal-600 border-teal-200 hover:border-teal-300 hover:bg-teal-50"}`}>
+                                                  <ChevronLeft className="w-4 h-4" />
+                                             </Button>
+                                             <div className="flex items-center gap-1">
+                                                  {(() => {
+                                                       const pages = [];
+                                                       const maxVisiblePages = 5;
+                                                       let startPage = Math.max(1, currentPageComplex - Math.floor(maxVisiblePages / 2));
+                                                       let endPage = Math.min(totalPagesComplex, startPage + maxVisiblePages - 1);
+                                                       if (endPage - startPage + 1 < maxVisiblePages) startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                                                       if (startPage > 1) {
+                                                            pages.push(<Button key={1} onClick={() => setPageComplex(1)} className="px-3 py-1 rounded-full border border-teal-200 text-teal-600 bg-teal-50 hover:bg-teal-500 hover:text-white hover:border-teal-300 transition-colors">1</Button>);
+                                                            if (startPage > 2) pages.push(<span key="ellipsis1" className="px-2 text-teal-400 bg-teal-50">...</span>);
+                                                       }
+                                                       for (let i = startPage; i <= endPage; i++) {
+                                                            pages.push(<Button key={i} onClick={() => setPageComplex(i)} className={`px-4 py-1 rounded-full border transition-colors ${i === currentPageComplex ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600" : "border-teal-200 text-teal-600 bg-teal-50 hover:bg-teal-500 hover:text-white hover:border-teal-300"}`}>{i}</Button>);
+                                                       }
+                                                       if (endPage < totalPagesComplex) {
+                                                            if (endPage < totalPagesComplex - 1) pages.push(<span key="ellipsis2" className="px-2 text-teal-400 bg-teal-50">...</span>);
+                                                            pages.push(<Button key={totalPagesComplex} onClick={() => setPageComplex(totalPagesComplex)} className="px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300 transition-colors">{totalPagesComplex}</Button>);
+                                                       }
+                                                       return pages;
+                                                  })()}
+                                             </div>
+                                             <Button type="button" onClick={handleNextComplex} disabled={currentPageComplex === totalPagesComplex} className={`px-3 py-1 rounded-full border transition-colors ${currentPageComplex === totalPagesComplex ? "bg-gray-50 text-gray-400 border-gray-300 cursor-not-allowed" : "bg-white text-teal-600 border-teal-200 hover:border-teal-300 hover:bg-teal-50"}`}>
+                                                  <ChevronRight className="w-4 h-4 " />
+                                             </Button>
+                                        </div>
+                                   </div>
+                              )}
+                         </>
+                    ) : isGroupedView ? (
                          <div className="space-y-10">
                               <div>
                                    <div className="flex items-center justify-between mb-4">
@@ -598,53 +741,45 @@ export default function FieldSearch({ user }) {
                                              <p> Gần bạn </p></h2>
                                         <Button
                                              type="button"
-                                             onClick={() => { setActiveTab("near"); setForceList(true); setPage(1); }}
-
+                                             onClick={() => { setActiveTab("near"); setForceList(true); setPage(1); setEntityTab("complexes"); }}
                                              className="px-3 py-1 rounded-2xl hover:border-b-2 bg-transparent hover:bg-teal-50 hover:border-teal-300 text-teal-700 text-sm"
                                         >
                                              Xem tất cả
                                         </Button>
                                    </div>
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-                                        {nearGroup.map((field) => (
-                                             <div key={field.id} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.id}`)}>
+                                        {complexes.slice(0, 4).map((c) => (
+                                             <div key={c.complexId} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/complex/${c.complexId}`)}>
                                                   <div className="relative overflow-hidden">
-                                                       <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" />
-                                                       <div className="absolute top-4 right-4 flex space-x-2">
-                                                            <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{field.availableSlots} slot trống </p></div>
-                                                       </div>
+                                                       <img src={c.image} alt={c.name} className="w-full h-48 object-cover rounded-xl" />
                                                   </div>
                                                   <div className="px-2 py-3 flex-1 flex flex-col">
                                                        <div className="flex bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2">
                                                             <MapPin className="w-4 h-4 mr-1" />
-                                                            <span className="text-xs font-semibold line-clamp-1">{field.location}</span>
+                                                            <span className="text-xs font-semibold line-clamp-1">{c.address}</span>
                                                        </div>
-
                                                        <div className="flex items-center justify-between mb-3">
-                                                            <h3 className="text-lg font-bold text-teal-800 line-clamp-1">{field.name}</h3>
-                                                            <div className="flex items-center">
-                                                                 <MapPin className="w-4 h-4 text-red-500 mr-1" />
-                                                                 <span className="text-sm font-bold text-red-600">{field.distance}</span>
-                                                            </div>
-
+                                                            <h3 className="text-lg font-bold text-teal-800 line-clamp-1">{c.name}</h3>
                                                        </div>
-                                                       <div className="flex items-center gap-2 mb-4">
-                                                            <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{field.amenities[0]}</span>
-                                                            {field.amenities.length > 1 && (
-                                                                 <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">+{field.amenities.length - 1}</span>
-                                                            )}
+
+
+                                                       <div className="flex items-center justify-between gap-2 mb-4">
+                                                            <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{c.availableFields}/{c.totalFields} sân</span>
+                                                            <div className="text-xs flex items-center text-gray-500">
+                                                                 <MapPin className="w-4 h-4 mr-1" /> <p> {c.distanceKm ? `${c.distanceKm.toFixed(1)} km` : ""}</p>
+                                                            </div>
                                                        </div>
                                                        <div className="mt-auto flex items-center justify-between">
-                                                            <div className="text-lg font-bold text-teal-500">{formatPrice(field.price)}/trận</div>
+                                                            <div className="text-lg font-bold text-teal-500">{formatPrice(c.minPriceForSelectedSlot || 0)}/trận</div>
                                                             <Button
                                                                  type="button"
                                                                  onClick={(e) => {
                                                                       e.stopPropagation();
-                                                                      handleBook(field.id);
+                                                                      navigate(`/complex/${c.complexId}`);
                                                                  }}
                                                                  className="w-fit hover:scale-90 duration-200 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full font-semibold transition-colors"
                                                             >
-                                                                 Đặt sân
+                                                                 Xem chi tiết
                                                             </Button>
                                                        </div>
                                                   </div>
@@ -666,17 +801,17 @@ export default function FieldSearch({ user }) {
                                    </div>
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                                         {bestPriceGroup.map((field) => (
-                                             <div key={field.id} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.id}`)}>
+                                             <div key={field.fieldId} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
                                                   <div className="relative overflow-hidden">
                                                        <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" />
                                                        <div className="absolute top-4 right-4 flex space-x-2">
-                                                            <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{field.availableSlots} slot trống </p></div>
+                                                            <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName}</p></div>
                                                        </div>
                                                   </div>
                                                   <div className="px-2 py-3 flex-1 flex flex-col">
                                                        <div className="flex bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2">
                                                             <MapPin className="w-4 h-4 mr-1" />
-                                                            <span className="text-xs font-semibold line-clamp-1">{field.location}</span>
+                                                            <span className="text-xs font-semibold line-clamp-1">{field.address}</span>
                                                        </div>
 
                                                        <div className="flex items-center justify-between mb-3">
@@ -692,12 +827,12 @@ export default function FieldSearch({ user }) {
                                                             )}
                                                        </div>
                                                        <div className="mt-auto flex items-center justify-between">
-                                                            <div className="text-lg font-bold text-teal-500">{formatPrice(field.price)}/trận</div>
+                                                            <div className="text-lg font-bold text-teal-500">{formatPrice(field.priceForSelectedSlot || 0)}/trận</div>
                                                             <Button
                                                                  type="button"
                                                                  onClick={(e) => {
                                                                       e.stopPropagation();
-                                                                      handleBook(field.id);
+                                                                      handleBook(field.fieldId);
                                                                  }}
                                                                  className="w-fit hover:scale-90 duration-200 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full font-semibold transition-colors"
                                                             >
@@ -722,17 +857,17 @@ export default function FieldSearch({ user }) {
                                    </div>
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                                         {topRatedGroup.map((field) => (
-                                             <div key={field.id} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.id}`)}>
+                                             <div key={field.fieldId} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
                                                   <div className="relative overflow-hidden">
                                                        <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" />
                                                        <div className="absolute top-4 right-4 flex space-x-2">
-                                                            <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{field.availableSlots} slot trống </p></div>
+                                                            <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName}</p></div>
                                                        </div>
                                                   </div>
                                                   <div className="px-2 py-3 flex-1 flex flex-col">
                                                        <div className="flex bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2">
                                                             <MapPin className="w-4 h-4 mr-1" />
-                                                            <span className="text-xs font-semibold line-clamp-1">{field.location}</span>
+                                                            <span className="text-xs font-semibold line-clamp-1">{field.address}</span>
                                                        </div>
 
                                                        <div className="flex items-center justify-between mb-3">
@@ -750,12 +885,12 @@ export default function FieldSearch({ user }) {
                                                             )}
                                                        </div>
                                                        <div className="mt-auto flex items-center justify-between">
-                                                            <div className="text-lg font-bold text-teal-500">{formatPrice(field.price)}/trận</div>
+                                                            <div className="text-lg font-bold text-teal-500">{formatPrice(field.priceForSelectedSlot || 0)}/trận</div>
                                                             <Button
                                                                  type="button"
                                                                  onClick={(e) => {
                                                                       e.stopPropagation();
-                                                                      handleBook(field.id);
+                                                                      handleBook(field.fieldId);
                                                                  }}
                                                                  className="w-fit hover:scale-90 duration-200 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full font-semibold transition-colors"
                                                             >
@@ -772,7 +907,7 @@ export default function FieldSearch({ user }) {
                          viewMode === "grid" ? (
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                                    {pageItems.map((field) => (
-                                        <div key={field.id} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.id}`)}>
+                                        <div key={field.fieldId} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
                                              <div className="relative overflow-hidden">
                                                   <img
                                                        src={field.image}
@@ -792,7 +927,7 @@ export default function FieldSearch({ user }) {
                                                             <Heart className="w-4 h-4" />
                                                        </Button>
                                                        <div className="bg-white/95 backdrop-blur px-2 py-1 rounded-full text-sm font-semibold text-teal-600 border border-teal-200 shadow-sm">
-                                                            {field.availableSlots} slot trống
+                                                            {slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName}
                                                        </div>
                                                   </div>
                                              </div>
@@ -800,14 +935,15 @@ export default function FieldSearch({ user }) {
                                                   <h3 className="text-xl font-semibold text-teal-800 mb-2">{field.name}</h3>
                                                   <div className="flex items-center text-teal-700 mb-2">
                                                        <MapPin className="w-4 h-4 mr-1" />
-                                                       <span className="text-sm">{field.location}</span>
+                                                       <span className="text-sm">{field.address}</span>
                                                   </div>
+
                                                   <div className="flex items-center justify-between mb-4">
                                                        <div className="flex items-center">
                                                             {activeTab === "near" ? (
                                                                  <>
                                                                       <MapPin className="w-4 h-4 text-red-500 mr-1" />
-                                                                      <span className="text-sm font-bold text-red-600">{field.distance}</span>
+                                                                      <span className="text-sm font-bold text-red-600">{field.distanceKm ? `${Number(field.distanceKm).toFixed(1)} km` : ""}</span>
                                                                  </>
                                                             ) : activeTab === "best-price" ? (
                                                                  <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full">Giá tốt nhất</span>
@@ -825,7 +961,7 @@ export default function FieldSearch({ user }) {
                                                                  </>
                                                             )}
                                                        </div>
-                                                       <div className={`text-lg font-bold ${activeTab === "best-price" ? "text-red-500" : "text-teal-600"}`}>{formatPrice(field.price)}/trận</div>
+                                                       <div className={`text-lg font-bold ${activeTab === "best-price" ? "text-red-500" : "text-teal-600"}`}>{formatPrice(field.priceForSelectedSlot || 0)}/trận</div>
                                                   </div>
                                                   <div className="flex items-center gap-2 mb-4">
                                                        <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200">{field.amenities[0]}</span>
@@ -838,7 +974,7 @@ export default function FieldSearch({ user }) {
                                                             type="button"
                                                             onClick={(e) => {
                                                                  e.stopPropagation();
-                                                                 handleBook(field.id);
+                                                                 handleBook(field.fieldId);
                                                             }}
                                                             className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-xl font-semibold transition-colors"
                                                        >
@@ -852,7 +988,7 @@ export default function FieldSearch({ user }) {
                          ) : (
                               <div className="space-y-4">
                                    {pageItems.map((field) => (
-                                        <div key={field.id} className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden hover:scale-105 duration-300 transition-all border border-teal-100 hover:border-teal-200 cursor-pointer" onClick={() => navigate(`/field/${field.id}`)}>
+                                        <div key={field.fieldId} className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden hover:scale-105 duration-300 transition-all border border-teal-100 hover:border-teal-200 cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
                                              <div className="flex">
                                                   <div className="w-96 h-52 flex-shrink-0">
                                                        <img
@@ -886,9 +1022,20 @@ export default function FieldSearch({ user }) {
                                                                       <span className="text-sm text-gray-500 ml-1">({field.reviewCount} đánh giá)</span>
                                                                  </div>
                                                             </div>
-                                                            <div className="text-xl font-bold text-teal-600">{formatPrice(field.price)}/trận</div>
+                                                            <div className="text-xl font-bold text-teal-600">{formatPrice(field.priceForSelectedSlot || 0)}/trận</div>
                                                        </div>
-                                                       <div className="flex flex-wrap gap-2 mb-7">
+                                                       <div className="text-xs text-teal-700 mb-2 break-words">
+                                                            {field.address}
+                                                            <a
+                                                                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(field.address || "")}`}
+                                                                 target="_blank"
+                                                                 rel="noreferrer"
+                                                                 className="ml-2 text-teal-600 underline"
+                                                            >
+                                                                 Xem bản đồ
+                                                            </a>
+                                                       </div>
+                                                       <div className="flex flex-wrap gap-2 mb-5">
                                                             {field.amenities.map((amenity, index) => (
                                                                  <span
                                                                       key={index}
@@ -901,14 +1048,14 @@ export default function FieldSearch({ user }) {
                                                        <div className="flex justify-between items-center">
                                                             <div className="text-sm items-center flex text-gray-500">
                                                                  <Clock className="w-4 h-4 inline mr-1" />
-                                                                 <p> {field.availableSlots} slot trống • {field.distance} </p>
+                                                                 <p> {slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName} • {field.distanceKm ? `${Number(field.distanceKm).toFixed(1)} km` : ""} </p>
                                                             </div>
                                                             <div className="flex space-x-2">
                                                                  <Button
                                                                       type="button"
                                                                       onClick={(e) => {
                                                                            e.stopPropagation();
-                                                                           handleBook(field.id);
+                                                                           handleBook(field.fieldId);
                                                                       }}
                                                                       className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-4 rounded-xl font-semibold"
                                                                  >
@@ -923,8 +1070,8 @@ export default function FieldSearch({ user }) {
                               </div>
                          )}
 
-                    {/* Pagination */}
-                    {filteredFields.length > 0 && !isGroupedView && (
+                    {/* Pagination for fields (only when viewing Sân nhỏ list) */}
+                    {entityTab === "fields" && filteredFields.length > 0 && !isGroupedView && (
                          <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
                               <div className="text-sm text-teal-700">
                                    Trang {currentPage}/{totalPages} • {Math.min(endIdx, totalItems)} trên {totalItems} sân
@@ -977,7 +1124,7 @@ export default function FieldSearch({ user }) {
                                                             onClick={() => setPage(i)}
                                                             className={`px-4 py-1 rounded-full border transition-colors ${i === currentPage
                                                                  ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600"
-                                                                 : "border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300"
+                                                                 : "border-teal-200 text-teal-600 bg-teal-50 hover:bg-teal-500 hover:text-white hover:border-teal-300"
                                                                  }`}
                                                        >
                                                             {i}
@@ -989,14 +1136,14 @@ export default function FieldSearch({ user }) {
                                              if (endPage < totalPages) {
                                                   if (endPage < totalPages - 1) {
                                                        pages.push(
-                                                            <span key="ellipsis2" className="px-2 text-teal-400">...</span>
+                                                            <span key="ellipsis2" className="px-2 text-teal-400 bg-teal-50">...</span>
                                                        );
                                                   }
                                                   pages.push(
                                                        <Button
                                                             key={totalPages}
                                                             onClick={() => setPage(totalPages)}
-                                                            className="px-3 py-1 rounded-full border border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300 transition-colors"
+                                                            className="px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300 transition-colors"
                                                        >
                                                             {totalPages}
                                                        </Button>
@@ -1034,7 +1181,7 @@ export default function FieldSearch({ user }) {
                                         setActiveTab("all");
                                         setViewMode("grid");
                                         setPage(1);
-                                        setMapLocation(null);
+                                        // reset map-driven filters
                                         setForceList(false);
                                         setMapSearchKey(prev => prev + 1); // Force MapSearch reset
                                         // Clear localStorage search preset

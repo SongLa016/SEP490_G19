@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Calendar, MapPin, ArrowLeft, CheckCircle } from "lucide-react";
 import { createBooking } from "../../utils/bookingStore";
 import { getCurrentUser } from "../../utils/authStore";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { createPendingBooking, confirmPayment } from "../../services/bookings";
 
 export default function Booking({ user }) {
      const navigate = useNavigate();
-     const [step, setStep] = useState("details"); // details | payment | confirmation
+     const location = useLocation();
+     const [step, setStep] = useState("details"); // details | pending | payment | confirmation
      const [bookingData, setBookingData] = useState({
-          fieldName: "Sân bóng đá ABC",
-          fieldAddress: "123 Đường ABC, Phường Bến Nghé, Quận 1, TP.HCM",
-          date: "2024-12-15",
-          time: "18:00-20:00",
+          fieldId: location.state?.fieldId || null,
+          fieldName: location.state?.fieldName || "Sân bóng đá ABC",
+          fieldAddress: location.state?.fieldAddress || "123 Đường ABC, Phường Bến Nghé, Quận 1, TP.HCM",
+          date: location.state?.date || "2024-12-15",
+          slotId: location.state?.slotId || null,
+          time: "",
           duration: 2,
           price: 200000,
           totalPrice: 400000,
@@ -22,6 +26,7 @@ export default function Booking({ user }) {
      });
      const [paymentMethod, setPaymentMethod] = useState("");
      const [isProcessing, setIsProcessing] = useState(false);
+     const [pendingInfo, setPendingInfo] = useState(null); // { bookingId, qrCodeUrl, qrExpiresAt }
 
      const formatPrice = (price) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 
@@ -35,7 +40,7 @@ export default function Booking({ user }) {
                return;
           }
           setIsProcessing(true);
-          setTimeout(() => {
+          confirmPayment({ bookingId: pendingInfo?.bookingId, method: paymentMethod }).then(() => {
                setIsProcessing(false);
                const current = getCurrentUser();
                createBooking({
@@ -51,7 +56,18 @@ export default function Booking({ user }) {
                     },
                });
                setStep("confirmation");
-          }, 1200);
+          });
+     };
+
+     const createPending = async () => {
+          setIsProcessing(true);
+          try {
+               const created = await createPendingBooking({ fieldId: bookingData.fieldId, date: bookingData.date, slotId: bookingData.slotId, customer: { name: bookingData.customerName, phone: bookingData.customerPhone, email: bookingData.customerEmail } });
+               setPendingInfo(created);
+               setStep("payment");
+          } finally {
+               setIsProcessing(false);
+          }
      };
 
      const renderDetailsStep = () => (
@@ -78,7 +94,7 @@ export default function Booking({ user }) {
                                         </div>
                                         <div className="flex items-center text-gray-600">
                                              <Calendar className="w-4 h-4 mr-2" />
-                                             <span className="text-sm">{bookingData.date} - {bookingData.time}</span>
+                                             <span className="text-sm">{bookingData.date} {bookingData.time && `- ${bookingData.time}`}</span>
                                         </div>
                                    </div>
                                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Thông tin liên hệ</h2>
@@ -106,7 +122,7 @@ export default function Booking({ user }) {
                                    <div className="bg-gray-50 rounded-lg p-4">
                                         <div className="space-y-3">
                                              <div className="flex justify-between"><span className="text-gray-600">Ngày</span><span className="font-medium">{bookingData.date}</span></div>
-                                             <div className="flex justify-between"><span className="text-gray-600">Giờ</span><span className="font-medium">{bookingData.time}</span></div>
+                                             {bookingData.time && (<div className="flex justify-between"><span className="text-gray-600">Giờ</span><span className="font-medium">{bookingData.time}</span></div>)}
                                              <div className="flex justify-between"><span className="text-gray-600">Thời gian</span><span className="font-medium">{bookingData.duration} giờ</span></div>
                                              <div className="flex justify-between"><span className="text-gray-600">Giá/giờ</span><span className="font-medium">{formatPrice(bookingData.price)}</span></div>
                                              <div className="border-t border-gray-300 pt-3">
@@ -118,7 +134,7 @@ export default function Booking({ user }) {
                                         </div>
                                    </div>
                                    <div className="mt-6">
-                                        <button onClick={() => setStep("payment")} className="w-full bg-teal-500 hover:bg-teal-600 text-white py-3 px-4 rounded-lg font-semibold transition-colors">Tiếp tục thanh toán</button>
+                                        <button onClick={createPending} className="w-full bg-teal-500 hover:bg-teal-600 text-white py-3 px-4 rounded-lg font-semibold transition-colors" disabled={isProcessing}>{isProcessing ? "Đang tạo giữ chỗ..." : "Giữ chỗ & tiếp tục thanh toán"}</button>
                                    </div>
                               </div>
                          </div>
@@ -140,6 +156,18 @@ export default function Booking({ user }) {
                          <p className="text-teal-100">Chọn phương thức thanh toán</p>
                     </div>
                     <div className="p-6">
+                         {pendingInfo && (
+                              <div className="mb-6 p-4 border border-teal-200 rounded-lg bg-teal-50">
+                                   <div className="flex items-center justify-between">
+                                        <div>
+                                             <div className="text-sm text-teal-700">Mã đặt chỗ tạm thời</div>
+                                             <div className="text-lg font-semibold text-teal-800">#{pendingInfo.bookingId}</div>
+                                             <div className="text-xs text-teal-600">Hết hạn: {new Date(pendingInfo.qrExpiresAt).toLocaleTimeString()}</div>
+                                        </div>
+                                        <img src={pendingInfo.qrCodeUrl} alt="QR" className="w-24 h-24" />
+                                   </div>
+                              </div>
+                         )}
                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                               <div>
                                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Phương thức thanh toán</h2>
@@ -180,7 +208,7 @@ export default function Booking({ user }) {
                                         <div className="space-y-3 text-sm">
                                              <div className="flex justify-between"><span className="text-gray-600">Sân</span><span className="font-medium">{bookingData.fieldName}</span></div>
                                              <div className="flex justify-between"><span className="text-gray-600">Ngày</span><span className="font-medium">{bookingData.date}</span></div>
-                                             <div className="flex justify-between"><span className="text-gray-600">Giờ</span><span className="font-medium">{bookingData.time}</span></div>
+                                             {bookingData.time && (<div className="flex justify-between"><span className="text-gray-600">Giờ</span><span className="font-medium">{bookingData.time}</span></div>)}
                                              <div className="flex justify-between"><span className="text-gray-600">Tổng cộng</span><span className="font-semibold text-teal-600">{formatPrice(bookingData.totalPrice)}</span></div>
                                         </div>
                                    </div>

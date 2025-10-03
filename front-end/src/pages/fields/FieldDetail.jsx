@@ -1,20 +1,23 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapPin, Star, Heart, Share2, Calendar, Phone, Mail } from "lucide-react";
 import { Section, Container, Card, CardContent, Button } from "../../components/ui";
 import { useNavigate } from "react-router-dom";
+import { fetchFieldAvailability, fetchTimeSlots, fetchFieldMeta } from "../../services/fields";
 
 export default function FieldDetail({ user }) {
      const navigate = useNavigate();
-     const [selectedDate, setSelectedDate] = useState("");
-     const [selectedTime, setSelectedTime] = useState("");
+     const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+     const [selectedSlotId, setSelectedSlotId] = useState("");
      const [isFavorite, setIsFavorite] = useState(false);
+     const [timeSlots, setTimeSlots] = useState([]);
+     const [availability, setAvailability] = useState([]);
 
      // Mock data for field details
      const field = {
           id: 1,
           name: "Sân bóng đá ABC",
           location: "Quận 1, TP.HCM",
-          address: "123 Đường ABC, Phường Bến Nghé, Quận 1, TP.HCM",
+          address: "",
           price: 200000,
           rating: 4.8,
           reviewCount: 156,
@@ -37,16 +40,7 @@ export default function FieldDetail({ user }) {
                phone: "0901234567",
                email: "owner@example.com"
           },
-          availableSlots: [
-               { time: "06:00-08:00", price: 150000, available: true },
-               { time: "08:00-10:00", price: 180000, available: true },
-               { time: "10:00-12:00", price: 200000, available: false },
-               { time: "12:00-14:00", price: 200000, available: true },
-               { time: "14:00-16:00", price: 200000, available: true },
-               { time: "16:00-18:00", price: 220000, available: false },
-               { time: "18:00-20:00", price: 250000, available: true },
-               { time: "20:00-22:00", price: 250000, available: true }
-          ],
+          availableSlots: [],
           reviews: [
                {
                     id: 1,
@@ -72,8 +66,44 @@ export default function FieldDetail({ user }) {
           }).format(price);
      };
 
+     // Load time slots once
+     useEffect(() => {
+          let mounted = true;
+          fetchTimeSlots().then((slots) => { if (mounted) setTimeSlots(slots); });
+          return () => { mounted = false; };
+     }, []);
+
+     // Load availability when date changes
+     useEffect(() => {
+          let ignore = false;
+          async function load() {
+               const data = await fetchFieldAvailability(field.id, selectedDate);
+               if (!ignore) setAvailability(data);
+          }
+          load();
+          return () => { ignore = true; };
+     }, [field.id, selectedDate]);
+
+     const [complexMeta, setComplexMeta] = useState(null);
+
+     const availabilityWithSlotMeta = useMemo(() => {
+          const byId = Object.fromEntries(timeSlots.map(s => [String(s.slotId), s]));
+          return availability.map(a => ({ ...a, slotMeta: byId[String(a.slotId)] }));
+     }, [availability, timeSlots]);
+
+     // Load parent complex meta (address/name) for the field
+     useEffect(() => {
+          let ignore = false;
+          async function load() {
+               const meta = await fetchFieldMeta(field.id);
+               if (!ignore) setComplexMeta(meta);
+          }
+          load();
+          return () => { ignore = true; };
+     }, [field.id]);
+
      const handleBooking = () => {
-          if (!selectedDate || !selectedTime) {
+          if (!selectedDate || !selectedSlotId) {
                alert("Vui lòng chọn ngày và giờ");
                return;
           }
@@ -82,7 +112,7 @@ export default function FieldDetail({ user }) {
                navigate("/auth");
                return;
           }
-          navigate("/booking");
+          navigate("/booking", { state: { fieldId: field.id, date: selectedDate, slotId: selectedSlotId, fieldName: field.name, fieldAddress: complexMeta?.complex?.address || "" } });
      };
 
      return (
@@ -95,7 +125,7 @@ export default function FieldDetail({ user }) {
                                    <h1 className="text-3xl font-bold text-gray-900 mb-2">{field.name}</h1>
                                    <div className="flex items-center text-gray-600 mb-2">
                                         <MapPin className="w-5 h-5 mr-2" />
-                                        <span>{field.address}</span>
+                                        <span>{complexMeta?.complex?.address || ""}</span>
                                    </div>
                                    <div className="flex items-center">
                                         <Star className="w-5 h-5 text-teal-400 mr-1" />
@@ -218,20 +248,20 @@ export default function FieldDetail({ user }) {
                                              Chọn giờ
                                         </label>
                                         <div className="grid grid-cols-2 gap-2">
-                                             {field.availableSlots.map((slot, index) => (
+                                             {availabilityWithSlotMeta.map((slot, index) => (
                                                   <button
                                                        key={index}
-                                                       onClick={() => setSelectedTime(slot.time)}
-                                                       disabled={!slot.available}
-                                                       className={`p-2 text-sm rounded-lg border transition-colors ${selectedTime === slot.time
+                                                       onClick={() => { setSelectedSlotId(slot.slotId); }}
+                                                       disabled={slot.status !== "Available"}
+                                                       className={`p-2 text-sm rounded-lg border transition-colors ${selectedSlotId === slot.slotId
                                                             ? "border-teal-500 bg-teal-50 text-teal-700"
-                                                            : slot.available
+                                                            : slot.status === "Available"
                                                                  ? "border-gray-300 hover:border-teal-500 hover:bg-teal-50"
                                                                  : "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
                                                             }`}
                                                   >
-                                                       <div className="font-medium">{slot.time}</div>
-                                                       <div className="text-xs">{formatPrice(slot.price)}</div>
+                                                       <div className="font-medium">{slot.slotMeta?.name || ""}</div>
+                                                       <div className="text-xs">{formatPrice(slot.price)} • {slot.status === "Available" ? "Còn chỗ" : "Hết chỗ"}</div>
                                                   </button>
                                              ))}
                                         </div>

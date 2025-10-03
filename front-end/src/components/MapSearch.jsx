@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Search, X } from 'lucide-react';
 import { Button, Input } from './ui';
+import { fetchComplexes } from '../services/fields';
 
 const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
      const [searchQuery, setSearchQuery] = useState('');
@@ -11,7 +12,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
      const [searchRadius, setSearchRadius] = useState(5); // km
      const [filteredFields, setFilteredFields] = useState([]);
      const mapRef = useRef(null);
-     const autocompleteRef = useRef(null);
+     // const autocompleteRef = useRef(null);
 
      // Format price
      const formatPrice = (price) => {
@@ -47,82 +48,32 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           });
      };
 
-     // Mock field data with coordinates
-     const mockFields = [
-          {
-               id: 1,
-               name: "Sân bóng đá ABC",
-               location: "Quận Hoàn Kiếm, Hà Nội",
-               address: "123 Phố Hàng Bạc, Phường Hàng Bạc",
-               lat: 21.0285,
-               lng: 105.8542,
-               price: 200000,
-               rating: 4.8,
-               availableSlots: 3
-          },
-          {
-               id: 2,
-               name: "Sân thể thao XYZ",
-               location: "Quận Ba Đình, Hà Nội",
-               address: "456 Đường Kim Mã, Phường Kim Mã",
-               lat: 21.0333,
-               lng: 105.8167,
-               price: 180000,
-               rating: 4.6,
-               availableSlots: 5
-          },
-          {
-               id: 3,
-               name: "Sân bóng đá DEF",
-               location: "Quận Đống Đa, Hà Nội",
-               address: "789 Đường Láng, Phường Láng Thượng",
-               lat: 21.0167,
-               lng: 105.8167,
-               price: 220000,
-               rating: 4.9,
-               availableSlots: 2
-          },
-          {
-               id: 4,
-               name: "Sân thể thao GHI",
-               location: "Quận Cầu Giấy, Hà Nội",
-               address: "321 Đường Trần Duy Hưng, Phường Trung Hòa",
-               lat: 21.0167,
-               lng: 105.8000,
-               price: 160000,
-               rating: 4.4,
-               availableSlots: 8
-          },
-          {
-               id: 5,
-               name: "Sân bóng đá JKL",
-               location: "Quận Hai Bà Trưng, Hà Nội",
-               address: "654 Đường Bạch Mai, Phường Bạch Mai",
-               lat: 21.0167,
-               lng: 105.8500,
-               price: 190000,
-               rating: 4.7,
-               availableSlots: 4
-          },
-          {
-               id: 6,
-               name: "Sân thể thao MNO",
-               location: "Quận Tây Hồ, Hà Nội",
-               address: "987 Đường Âu Cơ, Phường Quảng An",
-               lat: 21.0667,
-               lng: 105.8167,
-               price: 250000,
-               rating: 4.9,
-               availableSlots: 1
-          }
-     ];
+     // Dynamic list based on services
+     const [mockFields, setMockFields] = useState([]);
+
+     useEffect(() => {
+          fetchComplexes({}).then((list) => {
+               const mapped = (list || []).map((c, i) => ({
+                    id: c.complexId || i,
+                    name: c.name,
+                    location: 'Hà Nội',
+                    address: c.address,
+                    lat: c.lat,
+                    lng: c.lng,
+                    price: c.minPriceForSelectedSlot || 0,
+                    rating: c.rating || 0,
+                    availableSlots: c.availableFields || 0,
+               })).filter(x => typeof x.lat === 'number' && typeof x.lng === 'number');
+               setMockFields(mapped);
+          }).catch(() => { });
+     }, []);
 
      // Initialize map
      useEffect(() => {
           if (isOpen && !map) {
                const initMap = () => {
                     const mapInstance = new window.google.maps.Map(mapRef.current, {
-                         center: { lat: 21.0285, lng: 105.8542 }, // Hanoi center
+                         center: { lat: 21.0285, lng: 105.8542 }, // Hà Nội center
                          zoom: 13,
                          mapTypeControl: true,
                          streetViewControl: true,
@@ -189,11 +140,12 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                     document.head.appendChild(script);
                }
           }
-     }, [isOpen, map, onLocationSelect]);
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, [isOpen, map, onLocationSelect, filteredFields]);
 
      // Update markers when filtered fields change
      useEffect(() => {
-          if (map && markers.length > 0) {
+          if (map) {
                // Clear existing markers
                markers.forEach(marker => marker.setMap(null));
 
@@ -232,7 +184,8 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
 
                setMarkers(newMarkers);
           }
-     }, [filteredFields, map, onLocationSelect]);
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, [filteredFields, map, onLocationSelect, mockFields]);
 
      // Handle search input
      const handleSearchChange = (e) => {
@@ -455,6 +408,8 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                                    break;
                               case error.TIMEOUT:
                                    errorMessage = 'Hết thời gian chờ lấy vị trí';
+                                   break;
+                              default:
                                    break;
                          }
 
