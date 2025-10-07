@@ -37,18 +37,19 @@ namespace BallSport.Infrastructure.Repositories
         }
 
         // Cập nhật slot
-        public async Task<bool> UpdateAsync(TimeSlot slot)
+        public async Task<TimeSlot?> UpdateAsync(TimeSlot slot)
         {
             var existing = await _context.TimeSlots.FindAsync(slot.SlotId);
-            if (existing == null) return false;
+            if (existing == null) return null;
 
             existing.SlotName = slot.SlotName;
             existing.StartTime = slot.StartTime;
             existing.EndTime = slot.EndTime;
 
             await _context.SaveChangesAsync();
-            return true;
+            return existing;
         }
+
 
         // Xóa slot
         public async Task<bool> DeleteAsync(int id)

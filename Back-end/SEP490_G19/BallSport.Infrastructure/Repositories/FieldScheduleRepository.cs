@@ -13,26 +13,35 @@ namespace BallSport.Infrastructure.Repositories
             _context = context;
         }
 
-        // Lấy tất cả lịch sân (bao gồm thông tin slot)
+        //  Lấy toàn bộ lịch sân (gồm Field + Slot)
         public async Task<List<FieldSchedule>> GetAllAsync()
         {
             return await _context.FieldSchedules
-                .Include(fs => fs.Slot)
-                .Include(fs => fs.Field)
+                .Include(s => s.Field)
+                .Include(s => s.Slot)
                 .ToListAsync();
         }
 
-        // Lấy lịch theo sân + ngày
-        public async Task<List<FieldSchedule>> GetByFieldAndDateAsync(int fieldId, DateOnly date)
+        //  Lấy danh sách lịch theo FieldId
+        public async Task<List<FieldSchedule>> GetByFieldIdAsync(int fieldId)
         {
             return await _context.FieldSchedules
-                .Include(fs => fs.Slot)
-                .Include(fs => fs.Field)
-                .Where(fs => fs.FieldId == fieldId && fs.Date == date)
+                .Where(s => s.FieldId == fieldId)
+                .Include(s => s.Field)
+                .Include(s => s.Slot)
                 .ToListAsync();
         }
 
-        // Thêm mới
+        //  Lấy 1 lịch theo ScheduleId
+        public async Task<FieldSchedule?> GetByIdAsync(int scheduleId)
+        {
+            return await _context.FieldSchedules
+                .Include(s => s.Field)
+                .Include(s => s.Slot)
+                .FirstOrDefaultAsync(s => s.ScheduleId == scheduleId);
+        }
+
+        //  Thêm mới
         public async Task<FieldSchedule> AddAsync(FieldSchedule schedule)
         {
             _context.FieldSchedules.Add(schedule);
@@ -40,18 +49,14 @@ namespace BallSport.Infrastructure.Repositories
             return schedule;
         }
 
-        // Cập nhật trạng thái
-        public async Task<bool> UpdateStatusAsync(int scheduleId, string status)
+        //  Cập nhật
+        public async Task UpdateAsync(FieldSchedule schedule)
         {
-            var schedule = await _context.FieldSchedules.FindAsync(scheduleId);
-            if (schedule == null) return false;
-
-            schedule.Status = status;
+            _context.FieldSchedules.Update(schedule);
             await _context.SaveChangesAsync();
-            return true;
         }
 
-        // Xóa
+        //  Xóa
         public async Task<bool> DeleteAsync(int id)
         {
             var schedule = await _context.FieldSchedules.FindAsync(id);
