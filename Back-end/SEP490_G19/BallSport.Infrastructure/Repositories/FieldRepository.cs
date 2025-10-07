@@ -13,57 +13,6 @@ namespace BallSport.Infrastructure.Repositories
             _context = context;
         }
 
-        // -------------------------------
-        // 1️ Phần loại sân (5,7,9,11 người)
-        // -------------------------------
-
-        public async Task<FieldType> AddFieldTypeAsync(FieldType fieldType)
-        {
-            _context.FieldTypes.Add(fieldType);
-            await _context.SaveChangesAsync();
-            return fieldType;
-        }
-
-        public async Task<FieldType?> GetFieldTypeByIdAsync(int typeId)
-        {
-            return await _context.FieldTypes
-                .FirstOrDefaultAsync(f => f.TypeId == typeId);
-        }
-
-        public async Task<List<FieldType>> GetAllFieldTypesAsync()
-        {
-            return await _context.FieldTypes.ToListAsync();
-        }
-
-        // -------------------------------
-        // 2️ Phần khu sân lớn (FieldComplex)
-        // -------------------------------
-
-        public async Task<FieldComplex> AddComplexAsync(FieldComplex complex)
-        {
-            _context.FieldComplexes.Add(complex);
-            await _context.SaveChangesAsync();
-            return complex;
-        }
-
-        public async Task<FieldComplex?> GetComplexByIdAsync(int complexId)
-        {
-            return await _context.FieldComplexes
-                .Include(fc => fc.Fields)
-                .FirstOrDefaultAsync(fc => fc.ComplexId == complexId);
-        }
-
-        public async Task<List<FieldComplex>> GetAllComplexesAsync()
-        {
-            return await _context.FieldComplexes
-                .Include(fc => fc.Fields)
-                .ToListAsync();
-        }
-
-        // -------------------------------
-        // 3 Phần sân nhỏ (Field)
-        // -------------------------------
-
         public async Task<Field> AddFieldAsync(Field field)
         {
             _context.Fields.Add(field);
