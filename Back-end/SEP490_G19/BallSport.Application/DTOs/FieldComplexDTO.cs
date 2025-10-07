@@ -6,30 +6,26 @@ using System.Threading.Tasks;
 
 namespace BallSport.Application.DTOs
 {
-    public class FieldDTO
+    public class FieldComplexDTO
     {
-        public int FieldId { get; set; }
+        public int ComplexId { get; set; }
 
-        public int? ComplexId { get; set; }
-
-        public int? TypeId { get; set; }
+        public int? OwnerId { get; set; }
 
         public string Name { get; set; } = null!;
 
-        public string? Size { get; set; }
-
-        public string? GrassType { get; set; }
+        public string Address { get; set; } = null!;
 
         public string? Description { get; set; }
 
         public byte[]? Image { get; set; }
 
-        public decimal? PricePerHour { get; set; }
-
         public string? Status { get; set; }
 
         public DateTime? CreatedAt { get; set; }
-        public string? ComplexName { get; set; }
-        public string? TypeName { get; set; }
+
+        public string? OwnerName { get; set; }
+
+        public List<FieldDTO>? Fields { get; set; }
     }
 }
