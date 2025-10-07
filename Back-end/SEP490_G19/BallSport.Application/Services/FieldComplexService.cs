@@ -67,7 +67,7 @@ namespace BallSport.Application.Services
             }).ToList();
         }
 
-        //  Lấy thông tin chi tiết 1 khu sân
+        // Lấy thông tin chi tiết 1 khu sân
         public async Task<FieldComplexDTO?> GetComplexByIdAsync(int complexId)
         {
             var c = await _complexRepository.GetComplexByIdAsync(complexId);
@@ -93,6 +93,40 @@ namespace BallSport.Application.Services
                     Status = f.Status
                 }).ToList()
             };
+        }
+
+        // UPDATE 
+        public async Task<FieldComplexDTO?> UpdateComplexAsync(FieldComplexDTO dto)
+        {
+            var existing = await _complexRepository.GetComplexByIdAsync(dto.ComplexId);
+            if (existing == null) return null;
+
+            existing.Name = dto.Name;
+            existing.Address = dto.Address;
+            existing.Description = dto.Description;
+            existing.OwnerId = dto.OwnerId;
+            existing.Status = dto.Status;
+            existing.Image = dto.Image;
+
+            var updated = await _complexRepository.UpdateComplexAsync(existing);
+
+            return new FieldComplexDTO
+            {
+                ComplexId = updated.ComplexId,
+                OwnerId = updated.OwnerId,
+                Name = updated.Name,
+                Address = updated.Address,
+                Description = updated.Description,
+                Status = updated.Status,
+                Image = updated.Image,
+                CreatedAt = updated.CreatedAt
+            };
+        }
+
+        // DELETE 
+        public async Task<bool> DeleteComplexAsync(int complexId)
+        {
+            return await _complexRepository.DeleteComplexAsync(complexId);
         }
     }
 }

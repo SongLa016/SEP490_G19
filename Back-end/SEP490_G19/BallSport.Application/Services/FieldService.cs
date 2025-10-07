@@ -13,7 +13,7 @@ namespace BallSport.Application.Services
             _fieldRepository = fieldRepository;
         }
 
-        // Thêm sân mới
+        // CREATE 
         public async Task<FieldDTO> AddFieldAsync(FieldDTO dto)
         {
             var field = new Field
@@ -47,7 +47,7 @@ namespace BallSport.Application.Services
             };
         }
 
-        // Lấy tất cả sân trong khu sân
+        //  Lấy tất cả sân trong khu sân
         public async Task<List<FieldDTO>> GetFieldsByComplexIdAsync(int complexId)
         {
             var fields = await _fieldRepository.GetFieldsByComplexIdAsync(complexId);
@@ -67,7 +67,7 @@ namespace BallSport.Application.Services
             }).ToList();
         }
 
-        // Lấy thông tin chi tiết 1 sân
+        //Lấy thông tin chi tiết 1 sân
         public async Task<FieldDTO?> GetFieldByIdAsync(int fieldId)
         {
             var f = await _fieldRepository.GetFieldByIdAsync(fieldId);
@@ -88,6 +88,47 @@ namespace BallSport.Application.Services
                 Status = f.Status,
                 CreatedAt = f.CreatedAt
             };
+        }
+
+        // UPDATE 
+        public async Task<FieldDTO?> UpdateFieldAsync(FieldDTO dto)
+        {
+            var existingField = await _fieldRepository.GetFieldByIdAsync(dto.FieldId);
+            if (existingField == null) return null;
+
+            existingField.Name = dto.Name;
+            existingField.Size = dto.Size;
+            existingField.GrassType = dto.GrassType;
+            existingField.Description = dto.Description;
+            existingField.TypeId = dto.TypeId;
+            existingField.PricePerHour = dto.PricePerHour;
+            existingField.Status = dto.Status;
+            existingField.Image = dto.Image;
+
+            var updated = await _fieldRepository.UpdateFieldAsync(existingField);
+
+            return new FieldDTO
+            {
+                FieldId = updated.FieldId,
+                ComplexId = updated.ComplexId,
+                TypeId = updated.TypeId,
+                Name = updated.Name,
+                Size = updated.Size,
+                GrassType = updated.GrassType,
+                Description = updated.Description,
+                PricePerHour = updated.PricePerHour,
+                Status = updated.Status,
+                CreatedAt = updated.CreatedAt
+            };
+        }
+
+        // DELETE 
+        public async Task<bool> DeleteFieldAsync(int fieldId)
+        {
+            var existingField = await _fieldRepository.GetFieldByIdAsync(fieldId);
+            if (existingField == null) return false;
+
+            return await _fieldRepository.DeleteFieldAsync(fieldId);
         }
     }
 }
