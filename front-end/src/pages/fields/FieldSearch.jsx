@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, MapPin, Star, Clock, Grid, List, Heart, SlidersHorizontal, ChevronLeft, ChevronRight, Sparkles, User, Map } from "lucide-react";
-import { Section, Container, Card, CardContent, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button } from "../../components/ui";
+import { Search, MapPin, Star, Clock, Grid, List, Heart, SlidersHorizontal, ChevronLeft, ChevronRight, Sparkles, User, Map, RefreshCcw, CircleDollarSign } from "lucide-react";
+import { Section, Container, Card, CardContent, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, DatePicker } from "../../components/ui";
 import { useNavigate } from "react-router-dom";
 import MapSearch from "../../components/MapSearch";
 import { fetchComplexes, fetchFields, fetchTimeSlots } from "../../services/fields";
@@ -15,6 +15,7 @@ export default function FieldSearch({ user }) {
      const [showFilters, setShowFilters] = useState(false);
      const [sortBy, setSortBy] = useState("relevance");
      const [activeTab, setActiveTab] = useState("all"); // all | near | best-price | top-rated | favorites
+     const [typeTab, setTypeTab] = useState("all"); // all | 5vs5 | 7vs7 | 11vs11
      const [page, setPage] = useState(1);
      const [pageComplex, setPageComplex] = useState(1);
      const fieldPageSize = 12;    // sân nhỏ
@@ -59,7 +60,7 @@ export default function FieldSearch({ user }) {
      const [fields, setFields] = useState([]);
      const [complexes, setComplexes] = useState([]);
      const [filteredFields, setFilteredFields] = useState([]);
-     // removed unused isLoading state
+     const [isLoading, setIsLoading] = useState(false);
 
      const didInitRef = useRef(false);
 
@@ -100,6 +101,7 @@ export default function FieldSearch({ user }) {
                     if (prefs.entityTab) setEntityTab(prefs.entityTab);
                     if (prefs.date) setDate(prefs.date);
                     if (prefs.slotId) setSlotId(prefs.slotId);
+                    if (prefs.typeTab) setTypeTab(prefs.typeTab);
                }
           } catch { }
      }, []);
@@ -119,6 +121,7 @@ export default function FieldSearch({ user }) {
           let ignore = false;
           async function load() {
                try {
+                    setIsLoading(true);
                     const [cList, fList] = await Promise.all([
                          fetchComplexes({ query: searchQuery, date, slotId }),
                          fetchFields({ query: searchQuery, date, slotId, sortBy })
@@ -127,8 +130,16 @@ export default function FieldSearch({ user }) {
                          setComplexes(cList);
                          setFields(fList);
                     }
+               } catch (error) {
+                    console.error("Error loading data:", error);
+                    if (!ignore) {
+                         setComplexes([]);
+                         setFields([]);
+                    }
                } finally {
-                    // no-op
+                    if (!ignore) {
+                         setIsLoading(false);
+                    }
                }
           }
           load();
@@ -149,6 +160,11 @@ export default function FieldSearch({ user }) {
           // Filter by location
           if (selectedLocation) {
                filtered = filtered.filter(field => (field.address || "").includes(selectedLocation));
+          }
+
+          // Filter by field type via tabs
+          if (typeTab !== "all") {
+               filtered = filtered.filter(field => (field.typeName || "").toLowerCase() === typeTab.toLowerCase());
           }
 
           // Filter by price
@@ -216,17 +232,16 @@ export default function FieldSearch({ user }) {
 
           setFilteredFields(filtered);
 
-          // Reset to first page whenever filters change
-          setPage(1);
-     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, fields]);
+          // Reset trang chỉ khi thực sự là thay đổi filter, không reset khi chỉ chuyển trang
+     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields]);
 
      // Persist preferences
      useEffect(() => {
           try {
-               const prefs = { viewMode, activeTab, page, entityTab, date, slotId };
+               const prefs = { viewMode, activeTab, page, entityTab, date, slotId, typeTab };
                window.localStorage.setItem("fieldSearchPrefs", JSON.stringify(prefs));
           } catch { }
-     }, [viewMode, activeTab, page, entityTab, date, slotId]);
+     }, [viewMode, activeTab, page, entityTab, date, slotId, typeTab]);
 
      const toggleFavorite = (fieldId) => {
           setFields(prev => prev.map(field =>
@@ -296,10 +311,10 @@ export default function FieldSearch({ user }) {
      const endIdxComplex = startIdxComplex + complexPageSize;
      const pageItemsComplex = complexes.slice(startIdxComplex, endIdxComplex);
 
-     const handlePrev = () => setPage(prev => Math.max(1, prev - 1));
-     const handleNext = () => setPage(prev => Math.min(totalPages, prev + 1));
-     const handlePrevComplex = () => setPageComplex(prev => Math.max(1, prev - 1));
-     const handleNextComplex = () => setPageComplex(prev => Math.min(totalPagesComplex, prev + 1));
+     const handlePrev = () => { setForceList(true); setPage(prev => Math.max(1, prev - 1)); };
+     const handleNext = () => { setForceList(true); setPage(prev => Math.min(totalPages, prev + 1)); };
+     const handlePrevComplex = () => { setForceList(true); setPageComplex(prev => Math.max(1, prev - 1)); };
+     const handleNextComplex = () => { setForceList(true); setPageComplex(prev => Math.min(totalPagesComplex, prev + 1)); };
 
      const quickPresets = [
           { key: "near", label: "Gần bạn" },
@@ -363,46 +378,33 @@ export default function FieldSearch({ user }) {
      const topRatedGroup = [...filteredFields].sort((a, b) => b.rating - a.rating).slice(0, 4);
 
      return (
-          <Section className="min-h-screen bg-gray-50">
-               <div className=" py-20 bg-[url('https://i.pinimg.com/originals/a3/c7/79/a3c779e5d5b622eeb598ac1d50c05cb8.png')] bg-cover bg-center">
+          <Section className="min-h-screen bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center">
+               <div className="py-32 mx-5 md:py-44 bg-[url('https://i.pinimg.com/originals/a3/c7/79/a3c779e5d5b622eeb598ac1d50c05cb8.png')] bg-cover bg-center rounded-b-3xl overflow-hidden">
                     <Container className="py-12">
                          <div className="text-center text-white">
                               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Tìm sân bóng phù hợp trong vài giây</h1>
                               <p className="mt-2 opacity-90">Lọc theo khu vực, giá, đánh giá và đặt sân ngay</p>
-                              <div className="mt-6 max-w-2xl mx-auto">
-                                   <div className="relative">
-                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-teal-500 w-5 h-5 pointer-events-none z-10" />
-                                        <Input
-                                             placeholder="Nhập từ khóa: tên sân, khu vực, địa chỉ..."
-                                             value={searchQuery}
-                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                             className="pl-12 h-12 rounded-xl bg-white/95 backdrop-blur border border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0 focus-visible:outline-none text-teal-900  placeholder:text-gray-400"
-                                        />
-                                   </div>
-                              </div>
                          </div>
                     </Container>
                </div>
-               <Container className="py-8 bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center bg-gray-50 relative" >
-                    {/* SaaS-style header */}
-                    <div className="mb-6">
-                         <div className="flex items-center justify-between">
-                              <div>
-                                   <h1 className="text-2xl font-bold text-teal-800">Danh sách sân</h1>
-                                   <div className="mt-1 h-1.5 w-24 bg-gradient-to-r from-teal-500 via-emerald-400 to-transparent rounded-full" />
-                                   <p className="text-teal-700 mt-2">Dành cho {user ? "người dùng đã đăng nhập" : "khách truy cập"}</p>
-                              </div>
-                              <div className="hidden md:flex items-center gap-2">
-                                   <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 shadow-sm">
-                                        {entityTab === "complexes" ? complexes.length : filteredFields.length} kết quả
-                                   </span>
+               <Container className="-mt-32 md:-mt-36 px-5 py-2 relative z-10 mb-20" >
+                    {/* Search Header */}
+                    <Card className="mb-4 border p-1 bg-white/80 backdrop-blur rounded-[30px] shadow-xl ring-1 ring-teal-100 border-teal-200"><CardContent>
+                         {/* SaaS-style header */}
+                         <div className="pt-4">
+                              <div className="flex items-center justify-between">
+                                   <div>
+                                        <h1 className="text-2xl font-bold text-teal-800">Danh sách sân</h1>
+                                        <div className="mt-1 h-1.5 w-24 bg-gradient-to-r from-teal-500 via-emerald-400 to-transparent rounded-full" />
+                                        <p className="text-teal-700 font-semibold mt-2">Dành cho {user ? "người dùng đã đăng nhập" : "khách truy cập"}</p>
+                                   </div>
+                                   <div className="hidden md:flex items-center gap-2">
+                                        <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 shadow-sm">
+                                             {entityTab === "complexes" ? complexes.length : filteredFields.length} kết quả
+                                        </span>
+                                   </div>
                               </div>
                          </div>
-
-
-                    </div>
-                    {/* Search Header */}
-                    <Card className="mb-4 border p-1 bg-white/60 backdrop-blur rounded-xl shadow-sm ring-1 ring-teal-100 border-teal-200"><CardContent>
                          <div className="lg:w-64 pt-4 mb-4">
                               <div className="inline-flex rounded-xl overflow-hidden border border-teal-200 bg-white/80">
                                    <Button
@@ -423,11 +425,26 @@ export default function FieldSearch({ user }) {
                                    </Button>
                               </div>
                          </div>
-                         <div className="flex flex-col lg:flex-row gap-4">
+                         <div className="flex flex-col lg:flex-row gap-2 md:gap-4">
                               <div className="flex-1">
                                    <div className="relative">
                                         <Search color="teal" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none z-10" />
-                                        <Input placeholder="Tìm kiếm sân bóng..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 border rounded-xl border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0 focus-visible:outline-none" />
+                                        <Input
+                                             placeholder="Tìm kiếm sân bóng, địa điểm..."
+                                             value={searchQuery}
+                                             onChange={(e) => setSearchQuery(e.target.value)}
+                                             className="pl-10 pr-10 border rounded-xl border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0 focus-visible:outline-none"
+                                        />
+                                        {searchQuery && (
+                                             <button
+                                                  onClick={() => setSearchQuery("")}
+                                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                             >
+                                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                  </svg>
+                                             </button>
+                                        )}
                                    </div>
                               </div>
 
@@ -496,21 +513,40 @@ export default function FieldSearch({ user }) {
                                    variant="outline"
                                    className="px-4 py-3 rounded-xl border border-red-200 text-red-700 hover:text-red-700 hover:bg-red-50"
                               >
-                                   Xóa bộ lọc
+                                   <RefreshCcw className="w-4 h-4" />
                               </Button>
                          </div>
 
                          {/* Quick presets */}
-                         <div className="mt-4 flex flex-wrap gap-2">
+                         <div className="mt-4 flex flex-wrap gap-2 items-center">
                               {quickPresets.map(p => (
                                    <Button
                                         key={p.key}
                                         onClick={() => setActiveTab(p.key)}
-                                        className={`px-2 h-8 rounded-full text-xs border ${activeTab === p.key ? "bg-teal-50 text-teal-700 border-teal-200" : "bg-white text-teal-600 border-gray-200 hover:border-gray-300"}`}
+                                        className={`px-2 h-8 rounded-full text-xs border ${activeTab === p.key ? "bg-teal-100 hover:bg-teal-100 text-teal-700 border-teal-200" : "bg-white text-teal-600 transition-all duration-200 border-gray-200 hover:bg-teal-600 hover:text-white hover:border-gray-300"}`}
                                    >
                                         <Sparkles className="w-3 h-3 inline mr-1" /> {p.label}
                                    </Button>
                               ))}
+
+                              {/* Type tabs for viewing more small fields by type */}
+                              <div className="ml-3 inline-flex rounded-full overflow-hidden border border-teal-200">
+                                   {[
+                                        { k: "all", l: "Tất cả" },
+                                        { k: "5vs5", l: "5 người" },
+                                        { k: "7vs7", l: "7 người" },
+
+                                   ].map(t => (
+                                        <Button
+                                             key={t.k}
+                                             type="button"
+                                             onClick={() => { setTypeTab(t.k); setPage(1); }}
+                                             className={`px-3 h-8 text-xs rounded-none ${typeTab === t.k ? "bg-teal-500 text-white" : "bg-white text-teal-700 hover:bg-teal-50"}`}
+                                        >
+                                             {t.l}
+                                        </Button>
+                                   ))}
+                              </div>
                          </div>
 
                          {/* Advanced Filters */}
@@ -549,12 +585,7 @@ export default function FieldSearch({ user }) {
                                    <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
                                         <div>
                                              <label className="block text-sm font-medium text-teal-600 mb-2">Ngày</label>
-                                             <input
-                                                  type="date"
-                                                  value={date}
-                                                  onChange={(e) => setDate(e.target.value)}
-                                                  className="w-full h-10 border rounded-xl border-teal-300 bg-white/80 px-3"
-                                             />
+                                             <DatePicker value={date} onChange={setDate} className="border border-teal-300 rounded-xl focus-visible:border-teal-500 focus-visible:ring-0" />
                                         </div>
                                         <div>
                                              <label className="block text-sm font-medium text-teal-600 mb-2">Slot</label>
@@ -668,32 +699,78 @@ export default function FieldSearch({ user }) {
                          </div>
                     </div>
 
-                    {/* Results */}
-                    {entityTab === "complexes" ? (
-                         <>
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-                                   {pageItemsComplex.map((c) => (
-                                        <div key={c.complexId} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/complex/${c.complexId}`)}>
-                                             <div className="relative overflow-hidden">
-                                                  <img src={c.image} alt={c.name} className="w-full h-40 object-cover" />
-                                             </div>
-                                             <div className="p-5 flex-1 flex flex-col">
-                                                  <h3 className="text-xl font-semibold text-teal-800 mb-1">{c.name}</h3>
-                                                  <div className="flex items-center text-teal-700 mb-2">
-                                                       <MapPin className="w-4 h-4 mr-1" />
-                                                       <span className="text-sm">{c.address}</span>
-                                                  </div>
-                                                  <div className="flex items-center justify-between mb-3">
-                                                       <span className="text-sm bg-teal-50 text-teal-700 px-2 py-1 rounded-full border border-teal-200">{c.availableFields}/{c.totalFields} sân trống</span>
-                                                       <span className="text-lg font-bold text-teal-600">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(c.minPriceForSelectedSlot)}</span>
-                                                  </div>
-                                                  <div className="mt-auto">
-                                                       <Button onClick={(e) => { e.stopPropagation(); navigate(`/complex/${c.complexId}`); }} className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-xl font-semibold">Xem chi tiết</Button>
-                                                  </div>
-                                             </div>
-                                        </div>
-                                   ))}
+                    {/* Loading State */}
+                    {isLoading && (
+                         <div className="flex items-center justify-center py-12">
+                              <div className="flex items-center space-x-2 text-teal-600">
+                                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-600"></div>
+                                   <span className="text-lg font-medium">Đang tải...</span>
                               </div>
+                         </div>
+                    )}
+
+                    {/* Results */}
+                    {!isLoading && entityTab === "complexes" ? (
+                         <>
+                              {viewMode === "grid" ? (
+                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+                                        {pageItemsComplex.map((c) => (
+                                             <div key={c.complexId} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/complex/${c.complexId}`)}>
+                                                  <div className="relative overflow-hidden">
+                                                       <img src={c.image} alt={c.name} className="w-full h-40 object-cover" />
+                                                  </div>
+                                                  <div className="p-5 flex-1 flex flex-col">
+                                                       <h3 className="text-xl font-semibold text-teal-800 mb-1">{c.name}</h3>
+                                                       <div className="flex items-center text-teal-700 mb-2">
+                                                            <MapPin className="w-4 h-4 mr-1" />
+                                                            <span className="text-sm">{c.address}</span>
+                                                       </div>
+                                                       <div className="flex items-center justify-between mb-3">
+                                                            <span className="text-sm bg-teal-50 text-teal-700 px-2 py-1 rounded-full border border-teal-200">{c.availableFields}/{c.totalFields} sân trống</span>
+                                                            <span className="text-lg font-bold text-teal-600">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(c.minPriceForSelectedSlot)}</span>
+                                                       </div>
+                                                       <div className="mt-auto">
+                                                            <Button onClick={(e) => { e.stopPropagation(); navigate(`/complex/${c.complexId}`); }} className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-xl font-semibold">Xem chi tiết</Button>
+                                                       </div>
+                                                  </div>
+                                             </div>
+                                        ))}
+                                   </div>
+                              ) : (
+                                   <div className="space-y-4">
+                                        {pageItemsComplex.map((c) => (
+                                             <div key={c.complexId} className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden hover:scale-[1.01] duration-300 transition-all border border-teal-100 hover:border-teal-200 cursor-pointer" onClick={() => navigate(`/complex/${c.complexId}`)}>
+                                                  <div className="flex">
+                                                       <div className="w-96 h-52 flex-shrink-0">
+                                                            <img src={c.image} alt={c.name} className="w-full h-full rounded-2xl object-cover" />
+                                                       </div>
+                                                       <div className="flex-1 px-4 py-1">
+                                                            <div className="flex justify-between items-start">
+                                                                 <div className="flex bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-1">
+                                                                      <MapPin className="w-4 h-4 mr-1" />
+                                                                      <span className="text-xs font-semibold">{c.address}</span>
+                                                                 </div>
+                                                            </div>
+                                                            <div className="flex items-center justify-between mb-3">
+                                                                 <div className="flex-1 items-center">
+                                                                      <h3 className="text-2xl font-bold text-teal-800 px-2">{c.name}</h3>
+                                                                 </div>
+                                                                 <div className="text-xl font-bold text-teal-600">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(c.minPriceForSelectedSlot)}</div>
+                                                            </div>
+                                                            <div className="flex justify-between items-center">
+                                                                 <div className="text-sm items-center flex text-gray-500">
+                                                                      <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{c.availableFields}/{c.totalFields} sân</span>
+                                                                 </div>
+                                                                 <div className="flex space-x-2">
+                                                                      <Button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/complex/${c.complexId}`); }} className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-4 rounded-xl font-semibold">Xem chi tiết</Button>
+                                                                 </div>
+                                                            </div>
+                                                       </div>
+                                                  </div>
+                                             </div>
+                                        ))}
+                                   </div>
+                              )}
                               {/* Pagination for complexes */}
                               {totalComplex > 0 && (
                                    <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -732,13 +809,16 @@ export default function FieldSearch({ user }) {
                                    </div>
                               )}
                          </>
-                    ) : isGroupedView ? (
+                    ) : !isLoading && isGroupedView ? (
                          <div className="space-y-10">
                               <div>
                                    <div className="flex items-center justify-between mb-4">
-                                        <h2 className="text-lg flex gap-1 font-semibold text-teal-800">
-                                             <MapPin />
-                                             <p> Gần bạn </p></h2>
+                                        <h2 className="text-lg font-extrabold text-teal-800 tracking-tight">
+                                             <span className="inline-flex items-center gap-2 px-2 py-1 rounded-full border border-teal-300 bg-teal-50">
+                                                  <MapPin className="w-5 h-5 text-teal-600" />
+                                                  <span>Gần bạn</span>
+                                             </span>
+                                        </h2>
                                         <Button
                                              type="button"
                                              onClick={() => { setActiveTab("near"); setForceList(true); setPage(1); setEntityTab("complexes"); }}
@@ -789,7 +869,12 @@ export default function FieldSearch({ user }) {
                               </div>
                               <div>
                                    <div className="flex items-center justify-between mb-4">
-                                        <h2 className="text-lg font-semibold text-teal-800">Giá tốt</h2>
+                                        <h2 className="text-lg font-extrabold text-red-700 tracking-tight">
+                                             <span className="inline-flex items-center gap-2 px-2 py-1 rounded-full border border-red-300 bg-red-50">
+                                                  <CircleDollarSign className="w-4 h-4 text-red-600" />
+                                                  <span>Giá tốt</span>
+                                             </span>
+                                        </h2>
                                         <Button
                                              type="button"
                                              onClick={() => { setActiveTab("best-price"); setForceList(true); setPage(1); }}
@@ -846,7 +931,12 @@ export default function FieldSearch({ user }) {
                               </div>
                               <div>
                                    <div className="flex items-center justify-between mb-4">
-                                        <h2 className="text-lg font-semibold text-teal-800">Đánh giá cao</h2>
+                                        <h2 className="text-lg font-extrabold text-teal-800 tracking-tight">
+                                             <span className="inline-flex items-center gap-2 px-2 py-1 rounded-full border border-yellow-300 bg-yellow-50">
+                                                  <Star className="w-5 h-5 text-yellow-500" />
+                                                  <span>Đánh giá cao</span>
+                                             </span>
+                                        </h2>
                                         <Button
                                              type="button"
                                              onClick={() => { setActiveTab("top-rated"); setForceList(true); setPage(1); }}
@@ -903,172 +993,171 @@ export default function FieldSearch({ user }) {
                                    </div>
                               </div>
                          </div>
-                    ) :
-                         viewMode === "grid" ? (
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-                                   {pageItems.map((field) => (
-                                        <div key={field.fieldId} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
-                                             <div className="relative overflow-hidden">
+                    ) : !isLoading && viewMode === "grid" ? (
+                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+                              {pageItems.map((field) => (
+                                   <div key={field.fieldId} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
+                                        <div className="relative overflow-hidden">
+                                             <img
+                                                  src={field.image}
+                                                  alt={field.name}
+                                                  className="w-full h-40 object-cover transition-transform duration-300 ease-out group-hover:scale-105"
+                                             />
+                                             <div className="absolute top-4 right-4 flex space-x-2">
+                                                  <Button
+                                                       type="button"
+                                                       onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleToggleFavorite(field.id);
+                                                       }}
+                                                       variant="outline"
+                                                       className={`h-8 w-8 p-0 rounded-full shadow-sm transition-colors border ${field.isFavorite ? "bg-teal-500 text-white border-teal-500" : "bg-white text-teal-700 border-teal-200 hover:bg-teal-50"}`}
+                                                  >
+                                                       <Heart className="w-4 h-4" />
+                                                  </Button>
+                                                  <div className="bg-white/95 backdrop-blur px-2 py-1 rounded-full text-sm font-semibold text-teal-600 border border-teal-200 shadow-sm">
+                                                       {slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName}
+                                                  </div>
+                                             </div>
+                                        </div>
+                                        <div className="p-4 flex-1 flex flex-col">
+                                             <h3 className="text-xl font-semibold text-teal-800 mb-2">{field.name}</h3>
+                                             <div className="flex bg-teal-50 border border-teal-100 p-1 rounded-full w-fit items-center text-teal-700 mb-2">
+                                                  <MapPin className="w-4 h-4 mr-1" />
+                                                  <span className="text-xs line-clamp-1">{field.address}</span>
+                                             </div>
+
+                                             <div className="flex items-center justify-between mb-4">
+                                                  <div className="flex items-center">
+                                                       {activeTab === "near" ? (
+                                                            <>
+                                                                 <MapPin className="w-4 h-4 text-red-500 mr-1" />
+                                                                 <span className="text-sm font-bold text-red-600">{field.distanceKm ? `${Number(field.distanceKm).toFixed(1)} km` : ""}</span>
+                                                            </>
+                                                       ) : activeTab === "best-price" ? (
+                                                            <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full">Giá tốt nhất</span>
+                                                       ) : activeTab === "top-rated" ? (
+                                                            <>
+                                                                 <Star className="w-4 h-4 text-red-500 mr-1" />
+                                                                 <span className="text-sm font-bold text-red-600">{field.rating}</span>
+                                                                 <span className="text-sm text-red-500 ml-1">({field.reviewCount})</span>
+                                                            </>
+                                                       ) : (
+                                                            <>
+                                                                 <Star className="w-4 h-4 text-teal-400 mr-1" />
+                                                                 <span className="text-sm font-semibold">{field.rating}</span>
+                                                                 <span className="text-sm text-gray-500 ml-1">({field.reviewCount})</span>
+                                                            </>
+                                                       )}
+                                                  </div>
+                                                  <div className={`text-lg font-bold ${activeTab === "best-price" ? "text-red-500" : "text-teal-600"}`}>{formatPrice(field.priceForSelectedSlot || 0)}/trận</div>
+                                             </div>
+                                             <div className="flex items-center gap-2 mb-4">
+                                                  <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200">{field.amenities[0]}</span>
+                                                  {field.amenities.length > 1 && (
+                                                       <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200">+{field.amenities.length - 1}</span>
+                                                  )}
+                                             </div>
+                                             <div className="mt-auto">
+                                                  <Button
+                                                       type="button"
+                                                       onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleBook(field.fieldId);
+                                                       }}
+                                                       className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-xl font-semibold transition-colors"
+                                                  >
+                                                       Đặt sân
+                                                  </Button>
+                                             </div>
+                                        </div>
+                                   </div>
+                              ))}
+                         </div>
+                    ) : (
+                         <div className="space-y-4">
+                              {pageItems.map((field) => (
+                                   <div key={field.fieldId} className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden hover:scale-105 duration-300 transition-all border border-teal-100 hover:border-teal-200 cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
+                                        <div className="flex">
+                                             <div className="w-96 h-52 flex-shrink-0">
                                                   <img
                                                        src={field.image}
                                                        alt={field.name}
-                                                       className="w-full h-40 object-cover transition-transform duration-300 ease-out group-hover:scale-105"
+                                                       className="w-full h-full rounded-2xl object-cover"
                                                   />
-                                                  <div className="absolute top-4 right-4 flex space-x-2">
+                                             </div>
+                                             <div className="flex-1 px-4 py-1">
+                                                  <div className="flex justify-between items-start">
+                                                       <div className="flex  bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-1">
+                                                            <MapPin className="w-4 h-4 mr-1" />
+                                                            <span className="text-xs font-semibold">{field.address}</span>
+                                                       </div>
                                                        <Button
-                                                            type="button"
                                                             onClick={(e) => {
                                                                  e.stopPropagation();
                                                                  handleToggleFavorite(field.id);
                                                             }}
-                                                            variant="outline"
-                                                            className={`h-8 w-8 p-0 rounded-full shadow-sm transition-colors border ${field.isFavorite ? "bg-teal-500 text-white border-teal-500" : "bg-white text-teal-700 border-teal-200 hover:bg-teal-50"}`}
+                                                            className={`px-3 rounded-full ${field.isFavorite ? "bg-red-500 text-white hover:bg-red-600" : "bg-teal-100 text-teal-700 hover:border-red-100 hover:border hover:text-red-600 hover:bg-red-50"}`}
                                                        >
                                                             <Heart className="w-4 h-4" />
                                                        </Button>
-                                                       <div className="bg-white/95 backdrop-blur px-2 py-1 rounded-full text-sm font-semibold text-teal-600 border border-teal-200 shadow-sm">
-                                                            {slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName}
-                                                       </div>
-                                                  </div>
-                                             </div>
-                                             <div className="p-5 flex-1 flex flex-col">
-                                                  <h3 className="text-xl font-semibold text-teal-800 mb-2">{field.name}</h3>
-                                                  <div className="flex items-center text-teal-700 mb-2">
-                                                       <MapPin className="w-4 h-4 mr-1" />
-                                                       <span className="text-sm">{field.address}</span>
                                                   </div>
 
-                                                  <div className="flex items-center justify-between mb-4">
-                                                       <div className="flex items-center">
-                                                            {activeTab === "near" ? (
-                                                                 <>
-                                                                      <MapPin className="w-4 h-4 text-red-500 mr-1" />
-                                                                      <span className="text-sm font-bold text-red-600">{field.distanceKm ? `${Number(field.distanceKm).toFixed(1)} km` : ""}</span>
-                                                                 </>
-                                                            ) : activeTab === "best-price" ? (
-                                                                 <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full">Giá tốt nhất</span>
-                                                            ) : activeTab === "top-rated" ? (
-                                                                 <>
-                                                                      <Star className="w-4 h-4 text-red-500 mr-1" />
-                                                                      <span className="text-sm font-bold text-red-600">{field.rating}</span>
-                                                                      <span className="text-sm text-red-500 ml-1">({field.reviewCount})</span>
-                                                                 </>
-                                                            ) : (
-                                                                 <>
-                                                                      <Star className="w-4 h-4 text-teal-400 mr-1" />
-                                                                      <span className="text-sm font-semibold">{field.rating}</span>
-                                                                      <span className="text-sm text-gray-500 ml-1">({field.reviewCount})</span>
-                                                                 </>
-                                                            )}
-                                                       </div>
-                                                       <div className={`text-lg font-bold ${activeTab === "best-price" ? "text-red-500" : "text-teal-600"}`}>{formatPrice(field.priceForSelectedSlot || 0)}/trận</div>
-                                                  </div>
-                                                  <div className="flex items-center gap-2 mb-4">
-                                                       <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200">{field.amenities[0]}</span>
-                                                       {field.amenities.length > 1 && (
-                                                            <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200">+{field.amenities.length - 1}</span>
-                                                       )}
-                                                  </div>
-                                                  <div className="mt-auto">
-                                                       <Button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                 e.stopPropagation();
-                                                                 handleBook(field.fieldId);
-                                                            }}
-                                                            className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-xl font-semibold transition-colors"
-                                                       >
-                                                            Đặt sân
-                                                       </Button>
-                                                  </div>
-                                             </div>
-                                        </div>
-                                   ))}
-                              </div>
-                         ) : (
-                              <div className="space-y-4">
-                                   {pageItems.map((field) => (
-                                        <div key={field.fieldId} className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden hover:scale-105 duration-300 transition-all border border-teal-100 hover:border-teal-200 cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
-                                             <div className="flex">
-                                                  <div className="w-96 h-52 flex-shrink-0">
-                                                       <img
-                                                            src={field.image}
-                                                            alt={field.name}
-                                                            className="w-full h-full rounded-2xl object-cover"
-                                                       />
-                                                  </div>
-                                                  <div className="flex-1 px-4 py-1">
-                                                       <div className="flex justify-between items-start">
-                                                            <div className="flex  bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-1">
-                                                                 <MapPin className="w-4 h-4 mr-1" />
-                                                                 <span className="text-xs font-semibold">{field.address}</span>
+                                                  <div className="flex items-center justify-between mb-3">
+                                                       <div className="flex-1 items-center">
+                                                            <h3 className="text-2xl font-bold text-teal-800 px-2">{field.name}</h3>
+                                                            <div className="flex items-center"> <Star className="w-4 h-4 text-teal-400 mr-1" />
+                                                                 <span className="text-sm font-semibold">{field.rating}</span>
+                                                                 <span className="text-sm text-gray-500 ml-1">({field.reviewCount} đánh giá)</span>
                                                             </div>
+                                                       </div>
+                                                       <div className="text-xl font-bold text-teal-600">{formatPrice(field.priceForSelectedSlot || 0)}/trận</div>
+                                                  </div>
+                                                  <div className="text-xs text-teal-700 mb-2 break-words">
+                                                       {field.address}
+                                                       <a
+                                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(field.address || "")}`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="ml-2 text-teal-600 underline"
+                                                       >
+                                                            Xem bản đồ
+                                                       </a>
+                                                  </div>
+                                                  <div className="flex flex-wrap gap-2 mb-5">
+                                                       {field.amenities.map((amenity, index) => (
+                                                            <span
+                                                                 key={index}
+                                                                 className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200"
+                                                            >
+                                                                 {amenity}
+                                                            </span>
+                                                       ))}
+                                                  </div>
+                                                  <div className="flex justify-between items-center">
+                                                       <div className="text-sm items-center flex text-gray-500">
+                                                            <Clock className="w-4 h-4 inline mr-1" />
+                                                            <p> {slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName} • {field.distanceKm ? `${Number(field.distanceKm).toFixed(1)} km` : ""} </p>
+                                                       </div>
+                                                       <div className="flex space-x-2">
                                                             <Button
+                                                                 type="button"
                                                                  onClick={(e) => {
                                                                       e.stopPropagation();
-                                                                      handleToggleFavorite(field.id);
+                                                                      handleBook(field.fieldId);
                                                                  }}
-                                                                 className={`px-3 rounded-full ${field.isFavorite ? "bg-red-500 text-white hover:bg-red-600" : "bg-teal-100 text-teal-700 hover:border-red-100 hover:border hover:text-red-600 hover:bg-red-50"}`}
+                                                                 className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-4 rounded-xl font-semibold"
                                                             >
-                                                                 <Heart className="w-4 h-4" />
+                                                                 Đặt sân
                                                             </Button>
-                                                       </div>
-
-                                                       <div className="flex items-center justify-between mb-3">
-                                                            <div className="flex-1 items-center">
-                                                                 <h3 className="text-2xl font-bold text-teal-800 px-2">{field.name}</h3>
-                                                                 <div className="flex items-center"> <Star className="w-4 h-4 text-teal-400 mr-1" />
-                                                                      <span className="text-sm font-semibold">{field.rating}</span>
-                                                                      <span className="text-sm text-gray-500 ml-1">({field.reviewCount} đánh giá)</span>
-                                                                 </div>
-                                                            </div>
-                                                            <div className="text-xl font-bold text-teal-600">{formatPrice(field.priceForSelectedSlot || 0)}/trận</div>
-                                                       </div>
-                                                       <div className="text-xs text-teal-700 mb-2 break-words">
-                                                            {field.address}
-                                                            <a
-                                                                 href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(field.address || "")}`}
-                                                                 target="_blank"
-                                                                 rel="noreferrer"
-                                                                 className="ml-2 text-teal-600 underline"
-                                                            >
-                                                                 Xem bản đồ
-                                                            </a>
-                                                       </div>
-                                                       <div className="flex flex-wrap gap-2 mb-5">
-                                                            {field.amenities.map((amenity, index) => (
-                                                                 <span
-                                                                      key={index}
-                                                                      className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200"
-                                                                 >
-                                                                      {amenity}
-                                                                 </span>
-                                                            ))}
-                                                       </div>
-                                                       <div className="flex justify-between items-center">
-                                                            <div className="text-sm items-center flex text-gray-500">
-                                                                 <Clock className="w-4 h-4 inline mr-1" />
-                                                                 <p> {slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName} • {field.distanceKm ? `${Number(field.distanceKm).toFixed(1)} km` : ""} </p>
-                                                            </div>
-                                                            <div className="flex space-x-2">
-                                                                 <Button
-                                                                      type="button"
-                                                                      onClick={(e) => {
-                                                                           e.stopPropagation();
-                                                                           handleBook(field.fieldId);
-                                                                      }}
-                                                                      className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-4 rounded-xl font-semibold"
-                                                                 >
-                                                                      Đặt sân
-                                                                 </Button>
-                                                            </div>
                                                        </div>
                                                   </div>
                                              </div>
                                         </div>
-                                   ))}
-                              </div>
-                         )}
+                                   </div>
+                              ))}
+                         </div>
+                    )}
 
                     {/* Pagination for fields (only when viewing Sân nhỏ list) */}
                     {entityTab === "fields" && filteredFields.length > 0 && !isGroupedView && (
@@ -1165,14 +1254,14 @@ export default function FieldSearch({ user }) {
                          </div>
                     )}
 
-                    {filteredFields.length === 0 && (
+                    {!isLoading && filteredFields.length === 0 && (
                          <div className="text-center py-12">
                               <div className="text-gray-400 mb-4">
                                    <Search className="w-16 h-16 mx-auto" />
                               </div>
                               <h3 className="text-lg font-semibold text-teal-800 mb-2">Không tìm thấy sân bóng</h3>
                               <p className="text-teal-700 mb-4">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
-                              <button
+                              <Button
                                    onClick={() => {
                                         setSearchQuery("");
                                         setSelectedLocation("");
@@ -1184,13 +1273,12 @@ export default function FieldSearch({ user }) {
                                         // reset map-driven filters
                                         setForceList(false);
                                         setMapSearchKey(prev => prev + 1); // Force MapSearch reset
-                                        // Clear localStorage search preset
-                                        localStorage.removeItem('searchPreset');
+
                                    }}
                                    className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-xl font-semibold transition-colors"
                               >
-                                   Xóa bộ lọc
-                              </button>
+                                   <RefreshCcw className="w-4 h-4" />
+                              </Button>
                          </div>
                     )}
                </Container>

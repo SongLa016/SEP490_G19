@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Calendar, MapPin, ArrowLeft, CheckCircle } from "lucide-react";
+import { Button } from "../../components/ui";
 import { createBooking } from "../../utils/bookingStore";
 import { getCurrentUser } from "../../utils/authStore";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -15,10 +16,14 @@ export default function Booking({ user }) {
           fieldAddress: location.state?.fieldAddress || "123 Đường ABC, Phường Bến Nghé, Quận 1, TP.HCM",
           date: location.state?.date || "2024-12-15",
           slotId: location.state?.slotId || null,
+          slotName: location.state?.slotName || "",
           time: "",
-          duration: 2,
-          price: 200000,
-          totalPrice: 400000,
+          duration: 1,
+          price: location.state?.price || 200000,
+          totalPrice: location.state?.price || 200000,
+          depositPercent: 0.3, // default 30% theo DepositPolicies
+          depositAmount: 0,
+          remainingAmount: 0,
           customerName: user?.name || "",
           customerPhone: user?.phone || "",
           customerEmail: user?.email || "",
@@ -29,6 +34,14 @@ export default function Booking({ user }) {
      const [pendingInfo, setPendingInfo] = useState(null); // { bookingId, qrCodeUrl, qrExpiresAt }
 
      const formatPrice = (price) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+
+     // compute totals based on DB concepts: FieldPrices + DepositPolicies
+     useEffect(() => {
+          const total = (bookingData.price || 0) * (bookingData.duration || 1);
+          const deposit = Math.round(total * (bookingData.depositPercent || 0));
+          const remaining = Math.max(0, total - deposit);
+          setBookingData(prev => ({ ...prev, totalPrice: total, depositAmount: deposit, remainingAmount: remaining }));
+     }, [bookingData.price, bookingData.duration, bookingData.depositPercent]);
 
      const handleInputChange = (field, value) => {
           setBookingData((prev) => ({ ...prev, [field]: value }));
@@ -62,7 +75,14 @@ export default function Booking({ user }) {
      const createPending = async () => {
           setIsProcessing(true);
           try {
-               const created = await createPendingBooking({ fieldId: bookingData.fieldId, date: bookingData.date, slotId: bookingData.slotId, customer: { name: bookingData.customerName, phone: bookingData.customerPhone, email: bookingData.customerEmail } });
+               const created = await createPendingBooking({
+                    fieldId: bookingData.fieldId,
+                    date: bookingData.date,
+                    slotId: bookingData.slotId,
+                    customer: { name: bookingData.customerName, phone: bookingData.customerPhone, email: bookingData.customerEmail },
+                    pricing: { unitPrice: bookingData.price, duration: bookingData.duration, total: bookingData.totalPrice },
+                    deposit: { percent: bookingData.depositPercent, amount: bookingData.depositAmount }
+               });
                setPendingInfo(created);
                setStep("payment");
           } finally {
@@ -75,9 +95,9 @@ export default function Booking({ user }) {
                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                     <div className="bg-gradient-to-r from-teal-500 to-orange-500 px-6 py-8 text-white">
                          <div className="flex items-center mb-4">
-                              <button onClick={() => navigate(-1)} className="mr-4 p-2 hover:bg-white/20 rounded-lg transition-colors">
+                              <Button type="button" onClick={() => navigate(-1)} variant="outline" className="mr-4 bg-white/20 hover:bg-white/30 border-white/40 text-white">
                                    <ArrowLeft className="w-5 h-5" />
-                              </button>
+                              </Button>
                               <h1 className="text-2xl font-bold">Đặt sân bóng</h1>
                          </div>
                          <p className="text-teal-100">Xác nhận thông tin đặt sân của bạn</p>
@@ -122,9 +142,11 @@ export default function Booking({ user }) {
                                    <div className="bg-gray-50 rounded-lg p-4">
                                         <div className="space-y-3">
                                              <div className="flex justify-between"><span className="text-gray-600">Ngày</span><span className="font-medium">{bookingData.date}</span></div>
-                                             {bookingData.time && (<div className="flex justify-between"><span className="text-gray-600">Giờ</span><span className="font-medium">{bookingData.time}</span></div>)}
-                                             <div className="flex justify-between"><span className="text-gray-600">Thời gian</span><span className="font-medium">{bookingData.duration} giờ</span></div>
+                                             {(bookingData.time || bookingData.slotName) && (<div className="flex justify-between"><span className="text-gray-600">Giờ</span><span className="font-medium">{bookingData.time || bookingData.slotName}</span></div>)}
+                                             <div className="flex justify-between"><span className="text-gray-600">Thời lượng</span><span className="font-medium">{bookingData.duration} giờ</span></div>
                                              <div className="flex justify-between"><span className="text-gray-600">Giá/giờ</span><span className="font-medium">{formatPrice(bookingData.price)}</span></div>
+                                             <div className="flex justify-between"><span className="text-gray-600">Tiền cọc ({Math.round((bookingData.depositPercent || 0) * 100)}%)</span><span className="font-medium text-teal-700">{formatPrice(bookingData.depositAmount)}</span></div>
+                                             <div className="flex justify-between"><span className="text-gray-600">Còn lại</span><span className="font-medium">{formatPrice(bookingData.remainingAmount)}</span></div>
                                              <div className="border-t border-gray-300 pt-3">
                                                   <div className="flex justify-between text-lg font-semibold">
                                                        <span>Tổng cộng</span>
@@ -134,7 +156,9 @@ export default function Booking({ user }) {
                                         </div>
                                    </div>
                                    <div className="mt-6">
-                                        <button onClick={createPending} className="w-full bg-teal-500 hover:bg-teal-600 text-white py-3 px-4 rounded-lg font-semibold transition-colors" disabled={isProcessing}>{isProcessing ? "Đang tạo giữ chỗ..." : "Giữ chỗ & tiếp tục thanh toán"}</button>
+                                        <Button type="button" onClick={createPending} className="w-full bg-teal-600 hover:bg-teal-700 text-white py-3 rounded-lg font-semibold" disabled={isProcessing}>
+                                             {isProcessing ? "Đang tạo giữ chỗ..." : "Giữ chỗ & tiếp tục thanh toán"}
+                                        </Button>
                                    </div>
                               </div>
                          </div>
@@ -148,9 +172,9 @@ export default function Booking({ user }) {
                <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                     <div className="bg-gradient-to-r from-teal-500 to-orange-500 px-6 py-8 text-white">
                          <div className="flex items-center mb-4">
-                              <button onClick={() => setStep("details")} className="mr-4 p-2 hover:bg-white/20 rounded-lg transition-colors">
+                              <Button type="button" onClick={() => setStep("details")} variant="outline" className="mr-4 bg-white/20 hover:bg-white/30 border-white/40 text-white">
                                    <ArrowLeft className="w-5 h-5" />
-                              </button>
+                              </Button>
                               <h1 className="text-2xl font-bold">Thanh toán</h1>
                          </div>
                          <p className="text-teal-100">Chọn phương thức thanh toán</p>
@@ -212,7 +236,9 @@ export default function Booking({ user }) {
                                              <div className="flex justify-between"><span className="text-gray-600">Tổng cộng</span><span className="font-semibold text-teal-600">{formatPrice(bookingData.totalPrice)}</span></div>
                                         </div>
                                    </div>
-                                   <button onClick={handlePayment} disabled={isProcessing} className={`mt-4 w-full py-3 rounded-lg text-white font-semibold ${isProcessing ? "bg-gray-400" : "bg-teal-500 hover:bg-teal-600"}`}>{isProcessing ? "Đang xử lý..." : "Xác nhận thanh toán"}</button>
+                                   <Button type="button" onClick={handlePayment} disabled={isProcessing} className={`mt-4 w-full py-3 rounded-lg text-white font-semibold ${isProcessing ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}>
+                                        {isProcessing ? "Đang xử lý..." : "Xác nhận thanh toán"}
+                                   </Button>
                               </div>
                          </div>
                     </div>
@@ -229,7 +255,7 @@ export default function Booking({ user }) {
                          <p className="text-green-100">Bạn có thể xem chi tiết trong mục Lịch sử đặt sân.</p>
                     </div>
                     <div className="p-6 text-center">
-                         <button onClick={() => navigate("/bookings")} className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-3 rounded-lg font-semibold">Về lịch sử đặt sân</button>
+                         <Button type="button" onClick={() => navigate("/bookings")} className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-lg font-semibold">Về lịch sử đặt sân</Button>
                     </div>
                </div>
           </div>

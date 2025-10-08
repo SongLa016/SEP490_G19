@@ -23,6 +23,7 @@ import Community from "./pages/community/Community";
 // Auth Pages
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import Booking from "./pages/booking/Booking";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -111,7 +112,7 @@ function App() {
           path="/bookings"
           element={
             <MainLayout>
-              <BookingHistory user={user} />
+              <Booking user={user} />
             </MainLayout>
           }
         />

@@ -16,6 +16,9 @@ export {
   SelectScrollDownButton,
 } from "./select";
 export { Button } from "./button";
+export { Textarea } from "./textarea";
+export { Calendar as UiCalendar } from "./calendar";
+export { DatePicker } from "./datepicker";
 
 // Display components
 export {
