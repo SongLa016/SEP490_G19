@@ -1,7 +1,12 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\ballsport.infrastructure.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\ballsport.infrastructure.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
@@ -9,11 +14,24 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": -1,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "BallSport.Infrastructure",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
+              "RelativeToolTip": "BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAABQAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-10-08T14:16:09.981Z",
+              "EditorCaption": ""
             }
           ]
         }
