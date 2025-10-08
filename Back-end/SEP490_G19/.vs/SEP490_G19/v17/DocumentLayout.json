@@ -3,8 +3,44 @@
   "WorkspaceRootPath": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\ballsport.infrastructure.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\ballsport.infrastructure.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\ballsport.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\ballsport.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\logincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\logincontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\ballsport.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\ballsport.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\logindto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\logindto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\services\\jwtservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\services\\jwtservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\services\\userservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\services\\userservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\weatherforecastcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\weatherforecastcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\repositories\\userrepositories.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\repositories\\userrepositories.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -14,7 +50,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Bookmark",
@@ -22,15 +58,132 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.json",
+              "RelativeDocumentMoniker": "BallSport.API\\appsettings.json",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.json",
+              "RelativeToolTip": "BallSport.API\\appsettings.json",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAcAAAAmAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-10-08T17:09:39.712Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "BallSport.Infrastructure",
-              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
-              "RelativeDocumentMoniker": "BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
-              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
-              "RelativeToolTip": "BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
-              "ViewState": "AQIAAAAAAAAAAAAAAAAAABQAAAAAAAAA",
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Program.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Program.cs",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Program.cs",
+              "RelativeToolTip": "BallSport.API\\Program.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAA8AAAAaAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-08T17:09:18.613Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "LoginDTO.cs",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\LoginDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\LoginDTO.cs",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\LoginDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\LoginDTO.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAsAAAAWAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-08T16:59:56.913Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "JwtService.cs",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\JwtService.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\Services\\JwtService.cs",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\JwtService.cs",
+              "RelativeToolTip": "BallSport.Application\\Services\\JwtService.cs",
+              "ViewState": "AQIAAAQAAAAAAAAAAADwvwwAAAAbAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-08T16:45:03.89Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "BallSport.Application.csproj",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\BallSport.Application.csproj",
+              "RelativeDocumentMoniker": "BallSport.Application\\BallSport.Application.csproj",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\BallSport.Application.csproj",
+              "RelativeToolTip": "BallSport.Application\\BallSport.Application.csproj",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAA4AAAAAAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-10-08T14:16:09.981Z",
+              "WhenOpened": "2025-10-08T15:48:08.922Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "BallSport.API",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.csproj",
+              "RelativeDocumentMoniker": "BallSport.API\\BallSport.API.csproj",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.csproj",
+              "RelativeToolTip": "BallSport.API\\BallSport.API.csproj",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAoAAAABAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-10-08T16:57:02.664Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "LoginController.cs",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\LoginController.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Controllers\\LoginController.cs",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\LoginController.cs",
+              "RelativeToolTip": "BallSport.API\\Controllers\\LoginController.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAABIAAAAbAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-08T16:36:27.189Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "WeatherForecastController.cs",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\WeatherForecastController.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Controllers\\WeatherForecastController.cs",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\WeatherForecastController.cs",
+              "RelativeToolTip": "BallSport.API\\Controllers\\WeatherForecastController.cs",
+              "ViewState": "AQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-08T16:57:09.713Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "UserService.cs",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\UserService.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\Services\\UserService.cs",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\UserService.cs",
+              "RelativeToolTip": "BallSport.Application\\Services\\UserService.cs",
+              "ViewState": "AQIAABMAAAAAAAAAAAAswCUAAAANAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-08T15:48:29.37Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "UserRepositories.cs",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\UserRepositories.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\UserRepositories.cs",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\UserRepositories.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Repositories\\UserRepositories.cs",
+              "ViewState": "AQIAAAYAAAAAAAAAAAAAABgAAAAHAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-08T15:46:10.716Z",
               "EditorCaption": ""
             }
           ]

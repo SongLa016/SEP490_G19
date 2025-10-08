@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace BallSport.Infrastructure.Models;
+namespace BallSport.Infrastructure.Data;
 
 public partial class Sep490G19v1Context : DbContext
 {
