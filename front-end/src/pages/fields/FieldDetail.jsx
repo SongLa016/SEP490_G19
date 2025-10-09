@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { MapPin, Star, Phone, Mail, User, Info, Images, MessageSquare, Send } from "lucide-react";
 import { Container, Card, CardContent, Button, Input, Section, Textarea, DatePicker } from "../../components/ui";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +14,10 @@ export default function FieldDetail({ user }) {
      const [complexMeta, setComplexMeta] = useState(null);
      const [isLoading, setIsLoading] = useState(false);
      const [error, setError] = useState(null);
+
+     // Lightbox state for gallery images
+     const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+     const [lightboxIndex, setLightboxIndex] = useState(0);
 
      // Booking form fields (Package Detail style)
      const [customerName, setCustomerName] = useState("");
@@ -79,6 +83,40 @@ export default function FieldDetail({ user }) {
           const average = total === 0 ? 0 : (field.reviews.reduce((s, r) => s + r.rating, 0) / total);
           return { total, counts, average };
      }, [field.reviews]);
+
+     const galleryImages = field.images || [];
+
+     const openLightbox = (index) => {
+          if (!galleryImages.length) return;
+          setLightboxIndex(Math.max(0, Math.min(index, galleryImages.length - 1)));
+          setIsLightboxOpen(true);
+     };
+
+     const closeLightbox = () => {
+          setIsLightboxOpen(false);
+     };
+
+     const showNext = useCallback(() => {
+          if (!galleryImages.length) return;
+          setLightboxIndex((i) => (i + 1) % galleryImages.length);
+     }, [galleryImages.length]);
+
+     const showPrev = useCallback(() => {
+          if (!galleryImages.length) return;
+          setLightboxIndex((i) => (i - 1 + galleryImages.length) % galleryImages.length);
+     }, [galleryImages.length]);
+
+     // Keyboard navigation when lightbox is open
+     useEffect(() => {
+          if (!isLightboxOpen) return;
+          const onKeyDown = (e) => {
+               if (e.key === "Escape") closeLightbox();
+               if (e.key === "ArrowRight") showNext();
+               if (e.key === "ArrowLeft") showPrev();
+          };
+          window.addEventListener("keydown", onKeyDown);
+          return () => window.removeEventListener("keydown", onKeyDown);
+     }, [isLightboxOpen, galleryImages.length, showNext, showPrev]);
 
      const formatPrice = (price) => {
           return new Intl.NumberFormat('vi-VN', {
@@ -204,8 +242,8 @@ export default function FieldDetail({ user }) {
                     </Container>
                </div>
                {/* Navigation Tabs */}
-               <Container className="-mt-32 md:-mt-20 px-5 py-2 relative z-10 ">
-                    <Card className="border p-1 mx-auto bg-white/80 backdrop-blur rounded-2xl shadow-xl">
+               <Container className="-mt-32 md:-mt-20 px-5 py-2 relative z-10">
+                    <Card className="border p-1 mx-20 bg-white/80 backdrop-blur rounded-2xl shadow-xl">
                          <CardContent className="p-1">
                               <div className="relative">
                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
@@ -215,7 +253,7 @@ export default function FieldDetail({ user }) {
                                              { key: "location", label: "Location", icon: MapPin },
                                              { key: "gallery", label: "Gallery", icon: Images },
                                         ].map(t => (
-                                             <button
+                                             <Button
                                                   key={t.key}
                                                   type="button"
                                                   onClick={() => setActiveTab(t.key)}
@@ -224,14 +262,14 @@ export default function FieldDetail({ user }) {
                                                        : "bg-white/70 hover:bg-teal-50 border-teal-200/60"}
                                                   `}
                                              >
-                                                  <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full border text-teal-700 ${activeTab === t.key ? "border-teal-400 bg-white" : "border-teal-200 bg-teal-50 group-hover:border-teal-300"}`}>
+                                                  <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full  text-teal-700 ${activeTab === t.key ? "border-teal-400 bg-white" : "border-teal-200 bg-teal-50 group-hover:border-teal-300"}`}>
                                                        <t.icon className={`w-5 h-5 ${activeTab === t.key ? "text-teal-700" : "text-teal-600"}`} />
                                                   </span>
-                                                  <span className={`font-semibold ${activeTab === t.key ? "text-teal-800" : "text-gray-600 group-hover:text-teal-700"}`}>{t.label}</span>
+                                                  <span className={`font-semibold text-xl ${activeTab === t.key ? "text-teal-800" : "text-gray-600 group-hover:text-teal-700"}`}>{t.label}</span>
                                                   {activeTab === t.key && (
                                                        <span className="absolute -bottom-1 left-6 right-6 h-1 rounded-full bg-gradient-to-r from-teal-500 via-emerald-400 to-teal-500" />
                                                   )}
-                                             </button>
+                                             </Button>
                                         ))}
                                    </div>
                               </div>
@@ -334,8 +372,14 @@ export default function FieldDetail({ user }) {
                                                        <h3 className="font-bold text-xl text-teal-800 mb-1">Từ thư viện ảnh</h3>
                                                        <p className="text-gray-600 mb-4">Khám phá những hình ảnh đẹp nhất về sân bóng này.</p>
                                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                                            {field.images.slice(0, 6).map((img, i) => (
-                                                                 <img key={i} src={img} alt={`gallery-${i}`} className="w-full h-32 object-cover rounded-lg hover:scale-105 transition-transform cursor-pointer" />
+                                                            {galleryImages.slice(0, 6).map((img, i) => (
+                                                                 <img
+                                                                      key={i}
+                                                                      src={img}
+                                                                      alt={`gallery-${i}`}
+                                                                      onClick={() => openLightbox(i)}
+                                                                      className="w-full h-32 object-cover rounded-lg hover:scale-105 transition-transform cursor-pointer"
+                                                                 />
                                                             ))}
                                                        </div>
                                                   </div>
@@ -504,8 +548,14 @@ export default function FieldDetail({ user }) {
                                                        <p className="text-gray-600">Khám phá những hình ảnh đẹp nhất về sân bóng này.</p>
                                                   </div>
                                                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                                       {field.images.map((img, i) => (
-                                                            <img key={i} src={img} alt={`gallery-${i}`} className="w-full h-48 object-cover rounded-lg hover:scale-105 transition-transform cursor-pointer" />
+                                                       {galleryImages.map((img, i) => (
+                                                            <img
+                                                                 key={i}
+                                                                 src={img}
+                                                                 alt={`gallery-${i}`}
+                                                                 onClick={() => openLightbox(i)}
+                                                                 className="w-full h-48 object-cover rounded-lg hover:scale-105 transition-transform cursor-pointer"
+                                                            />
                                                        ))}
                                                   </div>
                                              </div>
@@ -633,7 +683,58 @@ export default function FieldDetail({ user }) {
                     </Container>
                </Container>
 
-
+               {/* Lightbox Modal */}
+               {isLightboxOpen && (
+                    <div
+                         role="dialog"
+                         aria-modal="true"
+                         className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80"
+                         onClick={closeLightbox}
+                    >
+                         <div className="relative max-w-5xl w-full px-4" onClick={(e) => e.stopPropagation()}>
+                              <img
+                                   src={galleryImages[lightboxIndex]}
+                                   alt={`preview-${lightboxIndex}`}
+                                   className="max-h-[80vh] w-full object-contain rounded-lg shadow-2xl"
+                              />
+                              {/* Controls */}
+                              <button
+                                   type="button"
+                                   aria-label="Close"
+                                   onClick={closeLightbox}
+                                   className="absolute top-2 right-2 text-white/90 hover:text-white bg-black/40 hover:bg-black/60 rounded-full p-2"
+                              >
+                                   ✕
+                              </button>
+                              {galleryImages.length > 1 && (
+                                   <>
+                                        <button
+                                             type="button"
+                                             aria-label="Previous"
+                                             onClick={showPrev}
+                                             className="absolute left-2 top-1/2 -translate-y-1/2 text-white/90 hover:text-white bg-black/40 hover:bg-black/60 rounded-full p-3"
+                                        >
+                                             ‹
+                                        </button>
+                                        <button
+                                             type="button"
+                                             aria-label="Next"
+                                             onClick={showNext}
+                                             className="absolute right-2 top-1/2 -translate-y-1/2 text-white/90 hover:text-white bg-black/40 hover:bg-black/60 rounded-full p-3"
+                                        >
+                                             ›
+                                        </button>
+                                   </>
+                              )}
+                              {/* Counter */}
+                              {galleryImages.length > 0 && (
+                                   <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-white/90 text-sm bg-black/40 px-3 py-1 rounded-full">
+                                        {lightboxIndex + 1} / {galleryImages.length}
+                                   </div>
+                              )}
+                         </div>
+                    </div>
+               )}
 
           </Section >
      );
