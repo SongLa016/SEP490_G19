@@ -17,6 +17,7 @@ import HomePage from "./pages/HomePage";
 import Dashboard from "./pages/dashboard/Dashboard";
 import FieldSearch from "./pages/fields/FieldSearch";
 import FieldDetail from "./pages/fields/FieldDetail";
+import ComplexDetail from "./pages/fields/ComplexDetail";
 import BookingHistory from "./pages/booking/BookingHistory";
 import Community from "./pages/community/Community";
 
@@ -97,6 +98,14 @@ function App() {
           element={
             <MainLayout>
               <FieldSearch user={user} />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/complex/:id"
+          element={
+            <MainLayout>
+              <ComplexDetail user={user} />
             </MainLayout>
           }
         />

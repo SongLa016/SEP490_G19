@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { MapPin, Star, Phone, Mail, User, Info, Images, MessageSquare, Send } from "lucide-react";
 import { Container, Card, CardContent, Button, Input, Section, Textarea, DatePicker } from "../../components/ui";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { fetchFieldAvailability, fetchTimeSlots, fetchFieldMeta } from "../../services/fields";
 
 export default function FieldDetail({ user }) {
      const navigate = useNavigate();
+     const location = useLocation();
      const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
      const [selectedSlotId, setSelectedSlotId] = useState("");
      const [timeSlots, setTimeSlots] = useState([]);
@@ -313,6 +314,14 @@ export default function FieldDetail({ user }) {
                                                             ))}
                                                             <span className="ml-2 font-semibold text-gray-600">({field.reviewCount} đánh giá)</span>
                                                        </div>
+                                                       <button
+                                                            type="button"
+                                                            onClick={() => navigate(`/complex/${complexMeta?.complex?.complexId || ''}?date=${new URLSearchParams(location.search).get('date') || ''}`)}
+                                                            className="text-sm text-white/90 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg border border-white/20"
+                                                            disabled={!complexMeta?.complex?.complexId}
+                                                       >
+                                                            Xem toàn bộ khu sân
+                                                       </button>
                                                   </div>
                                              </div>
                                              <div className="text-right flex items-center gap-2">
@@ -605,25 +614,31 @@ export default function FieldDetail({ user }) {
                                                             </div>
                                                        ) : (
                                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-lg border-teal-200 p-2 bg-white">
-                                                                 {availabilityWithSlotMeta.map((slot) => (
-                                                                      <button
-                                                                           key={slot.slotId}
-                                                                           type="button"
-                                                                           onClick={() => slot.available && setSelectedSlotId(slot.slotId)}
-                                                                           disabled={!slot.available}
-                                                                           className={`p-2 text-xs rounded-lg border transition-colors ${selectedSlotId === slot.slotId
-                                                                                ? "bg-teal-600 text-white border-teal-600"
-                                                                                : slot.available
-                                                                                     ? "bg-white text-teal-800 border-teal-200 hover:bg-teal-50 hover:border-teal-300"
-                                                                                     : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                                                                }`}
-                                                                      >
-                                                                           <div className="font-medium">{slot.slotMeta?.name || `Slot ${slot.slotId}`}</div>
-                                                                           <div className="text-xs opacity-75">
-                                                                                {slot.available ? "Còn chỗ" : "Hết chỗ"}
-                                                                           </div>
-                                                                      </button>
-                                                                 ))}
+                                                                 {availabilityWithSlotMeta.map((slot) => {
+                                                                      const isSelected = selectedSlotId === slot.slotId;
+                                                                      return (
+                                                                           <button
+                                                                                key={slot.slotId}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                     if (!slot.available) return;
+                                                                                     setSelectedSlotId(isSelected ? "" : slot.slotId);
+                                                                                }}
+                                                                                disabled={!slot.available}
+                                                                                className={`p-2 text-xs rounded-lg border transition-colors ${isSelected
+                                                                                     ? "bg-teal-600 text-white border-teal-600"
+                                                                                     : slot.available
+                                                                                          ? "bg-white text-teal-800 border-teal-200 hover:bg-teal-50 hover:border-teal-300"
+                                                                                          : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                                                                     }`}
+                                                                           >
+                                                                                <div className="font-medium">{slot.slotMeta?.name || `Slot ${slot.slotId}`}</div>
+                                                                                <div className="text-xs opacity-75">
+                                                                                     {slot.available ? "Còn chỗ" : "Hết chỗ"}
+                                                                                </div>
+                                                                           </button>
+                                                                      );
+                                                                 })}
                                                             </div>
                                                        )}
                                                   </div>
