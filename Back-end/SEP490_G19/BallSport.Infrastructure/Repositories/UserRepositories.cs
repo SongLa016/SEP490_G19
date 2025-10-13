@@ -52,7 +52,19 @@ namespace BallSport.Infrastructure.Repositories
             return _context.Roles.FirstOrDefault(r => r.RoleName == "Player");
         }
 
-        
+        public void UpdateUser(User user)
+        {
+            _context.Users.Update(user);
+            _context.SaveChanges();
+        }
+
+        public string GenerateOtp(int length = 6)
+        {
+            var random = new Random();
+            return string.Concat(Enumerable.Range(0, length).Select(_ => random.Next(0, 10)));
+        }
+
+
         public void AddUserRole(int userId, int roleId)
         {
             var userRole = new UserRole

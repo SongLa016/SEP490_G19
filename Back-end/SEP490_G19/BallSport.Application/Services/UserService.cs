@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using BallSport.Infrastructure;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
+using Banking.Application.Services;
 using Microsoft.EntityFrameworkCore;
 
 
@@ -16,14 +17,24 @@ namespace BallSport.Application.Services
     {
         private readonly UserRepositories _userRepository;
         private readonly JwtService _jwtService;
+        private readonly EmailService _emailService;
+        private readonly OTPService _otpService;
 
-
-////////////////////////////////////// Login ////////////////////////////////////////////////
-        public UserService(UserRepositories userRepository, JwtService jwtService)
+        public UserService(UserRepositories userRepository, JwtService jwtService, EmailService emailService, OTPService otpService)
         {
             _userRepository = userRepository;
             _jwtService = jwtService;
+            _emailService = emailService;
+            _otpService = otpService;
         }
+
+
+
+
+
+        ////////////////////////////////////// Login ////////////////////////////////////////////////
+
+
 
         public bool CheckPassword(string phone, string inputPassword)
         {
@@ -39,7 +50,7 @@ namespace BallSport.Application.Services
 
             if (CheckPassword(phone, inputPassword))
             {
-                
+
                 return _jwtService.GenerateToken(user.UserId, user.Email, user.FullName, user.Phone
                 );
             }
@@ -52,11 +63,11 @@ namespace BallSport.Application.Services
 
         public User HandleGoogleLogin(string email, string fullName)
         {
-            
+
             var existingUser = _userRepository.GetUserByEmail(email);
             if (existingUser != null)
             {
-                return existingUser; 
+                return existingUser;
             }
 
 
@@ -80,8 +91,47 @@ namespace BallSport.Application.Services
         }
 
 
+        //////////////////////////////// Resert Pass ////////////////////////////////////////////////
+
+        public async Task<User?> SendOtpForForgotPasswordAsync(string email)
+        {
+            var user = _userRepository.GetUserByEmail(email);
+            if (user == null) return null;
+
+
+            var otp = _userRepository.GenerateOtp();
+
+
+            _otpService.SaveOtp(email, otp, expireMinutes: 5);
+
+
+            await _emailService.SendOtpEmailAsync(email, otp);
+
+            return user; 
+        }
+
+
+        public async Task<bool> VerifyOtpAndResetPasswordAsync(string otp)
+        {
+            
+            var email = _otpService.VerifyAndGetEmailByOtp(otp);
+            if (email == null) return false; 
+
+            var user = _userRepository.GetUserByEmail(email);
+            if (user == null) return false;
+
+         
+            var newPassword = _userRepository.GenerateRandomPassword();
+            user.PasswordHash = newPassword; 
+            _userRepository.UpdateUser(user);
+
+           
+            await _emailService.SendEmailAsync(email, "Mật khẩu mới", $"Mật khẩu mới của bạn là: {newPassword}");
+
+            return true;
 
 
 
+        }
     }
 }

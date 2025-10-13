@@ -7,6 +7,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using BallSport.Infrastructure.Models;
+using Banking.Application.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -62,6 +64,9 @@ builder.Services.AddAuthentication(options =>
     options.CallbackPath = "/signin-google"; // đúng URI bạn đã cấu hình trong Google Cloud
 });
 
+var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
+services.AddSingleton(smtpSettings);
+services.AddTransient<EmailService>();
 
 var app = builder.Build();
 
