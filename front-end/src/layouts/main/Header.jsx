@@ -46,7 +46,6 @@ export default function Header({ user, onLoggedOut }) {
                     ...baseItems,
                     { id: "bookings", label: "Bookings", icon: Calendar },
                     { id: "community", label: "Community", icon: Users },
-                    { id: "profile", label: "Profile", icon: User },
                ];
           } else if (user.role === "FieldOwner") {
                return [
@@ -56,7 +55,6 @@ export default function Header({ user, onLoggedOut }) {
                     { id: "reports", label: "Reports", icon: BarChart3 },
                     { id: "community", label: "Community", icon: Users },
                     { id: "reports", label: "Reports", icon: BarChart3 },
-                    { id: "profile", label: "Profile", icon: User },
                ];
           } else if (user.role === "Admin") {
                return [
@@ -65,7 +63,7 @@ export default function Header({ user, onLoggedOut }) {
                     { id: "fields", label: "Fields", icon: MapPin },
                     { id: "reports", label: "Reports", icon: BarChart3 },
                     { id: "community", label: "Community", icon: Users },
-                    { id: "profile", label: "Profile", icon: User },
+
                ];
           }
 
@@ -90,7 +88,7 @@ export default function Header({ user, onLoggedOut }) {
                               {navigationItems.map((item) => {
                                    const Icon = item.icon;
                                    return (
-                                        <button
+                                        <Button
                                              key={item.id}
                                              onClick={() => navigate(`/${item.id}`)}
                                              className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-colors ${location.pathname === `/${item.id}`
@@ -100,7 +98,7 @@ export default function Header({ user, onLoggedOut }) {
                                         >
                                              <Icon className="w-4 h-4 mr-2" />
                                              {item.label}
-                                        </button>
+                                        </Button>
                                    );
                               })}
                          </nav>
@@ -126,29 +124,35 @@ export default function Header({ user, onLoggedOut }) {
                                         {isProfileOpen && (
                                              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
                                                   <div className="px-4 py-2 border-b">
-                                                       <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                                                       <p className="text-xs text-gray-500">{user.email}</p>
+                                                       <p className="text-sm font-medium text-gray-900">{user.name || `@${user.username}`}</p>
+                                                       {user.name && <p className="text-xs text-gray-500">@{user.username}</p>}
+                                                       {user.email && (
+                                                            <p className="text-xs text-gray-400">{user.emailVerified ? "✓ Email đã xác thực" : "⚠ Email chưa xác thực"}</p>
+                                                       )}
+                                                       {!user.name && (
+                                                            <p className="text-xs text-gray-400">Cập nhật thông tin trong profile</p>
+                                                       )}
                                                   </div>
-                                                  <button
+                                                  <Button
                                                        onClick={() => {
                                                             navigate("/profile");
                                                             setIsProfileOpen(false);
                                                        }}
-                                                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
                                                   >
                                                        <Settings className="w-4 h-4 mr-2" />
                                                        Settings
-                                                  </button>
-                                                  <button
+                                                  </Button>
+                                                  <Button
                                                        onClick={() => {
                                                             onLoggedOut();
                                                             setIsProfileOpen(false);
                                                        }}
-                                                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
                                                   >
                                                        <LogOut className="w-4 h-4 mr-2" />
                                                        Logout
-                                                  </button>
+                                                  </Button>
                                              </div>
                                         )}
                                    </div>
@@ -171,12 +175,12 @@ export default function Header({ user, onLoggedOut }) {
                               )}
 
                               {/* Mobile menu button */}
-                              <button
+                              <Button
                                    onClick={() => setIsMenuOpen(!isMenuOpen)}
                                    className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
                               >
                                    {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                              </button>
+                              </Button>
                          </div>
                     </div>
 
@@ -187,7 +191,7 @@ export default function Header({ user, onLoggedOut }) {
                                    {navigationItems.map((item) => {
                                         const Icon = item.icon;
                                         return (
-                                             <button
+                                             <Button
                                                   key={item.id}
                                                   onClick={() => {
                                                        navigate(`/${item.id}`);
@@ -200,7 +204,7 @@ export default function Header({ user, onLoggedOut }) {
                                              >
                                                   <Icon className="w-5 h-5 mr-3" />
                                                   {item.label}
-                                             </button>
+                                             </Button>
                                         );
                                    })}
                               </div>

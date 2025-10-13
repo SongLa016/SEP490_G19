@@ -1,17 +1,17 @@
 import React, { useState } from "react";
 import { MapPin, Users, BarChart3, Shield } from "lucide-react";
-import { logout, updateUserProfile, changePassword } from "../../utils/authStore";
+import { updateUserProfile, changePassword } from "../../utils/authStore";
+import { useAuth } from "../../contexts/AuthContext";
 import Header from "../../layouts/main/Header";
 import Footer from "../../layouts/main/Footer";
 import HomePage from "../HomePage";
 import FieldSearch from "../fields/FieldSearch";
-import FieldDetail from "../fields/FieldDetail";
-import Booking from "../booking/Booking";
 import BookingHistory from "../booking/BookingHistory";
 import Invoice from "../booking/Invoice";
-import { Section } from "../../components/ui";
+import { Button, Section } from "../../components/ui";
 
-export default function Dashboard({ user, onLoggedOut, currentView, navigateTo }) {
+export default function Dashboard({ currentView, navigateTo }) {
+     const { user, logout } = useAuth();
      const [name, setName] = useState(user?.name || "");
      const [phone, setPhone] = useState(user?.phone || "");
      const [oldPassword, setOldPassword] = useState("");
@@ -21,11 +21,6 @@ export default function Dashboard({ user, onLoggedOut, currentView, navigateTo }
      const [pwdMsg, setPwdMsg] = useState("");
      const [pwdErr, setPwdErr] = useState("");
 
-     function handleLogout() {
-          logout();
-          onLoggedOut();
-     }
-
      // Render different content based on current view
      const renderContent = () => {
           switch (currentView) {
@@ -33,10 +28,6 @@ export default function Dashboard({ user, onLoggedOut, currentView, navigateTo }
                     return <HomePage user={user} navigateTo={navigateTo} />;
                case "search":
                     return <FieldSearch user={user} navigateTo={navigateTo} />;
-               case "field-detail":
-                    return <FieldDetail user={user} navigateTo={navigateTo} />;
-               case "booking":
-                    return <Booking user={user} navigateTo={navigateTo} />;
                case "profile":
                     return renderProfileContent();
                case "bookings":
@@ -119,7 +110,7 @@ export default function Dashboard({ user, onLoggedOut, currentView, navigateTo }
                               {profileErr && <div className="rounded border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">{profileErr}</div>}
                               {profileMsg && <div className="rounded border border-green-200 bg-green-50 text-green-700 px-3 py-2 text-sm">{profileMsg}</div>}
                               <div className="mt-2">
-                                   <button
+                                   <Button
                                         onClick={() => {
                                              setProfileErr("");
                                              setProfileMsg("");
@@ -131,7 +122,7 @@ export default function Dashboard({ user, onLoggedOut, currentView, navigateTo }
                                         className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
                                    >
                                         Cập nhật thông tin
-                                   </button>
+                                   </Button>
                               </div>
 
                               <div className="pt-6 border-t">
@@ -149,7 +140,7 @@ export default function Dashboard({ user, onLoggedOut, currentView, navigateTo }
                                         </div>
                                    </div>
                                    <div className="mt-4">
-                                        <button
+                                        <Button
                                              onClick={() => {
                                                   setPwdErr("");
                                                   setPwdMsg("");
@@ -163,7 +154,7 @@ export default function Dashboard({ user, onLoggedOut, currentView, navigateTo }
                                              className="bg-gray-900 hover:bg-black text-white px-6 py-2 rounded-lg font-semibold transition-colors"
                                         >
                                              Đổi mật khẩu
-                                        </button>
+                                        </Button>
                                    </div>
                               </div>
                          </div>
@@ -202,9 +193,9 @@ export default function Dashboard({ user, onLoggedOut, currentView, navigateTo }
                          <div className="text-center py-8 text-gray-500">
                               <MapPin className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                               <p>Chưa có sân nào được thêm</p>
-                              <button className="mt-4 bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
+                              <Button className="mt-4 bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-semibold transition-colors">
                                    Thêm sân mới
-                              </button>
+                              </Button>
                          </div>
                     </div>
                </div>
@@ -266,7 +257,7 @@ export default function Dashboard({ user, onLoggedOut, currentView, navigateTo }
           <Section className="min-h-screen  text-white">
                <Header
                     user={user}
-                    onLoggedOut={handleLogout}
+                    onLoggedOut={logout}
                     currentView={currentView}
                     navigateTo={navigateTo}
                />

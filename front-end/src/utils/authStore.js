@@ -41,6 +41,13 @@ export function findUserByEmail(email) {
   );
 }
 
+export function findUserByUsername(username) {
+  const users = getUsers();
+  return users.find(
+    (u) => u.username.toLowerCase() === String(username).toLowerCase()
+  );
+}
+
 function saveUser(updatedUser) {
   const users = getUsers();
   const idx = users.findIndex((u) => u.id === updatedUser.id);
@@ -83,19 +90,26 @@ export function verifyOtpForEmail(email, code) {
 }
 
 export function registerUser({
-  email,
+  username,
   password,
   role,
   ownerDocs,
   name,
   phone,
+  email,
 }) {
-  if (findUserByEmail(email)) {
+  if (findUserByUsername(username)) {
+    return { ok: false, reason: "Tên đăng nhập đã tồn tại" };
+  }
+
+  // Check email only if provided
+  if (email && findUserByEmail(email)) {
     return { ok: false, reason: "Email đã tồn tại" };
   }
+
   const user = {
     id: generateId(),
-    email,
+    username,
     password, // For demo only (no hashing in mock)
     role:
       role === "FieldOwner"
@@ -103,16 +117,24 @@ export function registerUser({
         : role === "Admin"
         ? "Admin"
         : "User",
-    status: "inactive", // will activate after OTP
+    status: "active", // Active immediately for username-based login
     ownerDocs: role === "FieldOwner" ? ownerDocs || null : null,
-    name: name || email.split("@")[0],
+    name: name || null, // Optional name, can be added later in profile
     phone: phone || null,
+    email: email || null, // Optional email
+    emailVerified: false, // Email verification status
     avatar: null,
     createdAt: Date.now(),
   };
   saveUser(user);
-  const otp = createOtpForEmail(email);
-  return { ok: true, user, otp };
+
+  // Only create OTP if email is provided
+  if (email) {
+    const otp = createOtpForEmail(email);
+    return { ok: true, user, otp, requiresEmailVerification: true };
+  }
+
+  return { ok: true, user, requiresEmailVerification: false };
 }
 
 export function completeRegistrationWithOtp({ email, code }) {
@@ -136,11 +158,11 @@ export function completeRegistrationWithOtp({ email, code }) {
   return { ok: true, user };
 }
 
-export function loginWithPassword({ email, password }) {
-  const user = findUserByEmail(email);
-  if (!user) return { ok: false, reason: "Sai email hoặc mật khẩu" };
+export function loginWithPassword({ username, password }) {
+  const user = findUserByUsername(username);
+  if (!user) return { ok: false, reason: "Sai tên đăng nhập hoặc mật khẩu" };
   if (user.password !== password)
-    return { ok: false, reason: "Sai email hoặc mật khẩu" };
+    return { ok: false, reason: "Sai tên đăng nhập hoặc mật khẩu" };
   setCurrentUser(user);
   return { ok: true, user };
 }
@@ -149,8 +171,10 @@ export function mockGoogleLogin({ email, name }) {
   // If user exists, login; else create as User active
   let user = findUserByEmail(email);
   if (!user) {
+    const username = email.split("@")[0] + Math.floor(Math.random() * 1000);
     user = {
       id: generateId(),
+      username,
       email,
       password: null,
       role: "User",
@@ -158,6 +182,7 @@ export function mockGoogleLogin({ email, name }) {
       createdAt: Date.now(),
       name: name || email.split("@")[0],
       phone: null,
+      emailVerified: true, // Google login is pre-verified
       avatar: null,
     };
     saveUser(user);
@@ -179,8 +204,73 @@ export function logout() {
   setCurrentUser(null);
 }
 
+// Demo users for testing
+export function createDemoUsers() {
+  const demoUsers = [
+    {
+      id: "demo_user_1",
+      username: "demo",
+      password: "123456",
+      role: "User",
+      status: "active",
+      name: "Nguyễn Văn Demo",
+      phone: "0123456789",
+      email: "demo@example.com",
+      emailVerified: true,
+      avatar: null,
+      createdAt: Date.now(),
+    },
+    {
+      id: "demo_owner_1",
+      username: "owner",
+      password: "123456",
+      role: "FieldOwner",
+      status: "active",
+      name: "Chủ sân Demo",
+      phone: "0987654321",
+      email: "owner@example.com",
+      emailVerified: true,
+      avatar: null,
+      createdAt: Date.now(),
+    },
+    {
+      id: "demo_admin_1",
+      username: "admin",
+      password: "123456",
+      role: "Admin",
+      status: "active",
+      name: "Admin Demo",
+      phone: "0111222333",
+      email: "admin@example.com",
+      emailVerified: true,
+      avatar: null,
+      createdAt: Date.now(),
+    },
+  ];
+
+  // Check if demo users already exist
+  const existingUsers = getUsers();
+  const existingUsernames = existingUsers.map((u) => u.username);
+
+  demoUsers.forEach((demoUser) => {
+    if (!existingUsernames.includes(demoUser.username)) {
+      existingUsers.push(demoUser);
+    }
+  });
+
+  saveUsers(existingUsers);
+  return demoUsers;
+}
+
 // Profile helpers
-export function updateUserProfile({ userId, name, phone, avatar }) {
+export function updateUserProfile({
+  userId,
+  name,
+  phone,
+  avatar,
+  email,
+  emailVerified,
+}) {
   const users = getUsers();
   const idx = users.findIndex((u) => u.id === userId);
   if (idx < 0) return { ok: false, reason: "Không tìm thấy người dùng" };
@@ -190,6 +280,8 @@ export function updateUserProfile({ userId, name, phone, avatar }) {
     name: name ?? user.name,
     phone: phone ?? user.phone,
     avatar: avatar ?? user.avatar,
+    email: email ?? user.email,
+    emailVerified: emailVerified ?? user.emailVerified,
   };
   users[idx] = updated;
   saveUsers(users);

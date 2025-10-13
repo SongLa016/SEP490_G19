@@ -52,52 +52,52 @@ const LandingPage = () => {
 
                          {/* Persona Toggle - Professional Style */}
                          <div className="hidden sm:flex bg-white/5 backdrop-blur-sm rounded-lg p-1 border border-white/10 justify-center">
-                              <button
+                              <Button
                                    onClick={() => setSelectedPersona('customer')}
                                    className={`px-4 py-2 rounded-md transition-all duration-300 flex items-center gap-2 text-sm font-medium ${selectedPersona === 'customer'
-                                             ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
-                                             : 'text-slate-300 hover:text-white hover:bg-white/5'
+                                        ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
+                                        : 'text-slate-300 hover:text-white hover:bg-white/5'
                                         }`}
                               >
                                    <User className="w-4 h-4" />
                                    Đặt sân
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                    onClick={() => setSelectedPersona('business')}
                                    className={`px-4 py-2 rounded-md transition-all duration-300 flex items-center gap-2 text-sm font-medium ${selectedPersona === 'business'
-                                             ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
-                                             : 'text-slate-300 hover:text-white hover:bg-white/5'
+                                        ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
+                                        : 'text-slate-300 hover:text-white hover:bg-white/5'
                                         }`}
                               >
                                    <Building2 className="w-4 h-4" />
                                    Quản lý sân
-                              </button>
+                              </Button>
                          </div>
                     </div>
 
                     {/* Mobile Persona Toggle */}
                     <div className="sm:hidden flex justify-center mb-5 px-6">
                          <div className="bg-white/5 backdrop-blur-sm rounded-lg p-1 border border-white/10 w-full max-w-xs">
-                              <button
+                              <Button
                                    onClick={() => setSelectedPersona('customer')}
                                    className={`w-full px-4 py-3 rounded-md transition-all duration-300 flex items-center justify-center gap-2 text-sm font-medium ${selectedPersona === 'customer'
-                                             ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
-                                             : 'text-slate-300 hover:text-white hover:bg-white/5'
+                                        ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
+                                        : 'text-slate-300 hover:text-white hover:bg-white/5'
                                         }`}
                               >
                                    <User className="w-4 h-4" />
                                    Đặt sân
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                    onClick={() => setSelectedPersona('business')}
                                    className={`w-full px-4 py-3 rounded-md transition-all duration-300 flex items-center justify-center gap-2 text-sm font-medium ${selectedPersona === 'business'
-                                             ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
-                                             : 'text-slate-300 hover:text-white hover:bg-white/5'
+                                        ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
+                                        : 'text-slate-300 hover:text-white hover:bg-white/5'
                                         }`}
                               >
                                    <Building2 className="w-4 h-4" />
                                    Quản lý sân
-                              </button>
+                              </Button>
                          </div>
                     </div>
 

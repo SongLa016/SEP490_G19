@@ -374,20 +374,20 @@ export default function HomePage({ user }) {
                                              { id: "san7", label: "Sân 7 người", image: featuredFields[1]?.image, preset: { searchQuery: "Sân 7" } },
                                              { id: "san11", label: "Sân 11 người", image: featuredFields[2]?.image, preset: { searchQuery: "Sân 11" } },
                                         ].map((c) => (
-                                             <button
+                                             <Button
                                                   key={c.id}
                                                   onClick={() => {
                                                        try { window.localStorage.setItem("searchPreset", JSON.stringify(c.preset || {})); } catch { }
                                                        navigate("/search");
                                                   }}
                                                   aria-label={c.label}
-                                                  className="group text-left w-full hover:scale-105 transition-all duration-300 hover:cursor-pointer m-1"
+                                                  className="group text-left w-full hover:scale-105 transition-all duration-300 hover:cursor-pointer m-1 p-0 h-auto bg-transparent border-0 hover:bg-transparent"
                                              >
                                                   <div className="relative rounded-xl overflow-hidden ring-1 ring-white/25 shadow-md">
                                                        <img src={c.image} alt={c.label} className="h-28 w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                                                   </div>
                                                   <div className="mt-2 text-white font-semibold drop-shadow">{c.label}</div>
-                                             </button>
+                                             </Button>
                                         ))}
                                    </div>
                               </div>
@@ -573,8 +573,8 @@ export default function HomePage({ user }) {
                               {Array.from({ length: 5 }).map((_, i) => (<span key={i} className={`h-2 w-2 rounded-full ${i === 2 ? 'bg-white' : 'bg-white/60'}`}></span>))}
                          </div>
                          <div className="hidden md:block">
-                              <button className="absolute left-6 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white"><ChevronLeft className="w-5 h-5" /></button>
-                              <button className="absolute right-6 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white"><ChevronRight className="w-5 h-5" /></button>
+                              <Button className="absolute left-6 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white"><ChevronLeft className="w-5 h-5" /></Button>
+                              <Button className="absolute right-6 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white"><ChevronRight className="w-5 h-5" /></Button>
                          </div>
                     </Container>
                </div>

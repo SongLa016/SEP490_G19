@@ -467,15 +467,15 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:border-teal-500 focus:ring-2 focus:ring-teal-200 outline-none transition-all"
                               />
                               {searchQuery && (
-                                   <button
+                                   <Button
                                         onClick={() => {
                                              setSearchQuery('');
                                              setSuggestions([]);
                                         }}
-                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0 h-auto bg-transparent border-0 hover:bg-transparent"
                                    >
                                         <X className="w-5 h-5" />
-                                   </button>
+                                   </Button>
                               )}
                          </div>
 

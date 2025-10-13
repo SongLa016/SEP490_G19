@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
-import { getCurrentUser } from "./utils/authStore";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 // Layouts
 import MainLayout from "./layouts/MainLayout";
@@ -16,35 +16,13 @@ import LandingPage from "./pages/LandingPage";
 import HomePage from "./pages/HomePage";
 import Dashboard from "./pages/dashboard/Dashboard";
 import FieldSearch from "./pages/fields/FieldSearch";
-import FieldDetail from "./pages/fields/FieldDetail";
-import ComplexDetail from "./pages/fields/ComplexDetail";
+
 import BookingHistory from "./pages/booking/BookingHistory";
+import ComplexDetail from "./pages/fields/ComplexDetail";
 import Community from "./pages/community/Community";
 
-// Auth Pages
-import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
-import Booking from "./pages/booking/Booking";
-
-function App() {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const u = getCurrentUser();
-    if (u) {
-      setUser(u);
-    }
-    setIsLoading(false);
-  }, []);
-
-  function handleLoggedIn(newUser) {
-    setUser(newUser);
-  }
-
-  function handleLoggedOut() {
-    setUser(null);
-  }
+function AppContent() {
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -86,11 +64,7 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            user ? (
-              <Dashboard user={user} onLoggedOut={handleLoggedOut} />
-            ) : (
-              <Navigate to="/auth" replace />
-            )
+            user ? <Dashboard user={user} /> : <Navigate to="/auth" replace />
           }
         />
         <Route
@@ -113,7 +87,7 @@ function App() {
           path="/field/:id"
           element={
             <MainLayout>
-              <FieldDetail user={user} />
+              <ComplexDetail user={user} />
             </MainLayout>
           }
         />
@@ -121,7 +95,7 @@ function App() {
           path="/bookings"
           element={
             <MainLayout>
-              <Booking user={user} />
+              <BookingHistory user={user} />
             </MainLayout>
           }
         />
@@ -138,6 +112,14 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

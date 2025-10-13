@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { loginWithPassword, mockGoogleLogin, getCurrentUser } from '../../utils/authStore';
+import { loginWithPassword, mockGoogleLogin, getCurrentUser, createDemoUsers } from '../../utils/authStore';
 import { Button, Input, Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, User, Lock } from 'lucide-react';
 
 export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
-     const [email, setEmail] = useState('');
+     const [username, setUsername] = useState('');
      const [password, setPassword] = useState('');
      const [error, setError] = useState('');
-     const [emailError, setEmailError] = useState('');
+     const [usernameError, setUsernameError] = useState('');
      const [passwordError, setPasswordError] = useState('');
      const [showPassword, setShowPassword] = useState(false);
      const [isLoading, setIsLoading] = useState(false);
@@ -18,12 +18,12 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
           setIsLoading(true);
 
           // basic validation
-          const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+          const usernameOk = username.trim().length >= 3 && !/\s/.test(username);
           const passOk = String(password).length >= 6;
-          setEmailError(emailOk ? '' : 'Email không hợp lệ');
+          setUsernameError(usernameOk ? '' : 'Tên đăng nhập tối thiểu 3 ký tự và không được có khoảng trắng');
           setPasswordError(passOk ? '' : 'Mật khẩu tối thiểu 6 ký tự');
 
-          if (!emailOk || !passOk) {
+          if (!usernameOk || !passOk) {
                setIsLoading(false);
                return;
           }
@@ -31,22 +31,39 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
           // Simulate API call delay
           await new Promise(resolve => setTimeout(resolve, 1000));
 
-          const res = loginWithPassword({ email, password });
+          const res = loginWithPassword({ username, password });
           if (!res.ok) {
                setError(res.reason || 'Đăng nhập thất bại');
                setIsLoading(false);
                return;
           }
+          setIsLoading(false);
           onLoggedIn && onLoggedIn(getCurrentUser());
      }
      function handleGoogle() {
           setError('');
-          const res = mockGoogleLogin({ email: email || `user${Date.now()}@gmail.com` });
+          const res = mockGoogleLogin({ email: `user${Date.now()}@gmail.com`, name: username || 'User' });
           if (!res.ok) {
                setError('Google login thất bại');
                return;
           }
           onLoggedIn && onLoggedIn(getCurrentUser());
+     }
+
+     function handleDemoLogin(demoUsername) {
+          setError('');
+          setUsername(demoUsername);
+          setPassword('123456');
+
+          // Auto login after a short delay
+          setTimeout(() => {
+               const res = loginWithPassword({ username: demoUsername, password: '123456' });
+               if (res.ok) {
+                    onLoggedIn && onLoggedIn(getCurrentUser());
+               } else {
+                    setError('Demo login thất bại');
+               }
+          }, 500);
      }
 
      return (
@@ -76,22 +93,25 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
                     <CardContent className="space-y-4">
                          <form onSubmit={handleSubmit} className="space-y-4">
                               <div className="space-y-1">
-                                   <label className="text-xs font-medium text-teal-500">Email</label>
+                                   <label className="text-xs font-medium text-teal-500">Tên đăng nhập</label>
                                    <div className="relative">
-                                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                                         <Input
-                                             value={email}
-                                             onChange={(e) => setEmail(e.target.value)}
-                                             onBlur={() => setEmailError(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? '' : 'Email không hợp lệ')}
+                                             value={username}
+                                             onChange={(e) => {
+                                                  const value = e.target.value.replace(/\s/g, ''); // Remove spaces
+                                                  setUsername(value);
+                                             }}
+                                             onBlur={() => setUsernameError(username.trim().length >= 3 && !/\s/.test(username) ? '' : 'Tên đăng nhập tối thiểu 3 ký tự và không được có khoảng trắng')}
                                              required
-                                             type="email"
-                                             className={`pl-9 h-10 text-sm ${emailError ? 'border-red-500 focus:ring-red-500' : 'focus:ring-teal-500 focus:border-teal-500'}`}
-                                             placeholder="you@example.com"
+                                             type="text"
+                                             className={`pl-9 h-10 text-sm ${usernameError ? 'border-red-500 focus:ring-red-500' : 'focus:ring-teal-500 focus:border-teal-500'}`}
+                                             placeholder="Tên đăng nhập (không có khoảng trắng)"
                                         />
                                    </div>
-                                   {emailError && <p className="text-xs text-red-600 flex items-center gap-1">
+                                   {usernameError && <p className="text-xs text-red-600 flex items-center gap-1">
                                         <div className="w-1 h-1 bg-red-500 rounded-full"></div>
-                                        {emailError}
+                                        {usernameError}
                                    </p>}
                               </div>
 
@@ -108,13 +128,13 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
                                              className={`pl-9 pr-9 h-10 text-sm ${passwordError ? 'border-red-500 focus:ring-red-500' : 'focus:ring-teal-500 focus:border-teal-500'}`}
                                              placeholder="••••••••"
                                         />
-                                        <button
+                                        <Button
                                              type="button"
                                              onClick={() => setShowPassword(!showPassword)}
-                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-0 h-auto bg-transparent border-0 hover:bg-transparent"
                                         >
                                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                        </button>
+                                        </Button>
                                    </div>
                                    {passwordError && <p className="text-xs text-red-600 flex items-center gap-1">
                                         <div className="w-1 h-1 bg-red-500 rounded-full"></div>
@@ -127,9 +147,9 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
                                         <input type="checkbox" className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-3 h-3" />
                                         Ghi nhớ
                                    </label>
-                                   <button type="button" className="text-teal-600 hover:text-teal-700 hover:underline">
+                                   <Button type="button" className="text-teal-600 hover:text-teal-700 hover:underline p-0 h-auto bg-transparent border-0 hover:bg-transparent">
                                         Quên mật khẩu?
-                                   </button>
+                                   </Button>
                               </div>
 
                               <Button
@@ -171,15 +191,55 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
                               Google
                          </Button>
 
+                         {/* Demo Users Section */}
+                         <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                              <p className="text-xs text-gray-600 mb-2 text-center">🎯 Demo Users (cho testing)</p>
+                              <div className="grid grid-cols-1 gap-1">
+                                   <Button
+                                        onClick={() => {
+                                             createDemoUsers();
+                                             handleDemoLogin('demo');
+                                        }}
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full text-xs h-7"
+                                   >
+                                        👤 User Demo (demo/123456)
+                                   </Button>
+                                   <Button
+                                        onClick={() => {
+                                             createDemoUsers();
+                                             handleDemoLogin('owner');
+                                        }}
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full text-xs h-7"
+                                   >
+                                        🏟️ Owner Demo (owner/123456)
+                                   </Button>
+                                   <Button
+                                        onClick={() => {
+                                             createDemoUsers();
+                                             handleDemoLogin('admin');
+                                        }}
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full text-xs h-7"
+                                   >
+                                        👑 Admin Demo (admin/123456)
+                                   </Button>
+                              </div>
+                         </div>
+
                          <div className="text-center">
                               <p className="text-xs text-slate-400">
                                    Chưa có tài khoản?{' '}
-                                   <button
+                                   <Button
                                         onClick={onGoRegister}
-                                        className="text-teal-600 hover:text-teal-700 font-semibold hover:underline transition-colors"
+                                        className="text-teal-600 hover:text-teal-700 font-semibold hover:underline transition-colors p-0 h-auto bg-transparent border-0 hover:bg-transparent"
                                    >
                                         Đăng ký ngay
-                                   </button>
+                                   </Button>
                               </p>
                          </div>
                     </CardContent>

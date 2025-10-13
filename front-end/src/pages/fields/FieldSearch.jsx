@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, MapPin, Star, Clock, Grid, List, Heart, SlidersHorizontal, ChevronLeft, ChevronRight, Sparkles, User, Map, RefreshCcw, CircleDollarSign } from "lucide-react";
+import { Search, MapPin, Star, Clock, Grid, List, Heart, SlidersHorizontal, ChevronLeft, ChevronRight, Sparkles, User, Map, RefreshCcw, CircleDollarSign, EyeIcon } from "lucide-react";
 import { Section, Container, Card, CardContent, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, DatePicker } from "../../components/ui";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import MapSearch from "../../components/MapSearch";
 import { fetchComplexes, fetchFields, fetchTimeSlots } from "../../services/fields";
 export default function FieldSearch({ user }) {
@@ -436,14 +436,14 @@ export default function FieldSearch({ user }) {
                                              className="pl-10 pr-10 border rounded-xl border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0 focus-visible:outline-none"
                                         />
                                         {searchQuery && (
-                                             <button
+                                             <Button
                                                   onClick={() => setSearchQuery("")}
-                                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0 h-auto bg-transparent border-0 hover:bg-transparent"
                                              >
                                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                                   </svg>
-                                             </button>
+                                             </Button>
                                         )}
                                    </div>
                               </div>
@@ -713,9 +713,9 @@ export default function FieldSearch({ user }) {
                     {!isLoading && entityTab === "complexes" ? (
                          <>
                               {viewMode === "grid" ? (
-                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6  items-stretch">
                                         {pageItemsComplex.map((c) => (
-                                             <div key={c.complexId} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/complex/${c.complexId}`)}>
+                                             <Link key={c.complexId} to={`/complex/${c.complexId}`} className="group bg-white rounded-xl shadow-lg overflow-hidden h-full flex flex-col cursor-pointer">
                                                   <div className="relative overflow-hidden">
                                                        <img src={c.image} alt={c.name} className="w-full h-40 object-cover" />
                                                   </div>
@@ -730,16 +730,16 @@ export default function FieldSearch({ user }) {
                                                             <span className="text-lg font-bold text-teal-600">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(c.minPriceForSelectedSlot)}</span>
                                                        </div>
                                                        <div className="mt-auto">
-                                                            <Button onClick={(e) => { e.stopPropagation(); navigate(`/complex/${c.complexId}`); }} className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-xl font-semibold">Xem chi tiết</Button>
+                                                            <Button className=" bg-teal-500 hover:bg-teal-600 text-white text-xs rounded-xl font-semibold"><EyeIcon className="w-6 h-6" /></Button>
                                                        </div>
                                                   </div>
-                                             </div>
+                                             </Link>
                                         ))}
                                    </div>
                               ) : (
                                    <div className="space-y-4">
                                         {pageItemsComplex.map((c) => (
-                                             <div key={c.complexId} className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden hover:scale-[1.01] duration-300 transition-all border border-teal-100 hover:border-teal-200 cursor-pointer" onClick={() => navigate(`/complex/${c.complexId}`)}>
+                                             <Link key={c.complexId} to={`/complex/${c.complexId}`} className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden border border-teal-100 cursor-pointer">
                                                   <div className="flex">
                                                        <div className="w-96 h-52 flex-shrink-0">
                                                             <img src={c.image} alt={c.name} className="w-full h-full rounded-2xl object-cover" />
@@ -762,12 +762,12 @@ export default function FieldSearch({ user }) {
                                                                       <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{c.availableFields}/{c.totalFields} sân</span>
                                                                  </div>
                                                                  <div className="flex space-x-2">
-                                                                      <Button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/complex/${c.complexId}`); }} className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-4 rounded-xl font-semibold">Xem chi tiết</Button>
+                                                                      <Button type="button" className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-4 rounded-xl font-semibold"><EyeIcon className="w-4 h-4" /></Button>
                                                                  </div>
                                                             </div>
                                                        </div>
                                                   </div>
-                                             </div>
+                                             </Link>
                                         ))}
                                    </div>
                               )}
@@ -829,7 +829,7 @@ export default function FieldSearch({ user }) {
                                    </div>
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                                         {complexes.slice(0, 4).map((c) => (
-                                             <div key={c.complexId} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/complex/${c.complexId}`)}>
+                                             <Link key={c.complexId} to={`/complex/${c.complexId}`} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-lg overflow-hidden h-full flex flex-col cursor-pointer">
                                                   <div className="relative overflow-hidden">
                                                        <img src={c.image} alt={c.name} className="w-full h-48 object-cover rounded-xl" />
                                                   </div>
@@ -851,19 +851,12 @@ export default function FieldSearch({ user }) {
                                                        </div>
                                                        <div className="mt-auto flex items-center justify-between">
                                                             <div className="text-lg font-bold text-teal-500">{formatPrice(c.minPriceForSelectedSlot || 0)}/trận</div>
-                                                            <Button
-                                                                 type="button"
-                                                                 onClick={(e) => {
-                                                                      e.stopPropagation();
-                                                                      navigate(`/complex/${c.complexId}`);
-                                                                 }}
-                                                                 className="w-fit hover:scale-90 duration-200 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full font-semibold transition-colors"
-                                                            >
-                                                                 Xem chi tiết
+                                                            <Button type="button" className="w-fit bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full font-semibold">
+                                                                 <EyeIcon className="w-4 h-4" />
                                                             </Button>
                                                        </div>
                                                   </div>
-                                             </div>
+                                             </Link>
                                         ))}
                                    </div>
                               </div>
@@ -886,7 +879,7 @@ export default function FieldSearch({ user }) {
                                    </div>
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                                         {bestPriceGroup.map((field) => (
-                                             <div key={field.fieldId} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
+                                             <div key={field.fieldId} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-lg overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
                                                   <div className="relative overflow-hidden">
                                                        <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" />
                                                        <div className="absolute top-4 right-4 flex space-x-2">
@@ -906,9 +899,13 @@ export default function FieldSearch({ user }) {
                                                             </div>
                                                        </div>
                                                        <div className="flex items-center gap-2 mb-4">
-                                                            <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{field.amenities[0]}</span>
-                                                            {field.amenities.length > 1 && (
-                                                                 <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">+{field.amenities.length - 1}</span>
+                                                            {Array.isArray(field.amenities) && field.amenities.length > 0 && (
+                                                                 <>
+                                                                      <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{field.amenities[0]}</span>
+                                                                      {field.amenities.length > 1 && (
+                                                                           <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">+{field.amenities.length - 1}</span>
+                                                                      )}
+                                                                 </>
                                                             )}
                                                        </div>
                                                        <div className="mt-auto flex items-center justify-between">
@@ -947,7 +944,7 @@ export default function FieldSearch({ user }) {
                                    </div>
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                                         {topRatedGroup.map((field) => (
-                                             <div key={field.fieldId} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
+                                             <div key={field.fieldId} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-lg overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
                                                   <div className="relative overflow-hidden">
                                                        <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" />
                                                        <div className="absolute top-4 right-4 flex space-x-2">
@@ -969,9 +966,13 @@ export default function FieldSearch({ user }) {
                                                             </div>
                                                        </div>
                                                        <div className="flex items-center gap-2 mb-4">
-                                                            <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{field.amenities[0]}</span>
-                                                            {field.amenities.length > 1 && (
-                                                                 <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">+{field.amenities.length - 1}</span>
+                                                            {Array.isArray(field.amenities) && field.amenities.length > 0 && (
+                                                                 <>
+                                                                      <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{field.amenities[0]}</span>
+                                                                      {field.amenities.length > 1 && (
+                                                                           <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">+{field.amenities.length - 1}</span>
+                                                                      )}
+                                                                 </>
                                                             )}
                                                        </div>
                                                        <div className="mt-auto flex items-center justify-between">
@@ -1053,9 +1054,13 @@ export default function FieldSearch({ user }) {
                                                   <div className={`text-lg font-bold ${activeTab === "best-price" ? "text-red-500" : "text-teal-600"}`}>{formatPrice(field.priceForSelectedSlot || 0)}/trận</div>
                                              </div>
                                              <div className="flex items-center gap-2 mb-4">
-                                                  <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200">{field.amenities[0]}</span>
-                                                  {field.amenities.length > 1 && (
-                                                       <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200">+{field.amenities.length - 1}</span>
+                                                  {Array.isArray(field.amenities) && field.amenities.length > 0 && (
+                                                       <>
+                                                            <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200">{field.amenities[0]}</span>
+                                                            {field.amenities.length > 1 && (
+                                                                 <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200">+{field.amenities.length - 1}</span>
+                                                            )}
+                                                       </>
                                                   )}
                                              </div>
                                              <div className="mt-auto">
@@ -1125,7 +1130,7 @@ export default function FieldSearch({ user }) {
                                                        </a>
                                                   </div>
                                                   <div className="flex flex-wrap gap-2 mb-5">
-                                                       {field.amenities.map((amenity, index) => (
+                                                       {(field.amenities || []).map((amenity, index) => (
                                                             <span
                                                                  key={index}
                                                                  className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200"
@@ -1293,3 +1298,4 @@ export default function FieldSearch({ user }) {
           </Section>
      );
 }
+
