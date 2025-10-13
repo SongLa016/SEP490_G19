@@ -3,6 +3,7 @@ using BallSport.Infrastructure.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -22,7 +23,46 @@ namespace BallSport.Infrastructure.Repositories
             return _context.Users.FirstOrDefault(u => u.Phone == phone);
         }
 
-       
+        public User? GetUserByEmail(string email)
+        {
+            return _context.Users.FirstOrDefault(u => u.Email == email);
+        }
 
+        public void AddUser(User user)
+        {
+            _context.Users.Add(user);
+            _context.SaveChanges();
+        }
+
+        public string GenerateRandomPassword(int length = 12)
+        {
+            const string validChars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*?_-";
+            var randomBytes = new byte[length];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomBytes);
+            }
+
+            var chars = randomBytes.Select(b => validChars[b % validChars.Length]);
+            return new string(chars.ToArray());
+        }
+
+        public Role? GetPlayerRole()
+        {
+            return _context.Roles.FirstOrDefault(r => r.RoleName == "Player");
+        }
+
+        
+        public void AddUserRole(int userId, int roleId)
+        {
+            var userRole = new UserRole
+            {
+                UserId = userId,
+                RoleId = roleId
+            };
+
+            _context.UserRoles.Add(userRole);
+            _context.SaveChanges();
+        }
     }
 }

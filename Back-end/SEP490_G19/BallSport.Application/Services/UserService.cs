@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using BallSport.Infrastructure;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 
 
@@ -16,6 +17,8 @@ namespace BallSport.Application.Services
         private readonly UserRepositories _userRepository;
         private readonly JwtService _jwtService;
 
+
+////////////////////////////////////// Login ////////////////////////////////////////////////
         public UserService(UserRepositories userRepository, JwtService jwtService)
         {
             _userRepository = userRepository;
@@ -43,5 +46,42 @@ namespace BallSport.Application.Services
 
             return null;
         }
+
+        ///////////////////////////////////////// Login Google ///////////////////////////////////////////////////
+
+
+        public User HandleGoogleLogin(string email, string fullName)
+        {
+            
+            var existingUser = _userRepository.GetUserByEmail(email);
+            if (existingUser != null)
+            {
+                return existingUser; 
+            }
+
+
+            var newUser = new User
+            {
+                Email = email,
+                FullName = fullName,
+                PasswordHash = _userRepository.GenerateRandomPassword(),
+                CreatedAt = DateTime.Now,
+                Status = "Active"
+            };
+            _userRepository.AddUser(newUser);
+
+            var playerRole = _userRepository.GetPlayerRole();
+            if (playerRole != null)
+            {
+                _userRepository.AddUserRole(newUser.UserId, playerRole.RoleId);
+            }
+
+            return newUser;
+        }
+
+
+
+
+
     }
 }

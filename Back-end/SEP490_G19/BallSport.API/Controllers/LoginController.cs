@@ -32,7 +32,22 @@ namespace BallSport.API.Controllers
             });
         }
 
+        [HttpPost("login-google")]
+        public IActionResult LoginWithGoogle([FromBody] LoginGoogle googleDto)
+        {
+            var token = _userService.HandleGoogleLogin(googleDto.Email, googleDto.Name);
 
+            if (token == null)
+            {
+                return BadRequest(new { message = "Không thể đăng nhập bằng Google" });
+            }
+
+            return Ok(new
+            {
+                message = "Đăng nhập Google thành công",
+                token
+            });
+        }
 
     }
 }
