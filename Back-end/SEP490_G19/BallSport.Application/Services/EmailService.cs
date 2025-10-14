@@ -3,6 +3,7 @@ using System.Net.Mail;
 using System.Net;
 using System.Threading.Tasks;
 using BallSport.Infrastructure.Models;
+using Microsoft.Extensions.Options;
 
 namespace Banking.Application.Services
 {
@@ -15,9 +16,6 @@ namespace Banking.Application.Services
             _smtpSettings = smtpSettings;
         }
 
-        /// <summary>
-        /// Gửi email chung (dùng cho reset password, thông báo,...)
-        /// </summary>
         public async Task SendEmailAsync(string recipientEmail, string subject, string message)
         {
             await SendMail(recipientEmail, subject, message, isHtml: true);

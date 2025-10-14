@@ -26,6 +26,11 @@ services.AddSwaggerGen();
 services.AddScoped<UserRepositories>();
 services.AddScoped<UserService>();
 services.AddScoped<JwtService>();
+services.AddScoped<OTPService>();
+services.AddMemoryCache();
+
+
+
 
 // Đăng ký DbContext
 services.AddDbContext<Sep490G19v1Context>(options =>
@@ -67,6 +72,7 @@ builder.Services.AddAuthentication(options =>
 var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
 services.AddSingleton(smtpSettings);
 services.AddTransient<EmailService>();
+
 
 var app = builder.Build();
 
