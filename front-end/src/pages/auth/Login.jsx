@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { loginWithPassword, mockGoogleLogin, getCurrentUser, createDemoUsers } from '../../utils/authStore';
 import { Button, Input, Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui';
 import { Eye, EyeOff, User, Lock } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
+     const location = useLocation();
      const [username, setUsername] = useState('');
      const [password, setPassword] = useState('');
      const [error, setError] = useState('');
@@ -11,6 +14,23 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
      const [passwordError, setPasswordError] = useState('');
      const [showPassword, setShowPassword] = useState(false);
      const [isLoading, setIsLoading] = useState(false);
+
+     useEffect(() => {
+          if (location.state?.msg) {
+               Swal.fire({
+                    title: 'Thông báo',
+                    text: location.state.msg,
+                    icon: 'info',
+                    confirmButtonText: 'Đã hiểu',
+                    timer: 5000,
+                    timerProgressBar: true,
+                    toast: true,
+                    position: 'top-end'
+               });
+               // Clear state to prevent showing again on refresh
+               window.history.replaceState({}, document.title);
+          }
+     }, [location.state]);
 
      async function handleSubmit(e) {
           e.preventDefault();

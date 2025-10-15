@@ -77,6 +77,7 @@ function AppContent() {
         />
         <Route
           path="/complex/:id"
+          exact
           element={
             <MainLayout>
               <ComplexDetail user={user} />

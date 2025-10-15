@@ -251,8 +251,7 @@ export default function FieldSearch({ user }) {
 
      const handleToggleFavorite = (fieldId) => {
           if (!user) {
-               alert("Vui lòng đăng nhập để sử dụng danh sách yêu thích.");
-               navigate("/auth");
+               navigate("/auth", { state: { msg: "Vui lòng đăng nhập để sử dụng danh sách yêu thích." } });
                return;
           }
           toggleFavorite(fieldId);
@@ -260,8 +259,7 @@ export default function FieldSearch({ user }) {
 
      const handleBook = (fieldId) => {
           if (!user) {
-               alert("Bạn cần đăng nhập để đặt sân.");
-               navigate("/auth");
+               navigate("/auth", { state: { msg: "Bạn cần đăng nhập để đặt sân." } });
                return;
           }
           navigate(`/booking/${fieldId}`);
@@ -663,8 +661,7 @@ export default function FieldSearch({ user }) {
 
                     </CardContent></Card>
 
-                    {/* Results Header */
-                    }
+                    {/* Results Header */}
                     <div className="flex justify-between items-center mb-5">
                          <div>
                               <h1 className="text-2xl font-bold text-teal-800">
@@ -715,9 +712,14 @@ export default function FieldSearch({ user }) {
                               {viewMode === "grid" ? (
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6  items-stretch">
                                         {pageItemsComplex.map((c) => (
-                                             <Link key={c.complexId} to={`/complex/${c.complexId}`} className="group bg-white rounded-xl shadow-lg overflow-hidden h-full flex flex-col cursor-pointer">
+                                             <Link
+                                                  key={c.complexId}
+                                                  to={`/complex/${c.complexId}`}
+                                                  onClick={(e) => { e.preventDefault(); navigate(`/complex/${c.complexId}`); }}
+                                                  className="group bg-white rounded-xl shadow-lg overflow-hidden h-full flex flex-col cursor-pointer"
+                                             >
                                                   <div className="relative overflow-hidden">
-                                                       <img src={c.image} alt={c.name} className="w-full h-40 object-cover" />
+                                                       <img src={c.image} alt={c.name} className="w-full h-40 object-cover" draggable={false} />
                                                   </div>
                                                   <div className="p-5 flex-1 flex flex-col">
                                                        <h3 className="text-xl font-semibold text-teal-800 mb-1">{c.name}</h3>
@@ -739,10 +741,15 @@ export default function FieldSearch({ user }) {
                               ) : (
                                    <div className="space-y-4">
                                         {pageItemsComplex.map((c) => (
-                                             <Link key={c.complexId} to={`/complex/${c.complexId}`} className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden border border-teal-100 cursor-pointer">
+                                             <Link
+                                                  key={c.complexId}
+                                                  to={`/complex/${c.complexId}`}
+                                                  onClick={(e) => { e.preventDefault(); navigate(`/complex/${c.complexId}`); }}
+                                                  className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden border border-teal-100 cursor-pointer"
+                                             >
                                                   <div className="flex">
                                                        <div className="w-96 h-52 flex-shrink-0">
-                                                            <img src={c.image} alt={c.name} className="w-full h-full rounded-2xl object-cover" />
+                                                            <img src={c.image} alt={c.name} className="w-full h-full rounded-2xl object-cover" draggable={false} />
                                                        </div>
                                                        <div className="flex-1 px-4 py-1">
                                                             <div className="flex justify-between items-start">
@@ -829,9 +836,14 @@ export default function FieldSearch({ user }) {
                                    </div>
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                                         {complexes.slice(0, 4).map((c) => (
-                                             <Link key={c.complexId} to={`/complex/${c.complexId}`} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-lg overflow-hidden h-full flex flex-col cursor-pointer">
+                                             <Link
+                                                  key={c.complexId}
+                                                  to={`/complex/${c.complexId}`}
+                                                  onClick={(e) => { e.preventDefault(); navigate(`/complex/${c.complexId}`); }}
+                                                  className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-lg overflow-hidden h-full flex flex-col cursor-pointer"
+                                             >
                                                   <div className="relative overflow-hidden">
-                                                       <img src={c.image} alt={c.name} className="w-full h-48 object-cover rounded-xl" />
+                                                       <img src={c.image} alt={c.name} className="w-full h-48 object-cover rounded-xl" draggable={false} />
                                                   </div>
                                                   <div className="px-2 py-3 flex-1 flex flex-col">
                                                        <div className="flex bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2">
@@ -879,9 +891,14 @@ export default function FieldSearch({ user }) {
                                    </div>
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                                         {bestPriceGroup.map((field) => (
-                                             <div key={field.fieldId} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-lg overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
+                                             <Link
+                                                  key={field.fieldId}
+                                                  to={`/field/${field.fieldId}`}
+                                                  onClick={(e) => { e.preventDefault(); navigate(`/field/${field.fieldId}`); }}
+                                                  className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-lg overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer"
+                                             >
                                                   <div className="relative overflow-hidden">
-                                                       <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" />
+                                                       <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" draggable={false} />
                                                        <div className="absolute top-4 right-4 flex space-x-2">
                                                             <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName}</p></div>
                                                        </div>
@@ -922,7 +939,7 @@ export default function FieldSearch({ user }) {
                                                             </Button>
                                                        </div>
                                                   </div>
-                                             </div>
+                                             </Link>
                                         ))}
                                    </div>
                               </div>
@@ -944,9 +961,14 @@ export default function FieldSearch({ user }) {
                                    </div>
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                                         {topRatedGroup.map((field) => (
-                                             <div key={field.fieldId} className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-lg overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
+                                             <Link
+                                                  key={field.fieldId}
+                                                  to={`/field/${field.fieldId}`}
+                                                  onClick={(e) => { e.preventDefault(); navigate(`/field/${field.fieldId}`); }}
+                                                  className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-lg overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer"
+                                             >
                                                   <div className="relative overflow-hidden">
-                                                       <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" />
+                                                       <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" draggable={false} />
                                                        <div className="absolute top-4 right-4 flex space-x-2">
                                                             <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName}</p></div>
                                                        </div>
@@ -989,7 +1011,7 @@ export default function FieldSearch({ user }) {
                                                             </Button>
                                                        </div>
                                                   </div>
-                                             </div>
+                                             </Link>
                                         ))}
                                    </div>
                               </div>
@@ -997,12 +1019,18 @@ export default function FieldSearch({ user }) {
                     ) : !isLoading && viewMode === "grid" ? (
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
                               {pageItems.map((field) => (
-                                   <div key={field.fieldId} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
+                                   <Link
+                                        key={field.fieldId}
+                                        to={`/field/${field.fieldId}`}
+                                        onClick={(e) => { e.preventDefault(); navigate(`/field/${field.fieldId}`); }}
+                                        className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer"
+                                   >
                                         <div className="relative overflow-hidden">
                                              <img
                                                   src={field.image}
                                                   alt={field.name}
                                                   className="w-full h-40 object-cover transition-transform duration-300 ease-out group-hover:scale-105"
+                                                  draggable={false}
                                              />
                                              <div className="absolute top-4 right-4 flex space-x-2">
                                                   <Button
@@ -1076,19 +1104,25 @@ export default function FieldSearch({ user }) {
                                                   </Button>
                                              </div>
                                         </div>
-                                   </div>
+                                   </Link>
                               ))}
                          </div>
                     ) : (
                          <div className="space-y-4">
                               {pageItems.map((field) => (
-                                   <div key={field.fieldId} className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden hover:scale-105 duration-300 transition-all border border-teal-100 hover:border-teal-200 cursor-pointer" onClick={() => navigate(`/field/${field.fieldId}`)}>
+                                   <Link
+                                        key={field.fieldId}
+                                        to={`/field/${field.fieldId}`}
+                                        onClick={(e) => { e.preventDefault(); navigate(`/field/${field.fieldId}`); }}
+                                        className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden hover:scale-105 duration-300 transition-all border border-teal-100 hover:border-teal-200 cursor-pointer"
+                                   >
                                         <div className="flex">
                                              <div className="w-96 h-52 flex-shrink-0">
                                                   <img
                                                        src={field.image}
                                                        alt={field.name}
                                                        className="w-full h-full rounded-2xl object-cover"
+                                                       draggable={false}
                                                   />
                                              </div>
                                              <div className="flex-1 px-4 py-1">
@@ -1159,7 +1193,7 @@ export default function FieldSearch({ user }) {
                                                   </div>
                                              </div>
                                         </div>
-                                   </div>
+                                   </Link>
                               ))}
                          </div>
                     )}

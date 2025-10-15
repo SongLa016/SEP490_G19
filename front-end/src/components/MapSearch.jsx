@@ -132,12 +132,26 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                if (window.google && window.google.maps) {
                     initMap();
                } else {
-                    const script = document.createElement('script');
-                    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyA0Mdo-7p3D4zwP8QSCn55Rj8rTy-PCJ8o&libraries=places`;
-                    script.async = true;
-                    script.defer = true;
-                    script.onload = initMap;
-                    document.head.appendChild(script);
+                    const existing = document.getElementById('gmaps-script');
+                    const apiKey = "AIzaSyCacoGIE6Qci-WIdKjjz2LF6hNDAnBwZWw";
+                    if (!apiKey) {
+                         // eslint-disable-next-line no-console
+                         console.warn('Missing REACT_APP_GOOGLE_MAPS_API_KEY in environment');
+                    }
+                    const load = () => {
+                         if (window.google && window.google.maps) initMap();
+                    };
+                    if (existing) {
+                         existing.addEventListener('load', load, { once: true });
+                    } else {
+                         const script = document.createElement('script');
+                         script.id = 'gmaps-script';
+                         script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey || ''}&libraries=places&v=weekly&language=vi&region=VN`;
+                         script.async = true;
+                         script.defer = true;
+                         script.onload = load;
+                         document.head.appendChild(script);
+                    }
                }
           }
           // eslint-disable-next-line react-hooks/exhaustive-deps

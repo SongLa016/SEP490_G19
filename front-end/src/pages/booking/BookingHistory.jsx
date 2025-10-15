@@ -3,6 +3,7 @@ import { Calendar, MapPin, Receipt, Search, Repeat, CalendarDays, MoreHorizontal
 import { Container, Card, CardContent, Input, Button, Badge } from "../../components/ui";
 import { useNavigate } from "react-router-dom";
 import { listBookingsByUser, updateBooking } from "../../utils/bookingStore";
+import Swal from 'sweetalert2';
 
 export default function BookingHistory({ user }) {
      const navigate = useNavigate();
@@ -54,56 +55,162 @@ export default function BookingHistory({ user }) {
      };
 
      const handleCancel = (id) => {
-          if (!window.confirm("Bạn có chắc muốn hủy đặt sân này?")) return;
-          updateBooking(id, { status: "cancelled" });
-          // Refresh bookings data instead of reloading page
-          setBookings(prev => prev.map(booking =>
-               booking.id === id ? { ...booking, status: "cancelled" } : booking
-          ));
+          Swal.fire({
+               title: 'Xác nhận hủy đặt sân',
+               text: 'Bạn có chắc muốn hủy đặt sân này?',
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#d33',
+               cancelButtonColor: '#3085d6',
+               confirmButtonText: 'Xác nhận hủy',
+               cancelButtonText: 'Hủy'
+          }).then((result) => {
+               if (result.isConfirmed) {
+                    updateBooking(id, { status: "cancelled" });
+                    setBookings(prev => prev.map(booking =>
+                         booking.id === id ? { ...booking, status: "cancelled" } : booking
+                    ));
+                    Swal.fire('Đã hủy!', 'Đặt sân đã được hủy thành công.', 'success');
+               }
+          });
      };
 
      const handleReschedule = (id) => {
-          const newDate = window.prompt("Nhập ngày mới (YYYY-MM-DD):");
-          if (!newDate) return;
-          const newTime = window.prompt("Nhập giờ mới (ví dụ 18:00-20:00):");
-          if (!newTime) return;
-          updateBooking(id, { date: newDate, time: newTime });
-          // Refresh bookings data instead of reloading page
-          setBookings(prev => prev.map(booking =>
-               booking.id === id ? { ...booking, date: newDate, time: newTime } : booking
-          ));
+          Swal.fire({
+               title: 'Đổi lịch đặt sân',
+               html: `
+                    <div style="text-align: left;">
+                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">Ngày mới:</label>
+                         <input id="newDate" type="date" style="width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px;">
+                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">Giờ mới:</label>
+                         <input id="newTime" type="text" placeholder="Ví dụ: 18:00-20:00" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+               `,
+               showCancelButton: true,
+               confirmButtonText: 'Xác nhận',
+               cancelButtonText: 'Hủy',
+               preConfirm: () => {
+                    const newDate = document.getElementById('newDate').value;
+                    const newTime = document.getElementById('newTime').value;
+                    if (!newDate || !newTime) {
+                         Swal.showValidationMessage('Vui lòng nhập đầy đủ thông tin');
+                         return false;
+                    }
+                    return { newDate, newTime };
+               }
+          }).then((result) => {
+               if (result.isConfirmed) {
+                    const { newDate, newTime } = result.value;
+                    updateBooking(id, { date: newDate, time: newTime });
+                    setBookings(prev => prev.map(booking =>
+                         booking.id === id ? { ...booking, date: newDate, time: newTime } : booking
+                    ));
+                    Swal.fire('Thành công!', 'Lịch đặt sân đã được cập nhật.', 'success');
+               }
+          });
      };
 
      const handleRate = (id) => {
-          const ratingStr = window.prompt("Đánh giá sao (1-5):");
-          if (!ratingStr) return;
-          const rating = Math.max(1, Math.min(5, parseInt(ratingStr, 10)));
-          const comment = window.prompt("Nhận xét của bạn:") || "";
-          updateBooking(id, { rating, comment });
-          alert("Cảm ơn bạn đã đánh giá!");
+          Swal.fire({
+               title: 'Đánh giá sân',
+               html: `
+                    <div style="text-align: left;">
+                         <label style="display: block; margin-bottom: 10px; font-weight: bold;">Đánh giá sao (1-5):</label>
+                         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                              ${[1, 2, 3, 4, 5].map(star => `
+                                   <button type="button" onclick="document.getElementById('rating').value = ${star}; updateStars(${star})" 
+                                           style="width: 40px; height: 40px; border: 2px solid #ddd; border-radius: 50%; background: white; cursor: pointer;" 
+                                           id="star-${star}">
+                                        ⭐
+                                   </button>
+                              `).join('')}
+                         </div>
+                         <input type="hidden" id="rating" value="0">
+                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">Nhận xét:</label>
+                         <textarea id="comment" placeholder="Chia sẻ trải nghiệm của bạn..." 
+                                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; height: 80px; resize: vertical;"></textarea>
+                    </div>
+                    <script>
+                         function updateStars(rating) {
+                              for (let i = 1; i <= 5; i++) {
+                                   const star = document.getElementById('star-' + i);
+                                   if (i <= rating) {
+                                        star.style.background = '#ffd700';
+                                        star.style.borderColor = '#ffd700';
+                                   } else {
+                                        star.style.background = 'white';
+                                        star.style.borderColor = '#ddd';
+                                   }
+                              }
+                         }
+                    </script>
+               `,
+               showCancelButton: true,
+               confirmButtonText: 'Gửi đánh giá',
+               cancelButtonText: 'Hủy',
+               preConfirm: () => {
+                    const rating = parseInt(document.getElementById('rating').value);
+                    const comment = document.getElementById('comment').value;
+                    if (rating === 0) {
+                         Swal.showValidationMessage('Vui lòng chọn số sao đánh giá');
+                         return false;
+                    }
+                    return { rating, comment };
+               }
+          }).then((result) => {
+               if (result.isConfirmed) {
+                    const { rating, comment } = result.value;
+                    updateBooking(id, { rating, comment });
+                    Swal.fire('Cảm ơn bạn!', 'Đánh giá của bạn đã được gửi thành công.', 'success');
+               }
+          });
      };
 
      const handleCancelRecurring = (groupId) => {
-          if (!window.confirm("Bạn có chắc muốn hủy toàn bộ lịch định kỳ này?")) return;
-          const group = groupedBookings[groupId];
-          group.bookings.forEach(booking => {
-               updateBooking(booking.id, { status: "cancelled" });
+          Swal.fire({
+               title: 'Xác nhận hủy lịch định kỳ',
+               text: 'Bạn có chắc muốn hủy toàn bộ lịch định kỳ này?',
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#d33',
+               cancelButtonColor: '#3085d6',
+               confirmButtonText: 'Xác nhận hủy',
+               cancelButtonText: 'Hủy'
+          }).then((result) => {
+               if (result.isConfirmed) {
+                    const group = groupedBookings[groupId];
+                    group.bookings.forEach(booking => {
+                         updateBooking(booking.id, { status: "cancelled" });
+                    });
+                    setBookings(prev => prev.map(booking =>
+                         group.bookings.some(b => b.id === booking.id)
+                              ? { ...booking, status: "cancelled" }
+                              : booking
+                    ));
+                    Swal.fire('Đã hủy!', 'Toàn bộ lịch định kỳ đã được hủy.', 'success');
+               }
           });
-          // Refresh bookings data
-          setBookings(prev => prev.map(booking =>
-               group.bookings.some(b => b.id === booking.id)
-                    ? { ...booking, status: "cancelled" }
-                    : booking
-          ));
      };
 
      const handleCancelSingleRecurring = (id) => {
-          if (!window.confirm("Bạn có chắc muốn hủy buổi đặt sân này?")) return;
-          updateBooking(id, { status: "cancelled" });
-          // Refresh bookings data
-          setBookings(prev => prev.map(booking =>
-               booking.id === id ? { ...booking, status: "cancelled" } : booking
-          ));
+          Swal.fire({
+               title: 'Xác nhận hủy đặt sân',
+               text: 'Bạn có chắc muốn hủy buổi đặt sân này?',
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#d33',
+               cancelButtonColor: '#3085d6',
+               confirmButtonText: 'Xác nhận hủy',
+               cancelButtonText: 'Hủy'
+          }).then((result) => {
+               if (result.isConfirmed) {
+                    updateBooking(id, { status: "cancelled" });
+                    setBookings(prev => prev.map(booking =>
+                         booking.id === id ? { ...booking, status: "cancelled" } : booking
+                    ));
+                    Swal.fire('Đã hủy!', 'Đặt sân đã được hủy thành công.', 'success');
+               }
+          });
      };
 
      const toggleRecurringDetails = (groupId) => {

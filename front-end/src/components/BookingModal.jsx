@@ -37,6 +37,8 @@ export default function BookingModal({
           depositPercent: 0.3,
           depositAmount: 0,
           remainingAmount: 0,
+          discountPercent: 0,
+          discountAmount: 0,
           customerName: user?.name || "",
           customerPhone: user?.phone || "",
           customerEmail: user?.email || "",
@@ -48,10 +50,20 @@ export default function BookingModal({
      });
 
      // Tính toán tổng tiền
+     const getRecurringDiscountPercent = (totalSessions) => {
+          if (!totalSessions || totalSessions <= 0) return 0;
+          if (totalSessions >= 16) return 15;
+          if (totalSessions >= 8) return 10;
+          if (totalSessions >= 4) return 5;
+          return 0;
+     };
      useEffect(() => {
           const basePrice = (bookingData.price || 0) * (bookingData.duration || 1);
           const totalSessions = isRecurring ? (recurringWeeks * selectedDays.length) : 1;
-          const total = basePrice * totalSessions;
+          const subtotal = basePrice * totalSessions;
+          const discountPercent = isRecurring ? getRecurringDiscountPercent(totalSessions) : 0;
+          const discountAmount = Math.round(subtotal * (discountPercent / 100));
+          const total = subtotal - discountAmount;
           const deposit = Math.round(total * (bookingData.depositPercent || 0));
           const remaining = Math.max(0, total - deposit);
           setBookingData(prev => ({
@@ -59,7 +71,9 @@ export default function BookingModal({
                totalPrice: total,
                depositAmount: deposit,
                remainingAmount: remaining,
-               totalSessions: totalSessions
+               totalSessions: totalSessions,
+               discountPercent,
+               discountAmount
           }));
      }, [bookingData.price, bookingData.duration, bookingData.depositPercent, isRecurring, recurringWeeks, selectedDays]);
 
@@ -78,6 +92,17 @@ export default function BookingModal({
                     price: fieldData.price || prev.price,
                     totalPrice: fieldData.totalPrice || fieldData.price || prev.price
                }));
+
+               // Initialize recurring presets from caller (right panel)
+               if (fieldData.isRecurringPreset !== undefined) {
+                    setIsRecurring(!!fieldData.isRecurringPreset);
+               }
+               if (typeof fieldData.recurringWeeksPreset === 'number' && fieldData.recurringWeeksPreset > 0) {
+                    setRecurringWeeks(fieldData.recurringWeeksPreset);
+               }
+               if (Array.isArray(fieldData.selectedDaysPreset)) {
+                    setSelectedDays(fieldData.selectedDaysPreset);
+               }
           }
      }, [fieldData]);
 
@@ -499,7 +524,16 @@ export default function BookingModal({
                                                                  <span className="mr-2">📊</span>
                                                                  Tổng giá ({bookingData.totalSessions || (recurringWeeks * selectedDays.length)} buổi)
                                                             </span>
-                                                            <span className="font-medium">{formatPrice((bookingData.price || 0) * (bookingData.duration || 1) * (bookingData.totalSessions || recurringWeeks))}</span>
+                                                            <span className="font-medium">{formatPrice(((bookingData.price || 0) * (bookingData.duration || 1)) * (bookingData.totalSessions || (recurringWeeks * selectedDays.length)))}</span>
+                                                       </div>
+                                                  )}
+                                                  {isRecurring && bookingData.discountPercent > 0 && (
+                                                       <div className="flex justify-between">
+                                                            <span className="text-emerald-700 font-medium flex items-center">
+                                                                 <span className="mr-2">🎁</span>
+                                                                 Giảm giá ({bookingData.discountPercent}%)
+                                                            </span>
+                                                            <span className="font-medium text-emerald-700">- {formatPrice(bookingData.discountAmount)}</span>
                                                        </div>
                                                   )}
                                                   {bookingData.depositAmount > 0 && (
