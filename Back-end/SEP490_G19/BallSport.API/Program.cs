@@ -34,8 +34,10 @@ builder.Services.AddScoped<FieldPriceService>();
 builder.Services.AddScoped<TimeSlotRepository>();
 builder.Services.AddScoped<TimeSlotService>();
 
-builder.Services.AddScoped<FieldScheduleRepository>();
-builder.Services.AddScoped<FieldScheduleService>();
+// ⚡️ Thêm dòng này để Render biết port chạy
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -45,7 +47,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// ⚠️ Render đã có HTTPS sẵn, không cần tự redirect
+// app.UseHttpsRedirection();
+
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
