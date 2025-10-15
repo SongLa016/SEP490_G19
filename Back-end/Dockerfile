@@ -1,20 +1,20 @@
-# Dựa trên SDK .NET
+# Dùng image .NET SDK để build
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-
 WORKDIR /src
 
-# Copy toàn bộ solution và các project vào container
-COPY SEP490_G19/ ./SEP490_G19/
+COPY BallSport.Application ./BallSport.Application
+COPY BallSport.Infrastructure ./BallSport.Infrastructure
+COPY BallSport.API ./BallSport.API
 
-# Di chuyển vào project API
-WORKDIR /src/SEP490_G19/BallSport.API
+# Restore và publish API
+WORKDIR /src/BallSport.API
+RUN dotnet restore ./BallSport.API.csproj
+RUN dotnet publish ./BallSport.API.csproj -c Release -o /app
 
-# Restore và publish
-RUN dotnet restore
-RUN dotnet publish -c Release -o /app
-
-# ---- Runtime stage ----
+# Dùng runtime image nhẹ hơn để chạy
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-COPY --from=build /app ./
+COPY --from=build /app .
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
 ENTRYPOINT ["dotnet", "BallSport.API.dll"]
