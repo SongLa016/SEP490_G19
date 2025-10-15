@@ -11,6 +11,7 @@ namespace BallSport.API.Controllers
     {
         private readonly UserService _userService;
 
+
         public LoginController(UserService userService)
         {
             _userService = userService;
@@ -37,7 +38,7 @@ namespace BallSport.API.Controllers
         {
             var token = _userService.HandleGoogleLogin(googleDto.Email, googleDto.Name);
 
-            if (token == null)
+            if (string.IsNullOrEmpty(token))
             {
                 return BadRequest(new { message = "Không thể đăng nhập bằng Google" });
             }
@@ -48,6 +49,8 @@ namespace BallSport.API.Controllers
                 token
             });
         }
+
+
 
     }
 }

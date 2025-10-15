@@ -60,35 +60,52 @@ namespace BallSport.Application.Services
 
         ///////////////////////////////////////// Login Google ///////////////////////////////////////////////////
 
-
-        public User HandleGoogleLogin(string email, string fullName)
+        public string HandleGoogleLogin(string email, string fullName)
         {
-
+           
             var existingUser = _userRepository.GetUserByEmail(email);
-            if (existingUser != null)
+            User user = existingUser;
+            var randompass = _userRepository.GenerateRandomPassword();
+
+            if (existingUser == null)
             {
-                return existingUser;
+                
+                var newUser = new User
+                {
+                    Email = email,
+                    FullName = fullName,
+                    PasswordHash = randompass,
+                    CreatedAt = DateTime.Now,
+                    Status = "Active"
+                };
+                _userRepository.AddUser(newUser);
+
+                
+                var playerRole = _userRepository.GetPlayerRole();
+                if (playerRole != null)
+                {
+                    _userRepository.AddUserRole(newUser.UserId, playerRole.RoleId);
+                }
+                _emailService.SendEmailAsync(
+           email,
+           "Xác nhận tạo tài khoản BallSport",
+           $"<p>Xin chào <b>{fullName}</b>,</p>" +
+           $"<p>Quý khách vừa tạo tài khoản bằng Google trên hệ thống BallSport.</p>" +
+           $"<p>Mật khẩu tạm thời của bạn là: <b>{randompass}</b></p>" +
+           $"<p>Vui lòng đăng nhập và đổi mật khẩu ngay sau khi sử dụng.</p>" +
+           $"<p>Trân trọng,<br/>Đội ngũ BallSport</p>"
+       );
+
+                user = newUser;
             }
 
+           
+            var token = _jwtService.GenerateToken(user.UserId, user.Email, user.FullName, user.Phone);
 
-            var newUser = new User
-            {
-                Email = email,
-                FullName = fullName,
-                PasswordHash = _userRepository.GenerateRandomPassword(),
-                CreatedAt = DateTime.Now,
-                Status = "Active"
-            };
-            _userRepository.AddUser(newUser);
-
-            var playerRole = _userRepository.GetPlayerRole();
-            if (playerRole != null)
-            {
-                _userRepository.AddUserRole(newUser.UserId, playerRole.RoleId);
-            }
-
-            return newUser;
+           
+            return token;
         }
+
 
 
         //////////////////////////////// Resert Pass ////////////////////////////////////////////////
