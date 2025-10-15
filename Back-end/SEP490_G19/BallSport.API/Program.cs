@@ -4,10 +4,7 @@ using BallSport.Application.Services;
 using BallSport.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
-// Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -17,39 +14,34 @@ builder.Services.AddDbContext<Sep490G19v1Context>(options =>
 
 builder.Services.AddScoped<FieldTypesRepository>();
 builder.Services.AddScoped<FieldTypeService>();
-
 builder.Services.AddScoped<FieldComplexRepository>();
 builder.Services.AddScoped<FieldComplexService>();
-
 builder.Services.AddScoped<FieldRepository>();
 builder.Services.AddScoped<FieldService>();
-
 builder.Services.AddScoped<DepositPolicyRepository>();
 builder.Services.AddScoped<DepositPolicyService>();
-
 builder.Services.AddScoped<FieldScheduleRepository>();
 builder.Services.AddScoped<FieldScheduleService>();
-
 builder.Services.AddScoped<FieldPriceRepository>();
 builder.Services.AddScoped<FieldPriceService>();
-
 builder.Services.AddScoped<TimeSlotRepository>();
 builder.Services.AddScoped<TimeSlotService>();
 
-// ⚡️ Thêm dòng này để Render biết port chạy
-
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Cho Render tự lấy port đúng
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+app.Urls.Add($"http://*:{port}");
 
-// ⚠️ Render đã có HTTPS sẵn, không cần tự redirect
-// app.UseHttpsRedirection();
+// Luôn bật Swagger
+app.UseSwagger();
+app.UseSwaggerUI();
 
+app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+
+// Route test
+app.MapGet("/", () => "✅ API is running on Render!");
+
 app.Run();
