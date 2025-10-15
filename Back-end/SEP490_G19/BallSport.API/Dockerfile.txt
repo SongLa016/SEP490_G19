@@ -1,0 +1,22 @@
+﻿# ========================
+# Build stage
+# ========================
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY ["BallSport.API/BallSport.API.csproj", "BallSport.API/"]
+COPY ["BallSport.Application/BallSport.Application.csproj", "BallSport.Application/"]
+COPY ["BallSport.Infrastructure/BallSport.Infrastructure.csproj", "BallSport.Infrastructure/"]
+RUN dotnet restore "BallSport.API/BallSport.API.csproj"
+
+COPY . .
+WORKDIR "/src/BallSport.API"
+RUN dotnet publish -c Release -o /app/publish
+
+# ========================
+# Runtime stage
+# ========================
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app/publish .
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "BallSport.API.dll"]
