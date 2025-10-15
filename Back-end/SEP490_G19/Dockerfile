@@ -1,26 +1,21 @@
-# ==============================
-# Build stage
-# ==============================
+# 1. Dùng SDK để build
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy tất cả các project vào container
+# 2. Copy tất cả project vào container
+COPY BallSport.API ./BallSport.API
 COPY BallSport.Application ./BallSport.Application
 COPY BallSport.Infrastructure ./BallSport.Infrastructure
-COPY BallSport.API ./BallSport.API
 
-# Restore và build API
+# 3. Restore package (chạy trong thư mục API)
 WORKDIR /src/BallSport.API
-RUN dotnet restore BallSport.API.csproj
-RUN dotnet publish BallSport.API.csproj -c Release -o /app
+RUN dotnet restore
 
-# ==============================
-# Runtime stage
-# ==============================
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+# 4. Publish API ra folder /app
+RUN dotnet publish -c Release -o /app
+
+# 5. Dùng runtime image nhẹ hơn để chạy
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app .
-
-ENV ASPNETCORE_URLS=http://+:8080
-EXPOSE 8080
 ENTRYPOINT ["dotnet", "BallSport.API.dll"]
