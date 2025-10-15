@@ -22,6 +22,8 @@ services.AddControllers();
 services.AddEndpointsApiExplorer();
 services.AddSwaggerGen();
 
+
+builder.Services.AddMemoryCache();
 // Đăng ký Repository và Service
 services.AddScoped<UserRepositories>();
 services.AddScoped<UserService>();

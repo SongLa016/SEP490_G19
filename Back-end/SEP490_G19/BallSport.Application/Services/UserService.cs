@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using BallSport.Application.DTOs;
 using BallSport.Infrastructure;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
 using Banking.Application.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 
 
@@ -19,17 +22,16 @@ namespace BallSport.Application.Services
         private readonly JwtService _jwtService;
         private readonly EmailService _emailService;
         private readonly OTPService _otpService;
+        private readonly IMemoryCache _cache;
 
-        public UserService(UserRepositories userRepository, JwtService jwtService, EmailService emailService, OTPService otpService)
+        public UserService(UserRepositories userRepository, JwtService jwtService, EmailService emailService, OTPService otpService, IMemoryCache cache)
         {
             _userRepository = userRepository;
             _jwtService = jwtService;
             _emailService = emailService;
             _otpService = otpService;
+            _cache = cache;
         }
-
-
-
 
 
         ////////////////////////////////////// Login ////////////////////////////////////////////////
@@ -147,8 +149,83 @@ namespace BallSport.Application.Services
 
             return true;
 
-
-
         }
+
+        ////////////////////////////////////////////  Register //////////////////////////////////////////////////////////
+
+
+        public async Task<bool> SendOtpForRegisterAsync(string fullName, string email, string phone, string password, string roleName)
+        {
+            if (_userRepository.IsEmailExists(email))
+                throw new Exception("Email đã được sử dụng.");
+
+            if (_userRepository.IsPhoneExists(phone))
+                throw new Exception("Số điện thoại đã được sử dụng.");
+
+            var role = _userRepository.GetRoleByName(roleName);
+            if (role == null)
+                throw new Exception("Vai trò không hợp lệ. Chỉ chấp nhận 'Owner' hoặc 'Player'.");
+
+            var otp = _userRepository.GenerateOtp();
+            _otpService.SaveOtp(email, otp, expireMinutes: 5);
+
+            
+            var pending = new PendingRegisterDTO
+            {
+                FullName = fullName,
+                Email = email,
+                Phone = phone,
+                Password = password,
+                RoleName = roleName
+            };
+
+            _cache.Set(email, pending, TimeSpan.FromMinutes(5));
+
+            await _emailService.SendOtpEmailAsync(email, otp);
+
+            return true;
+        }
+
+
+        public async Task<bool> VerifyOtpAndRegisterAsync(string otp)
+        {
+            var verifiedEmail = _otpService.VerifyAndGetEmailByOtp(otp);
+            if (verifiedEmail == null)
+                throw new Exception("OTP không hợp lệ hoặc đã hết hạn.");
+
+            // ✅ Lấy dữ liệu đăng ký tạm từ cache
+            if (!_cache.TryGetValue(verifiedEmail, out PendingRegisterDTO pending))
+                throw new Exception("Không tìm thấy thông tin đăng ký. Vui lòng đăng ký lại.");
+
+            var role = _userRepository.GetRoleByName(pending.RoleName);
+
+            var newUser = new User
+            {
+                FullName = pending.FullName,
+                Email = pending.Email,
+                Phone = pending.Phone,
+                PasswordHash = pending.Password, 
+                CreatedAt = DateTime.Now,
+                Status = "Active"
+            };
+
+            _userRepository.AddUser(newUser);
+            _userRepository.AddUserRole(newUser.UserId, role.RoleId);
+
+            
+            _cache.Remove(verifiedEmail);
+
+            
+            string subject = "Đăng ký BallSport thành công";
+            string message = $"<p>Xin chào <b>{pending.FullName}</b>,</p>" +
+                             $"<p>Tài khoản của bạn đã được tạo thành công với vai trò <b>{pending.RoleName}</b>.</p>" +
+                             $"<p>Chúc bạn trải nghiệm vui vẻ cùng BallSport!</p>";
+
+            await _emailService.SendEmailAsync(pending.Email, subject, message);
+
+            return true;
+        }
+
+
     }
 }

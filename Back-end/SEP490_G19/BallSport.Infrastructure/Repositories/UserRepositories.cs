@@ -76,5 +76,21 @@ namespace BallSport.Infrastructure.Repositories
             _context.UserRoles.Add(userRole);
             _context.SaveChanges();
         }
+
+
+        public bool IsEmailExists(string email)
+        {
+            return _context.Users.Any(u => u.Email == email);
+        }
+
+        public bool IsPhoneExists(string phone)
+        {
+            return _context.Users.Any(u => u.Phone == phone);
+        }
+
+        public Role? GetRoleByName(string roleName)
+        {
+            return _context.Roles.FirstOrDefault(r => r.RoleName == roleName);
+        }
     }
 }
