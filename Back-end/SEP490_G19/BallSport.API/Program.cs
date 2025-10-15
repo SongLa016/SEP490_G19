@@ -11,7 +11,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<Sep490G19v1Context>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("MyCnn")));
 
 builder.Services.AddScoped<FieldTypesRepository>();
 builder.Services.AddScoped<FieldTypeService>();
