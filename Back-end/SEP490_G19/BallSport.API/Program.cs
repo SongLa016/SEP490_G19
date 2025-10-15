@@ -37,8 +37,6 @@ builder.Services.AddScoped<TimeSlotRepository>();
 builder.Services.AddScoped<TimeSlotService>();
 
 // ⚡️ Thêm dòng này để Render biết port chạy
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
 
