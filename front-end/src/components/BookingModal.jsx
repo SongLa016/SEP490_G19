@@ -49,6 +49,33 @@ export default function BookingModal({
           recurringEndDate: null
      });
 
+     // Tạo danh sách các buổi định kỳ dự kiến từ ngày bắt đầu + số tuần + các ngày trong tuần
+     const generateRecurringSessions = () => {
+          if (!isRecurring || !bookingData?.date || !Array.isArray(selectedDays) || selectedDays.length === 0 || !recurringWeeks) return [];
+          try {
+               const sessions = [];
+               const start = new Date(bookingData.date);
+               start.setHours(0, 0, 0, 0);
+               const end = new Date(start);
+               end.setDate(end.getDate() + (recurringWeeks * 7) - 1);
+
+               // Duyệt từ ngày bắt đầu đến ngày kết thúc, chọn ngày có weekday nằm trong selectedDays
+               for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                    const weekday = d.getDay(); // 0=CN..6=T7
+                    if (selectedDays.includes(weekday)) {
+                         sessions.push({
+                              date: new Date(d),
+                              slotName: bookingData.slotName || ""
+                         });
+                    }
+               }
+               // Đảm bảo số phần tử = selectedDays.length * recurringWeeks
+               return sessions.slice(0, selectedDays.length * recurringWeeks);
+          } catch {
+               return [];
+          }
+     };
+
      // Tính toán tổng tiền
      const getRecurringDiscountPercent = (totalSessions) => {
           if (!totalSessions || totalSessions <= 0) return 0;
@@ -106,16 +133,30 @@ export default function BookingModal({
           }
      }, [fieldData]);
 
-     // Reset khi modal mở/đóng
+     // Reset khi modal mở/đóng, nhưng giữ preset định kỳ nếu được truyền vào
      useEffect(() => {
           if (isOpen) {
                setStep("details");
                setErrors({});
                setPaymentMethod("");
                setPendingInfo(null);
-               setIsRecurring(false);
-               setRecurringWeeks(4);
-               setSelectedDays([]);
+               if (fieldData?.isRecurringPreset) {
+                    setIsRecurring(true);
+                    if (typeof fieldData.recurringWeeksPreset === 'number' && fieldData.recurringWeeksPreset > 0) {
+                         setRecurringWeeks(fieldData.recurringWeeksPreset);
+                    } else {
+                         setRecurringWeeks(4);
+                    }
+                    if (Array.isArray(fieldData.selectedDaysPreset)) {
+                         setSelectedDays(fieldData.selectedDaysPreset);
+                    } else {
+                         setSelectedDays([]);
+                    }
+               } else {
+                    setIsRecurring(false);
+                    setRecurringWeeks(4);
+                    setSelectedDays([]);
+               }
           }
      }, [isOpen, fieldData]);
 
@@ -312,6 +353,21 @@ export default function BookingModal({
                                                                            Tổng số buổi
                                                                       </span>
                                                                       <span className="font-medium text-teal-600">{bookingData.totalSessions || (recurringWeeks * selectedDays.length)} buổi</span>
+                                                                 </div>
+                                                                 {/* Preview danh sách buổi */}
+                                                                 <div className="mt-3 bg-white/70 rounded-lg p-2  border border-teal-200">
+                                                                      <div className="text-xs text-gray-600 font-semibold mb-1">Lịch các buổi dự kiến</div>
+                                                                      <div className="overflow-y-auto max-h-24 scrollbar-thin scrollbar-thumb-teal-200 scrollbar-track-white space-y-1 text-xs">
+                                                                           {generateRecurringSessions().map((s, idx) => (
+                                                                                <div key={idx} className="flex justify-between">
+                                                                                     <span>{s.date.toLocaleDateString('vi-VN')}</span>
+                                                                                     <span className="text-teal-700">{s.slotName}</span>
+                                                                                </div>
+                                                                           ))}
+                                                                           {generateRecurringSessions().length === 0 && (
+                                                                                <div className="text-gray-500">Chọn ngày trong tuần để xem danh sách buổi</div>
+                                                                           )}
+                                                                      </div>
                                                                  </div>
                                                             </div>
                                                        )}

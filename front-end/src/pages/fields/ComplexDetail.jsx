@@ -24,6 +24,8 @@ export default function ComplexDetail({ user }) {
      const [baseMinPrice, setBaseMinPrice] = useState(0); // lowest price across all slots (small field)
      const [cheapestSlot, setCheapestSlot] = useState(null); // { slotId, name, price }
      const [priciestSlot, setPriciestSlot] = useState(null); // { slotId, name, price }
+     const [selectedFieldCheapestSlot, setSelectedFieldCheapestSlot] = useState(null); // { slotId, name, price }
+     const [selectedFieldPriciestSlot, setSelectedFieldPriciestSlot] = useState(null); // { slotId, name, price }
      const [activeTab, setActiveTab] = useState(() => {
           const q = new URLSearchParams(location.search);
           const t = q.get("tab");
@@ -150,6 +152,43 @@ export default function ComplexDetail({ user }) {
           return () => { cancelled = true; };
      }, [resolvedComplexId, timeSlots, selectedDate]);
 
+     // Compute cheapest/priciest slot for the currently selected small field
+     useEffect(() => {
+          let cancelled = false;
+          async function computeSelectedFieldExtremes() {
+               try {
+                    if (!resolvedComplexId || !timeSlots?.length || !selectedFieldId) {
+                         setSelectedFieldCheapestSlot(null);
+                         setSelectedFieldPriciestSlot(null);
+                         return;
+                    }
+                    const results = await Promise.all(
+                         timeSlots.map(async (s) => {
+                              const data = await fetchComplexDetail(resolvedComplexId, { date: selectedDate, slotId: s.slotId });
+                              const fieldsForSlot = data?.fields || [];
+                              const fieldForSlot = fieldsForSlot.find(f => Number(f.fieldId) === Number(selectedFieldId));
+                              const price = Number(fieldForSlot?.priceForSelectedSlot || 0);
+                              return { slotId: s.slotId, name: s.name, price };
+                         })
+                    );
+                    if (cancelled) return;
+                    const cheapest = results.reduce((best, cur) => {
+                         if (!best || (cur.price > 0 && cur.price < best.price)) return cur;
+                         return best;
+                    }, null);
+                    const priciest = results.reduce((best, cur) => {
+                         if (!best) return cur;
+                         if (cur.price > best.price) return cur;
+                         return best;
+                    }, null);
+                    setSelectedFieldCheapestSlot(cheapest);
+                    setSelectedFieldPriciestSlot(priciest);
+               } catch { /* ignore */ }
+          }
+          computeSelectedFieldExtremes();
+          return () => { cancelled = true; };
+     }, [resolvedComplexId, timeSlots, selectedDate, selectedFieldId]);
+
      useEffect(() => {
           const next = new URLSearchParams(searchParams);
           next.set("date", selectedDate);
@@ -209,21 +248,13 @@ export default function ComplexDetail({ user }) {
                     showToastMessage("Vui lòng chọn khoảng ngày và các ngày trong tuần.", 'warning');
                     return;
                }
-               const totalSessions = calculateTotalSessions();
-               // Big-field unit price
-               const unitPrice = Number(selectedSlotPriceBig || minPriceBig || 0);
-               const totalPrice = totalSessions * unitPrice;
-               const discountPercent = getRecurringDiscountPercent(totalSessions);
-               const discountAmount = Math.round(totalPrice * (discountPercent / 100));
-               const finalTotal = totalPrice - discountAmount;
-               showToastMessage(`Xem trước lịch định kỳ:\n- Tổng số buổi: ${totalSessions}\n- Giá mỗi buổi: ${unitPrice.toLocaleString("vi-VN")}₫\n- Tạm tính: ${totalPrice.toLocaleString("vi-VN")}₫\n- Giảm giá (${discountPercent}%): -${discountAmount.toLocaleString("vi-VN")}₫\n- Thành tiền: ${finalTotal.toLocaleString("vi-VN")}₫\n\nSẽ liệt kê các buổi và xung đột nếu có.`, 'info');
-               return;
-          }
-
-          // Kiểm tra sân còn trống
-          if (availableBundles === 0) {
-               showToastMessage("Không còn sân trống cho slot đã chọn. Vui lòng chọn slot khác.", 'warning');
-               return;
+               // Cho phép mở modal đặt định kỳ ngay cả khi slot hiện tại hết chỗ (xung đột sẽ xử lý sau)
+          } else {
+               // Kiểm tra sân còn trống cho đặt 1 buổi
+               if (availableBundles === 0) {
+                    showToastMessage("Không còn sân trống cho slot đã chọn. Vui lòng chọn slot khác.", 'warning');
+                    return;
+               }
           }
 
           // Open booking modal for complex
@@ -273,10 +304,17 @@ export default function ComplexDetail({ user }) {
                return;
           }
 
-          // Kiểm tra sân có còn trống không
-          if (!field.isAvailableForSelectedSlot) {
-               showToastMessage("Sân này đã được đặt cho slot đã chọn. Vui lòng chọn slot khác.", 'warning');
-               return;
+          // Với đặt định kỳ, cho phép mở modal để xử lý xung đột trong modal; đặt lẻ thì chặn khi hết chỗ
+          if (!isRecurring) {
+               if (!field.isAvailableForSelectedSlot) {
+                    showToastMessage("Sân này đã được đặt cho slot đã chọn. Vui lòng chọn slot khác.", 'warning');
+                    return;
+               }
+          } else {
+               if (!rangeStart || !rangeEnd || repeatDays.length === 0) {
+                    showToastMessage("Vui lòng chọn khoảng ngày và các ngày trong tuần.", 'warning');
+                    return;
+               }
           }
 
           const bookingData = {
@@ -299,7 +337,7 @@ export default function ComplexDetail({ user }) {
           };
 
           setBookingModalData(bookingData);
-          setBookingType("quick");
+          setBookingType(isRecurring ? "complex" : "quick");
           setIsBookingModalOpen(true);
      };
 
@@ -550,6 +588,11 @@ export default function ComplexDetail({ user }) {
                                                                  <div className="flex items-center justify-between"><span className="inline-flex items-center gap-2"><Ruler className="w-4 h-4 text-blue-600" /> Kích thước</span><b className="text-teal-700">{selectedField.size || "—"}</b></div>
                                                                  <div className="flex items-center justify-between"><span className="inline-flex items-center gap-2"><Leaf className="w-4 h-4 text-emerald-600" /> Mặt cỏ</span><b className="text-teal-700">{selectedField.grassType || "—"}</b></div>
                                                                  <div className="flex items-center justify-between"><span className="inline-flex items-center gap-2"><MapPin className="w-4 h-4 text-teal-600" /> Thuộc khu sân</span><b className="text-teal-700">{complex?.name || "—"}</b></div>
+                                                                 {/* Giá trị theo slot của sân nhỏ */}
+                                                                 <div className="flex items-center justify-between"><span className="inline-flex items-center gap-2"><Tag className="w-4 h-4 text-emerald-600" /> Slot rẻ nhất</span><b className="text-orange-600">{(selectedFieldCheapestSlot?.price || 0).toLocaleString("vi-VN")}₫{selectedFieldCheapestSlot?.name ? ` • ${selectedFieldCheapestSlot.name}` : ""}</b></div>
+                                                                 {selectedFieldPriciestSlot && (
+                                                                      <div className="flex items-center justify-between"><span className="inline-flex items-center gap-2"><Tag className="w-4 h-4 text-red-600" /> Slot đắt nhất</span><b className="text-orange-600">{(selectedFieldPriciestSlot.price || 0).toLocaleString("vi-VN")}₫ • {selectedFieldPriciestSlot.name}</b></div>
+                                                                 )}
                                                             </div>
                                                        </div>
 
@@ -593,10 +636,7 @@ export default function ComplexDetail({ user }) {
                                                                       <div className="h-0.5 w-24 bg-blue-500/80 rounded-full mx-auto" />
                                                                  </div>
                                                                  <div className="space-y-2">
-                                                                      <div className="flex items-center justify-between">
-                                                                           <span className="text-gray-700 font-medium inline-flex items-center gap-1"><DollarSign className="w-4 h-4 text-orange-500" />Giá từ:</span>
-                                                                           <span className="text-orange-600 font-bold">{(minPriceBig) ? (Number(minPriceBig).toLocaleString("vi-VN") + "₫") : "Liên hệ"} <p className="inline-block text-xs text-gray-500"> / trận</p></span>
-                                                                      </div>
+
                                                                       <div className="flex items-center justify-between mt-1">
                                                                            <span className="text-gray-700 font-medium inline-flex items-center gap-1"><Tag className="w-4 h-4 text-emerald-600" />Slot rẻ nhất:</span>
                                                                            <span className="text-orange-600 font-bold">{(cheapestSlot?.price ? (cheapestSlot.price * bigComposeCount) : 0).toLocaleString("vi-VN")}₫ <p className="inline-block text-xs text-gray-500">/ trận{cheapestSlot?.name ? ` • ${cheapestSlot.name}` : ""}</p></span>
@@ -605,11 +645,6 @@ export default function ComplexDetail({ user }) {
                                                                            <div className="flex items-center justify-between">
                                                                                 <span className="text-gray-700 font-medium inline-flex items-center gap-1"><Tag className="w-4 h-4 text-red-600" />Slot đắt nhất:</span>
                                                                                 <span className="text-orange-600 font-bold">{(priciestSlot.price * bigComposeCount).toLocaleString("vi-VN")}₫ <p className="inline-block text-xs text-gray-500">/ trận • {priciestSlot.name}</p></span>
-                                                                           </div>
-                                                                      )}
-                                                                      {isRecurring && recurringSummary && (
-                                                                           <div className="text-xs text-emerald-700 mt-2">
-                                                                                Ưu đãi đặt cố định: <b>{recurringSummary.discountPercent}%</b>
                                                                            </div>
                                                                       )}
 
@@ -948,7 +983,7 @@ export default function ComplexDetail({ user }) {
                                                        onClick={() => selectedField ? handleQuickBookField(selectedFieldId) : handleBookComplex()}
                                                        className="rounded-lg bg-teal-600 hover:bg-teal-700 text-white"
                                                   >
-                                                       {isRecurring ? "Xem trước lịch định kỳ" : (selectedField ? "Đặt Sân nhỏ" : "Đặt Sân lớn")}
+                                                       {isRecurring ? "Đặt định kỳ" : (selectedField ? "Đặt Sân nhỏ" : "Đặt Sân lớn")}
                                                   </Button>
                                                   <div className="text-xs text-gray-500 text-center">Mock UI – chưa gọi backend</div>
                                              </div>
