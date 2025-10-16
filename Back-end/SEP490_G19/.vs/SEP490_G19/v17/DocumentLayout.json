@@ -1,7 +1,20 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\",
-  "Documents": [],
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\registercontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\registercontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\services\\userservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\services\\userservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\cs\\sep490_g19\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
@@ -9,11 +22,50 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": -1,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Program.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Program.cs",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Program.cs",
+              "RelativeToolTip": "BallSport.API\\Program.cs",
+              "ViewState": "AQIAAAkAAAAAAAAAAAAAABkAAAAiAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-15T07:44:43.129Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "UserService.cs",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\UserService.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\Services\\UserService.cs",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\UserService.cs",
+              "RelativeToolTip": "BallSport.Application\\Services\\UserService.cs",
+              "ViewState": "AQIAAKcAAAAAAAAAAADwv7sAAAAAAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-15T02:47:20.943Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "RegisterController.cs",
+              "DocumentMoniker": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\RegisterController.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Controllers\\RegisterController.cs",
+              "ToolTip": "D:\\Cs\\SEP490_G19\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\RegisterController.cs",
+              "RelativeToolTip": "BallSport.API\\Controllers\\RegisterController.cs",
+              "ViewState": "AQIAAA8AAAAAAAAAAAAAAC0AAAAgAAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-15T04:01:28.19Z",
+              "EditorCaption": ""
             }
           ]
         }

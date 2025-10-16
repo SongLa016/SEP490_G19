@@ -401,3 +401,15 @@ CREATE TABLE Notifications (
 
 
 
+
+
+
+INSERT INTO Roles (RoleName) VALUES (N'Player');
+
+-- Thêm user mới
+INSERT INTO Users (Email, PasswordHash, FullName, Phone, Status)
+VALUES (N'testuser@gmail.com', 
+        N'123456',  -- 🚨 nếu chưa hash thì để tạm plain text, khi code login nhớ so sánh y chang
+        N'Test User', 
+        N'0901234567', 
+        N'Active');

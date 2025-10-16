@@ -1,41 +1,97 @@
-using BallSport.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 using BallSport.Application.Services;
 using BallSport.Infrastructure.Repositories;
+using BallSport.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
+using BallSport.Infrastructure.Models;
+using Banking.Application.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Lấy service collection và configuration
+var services = builder.Services;
+var config = builder.Configuration;
+
 // Add services to the container.
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+services.AddControllers();
+services.AddEndpointsApiExplorer();
+services.AddSwaggerGen();
+services.AddMemoryCache();
 
-builder.Services.AddDbContext<Sep490G19v1Context>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("MyCnn")));
+// Đăng ký Repository và Service từ Trung
+services.AddScoped<UserRepositories>();
+services.AddScoped<UserService>();
+services.AddScoped<JwtService>();
+services.AddScoped<OTPService>();
 
-builder.Services.AddScoped<FieldTypesRepository>();
-builder.Services.AddScoped<FieldTypeService>();
+// Đăng ký Repository và Service từ main
+services.AddScoped<FieldTypesRepository>();
+services.AddScoped<FieldTypeService>();
 
-builder.Services.AddScoped<FieldComplexRepository>();
-builder.Services.AddScoped<FieldComplexService>();
+services.AddScoped<FieldComplexRepository>();
+services.AddScoped<FieldComplexService>();
 
-builder.Services.AddScoped<FieldRepository>();
-builder.Services.AddScoped<FieldService>();
+services.AddScoped<FieldRepository>();
+services.AddScoped<FieldService>();
 
-builder.Services.AddScoped<DepositPolicyRepository>();
-builder.Services.AddScoped<DepositPolicyService>();
+services.AddScoped<DepositPolicyRepository>();
+services.AddScoped<DepositPolicyService>();
 
-builder.Services.AddScoped<FieldScheduleRepository>();
-builder.Services.AddScoped<FieldScheduleService>();
+services.AddScoped<FieldScheduleRepository>();
+services.AddScoped<FieldScheduleService>();
 
-builder.Services.AddScoped<FieldPriceRepository>();
-builder.Services.AddScoped<FieldPriceService>();
+services.AddScoped<FieldPriceRepository>();
+services.AddScoped<FieldPriceService>();
 
-builder.Services.AddScoped<TimeSlotRepository>();
-builder.Services.AddScoped<TimeSlotService>();
+services.AddScoped<TimeSlotRepository>();
+services.AddScoped<TimeSlotService>();
 
-builder.Services.AddScoped<FieldScheduleRepository>();
-builder.Services.AddScoped<FieldScheduleService>();
+// Đăng ký DbContext (chỉ giữ 1 lần)
+services.AddDbContext<Sep490G19v1Context>(options =>
+    options.UseSqlServer(config.GetConnectionString("MyCnn")));
+
+// Cấu hình Authentication với JWT
+services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = config["JwtSettings:Issuer"],
+            ValidAudience = config["JwtSettings:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(config["JwtSettings:SecretKey"]))
+        };
+    });
+
+// Cấu hình Google Authentication
+services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
+})
+.AddCookie()
+.AddGoogle(options =>
+{
+    var googleAuthNSection = config.GetSection("Authentication:Google");
+    options.ClientId = googleAuthNSection["ClientId"];
+    options.ClientSecret = googleAuthNSection["ClientSecret"];
+    options.CallbackPath = "/signin-google";
+});
+
+// SMTP + Email Service
+var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
+services.AddSingleton(smtpSettings);
+services.AddTransient<EmailService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -46,6 +102,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Thêm Authentication trước Authorization
+app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 app.Run();
