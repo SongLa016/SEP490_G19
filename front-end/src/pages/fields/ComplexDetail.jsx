@@ -206,6 +206,7 @@ export default function ComplexDetail({ user }) {
           }
      }, [activeTab]);
 
+     // Use JS weekday mapping: 0=CN..6=T7 to align with recurring logic
      const daysOfWeek = [
           { id: 1, label: "T2" },
           { id: 2, label: "T3" },
@@ -213,7 +214,7 @@ export default function ComplexDetail({ user }) {
           { id: 4, label: "T5" },
           { id: 5, label: "T6" },
           { id: 6, label: "T7" },
-          { id: 7, label: "CN" },
+          { id: 0, label: "CN" },
      ];
 
      const toggleDay = (d) => {
@@ -244,6 +245,10 @@ export default function ComplexDetail({ user }) {
                return;
           }
           if (isRecurring) {
+               if (currentWeeks < minRecurringWeeks) {
+                    showToastMessage(`Đặt định kỳ yêu cầu tối thiểu ${minRecurringWeeks} tuần.`, 'warning');
+                    return;
+               }
                if (!rangeStart || !rangeEnd || repeatDays.length === 0) {
                     showToastMessage("Vui lòng chọn khoảng ngày và các ngày trong tuần.", 'warning');
                     return;
@@ -261,7 +266,7 @@ export default function ComplexDetail({ user }) {
           const selectedSlot = timeSlots.find(s => s.slotId === selectedSlotId);
           // Map recurring options to modal preset
           const weeksCount = isRecurring ? Math.max(1, Math.ceil((new Date(rangeEnd) - new Date(rangeStart)) / (7 * 24 * 60 * 60 * 1000))) : 0;
-          const mappedDays = isRecurring ? repeatDays.map(d => (d === 7 ? 0 : d)) : [];
+          const mappedDays = isRecurring ? repeatDays.slice() : [];
 
           const bookingData = {
                fieldId: `complex-${id}`,
@@ -297,7 +302,7 @@ export default function ComplexDetail({ user }) {
           const field = fields.find(f => f.fieldId === fieldId);
           const selectedSlot = timeSlots.find(s => s.slotId === selectedSlotId);
           const weeksCount = isRecurring ? Math.max(1, Math.ceil((new Date(rangeEnd) - new Date(rangeStart)) / (7 * 24 * 60 * 60 * 1000))) : 0;
-          const mappedDays = isRecurring ? repeatDays.map(d => (d === 7 ? 0 : d)) : [];
+          const mappedDays = isRecurring ? repeatDays.slice() : [];
 
           if (!field) {
                showToastMessage("Không tìm thấy thông tin sân.", 'error');
@@ -311,6 +316,10 @@ export default function ComplexDetail({ user }) {
                     return;
                }
           } else {
+               if (currentWeeks < minRecurringWeeks) {
+                    showToastMessage(`Đặt định kỳ yêu cầu tối thiểu ${minRecurringWeeks} tuần.`, 'warning');
+                    return;
+               }
                if (!rangeStart || !rangeEnd || repeatDays.length === 0) {
                     showToastMessage("Vui lòng chọn khoảng ngày và các ngày trong tuần.", 'warning');
                     return;
@@ -428,6 +437,15 @@ export default function ComplexDetail({ user }) {
           const weeks = Math.ceil((endDate - startDate) / (7 * 24 * 60 * 60 * 1000));
           return repeatDays.length * weeks;
      };
+
+     // Recurring constraints: require at least 4 weeks to enable weekday selection
+     const minRecurringWeeks = 4;
+     const currentWeeks = (() => {
+          if (!rangeStart || !rangeEnd) return 0;
+          const s = new Date(rangeStart);
+          const e = new Date(rangeEnd);
+          return Math.ceil((e - s) / (7 * 24 * 60 * 60 * 1000));
+     })();
 
      // Chính sách giảm giá đặt cố định theo số buổi
      const getRecurringDiscountPercent = (totalSessions) => {
@@ -957,9 +975,18 @@ export default function ComplexDetail({ user }) {
                                                                       <div className="text-sm text-gray-600 mb-1">Ngày trong tuần</div>
                                                                       <div className="flex flex-wrap gap-2">
                                                                            {daysOfWeek.map(d => (
-                                                                                <Button key={d.id} type="button" onClick={() => toggleDay(d.id)} className={`px-3 py-1.5 rounded-lg border text-sm ${repeatDays.includes(d.id) ? "bg-teal-600 text-white border-teal-600" : "bg-white text-teal-800 border-teal-200"}`}>{d.label}</Button>
+                                                                                <Button
+                                                                                     key={d.id}
+                                                                                     type="button"
+                                                                                     disabled={currentWeeks < minRecurringWeeks}
+                                                                                     onClick={() => toggleDay(d.id)}
+                                                                                     className={`px-3 py-1.5 rounded-lg border text-sm ${currentWeeks < minRecurringWeeks ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed" : repeatDays.includes(d.id) ? "bg-teal-600 text-white border-teal-600" : "bg-white text-teal-800 border-teal-200"}`}
+                                                                                >{d.label}</Button>
                                                                            ))}
                                                                       </div>
+                                                                      {currentWeeks < minRecurringWeeks && (
+                                                                           <div className="mt-1 text-xs text-red-600">Cần chọn khoảng ngày tối thiểu {minRecurringWeeks} tuần để chọn thứ.</div>
+                                                                      )}
                                                                  </div>
                                                                  {repeatDays.length > 0 && (
                                                                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">

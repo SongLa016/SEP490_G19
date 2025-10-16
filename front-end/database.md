@@ -14,10 +14,6 @@ CREATE TABLE Users (
     Avatar VARBINARY(MAX) NULL,                                   -- đại diện
     Status NVARCHAR(20) DEFAULT 'Active',                      -- Trạng thái tài khoản
     CreatedAt DATETIME2 DEFAULT GETDATE()                      -- Ngày tạo tài khoản
-IsBanned BIT DEFAULT 0,                                          -- User bị khóa do báo cáo
-    BannedAt DATETIME2 NULL,                                         -- Thời gian khóa
-    BanReason NVARCHAR(255) NULL                                     -- Lý do khóa
-
 );
 
 CREATE TABLE UserRoles (
@@ -34,14 +30,12 @@ CREATE TABLE UserProfiles (
     Gender NVARCHAR(10),                                       -- Giới tính
     Address NVARCHAR(500),                                     -- Địa chỉ
     PreferredPositions NVARCHAR(100),                          -- Vị trí ưa thích (thủ môn, tiền đạo...)
-    SkillLevel NVARCHAR(20)                                    -- Trình độ (beginner, intermediate,    advanced)
-   bio TEXT,
+    SkillLevel NVARCHAR(20),                                    -- Trình độ (beginner, intermediate,    advanced)
+    bio  NVARCHAR(20)  
 );
 
-
-
 -- 2. Sân bóng & Quản lý (6 bảng)
-  Loại sân (5vs5, 7vs7, 11vs11)
+ 
 CREATE TABLE FieldTypes (
     TypeID INT IDENTITY(1,1) PRIMARY KEY,
     TypeName NVARCHAR(50) NOT NULL UNIQUE
@@ -57,37 +51,28 @@ CREATE TABLE FieldComplexes (
    Image VARBINARY(MAX) NULL,
     Status NVARCHAR(20) DEFAULT 'Active',            -- Trạng thái
     CreatedAt DATETIME2 DEFAULT GETDATE()            -- Ngày tạo
-ApprovalStatus NVARCHAR(20) DEFAULT 'Pending',                   -- Pending, Approved, Rejected
-    ApprovedBy INT NULL FOREIGN KEY REFERENCES Users(UserID),        -- Admin phê duyệt
-    ApprovedAt DATETIME2 NULL
-
 );
 
 -- Sân nhỏ trong khu sân (ví dụ: "Sân 5 người số 1")
 CREATE TABLE Fields (
-    FieldID INT IDENTITY(1,1) PRIMARY KEY,           -- ID sân nhỏ
+    FieldID INT IDENTITY(1,1) PRIMARY KEY,                          -- ID sân nhỏ
     ComplexID INT FOREIGN KEY REFERENCES FieldComplexes(ComplexID), -- thuộc khu sân nào
     TypeID INT FOREIGN KEY REFERENCES FieldTypes(TypeID),           -- loại sân
-    Name NVARCHAR(255) NOT NULL,                     -- Tên sân nhỏ
-    Size NVARCHAR(100),                              -- Kích thước sân (VD: 20x40m)
-    GrassType NVARCHAR(100),                         -- Loại cỏ (tự nhiên, nhân tạo,…)
-    Description NVARCHAR(MAX),                       -- Mô tả chi tiết
+    Name NVARCHAR(255) NOT NULL,                                    -- Tên sân nhỏ
+    Size NVARCHAR(100),                                             -- Kích thước sân (VD: 20x40m)
+    GrassType NVARCHAR(100),                                        -- Loại cỏ (tự nhiên, nhân tạo,…)
+    Description NVARCHAR(MAX),                                      -- Mô tả chi tiết
     Image VARBINARY(MAX) NULL,	
-    PricePerHour DECIMAL(10,2),                      -- Giá thuê theo giờ
-    Status NVARCHAR(20) DEFAULT 'Available',         -- Trạng thái (Available, Maintenance,…) – phụ thuộc vào BookingStatus ở bảng Booking
+    PricePerHour DECIMAL(10,2),                                     -- Giá thuê theo giờ
+    Status NVARCHAR(20) DEFAULT 'Available',                        -- Trạng thái (Available, Maintenance,…) – phụ thuộc vào BookingStatus ở bảng Booking
     CreatedAt DATETIME2 DEFAULT GETDATE()
-ApprovalStatus NVARCHAR(20) DEFAULT 'Pending',       -- Pending, Approved, Rejected
-    ApprovedBy INT NULL FOREIGN KEY REFERENCES Users(UserID),
-    ApprovedAt DATETIME2 NULL,
-    IsHidden BIT DEFAULT 0  
-
 );
 
 
 
-////////////////////////////////////////////// Lịch Sân ////////////////////////////////////////////////////////////////////
+--   ////////////////////////////////////////////// Lịch Sân ////////////////////////////////////////////////////////////////////
 
-Gồm có 1 bảng lưu riêng các slot  edit được giờ sân Slot 1: 22:15 – 23:45 | Slot 2: 20:45 – 22:15 | Slot 3: 19:15 – 20:45 | Slot 4: 17:45 – 19:15 | Slot 5: 16:15 – 17:45 | Slot 6: 14:45 – 16:15 | Slot 7: 13:15 – 14:45 | Slot 8: 11:45 – 13:15 | Slot 9: 10:15 – 11:45 | Slot 10: 08:45 – 10:15 | Slot 11: 07:15 – 08:45 )
+-- Gồm có 1 bảng lưu riêng các slot  edit được giờ sân Slot 1: 22:15 – 23:45 | Slot 2: 20:45 – 22:15 | Slot 3: 19:15 – 20:45 | Slot 4: 17:45 – 19:15 | Slot 5: 16:15 – 17:45 | Slot 6: 14:45 – 16:15 | Slot 7: 13:15 – 14:45 | Slot 8: 11:45 – 13:15 | Slot 9: 10:15 – 11:45 | Slot 10: 08:45 – 10:15 | Slot 11: 07:15 – 08:45 )
 CREATE TABLE TimeSlots (
     SlotID INT IDENTITY(1,1) PRIMARY KEY,       -- ID slot
     SlotName NVARCHAR(50),                      -- Tên slot (Slot 1, Slot 2,...)
@@ -97,7 +82,7 @@ CREATE TABLE TimeSlots (
 );
 
 
-(lịch sân ) 
+-- (lịch sân ) 
 CREATE TABLE FieldSchedules (
     ScheduleID INT IDENTITY(1,1) PRIMARY KEY,
     FieldID INT FOREIGN KEY REFERENCES Fields(FieldID),  -- sân nhỏ
@@ -107,7 +92,7 @@ CREATE TABLE FieldSchedules (
     UNIQUE(FieldID, Date, SlotID)
 );
 
-( giá sân theo từng slot )
+-- ( giá sân theo từng slot )
 CREATE TABLE FieldPrices (
     PriceID INT IDENTITY(1,1) PRIMARY KEY,
     FieldID INT FOREIGN KEY REFERENCES Fields(FieldID),  -- sân nhỏ
@@ -117,23 +102,13 @@ CREATE TABLE FieldPrices (
 );
 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-
-
 
 CREATE TABLE DepositPolicies (
     DepositPolicyID INT IDENTITY(1,1) PRIMARY KEY,
-    FieldID INT NOT NULL FOREIGN KEY REFERENCES Fields(FieldID), -- áp dụng cho sân nhỏ
-    DepositPercent DECIMAL(5,2) NOT NULL,   -- % cọc (0 = không cần cọc)
-    MinDeposit DECIMAL(10,2) NULL,          -- Cọc tối thiểu
-    MaxDeposit DECIMAL(10,2) NULL,          -- Cọc tối đa
+    FieldID INT NOT NULL FOREIGN KEY REFERENCES Fields(FieldID),           -- áp dụng cho sân nhỏ
+    DepositPercent DECIMAL(5,2) NOT NULL,                                  -- % cọc (0 = không cần cọc)
+    MinDeposit DECIMAL(10,2) NULL,                                         -- Cọc tối thiểu
+    MaxDeposit DECIMAL(10,2) NULL,                                         -- Cọc tối đa
     CreatedAt DATETIME2 DEFAULT GETDATE()
 );
 
@@ -142,21 +117,32 @@ CREATE TABLE DepositPolicies (
 
 CREATE TABLE Bookings (
     BookingID INT IDENTITY(1,1) PRIMARY KEY,
-    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),           -- Người đặt
-    ScheduleID INT NOT NULL FOREIGN KEY REFERENCES FieldSchedules(ScheduleID), -- Slot
+    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),                        -- Người đặt
+    ScheduleID INT NOT NULL FOREIGN KEY REFERENCES FieldSchedules(ScheduleID),       -- Slot sân
+
     TotalPrice DECIMAL(10,2) NOT NULL,             -- Tổng tiền
     DepositAmount DECIMAL(10,2) NOT NULL,          -- Số tiền cọc
     RemainingAmount DECIMAL(10,2) NULL,            -- Phần còn lại trả tại sân
-    BookingStatus NVARCHAR(20) DEFAULT 'Pending',  -- Pending, Confirmed, Cancelled, Completed, Expired – sẽ cập nhật trạng thái slot của sân nhỏ 
+
+    BookingStatus NVARCHAR(20) DEFAULT 'Pending',  -- Pending, Confirmed, Cancelled, Completed, Expired, Reactive
     PaymentStatus NVARCHAR(20) DEFAULT 'Pending',  -- Pending, Paid, Refunded
+
+    HasOpponent BIT DEFAULT 0,                     -- 0 = chưa có đối, 1 = đã có đối
+    MatchRequestID INT  , 
+                                                  -- Nếu chưa có đối thì hệ thống auto tạo request
+                                                  -- Nếu có rồi thì null hoặc trỏ đến request đã matched
+
     QRCode NVARCHAR(255) NULL,                     -- Mã QR đặt sân
     QRExpiresAt DATETIME2 NULL,                    -- Hết hạn QR giữ chỗ (5–10 phút)
+
     CreatedAt DATETIME2 DEFAULT GETDATE(),
     ConfirmedAt DATETIME2 NULL,
     CancelledAt DATETIME2 NULL,
     CancelledBy NVARCHAR(20) NULL,                 -- Player / Owner / System
     CancelReason NVARCHAR(255) NULL
 );
+
+
 
 
 
@@ -207,17 +193,53 @@ CREATE TABLE BookingCancellationRequests (
 CREATE TABLE BookingCancellations (
     CancellationID INT IDENTITY(1,1) PRIMARY KEY,
     BookingID INT NOT NULL FOREIGN KEY REFERENCES Bookings(BookingID),
-    BookingCancellationRequests(RequestID), -- optional link
+    RequestID INT NULL FOREIGN KEY REFERENCES BookingCancellationRequests(RequestID), -- optional link
     CancelledBy NVARCHAR(20) NOT NULL,    -- 'Player' / 'Owner' / 'System'
     CancelReason NVARCHAR(255) NULL,
     RefundAmount DECIMAL(10,2) NOT NULL,
     PenaltyAmount DECIMAL(10,2) DEFAULT 0,
-    CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME()
+    CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
+    VerifiedBy INT NULL FOREIGN KEY REFERENCES Users(UserID), -- chủ sân xác minh
+    VerifiedAt DATETIME2 NULL                                   -- thời gian xác minh
 );
 
 
+-- ====admin===
+CREATE TABLE SystemNotifications (
+    NotificationID INT IDENTITY(1,1) PRIMARY KEY,
+    Title NVARCHAR(255) NOT NULL,
+    Content NVARCHAR(MAX) NOT NULL,
+    NotificationType NVARCHAR(50) DEFAULT 'General',           -- General, Promotion, Warning, Update
+    SentToRole NVARCHAR(50) NULL,                              -- NULL = all, 'Player', 'Owner'
+    SentToSpecificUsers NVARCHAR(MAX) NULL,                    -- JSON array of user IDs
+    InsUrgent BIT DEFAULT 0,                                    -- Thông báo khẩn
+    SentBy INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    SentAt DATETIME2 DEFAULT GETDATE(),
+    ExpiresAt DATETIME2 NULL,
+	);
 
-====== Tìm đội =======================================
+CREATE TABLE ViolationReports (
+    ReportID INT IDENTITY(1,1) PRIMARY KEY,
+    ReportedUserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID), -- User bị báo cáo
+    ReporterID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),     -- Người báo cáo
+    ReportType NVARCHAR(50) NOT NULL,                                -- Loại vi phạm
+    Description NVARCHAR(500) NOT NULL,                              -- Mô tả
+    Status NVARCHAR(20) DEFAULT 'Pending',                           -- Pending, Resolved
+    CreatedAt DATETIME2 DEFAULT GETDATE()
+);
+
+
+CREATE TABLE BlogPosts (
+    PostID INT IDENTITY(1,1) PRIMARY KEY,
+    Title NVARCHAR(255) NOT NULL,
+    Content NVARCHAR(MAX) NOT NULL,
+    AuthorID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),      -- Admin viết bài
+    Status NVARCHAR(20) DEFAULT 'Draft',                             -- Draft, Published
+    CreatedAt DATETIME2 DEFAULT GETDATE()
+);
+
+
+-- ====== Tìm đội =======================================
 -- 1. Request tạo đội (Teams)
 CREATE TABLE Teams (
     TeamID INT IDENTITY(1,1) PRIMARY KEY,
@@ -245,48 +267,138 @@ CREATE TABLE TeamJoinRequests (
     RespondedBy INT NULL FOREIGN KEY REFERENCES Users(UserID)   -- Người tạo đội duyệt
 );
 
+-- ====== Tìm đối thủ =======================================
+CREATE TABLE MatchRequests (
+    MatchRequestID INT IDENTITY(1,1) PRIMARY KEY,       -- ID yêu cầu tìm đối thủ
+    BookingID INT NOT NULL FOREIGN KEY REFERENCES Bookings(BookingID), 
+                                                        -- Booking gắn với trận này (Player A đã đặt sân)
+    CreatedBy INT NOT NULL FOREIGN KEY REFERENCES Users(UserID), 
+                                                        -- Người tạo request (Player A)
+    Description NVARCHAR(500),                          -- Mô tả (ví dụ: “Đội mạnh, cần đối 7vs7”)
+    Status NVARCHAR(20) DEFAULT 'Open',                 -- Open, Pending, Matched, Cancelled
+    CreatedAt DATETIME2 DEFAULT GETDATE()               -- Ngày giờ tạo request
+);
 
+ALTER TABLE Bookings
+ADD CONSTRAINT FK_Bookings_MatchRequests FOREIGN KEY (MatchRequestID) REFERENCES MatchRequests(MatchRequestID);
 
+CREATE TABLE MatchParticipants (
+    ParticipantID INT IDENTITY(1,1) PRIMARY KEY,        -- ID tham gia
+    MatchRequestID INT NOT NULL FOREIGN KEY REFERENCES MatchRequests(MatchRequestID),
+                                                        -- Trận đấu nào
+    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+                                                        -- Người chơi/đội tham gia (Player B captain)
+    IsCreator BIT DEFAULT 0,                            -- 1 nếu là chủ trận (Player A)
+    JoinedAt DATETIME2 DEFAULT GETDATE()                -- Thời điểm tham gia
+);
 
-
-
-
-
-====admin===
-CREATE TABLE SystemNotifications (
-    NotificationID INT IDENTITY(1,1) PRIMARY KEY,
-    Title NVARCHAR(255) NOT NULL,
-    Content NVARCHAR(MAX) NOT NULL,
-    NotificationType NVARCHAR(50) DEFAULT 'General',           -- General, Promotion, Warning, Update
-    SentToRole NVARCHAR(50) NULL,                              -- NULL = all, 'Player', 'Owner'
-    SentToSpecificUsers NVARCHAR(MAX) NULL,                    -- JSON array of user IDs
-    InsUrgent BIT DEFAULT 0,                                    -- Thông báo khẩn
-    SentBy INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
-    SentAt DATETIME2 DEFAULT GETDATE(),
-    ExpiresAt DATETIME2 NULL,
-
-
-CREATE TABLE ViolationReports (
-    ReportID INT IDENTITY(1,1) PRIMARY KEY,
-    ReportedUserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID), -- User bị báo cáo
-    ReporterID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),     -- Người báo cáo
-    ReportType NVARCHAR(50) NOT NULL,                                -- Loại vi phạm
-    Description NVARCHAR(500) NOT NULL,                              -- Mô tả
-    Status NVARCHAR(20) DEFAULT 'Pending',                           -- Pending, Resolved
-    CreatedAt DATETIME2 DEFAULT GETDATE()
+CREATE TABLE PlayerMatchHistory (
+    HistoryID INT IDENTITY(1,1) PRIMARY KEY,          -- ID lịch sử
+    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),  -- Người chơi
+    MatchRequestID INT NOT NULL FOREIGN KEY REFERENCES MatchRequests(MatchRequestID), -- Trận tìm đối
+    Role NVARCHAR(20) NOT NULL,                       -- Vai trò (Creator = chủ booking, Joiner = tham gia)
+    FinalStatus NVARCHAR(20) NOT NULL,                -- Kết quả cuối (Matched, Cancelled, Expired, Pending)
+    CreatedAt DATETIME2 DEFAULT GETDATE(),            -- Thời điểm tham gia
+    UpdatedAt DATETIME2 DEFAULT GETDATE()             -- Cập nhật khi trạng thái thay đổi
 );
 
 
-CREATE TABLE BlogPosts (
+-- 3. Cộng Đồng (5 bảng)
+ -- ======================
+ -- BẢNG POSTS (Bài viết)
+ -- ======================
+CREATE TABLE Posts (
     PostID INT IDENTITY(1,1) PRIMARY KEY,
-    Title NVARCHAR(255) NOT NULL,
+    UserID INT NOT NULL,                         -- Người đăng
+    Title NVARCHAR(255) NULL,                    -- Tiêu đề (tùy chọn)
+    Content NVARCHAR(MAX) NOT NULL,              -- Nội dung
+    MediaURL NVARCHAR(500) NULL,                 -- Ảnh/Video
+    FieldID INT NULL,                            -- Tag sân (nếu có)
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME NULL,
+    Status NVARCHAR(20) DEFAULT 'Active',        -- Active/Hidden/Deleted
+    CONSTRAINT FK_Posts_Users FOREIGN KEY (UserID) REFERENCES Users(UserID),
+    CONSTRAINT FK_Posts_Fields FOREIGN KEY (FieldID) REFERENCES Fields(FieldID)
+);
+
+ -- ======================
+ -- BẢNG COMMENTS (Bình luận)
+-- ======================
+CREATE TABLE Comments (
+    CommentID INT IDENTITY(1,1) PRIMARY KEY,
+    PostID INT NOT NULL,
+    UserID INT NOT NULL,
+    ParentCommentID INT NULL,                    -- Reply comment
     Content NVARCHAR(MAX) NOT NULL,
-    AuthorID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),      -- Admin viết bài
-    Status NVARCHAR(20) DEFAULT 'Draft',                             -- Draft, Published
-    CreatedAt DATETIME2 DEFAULT GETDATE()
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    Status NVARCHAR(20) DEFAULT 'Active',
+    CONSTRAINT FK_Comments_Posts FOREIGN KEY (PostID) REFERENCES Posts(PostID),
+    CONSTRAINT FK_Comments_Users FOREIGN KEY (UserID) REFERENCES Users(UserID),
+    CONSTRAINT FK_Comments_Parent FOREIGN KEY (ParentCommentID) REFERENCES Comments(CommentID)
+);
+
+ -- ======================
+ -- BẢNG POSTLIKES (Like bài viết)
+-- ======================
+ CREATE TABLE PostLikes (
+    LikeID INT IDENTITY(1,1) PRIMARY KEY,
+    PostID INT NOT NULL,
+    UserID INT NOT NULL,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_PostLikes_Posts FOREIGN KEY (PostID) REFERENCES Posts(PostID),
+    CONSTRAINT FK_PostLikes_Users FOREIGN KEY (UserID) REFERENCES Users(UserID),
+    CONSTRAINT UQ_PostLikes UNIQUE (PostID, UserID)   -- Mỗi user chỉ like 1 lần/post
+);
+
+ -- ======================
+-- BẢNG REPORTS (Báo cáo vi phạm)
+ -- ======================
+CREATE TABLE Reports (
+    ReportID INT IDENTITY(1,1) PRIMARY KEY,
+    ReporterID INT NOT NULL,                      -- Ai báo cáo
+    TargetType NVARCHAR(20) NOT NULL CHECK (TargetType IN ('Post','Comment')),
+    TargetID INT NOT NULL,                        -- ID Post hoặc Comment
+    Reason NVARCHAR(500) NOT NULL,                -- Lý do
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    Status NVARCHAR(20) DEFAULT 'Pending',        -- Pending/Reviewed/Resolved
+    HandledBy INT NULL,                           -- Admin xử lý
+    CONSTRAINT FK_Reports_Reporter FOREIGN KEY (ReporterID) REFERENCES Users(UserID),
+    CONSTRAINT FK_Reports_Admin FOREIGN KEY (HandledBy) REFERENCES Users(UserID)
+    -- TargetID sẽ tham chiếu Posts hoặc Comments tùy theo TargetType → xử lý ở tầng ứng dụng
+);
+
+ -- ======================
+-- BẢNG NOTIFICATIONS (Thông báo)
+ -- ======================
+CREATE TABLE Notifications (
+    NotificationID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID INT NOT NULL,                          -- Người nhận thông báo
+    Type NVARCHAR(20) NOT NULL CHECK (Type IN ('NewComment','Reply','Mention','Like','ReportResult','System')),
+    TargetID INT NULL,                            -- Liên kết Post/Comment
+    Message NVARCHAR(500) NOT NULL,
+    IsRead BIT DEFAULT 0,                         -- 0 = chưa đọc, 1 = đã đọc
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Notifications_Users FOREIGN KEY (UserID) REFERENCES Users(UserID)
 );
 
 
 
-============================NHÁP====================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

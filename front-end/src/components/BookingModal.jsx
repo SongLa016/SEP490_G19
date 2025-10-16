@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { X, MapPin, User, Phone, Mail, AlertCircle, CheckCircle, Repeat, CalendarDays } from "lucide-react";
 import { Button, Input, Textarea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui";
-import { createPendingBooking, confirmPayment, validateBookingData } from "../services/bookings";
+import { createPendingBooking, confirmPayment, validateBookingData, checkFieldAvailability } from "../services/bookings";
 import { createBooking } from "../utils/bookingStore";
+import { createMatchRequest, createCommunityPost } from "../utils/communityStore";
 import EmailVerificationModal from "./EmailVerificationModal";
 
 export default function BookingModal({
@@ -19,10 +20,16 @@ export default function BookingModal({
      const [errors, setErrors] = useState({});
      const [paymentMethod, setPaymentMethod] = useState("");
      const [pendingInfo, setPendingInfo] = useState(null);
+     const [createdMatchRequest, setCreatedMatchRequest] = useState(null);
+     const [createdCommunityPost, setCreatedCommunityPost] = useState(null);
+     // Opponent flow: always assume user may find opponent after booking via BookingHistory
+     const hasOpponent = "unknown";
      const [showEmailVerification, setShowEmailVerification] = useState(false);
      const [isRecurring, setIsRecurring] = useState(false);
      const [recurringWeeks, setRecurringWeeks] = useState(4);
      const [selectedDays, setSelectedDays] = useState([]);
+     const [suggestedDays, setSuggestedDays] = useState([]); // weekdays 0..6
+     const [isSuggesting, setIsSuggesting] = useState(false);
 
      const [bookingData, setBookingData] = useState({
           fieldId: fieldData?.fieldId || null,
@@ -184,6 +191,67 @@ export default function BookingModal({
           );
      };
 
+     // Suggest alternative weekdays for recurring schedule based on availability
+     useEffect(() => {
+          async function computeSuggestions() {
+               try {
+                    setIsSuggesting(true);
+                    setSuggestedDays([]);
+                    if (!isRecurring) return;
+                    const fieldId = bookingData.fieldId;
+                    const slotId = bookingData.slotId;
+                    const startDateStr = bookingData.date;
+                    if (!fieldId || !slotId || !startDateStr) return;
+
+                    const startDate = new Date(startDateStr + "T00:00:00");
+                    const weeks = Math.max(1, parseInt(recurringWeeks));
+
+                    function formatDate(d) {
+                         const y = d.getFullYear();
+                         const m = String(d.getMonth() + 1).padStart(2, "0");
+                         const day = String(d.getDate()).padStart(2, "0");
+                         return `${y}-${m}-${day}`;
+                    }
+
+                    function getFirstOccurrence(start, weekday) {
+                         const s = new Date(start);
+                         const sW = s.getDay();
+                         const diff = (weekday - sW + 7) % 7;
+                         s.setDate(s.getDate() + diff);
+                         s.setHours(0, 0, 0, 0);
+                         return s;
+                    }
+
+                    const candidates = [0, 1, 2, 3, 4, 5, 6].filter(w => !selectedDays.includes(w));
+                    const scored = await Promise.all(candidates.map(async (w) => {
+                         const first = getFirstOccurrence(startDate, w);
+                         const checks = [];
+                         for (let i = 0; i < weeks; i += 1) {
+                              const d = new Date(first);
+                              d.setDate(d.getDate() + i * 7);
+                              checks.push(checkFieldAvailability(fieldId, formatDate(d), bookingData.slotId));
+                         }
+                         const results = await Promise.all(checks);
+                         const availableCount = results.filter(r => r && r.available).length;
+                         const ratio = availableCount / Math.max(1, weeks);
+                         return { weekday: w, ratio };
+                    }));
+
+                    const good = scored
+                         .filter(s => s.ratio >= 0.7)
+                         .sort((a, b) => b.ratio - a.ratio)
+                         .slice(0, 3)
+                         .map(s => s.weekday);
+                    setSuggestedDays(good);
+               } catch {
+                    setSuggestedDays([]);
+               } finally {
+                    setIsSuggesting(false);
+               }
+          }
+          computeSuggestions();
+     }, [isRecurring, bookingData.fieldId, bookingData.slotId, bookingData.date, recurringWeeks, selectedDays]);
+
      const handlePayment = async () => {
           if (!validateForm()) return;
 
@@ -203,12 +271,25 @@ export default function BookingModal({
                     return;
                }
 
+               // Check availability before holding
+               const avail = await checkFieldAvailability(booking.fieldId, booking.date, booking.slotId);
+               if (!avail?.available) {
+                    setErrors({ general: avail?.message || "Sân đã có người đặt trong khung giờ này." });
+                    setIsProcessing(false);
+                    return;
+               }
+
                const result = await createPendingBooking(booking);
                setPendingInfo(result);
                setStep("payment");
           } catch (error) {
                console.error("Booking error:", error);
-               setErrors({ general: "Có lỗi xảy ra khi đặt sân. Vui lòng thử lại." });
+               const code = error?.code;
+               let msg = "Có lỗi xảy ra khi đặt sân. Vui lòng thử lại.";
+               if (code === "DURATION_LIMIT") msg = "Thời lượng vượt giới hạn (tối đa 1 tiếng 30 phút).";
+               if (code === "CONFLICT") msg = "Khung giờ đã có người khác giữ hoặc đặt. Chọn khung giờ khác.";
+               if (code === "VALIDATION_ERROR") msg = error?.message || msg;
+               setErrors({ general: msg });
           } finally {
                setIsProcessing(false);
           }
@@ -226,17 +307,46 @@ export default function BookingModal({
 
                // Save to local storage
                createBooking({
-                    ...bookingData,
-                    bookingId: result.bookingId,
-                    status: "confirmed",
-                    paymentMethod,
-                    createdAt: new Date().toISOString()
+                    userId: user?.id || user?.userId || "guest",
+                    data: {
+                         ...bookingData,
+                         bookingId: result.bookingId,
+                         status: "confirmed",
+                         paymentMethod,
+                         createdAt: new Date().toISOString()
+                    }
                });
+
+               // Auto-create find-opponent request/post if user marked no opponent
+               if (false) {
+                    try {
+                         const req = createMatchRequest({
+                              bookingId: result.bookingId,
+                              ownerId: user?.id || user?.userId || "guest",
+                              level: "any",
+                              note: `${bookingData.fieldName} • ${bookingData.date} • ${bookingData.slotName}`
+                         });
+                         setCreatedMatchRequest(req);
+                    } catch { /* ignore */ }
+                    try {
+                         const post = createCommunityPost({
+                              userId: user?.id || user?.userId || "guest",
+                              content: `Tìm đối cho trận ${bookingData.fieldName} – ${bookingData.slotName}`,
+                              location: bookingData.fieldAddress,
+                              time: `${bookingData.date} ${bookingData.slotName}`
+                         });
+                         setCreatedCommunityPost(post);
+                    } catch { /* ignore */ }
+               }
 
                setStep("confirmation");
           } catch (error) {
                console.error("Payment error:", error);
-               setErrors({ general: "Có lỗi xảy ra khi thanh toán. Vui lòng thử lại." });
+               const code = error?.code;
+               let msg = "Có lỗi xảy ra khi thanh toán. Vui lòng thử lại.";
+               if (code === "EXPIRED") msg = "Mã QR đã hết hạn. Vui lòng giữ chỗ lại.";
+               if (code === "HOLD_NOT_FOUND") msg = "Phiên thanh toán không hợp lệ hoặc đã hết hạn.";
+               setErrors({ general: msg });
           } finally {
                setIsProcessing(false);
           }
@@ -449,6 +559,7 @@ export default function BookingModal({
 
                                    {/* Right Column - Recurring Options + Price Summary + Button */}
                                    <div className="space-y-6">
+                                        {/* Opponent section removed per requirement */}
                                         {/* Recurring Booking Toggle */}
                                         <div className="bg-teal-50 rounded-lg p-4">
                                              <div className="flex items-center justify-between mb-3">
@@ -528,6 +639,32 @@ export default function BookingModal({
                                                             </div>
                                                             {selectedDays.length === 0 && (
                                                                  <p className="text-red-500 text-sm mt-1">Vui lòng chọn ít nhất một ngày</p>
+                                                            )}
+                                                            {/* Suggestions for other days */}
+                                                            {isRecurring && suggestedDays.length > 0 && (
+                                                                 <div className="mt-3">
+                                                                      <div className="text-xs text-gray-600 mb-1">Gợi ý ngày khác (phù hợp):</div>
+                                                                      <div className="flex flex-wrap gap-2">
+                                                                           {[
+                                                                                { value: 1, label: "T2" },
+                                                                                { value: 2, label: "T3" },
+                                                                                { value: 3, label: "T4" },
+                                                                                { value: 4, label: "T5" },
+                                                                                { value: 5, label: "T6" },
+                                                                                { value: 6, label: "T7" },
+                                                                                { value: 0, label: "CN" }
+                                                                           ]
+                                                                                .filter(d => suggestedDays.includes(d.value))
+                                                                                .map(d => (
+                                                                                     <Button key={d.value} type="button" onClick={() => handleDayToggle(d.value)} className="px-2 py-1 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100">
+                                                                                          + {d.label}
+                                                                                     </Button>
+                                                                                ))}
+                                                                      </div>
+                                                                 </div>
+                                                            )}
+                                                            {isRecurring && isSuggesting && (
+                                                                 <div className="mt-2 text-xs text-gray-500">Đang gợi ý ngày phù hợp…</div>
                                                             )}
                                                        </div>
 
@@ -799,6 +936,18 @@ export default function BookingModal({
                                              : "Bạn có thể xem chi tiết trong mục Lịch sử đặt sân."
                                         }
                                    </p>
+                                   {/* Find opponent CTA when no opponent */}
+                                   {false && (
+                                        <div className="mb-6 bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-emerald-800">
+                                             <div className="font-semibold mb-1">Đã tạo yêu cầu tìm đối</div>
+                                             <div className="text-sm">
+                                                  {createdMatchRequest ? `Mã yêu cầu: ${createdMatchRequest.requestId}` : "Yêu cầu đã được mở."}
+                                             </div>
+                                             <div className="text-sm">
+                                                  {createdCommunityPost ? `Đã đăng bài trong Cộng đồng: ${createdCommunityPost.postId}` : "Đang đăng bài trong Cộng đồng..."}
+                                             </div>
+                                        </div>
+                                   )}
                                    <div className="flex gap-4 justify-center">
                                         <Button
                                              onClick={() => {
@@ -813,13 +962,17 @@ export default function BookingModal({
                                              onClick={() => {
                                                   onClose();
                                                   if (navigate) {
-                                                       navigate("/bookings");
+                                                       if (false && createdCommunityPost) {
+                                                            navigate("/community", { state: { highlightPostId: createdCommunityPost.postId, tab: "find-match" } });
+                                                       } else {
+                                                            navigate("/bookings");
+                                                       }
                                                   }
                                              }}
                                              variant="outline"
                                              className="px-6 py-3 rounded-lg"
                                         >
-                                             Xem lịch sử đặt sân
+                                             {hasOpponent === "no" ? "Xem bài tìm đối" : "Xem lịch sử đặt sân"}
                                         </Button>
                                    </div>
                               </div>
