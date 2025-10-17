@@ -30,6 +30,7 @@ export {
   CardContent,
 } from "./card";
 export { Badge } from "./badge";
+export { Avatar, AvatarImage, AvatarFallback } from "./avatar";
 
 // Utility
 export { cn } from "../../lib/utils";
