@@ -94,6 +94,9 @@ services.AddTransient<EmailService>();
 
 var app = builder.Build();
 
+//deployment port
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+app.Urls.Add($"http://*:{port}");
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -108,4 +111,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+//check api is running
+app.MapGet("/", () => "✅ API is running on Render!");
+
 app.Run();
