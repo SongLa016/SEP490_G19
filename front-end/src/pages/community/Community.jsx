@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { Plus, ImageIcon, Video, Smile, FileText, Pin, List } from "lucide-react";
 import Swal from 'sweetalert2';
 import {
      Card,
@@ -12,11 +11,12 @@ import {
      Avatar,
      AvatarImage,
      AvatarFallback,
-     Textarea,
+
 } from "../../components/ui";
+import NewThreadModal from "../../components/NewThreadModal";
+import ThreadsFeed from "../../components/ThreadsFeed";
 import { useAuth } from "../../contexts/AuthContext";
 import { seedCommunityPostsOnce, listMatchRequests, joinMatchRequest } from "../../utils/communityStore";
-import ThreadsFeed from "../../components/ThreadsFeed";
 
 export default function Community() {
      const locationRouter = useLocation();
@@ -33,6 +33,12 @@ export default function Community() {
      const matchEndRef = useRef(null);
      const pageSize = 10;
      const visibleMatchRequests = matchRequests.slice(0, matchPage * pageSize);
+
+     // Function to handle post submission
+     const handlePostSubmit = (content) => {
+          console.log("Posting:", content);
+          // Add your post submission logic here
+     };
 
      // Accept navigation state to focus a specific post and tab
      useEffect(() => {
@@ -75,11 +81,11 @@ export default function Community() {
      }, [activeTab, matchRequests.length, visibleMatchRequests.length]);
 
      return (
-          <div className="min-h-screen bg-white">
+          <div className="min-h-screen pt-12 bg-gray-200">
                {/* Main Content */}
                <div className="max-w-2xl mx-auto">
                     {/* Header */}
-                    <div className="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
+                    <div className=" top-0 bg-white border-b border-gray-200 p-4 z-10">
                          <div className="flex flex-col items-center justify-center text-center">
                               <h1 className="text-xl font-bold text-gray-900">Cộng đồng</h1>
                               <p className="text-sm text-gray-600">Chia sẻ kinh nghiệm, kết nối và học hỏi cùng nhau</p>
@@ -87,82 +93,58 @@ export default function Community() {
                     </div>
 
                     {/* Tabs */}
-                    <div className="border-b border-gray-200">
-                         <div className="flex justify-center">
-                              <button
+                    <div className="sticky top-16 py-2">
+                         <div className="flex justify-center  ">
+                              <Button
                                    onClick={() => setActiveTab("danh-cho-ban")}
-                                   className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "danh-cho-ban"
-                                        ? "border-gray-900 text-gray-900"
-                                        : "border-transparent text-gray-500 hover:text-gray-700"
+                                   className={`px-6 py-3 text-sm font-medium border-b-2 rounded-xl transition-colors ${activeTab === "danh-cho-ban"
+                                        ? "border-gray-900 bg-white hover:bg-transparent text-gray-900 hover:text-gray-900"
+                                        : "border-transparent bg-transparent hover:bg-transparent text-gray-500 hover:text-gray-700"
                                         }`}
                               >
                                    Dành cho bạn
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                    onClick={() => setActiveTab("tim-doi-thu")}
-                                   className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "tim-doi-thu"
-                                        ? "border-gray-900 text-gray-900"
-                                        : "border-transparent text-gray-500 hover:text-gray-700"
+                                   className={`px-6 py-3 text-sm font-medium border-b-2 rounded-xl transition-colors ${activeTab === "tim-doi-thu"
+                                        ? "border-gray-900 bg-white hover:bg-transparent text-gray-900 hover:text-gray-900"
+                                        : "border-transparent bg-transparent hover:bg-transparent text-gray-500 hover:text-gray-700"
                                         }`}
                               >
                                    Tìm đối thủ
-                              </button>
+                              </Button>
                          </div>
                     </div>
 
                     {/* Post Creation Area - Only for logged users */}
-                    {user && (
-                         <div className="border-b border-gray-200 p-4">
-                              <div className="flex gap-3">
-                                   <Avatar className="w-10 h-10">
-                                        <AvatarImage src={user.avatar} />
-                                        <AvatarFallback className="bg-gray-200 text-gray-700">
-                                             {user.name?.charAt(0) || "U"}
-                                        </AvatarFallback>
-                                   </Avatar>
-                                   <div className="flex-1">
-                                        <Textarea
-                                             placeholder="Có gì mới?"
-                                             value={newPostContent}
-                                             onChange={(e) => setNewPostContent(e.target.value)}
-                                             className="min-h-[60px] resize-none border-0 focus:ring-0 text-lg placeholder:text-gray-500"
-                                        />
-                                        <div className="flex items-center justify-between mt-2">
-                                             <div className="flex items-center gap-2">
-                                                  <Button variant="ghost" size="sm" className="p-2">
-                                                       <ImageIcon className="w-5 h-5 text-gray-500" />
-                                                  </Button>
-                                                  <Button variant="ghost" size="sm" className="p-2">
-                                                       <Video className="w-5 h-5 text-gray-500" />
-                                                  </Button>
-                                                  <Button variant="ghost" size="sm" className="p-2">
-                                                       <Smile className="w-5 h-5 text-gray-500" />
-                                                  </Button>
-                                                  <Button variant="ghost" size="sm" className="p-2">
-                                                       <FileText className="w-5 h-5 text-gray-500" />
-                                                  </Button>
-                                                  <Button variant="ghost" size="sm" className="p-2">
-                                                       <Pin className="w-5 h-5 text-gray-500" />
-                                                  </Button>
-                                                  <Button variant="ghost" size="sm" className="p-2">
-                                                       <List className="w-5 h-5 text-gray-500" />
-                                                  </Button>
-                                             </div>
-                                             <Button
-                                                  onClick={() => setShowNewThread(true)}
-                                                  className="bg-gray-900 hover:bg-gray-800 text-white px-6"
-                                             >
-                                                  Đăng
-                                             </Button>
-                                        </div>
-                                   </div>
-                              </div>
-                         </div>
-                    )}
+
 
                     {/* Content based on active tab */}
                     {activeTab === "danh-cho-ban" && (
-                         <ThreadsFeed />
+                         <div className="border border-b-0 rounded-t-2xl bg-white border-gray-400">
+                              {user && (
+                                   <div className="px-3 py-2 flex gap-2 items-center border-b border-gray-300">
+                                        <div className="flex w-11/12 items-center px-4 gap-3">
+                                             <Avatar className="w-8 h-8">
+                                                  <AvatarImage src={user.avatar} />
+                                                  <AvatarFallback className="bg-gray-200 text-gray-700">
+                                                       {user.name?.charAt(0) || "U"}
+                                                  </AvatarFallback>
+                                             </Avatar>
+                                             <div className="flex items-center justify-between w-full gap-3">
+                                                  <div
+                                                       onClick={() => setShowNewThread(true)}
+                                                       className="min-h-[60px] rounded-md px-3 py-2 flex items-center cursor-pointer hover:border-gray-400 transition-colors w-full"
+                                                  >
+                                                       <span className="text-gray-500 text-base">Có gì mới?</span>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                        <Button className="w-1/12 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-xl" onClick={() => setShowNewThread(true)}>Đăng</Button>
+                                   </div>
+                              )}
+                              <ThreadsFeed />
+                         </div>
                     )}
 
                     {activeTab === "tim-doi-thu" && (
@@ -272,105 +254,16 @@ export default function Community() {
                     )}
                </div>
 
-               {/* Right Plus Button */}
-               {user && (
-                    <Button
-                         variant="default"
-                         size="icon"
-                         className="fixed right-4 top-4 w-12 h-12 rounded-full shadow-lg bg-gray-900 hover:bg-gray-700 text-white z-20"
-                         onClick={() => setShowNewThread(true)}
-                    >
-                         <Plus className="w-6 h-6" />
-                    </Button>
-               )}
+               {/* New Thread Modal */}
+               <NewThreadModal
+                    isOpen={showNewThread}
+                    onClose={() => setShowNewThread(false)}
+                    user={user}
+                    postContent={newPostContent}
+                    setPostContent={setNewPostContent}
+                    onSubmit={handlePostSubmit}
+               />
 
-               {/* New Thread Modal - Fixed on the right */}
-               {showNewThread && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 z-50">
-                         <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-2xl overflow-hidden">
-                              {/* Header */}
-                              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                                   <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setShowNewThread(false)}
-                                        className="p-2"
-                                   >
-                                        <Plus className="w-5 h-5 text-gray-500 rotate-45" />
-                                   </Button>
-                                   <h2 className="text-lg font-bold text-gray-900">New thread</h2>
-                                   <div className="flex items-center gap-2">
-                                        <Button variant="ghost" size="sm" className="p-2">
-                                             <FileText className="w-5 h-5 text-gray-500" />
-                                        </Button>
-                                        <Button variant="ghost" size="sm" className="p-2">
-                                             <List className="w-5 h-5 text-gray-500" />
-                                        </Button>
-                                   </div>
-                              </div>
-
-                              {/* Content */}
-                              <div className="p-4 flex-1 overflow-y-auto">
-                                   <div className="space-y-4">
-                                        <div className="flex gap-3">
-                                             <Avatar className="w-10 h-10">
-                                                  <AvatarImage src={user?.avatar} />
-                                                  <AvatarFallback className="bg-gray-200 text-gray-700">
-                                                       {user?.name?.charAt(0) || "U"}
-                                                  </AvatarFallback>
-                                             </Avatar>
-                                             <div className="flex-1">
-                                                  <div className="text-sm text-gray-500 mb-2">
-                                                       <span className="font-semibold">{user?.name || "User"}</span>
-                                                       <span className="mx-1">&gt;</span>
-                                                       <span>Add a topic</span>
-                                                  </div>
-                                                  <Textarea
-                                                       placeholder="Có gì mới?"
-                                                       className="min-h-[120px] resize-none border-0 focus:ring-0 text-lg placeholder:text-gray-500"
-                                                  />
-                                             </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                             <Button variant="ghost" size="sm" className="p-2">
-                                                  <ImageIcon className="w-5 h-5 text-gray-500" />
-                                             </Button>
-                                             <Button variant="ghost" size="sm" className="p-2">
-                                                  <Video className="w-5 h-5 text-gray-500" />
-                                             </Button>
-                                             <Button variant="ghost" size="sm" className="p-2">
-                                                  <Smile className="w-5 h-5 text-gray-500" />
-                                             </Button>
-                                             <Button variant="ghost" size="sm" className="p-2">
-                                                  <List className="w-5 h-5 text-gray-500" />
-                                             </Button>
-                                             <Button variant="ghost" size="sm" className="p-2">
-                                                  <Pin className="w-5 h-5 text-gray-500" />
-                                             </Button>
-                                        </div>
-                                        <div className="text-sm text-blue-500 hover:text-blue-600 cursor-pointer">
-                                             Add to thread
-                                        </div>
-                                        <div className="text-sm text-gray-500">
-                                             Anyone can reply & quote
-                                        </div>
-                                   </div>
-                              </div>
-
-                              {/* Footer */}
-                              <div className="p-4 border-t border-gray-200">
-                                   <div className="flex justify-end">
-                                        <Button
-                                             className="bg-gray-900 hover:bg-gray-800 text-white px-6"
-                                             onClick={() => setShowNewThread(false)}
-                                        >
-                                             Post
-                                        </Button>
-                                   </div>
-                              </div>
-                         </div>
-                    </div>
-               )}
           </div>
      );
 }

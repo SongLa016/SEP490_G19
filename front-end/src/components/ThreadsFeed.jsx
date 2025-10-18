@@ -21,7 +21,6 @@ import {
     Search,
     User,
     Menu,
-    FileText,
     Pin,
     List
 } from "lucide-react";
@@ -36,6 +35,8 @@ import {
     Card,
     CardContent,
 } from "../components/ui";
+import NewThreadModal from "./NewThreadModal";
+import ReplyModal from "./ReplyModal";
 import { useAuth } from "../contexts/AuthContext";
 
 // Mock data theo database schema
@@ -176,8 +177,58 @@ export default function ThreadsFeed() {
     const [showPostModal, setShowPostModal] = useState(false);
     const [newComment, setNewComment] = useState("");
     const [replyingTo, setReplyingTo] = useState(null);
-    const [activeTab, setActiveTab] = useState("bang-tin");
     const [showNewThread, setShowNewThread] = useState(false);
+    const [showReplyModal, setShowReplyModal] = useState(false);
+    const [replyContent, setReplyContent] = useState("");
+    const [showCommentInput, setShowCommentInput] = useState({});
+    const [commentContent, setCommentContent] = useState({});
+
+    // Function to handle post submission
+    const handlePostSubmit = (content) => {
+        console.log("Posting from ThreadsFeed:", content);
+        // Add your post submission logic here
+    };
+
+    // Function to handle reply submission
+    const handleReplySubmit = (content) => {
+        console.log("Replying to post:", selectedPost?.PostID, "Content:", content);
+        // Add your reply submission logic here
+    };
+
+    // Function to open reply modal
+    const handleOpenReply = (post) => {
+        setSelectedPost(post);
+        setShowReplyModal(true);
+    };
+
+    // Function to toggle comment input
+    const toggleCommentInput = (postId) => {
+        setShowCommentInput(prev => ({
+            ...prev,
+            [postId]: !prev[postId]
+        }));
+    };
+
+    // Function to handle comment content change
+    const handleCommentChange = (postId, content) => {
+        setCommentContent(prev => ({
+            ...prev,
+            [postId]: content
+        }));
+    };
+
+    // Function to submit comment
+    const handleCommentSubmit = (postId) => {
+        const content = commentContent[postId];
+        if (content && content.trim()) {
+            console.log("Commenting on post:", postId, "Content:", content);
+            // Add your comment submission logic here
+            setCommentContent(prev => ({
+                ...prev,
+                [postId]: ""
+            }));
+        }
+    };
 
     const formatTimeAgo = (dateString) => {
         const now = new Date();
@@ -312,9 +363,9 @@ export default function ThreadsFeed() {
     const postComments = comments.filter(comment => comment.PostID === selectedPost?.PostID);
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen">
             {/* Left Navigation - Fixed to left edge */}
-            <div className="fixed left-0 top-0 w-16 h-full bg-white border-r border-gray-200 flex flex-col items-center py-4 z-10">
+            <div className="fixed justify-center left-0 top-0 w-16 h-full bg-white border-r border-gray-200 flex flex-col items-center py-4 z-10">
                 <div className="mb-8">
                     <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
                         <span className="text-white font-bold text-sm">a</span>
@@ -343,9 +394,216 @@ export default function ThreadsFeed() {
                     </Button>
                 </div>
             </div>
+            {/* Main Content - Centered */}
+            <div className=" flex justify-center">
 
+                {/* Posts Feed */}
+                <div className="divide-y divide-gray-200">
+                    {posts.map((post) => (
+                        <div key={post.PostID} className="p-4 hover:bg-gray-50 transition-colors">
+                            <div className="flex gap-3">
+                                {/* Avatar */}
+                                <Avatar className="w-10 h-10">
+                                    <AvatarImage src={post.author.Avatar} />
+                                    <AvatarFallback className="bg-gray-200 text-gray-700">
+                                        {post.author.FullName.charAt(0)}
+                                    </AvatarFallback>
+                                </Avatar>
+
+                                {/* Content */}
+                                <div className="flex-1 min-w-0">
+                                    {/* User Info */}
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-semibold text-gray-900">{post.author.FullName}</span>
+                                        <span className="text-gray-500 text-sm">{post.author.Username}</span>
+                                        {post.author.Verified && (
+                                            <Badge variant="secondary" className="text-xs bg-blue-500 text-white">
+                                                ✓
+                                            </Badge>
+                                        )}
+                                        <span className="text-gray-500 text-sm">•</span>
+                                        <span className="text-gray-500 text-sm">{formatTimeAgo(post.CreatedAt)}</span>
+                                        {user && (
+                                            <Button variant="ghost" size="sm" className="ml-auto p-1 h-6 w-6">
+                                                <Plus className="w-4 h-4 text-gray-400" />
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {/* Post Title */}
+                                    {post.Title && (
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.Title}</h3>
+                                    )}
+
+                                    {/* Post Content */}
+                                    <div className="mb-3">
+                                        <p className="text-gray-900 whitespace-pre-wrap">{post.Content}</p>
+
+                                        {/* Field Tag */}
+                                        {post.field && (
+                                            <div className="flex items-center gap-1 mt-2">
+                                                <MapPin className="w-4 h-4 text-gray-400" />
+                                                <span className="text-blue-500 text-sm">{post.field.FieldName}</span>
+                                                <span className="text-gray-500 text-sm">•</span>
+                                                <span className="text-gray-500 text-sm">{post.field.Location}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Media */}
+                                    {post.MediaURL && (
+                                        <div className="mb-3 rounded-xl overflow-hidden border border-gray-200">
+                                            <img
+                                                src={post.MediaURL}
+                                                alt="Post content"
+                                                className="w-full h-auto object-cover"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Interaction Buttons */}
+                                    <div className="flex items-center justify-between max-w-md">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => toggleLike(post.PostID)}
+                                            className={`flex items-center gap-2 text-gray-500 hover:text-red-500 ${post.isLiked ? 'text-red-500' : ''}`}
+                                        >
+                                            <Heart className={`w-5 h-5 ${post.isLiked ? 'fill-current' : ''}`} />
+                                            <span>{post.likes}</span>
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => toggleCommentInput(post.PostID)}
+                                            className="flex items-center gap-2 text-gray-500 hover:text-blue-500"
+                                        >
+                                            <MessageCircle className="w-5 h-5" />
+                                            <span>{post.comments}</span>
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => toggleRepost(post.PostID)}
+                                            className={`flex items-center gap-2 text-gray-500 hover:text-green-500 ${post.isReposted ? 'text-green-500' : ''}`}
+                                        >
+                                            <Repeat2 className={`w-5 h-5 ${post.isReposted ? 'fill-current' : ''}`} />
+                                            <span>{post.reposts}</span>
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="flex items-center gap-2 text-gray-500 hover:text-blue-500"
+                                        >
+                                            <Share className="w-5 h-5" />
+                                            <span>{post.shares}</span>
+                                        </Button>
+                                        {user && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => toggleBookmark(post.PostID)}
+                                                className={`flex items-center gap-2 text-gray-500 hover:text-yellow-500 ${post.isBookmarked ? 'text-yellow-500' : ''}`}
+                                            >
+                                                <Bookmark className={`w-5 h-5 ${post.isBookmarked ? 'fill-current' : ''}`} />
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {/* Comment Input Section */}
+                                    {user && showCommentInput[post.PostID] && (
+                                        <div className="mt-4">
+                                            {/* Timeline line from post */}
+                                            <div className="flex">
+                                                <div className="w-8 flex justify-center">
+                                                    <div className="w-px h-8 bg-gray-300"></div>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex gap-2">
+                                                        <Avatar className="w-8 h-8">
+                                                            <AvatarImage src={user.avatar} />
+                                                            <AvatarFallback className="bg-gray-200 text-gray-700">
+                                                                {user.name?.charAt(0) || "U"}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="flex-1 ">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm font-semibold text-gray-900">{user.name}</span>
+                                                                <span className="text-gray-500">&gt;</span>
+                                                                <span className="text-sm text-gray-500">Thêm chủ đề</span>
+                                                            </div>
+                                                            <Textarea
+                                                                placeholder={`Trả lời ${post.author.FullName}...`}
+                                                                value={commentContent[post.PostID] || ""}
+                                                                onChange={(e) => handleCommentChange(post.PostID, e.target.value)}
+                                                                className="min-h-[40px] max-h-[200px] resize-none border-0 focus:ring-0 text-sm placeholder:text-gray-500 bg-transparent overflow-hidden"
+                                                                style={{
+                                                                    height: 'auto',
+                                                                    minHeight: '60px',
+                                                                    maxHeight: '200px'
+                                                                }}
+                                                                onInput={(e) => {
+                                                                    e.target.style.height = 'auto';
+                                                                    e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                                                                }}
+                                                            />
+
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleOpenReply(post)}
+                                                                className="w-8 h-8 p-0 rounded-full border border-gray-300 hover:bg-gray-100"
+                                                            >
+                                                                <div className="w-4 h-4 flex items-center justify-center">
+                                                                    <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                                                    </svg>
+                                                                </div>
+                                                            </Button>
+                                                            {(commentContent[post.PostID] && commentContent[post.PostID].trim()) && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => handleCommentSubmit(post.PostID)}
+                                                                    className="w-8 h-8 p-0 rounded-full bg-gray-900 hover:bg-gray-800"
+                                                                >
+                                                                    <div className="w-4 h-4 flex items-center justify-center">
+                                                                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                                                        </svg>
+                                                                    </div>
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* More Options */}
+                                {user && (
+                                    <div className="flex flex-col gap-1">
+                                        <Button variant="ghost" size="sm" className="p-1 h-6 w-6">
+                                            <MoreHorizontal className="w-4 h-4 text-gray-400" />
+                                        </Button>
+                                        <Button variant="ghost" size="sm" className="p-1 h-6 w-6">
+                                            <Flag className="w-4 h-4 text-gray-400" />
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>
+                    ))}
+                </div>
+
+            </div>
             {/* Right Plus Button - Fixed to right edge */}
-            <div className="fixed right-4 top-4 z-20">
+            <div className="fixed right-4 top-20 z-20">
                 <Button
                     onClick={() => setShowNewThread(true)}
                     className="w-12 h-12 rounded-full bg-gray-900 hover:bg-gray-800 text-white shadow-lg"
@@ -354,294 +612,36 @@ export default function ThreadsFeed() {
                 </Button>
             </div>
 
-            {/* Main Content - Centered */}
-            <div className="ml-16 mr-20 flex justify-center">
-                <div className="w-full max-w-2xl">
-                    {/* Header */}
-                    <div className="sticky top-0 bg-white border-b border-gray-200 p-4">
-                        <div className="text-center">
-                            <h1 className="text-2xl font-bold text-gray-900 mb-1">Cộng đồng</h1>
-                            <p className="text-gray-600 text-sm">Chia sẻ kinh nghiệm, kết nối và học hỏi cùng nhau</p>
-                        </div>
-                    </div>
 
-                    {/* Tabs */}
-                    <div className="border-b border-gray-200">
-                        <div className="flex justify-center">
-                            <button
-                                onClick={() => setActiveTab("bang-tin")}
-                                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "bang-tin"
-                                    ? "border-gray-900 text-gray-900"
-                                    : "border-transparent text-gray-500 hover:text-gray-700"
-                                    }`}
-                            >
-                                Dành cho bạn
-                            </button>
-                            <button
-                                onClick={() => setActiveTab("tim-doi-thu")}
-                                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === "tim-doi-thu"
-                                    ? "border-gray-900 text-gray-900"
-                                    : "border-transparent text-gray-500 hover:text-gray-700"
-                                    }`}
-                            >
-                                Tìm đối thủ
-                            </button>
-                        </div>
-                    </div>
 
-                    {/* Post Creation Area - Only for logged users */}
-                    {user && (
-                        <div className="p-4 border-b border-gray-200 bg-white">
-                            <div className="flex gap-3">
-                                <Avatar className="w-10 h-10">
-                                    <AvatarImage src={user.avatar || "https://ui-avatars.com/api/?name=User&background=0ea5e9&color=fff&size=100"} />
-                                    <AvatarFallback className="bg-gray-200 text-gray-700">
-                                        {user.name?.charAt(0) || "U"}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                    <Input
-                                        placeholder="Có gì mới?"
-                                        value={newPostContent}
-                                        onChange={(e) => setNewPostContent(e.target.value)}
-                                        className="bg-transparent border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500"
-                                        onClick={() => setShowCreatePost(true)}
-                                    />
-                                </div>
-                                <Button
-                                    onClick={() => setShowCreatePost(true)}
-                                    className="bg-gray-900 hover:bg-gray-800 text-white px-6"
-                                >
-                                    Đăng
-                                </Button>
-                            </div>
-                        </div>
-                    )}
+            <NewThreadModal
+                isOpen={showNewThread}
+                onClose={() => setShowNewThread(false)}
+                user={user}
+                postContent={newPostContent}
+                setPostContent={setNewPostContent}
+                onSubmit={handlePostSubmit}
+            />
 
-                    {/* Posts Feed */}
-                    <div className="divide-y divide-gray-200">
-                        {posts.map((post) => (
-                            <div key={post.PostID} className="p-4 hover:bg-gray-50 transition-colors">
-                                <div className="flex gap-3">
-                                    {/* Avatar */}
-                                    <Avatar className="w-10 h-10">
-                                        <AvatarImage src={post.author.Avatar} />
-                                        <AvatarFallback className="bg-gray-200 text-gray-700">
-                                            {post.author.FullName.charAt(0)}
-                                        </AvatarFallback>
-                                    </Avatar>
-
-                                    {/* Content */}
-                                    <div className="flex-1 min-w-0">
-                                        {/* User Info */}
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-semibold text-gray-900">{post.author.FullName}</span>
-                                            <span className="text-gray-500 text-sm">{post.author.Username}</span>
-                                            {post.author.Verified && (
-                                                <Badge variant="secondary" className="text-xs bg-blue-500 text-white">
-                                                    ✓
-                                                </Badge>
-                                            )}
-                                            <span className="text-gray-500 text-sm">•</span>
-                                            <span className="text-gray-500 text-sm">{formatTimeAgo(post.CreatedAt)}</span>
-                                            {user && (
-                                                <Button variant="ghost" size="sm" className="ml-auto p-1 h-6 w-6">
-                                                    <Plus className="w-4 h-4 text-gray-400" />
-                                                </Button>
-                                            )}
-                                        </div>
-
-                                        {/* Post Title */}
-                                        {post.Title && (
-                                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.Title}</h3>
-                                        )}
-
-                                        {/* Post Content */}
-                                        <div className="mb-3">
-                                            <p className="text-gray-900 whitespace-pre-wrap">{post.Content}</p>
-
-                                            {/* Field Tag */}
-                                            {post.field && (
-                                                <div className="flex items-center gap-1 mt-2">
-                                                    <MapPin className="w-4 h-4 text-gray-400" />
-                                                    <span className="text-blue-500 text-sm">{post.field.FieldName}</span>
-                                                    <span className="text-gray-500 text-sm">•</span>
-                                                    <span className="text-gray-500 text-sm">{post.field.Location}</span>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Media */}
-                                        {post.MediaURL && (
-                                            <div className="mb-3 rounded-xl overflow-hidden border border-gray-200">
-                                                <img
-                                                    src={post.MediaURL}
-                                                    alt="Post content"
-                                                    className="w-full h-auto object-cover"
-                                                />
-                                            </div>
-                                        )}
-
-                                        {/* Interaction Buttons */}
-                                        <div className="flex items-center justify-between max-w-md">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => toggleLike(post.PostID)}
-                                                className={`flex items-center gap-2 text-gray-500 hover:text-red-500 ${post.isLiked ? 'text-red-500' : ''}`}
-                                            >
-                                                <Heart className={`w-5 h-5 ${post.isLiked ? 'fill-current' : ''}`} />
-                                                <span>{post.likes}</span>
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => {
-                                                    if (user) {
-                                                        setSelectedPost(post);
-                                                        setShowPostModal(true);
-                                                    }
-                                                }}
-                                                className="flex items-center gap-2 text-gray-500 hover:text-blue-500"
-                                            >
-                                                <MessageCircle className="w-5 h-5" />
-                                                <span>{post.comments}</span>
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => toggleRepost(post.PostID)}
-                                                className={`flex items-center gap-2 text-gray-500 hover:text-green-500 ${post.isReposted ? 'text-green-500' : ''}`}
-                                            >
-                                                <Repeat2 className={`w-5 h-5 ${post.isReposted ? 'fill-current' : ''}`} />
-                                                <span>{post.reposts}</span>
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="flex items-center gap-2 text-gray-500 hover:text-blue-500"
-                                            >
-                                                <Share className="w-5 h-5" />
-                                                <span>{post.shares}</span>
-                                            </Button>
-                                            {user && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => toggleBookmark(post.PostID)}
-                                                    className={`flex items-center gap-2 text-gray-500 hover:text-yellow-500 ${post.isBookmarked ? 'text-yellow-500' : ''}`}
-                                                >
-                                                    <Bookmark className={`w-5 h-5 ${post.isBookmarked ? 'fill-current' : ''}`} />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* More Options */}
-                                    {user && (
-                                        <div className="flex flex-col gap-1">
-                                            <Button variant="ghost" size="sm" className="p-1 h-6 w-6">
-                                                <MoreHorizontal className="w-4 h-4 text-gray-400" />
-                                            </Button>
-                                            <Button variant="ghost" size="sm" className="p-1 h-6 w-6">
-                                                <Flag className="w-4 h-4 text-gray-400" />
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* New Thread Modal */}
-            {showNewThread && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <Card className="w-full max-w-2xl bg-white border border-gray-200">
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setShowNewThread(false)}
-                                >
-                                    <X className="w-5 h-5" />
-                                </Button>
-                                <h2 className="text-lg font-semibold text-gray-900">New thread</h2>
-                                <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="sm">
-                                        <FileText className="w-5 h-5" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm">
-                                        <MoreHorizontal className="w-5 h-5" />
-                                    </Button>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2">
-                                    <Avatar className="w-8 h-8">
-                                        <AvatarImage src={user?.avatar || "https://ui-avatars.com/api/?name=User&background=0ea5e9&color=fff&size=100"} />
-                                        <AvatarFallback className="bg-gray-200 text-gray-700 text-xs">
-                                            {user?.name?.charAt(0) || "U"}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <span className="text-gray-900 font-medium">{user?.username || "_thuctd29"}</span>
-                                    <span className="text-gray-500">&gt;</span>
-                                    <span className="text-gray-500">Add a topic</span>
-                                </div>
-
-                                <Input
-                                    placeholder="Có gì mới?"
-                                    value={newPostContent}
-                                    onChange={(e) => setNewPostContent(e.target.value)}
-                                    className="bg-white border-gray-300 text-gray-900 placeholder-gray-500"
-                                />
-
-                                <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="sm">
-                                        <ImageIcon className="w-5 h-5" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm">
-                                        <Video className="w-5 h-5" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm">
-                                        <Smile className="w-5 h-5" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm">
-                                        <List className="w-5 h-5" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm">
-                                        <FileText className="w-5 h-5" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm">
-                                        <Pin className="w-5 h-5" />
-                                    </Button>
-                                </div>
-
-                                <div className="text-sm text-gray-500">
-                                    Add to thread
-                                </div>
-
-                                <div className="text-sm text-gray-500">
-                                    Anyone can reply & quote
-                                </div>
-
-                                <div className="flex justify-end">
-                                    <Button
-                                        onClick={handleCreatePost}
-                                        disabled={!newPostContent.trim()}
-                                        className="bg-gray-900 hover:bg-gray-800 text-white"
-                                    >
-                                        Post
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
+            <ReplyModal
+                isOpen={showReplyModal}
+                onClose={() => {
+                    setShowReplyModal(false);
+                    setSelectedPost(null);
+                    setReplyContent("");
+                }}
+                user={user}
+                originalPost={selectedPost ? {
+                    author: selectedPost.author.FullName,
+                    avatar: selectedPost.author.Avatar,
+                    verified: selectedPost.author.Verified,
+                    timeAgo: formatTimeAgo(selectedPost.CreatedAt),
+                    content: selectedPost.Content
+                } : null}
+                replyContent={replyContent}
+                setReplyContent={setReplyContent}
+                onSubmit={handleReplySubmit}
+            />
 
             {/* Login/Signup Modal for non-logged users */}
             {!user && showNewThread && (

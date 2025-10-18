@@ -31,6 +31,7 @@ export {
 } from "./card";
 export { Badge } from "./badge";
 export { Avatar, AvatarImage, AvatarFallback } from "./avatar";
+export { Modal } from "./modal";
 
 // Utility
 export { cn } from "../../lib/utils";
