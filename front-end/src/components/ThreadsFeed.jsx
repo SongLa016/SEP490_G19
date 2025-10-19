@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Heart,
     MessageCircle,
@@ -7,22 +7,13 @@ import {
     MoreHorizontal,
     MapPin,
     Plus,
-    Image as ImageIcon,
-    Video,
-    Link as LinkIcon,
-    Smile,
     X,
-    Send,
-    Reply,
     Flag,
     Bookmark,
     Instagram,
-    Home,
-    Search,
-    User,
-    Menu,
-    Pin,
-    List
+    Copy,
+    Edit,
+    Trash2
 } from "lucide-react";
 import {
     Button,
@@ -30,7 +21,6 @@ import {
     Avatar,
     AvatarFallback,
     AvatarImage,
-    Input,
     Textarea,
     Card,
     CardContent,
@@ -174,7 +164,6 @@ export default function ThreadsFeed() {
     const [newPostTitle, setNewPostTitle] = useState("");
     const [showCreatePost, setShowCreatePost] = useState(false);
     const [selectedPost, setSelectedPost] = useState(null);
-    const [showPostModal, setShowPostModal] = useState(false);
     const [newComment, setNewComment] = useState("");
     const [replyingTo, setReplyingTo] = useState(null);
     const [showNewThread, setShowNewThread] = useState(false);
@@ -182,10 +171,12 @@ export default function ThreadsFeed() {
     const [replyContent, setReplyContent] = useState("");
     const [showCommentInput, setShowCommentInput] = useState({});
     const [commentContent, setCommentContent] = useState({});
+    const [showPostMenu, setShowPostMenu] = useState({});
+    const [selectedField, setSelectedField] = useState(null);
 
     // Function to handle post submission
-    const handlePostSubmit = (content) => {
-        console.log("Posting from ThreadsFeed:", content);
+    const handlePostSubmit = (title, content, field) => {
+        console.log("Posting from ThreadsFeed:", { title, content, field });
         // Add your post submission logic here
     };
 
@@ -362,40 +353,80 @@ export default function ThreadsFeed() {
 
     const postComments = comments.filter(comment => comment.PostID === selectedPost?.PostID);
 
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (!event.target.closest('.post-menu-container')) {
+                setShowPostMenu({});
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    // Function to toggle post menu
+    const togglePostMenu = (postId) => {
+        setShowPostMenu(prev => ({
+            ...prev,
+            [postId]: !prev[postId]
+        }));
+    };
+
+    // Function to handle menu actions
+    const handleMenuAction = async (postId, action) => {
+        const post = posts.find(p => p.PostID === postId);
+        switch (action) {
+            case 'save':
+                // Toggle bookmark status
+                setPosts(prevPosts =>
+                    prevPosts.map(post =>
+                        post.PostID === postId
+                            ? { ...post, isBookmarked: !post.isBookmarked }
+                            : post
+                    )
+                );
+                break;
+            case 'report':
+                // Show report modal or redirect to report page
+                if (window.confirm('Bạn có chắc chắn muốn báo cáo bài viết này?')) {
+                    console.log('Reporting post:', postId);
+                    // Here you would typically send a report to your backend
+                }
+                break;
+            case 'copy':
+                try {
+                    await navigator.clipboard.writeText(`${window.location.origin}/post/${postId}`);
+                    // Show success toast
+                    console.log('Link copied to clipboard');
+                } catch (err) {
+                    console.error('Failed to copy link:', err);
+                }
+                break;
+            case 'edit':
+                // Set up edit mode
+                console.log('Editing post:', postId);
+                // You could set up edit state here
+                break;
+            case 'delete':
+                if (window.confirm('Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.')) {
+                    setPosts(prevPosts => prevPosts.filter(post => post.PostID !== postId));
+                    console.log('Post deleted:', postId);
+                }
+                break;
+        }
+        setShowPostMenu(prev => ({
+            ...prev,
+            [postId]: false
+        }));
+    };
+
     return (
         <div className="min-h-screen">
-            {/* Left Navigation - Fixed to left edge */}
-            <div className="fixed justify-center left-0 top-0 w-16 h-full bg-white border-r border-gray-200 flex flex-col items-center py-4 z-10">
-                <div className="mb-8">
-                    <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">a</span>
-                    </div>
-                </div>
-
-                <div className="flex flex-col items-center space-y-6">
-                    <Button variant="ghost" size="sm" className="p-3 w-12 h-12">
-                        <Home className="w-6 h-6 text-gray-700" />
-                    </Button>
-
-                    <Button variant="ghost" size="sm" className="p-3 w-12 h-12">
-                        <Search className="w-6 h-6 text-gray-500" />
-                    </Button>
-
-                    <Button variant="ghost" size="sm" className="p-3 w-12 h-12">
-                        <Heart className="w-6 h-6 text-gray-500" />
-                    </Button>
-
-                    <Button variant="ghost" size="sm" className="p-3 w-12 h-12">
-                        <User className="w-6 h-6 text-gray-500" />
-                    </Button>
-
-                    <Button variant="ghost" size="sm" className="p-3 w-12 h-12">
-                        <Menu className="w-6 h-6 text-gray-500" />
-                    </Button>
-                </div>
-            </div>
             {/* Main Content - Centered */}
-            <div className=" flex justify-center">
+            <div className="flex justify-center">
 
                 {/* Posts Feed */}
                 <div className="divide-y divide-gray-200">
@@ -415,16 +446,21 @@ export default function ThreadsFeed() {
                                     {/* User Info */}
                                     <div className="flex items-center gap-2 mb-1">
                                         <span className="font-semibold text-gray-900">{post.author.FullName}</span>
-                                        <span className="text-gray-500 text-sm">{post.author.Username}</span>
+                                        <span className="text-gray-500 text-sm">@{post.author.Username}</span>
                                         {post.author.Verified && (
-                                            <Badge variant="secondary" className="text-xs bg-blue-500 text-white">
+                                            <Badge variant="secondary" className="text-xs bg-blue-500 text-white px-1.5 py-0.5 rounded-full">
                                                 ✓
+                                            </Badge>
+                                        )}
+                                        {user && user.id === post.UserID && (
+                                            <Badge variant="secondary" className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
+                                                bài viết của bạn
                                             </Badge>
                                         )}
                                         <span className="text-gray-500 text-sm">•</span>
                                         <span className="text-gray-500 text-sm">{formatTimeAgo(post.CreatedAt)}</span>
                                         {user && (
-                                            <Button variant="ghost" size="sm" className="ml-auto p-1 h-6 w-6">
+                                            <Button variant="ghost" size="sm" className="ml-auto p-1 h-6 w-6 hover:bg-gray-100 rounded-full transition-colors">
                                                 <Plus className="w-4 h-4 text-gray-400" />
                                             </Button>
                                         )}
@@ -462,48 +498,48 @@ export default function ThreadsFeed() {
                                     )}
 
                                     {/* Interaction Buttons */}
-                                    <div className="flex items-center justify-between max-w-md">
+                                    <div className="flex items-center space-x-1 max-w-md">
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => toggleLike(post.PostID)}
-                                            className={`flex items-center gap-2 text-gray-500 hover:text-red-500 ${post.isLiked ? 'text-red-500' : ''}`}
+                                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors hover:bg-red-50 ${post.isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
                                         >
                                             <Heart className={`w-5 h-5 ${post.isLiked ? 'fill-current' : ''}`} />
-                                            <span>{post.likes}</span>
+                                            <span className="text-sm">{post.likes}</span>
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => toggleCommentInput(post.PostID)}
-                                            className="flex items-center gap-2 text-gray-500 hover:text-blue-500"
+                                            className="flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors text-gray-500 hover:text-blue-500 hover:bg-blue-50"
                                         >
                                             <MessageCircle className="w-5 h-5" />
-                                            <span>{post.comments}</span>
+                                            <span className="text-sm">{post.comments}</span>
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => toggleRepost(post.PostID)}
-                                            className={`flex items-center gap-2 text-gray-500 hover:text-green-500 ${post.isReposted ? 'text-green-500' : ''}`}
+                                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors hover:bg-green-50 ${post.isReposted ? 'text-green-500' : 'text-gray-500 hover:text-green-500'}`}
                                         >
                                             <Repeat2 className={`w-5 h-5 ${post.isReposted ? 'fill-current' : ''}`} />
-                                            <span>{post.reposts}</span>
+                                            <span className="text-sm">{post.reposts}</span>
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="flex items-center gap-2 text-gray-500 hover:text-blue-500"
+                                            className="flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors text-gray-500 hover:text-blue-500 hover:bg-blue-50"
                                         >
                                             <Share className="w-5 h-5" />
-                                            <span>{post.shares}</span>
+                                            <span className="text-sm">{post.shares}</span>
                                         </Button>
                                         {user && (
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
                                                 onClick={() => toggleBookmark(post.PostID)}
-                                                className={`flex items-center gap-2 text-gray-500 hover:text-yellow-500 ${post.isBookmarked ? 'text-yellow-500' : ''}`}
+                                                className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors hover:bg-yellow-50 ${post.isBookmarked ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}`}
                                             >
                                                 <Bookmark className={`w-5 h-5 ${post.isBookmarked ? 'fill-current' : ''}`} />
                                             </Button>
@@ -530,7 +566,7 @@ export default function ThreadsFeed() {
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-sm font-semibold text-gray-900">{user.name}</span>
                                                                 <span className="text-gray-500">&gt;</span>
-                                                                <span className="text-sm text-gray-500">Thêm chủ đề</span>
+                                                                <span className="text-sm text-gray-500">Thêm bình luận</span>
                                                             </div>
                                                             <Textarea
                                                                 placeholder={`Trả lời ${post.author.FullName}...`}
@@ -586,13 +622,81 @@ export default function ThreadsFeed() {
 
                                 {/* More Options */}
                                 {user && (
-                                    <div className="flex flex-col gap-1">
-                                        <Button variant="ghost" size="sm" className="p-1 h-6 w-6">
+                                    <div className="flex flex-col gap-1 relative post-menu-container">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="p-1 h-6 w-6 hover:bg-gray-100 rounded-full transition-colors"
+                                            onClick={() => togglePostMenu(post.PostID)}
+                                        >
                                             <MoreHorizontal className="w-4 h-4 text-gray-400" />
                                         </Button>
-                                        <Button variant="ghost" size="sm" className="p-1 h-6 w-6">
-                                            <Flag className="w-4 h-4 text-gray-400" />
-                                        </Button>
+
+                                        {/* Dropdown Menu */}
+                                        {showPostMenu[post.PostID] && (
+                                            <div className="absolute right-0 top-8 w-44 bg-white rounded-lg shadow-xl py-2 z-50 border border-gray-200">
+                                                <div className="px-2 space-y-3 text-base">
+                                                    <Button
+                                                        onClick={() => handleMenuAction(post.PostID, 'save')}
+                                                        className={`flex items-center w-full px-3 py-2  hover:bg-yellow-50 hover:text-yellow-600 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors ${post.isBookmarked ? 'text-yellow-600' : 'text-gray-700'
+                                                            }`}
+                                                    >
+                                                        <Bookmark className={`w-5 h-5 mr-3 ${post.isBookmarked ? 'fill-current' : ''}`} />
+                                                        {post.isBookmarked ? 'Đã lưu' : 'Lưu'}
+                                                    </Button>
+                                                    <Button
+                                                        onClick={() => handleMenuAction(post.PostID, 'report')}
+                                                        className="flex items-center w-full px-3 py-2  text-red-700 hover:bg-red-50 hover:text-red-600 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors"
+                                                    >
+                                                        <Flag className="w-5 h-5 mr-3" />
+                                                        Báo cáo
+                                                    </Button>
+                                                    <Button
+                                                        onClick={() => handleMenuAction(post.PostID, 'copy')}
+                                                        className="flex items-center w-full px-3 py-2  text-blue-700 hover:bg-blue-50 hover:text-blue-600 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors"
+                                                    >
+                                                        <Copy className="w-5 h-5 mr-3" />
+                                                        Sao chép liên kết
+                                                    </Button>
+                                                </div>
+
+                                                {/* Owner-only options */}
+                                                {user.id === post.UserID && (
+                                                    <>
+                                                        <div className="border-t border-gray-200 my-2"></div>
+                                                        <div className="px-2">
+                                                            <Button
+                                                                onClick={() => handleMenuAction(post.PostID, 'edit')}
+                                                                className="flex items-center w-full px-3 py-2 text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors"
+                                                            >
+                                                                <Edit className="w-5 h-5 mr-3" />
+                                                                Chỉnh sửa
+                                                            </Button>
+                                                            <Button
+                                                                onClick={() => handleMenuAction(post.PostID, 'delete')}
+                                                                className="flex items-center w-full px-3 py-2 text-red-600 hover:bg-red-50 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors"
+                                                            >
+                                                                <Trash2 className="w-5 h-5 mr-3" />
+                                                                Xóa bài viết
+                                                            </Button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Quick Report Button - Only show for others' posts */}
+                                        {user.id !== post.UserID && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="p-1 h-6 w-6 hover:bg-red-50 rounded-full transition-colors"
+                                                onClick={() => handleMenuAction(post.PostID, 'report')}
+                                                title="Báo cáo bài viết"
+                                            >
+                                                <Flag className="w-4 h-4 text-gray-400 hover:text-red-500" />
+                                            </Button>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -620,6 +724,10 @@ export default function ThreadsFeed() {
                 user={user}
                 postContent={newPostContent}
                 setPostContent={setNewPostContent}
+                postTitle={newPostTitle}
+                setPostTitle={setNewPostTitle}
+                selectedField={selectedField}
+                setSelectedField={setSelectedField}
                 onSubmit={handlePostSubmit}
             />
 
@@ -674,222 +782,7 @@ export default function ThreadsFeed() {
                 </div>
             )}
 
-            {/* Create Post Modal */}
-            {showCreatePost && user && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <Card className="w-full max-w-2xl bg-white border border-gray-200">
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-bold text-gray-900">Tạo bài viết</h2>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setShowCreatePost(false)}
-                                >
-                                    <X className="w-5 h-5" />
-                                </Button>
-                            </div>
 
-                            <div className="space-y-4">
-                                <Input
-                                    placeholder="Tiêu đề (tùy chọn)"
-                                    value={newPostTitle}
-                                    onChange={(e) => setNewPostTitle(e.target.value)}
-                                    className="bg-white border-gray-300 text-gray-900 placeholder-gray-500"
-                                />
-
-                                <Textarea
-                                    placeholder="Nội dung bài viết..."
-                                    value={newPostContent}
-                                    onChange={(e) => setNewPostContent(e.target.value)}
-                                    className="bg-white border-gray-300 text-gray-900 placeholder-gray-500 min-h-[120px]"
-                                />
-
-                                <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="sm">
-                                        <ImageIcon className="w-5 h-5" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm">
-                                        <Video className="w-5 h-5" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm">
-                                        <LinkIcon className="w-5 h-5" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm">
-                                        <Smile className="w-5 h-5" />
-                                    </Button>
-                                </div>
-
-                                <div className="flex justify-end gap-2">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => setShowCreatePost(false)}
-                                    >
-                                        Hủy
-                                    </Button>
-                                    <Button
-                                        onClick={handleCreatePost}
-                                        disabled={!newPostContent.trim()}
-                                        className="bg-gray-900 hover:bg-gray-800 text-white"
-                                    >
-                                        Đăng bài
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
-
-            {/* Comments Modal */}
-            {showPostModal && selectedPost && user && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <Card className="w-full max-w-2xl bg-white border border-gray-200 max-h-[80vh] overflow-hidden">
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-bold text-gray-900">Bình luận</h2>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setShowPostModal(false)}
-                                >
-                                    <X className="w-5 h-5" />
-                                </Button>
-                            </div>
-
-                            {/* Selected Post */}
-                            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Avatar className="w-8 h-8">
-                                        <AvatarImage src={selectedPost.author.Avatar} />
-                                        <AvatarFallback className="bg-gray-200 text-gray-700 text-xs">
-                                            {selectedPost.author.FullName.charAt(0)}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <span className="font-semibold text-gray-900 text-sm">{selectedPost.author.FullName}</span>
-                                    <span className="text-gray-500 text-xs">{selectedPost.author.Username}</span>
-                                    <span className="text-gray-500 text-xs">•</span>
-                                    <span className="text-gray-500 text-xs">{formatTimeAgo(selectedPost.CreatedAt)}</span>
-                                </div>
-                                {selectedPost.Title && (
-                                    <h3 className="text-gray-900 font-semibold mb-1">{selectedPost.Title}</h3>
-                                )}
-                                <p className="text-gray-700 text-sm whitespace-pre-wrap">{selectedPost.Content}</p>
-                            </div>
-
-                            {/* Comments */}
-                            <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
-                                {postComments.map((comment) => (
-                                    <div key={comment.CommentID} className="space-y-2">
-                                        <div className="flex gap-3">
-                                            <Avatar className="w-8 h-8">
-                                                <AvatarImage src={comment.author.Avatar} />
-                                                <AvatarFallback className="bg-gray-200 text-gray-700 text-xs">
-                                                    {comment.author.FullName.charAt(0)}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="font-semibold text-gray-900 text-sm">{comment.author.FullName}</span>
-                                                    <span className="text-gray-500 text-xs">{comment.author.Username}</span>
-                                                    <span className="text-gray-500 text-xs">•</span>
-                                                    <span className="text-gray-500 text-xs">{formatTimeAgo(comment.CreatedAt)}</span>
-                                                </div>
-                                                <p className="text-gray-700 text-sm">{comment.Content}</p>
-                                                <div className="flex items-center gap-4 mt-2">
-                                                    <Button variant="ghost" size="sm" className="text-gray-500 hover:text-red-500 text-xs">
-                                                        <Heart className="w-4 h-4 mr-1" />
-                                                        {comment.likes}
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-gray-500 hover:text-blue-500 text-xs"
-                                                        onClick={() => setReplyingTo(comment.CommentID)}
-                                                    >
-                                                        <Reply className="w-4 h-4 mr-1" />
-                                                        Trả lời
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Replies */}
-                                        {comment.replies && comment.replies.length > 0 && (
-                                            <div className="ml-11 space-y-2">
-                                                {comment.replies.map((reply) => (
-                                                    <div key={reply.CommentID} className="flex gap-3">
-                                                        <Avatar className="w-6 h-6">
-                                                            <AvatarImage src={reply.author.Avatar} />
-                                                            <AvatarFallback className="bg-gray-200 text-gray-700 text-xs">
-                                                                {reply.author.FullName.charAt(0)}
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-2 mb-1">
-                                                                <span className="font-semibold text-gray-900 text-xs">{reply.author.FullName}</span>
-                                                                <span className="text-gray-500 text-xs">{reply.author.Username}</span>
-                                                                <span className="text-gray-500 text-xs">•</span>
-                                                                <span className="text-gray-500 text-xs">{formatTimeAgo(reply.CreatedAt)}</span>
-                                                            </div>
-                                                            <p className="text-gray-700 text-xs">{reply.Content}</p>
-                                                            <Button variant="ghost" size="sm" className="text-gray-500 hover:text-red-500 text-xs mt-1">
-                                                                <Heart className="w-3 h-3 mr-1" />
-                                                                {reply.likes}
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Add Comment */}
-                            <div className="border-t border-gray-200 pt-4">
-                                <div className="flex gap-3">
-                                    <Avatar className="w-8 h-8">
-                                        <AvatarImage src={user.avatar || "https://ui-avatars.com/api/?name=User&background=0ea5e9&color=fff&size=100"} />
-                                        <AvatarFallback className="bg-gray-200 text-gray-700 text-xs">
-                                            {user.name?.charAt(0) || "U"}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1">
-                                        <Textarea
-                                            placeholder={replyingTo ? "Trả lời bình luận..." : "Viết bình luận..."}
-                                            value={newComment}
-                                            onChange={(e) => setNewComment(e.target.value)}
-                                            className="bg-white border-gray-300 text-gray-900 placeholder-gray-500 resize-none"
-                                            rows={2}
-                                        />
-                                    </div>
-                                    <Button
-                                        onClick={() => handleAddComment(selectedPost.PostID)}
-                                        disabled={!newComment.trim()}
-                                        className="self-end bg-gray-900 hover:bg-gray-800 text-white"
-                                    >
-                                        <Send className="w-4 h-4" />
-                                    </Button>
-                                </div>
-                                {replyingTo && (
-                                    <div className="mt-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setReplyingTo(null)}
-                                            className="text-gray-500 text-xs"
-                                        >
-                                            <X className="w-3 h-3 mr-1" />
-                                            Hủy trả lời
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
         </div>
     );
 }

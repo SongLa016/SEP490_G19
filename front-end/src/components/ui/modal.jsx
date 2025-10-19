@@ -33,14 +33,14 @@ const Modal = ({
                >
                     {/* Header */}
                     {title && (
-                         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                         <div className="p-3 border-b border-gray-200 flex items-center justify-between">
                               <h2 className="text-lg font-bold text-gray-900">{title}</h2>
                               {showCloseButton && (
                                    <Button
                                         variant="ghost"
                                         size="sm"
                                         onClick={onClose}
-                                        className="p-2"
+                                        className="p-2 rounded-full hover:bg-gray-100"
                                    >
                                         <X className="w-5 h-5 text-gray-500" />
                                    </Button>

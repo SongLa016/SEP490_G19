@@ -425,15 +425,15 @@ export default function BookingHistory({ user }) {
                          <div className="mb-4 p-3 bg-teal-50 border border-teal-200 rounded-xl">
                               <div className="flex items-center justify-between">
                                    <div className="flex items-center gap-4 text-sm">
-                                        <span className="text-teal-700 font-semibold flex items-center gap-1">
+                                        <span className="text-red-700 font-semibold flex items-center gap-1">
                                              <BarChart3 className="w-4 h-4" />
-                                             Tổng cộng: <span className="text-teal-800 font-bold">{visibleGroups.length + visibleSingles.length}</span> đặt sân
+                                             Tổng cộng: <span className="text-red-800 font-bold">{visibleGroups.length + visibleSingles.length}</span> đặt sân
                                         </span>
-                                        <span className="text-teal-600 flex items-center gap-1">
+                                        <span className="text-yellow-600 flex items-center gap-1">
                                              <RotateCcw className="w-4 h-4" />
                                              Lịch định kỳ: <span className="font-semibold">{visibleGroups.length}</span>
                                         </span>
-                                        <span className="text-teal-600 flex items-center gap-1">
+                                        <span className="text-blue-600 flex items-center gap-1">
                                              <CalendarIcon className="w-4 h-4" />
                                              Đặt đơn: <span className="font-semibold">{visibleSingles.length}</span>
                                         </span>
@@ -638,15 +638,15 @@ export default function BookingHistory({ user }) {
                                         </Button>
                                         {user && (
                                              <>
-                                                  <Button variant="outline" onClick={() => handleReschedule(b.id)} className="px-3 py-2 text-sm">
+                                                  <Button variant="outline" onClick={() => handleReschedule(b.id)} className="px-3 !rounded-full py-2 text-sm">
                                                        Đổi giờ
                                                   </Button>
                                                   {b.status !== "cancelled" && (
-                                                       <Button variant="destructive" onClick={() => handleCancel(b.id)} className="px-3 py-2 text-sm">
+                                                       <Button variant="destructive" onClick={() => handleCancel(b.id)} className="px-3 !rounded-full py-2 text-sm">
                                                             Hủy đặt
                                                        </Button>
                                                   )}
-                                                  <Button onClick={() => handleRate(b.id)} className="px-3 py-2 text-sm">
+                                                  <Button onClick={() => handleRate(b.id)} className="px-3 !rounded-full py-2 text-sm">
                                                        Đánh giá
                                                   </Button>
                                                   {/* MatchRequest actions */}
@@ -728,7 +728,7 @@ export default function BookingHistory({ user }) {
                                                                                 }
                                                                            });
                                                                       }}
-                                                                      className="px-3 py-2 text-sm"
+                                                                      className="px-3 !rounded-full py-2 text-sm"
                                                                  >
                                                                       Tìm đối thủ
                                                                  </Button>
@@ -739,7 +739,7 @@ export default function BookingHistory({ user }) {
                                                                  <Badge variant="outline" className="text-xs">Đã yêu cầu • {req.status}</Badge>
                                                                  <Button
                                                                       variant="outline"
-                                                                      className="px-3 py-2 text-sm"
+                                                                      className="px-3 !rounded-full py-2 text-sm"
                                                                       onClick={() => {
                                                                            // refresh joins for this request
                                                                            setRequestJoins(prev => ({ ...prev, [req.requestId]: listMatchJoinsByRequest(req.requestId) }));

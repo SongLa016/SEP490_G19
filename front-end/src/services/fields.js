@@ -26,18 +26,19 @@ const FIELD_COMPLEXES = [
   {
     ComplexID: 101,
     OwnerID: 1,
-    Name: "Khu sân XYZ - Hoàn Kiếm",
+    Name: "Sân vận động Hoàn Kiếm",
     Address: "123 Phố Hàng Bạc, Quận Hoàn Kiếm, Hà Nội",
     Lat: 21.0285,
     Lng: 105.8542,
-    Description: "Khu sân chất lượng cao với nhiều tiện ích.",
+    Description:
+      "Sân vận động lớn với sân 11vs11 chuyên nghiệp và nhiều sân 7vs7.",
     Image:
       "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
     Status: "Active",
     ApprovalStatus: "Approved",
     ApprovedBy: 999,
     ApprovedAt: "2024-01-01T00:00:00Z",
-    Rating: 4.7,
+    Rating: 4.8,
   },
   {
     ComplexID: 102,
@@ -106,12 +107,47 @@ const FIELD_COMPLEXES = [
 ];
 
 // FIELDS distribution:
-// - Complexes 101, 102, 103: split into 7-a-side (4 fields each)
+// - Complex 101: 2 sân 11vs11 + 2 sân 7vs7
+// - Complexes 102, 103: split into 7-a-side (4 fields each)
 // - Complexes 104, 105: split into 5-a-side (6 fields each)
 const FIELDS = [
-  // 101 -> 7vs7 x4
+  // 101 -> 11vs11 x2 + 7vs7 x2
   {
     FieldID: 1,
+    ComplexID: 101,
+    TypeID: 3,
+    Name: "Sân 11 người A",
+    Size: "68x105m",
+    GrassType: "Cỏ tự nhiên",
+    Description: "Sân vận động chuyên nghiệp với cỏ tự nhiên",
+    Image:
+      "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
+    PricePerHour: 500000,
+    Status: "Available",
+    ApprovalStatus: "Approved",
+    ApprovedBy: 999,
+    ApprovedAt: "2024-01-01T00:00:00Z",
+    IsHidden: 0,
+  },
+  {
+    FieldID: 2,
+    ComplexID: 101,
+    TypeID: 3,
+    Name: "Sân 11 người B",
+    Size: "68x105m",
+    GrassType: "Cỏ tự nhiên",
+    Description: "Sân vận động với hệ thống chiếu sáng hiện đại",
+    Image:
+      "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
+    PricePerHour: 550000,
+    Status: "Available",
+    ApprovalStatus: "Approved",
+    ApprovedBy: 999,
+    ApprovedAt: "2024-01-01T00:00:00Z",
+    IsHidden: 0,
+  },
+  {
+    FieldID: 3,
     ComplexID: 101,
     TypeID: 2,
     Name: "Sân 7 người #1",
@@ -128,7 +164,7 @@ const FIELDS = [
     IsHidden: 0,
   },
   {
-    FieldID: 2,
+    FieldID: 4,
     ComplexID: 101,
     TypeID: 2,
     Name: "Sân 7 người #2",
@@ -138,40 +174,6 @@ const FIELDS = [
     Image:
       "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
     PricePerHour: 235000,
-    Status: "Available",
-    ApprovalStatus: "Approved",
-    ApprovedBy: 999,
-    ApprovedAt: "2024-01-01T00:00:00Z",
-    IsHidden: 0,
-  },
-  {
-    FieldID: 3,
-    ComplexID: 101,
-    TypeID: 2,
-    Name: "Sân 7 người #3",
-    Size: "30x50m",
-    GrassType: "Nhân tạo",
-    Description: "Chiếu sáng tốt",
-    Image:
-      "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
-    PricePerHour: 240000,
-    Status: "Available",
-    ApprovalStatus: "Approved",
-    ApprovedBy: 999,
-    ApprovedAt: "2024-01-01T00:00:00Z",
-    IsHidden: 0,
-  },
-  {
-    FieldID: 4,
-    ComplexID: 101,
-    TypeID: 2,
-    Name: "Sân 7 người #4",
-    Size: "30x50m",
-    GrassType: "Nhân tạo",
-    Description: "Bề mặt phẳng",
-    Image:
-      "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
-    PricePerHour: 245000,
     Status: "Available",
     ApprovalStatus: "Approved",
     ApprovedBy: 999,
@@ -526,30 +528,30 @@ const FIELDS = [
 
 // FieldPrices: { FieldID, SlotID, Price }
 const FIELD_PRICES = [
-  // Complex 101 - Sân lớn (FieldID 1-4)
-  { FieldID: 1, SlotID: 1, Price: 200000 }, // 06:00-07:30
-  { FieldID: 1, SlotID: 2, Price: 200000 }, // 07:30-09:00
-  { FieldID: 1, SlotID: 3, Price: 250000 }, // 09:00-10:30
-  { FieldID: 1, SlotID: 4, Price: 250000 }, // 10:30-12:00
-  { FieldID: 1, SlotID: 5, Price: 250000 }, // 12:00-13:30
-  { FieldID: 1, SlotID: 6, Price: 250000 }, // 13:30-15:00
-  { FieldID: 1, SlotID: 7, Price: 250000 }, // 15:00-16:30
-  { FieldID: 1, SlotID: 8, Price: 250000 }, // 16:30-18:00
-  { FieldID: 1, SlotID: 9, Price: 300000 }, // 18:00-19:30
-  { FieldID: 1, SlotID: 10, Price: 300000 }, // 19:30-21:00
-  { FieldID: 1, SlotID: 11, Price: 300000 }, // 21:00-22:30
+  // Complex 101 - Sân 11vs11 (FieldID 1-2) + Sân 7vs7 (FieldID 3-4)
+  { FieldID: 1, SlotID: 1, Price: 400000 }, // 06:00-07:30
+  { FieldID: 1, SlotID: 2, Price: 400000 }, // 07:30-09:00
+  { FieldID: 1, SlotID: 3, Price: 500000 }, // 09:00-10:30
+  { FieldID: 1, SlotID: 4, Price: 500000 }, // 10:30-12:00
+  { FieldID: 1, SlotID: 5, Price: 500000 }, // 12:00-13:30
+  { FieldID: 1, SlotID: 6, Price: 500000 }, // 13:30-15:00
+  { FieldID: 1, SlotID: 7, Price: 500000 }, // 15:00-16:30
+  { FieldID: 1, SlotID: 8, Price: 500000 }, // 16:30-18:00
+  { FieldID: 1, SlotID: 9, Price: 600000 }, // 18:00-19:30
+  { FieldID: 1, SlotID: 10, Price: 600000 }, // 19:30-21:00
+  { FieldID: 1, SlotID: 11, Price: 600000 }, // 21:00-22:30
 
-  { FieldID: 2, SlotID: 1, Price: 200000 },
-  { FieldID: 2, SlotID: 2, Price: 200000 },
-  { FieldID: 2, SlotID: 3, Price: 250000 },
-  { FieldID: 2, SlotID: 4, Price: 255000 },
-  { FieldID: 2, SlotID: 5, Price: 250000 },
-  { FieldID: 2, SlotID: 6, Price: 250000 },
-  { FieldID: 2, SlotID: 7, Price: 250000 },
-  { FieldID: 2, SlotID: 8, Price: 250000 },
-  { FieldID: 2, SlotID: 9, Price: 300000 },
-  { FieldID: 2, SlotID: 10, Price: 300000 },
-  { FieldID: 2, SlotID: 11, Price: 300000 },
+  { FieldID: 2, SlotID: 1, Price: 450000 },
+  { FieldID: 2, SlotID: 2, Price: 450000 },
+  { FieldID: 2, SlotID: 3, Price: 550000 },
+  { FieldID: 2, SlotID: 4, Price: 550000 },
+  { FieldID: 2, SlotID: 5, Price: 550000 },
+  { FieldID: 2, SlotID: 6, Price: 550000 },
+  { FieldID: 2, SlotID: 7, Price: 550000 },
+  { FieldID: 2, SlotID: 8, Price: 550000 },
+  { FieldID: 2, SlotID: 9, Price: 650000 },
+  { FieldID: 2, SlotID: 10, Price: 650000 },
+  { FieldID: 2, SlotID: 11, Price: 650000 },
 
   { FieldID: 3, SlotID: 1, Price: 200000 },
   { FieldID: 3, SlotID: 2, Price: 200000 },
@@ -566,7 +568,7 @@ const FIELD_PRICES = [
   { FieldID: 4, SlotID: 1, Price: 200000 },
   { FieldID: 4, SlotID: 2, Price: 200000 },
   { FieldID: 4, SlotID: 3, Price: 250000 },
-  { FieldID: 4, SlotID: 4, Price: 250000 },
+  { FieldID: 4, SlotID: 4, Price: 255000 },
   { FieldID: 4, SlotID: 5, Price: 250000 },
   { FieldID: 4, SlotID: 6, Price: 250000 },
   { FieldID: 4, SlotID: 7, Price: 250000 },
@@ -846,7 +848,6 @@ const FIELD_SCHEDULES = [
   { FieldID: 22, Date: todayStr, SlotID: 4, Status: "Available" },
   { FieldID: 23, Date: todayStr, SlotID: 3, Status: "Available" },
   { FieldID: 24, Date: todayStr, SlotID: 5, Status: "Available" },
-
   // Add some variety with different slots
   { FieldID: 1, Date: todayStr, SlotID: 4, Status: "Booked" },
   { FieldID: 3, Date: todayStr, SlotID: 5, Status: "Booked" },

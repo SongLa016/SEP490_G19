@@ -100,14 +100,7 @@ function AppContent() {
             </MainLayout>
           }
         />
-        <Route
-          path="/community"
-          element={
-            <MainLayout>
-              <Community user={user} />
-            </MainLayout>
-          }
-        />
+        <Route path="/community" element={<Community />} />
 
         {/* Catch all route */}
         <Route path="*" element={<Navigate to="/" replace />} />

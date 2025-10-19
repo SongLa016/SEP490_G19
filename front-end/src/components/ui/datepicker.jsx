@@ -29,7 +29,7 @@ export function DatePicker({ value, onChange, min, className = "", fromYear = 20
 
      return (
           <div className={`relative ${className}`} ref={containerRef}>
-               <Button type="button" onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between rounded-lg border border-gray-300 text-teal-600 hover:text-teal-700 hover:bg-teal-50 bg-white px-3 py-2 text-sm hover:border-teal-700 focus:outline-none focus:ring-2 focus:ring-gray-300">
+               <Button type="button" onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between rounded-2xl  text-teal-600 hover:text-teal-700 hover:bg-teal-50 bg-white px-3 py-2 text-sm hover:border-teal-700 focus:outline-none focus:ring-2 focus:ring-gray-300">
                     <span>{value || "Select date"}</span>
                     <CalendarIcon className="w-4 h-4 text-gray-500" />
                </Button>

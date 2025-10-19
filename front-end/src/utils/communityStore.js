@@ -12,6 +12,8 @@ const KEYS = {
   comments: "post_comments",
   reports: "reports",
   playerHistories: "player_histories",
+  teams: "teams",
+  teamJoinRequests: "team_join_requests",
 };
 
 function load(key) {
@@ -316,10 +318,27 @@ export function createMatchRequest({
   return req;
 }
 
-export function listMatchRequests({ status = "Open" } = {}) {
+export function listMatchRequests({
+  status = "Open",
+  level = "",
+  location = "",
+  date = "",
+} = {}) {
   const items = load(KEYS.matchRequests);
   return items
-    .filter((r) => !status || r.status === status)
+    .filter((r) => {
+      const matchStatus = !status || r.status === status;
+      const matchLevel =
+        !level ||
+        level === "all" ||
+        r.level === level ||
+        (level === "any" && r.level === "any");
+      const matchLocation =
+        !location ||
+        (r.address || "").toLowerCase().includes(location.toLowerCase());
+      const matchDate = !date || (r.date || "").startsWith(date);
+      return matchStatus && matchLevel && matchLocation && matchDate;
+    })
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 
@@ -462,4 +481,188 @@ export function rejectMatchJoin({ joinId }) {
   if (!othersPending && req.status !== "Matched")
     updateMatchRequest(req.requestId, { status: "Open" });
   return joins[idx];
+}
+
+// ===================== Team Management =====================
+// Teams(TeamID, TeamName, CreatedBy, ContactPhone, Description, PreferredSkillLevel, PreferredPositions, CurrentMembers, MaxMembers, Status, CreatedAt)
+export function createTeam({
+  teamName,
+  createdBy,
+  contactPhone,
+  description,
+  preferredSkillLevel,
+  preferredPositions,
+  maxMembers,
+  createdByName,
+}) {
+  const teams = load(KEYS.teams);
+  const team = {
+    teamId: `TM-${Date.now()}`,
+    teamName,
+    createdBy,
+    contactPhone,
+    description: description || "",
+    preferredSkillLevel: preferredSkillLevel || "Any",
+    preferredPositions: preferredPositions || "",
+    currentMembers: 1,
+    maxMembers,
+    status: "Open",
+    createdByName: createdByName || "",
+    createdAt: Date.now(),
+  };
+  teams.unshift(team);
+  save(KEYS.teams, teams);
+  return team;
+}
+
+export function listTeams({
+  status = "Open",
+  skillLevel = "",
+  location = "",
+} = {}) {
+  const teams = load(KEYS.teams);
+  return teams
+    .filter((t) => {
+      const matchStatus = !status || t.status === status;
+      const matchSkillLevel =
+        !skillLevel ||
+        skillLevel === "all" ||
+        t.preferredSkillLevel === skillLevel ||
+        (skillLevel === "any" && t.preferredSkillLevel === "Any");
+      return matchStatus && matchSkillLevel;
+    })
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+export function getTeamById(teamId) {
+  return load(KEYS.teams).find((t) => t.teamId === teamId) || null;
+}
+
+export function updateTeam(teamId, updates) {
+  const teams = load(KEYS.teams);
+  const idx = teams.findIndex((t) => t.teamId === teamId);
+  if (idx < 0) return null;
+  teams[idx] = { ...teams[idx], ...updates };
+  save(KEYS.teams, teams);
+  return teams[idx];
+}
+
+// TeamJoinRequests(RequestID, TeamID, UserID, Message, Status, RequestedAt, RespondedAt, RespondedBy)
+export function createTeamJoinRequest({
+  teamId,
+  userId,
+  message,
+  userName,
+}) {
+  const requests = load(KEYS.teamJoinRequests);
+  const team = getTeamById(teamId);
+  if (!team) throw new Error("Đội không tồn tại");
+  if (team.status !== "Open") throw new Error("Đội không còn mở để tham gia");
+  if (team.createdBy === userId) throw new Error("Bạn không thể tham gia đội của chính mình");
+  
+  // Check if user already has a pending request
+  const existingRequest = requests.find(
+    (r) => r.teamId === teamId && r.userId === userId && r.status === "Pending"
+  );
+  if (existingRequest) throw new Error("Bạn đã gửi yêu cầu tham gia đội này");
+
+  const request = {
+    requestId: `TJR-${Date.now()}`,
+    teamId,
+    userId,
+    message: message || "",
+    status: "Pending",
+    userName: userName || "",
+    requestedAt: Date.now(),
+    respondedAt: null,
+    respondedBy: null,
+  };
+  requests.push(request);
+  save(KEYS.teamJoinRequests, requests);
+  
+  // Notify team creator
+  createNotification({
+    userId: team.createdBy,
+    type: "TeamJoinRequest",
+    refId: teamId,
+    message: `Có người muốn tham gia đội "${team.teamName}"`,
+  });
+  
+  return request;
+}
+
+export function listTeamJoinRequestsByTeam(teamId) {
+  return load(KEYS.teamJoinRequests).filter((r) => r.teamId === teamId);
+}
+
+export function listTeamJoinRequestsByUser(userId) {
+  return load(KEYS.teamJoinRequests).filter((r) => r.userId === userId);
+}
+
+export function approveTeamJoinRequest({ requestId, respondedBy }) {
+  const requests = load(KEYS.teamJoinRequests);
+  const idx = requests.findIndex((r) => r.requestId === requestId);
+  if (idx < 0) return null;
+  
+  const request = requests[idx];
+  const team = getTeamById(request.teamId);
+  if (!team) return null;
+  
+  // Check if team is still open and has space
+  if (team.status !== "Open" || team.currentMembers >= team.maxMembers) {
+    throw new Error("Đội đã đầy hoặc không còn mở");
+  }
+  
+  // Update request status
+  requests[idx] = {
+    ...request,
+    status: "Approved",
+    respondedAt: Date.now(),
+    respondedBy,
+  };
+  save(KEYS.teamJoinRequests, requests);
+  
+  // Update team member count
+  const newMemberCount = team.currentMembers + 1;
+  const newStatus = newMemberCount >= team.maxMembers ? "Full" : "Open";
+  updateTeam(request.teamId, {
+    currentMembers: newMemberCount,
+    status: newStatus,
+  });
+  
+  // Notify the user
+  createNotification({
+    userId: request.userId,
+    type: "TeamJoinApproved",
+    refId: request.teamId,
+    message: `Yêu cầu tham gia đội "${team.teamName}" đã được chấp nhận`,
+  });
+  
+  return requests[idx];
+}
+
+export function rejectTeamJoinRequest({ requestId, respondedBy }) {
+  const requests = load(KEYS.teamJoinRequests);
+  const idx = requests.findIndex((r) => r.requestId === requestId);
+  if (idx < 0) return null;
+  
+  const request = requests[idx];
+  requests[idx] = {
+    ...request,
+    status: "Rejected",
+    respondedAt: Date.now(),
+    respondedBy,
+  };
+  save(KEYS.teamJoinRequests, requests);
+  
+  // Notify the user
+  const team = getTeamById(request.teamId);
+  createNotification({
+    userId: request.userId,
+    type: "TeamJoinRejected",
+    refId: request.teamId,
+    message: `Yêu cầu tham gia đội "${team.teamName}" đã bị từ chối`,
+  });
+  
+  return requests[idx];
 }
