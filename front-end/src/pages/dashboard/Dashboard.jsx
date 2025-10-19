@@ -8,7 +8,7 @@ import HomePage from "../HomePage";
 import FieldSearch from "../fields/FieldSearch";
 import BookingHistory from "../booking/BookingHistory";
 import Invoice from "../booking/Invoice";
-import { Button, Section } from "../../components/ui";
+import { Button, Section } from "../../components/ui/index.js";
 
 export default function Dashboard({ currentView, navigateTo }) {
      const { user, logout } = useAuth();

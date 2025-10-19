@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Building2, ExternalLink, List } from "lucide-react";
-import { Modal } from './ui/modal';
-import { Button, Input } from './ui/index';
-import { fetchFields } from '../services/fields';
+import { Modal, Button, Input } from '../../../components/ui/index.js';
+import { fetchFields } from '../../../services/fields.js';
 
 const FieldSelectionModal = ({
      isOpen,

@@ -27,13 +27,13 @@ const Modal = ({
           >
                <div
                     className={cn(
-                         "bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden",
+                         "bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden relative",
                          className
                     )}
                >
                     {/* Header */}
                     {title && (
-                         <div className="p-3 border-b border-gray-200 flex items-center justify-between">
+                         <div className="p-3 sticky top-0 z-50 bg-white border-b border-gray-200 flex items-center justify-between">
                               <h2 className="text-lg font-bold text-gray-900">{title}</h2>
                               {showCloseButton && (
                                    <Button

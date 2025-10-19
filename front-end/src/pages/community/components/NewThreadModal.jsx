@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { ImageIcon, Video, Smile, Pin, List, X, Building2, MapPin } from "lucide-react";
-import { Modal } from './ui/modal';
-import { Button, Avatar, AvatarImage, AvatarFallback, Textarea } from './ui/index';
-import FieldSelectionModal from './FieldSelectionModal';
+import { Modal } from '../../../components/ui/modal';
+import { Button, Avatar, AvatarImage, AvatarFallback, Textarea } from '../../../components/ui/index';
+import FieldSelectionModal from '../../fields/components/FieldSelectionModal';
 
 const NewThreadModal = ({
      isOpen,

@@ -24,10 +24,10 @@ import {
      SelectItem,
      SelectTrigger,
      SelectValue,
-} from "./ui";
-import { useAuth } from "../contexts/AuthContext";
-import { listMatchRequests, joinMatchRequest } from "../utils/communityStore";
-import { getBookingById } from "../utils/bookingStore";
+} from "../../../components/ui/index.js";
+import { useAuth } from "../../../contexts/AuthContext";
+import { listMatchRequests, joinMatchRequest } from "../../../utils/communityStore";
+import { getBookingById } from "../../../utils/bookingStore";
 import Swal from "sweetalert2";
 
 export default function FindMatch() {

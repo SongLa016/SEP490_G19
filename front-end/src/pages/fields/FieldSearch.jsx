@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, MapPin, Star, Clock, Grid, List, Heart, SlidersHorizontal, ChevronLeft, ChevronRight, Sparkles, User, Map, RefreshCcw, CircleDollarSign, EyeIcon } from "lucide-react";
-import { Section, Container, Card, CardContent, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, DatePicker } from "../../components/ui";
+import { Section, Container, Card, CardContent, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, DatePicker } from "../../components/ui/index.js";
 import { Link, useNavigate } from "react-router-dom";
-import MapSearch from "../../components/MapSearch";
+import MapSearch from "./components/MapSearch";
 import { fetchComplexes, fetchFields, fetchTimeSlots } from "../../services/fields";
 export default function FieldSearch({ user }) {
      const navigate = useNavigate();

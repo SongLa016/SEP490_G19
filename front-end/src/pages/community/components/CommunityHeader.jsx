@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Search, User, LogOut, Settings, Home, MapPin, Calendar, Users, BarChart3, LogIn } from "lucide-react";
-import { Button } from "./ui";
-import logo from "./assets/logo.png";
+import { Button } from "../../../components/ui/index.js";
+import logo from "../../../components/assets/logo.png";
 
 export default function CommunityHeader({ user, onLoggedOut }) {
      const [isProfileOpen, setIsProfileOpen] = useState(false);

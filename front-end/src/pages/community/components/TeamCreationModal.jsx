@@ -10,8 +10,8 @@ import {
      SelectItem,
      SelectTrigger,
      SelectValue,
-} from "./ui";
-import { createTeam } from "../utils/communityStore";
+} from "../../../components/ui";
+import { createTeam } from "../../utils/communityStore";
 import Swal from "sweetalert2";
 
 export default function TeamCreationModal({ isOpen, onClose, user, onTeamCreated }) {

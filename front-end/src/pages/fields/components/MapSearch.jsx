@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Search, X } from 'lucide-react';
-import { Button, Input } from './ui';
-import { fetchComplexes } from '../services/fields';
+import { Button, Input } from '../../../components/ui/index.js';
+import { fetchComplexes } from '../../../services/fields.js';
 
 const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
      const [searchQuery, setSearchQuery] = useState('');

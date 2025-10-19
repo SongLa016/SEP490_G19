@@ -5,14 +5,14 @@ import {
      Avatar,
      AvatarImage,
      AvatarFallback,
-} from "../../components/ui";
-import NewThreadModal from "../../components/NewThreadModal";
-import ThreadsFeed from "../../components/ThreadsFeed";
-import CommunityHeader from "../../components/CommunityHeader";
+} from "../../components/ui/index.js";
+import NewThreadModal from "./components/NewThreadModal";
+import ThreadsFeed from "./components/ThreadsFeed";
+import CommunityHeader from "./components/CommunityHeader";
 import { useAuth } from "../../contexts/AuthContext";
 import { seedCommunityPostsOnce, listMatchRequests } from "../../utils/communityStore";
-import FindMatch from "../../components/FindMatch";
-import TeamList from "../../components/TeamList";
+import FindMatch from "./components/FindMatch";
+import TeamList from "./components/TeamList";
 
 export default function Community() {
      const locationRouter = useLocation();

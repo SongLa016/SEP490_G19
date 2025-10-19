@@ -2,10 +2,9 @@ import { useState } from 'react';
 import {
      registerUser,
      completeRegistrationWithOtp,
-     fileToDataUrl,
 } from '../../utils/authStore';
 import { Button, Input, Card, CardContent, CardHeader, CardTitle, CardDescription, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui';
-import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowLeft, CheckCircle, Upload, X } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, CheckCircle, Upload, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Register({ onDone, onGoLogin, compact = false }) {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { X, ImageIcon, Video, Smile, Pin, List } from "lucide-react";
-import { Modal } from './ui/modal';
-import { Button, Avatar, AvatarImage, AvatarFallback, Textarea } from './ui/index';
+import { Modal } from '../../../components/ui/modal';
+import { Button, Avatar, AvatarImage, AvatarFallback, Textarea } from '../../../components/ui/index';
 
 const ReplyModal = ({
      isOpen,

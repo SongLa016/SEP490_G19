@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { MapPin, Star, Clock, Repeat, Info, Images, User, MessageSquare, Send, ArrowLeft, Ruler, Leaf, CheckCircle, XCircle, Tag, DollarSign, EyeIcon, BadgeInfo } from "lucide-react";
-import { Container, Card, CardContent, Button, Section, DatePicker, Textarea } from "../../components/ui";
-import { fetchComplexDetail, fetchTimeSlots, fetchFieldDetail } from "../../services/fields";
+import { Container, Card, CardContent, Button, Section, DatePicker, Textarea } from "../../components/ui/index.js";
+import { fetchComplexDetail, fetchTimeSlots, fetchFieldDetail } from "../../services/fields.js";
 import BookingModal from "../../components/BookingModal";
 import Swal from 'sweetalert2';
 
