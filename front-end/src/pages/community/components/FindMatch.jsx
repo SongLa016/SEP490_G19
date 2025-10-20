@@ -108,7 +108,7 @@ export default function FindMatch() {
                     </div>
                     <div className="md:col-span-1">
                          <div className="relative">
-                              <DatePicker value={filterDate} onChange={setFilterDate} />
+                              <DatePicker value={filterDate} onChange={setFilterDate} className="" />
                          </div>
                     </div>
                     <div className="md:col-span-1">
@@ -165,17 +165,17 @@ export default function FindMatch() {
                                                             )}
                                                        </div>
                                                   </div>
-                                                  {/* Thông tin sân và ngày từ booking */}
-                                                  {bookingInfo && (
-                                                       <div className="group h-7 hover:h-auto transition-all duration-300 ">
-                                                            {/* Thông tin cơ bản - luôn hiển thị */}
-                                                            <div className="text-xs mx-auto text-center text-gray-400 italic group-hover:hidden">
-                                                                 Chạm vào để xem thêm chi tiết
-                                                            </div>
+                                                  {/* Thông tin booking chi tiết */}
+                                                  <div className="group h-7 hover:h-auto transition-all duration-300">
+                                                       {/* Thông tin cơ bản - luôn hiển thị */}
+                                                       <div className="text-xs mx-auto text-center text-gray-400 italic group-hover:hidden">
+                                                            Chạm vào để xem thêm chi tiết booking
+                                                       </div>
 
-                                                            {/* Thông tin chi tiết - chỉ hiển thị khi hover */}
-                                                            <div className="opacity-0  group-hover:opacity-100 transition-transform duration-300 translate-y-2 group-hover:translate-y-0 text-sm text-gray-600 mb-2 space-y-1">
-                                                                 <div className="text-sm text-gray-600 mb-2 space-y-1 ">
+                                                       {/* Thông tin chi tiết booking - chỉ hiển thị khi hover */}
+                                                       <div className="opacity-0 group-hover:opacity-100 transition-transform duration-300 translate-y-2 group-hover:translate-y-0 text-sm text-gray-600 mb-2 space-y-1">
+                                                            {bookingInfo ? (
+                                                                 <div className="text-sm text-gray-600 mb-2 space-y-1">
                                                                       {bookingInfo.fieldName && (
                                                                            <div className="flex items-center gap-2">
                                                                                 <MapPin className="w-4 h-4 text-gray-500" />
@@ -197,52 +197,64 @@ export default function FindMatch() {
                                                                                 <span>{bookingInfo.slotName}</span>
                                                                            </div>
                                                                       )}
-
                                                                  </div>
-                                                                 {bookingInfo.fieldAddress && (
+                                                            ) : (
+                                                                 <div className="text-sm text-gray-600 mb-2 space-y-1">
                                                                       <div className="flex items-center gap-2">
-                                                                           <MapPin className="w-4 h-4 text-gray-500" />
-                                                                           <span className="font-medium">Địa chỉ:</span>
-                                                                           <span>{bookingInfo.fieldAddress}</span>
+                                                                           <AlertCircle className="w-4 h-4 text-gray-500" />
+                                                                           <span className="font-medium">Thông tin booking:</span>
+                                                                           <span className="text-gray-500">Không có thông tin chi tiết</span>
                                                                       </div>
-                                                                 )}
-                                                                 {bookingInfo.price && (
-                                                                      <div className="flex items-center gap-2">
-                                                                           <span className="font-medium">Giá:</span>
-                                                                           <span className="text-green-600 font-semibold">
-                                                                                {bookingInfo.price.toLocaleString('vi-VN')} VNĐ
-                                                                           </span>
-                                                                      </div>
-                                                                 )}
-                                                                 {bookingInfo.customerName && (
-                                                                      <div className="flex items-center gap-2">
-                                                                           <span className="font-medium">Khách hàng:</span>
-                                                                           <span>{bookingInfo.customerName}</span>
-                                                                      </div>
-                                                                 )}
-                                                                 {bookingInfo.customerPhone && (
-                                                                      <div className="flex items-center gap-2">
-                                                                           <span className="font-medium">SĐT:</span>
-                                                                           <span>{bookingInfo.customerPhone}</span>
-                                                                      </div>
-                                                                 )}
-                                                                 {bookingInfo.totalPrice && (
-                                                                      <div className="flex items-center gap-2">
-                                                                           <span className="font-medium">Tổng tiền:</span>
-                                                                           <span className="text-blue-600 font-semibold">
-                                                                                {bookingInfo.totalPrice.toLocaleString('vi-VN')} VNĐ
-                                                                           </span>
-                                                                      </div>
-                                                                 )}
-                                                                 {bookingInfo.duration && (
-                                                                      <div className="flex items-center gap-2">
-                                                                           <span className="font-medium">Số buổi:</span>
-                                                                           <span>{bookingInfo.duration} buổi</span>
-                                                                      </div>
-                                                                 )}
-                                                            </div>
+                                                                 </div>
+                                                            )}
+                                                            {bookingInfo && (
+                                                                 <>
+                                                                      {bookingInfo.fieldAddress && (
+                                                                           <div className="flex items-center gap-2">
+                                                                                <MapPin className="w-4 h-4 text-gray-500" />
+                                                                                <span className="font-medium">Địa chỉ:</span>
+                                                                                <span>{bookingInfo.fieldAddress}</span>
+                                                                           </div>
+                                                                      )}
+                                                                      {bookingInfo.price && (
+                                                                           <div className="flex items-center gap-2">
+                                                                                <span className="font-medium">Giá:</span>
+                                                                                <span className="text-green-600 font-semibold">
+                                                                                     {bookingInfo.price.toLocaleString('vi-VN')} VNĐ
+                                                                                </span>
+                                                                           </div>
+                                                                      )}
+                                                                      {bookingInfo.customerName && (
+                                                                           <div className="flex items-center gap-2">
+                                                                                <span className="font-medium">Khách hàng:</span>
+                                                                                <span>{bookingInfo.customerName}</span>
+                                                                           </div>
+                                                                      )}
+                                                                      {bookingInfo.customerPhone && (
+                                                                           <div className="flex items-center gap-2">
+                                                                                <span className="font-medium">SĐT:</span>
+                                                                                <span>{bookingInfo.customerPhone}</span>
+                                                                           </div>
+                                                                      )}
+                                                                      {bookingInfo.totalPrice && (
+                                                                           <div className="flex items-center gap-2">
+                                                                                <span className="font-medium">Tổng tiền:</span>
+                                                                                <span className="text-blue-600 font-semibold">
+                                                                                     {bookingInfo.totalPrice.toLocaleString('vi-VN')} VNĐ
+                                                                                </span>
+                                                                           </div>
+                                                                      )}
+                                                                      {bookingInfo.duration && (
+                                                                           <div className="flex items-center gap-2">
+                                                                                <span className="font-medium">Số buổi:</span>
+                                                                                <span>{bookingInfo.duration} buổi</span>
+                                                                           </div>
+                                                                      )}
+                                                                 </>
+                                                            )}
                                                        </div>
-                                                  )}
+                                                  </div>
+
                                                   <div className="text-sm text-gray-600 flex items-center gap-3 flex-wrap mb-2">
                                                        <Badge className="text-xs bg-yellow-50 text-yellow-700 flex items-center gap-1">
                                                             <UserCheck className="w-3 h-3" />
@@ -253,6 +265,7 @@ export default function FindMatch() {
                                                             Trạng thái: {mr.status}
                                                        </Badge>
                                                   </div>
+
                                                   {mr.note && (
                                                        <div className="text-sm text-gray-700 bg-gray-50 p-2 rounded-lg border flex items-start gap-2">
                                                             <AlertCircle className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />

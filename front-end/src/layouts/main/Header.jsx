@@ -3,11 +3,13 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Search, User, Menu, X, LogOut, Settings, Home, MapPin, Calendar, Users, BarChart3, LogIn } from "lucide-react";
 import logo from "../../components/assets/logo.png";
 import { Button } from "../../components/ui";
+import { useModal } from "../../contexts/ModalContext";
 export default function Header({ user, onLoggedOut }) {
      const [isMenuOpen, setIsMenuOpen] = useState(false);
      const [isProfileOpen, setIsProfileOpen] = useState(false);
      const navigate = useNavigate();
      const location = useLocation();
+     const { isBookingModalOpen } = useModal();
 
      const getRoleDisplayName = (role) => {
           switch (role) {
@@ -73,7 +75,7 @@ export default function Header({ user, onLoggedOut }) {
      const navigationItems = getNavigationItems();
 
      return (
-          <header className="bg-transparent backdrop-blur-sm rounded-b-2xl border-b border-teal-500 fixed top-0 left-0 right-0 z-50 shadow-sm ">
+          <header className={`bg-transparent backdrop-blur-sm rounded-b-2xl border-b border-teal-500 fixed top-0 left-0 right-0 z-50 shadow-sm transition-transform duration-300 ${isBookingModalOpen ? '-translate-y-full' : 'translate-y-0'}`}>
                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                          {/* Logo */}

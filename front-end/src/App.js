@@ -21,6 +21,10 @@ import BookingHistory from "./pages/booking/BookingHistory";
 import ComplexDetail from "./pages/fields/ComplexDetail";
 import Community from "./pages/community/Community";
 
+// Profile Pages
+import ProfileIndex from "./pages/profile";
+import ProfileDemo from "./pages/profile/ProfileDemo";
+
 function AppContent() {
   const { user, isLoading } = useAuth();
 
@@ -101,6 +105,28 @@ function AppContent() {
           }
         />
         <Route path="/community" element={<Community />} />
+
+        {/* Profile Routes */}
+        <Route
+          path="/profile"
+          element={
+            user ? (
+              <MainLayout>
+                <ProfileIndex user={user} />
+              </MainLayout>
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/profile/demo"
+          element={
+            <MainLayout>
+              <ProfileDemo />
+            </MainLayout>
+          }
+        />
 
         {/* Catch all route */}
         <Route path="*" element={<Navigate to="/" replace />} />

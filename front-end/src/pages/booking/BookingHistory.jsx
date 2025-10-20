@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Calendar, MapPin, Receipt, Search, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ArrowUpDown, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { Calendar, MapPin, Receipt, Search, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ArrowUpDown, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon } from "lucide-react";
 import { Section, Container, Card, CardContent, Input, Button, Badge, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, DatePicker } from "../../components/ui";
 import { useNavigate } from "react-router-dom";
 import { listBookingsByUser, updateBooking } from "../../utils/bookingStore";
 import { createMatchRequest, listMatchRequests, listMatchJoinsByRequest, acceptMatchJoin, rejectMatchJoin, expireMatchRequestsNow, createCommunityPost, listPlayerHistoriesByUser } from "../../utils/communityStore";
+import FindOpponentModal from "../../components/FindOpponentModal";
+import RecurringOpponentModal from "../../components/RecurringOpponentModal";
+import RatingModal from "../../components/RatingModal";
+import RescheduleModal from "../../components/RescheduleModal";
 import Swal from 'sweetalert2';
 
 export default function BookingHistory({ user }) {
@@ -21,6 +25,12 @@ export default function BookingHistory({ user }) {
      const [bookingIdToRequest, setBookingIdToRequest] = useState({});
      const [requestJoins, setRequestJoins] = useState({});
      const [playerHistories, setPlayerHistories] = useState([]);
+     const [showFindOpponentModal, setShowFindOpponentModal] = useState(false);
+     const [showRecurringOpponentModal, setShowRecurringOpponentModal] = useState(false);
+     const [showRatingModal, setShowRatingModal] = useState(false);
+     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+     const [selectedBooking, setSelectedBooking] = useState(null);
+     const [opponentData, setOpponentData] = useState(null);
 
      useEffect(() => {
           const userBookings = listBookingsByUser(user?.id || "");
@@ -65,6 +75,59 @@ export default function BookingHistory({ user }) {
      }, [bookings]);
 
      const formatPrice = (price) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price);
+
+     const handleFindOpponent = (booking) => {
+          setSelectedBooking(booking);
+          setShowFindOpponentModal(true);
+     };
+
+     const handleFindOpponentSuccess = (result) => {
+          if (result.type === "recurring") {
+               setOpponentData(result);
+               setShowFindOpponentModal(false);
+               setShowRecurringOpponentModal(true);
+          } else {
+               // Single booking success
+               const all = listMatchRequests({ status: "" });
+               const map = {};
+               all.forEach(r => { map[r.bookingId] = r; });
+               setBookingIdToRequest(map);
+               setShowFindOpponentModal(false);
+               Swal.fire('Đã gửi!', 'Yêu cầu tìm đối đã được tạo.', 'success');
+          }
+     };
+
+     const handleRecurringOpponentSuccess = () => {
+          const all = listMatchRequests({ status: "" });
+          const map = {};
+          all.forEach(r => { map[r.bookingId] = r; });
+          setBookingIdToRequest(map);
+          setShowRecurringOpponentModal(false);
+          setOpponentData(null);
+          Swal.fire('Đã gửi!', 'Yêu cầu tìm đối cho lịch cố định đã được tạo.', 'success');
+     };
+
+     const handleRating = (booking) => {
+          setSelectedBooking(booking);
+          setShowRatingModal(true);
+     };
+
+     const handleRatingSuccess = (result) => {
+          setShowRatingModal(false);
+          setSelectedBooking(null);
+          Swal.fire('Cảm ơn bạn!', 'Đánh giá của bạn đã được gửi thành công.', 'success');
+     };
+
+     const handleReschedule = (booking) => {
+          setSelectedBooking(booking);
+          setShowRescheduleModal(true);
+     };
+
+     const handleRescheduleSuccess = (result) => {
+          setShowRescheduleModal(false);
+          setSelectedBooking(null);
+          Swal.fire('Thành công!', `Đã đổi giờ từ ${result.oldDate} sang ${result.newDate}`, 'success');
+     };
 
      const statusBadge = (status) => {
           switch (status) {
@@ -175,96 +238,7 @@ export default function BookingHistory({ user }) {
           });
      };
 
-     const handleReschedule = (id) => {
-          Swal.fire({
-               title: 'Đổi lịch đặt sân',
-               html: `
-                    <div style="text-align: left;">
-                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">Ngày mới:</label>
-                         <input id="newDate" type="date" style="width: 100%; padding: 8px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px;">
-                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">Giờ mới:</label>
-                         <input id="newTime" type="text" placeholder="Ví dụ: 18:00-20:00" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                    </div>
-               `,
-               showCancelButton: true,
-               confirmButtonText: 'Xác nhận',
-               cancelButtonText: 'Hủy',
-               preConfirm: () => {
-                    const newDate = document.getElementById('newDate').value;
-                    const newTime = document.getElementById('newTime').value;
-                    if (!newDate || !newTime) {
-                         Swal.showValidationMessage('Vui lòng nhập đầy đủ thông tin');
-                         return false;
-                    }
-                    return { newDate, newTime };
-               }
-          }).then((result) => {
-               if (result.isConfirmed) {
-                    const { newDate, newTime } = result.value;
-                    updateBooking(id, { date: newDate, time: newTime });
-                    setBookings(prev => prev.map(booking =>
-                         booking.id === id ? { ...booking, date: newDate, time: newTime } : booking
-                    ));
-                    Swal.fire('Thành công!', 'Lịch đặt sân đã được cập nhật.', 'success');
-               }
-          });
-     };
 
-     const handleRate = (id) => {
-          Swal.fire({
-               title: 'Đánh giá sân',
-               html: `
-                    <div style="text-align: left;">
-                         <label style="display: block; margin-bottom: 10px; font-weight: bold;">Đánh giá sao (1-5):</label>
-                         <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                              ${[1, 2, 3, 4, 5].map(star => `
-                                   <button type="button" onclick="document.getElementById('rating').value = ${star}; updateStars(${star})" 
-                                           style="width: 40px; height: 40px; border: 2px solid #ddd; border-radius: 50%; background: white; cursor: pointer;" 
-                                           id="star-${star}">
-                                        ⭐
-                                   </button>
-                              `).join('')}
-                         </div>
-                         <input type="hidden" id="rating" value="0">
-                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">Nhận xét:</label>
-                         <textarea id="comment" placeholder="Chia sẻ trải nghiệm của bạn..." 
-                                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; height: 80px; resize: vertical;"></textarea>
-                    </div>
-                    <script>
-                         function updateStars(rating) {
-                              for (let i = 1; i <= 5; i++) {
-                                   const star = document.getElementById('star-' + i);
-                                   if (i <= rating) {
-                                        star.style.background = '#ffd700';
-                                        star.style.borderColor = '#ffd700';
-                                   } else {
-                                        star.style.background = 'white';
-                                        star.style.borderColor = '#ddd';
-                                   }
-                              }
-                         }
-                    </script>
-               `,
-               showCancelButton: true,
-               confirmButtonText: 'Gửi đánh giá',
-               cancelButtonText: 'Hủy',
-               preConfirm: () => {
-                    const rating = parseInt(document.getElementById('rating').value);
-                    const comment = document.getElementById('comment').value;
-                    if (rating === 0) {
-                         Swal.showValidationMessage('Vui lòng chọn số sao đánh giá');
-                         return false;
-                    }
-                    return { rating, comment };
-               }
-          }).then((result) => {
-               if (result.isConfirmed) {
-                    const { rating, comment } = result.value;
-                    updateBooking(id, { rating, comment });
-                    Swal.fire('Cảm ơn bạn!', 'Đánh giá của bạn đã được gửi thành công.', 'success');
-               }
-          });
-     };
 
      const handleCancelRecurring = (groupId) => {
           Swal.fire({
@@ -575,7 +549,10 @@ export default function BookingHistory({ user }) {
                                                                                 Hủy
                                                                            </Button>
                                                                       )}
-                                                                      <Button onClick={() => handleRate(booking.id)} className="px-2 !py-0.5 text-xs rounded-xl border border-teal-200 text-teal-50 hover:text-white hover:bg-teal-800">
+                                                                      <Button
+                                                                           onClick={() => handleRating(booking)}
+                                                                           className="px-2 py-1 text-xs rounded-3xl bg-yellow-50 text-yellow-700 border hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 transition-colors"
+                                                                      >
                                                                            <Star className="w-3 h-3 mr-1" /> Đánh giá
                                                                       </Button>
                                                                  </div>
@@ -633,20 +610,30 @@ export default function BookingHistory({ user }) {
                                         </div>
                                    </div>
                                    <div className="mt-4 pt-3 border-t border-teal-100 flex flex-wrap gap-2">
-                                        <Button variant="secondary" onClick={() => navigate("/invoice")} className="px-3 py-2 text-sm">
+                                        <Button variant="secondary" onClick={() => navigate("/invoice")} className="px-3 py-2 text-sm rounded-3xl">
                                              <Receipt className="w-4 h-4 mr-2" /> Xem hóa đơn
                                         </Button>
                                         {user && (
                                              <>
-                                                  <Button variant="outline" onClick={() => handleReschedule(b.id)} className="px-3 !rounded-full py-2 text-sm">
+                                                  <Button
+                                                       variant="outline"
+                                                       onClick={() => handleReschedule(b)}
+                                                       className="px-3 py-2 text-sm bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 transition-colors rounded-3xl"
+                                                  >
+                                                       <Calendar className="w-4 h-4 mr-2" />
                                                        Đổi giờ
                                                   </Button>
                                                   {b.status !== "cancelled" && (
-                                                       <Button variant="destructive" onClick={() => handleCancel(b.id)} className="px-3 !rounded-full py-2 text-sm">
+                                                       <Button variant="destructive" onClick={() => handleCancel(b.id)} className="px-3 rounded-3xl py-2 text-sm">
+                                                            <Trash2 className="w-4 h-4 mr-2" />
                                                             Hủy đặt
                                                        </Button>
                                                   )}
-                                                  <Button onClick={() => handleRate(b.id)} className="px-3 !rounded-full py-2 text-sm">
+                                                  <Button
+                                                       onClick={() => handleRating(b)}
+                                                       className="px-3 py-2 text-sm bg-yellow-50 text-yellow-700 border-yellow-400 hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-600 transition-colors rounded-3xl"
+                                                  >
+                                                       <Star className="w-4 h-4 mr-2" />
                                                        Đánh giá
                                                   </Button>
                                                   {/* MatchRequest actions */}
@@ -656,80 +643,10 @@ export default function BookingHistory({ user }) {
                                                             return (
                                                                  <Button
                                                                       variant="secondary"
-                                                                      onClick={() => {
-                                                                           Swal.fire({
-                                                                                title: 'Tìm đối thủ',
-                                                                                html: `
-                                                                                    <div style="text-align:left">
-                                                                                         <label style="display:block;margin:6px 0 4px;font-weight:600">Mức độ đội</label>
-                                                                                         <select id="fo_level" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px">
-                                                                                              <option value="Beginner">Beginner</option>
-                                                                                              <option value="Intermediate" selected>Intermediate</option>
-                                                                                              <option value="Advanced">Advanced</option>
-                                                                                         </select>
-                                                                                         <label style="display:block;margin:10px 0 4px;font-weight:600">Ghi chú</label>
-                                                                                         <textarea id="fo_note" placeholder="Ví dụ: Ưu tiên fair-play, mang áo đậm màu..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;height:80px;resize:vertical"></textarea>
-                                                                                         <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px">
-                                                                                              <input id="fo_terms" type="checkbox" /> Tôi đồng ý quy tắc cộng đồng
-                                                                                         </label>
-                                                                                    </div>
-                                                                               `,
-                                                                                focusConfirm: false,
-                                                                                showCancelButton: true,
-                                                                                confirmButtonText: 'Gửi yêu cầu',
-                                                                                cancelButtonText: 'Hủy',
-                                                                                preConfirm: () => {
-                                                                                     const level = (document.getElementById('fo_level') || {}).value || 'Intermediate';
-                                                                                     const note = (document.getElementById('fo_note') || {}).value || '';
-                                                                                     const terms = (document.getElementById('fo_terms') || {}).checked;
-                                                                                     if (!terms) {
-                                                                                          Swal.showValidationMessage('Bạn cần đồng ý quy tắc cộng đồng');
-                                                                                          return false;
-                                                                                     }
-                                                                                     return { level, note };
-                                                                                }
-                                                                           }).then((res) => {
-                                                                                if (res.isConfirmed) {
-                                                                                     try {
-                                                                                          const { level, note } = res.value;
-                                                                                          // Create match request with booking metadata
-                                                                                          createMatchRequest({
-                                                                                               bookingId: b.id,
-                                                                                               ownerId: user?.id,
-                                                                                               level,
-                                                                                               note,
-                                                                                               fieldName: b.fieldName,
-                                                                                               address: b.fieldAddress || b.address || "",
-                                                                                               date: b.date,
-                                                                                               slotName: b.slotName || b.time || "",
-                                                                                               price: b.price || 0,
-                                                                                               createdByName: user?.name || "Người dùng"
-                                                                                          });
-                                                                                          // Create a community post so it appears in Find Match list
-                                                                                          createCommunityPost({
-                                                                                               userId: user?.id,
-                                                                                               content: `Tìm đối – ${b.fieldName}`,
-                                                                                               location: b.fieldAddress || b.address || "",
-                                                                                               time: `${b.date} ${b.slotName || b.time || ""}`.trim(),
-                                                                                               authorName: user?.name || "Người dùng",
-                                                                                               bookingId: b.id,
-                                                                                               fieldName: b.fieldName,
-                                                                                               date: b.date,
-                                                                                               slotName: b.slotName || b.time || ""
-                                                                                          });
-                                                                                          const all = listMatchRequests({ status: "" });
-                                                                                          const map = {};
-                                                                                          all.forEach(r => { map[r.bookingId] = r; });
-                                                                                          setBookingIdToRequest(map);
-                                                                                          Swal.fire('Đã gửi!', 'Yêu cầu tìm đối đã được tạo.', 'success');
-                                                                                     } catch (e) {
-                                                                                          Swal.fire('Lỗi', e.message || 'Không thể tạo yêu cầu', 'error');
-                                                                                     }
-                                                                                }
-                                                                           });
-                                                                      }}
+                                                                      onClick={() => handleFindOpponent(b)}
                                                                       className="px-3 !rounded-full py-2 text-sm"
                                                                  >
+                                                                      <UserSearchIcon className="w-4 h-4 mr-2" />
                                                                       Tìm đối thủ
                                                                  </Button>
                                                             );
@@ -869,6 +786,53 @@ export default function BookingHistory({ user }) {
                          )}
                     </div>
                </Container>
+
+               {/* Find Opponent Modal */}
+               <FindOpponentModal
+                    isOpen={showFindOpponentModal}
+                    onClose={() => setShowFindOpponentModal(false)}
+                    booking={selectedBooking}
+                    user={user}
+                    onSuccess={handleFindOpponentSuccess}
+               />
+
+               {/* Recurring Opponent Modal */}
+               {opponentData && (
+                    <RecurringOpponentModal
+                         isOpen={showRecurringOpponentModal}
+                         onClose={() => {
+                              setShowRecurringOpponentModal(false);
+                              setOpponentData(null);
+                         }}
+                         booking={opponentData.booking}
+                         user={user}
+                         level={opponentData.level}
+                         note={opponentData.note}
+                         onSuccess={handleRecurringOpponentSuccess}
+                    />
+               )}
+
+               {/* Rating Modal */}
+               <RatingModal
+                    isOpen={showRatingModal}
+                    onClose={() => {
+                         setShowRatingModal(false);
+                         setSelectedBooking(null);
+                    }}
+                    booking={selectedBooking}
+                    onSuccess={handleRatingSuccess}
+               />
+
+               {/* Reschedule Modal */}
+               <RescheduleModal
+                    isOpen={showRescheduleModal}
+                    onClose={() => {
+                         setShowRescheduleModal(false);
+                         setSelectedBooking(null);
+                    }}
+                    booking={selectedBooking}
+                    onSuccess={handleRescheduleSuccess}
+               />
           </Section>
      );
 }

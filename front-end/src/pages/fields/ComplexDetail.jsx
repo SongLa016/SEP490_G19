@@ -4,6 +4,7 @@ import { MapPin, Star, Clock, Repeat, Info, Images, User, MessageSquare, Send, A
 import { Container, Card, CardContent, Button, Section, DatePicker, Textarea } from "../../components/ui/index.js";
 import { fetchComplexDetail, fetchTimeSlots, fetchFieldDetail } from "../../services/fields.js";
 import BookingModal from "../../components/BookingModal";
+import { useModal } from "../../contexts/ModalContext";
 import Swal from 'sweetalert2';
 
 export default function ComplexDetail({ user }) {
@@ -11,6 +12,7 @@ export default function ComplexDetail({ user }) {
      const { id } = useParams();
      const [searchParams, setSearchParams] = useSearchParams();
      const location = useLocation();
+     const { isBookingModalOpen, openBookingModal, closeBookingModal } = useModal();
 
      // Unified page: support entering via /complex/:id or /field/:id
      const isFieldRoute = location.pathname.startsWith("/field/");
@@ -45,7 +47,6 @@ export default function ComplexDetail({ user }) {
      const [lightboxIndex, setLightboxIndex] = useState(0);
 
      // Booking modal state
-     const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
      const [bookingModalData, setBookingModalData] = useState(null);
      const [bookingType, setBookingType] = useState("field"); // "field" | "complex" | "quick"
 
@@ -289,7 +290,7 @@ export default function ComplexDetail({ user }) {
 
           setBookingModalData(bookingData);
           setBookingType("complex");
-          setIsBookingModalOpen(true);
+          openBookingModal();
      };
 
      const handleQuickBookField = (fieldId) => {
@@ -347,11 +348,11 @@ export default function ComplexDetail({ user }) {
 
           setBookingModalData(bookingData);
           setBookingType(isRecurring ? "complex" : "quick");
-          setIsBookingModalOpen(true);
+          openBookingModal();
      };
 
      const handleBookingSuccess = () => {
-          setIsBookingModalOpen(false);
+          closeBookingModal();
           showToastMessage("Đặt sân thành công!", 'success');
      };
 
@@ -1040,7 +1041,7 @@ export default function ComplexDetail({ user }) {
                     {/* Booking Modal */}
                     <BookingModal
                          isOpen={isBookingModalOpen}
-                         onClose={() => setIsBookingModalOpen(false)}
+                         onClose={closeBookingModal}
                          fieldData={bookingModalData}
                          user={user}
                          onSuccess={handleBookingSuccess}

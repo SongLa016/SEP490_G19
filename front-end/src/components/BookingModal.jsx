@@ -5,12 +5,14 @@ import { createPendingBooking, confirmPayment, validateBookingData, checkFieldAv
 import { createBooking } from "../utils/bookingStore";
 import { createMatchRequest, createCommunityPost } from "../utils/communityStore";
 import EmailVerificationModal from "./EmailVerificationModal";
+import RecurringOpponentSelection from "./RecurringOpponentSelection";
 import FieldInfoSection from "../pages/booking/components/FieldInfoSection";
 import ContactFormSection from "../pages/booking/components/ContactFormSection";
 import RecurringBookingSection from "../pages/booking/components/RecurringBookingSection";
 import PriceSummarySection from "../pages/booking/components/PriceSummarySection";
 import PaymentStepSection from "../pages/booking/components/PaymentStepSection";
 import ConfirmationStepSection from "../pages/booking/components/ConfirmationStepSection";
+import { useModal } from "../contexts/ModalContext";
 
 export default function BookingModal({
      isOpen,
@@ -21,6 +23,7 @@ export default function BookingModal({
      bookingType = "field", // "field" | "complex" | "quick"
      navigate
 }) {
+     const { openBookingModal, closeBookingModal } = useModal();
      const [step, setStep] = useState("details"); // details | payment | confirmation
      const [isProcessing, setIsProcessing] = useState(false);
      const [errors, setErrors] = useState({});
@@ -31,6 +34,7 @@ export default function BookingModal({
      // Opponent flow: always assume user may find opponent after booking via BookingHistory
      const hasOpponent = "unknown";
      const [showEmailVerification, setShowEmailVerification] = useState(false);
+     const [showOpponentSelection, setShowOpponentSelection] = useState(false);
      const [isRecurring, setIsRecurring] = useState(false);
      const [recurringWeeks, setRecurringWeeks] = useState(4);
      const [selectedDays, setSelectedDays] = useState([]);
@@ -177,6 +181,7 @@ export default function BookingModal({
      // Reset khi modal mở/đóng, nhưng giữ preset định kỳ nếu được truyền vào
      useEffect(() => {
           if (isOpen) {
+               openBookingModal();
                setStep("details");
                setErrors({});
                setPaymentMethod("");
@@ -198,8 +203,10 @@ export default function BookingModal({
                     setRecurringWeeks(4);
                     setSelectedDays([]);
                }
+          } else {
+               closeBookingModal();
           }
-     }, [isOpen, fieldData]);
+     }, [isOpen, fieldData, openBookingModal, closeBookingModal]);
 
      const formatPrice = (price) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 
@@ -351,29 +358,13 @@ export default function BookingModal({
                     }
                });
 
-               // Auto-create find-opponent request/post if user marked no opponent
-               if (false) {
-                    try {
-                         const req = createMatchRequest({
-                              bookingId: result.bookingId,
-                              ownerId: user?.id || user?.userId || "guest",
-                              level: "any",
-                              note: `${bookingData.fieldName} • ${bookingData.date} • ${bookingData.slotName}`
-                         });
-                         setCreatedMatchRequest(req);
-                    } catch { /* ignore */ }
-                    try {
-                         const post = createCommunityPost({
-                              userId: user?.id || user?.userId || "guest",
-                              content: `Tìm đối cho trận ${bookingData.fieldName} – ${bookingData.slotName}`,
-                              location: bookingData.fieldAddress,
-                              time: `${bookingData.date} ${bookingData.slotName}`
-                         });
-                         setCreatedCommunityPost(post);
-                    } catch { /* ignore */ }
+               // Handle opponent finding for recurring bookings
+               if (isRecurring && generateRecurringSessions().length > 0) {
+                    setShowOpponentSelection(true);
+               } else {
+                    // For single bookings, proceed to confirmation
+                    setStep("confirmation");
                }
-
-               setStep("confirmation");
           } catch (error) {
                console.error("Payment error:", error);
                const code = error?.code;
@@ -389,6 +380,64 @@ export default function BookingModal({
      const handleEmailVerificationSuccess = () => {
           setShowEmailVerification(false);
           handlePayment();
+     };
+
+     const handleOpponentSelection = async (option, sessions) => {
+          try {
+               const baseData = {
+                    ownerId: user?.id || user?.userId || "guest",
+                    level: "any",
+                    fieldName: bookingData.fieldName,
+                    address: bookingData.fieldAddress,
+                    price: bookingData.price,
+                    createdByName: user?.name || "Khách",
+                    isRecurring: true,
+                    recurringSessions: sessions,
+                    recurringType: option
+               };
+
+               if (option === "individual") {
+                    // Create individual requests for each session
+                    const requests = createMatchRequest({
+                         ...baseData,
+                         note: `Lịch cố định ${bookingData.fieldName} - ${sessions.length} buổi`
+                    });
+                    setCreatedMatchRequest(requests);
+               } else {
+                    // Create single request for all sessions or first session
+                    const note = option === "all"
+                         ? `Lịch cố định ${bookingData.fieldName} - Tất cả ${sessions.length} buổi`
+                         : `Lịch cố định ${bookingData.fieldName} - Buổi đầu tiên`;
+
+                    const request = createMatchRequest({
+                         ...baseData,
+                         note,
+                         date: sessions[0]?.date ? (sessions[0].date instanceof Date ? sessions[0].date.toISOString().split('T')[0] : sessions[0].date) : bookingData.date,
+                         slotName: sessions[0]?.slotName || bookingData.slotName
+                    });
+                    setCreatedMatchRequest(request);
+               }
+
+               // Also create community post
+               try {
+                    const post = createCommunityPost({
+                         userId: user?.id || user?.userId || "guest",
+                         content: `Tìm đối cho lịch cố định ${bookingData.fieldName} - ${sessions.length} buổi`,
+                         location: bookingData.fieldAddress,
+                         time: `${sessions[0]?.date ? (sessions[0].date instanceof Date ? sessions[0].date.toLocaleDateString("vi-VN") : sessions[0].date) : bookingData.date} ${sessions[0]?.slotName || bookingData.slotName}`,
+                         fieldName: bookingData.fieldName,
+                         date: bookingData.date,
+                         slotName: bookingData.slotName
+                    });
+                    setCreatedCommunityPost(post);
+               } catch { /* ignore */ }
+
+               setStep("confirmation");
+          } catch (error) {
+               console.error("Error creating opponent requests:", error);
+               // Still proceed to confirmation even if opponent creation fails
+               setStep("confirmation");
+          }
      };
 
      return (
@@ -447,8 +496,8 @@ export default function BookingModal({
                                    />
                                    <Button
                                         onClick={handlePayment}
-                                        disabled={isProcessing}
-                                        className={`w-full py-3 rounded-lg text-white font-semibold ${isProcessing ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
+                                        disabled={isProcessing || (isRecurring && (!bookingData.date || selectedDays.length === 0))}
+                                        className={`w-full py-3 rounded-lg text-white font-semibold ${isProcessing || (isRecurring && (!bookingData.date || selectedDays.length === 0)) ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
                                    >
                                         {isProcessing ? "Đang xử lý..." :
                                              isRecurring ? `Giữ chỗ ${recurringWeeks} tuần & tiếp tục thanh toán` :
@@ -497,6 +546,16 @@ export default function BookingModal({
                     onSuccess={handleEmailVerificationSuccess}
                     title="Xác thực Email để Đặt Sân"
                />
+
+               {/* Recurring Opponent Selection Modal */}
+               {showOpponentSelection && (
+                    <RecurringOpponentSelection
+                         isRecurring={isRecurring}
+                         recurringSessions={generateRecurringSessions()}
+                         onOpponentSelection={handleOpponentSelection}
+                         onClose={() => setShowOpponentSelection(false)}
+                    />
+               )}
           </Modal>
      );
 }
