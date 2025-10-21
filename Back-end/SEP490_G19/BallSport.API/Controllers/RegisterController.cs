@@ -14,13 +14,14 @@ namespace BallSport.API.Controllers
         {
             _userService = userService;
         }
-
+        
         [HttpPost("send-otp")]
-        public async Task<IActionResult> SendOtp([FromBody] RegisterDTO request)
+        public async Task<IActionResult> SendOtp([FromForm] RegisterDTO request)
         {
             if (string.IsNullOrEmpty(request.Email) ||
                 string.IsNullOrEmpty(request.FullName) ||
                 string.IsNullOrEmpty(request.Phone) ||
+                request.Avatar == null ||
                 string.IsNullOrEmpty(request.Password) ||
                 string.IsNullOrEmpty(request.RoleName))
                 return BadRequest("Vui lòng nhập đầy đủ thông tin.");
@@ -32,7 +33,8 @@ namespace BallSport.API.Controllers
                     request.Email,
                     request.Phone,
                     request.Password,
-                    request.RoleName
+                    request.RoleName, 
+                    request.Avatar
                 );
 
                 return Ok(new { message = "Đã gửi OTP đến email của bạn. Vui lòng kiểm tra hộp thư." });
