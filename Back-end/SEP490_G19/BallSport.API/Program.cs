@@ -81,7 +81,7 @@ services.AddAuthentication(options =>
 .AddCookie()
 .AddGoogle(options =>
 {
-   var googleAuthNSection = config.GetSection("Authentication:Google");
+ var googleAuthNSection = config.GetSection("GoogleKey");
     options.ClientId = googleAuthNSection["ClientId"];
     options.ClientSecret = googleAuthNSection["ClientSecret"];
     options.CallbackPath = "/signin-google";
