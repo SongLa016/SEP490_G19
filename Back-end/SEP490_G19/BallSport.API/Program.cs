@@ -72,7 +72,7 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // Cấu hình Google Authentication
-services.AddAuthentication(options =>
+builder.services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
