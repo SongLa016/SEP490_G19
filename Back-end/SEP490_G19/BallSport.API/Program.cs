@@ -11,7 +11,6 @@ using BallSport.Infrastructure.Models;
 using Banking.Application.Services;
 using Microsoft.OpenApi.Models;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Lấy service collection và configuration
@@ -21,6 +20,8 @@ var config = builder.Configuration;
 // Add services to the container.
 services.AddControllers();
 services.AddEndpointsApiExplorer();
+
+// ===================== SWAGGER CONFIG =====================
 services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "BallSport API", Version = "v1" });
@@ -33,7 +34,7 @@ services.AddSwaggerGen(c =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Enter 'Bearer' [space] and then your JWT token."
+        Description = "Nhập token JWT dạng: Bearer {token}"
     });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -52,22 +53,35 @@ services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddMemoryCache();
-// Đăng ký Repository và Service
+// ===================== CORS =====================
+services.AddCors(options =>
+{
+    options.AddPolicy("AllowSwagger", policy =>
+    {
+        policy.WithOrigins("http://localhost:5049", "https://localhost:7062")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
+// ===================== DB CONTEXT =====================
+services.AddDbContext<Sep490G19v1Context>(options =>
+    options.UseSqlServer(config.GetConnectionString("MyCnn")));
+
+// ===================== DEPENDENCY INJECTION =====================
 services.AddScoped<UserRepositories>();
 services.AddScoped<UserService>();
 services.AddScoped<JwtService>();
 services.AddScoped<OTPService>();
+services.AddTransient<EmailService>();
 services.AddMemoryCache();
 
+// ===================== SMTP =====================
+var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
+services.AddSingleton(smtpSettings);
 
-
-
-// Đăng ký DbContext
-services.AddDbContext<Sep490G19v1Context>(options =>
-    options.UseSqlServer(config.GetConnectionString("MyCnn")));
-
-// Cấu hình Authentication với JWT
+// ===================== JWT AUTHENTICATION =====================
 services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -84,42 +98,28 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-
-builder.Services.AddAuthentication(options =>
+// ===================== GOOGLE AUTH (chỉ bật khi thật sự dùng) =====================
+if (!builder.Environment.IsDevelopment()) // hoặc bạn có thể cho phép thủ công
 {
-    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-})
-.AddCookie()
-.AddGoogle(options =>
-{
-    var googleAuthNSection = builder.Configuration.GetSection("Authentication:Google");
-    options.ClientId = googleAuthNSection["ClientId"];
-    options.ClientSecret = googleAuthNSection["ClientSecret"];
-    options.CallbackPath = "/signin-google"; // đúng URI bạn đã cấu hình trong Google Cloud
-});
-
-var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
-services.AddSingleton(smtpSettings);
-services.AddTransient<EmailService>();
-
-
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
+    services.AddAuthentication(options =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
+    })
+    .AddCookie()
+    .AddGoogle(options =>
+    {
+        var googleAuthNSection = builder.Configuration.GetSection("Authentication:Google");
+        options.ClientId = googleAuthNSection["ClientId"];
+        options.ClientSecret = googleAuthNSection["ClientSecret"];
+        options.CallbackPath = "/signin-google";
     });
-});
-
-
+}
 
 var app = builder.Build();
-app.UseCors();
-// Configure the HTTP request pipeline.
+
+// ===================== MIDDLEWARE PIPELINE =====================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -128,6 +128,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseCors("AllowSwagger");
 
 app.UseAuthentication();
 app.UseAuthorization();

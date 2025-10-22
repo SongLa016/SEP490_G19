@@ -23,7 +23,7 @@ namespace BallSport.API.Controllers
         {
             try
             {
-                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "UserId");
+                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "UserID");
                 if (userIdClaim == null)
                     return Unauthorized("Không tìm thấy UserId trong token.");
 
