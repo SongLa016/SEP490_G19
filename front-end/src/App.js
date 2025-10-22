@@ -6,6 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { ModalProvider } from "./contexts/ModalContext";
 
 // Layouts
 import MainLayout from "./layouts/MainLayout";
@@ -15,6 +16,18 @@ import AuthLayout from "./layouts/AuthLayout";
 import LandingPage from "./pages/LandingPage";
 import HomePage from "./pages/HomePage";
 import Dashboard from "./pages/dashboard/Dashboard";
+import OwnerDashboard from "./pages/owner/OwnerDashboard";
+import {
+  FieldManagement,
+  PricingManagement,
+  BookingManagement,
+  RevenueReports,
+  ScheduleManagement,
+  CancellationPolicies,
+  PromotionsManagement,
+  PaymentTracking,
+  NotificationsManagement,
+} from "./pages/owner";
 import FieldSearch from "./pages/fields/FieldSearch";
 
 import BookingHistory from "./pages/booking/BookingHistory";
@@ -68,7 +81,122 @@ function AppContent() {
         <Route
           path="/dashboard"
           element={
-            user ? <Dashboard user={user} /> : <Navigate to="/auth" replace />
+            user ? (
+              user.role === "FieldOwner" ? (
+                <Navigate to="/owner" replace />
+              ) : (
+                <Dashboard user={user} />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route path="/demo" element={<OwnerDashboard isDemo={true} />} />
+        <Route
+          path="/demo/fields"
+          element={<FieldManagement isDemo={true} />}
+        />
+        <Route
+          path="/demo/pricing"
+          element={<PricingManagement isDemo={true} />}
+        />
+        <Route
+          path="/demo/bookings"
+          element={<BookingManagement isDemo={true} />}
+        />
+        <Route
+          path="/demo/reports"
+          element={<RevenueReports isDemo={true} />}
+        />
+        <Route
+          path="/demo/schedule"
+          element={<ScheduleManagement isDemo={true} />}
+        />
+        <Route
+          path="/demo/policies"
+          element={<CancellationPolicies isDemo={true} />}
+        />
+        <Route
+          path="/demo/promotions"
+          element={<PromotionsManagement isDemo={true} />}
+        />
+        <Route
+          path="/demo/payments"
+          element={<PaymentTracking isDemo={true} />}
+        />
+        <Route
+          path="/demo/notifications"
+          element={<NotificationsManagement isDemo={true} />}
+        />
+        <Route
+          path="/owner"
+          element={
+            user ? (
+              user.role === "FieldOwner" ? (
+                <OwnerDashboard />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/owner/fields"
+          element={
+            user ? (
+              user.role === "FieldOwner" ? (
+                <FieldManagement />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/owner/pricing"
+          element={
+            user ? (
+              user.role === "FieldOwner" ? (
+                <PricingManagement />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/owner/bookings"
+          element={
+            user ? (
+              user.role === "FieldOwner" ? (
+                <BookingManagement />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/owner/reports"
+          element={
+            user ? (
+              user.role === "FieldOwner" ? (
+                <RevenueReports />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
           }
         />
         <Route
@@ -138,7 +266,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <ModalProvider>
+        <AppContent />
+      </ModalProvider>
     </AuthProvider>
   );
 }

@@ -32,6 +32,15 @@ export {
 export { Badge } from "./badge";
 export { Avatar, AvatarImage, AvatarFallback } from "./avatar";
 export { Modal } from "./modal";
+export {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+  TableFooter,
+} from "./table";
 
 // Utility
 export { cn } from "../../lib/utils";

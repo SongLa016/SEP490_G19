@@ -141,15 +141,15 @@ const LandingPage = () => {
                                    {/* CTA Buttons */}
                                    <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center mb-8">
                                         <Button
-                                             onClick={() => navigate('/home')}
+                                             onClick={() => selectedPersona === 'business' ? navigate('/register') : navigate('/home')}
                                              size="lg"
                                              className="px-8 py-4 text-lg font-semibold bg-teal-500 hover:bg-teal-600 text-white rounded-xl transition-all duration-[350ms] ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-95 hover:scale-105"
                                         >
-                                             {selectedPersona === 'customer' ? 'Tìm sân ngay' : 'Bắt đầu miễn phí'}
+                                             {selectedPersona === 'customer' ? 'Tìm sân ngay' : 'Đăng ký miễn phí'}
                                              <ArrowRight className="w-5 h-5 ml-2" />
                                         </Button>
                                         <Button
-                                             onClick={() => navigate('/auth')}
+                                             onClick={() => selectedPersona === 'business' ? navigate('/demo') : navigate('/owner-demo')}
                                              variant="outline"
                                              size="lg"
                                              className="px-8 py-4 text-lg font-semibold border-2 border-white/20 hover:border-white/40 text-teal-500 hover:bg-transparent hover:text-white rounded-xl transition-all duration-[350ms] ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-95 hover:scale-105"
