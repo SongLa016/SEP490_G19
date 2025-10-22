@@ -92,5 +92,31 @@ namespace BallSport.Infrastructure.Repositories
         {
             return _context.Roles.FirstOrDefault(r => r.RoleName == roleName);
         }
+
+        public UserProfile? GetUserProfileByUserId(int userId)
+        {
+            return _context.UserProfiles.FirstOrDefault(p => p.UserId == userId);
+        }
+
+        public void AddOrUpdateUserProfile(UserProfile profile)
+        {
+            var existing = _context.UserProfiles.FirstOrDefault(p => p.UserId == profile.UserId);
+            if (existing == null)
+            {
+                _context.UserProfiles.Add(profile);
+            }
+            else
+            {
+                existing.DateOfBirth = profile.DateOfBirth;
+                existing.Gender = profile.Gender;
+                existing.Address = profile.Address;
+                existing.PreferredPositions = profile.PreferredPositions;
+                existing.SkillLevel = profile.SkillLevel;
+                existing.Bio = profile.Bio;
+            }
+            _context.SaveChanges();
+        }
+
+
     }
 }

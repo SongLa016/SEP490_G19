@@ -13,5 +13,8 @@ namespace BallSport.Application.DTOs
         public string Phone { get; set; }
         public string Password { get; set; }
         public string RoleName { get; set; }
+        public byte[] Avatar { get; set; }
+
+
     }
 }

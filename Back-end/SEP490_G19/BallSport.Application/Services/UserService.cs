@@ -11,6 +11,7 @@ using BallSport.Infrastructure.Repositories;
 using Banking.Application.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.AspNetCore.Http;  
 
 
 
@@ -154,7 +155,7 @@ namespace BallSport.Application.Services
         ////////////////////////////////////////////  Register //////////////////////////////////////////////////////////
 
 
-        public async Task<bool> SendOtpForRegisterAsync(string fullName, string email, string phone, string password, string roleName)
+        public async Task<bool> SendOtpForRegisterAsync(string fullName, string email, string phone, string password, string roleName, IFormFile avatar)
         {
             if (_userRepository.IsEmailExists(email))
                 throw new Exception("Email đã được sử dụng.");
@@ -169,14 +170,25 @@ namespace BallSport.Application.Services
             var otp = _userRepository.GenerateOtp();
             _otpService.SaveOtp(email, otp, expireMinutes: 5);
 
-            
+            byte[] avatarBytes = null;
+            if (avatar != null && avatar.Length > 0)
+            {
+                using (var memoryStream = new MemoryStream())
+                {
+                    await avatar.CopyToAsync(memoryStream);
+                    avatarBytes = memoryStream.ToArray();
+                }
+            }
+
             var pending = new PendingRegisterDTO
             {
                 FullName = fullName,
                 Email = email,
-                Phone = phone,
+                Phone = phone,              
                 Password = password,
-                RoleName = roleName
+                RoleName = roleName,
+                Avatar = avatarBytes
+
             };
 
             _cache.Set(email, pending, TimeSpan.FromMinutes(5));
@@ -205,6 +217,7 @@ namespace BallSport.Application.Services
                 Email = pending.Email,
                 Phone = pending.Phone,
                 PasswordHash = pending.Password, 
+                Avatar = pending.Avatar,
                 CreatedAt = DateTime.Now,
                 Status = "Active"
             };
@@ -224,6 +237,50 @@ namespace BallSport.Application.Services
             await _emailService.SendEmailAsync(pending.Email, subject, message);
 
             return true;
+        }
+
+        ////////////////////////////////// UPdate profile /////////////////////////
+        ///
+        public void AddOrUpdateUserProfile(int userId, UserProfileDTO profileDto)
+        {
+            if (profileDto == null)
+                throw new ArgumentNullException(nameof(profileDto));
+
+            
+            var existingProfile = _userRepository.GetUserProfileByUserId(userId);
+
+            DateOnly? dob = null;
+            if (!string.IsNullOrEmpty(profileDto.DateOfBirth))
+                dob = DateOnly.Parse(profileDto.DateOfBirth);
+
+            if (existingProfile == null)
+            {
+               
+                var newProfile = new UserProfile
+                {
+                    UserId = userId,
+                    DateOfBirth = dob,
+                    Gender = profileDto.Gender,
+                    Address = profileDto.Address,
+                    PreferredPositions = profileDto.PreferredPositions,
+                    SkillLevel = profileDto.SkillLevel,
+                    Bio = profileDto.Bio
+                };
+
+                _userRepository.AddOrUpdateUserProfile(newProfile);
+            }
+            else
+            {
+                // Cập nhật
+                existingProfile.DateOfBirth = dob; // <-- cũng gán DateOnly?
+                existingProfile.Gender = profileDto.Gender;
+                existingProfile.Address = profileDto.Address;
+                existingProfile.PreferredPositions = profileDto.PreferredPositions;
+                existingProfile.SkillLevel = profileDto.SkillLevel;
+                existingProfile.Bio = profileDto.Bio;
+
+                _userRepository.AddOrUpdateUserProfile(existingProfile);
+            }
         }
 
 
