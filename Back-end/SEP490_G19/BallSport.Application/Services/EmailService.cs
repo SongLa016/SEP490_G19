@@ -58,8 +58,12 @@ namespace Banking.Application.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Lỗi gửi email: {ex.Message}");
-                throw;
+                 Console.WriteLine($"[SMTP ERROR] {ex.GetType().Name}: {ex.Message}");
+                    if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"[INNER EXCEPTION] {ex.InnerException.GetType().Name}: {ex.InnerException.Message}");
+                }
+                throw; 
             }
         }
     }
