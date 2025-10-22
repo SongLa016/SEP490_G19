@@ -13,5 +13,7 @@ namespace BallSport.Infrastructure.Models
         public string SenderName { get; set; }   
         public string SenderEmail { get; set; }   
         public string Password { get; set; }
+
+        public string? SendGridApiKey { get; set; }
     }
 }
