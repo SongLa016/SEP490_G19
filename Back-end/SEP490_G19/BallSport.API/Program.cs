@@ -51,15 +51,21 @@ services.AddSwaggerGen(c =>
     });
 });
 
-// ===================== CORS =====================
+// ===================== CORS (Quan trọng) =====================
 services.AddCors(options =>
 {
-    options.AddPolicy("AllowSwagger", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:5049", "https://localhost:7062")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        policy.WithOrigins(
+            "http://localhost:3000",            // React local
+            "http://localhost:5049",            // Swagger HTTP
+            "https://localhost:7062",           // Swagger HTTPS
+            "https://sep490-g19.onrender.com",  // Frontend deploy Render
+            "https://ballsport-frontend.onrender.com" // ví dụ nếu deploy React riêng
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
     });
 });
 
@@ -96,7 +102,7 @@ services.AddScoped<FieldPriceService>();
 services.AddScoped<TimeSlotRepository>();
 services.AddScoped<TimeSlotService>();
 
-// ===================== SMTP =====================
+// ===================== SMTP (Email) =====================
 var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
 services.AddSingleton(smtpSettings);
 services.AddTransient<EmailService>();
@@ -118,7 +124,7 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// ===================== GOOGLE AUTH (chỉ bật khi thật sự dùng) =====================
+// ===================== GOOGLE AUTH (nếu có) =====================
 var googleSection = builder.Configuration.GetSection("Authentication:Google");
 var googleClientId = googleSection["ClientId"];
 var googleClientSecret = googleSection["ClientSecret"];
@@ -154,15 +160,18 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-// app.UseHttpsRedirection(); // nếu test local bằng http thì cứ tạm tắt
+// ⚠️ Nếu test HTTP local, tắt HTTPS redirect
+// app.UseHttpsRedirection();
 
-app.UseCors("AllowSwagger");
+// 🧩 Đặt CORS TRƯỚC Authentication
+app.UseCors("AllowAll");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
 // Check API is running
-app.MapGet("/", () => "✅ API is running on Render!");
+app.MapGet("/", () => "✅ API is running on Render & CORS configured!");
 
 app.Run();
