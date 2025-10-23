@@ -16,6 +16,7 @@ import {
 import { Button, Card, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../../components/ui/index";
 import OwnerLayout from "../../layouts/owner/OwnerLayout";
 import { useAuth } from "../../contexts/AuthContext";
+import DemoRestrictedModal from "../../components/DemoRestrictedModal";
 
 const PricingManagement = ({ isDemo = false }) => {
      const { user, logout } = useAuth();
@@ -26,6 +27,7 @@ const PricingManagement = ({ isDemo = false }) => {
      const [isAddModalOpen, setIsAddModalOpen] = useState(false);
      const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
      const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+     const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
      const [editingPrice, setEditingPrice] = useState(null);
      const [formData, setFormData] = useState({
           timeSlot: "",
@@ -133,6 +135,10 @@ const PricingManagement = ({ isDemo = false }) => {
 
      const handleSubmit = (e) => {
           e.preventDefault();
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
           // Handle form submission
           console.log("Form submitted:", formData);
           setIsAddModalOpen(false);
@@ -141,6 +147,10 @@ const PricingManagement = ({ isDemo = false }) => {
      };
 
      const handleEdit = (price) => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
           setEditingPrice(price);
           setFormData({
                timeSlot: price.timeSlot,
@@ -152,6 +162,10 @@ const PricingManagement = ({ isDemo = false }) => {
      };
 
      const handleDelete = (priceId) => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
           if (window.confirm("Bạn có chắc chắn muốn xóa giá này?")) {
                // Handle delete
                console.log("Delete price:", priceId);
@@ -188,10 +202,30 @@ const PricingManagement = ({ isDemo = false }) => {
 
      const handleBulkSubmit = (e) => {
           e.preventDefault();
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
           // Handle bulk form submission
           console.log("Bulk form submitted:", bulkFormData);
           setIsBulkModalOpen(false);
           resetBulkForm();
+     };
+
+     const handleAddPrice = () => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
+          setIsAddModalOpen(true);
+     };
+
+     const handleBulkSetup = () => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
+          setIsBulkModalOpen(true);
      };
 
      const filteredPricing = pricingData.filter(price => {
@@ -233,26 +267,24 @@ const PricingManagement = ({ isDemo = false }) => {
                               <p className="text-gray-600 mt-1">Thiết lập giá theo khung giờ và loại ngày</p>
                          </div>
 
-                         {!isDemo && (
-                              <div className="flex items-center space-x-3">
-                                   <Button
-                                        variant="outline"
-                                        className="rounded-2xl"
-                                        onClick={() => setIsBulkModalOpen(true)}
-                                   >
-                                        <Settings className="w-4 h-4 mr-2" />
-                                        Setup hàng loạt
-                                   </Button>
+                         <div className="flex items-center space-x-3">
+                              <Button
+                                   variant="outline"
+                                   className="rounded-2xl"
+                                   onClick={handleBulkSetup}
+                              >
+                                   <Settings className="w-4 h-4 mr-2" />
+                                   Setup hàng loạt
+                              </Button>
 
-                                   <Button
-                                        onClick={() => setIsAddModalOpen(true)}
-                                        className="flex items-center space-x-2 rounded-2xl"
-                                   >
-                                        <Plus className="w-4 h-4" />
-                                        <span>Thêm giá mới</span>
-                                   </Button>
-                              </div>
-                         )}
+                              <Button
+                                   onClick={handleAddPrice}
+                                   className="flex items-center space-x-2 rounded-2xl"
+                              >
+                                   <Plus className="w-4 h-4" />
+                                   <span>Thêm giá mới</span>
+                              </Button>
+                         </div>
                     </div>
 
                     {/* Filters */}
@@ -362,16 +394,12 @@ const PricingManagement = ({ isDemo = false }) => {
                                              </TableCell>
                                              <TableCell className="text-sm font-medium">
                                                   <div className="flex items-center space-x-2">
-                                                       {!isDemo && (
-                                                            <>
-                                                                 <Button variant="ghost" size="sm" onClick={() => handleEdit(price)}>
-                                                                      <Edit className="w-4 h-4" />
-                                                                 </Button>
-                                                                 <Button variant="ghost" size="sm" onClick={() => handleDelete(price.id)} className="text-red-600 hover:text-red-700">
-                                                                      <Trash2 className="w-4 h-4" />
-                                                                 </Button>
-                                                            </>
-                                                       )}
+                                                       <Button variant="ghost" size="sm" onClick={() => handleEdit(price)}>
+                                                            <Edit className="w-4 h-4" />
+                                                       </Button>
+                                                       <Button variant="ghost" size="sm" onClick={() => handleDelete(price.id)} className="text-red-600 hover:text-red-700">
+                                                            <Trash2 className="w-4 h-4" />
+                                                       </Button>
                                                   </div>
                                              </TableCell>
                                         </TableRow>
@@ -751,6 +779,13 @@ const PricingManagement = ({ isDemo = false }) => {
                               </div>
                          </form>
                     </Modal>
+
+                    {/* Demo Restricted Modal */}
+                    <DemoRestrictedModal
+                         isOpen={showDemoRestrictedModal}
+                         onClose={() => setShowDemoRestrictedModal(false)}
+                         featureName="Quản lý giá sân"
+                    />
                </div>
           </OwnerLayout>
      );

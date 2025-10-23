@@ -8,6 +8,7 @@ import HomePage from "../HomePage";
 import FieldSearch from "../fields/FieldSearch";
 import BookingHistory from "../booking/BookingHistory";
 import Invoice from "../booking/Invoice";
+import NotificationsDisplay from "../../components/NotificationsDisplay";
 import { Button, Section } from "../../components/ui/index.js";
 
 export default function Dashboard({ currentView, navigateTo }) {
@@ -30,6 +31,15 @@ export default function Dashboard({ currentView, navigateTo }) {
                     return <FieldSearch user={user} navigateTo={navigateTo} />;
                case "profile":
                     return renderProfileContent();
+               case "notifications":
+                    return (
+                         <div className="min-h-screen bg-gray-50 py-8">
+                              <div className="max-w-4xl mx-auto px-4">
+                                   <h1 className="text-3xl font-bold text-gray-900 mb-8">Thông báo</h1>
+                                   <NotificationsDisplay userId={user?.id} />
+                              </div>
+                         </div>
+                    );
                case "bookings":
                     return <BookingHistory user={user} navigateTo={navigateTo} />;
                case "invoice":

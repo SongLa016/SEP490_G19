@@ -23,6 +23,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Card, Button, Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../../components/ui/index";
 import OwnerLayout from "../../layouts/owner/OwnerLayout";
 import { useAuth } from "../../contexts/AuthContext";
+import DemoRestrictedModal from "../../components/DemoRestrictedModal";
 
 const BookingManagement = ({ isDemo = false }) => {
      const { user, logout } = useAuth();
@@ -32,6 +33,7 @@ const BookingManagement = ({ isDemo = false }) => {
      const [searchTerm, setSearchTerm] = useState("");
      const [selectedBooking, setSelectedBooking] = useState(null);
      const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+     const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
 
      // Mock data - replace with actual API calls
      const bookings = useMemo(() => [
@@ -111,6 +113,10 @@ const BookingManagement = ({ isDemo = false }) => {
      ];
 
      const handleConfirmBooking = (bookingId) => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
           if (window.confirm("Xác nhận booking này?")) {
                // Handle confirm booking
                console.log("Confirm booking:", bookingId);
@@ -118,6 +124,10 @@ const BookingManagement = ({ isDemo = false }) => {
      };
 
      const handleCancelBooking = (bookingId) => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
           const reason = window.prompt("Lý do hủy booking:");
           if (reason) {
                // Handle cancel booking
@@ -209,18 +219,16 @@ const BookingManagement = ({ isDemo = false }) => {
                               <p className="text-gray-600 mt-1">Xác nhận, hủy và theo dõi các booking</p>
                          </div>
 
-                         {!isDemo && (
-                              <div className="flex items-center space-x-3">
-                                   <Button variant="outline" className="rounded-2xl border-teal-300 text-teal-700 hover:bg-teal-50">
-                                        <Download className="w-4 h-4 mr-2" />
-                                        Xuất báo cáo
-                                   </Button>
-                                   <Button className="rounded-2xl bg-teal-600 hover:bg-teal-700">
-                                        <RefreshCw className="w-4 h-4 mr-2" />
-                                        Làm mới
-                                   </Button>
-                              </div>
-                         )}
+                         <div className="flex items-center space-x-3">
+                              <Button variant="outline" className="rounded-2xl border-teal-300 text-teal-700 hover:bg-teal-50">
+                                   <Download className="w-4 h-4 mr-2" />
+                                   Xuất báo cáo
+                              </Button>
+                              <Button className="rounded-2xl bg-teal-600 hover:bg-teal-700">
+                                   <RefreshCw className="w-4 h-4 mr-2" />
+                                   Làm mới
+                              </Button>
+                         </div>
                     </div>
 
                     {/* Filters */}
@@ -391,26 +399,22 @@ const BookingManagement = ({ isDemo = false }) => {
                                                             <Eye className="w-4 h-4" />
                                                        </Button>
 
-                                                       {!isDemo && booking.status === 'pending' && (
-                                                            <>
-                                                                 <Button
-                                                                      variant="ghost"
-                                                                      size="sm"
-                                                                      onClick={() => handleConfirmBooking(booking.id)}
-                                                                      className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                                 >
-                                                                      <CheckCircle className="w-4 h-4" />
-                                                                 </Button>
-                                                                 <Button
-                                                                      variant="ghost"
-                                                                      size="sm"
-                                                                      onClick={() => handleCancelBooking(booking.id)}
-                                                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                                 >
-                                                                      <XCircle className="w-4 h-4" />
-                                                                 </Button>
-                                                            </>
-                                                       )}
+                                                       <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleConfirmBooking(booking.id)}
+                                                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                       >
+                                                            <CheckCircle className="w-4 h-4" />
+                                                       </Button>
+                                                       <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleCancelBooking(booking.id)}
+                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                       >
+                                                            <XCircle className="w-4 h-4" />
+                                                       </Button>
                                                   </div>
                                              </TableCell>
                                         </TableRow>
@@ -586,6 +590,13 @@ const BookingManagement = ({ isDemo = false }) => {
                               </div>
                          )}
                     </Modal>
+
+                    {/* Demo Restricted Modal */}
+                    <DemoRestrictedModal
+                         isOpen={showDemoRestrictedModal}
+                         onClose={() => setShowDemoRestrictedModal(false)}
+                         featureName="Quản lý booking"
+                    />
                </div>
           </OwnerLayout>
      );

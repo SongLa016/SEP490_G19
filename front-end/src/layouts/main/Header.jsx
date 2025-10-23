@@ -4,9 +4,11 @@ import { Search, User, Menu, X, LogOut, Settings, Home, MapPin, Calendar, Users,
 import logo from "../../components/assets/logo.png";
 import { Button } from "../../components/ui";
 import { useModal } from "../../contexts/ModalContext";
+import { NotificationBell, NotificationDropdown } from "../../components/NotificationsDisplay";
 export default function Header({ user, onLoggedOut }) {
      const [isMenuOpen, setIsMenuOpen] = useState(false);
      const [isProfileOpen, setIsProfileOpen] = useState(false);
+     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
      const navigate = useNavigate();
      const location = useLocation();
      const { isBookingModalOpen } = useModal();
@@ -108,56 +110,72 @@ export default function Header({ user, onLoggedOut }) {
                          {/* User Menu */}
                          <div className="flex items-center space-x-4">
                               {user ? (
-                                   <div className="relative">
-                                        <Button
-                                             onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                             className="flex items-center space-x-2 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-                                        >
-                                             <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
-                                                  <User className="w-4 h-4" />
-                                             </div>
-                                             <span className="hidden md:block text-gray-700">{user.name}</span>
-                                             <span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.role)}`}>
-                                                  {getRoleDisplayName(user.role)}
-                                             </span>
-                                        </Button>
+                                   <>
+                                        {/* Notification Bell */}
+                                        <div className="relative">
+                                             <NotificationBell
+                                                  userId={user.id}
+                                                  onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                                             />
+                                             <NotificationDropdown
+                                                  userId={user.id}
+                                                  isOpen={isNotificationOpen}
+                                                  onClose={() => setIsNotificationOpen(false)}
+                                             />
+                                        </div>
 
-                                        {/* Profile Dropdown */}
-                                        {isProfileOpen && (
-                                             <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                                                  <div className="px-4 py-2 border-b">
-                                                       <p className="text-sm font-medium text-gray-900">{user.name || `@${user.username}`}</p>
-                                                       {user.name && <p className="text-xs text-gray-500">@{user.username}</p>}
-                                                       {user.email && (
-                                                            <p className="text-xs text-gray-400">{user.emailVerified ? "✓ Email đã xác thực" : "⚠ Email chưa xác thực"}</p>
-                                                       )}
-                                                       {!user.name && (
-                                                            <p className="text-xs text-gray-400">Cập nhật thông tin trong profile</p>
-                                                       )}
+                                        {/* User Profile */}
+                                        <div className="relative">
+                                             <Button
+                                                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                                  className="flex items-center space-x-2 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+                                             >
+                                                  <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
+                                                       <User className="w-4 h-4" />
                                                   </div>
-                                                  <Button
-                                                       onClick={() => {
-                                                            navigate("/profile");
-                                                            setIsProfileOpen(false);
-                                                       }}
-                                                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
-                                                  >
-                                                       <Settings className="w-4 h-4 mr-2" />
-                                                       Settings
-                                                  </Button>
-                                                  <Button
-                                                       onClick={() => {
-                                                            onLoggedOut();
-                                                            setIsProfileOpen(false);
-                                                       }}
-                                                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
-                                                  >
-                                                       <LogOut className="w-4 h-4 mr-2" />
-                                                       Logout
-                                                  </Button>
-                                             </div>
-                                        )}
-                                   </div>
+                                                  <span className="hidden md:block text-gray-700">{user.name}</span>
+                                                  <span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.role)}`}>
+                                                       {getRoleDisplayName(user.role)}
+                                                  </span>
+                                             </Button>
+
+                                             {/* Profile Dropdown */}
+                                             {isProfileOpen && (
+                                                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                                                       <div className="px-4 py-2 border-b">
+                                                            <p className="text-sm font-medium text-gray-900">{user.name || `@${user.username}`}</p>
+                                                            {user.name && <p className="text-xs text-gray-500">@{user.username}</p>}
+                                                            {user.email && (
+                                                                 <p className="text-xs text-gray-400">{user.emailVerified ? "✓ Email đã xác thực" : "⚠ Email chưa xác thực"}</p>
+                                                            )}
+                                                            {!user.name && (
+                                                                 <p className="text-xs text-gray-400">Cập nhật thông tin trong profile</p>
+                                                            )}
+                                                       </div>
+                                                       <Button
+                                                            onClick={() => {
+                                                                 navigate("/profile");
+                                                                 setIsProfileOpen(false);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
+                                                       >
+                                                            <Settings className="w-4 h-4 mr-2" />
+                                                            Settings
+                                                       </Button>
+                                                       <Button
+                                                            onClick={() => {
+                                                                 onLoggedOut();
+                                                                 setIsProfileOpen(false);
+                                                            }}
+                                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
+                                                       >
+                                                            <LogOut className="w-4 h-4 mr-2" />
+                                                            Logout
+                                                       </Button>
+                                                  </div>
+                                             )}
+                                        </div>
+                                   </>
                               ) : (
                                    <div className="flex items-center gap-2">
                                         <Button

@@ -15,11 +15,13 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Card, Modal, Input, Textarea } from "../../components/ui/index";
 import OwnerLayout from "../../layouts/owner/OwnerLayout";
 import { useAuth } from "../../contexts/AuthContext";
+import DemoRestrictedModal from "../../components/DemoRestrictedModal";
 
 const FieldManagement = ({ isDemo = false }) => {
      const { user, logout } = useAuth();
      const [isAddModalOpen, setIsAddModalOpen] = useState(false);
      const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+     const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
      const [formData, setFormData] = useState({
           name: "",
           type: "",
@@ -150,6 +152,10 @@ const FieldManagement = ({ isDemo = false }) => {
 
      const handleSubmit = (e) => {
           e.preventDefault();
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
           // Handle form submission
           console.log("Form submitted:", formData);
           setIsAddModalOpen(false);
@@ -158,6 +164,10 @@ const FieldManagement = ({ isDemo = false }) => {
      };
 
      const handleEdit = (field) => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
           setFormData({
                name: field.name,
                type: field.type,
@@ -172,10 +182,22 @@ const FieldManagement = ({ isDemo = false }) => {
      };
 
      const handleDelete = (fieldId) => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
           if (window.confirm("Bạn có chắc chắn muốn xóa sân này?")) {
                // Handle delete
                console.log("Delete field:", fieldId);
           }
+     };
+
+     const handleAddField = () => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
+          setIsAddModalOpen(true);
      };
 
      const resetForm = () => {
@@ -223,15 +245,13 @@ const FieldManagement = ({ isDemo = false }) => {
                               <p className="text-gray-600 mt-1">Thêm, chỉnh sửa và quản lý thông tin sân bóng</p>
                          </div>
 
-                         {!isDemo && (
-                              <Button
-                                   onClick={() => setIsAddModalOpen(true)}
-                                   className="flex items-center space-x-2 rounded-2xl"
-                              >
-                                   <Plus className="w-4 h-4" />
-                                   <span>Thêm sân mới</span>
-                              </Button>
-                         )}
+                         <Button
+                              onClick={handleAddField}
+                              className="flex items-center space-x-2 rounded-2xl"
+                         >
+                              <Plus className="w-4 h-4" />
+                              <span>Thêm sân mới</span>
+                         </Button>
                     </div>
 
                     {/* Fields Grid */}
@@ -261,26 +281,24 @@ const FieldManagement = ({ isDemo = false }) => {
                                                   <h3 className="text-xl font-bold text-gray-900">{field.name}</h3>
                                                   <p className="text-sm text-gray-600">{field.type}</p>
                                              </div>
-                                             {!isDemo && (
-                                                  <div className="flex space-x-2">
-                                                       <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 transition-all duration-300 ease-in-out rounded-full hover:scale-105"
-                                                            onClick={() => handleEdit(field)}
-                                                       >
-                                                            <Edit className="w-4 h-4" />
-                                                       </Button>
-                                                       <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => handleDelete(field.id)}
-                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 transition-all duration-300 ease-in-out rounded-full hover:scale-105"
-                                                       >
-                                                            <Trash2 className="w-4 h-4" />
-                                                       </Button>
-                                                  </div>
-                                             )}
+                                             <div className="flex space-x-2">
+                                                  <Button
+                                                       variant="outline"
+                                                       size="sm"
+                                                       className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 transition-all duration-300 ease-in-out rounded-full hover:scale-105"
+                                                       onClick={() => handleEdit(field)}
+                                                  >
+                                                       <Edit className="w-4 h-4" />
+                                                  </Button>
+                                                  <Button
+                                                       variant="outline"
+                                                       size="sm"
+                                                       onClick={() => handleDelete(field.id)}
+                                                       className="text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 transition-all duration-300 ease-in-out rounded-full hover:scale-105"
+                                                  >
+                                                       <Trash2 className="w-4 h-4" />
+                                                  </Button>
+                                             </div>
                                         </div>
 
                                         <div className="space-y-1 my-2">
@@ -682,6 +700,13 @@ const FieldManagement = ({ isDemo = false }) => {
                               </div>
                          </form>
                     </Modal>
+
+                    {/* Demo Restricted Modal */}
+                    <DemoRestrictedModal
+                         isOpen={showDemoRestrictedModal}
+                         onClose={() => setShowDemoRestrictedModal(false)}
+                         featureName="Quản lý sân"
+                    />
                </div>
           </OwnerLayout>
      );

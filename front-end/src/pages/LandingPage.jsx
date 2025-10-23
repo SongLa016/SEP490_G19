@@ -56,7 +56,7 @@ const LandingPage = () => {
                                    onClick={() => setSelectedPersona('customer')}
                                    className={`px-4 py-2 rounded-md transition-all duration-300 flex items-center gap-2 text-sm font-medium ${selectedPersona === 'customer'
                                         ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
-                                        : 'text-slate-300 hover:text-white hover:bg-white/5'
+                                        : 'text-slate-300 hover:text-white bg-white/5'
                                         }`}
                               >
                                    <User className="w-4 h-4" />
@@ -66,7 +66,7 @@ const LandingPage = () => {
                                    onClick={() => setSelectedPersona('business')}
                                    className={`px-4 py-2 rounded-md transition-all duration-300 flex items-center gap-2 text-sm font-medium ${selectedPersona === 'business'
                                         ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
-                                        : 'text-slate-300 hover:text-white hover:bg-white/5'
+                                        : 'text-slate-300 hover:text-white bg-white/5'
                                         }`}
                               >
                                    <Building2 className="w-4 h-4" />
@@ -82,7 +82,7 @@ const LandingPage = () => {
                                    onClick={() => setSelectedPersona('customer')}
                                    className={`w-full px-4 py-3 rounded-md transition-all duration-300 flex items-center justify-center gap-2 text-sm font-medium ${selectedPersona === 'customer'
                                         ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
-                                        : 'text-slate-300 hover:text-white hover:bg-white/5'
+                                        : 'text-slate-300 hover:text-white bg-white/10'
                                         }`}
                               >
                                    <User className="w-4 h-4" />
@@ -92,7 +92,7 @@ const LandingPage = () => {
                                    onClick={() => setSelectedPersona('business')}
                                    className={`w-full px-4 py-3 rounded-md transition-all duration-300 flex items-center justify-center gap-2 text-sm font-medium ${selectedPersona === 'business'
                                         ? 'bg-teal-500 text-white shadow-lg shadow-teal-500/25'
-                                        : 'text-slate-300 hover:text-white hover:bg-white/5'
+                                        : 'text-slate-300 hover:text-white bg-white/5'
                                         }`}
                               >
                                    <Building2 className="w-4 h-4" />
@@ -156,6 +156,7 @@ const LandingPage = () => {
                                         >
                                              {selectedPersona === 'customer' ? 'Đăng ký' : 'Xem demo'}
                                         </Button>
+
                                    </div>
 
                                    {/* Social Proof */}

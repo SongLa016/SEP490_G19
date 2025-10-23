@@ -3,7 +3,11 @@ import { useNavigate, useParams, useSearchParams, useLocation } from "react-rout
 import { MapPin, Star, Clock, Repeat, Info, Images, User, MessageSquare, Send, ArrowLeft, Ruler, Leaf, CheckCircle, XCircle, Tag, DollarSign, EyeIcon, BadgeInfo } from "lucide-react";
 import { Container, Card, CardContent, Button, Section, DatePicker, Textarea } from "../../components/ui/index.js";
 import { fetchComplexDetail, fetchTimeSlots, fetchFieldDetail } from "../../services/fields.js";
+import { fetchCancellationPolicyByComplex } from "../../services/cancellationPolicies.js";
+import { fetchPromotionsByComplex } from "../../services/promotions.js";
 import BookingModal from "../../components/BookingModal";
+import CancellationPolicyDisplay from "../../components/CancellationPolicyDisplay";
+import PromotionsDisplay from "../../components/PromotionsDisplay";
 import { useModal } from "../../contexts/ModalContext";
 import Swal from 'sweetalert2';
 
@@ -23,6 +27,8 @@ export default function ComplexDetail({ user }) {
      const [selectedSlotId, setSelectedSlotId] = useState(() => searchParams.get("slotId") || "");
      const [timeSlots, setTimeSlots] = useState([]);
      const [complexData, setComplexData] = useState({ complex: null, fields: [] });
+     const [cancellationPolicy, setCancellationPolicy] = useState(null);
+     const [promotions, setPromotions] = useState([]);
      const [baseMinPrice, setBaseMinPrice] = useState(0); // lowest price across all slots (small field)
      const [cheapestSlot, setCheapestSlot] = useState(null); // { slotId, name, price }
      const [priciestSlot, setPriciestSlot] = useState(null); // { slotId, name, price }
@@ -74,7 +80,7 @@ export default function ComplexDetail({ user }) {
                          if (fieldData?.fieldId) setSelectedFieldId(Number(fieldData.fieldId));
                     }
 
-                    const [slots, complexData, complexDataNoSlot] = await Promise.all([
+                    const [slots, complexData, complexDataNoSlot, policyData, promotionsData] = await Promise.all([
                          fetchTimeSlots(),
                          fetchComplexDetail(complexIdToUse, {
                               date: selectedDate,
@@ -84,12 +90,16 @@ export default function ComplexDetail({ user }) {
                          fetchComplexDetail(complexIdToUse, {
                               date: selectedDate,
                               slotId: ""
-                         })
+                         }),
+                         fetchCancellationPolicyByComplex(complexIdToUse),
+                         fetchPromotionsByComplex(complexIdToUse)
                     ]);
 
                     if (!ignore) {
                          setTimeSlots(slots);
                          setComplexData(complexData);
+                         setCancellationPolicy(policyData);
+                         setPromotions(promotionsData);
                          setResolvedComplexId(complexIdToUse);
                          // compute lowest price regardless of selected slot
                          try {
@@ -676,6 +686,12 @@ export default function ComplexDetail({ user }) {
                                                             <div className="h-0.5 w-24 bg-teal-500/80 rounded-full mx-auto mb-2" />
                                                             <div className="text-gray-700">{complex?.description || "Chưa có mô tả chi tiết về khu sân."}</div>
                                                        </div>
+
+                                                       {/* Chính sách hủy */}
+                                                       <CancellationPolicyDisplay policy={cancellationPolicy} />
+
+                                                       {/* Khuyến mãi */}
+                                                       <PromotionsDisplay promotions={promotions} />
 
                                                        {/* Danh sách Sân nhỏ (moved from removed tab) */}
                                                        <div className="space-y-4">

@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { DatePicker } from "../../components/ui/datepicker";
 import OwnerLayout from "../../layouts/owner/OwnerLayout";
 import { useAuth } from "../../contexts/AuthContext";
+import DemoRestrictedModal from "../../components/DemoRestrictedModal";
 
 const RevenueReports = ({ isDemo = false }) => {
      const { user, logout } = useAuth();
@@ -29,6 +30,7 @@ const RevenueReports = ({ isDemo = false }) => {
      const [selectedField, setSelectedField] = useState("all");
      const [chartType, setChartType] = useState("bar");
      const [isExporting, setIsExporting] = useState(false);
+     const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
 
      // Mock data - replace with actual API calls
      const fields = [
@@ -85,6 +87,10 @@ const RevenueReports = ({ isDemo = false }) => {
      };
 
      const handleExportCSV = () => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
           setIsExporting(true);
           // Simulate export process
           setTimeout(() => {
@@ -94,6 +100,10 @@ const RevenueReports = ({ isDemo = false }) => {
      };
 
      const handleExportExcel = () => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
           setIsExporting(true);
           // Simulate export process
           setTimeout(() => {
@@ -131,27 +141,25 @@ const RevenueReports = ({ isDemo = false }) => {
                               <p className="text-gray-600 mt-1">Phân tích và xuất báo cáo doanh thu chi tiết</p>
                          </div>
 
-                         {!isDemo && (
-                              <div className="flex items-center space-x-3">
-                                   <Button
-                                        variant="outline"
-                                        className="rounded-xl"
-                                        onClick={handleExportCSV}
-                                        disabled={isExporting}
-                                   >
-                                        <FileText className="w-4 h-4 mr-2" />
-                                        Xuất CSV
-                                   </Button>
-                                   <Button
-                                        className="rounded-xl"
-                                        onClick={handleExportExcel}
-                                        disabled={isExporting}
-                                   >
-                                        <Download className="w-4 h-4 mr-2" />
-                                        Xuất Excel
-                                   </Button>
-                              </div>
-                         )}
+                         <div className="flex items-center space-x-3">
+                              <Button
+                                   variant="outline"
+                                   className="rounded-xl"
+                                   onClick={handleExportCSV}
+                                   disabled={isExporting}
+                              >
+                                   <FileText className="w-4 h-4 mr-2" />
+                                   Xuất CSV
+                              </Button>
+                              <Button
+                                   className="rounded-xl"
+                                   onClick={handleExportExcel}
+                                   disabled={isExporting}
+                              >
+                                   <Download className="w-4 h-4 mr-2" />
+                                   Xuất Excel
+                              </Button>
+                         </div>
                     </div>
 
                     {/* Filters */}
@@ -491,6 +499,13 @@ const RevenueReports = ({ isDemo = false }) => {
                               </Button>
                          </div>
                     </Card>
+
+                    {/* Demo Restricted Modal */}
+                    <DemoRestrictedModal
+                         isOpen={showDemoRestrictedModal}
+                         onClose={() => setShowDemoRestrictedModal(false)}
+                         featureName="Báo cáo doanh thu"
+                    />
                </div>
           </OwnerLayout>
      );

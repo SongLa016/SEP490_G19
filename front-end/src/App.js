@@ -11,6 +11,7 @@ import { ModalProvider } from "./contexts/ModalContext";
 // Layouts
 import MainLayout from "./layouts/MainLayout";
 import AuthLayout from "./layouts/AuthLayout";
+import AdminLayout from "./layouts/admin/AdminLayout";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
@@ -28,6 +29,7 @@ import {
   PaymentTracking,
   NotificationsManagement,
 } from "./pages/owner";
+import TimeSlotManagement from "./pages/owner/TimeSlotManagement";
 import FieldSearch from "./pages/fields/FieldSearch";
 
 import BookingHistory from "./pages/booking/BookingHistory";
@@ -37,6 +39,17 @@ import Community from "./pages/community/Community";
 // Profile Pages
 import ProfileIndex from "./pages/profile";
 import ProfileDemo from "./pages/profile/ProfileDemo";
+
+// Admin Pages
+import {
+  AdminDashboard,
+  UserManagement,
+  SystemNotificationsManagement,
+  ViolationReportsManagement,
+  BlogManagement,
+} from "./pages/admin";
+
+// Demo Pages
 
 function AppContent() {
   const { user, isLoading } = useAuth();
@@ -82,7 +95,9 @@ function AppContent() {
           path="/dashboard"
           element={
             user ? (
-              user.role === "FieldOwner" ? (
+              user.role === "Admin" ? (
+                <Navigate to="/admin" replace />
+              ) : user.role === "FieldOwner" ? (
                 <Navigate to="/owner" replace />
               ) : (
                 <Dashboard user={user} />
@@ -93,9 +108,14 @@ function AppContent() {
           }
         />
         <Route path="/demo" element={<OwnerDashboard isDemo={true} />} />
+
         <Route
           path="/demo/fields"
           element={<FieldManagement isDemo={true} />}
+        />
+        <Route
+          path="/demo/timeslots"
+          element={<TimeSlotManagement isDemo={true} />}
         />
         <Route
           path="/demo/pricing"
@@ -158,6 +178,20 @@ function AppContent() {
           }
         />
         <Route
+          path="/owner/timeslots"
+          element={
+            user ? (
+              user.role === "FieldOwner" ? (
+                <TimeSlotManagement />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
           path="/owner/pricing"
           element={
             user ? (
@@ -200,6 +234,48 @@ function AppContent() {
           }
         />
         <Route
+          path="/owner/policies"
+          element={
+            user ? (
+              user.role === "FieldOwner" ? (
+                <CancellationPolicies />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/owner/promotions"
+          element={
+            user ? (
+              user.role === "FieldOwner" ? (
+                <PromotionsManagement />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/owner/notifications"
+          element={
+            user ? (
+              user.role === "FieldOwner" ? (
+                <NotificationsManagement />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
           path="/search"
           element={
             <MainLayout>
@@ -233,6 +309,88 @@ function AppContent() {
           }
         />
         <Route path="/community" element={<Community />} />
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin"
+          element={
+            user ? (
+              user.role === "Admin" ? (
+                <AdminLayout user={user}>
+                  <AdminDashboard />
+                </AdminLayout>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            user ? (
+              user.role === "Admin" ? (
+                <AdminLayout user={user}>
+                  <UserManagement />
+                </AdminLayout>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/admin/notifications"
+          element={
+            user ? (
+              user.role === "Admin" ? (
+                <AdminLayout user={user}>
+                  <SystemNotificationsManagement />
+                </AdminLayout>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/admin/violations"
+          element={
+            user ? (
+              user.role === "Admin" ? (
+                <AdminLayout user={user}>
+                  <ViolationReportsManagement />
+                </AdminLayout>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/admin/blog"
+          element={
+            user ? (
+              user.role === "Admin" ? (
+                <AdminLayout user={user}>
+                  <BlogManagement />
+                </AdminLayout>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
 
         {/* Profile Routes */}
         <Route

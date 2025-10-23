@@ -31,6 +31,7 @@ export {
 } from "./card";
 export { Badge } from "./badge";
 export { Avatar, AvatarImage, AvatarFallback } from "./avatar";
+export { Alert, AlertDescription } from "./alert";
 export { Modal } from "./modal";
 export {
   Table,
