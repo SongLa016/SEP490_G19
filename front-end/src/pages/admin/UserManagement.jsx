@@ -15,7 +15,8 @@ import {
      Badge,
      Avatar,
      AvatarFallback,
-     DatePicker
+     DatePicker,
+     Modal
 } from "../../components/ui";
 import {
      Search,
@@ -342,7 +343,7 @@ export default function UserManagement() {
                </div>
 
                {/* Filters */}
-               <Card>
+               <Card className="rounded-2xl shadow-lg">
                     <CardHeader>
                          <CardTitle className="flex items-center space-x-2">
                               <Filter className="w-5 h-5" />
@@ -392,7 +393,7 @@ export default function UserManagement() {
 
                {/* Stats */}
                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card>
+                    <Card className="rounded-2xl shadow-lg">
                          <CardContent className="p-4">
                               <div className="flex items-center justify-between">
                                    <div>
@@ -445,7 +446,7 @@ export default function UserManagement() {
                </div>
 
                {/* Users Table */}
-               <Card>
+               <Card className="rounded-2xl shadow-lg">
                     <CardHeader>
                          <div className="flex items-center justify-between">
                               <CardTitle>
@@ -602,113 +603,102 @@ export default function UserManagement() {
                )}
 
                {/* User Detail Modal */}
-               {showUserModal && selectedUser && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                         <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                              <CardHeader>
-                                   <div className="flex items-center justify-between">
-                                        <CardTitle>Chi tiết người dùng</CardTitle>
-                                        <Button
-                                             onClick={() => setShowUserModal(false)}
-                                             variant="ghost"
-                                             size="sm"
-                                        >
-                                             <X className="w-4 h-4" />
-                                        </Button>
-                                   </div>
-                              </CardHeader>
-                              <CardContent>
-
-                                   <div className="space-y-6">
-                                        {/* User Info */}
-                                        <div className="flex items-center space-x-4">
-                                             <Avatar className="w-16 h-16">
-                                                  <AvatarFallback className="bg-gradient-to-br from-slate-400 to-slate-600 text-white text-xl">
-                                                       {selectedUser.fullName.charAt(0)}
-                                                  </AvatarFallback>
-                                             </Avatar>
-                                             <div>
-                                                  <h4 className="text-lg font-bold text-slate-900">{selectedUser.fullName}</h4>
-                                                  <p className="text-slate-600">{selectedUser.email}</p>
-                                                  <div className="flex space-x-2 mt-2">
-                                                       <Badge variant={getRoleBadgeVariant(selectedUser.role)}>
-                                                            {selectedUser.role}
-                                                       </Badge>
-                                                       <Badge variant={getStatusBadgeVariant(selectedUser.status)}>
-                                                            {selectedUser.status}
-                                                       </Badge>
-                                                  </div>
-                                             </div>
+               <Modal
+                    isOpen={showUserModal}
+                    onClose={() => setShowUserModal(false)}
+                    title="Chi tiết người dùng"
+                    size="2xl"
+                    className="max-h-[90vh] scrollbar-hide"
+               >
+                    {selectedUser && (
+                         <div className="space-y-6">
+                              {/* User Info */}
+                              <div className="flex items-center space-x-4">
+                                   <Avatar className="w-16 h-16">
+                                        <AvatarFallback className="bg-gradient-to-br from-slate-400 to-slate-600 text-white text-xl">
+                                             {selectedUser.fullName.charAt(0)}
+                                        </AvatarFallback>
+                                   </Avatar>
+                                   <div>
+                                        <h4 className="text-lg font-bold text-slate-900">{selectedUser.fullName}</h4>
+                                        <p className="text-slate-600">{selectedUser.email}</p>
+                                        <div className="flex space-x-2 mt-2">
+                                             <Badge variant={getRoleBadgeVariant(selectedUser.role)}>
+                                                  {selectedUser.role}
+                                             </Badge>
+                                             <Badge variant={getStatusBadgeVariant(selectedUser.status)}>
+                                                  {selectedUser.status}
+                                             </Badge>
                                         </div>
+                                   </div>
+                              </div>
 
-                                        {/* Contact Info */}
+                              {/* Contact Info */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                   <div className="flex items-center space-x-3">
+                                        <Phone className="w-5 h-5 text-slate-400" />
+                                        <div>
+                                             <p className="text-sm font-medium text-slate-600">Số điện thoại</p>
+                                             <p className="text-slate-900">{selectedUser.phone}</p>
+                                        </div>
+                                   </div>
+                                   <div className="flex items-center space-x-3">
+                                        <Calendar className="w-5 h-5 text-slate-400" />
+                                        <div>
+                                             <p className="text-sm font-medium text-slate-600">Ngày tạo</p>
+                                             <p className="text-slate-900">{selectedUser.createdAt}</p>
+                                        </div>
+                                   </div>
+                              </div>
+
+                              {/* Profile Info */}
+                              {selectedUser.profile && (
+                                   <div>
+                                        <h5 className="text-lg font-bold text-slate-900 mb-3">Thông tin cá nhân</h5>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                             <div className="flex items-center space-x-3">
-                                                  <Phone className="w-5 h-5 text-slate-400" />
-                                                  <div>
-                                                       <p className="text-sm font-medium text-slate-600">Số điện thoại</p>
-                                                       <p className="text-slate-900">{selectedUser.phone}</p>
-                                                  </div>
-                                             </div>
-                                             <div className="flex items-center space-x-3">
-                                                  <Calendar className="w-5 h-5 text-slate-400" />
-                                                  <div>
-                                                       <p className="text-sm font-medium text-slate-600">Ngày tạo</p>
-                                                       <p className="text-slate-900">{selectedUser.createdAt}</p>
-                                                  </div>
-                                             </div>
-                                        </div>
-
-                                        {/* Profile Info */}
-                                        {selectedUser.profile && (
                                              <div>
-                                                  <h5 className="text-lg font-bold text-slate-900 mb-3">Thông tin cá nhân</h5>
-                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                       <div>
-                                                            <p className="text-sm font-medium text-slate-600">Ngày sinh</p>
-                                                            <p className="text-slate-900">{selectedUser.profile.dateOfBirth}</p>
-                                                       </div>
-                                                       <div>
-                                                            <p className="text-sm font-medium text-slate-600">Giới tính</p>
-                                                            <p className="text-slate-900">{selectedUser.profile.gender}</p>
-                                                       </div>
-                                                       <div>
-                                                            <p className="text-sm font-medium text-slate-600">Địa chỉ</p>
-                                                            <p className="text-slate-900">{selectedUser.profile.address}</p>
-                                                       </div>
-                                                       <div>
-                                                            <p className="text-sm font-medium text-slate-600">Trình độ</p>
-                                                            <p className="text-slate-900">{selectedUser.profile.skillLevel}</p>
-                                                       </div>
-                                                  </div>
+                                                  <p className="text-sm font-medium text-slate-600">Ngày sinh</p>
+                                                  <p className="text-slate-900">{selectedUser.profile.dateOfBirth}</p>
                                              </div>
-                                        )}
-
-                                        {/* Actions */}
-                                        <div className="flex space-x-3 pt-4 border-t border-slate-200">
-                                             <Button
-                                                  onClick={() => handleStatusChange(selectedUser, selectedUser.status === "Active" ? "Suspended" : "Active")}
-                                                  variant={selectedUser.status === "Active" ? "destructive" : "default"}
-                                                  className="flex-1"
-                                             >
-                                                  {selectedUser.status === "Active" ? "Tạm khóa" : "Kích hoạt"}
-                                             </Button>
-                                             <Button
-                                                  onClick={() => {
-                                                       setShowUserModal(false);
-                                                       handleEditUser(selectedUser);
-                                                  }}
-                                                  variant="outline"
-                                                  className="flex-1"
-                                             >
-                                                  Chỉnh sửa
-                                             </Button>
+                                             <div>
+                                                  <p className="text-sm font-medium text-slate-600">Giới tính</p>
+                                                  <p className="text-slate-900">{selectedUser.profile.gender}</p>
+                                             </div>
+                                             <div>
+                                                  <p className="text-sm font-medium text-slate-600">Địa chỉ</p>
+                                                  <p className="text-slate-900">{selectedUser.profile.address}</p>
+                                             </div>
+                                             <div>
+                                                  <p className="text-sm font-medium text-slate-600">Trình độ</p>
+                                                  <p className="text-slate-900">{selectedUser.profile.skillLevel}</p>
+                                             </div>
                                         </div>
                                    </div>
-                              </CardContent>
-                         </Card>
-                    </div>
-               )}
+                              )}
+
+                              {/* Actions */}
+                              <div className="flex space-x-3 pt-4 border-t border-slate-200">
+                                   <Button
+                                        onClick={() => handleStatusChange(selectedUser, selectedUser.status === "Active" ? "Suspended" : "Active")}
+                                        variant={selectedUser.status === "Active" ? "destructive" : "default"}
+                                        className="flex-1 rounded-2xl"
+                                   >
+                                        {selectedUser.status === "Active" ? "Tạm khóa" : "Kích hoạt"}
+                                   </Button>
+                                   <Button
+                                        onClick={() => {
+                                             setShowUserModal(false);
+                                             handleEditUser(selectedUser);
+                                        }}
+                                        variant="outline"
+                                        className="flex-1 rounded-2xl"
+                                   >
+                                        Chỉnh sửa
+                                   </Button>
+                              </div>
+                         </div>
+                    )}
+               </Modal>
           </div>
      );
 }

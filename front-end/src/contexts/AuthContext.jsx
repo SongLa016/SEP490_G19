@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getCurrentUser, logout } from '../utils/authStore';
 
 const AuthContext = createContext();
 
@@ -22,8 +21,11 @@ export const AuthProvider = ({ children }) => {
           setIsLoading(false);
      }, []);
 
-     const login = (userData) => {
+     const login = (userData, token = null) => {
           setUser(userData);
+          if (token) {
+               localStorage.setItem('token', token);
+          }
      };
 
      const logoutUser = () => {
@@ -44,3 +46,18 @@ export const AuthProvider = ({ children }) => {
           </AuthContext.Provider>
      );
 };
+
+// Helper functions for localStorage management
+function getCurrentUser() {
+     try {
+          const userData = localStorage.getItem('user');
+          return userData ? JSON.parse(userData) : null;
+     } catch (e) {
+          return null;
+     }
+}
+
+function logout() {
+     localStorage.removeItem('user');
+     localStorage.removeItem('token');
+}

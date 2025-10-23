@@ -16,7 +16,8 @@ import {
      Badge,
      Alert,
      AlertDescription,
-     DatePicker
+     DatePicker,
+     Modal
 } from "../../components/ui";
 import {
      FileText,
@@ -319,7 +320,7 @@ export default function BlogManagement() {
                </div>
 
                {/* Filters */}
-               <Card className="p-6">
+               <Card className="p-6 rounded-2xl shadow-lg">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
                          <div className="flex-1">
                               <div className="relative">
@@ -333,15 +334,16 @@ export default function BlogManagement() {
                               </div>
                          </div>
                          <div className="flex space-x-4">
-                              <Select
-                                   value={statusFilter}
-                                   onChange={(e) => setStatusFilter(e.target.value)}
-                                   className="w-40"
-                              >
-                                   <option value="all">Tất cả trạng thái</option>
-                                   <option value="Published">Đã xuất bản</option>
-                                   <option value="Draft">Bản nháp</option>
-                                   <option value="Archived">Đã lưu trữ</option>
+                              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                   <SelectTrigger className="w-40 rounded-2xl">
+                                        <SelectValue placeholder="Tất cả trạng thái" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                        <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                                        <SelectItem value="Published">Đã xuất bản</SelectItem>
+                                        <SelectItem value="Draft">Bản nháp</SelectItem>
+                                        <SelectItem value="Archived">Đã lưu trữ</SelectItem>
+                                   </SelectContent>
                               </Select>
                          </div>
                     </div>
@@ -349,7 +351,7 @@ export default function BlogManagement() {
 
                {/* Stats */}
                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card className="p-4">
+                    <Card className="p-4 rounded-2xl shadow-lg">
                          <div className="flex items-center justify-between">
                               <div>
                                    <p className="text-sm font-medium text-slate-600">Tổng bài viết</p>
@@ -394,7 +396,7 @@ export default function BlogManagement() {
                </div>
 
                {/* Posts Table */}
-               <Card className="p-6">
+               <Card className="p-6 rounded-2xl shadow-lg">
                     <div className="flex items-center justify-between mb-4">
                          <h3 className="text-lg font-bold text-slate-900">
                               Danh sách bài viết ({filteredPosts.length})
@@ -408,245 +410,227 @@ export default function BlogManagement() {
                </Card>
 
                {/* Create Post Modal */}
-               {showCreateModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                         <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                              <div className="p-6">
-                                   <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-xl font-bold text-slate-900">Tạo bài viết mới</h3>
-                                        <Button
-                                             onClick={() => setShowCreateModal(false)}
-                                             variant="ghost"
-                                             size="sm"
-                                        >
-                                             <X className="w-4 h-4" />
-                                        </Button>
-                                   </div>
+               <Modal
+                    isOpen={showCreateModal}
+                    onClose={() => setShowCreateModal(false)}
+                    title="Tạo bài viết mới"
+                    size="4xl"
+                    className="max-h-[90vh] scrollbar-hide"
+               >
 
-                                   <div className="space-y-4">
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Tiêu đề *
-                                             </label>
-                                             <Input
-                                                  value={newPost.title}
-                                                  onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-                                                  placeholder="Nhập tiêu đề bài viết..."
-                                             />
-                                        </div>
+                    <div className="space-y-4">
+                         <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                                   Tiêu đề *
+                              </label>
+                              <Input
+                                   value={newPost.title}
+                                   onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+                                   placeholder="Nhập tiêu đề bài viết..."
+                              />
+                         </div>
 
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Nội dung *
-                                             </label>
-                                             <Textarea
-                                                  value={newPost.content}
-                                                  onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-                                                  placeholder="Nhập nội dung bài viết..."
-                                                  rows={12}
-                                             />
-                                        </div>
+                         <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                                   Nội dung *
+                              </label>
+                              <Textarea
+                                   value={newPost.content}
+                                   onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                                   placeholder="Nhập nội dung bài viết..."
+                                   rows={12}
+                              />
+                         </div>
 
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Trạng thái
-                                             </label>
-                                             <Select
-                                                  value={newPost.status}
-                                                  onChange={(e) => setNewPost({ ...newPost, status: e.target.value })}
-                                             >
-                                                  <option value="Draft">Bản nháp</option>
-                                                  <option value="Published">Xuất bản</option>
-                                             </Select>
-                                        </div>
+                         <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                                   Trạng thái
+                              </label>
+                              <Select
+                                   value={newPost.status}
+                                   onValueChange={(value) => setNewPost({ ...newPost, status: value })}
+                              >
+                                   <SelectTrigger className="rounded-2xl">
+                                        <SelectValue placeholder="Chọn trạng thái" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                        <SelectItem value="Draft">Bản nháp</SelectItem>
+                                        <SelectItem value="Published">Xuất bản</SelectItem>
+                                   </SelectContent>
+                              </Select>
+                         </div>
 
-                                        <div className="flex space-x-3 pt-4 border-t border-slate-200">
-                                             <Button
-                                                  onClick={handleCreatePost}
-                                                  className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700"
-                                                  disabled={!newPost.title || !newPost.content}
-                                             >
-                                                  Tạo bài viết
-                                             </Button>
-                                             <Button
-                                                  onClick={() => setShowCreateModal(false)}
-                                                  variant="outline"
-                                                  className="flex-1"
-                                             >
-                                                  Hủy
-                                             </Button>
-                                        </div>
-                                   </div>
-                              </div>
-                         </Card>
+                         <div className="flex space-x-3 pt-4 border-t border-slate-200">
+                              <Button
+                                   onClick={handleCreatePost}
+                                   className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 rounded-2xl"
+                                   disabled={!newPost.title || !newPost.content}
+                              >
+                                   Tạo bài viết
+                              </Button>
+                              <Button
+                                   onClick={() => setShowCreateModal(false)}
+                                   variant="outline"
+                                   className="flex-1 rounded-2xl"
+                              >
+                                   Hủy
+                              </Button>
+                         </div>
                     </div>
-               )}
+               </Modal>
 
                {/* Edit Post Modal */}
-               {showEditModal && selectedPost && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                         <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                              <div className="p-6">
-                                   <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-xl font-bold text-slate-900">Chỉnh sửa bài viết</h3>
-                                        <Button
-                                             onClick={() => setShowEditModal(false)}
-                                             variant="ghost"
-                                             size="sm"
-                                        >
-                                             <X className="w-4 h-4" />
-                                        </Button>
-                                   </div>
-
-                                   <div className="space-y-4">
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Tiêu đề *
-                                             </label>
-                                             <Input
-                                                  value={selectedPost.title}
-                                                  onChange={(e) => setSelectedPost({ ...selectedPost, title: e.target.value })}
-                                                  placeholder="Nhập tiêu đề bài viết..."
-                                             />
-                                        </div>
-
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Nội dung *
-                                             </label>
-                                             <Textarea
-                                                  value={selectedPost.content}
-                                                  onChange={(e) => setSelectedPost({ ...selectedPost, content: e.target.value })}
-                                                  placeholder="Nhập nội dung bài viết..."
-                                                  rows={12}
-                                             />
-                                        </div>
-
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Trạng thái
-                                             </label>
-                                             <Select
-                                                  value={selectedPost.status}
-                                                  onChange={(e) => setSelectedPost({ ...selectedPost, status: e.target.value })}
-                                             >
-                                                  <option value="Draft">Bản nháp</option>
-                                                  <option value="Published">Xuất bản</option>
-                                                  <option value="Archived">Lưu trữ</option>
-                                             </Select>
-                                        </div>
-
-                                        <div className="flex space-x-3 pt-4 border-t border-slate-200">
-                                             <Button
-                                                  onClick={handleUpdatePost}
-                                                  className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700"
-                                                  disabled={!selectedPost.title || !selectedPost.content}
-                                             >
-                                                  Cập nhật bài viết
-                                             </Button>
-                                             <Button
-                                                  onClick={() => setShowEditModal(false)}
-                                                  variant="outline"
-                                                  className="flex-1"
-                                             >
-                                                  Hủy
-                                             </Button>
-                                        </div>
-                                   </div>
+               <Modal
+                    isOpen={showEditModal}
+                    onClose={() => setShowEditModal(false)}
+                    title="Chỉnh sửa bài viết"
+                    size="4xl"
+                    className="max-h-[90vh] scrollbar-hide"
+               >
+                    {selectedPost && (
+                         <div className="space-y-4">
+                              <div>
+                                   <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Tiêu đề *
+                                   </label>
+                                   <Input
+                                        value={selectedPost.title}
+                                        onChange={(e) => setSelectedPost({ ...selectedPost, title: e.target.value })}
+                                        placeholder="Nhập tiêu đề bài viết..."
+                                   />
                               </div>
-                         </Card>
-                    </div>
-               )}
+
+                              <div>
+                                   <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Nội dung *
+                                   </label>
+                                   <Textarea
+                                        value={selectedPost.content}
+                                        onChange={(e) => setSelectedPost({ ...selectedPost, content: e.target.value })}
+                                        placeholder="Nhập nội dung bài viết..."
+                                        rows={12}
+                                   />
+                              </div>
+
+                              <div>
+                                   <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Trạng thái
+                                   </label>
+                                   <Select
+                                        value={selectedPost.status}
+                                        onValueChange={(value) => setSelectedPost({ ...selectedPost, status: value })}
+                                   >
+                                        <SelectTrigger className="rounded-2xl">
+                                             <SelectValue placeholder="Chọn trạng thái" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                             <SelectItem value="Draft">Bản nháp</SelectItem>
+                                             <SelectItem value="Published">Xuất bản</SelectItem>
+                                             <SelectItem value="Archived">Lưu trữ</SelectItem>
+                                        </SelectContent>
+                                   </Select>
+                              </div>
+
+                              <div className="flex space-x-3 pt-4 border-t border-slate-200">
+                                   <Button
+                                        onClick={handleUpdatePost}
+                                        className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 rounded-2xl"
+                                        disabled={!selectedPost.title || !selectedPost.content}
+                                   >
+                                        Cập nhật bài viết
+                                   </Button>
+                                   <Button
+                                        onClick={() => setShowEditModal(false)}
+                                        variant="outline"
+                                        className="flex-1 rounded-2xl"
+                                   >
+                                        Hủy
+                                   </Button>
+                              </div>
+                         </div>
+                    )}
+               </Modal>
 
                {/* Post Detail Modal */}
-               {showDetailModal && selectedPost && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                         <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                              <div className="p-6">
-                                   <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-xl font-bold text-slate-900">Chi tiết bài viết</h3>
-                                        <Button
-                                             onClick={() => setShowDetailModal(false)}
-                                             variant="ghost"
-                                             size="sm"
-                                        >
-                                             <X className="w-4 h-4" />
-                                        </Button>
-                                   </div>
-
-                                   <div className="space-y-6">
-                                        <div>
-                                             <h4 className="text-2xl font-bold text-slate-900 mb-2">{selectedPost.title}</h4>
-                                             <div className="flex items-center space-x-4 text-sm text-slate-600">
-                                                  <div className="flex items-center space-x-1">
-                                                       <User className="w-4 h-4" />
-                                                       <span>{selectedPost.authorName}</span>
-                                                  </div>
-                                                  <div className="flex items-center space-x-1">
-                                                       <Calendar className="w-4 h-4" />
-                                                       <span>{new Date(selectedPost.createdAt).toLocaleDateString('vi-VN')}</span>
-                                                  </div>
-                                                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(selectedPost.status)}`}>
-                                                       {selectedPost.status}
-                                                  </span>
-                                             </div>
+               <Modal
+                    isOpen={showDetailModal}
+                    onClose={() => setShowDetailModal(false)}
+                    title="Chi tiết bài viết"
+                    size="4xl"
+                    className="max-h-[90vh] scrollbar-hide"
+               >
+                    {selectedPost && (
+                         <div className="space-y-6">
+                              <div>
+                                   <h4 className="text-2xl font-bold text-slate-900 mb-2">{selectedPost.title}</h4>
+                                   <div className="flex items-center space-x-4 text-sm text-slate-600">
+                                        <div className="flex items-center space-x-1">
+                                             <User className="w-4 h-4" />
+                                             <span>{selectedPost.authorName}</span>
                                         </div>
-
-                                        <div>
-                                             <h5 className="text-lg font-bold text-slate-900 mb-3">Nội dung:</h5>
-                                             <div className="prose max-w-none">
-                                                  <p className="text-slate-900 whitespace-pre-wrap leading-relaxed">
-                                                       {selectedPost.content}
-                                                  </p>
-                                             </div>
+                                        <div className="flex items-center space-x-1">
+                                             <Calendar className="w-4 h-4" />
+                                             <span>{new Date(selectedPost.createdAt).toLocaleDateString('vi-VN')}</span>
                                         </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                             <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                                                  <Eye className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                                                  <p className="text-sm font-medium text-blue-700">Lượt xem</p>
-                                                  <p className="text-2xl font-bold text-blue-800">{selectedPost.views}</p>
-                                             </div>
-                                             <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                                                  <CheckCircle className="w-6 h-6 text-green-600 mx-auto mb-2" />
-                                                  <p className="text-sm font-medium text-green-700">Lượt thích</p>
-                                                  <p className="text-2xl font-bold text-green-800">{selectedPost.likes}</p>
-                                             </div>
-                                             <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-                                                  <Calendar className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-                                                  <p className="text-sm font-medium text-purple-700">Cập nhật</p>
-                                                  <p className="text-sm font-bold text-purple-800">
-                                                       {new Date(selectedPost.updatedAt).toLocaleDateString('vi-VN')}
-                                                  </p>
-                                             </div>
-                                        </div>
-
-                                        <div className="flex space-x-3 pt-4 border-t border-slate-200">
-                                             <Button
-                                                  onClick={() => {
-                                                       setShowDetailModal(false);
-                                                       handleEditPost(selectedPost);
-                                                  }}
-                                                  className="flex-1"
-                                             >
-                                                  <Edit className="w-4 h-4 mr-2" />
-                                                  Chỉnh sửa
-                                             </Button>
-                                             {selectedPost.status === "Draft" && (
-                                                  <Button
-                                                       onClick={() => handlePublishPost(selectedPost)}
-                                                       className="flex-1 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700"
-                                                  >
-                                                       <Globe className="w-4 h-4 mr-2" />
-                                                       Xuất bản
-                                                  </Button>
-                                             )}
-                                        </div>
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(selectedPost.status)}`}>
+                                             {selectedPost.status}
+                                        </span>
                                    </div>
                               </div>
-                         </Card>
-                    </div>
-               )}
+
+                              <div>
+                                   <h5 className="text-lg font-bold text-slate-900 mb-3">Nội dung:</h5>
+                                   <div className="prose max-w-none">
+                                        <p className="text-slate-900 whitespace-pre-wrap leading-relaxed">
+                                             {selectedPost.content}
+                                        </p>
+                                   </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                   <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                        <Eye className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                                        <p className="text-sm font-medium text-blue-700">Lượt xem</p>
+                                        <p className="text-2xl font-bold text-blue-800">{selectedPost.views}</p>
+                                   </div>
+                                   <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                                        <CheckCircle className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                                        <p className="text-sm font-medium text-green-700">Lượt thích</p>
+                                        <p className="text-2xl font-bold text-green-800">{selectedPost.likes}</p>
+                                   </div>
+                                   <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                        <Calendar className="w-6 h-6 text-purple-600 mx-auto mb-2" />
+                                        <p className="text-sm font-medium text-purple-700">Cập nhật</p>
+                                        <p className="text-sm font-bold text-purple-800">
+                                             {new Date(selectedPost.updatedAt).toLocaleDateString('vi-VN')}
+                                        </p>
+                                   </div>
+                              </div>
+
+                              <div className="flex space-x-3 pt-4 border-t border-slate-200">
+                                   <Button
+                                        onClick={() => {
+                                             setShowDetailModal(false);
+                                             handleEditPost(selectedPost);
+                                        }}
+                                        className="flex-1 rounded-2xl"
+                                   >
+                                        <Edit className="w-4 h-4 mr-2" />
+                                        Chỉnh sửa
+                                   </Button>
+                                   {selectedPost.status === "Draft" && (
+                                        <Button
+                                             onClick={() => handlePublishPost(selectedPost)}
+                                             className="flex-1 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 rounded-2xl"
+                                        >
+                                             <Globe className="w-4 h-4 mr-2" />
+                                             Xuất bản
+                                        </Button>
+                                   )}
+                              </div>
+                         </div>
+                    )}
+               </Modal>
           </div>
      );
 }

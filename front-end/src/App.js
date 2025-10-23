@@ -47,7 +47,9 @@ import {
   SystemNotificationsManagement,
   ViolationReportsManagement,
   BlogManagement,
+  SystemSettings,
 } from "./pages/admin";
+import OwnerRegistrationApproval from "./pages/admin/OwnerRegistrationApproval";
 
 // Demo Pages
 
@@ -382,6 +384,38 @@ function AppContent() {
               user.role === "Admin" ? (
                 <AdminLayout user={user}>
                   <BlogManagement />
+                </AdminLayout>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/admin/system-settings"
+          element={
+            user ? (
+              user.role === "Admin" ? (
+                <AdminLayout user={user}>
+                  <SystemSettings />
+                </AdminLayout>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/admin/owner-registration"
+          element={
+            user ? (
+              user.role === "Admin" ? (
+                <AdminLayout user={user}>
+                  <OwnerRegistrationApproval />
                 </AdminLayout>
               ) : (
                 <Navigate to="/dashboard" replace />

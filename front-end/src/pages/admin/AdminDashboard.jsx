@@ -5,9 +5,7 @@ import {
      CardHeader,
      CardTitle,
      Button,
-     Badge,
-     Avatar,
-     AvatarFallback
+     Badge
 } from "../../components/ui";
 import {
      Users,
@@ -25,8 +23,7 @@ import {
      Settings,
      BarChart3,
      Clock,
-     CheckCircle,
-     AlertCircle
+     CheckCircle
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -211,7 +208,7 @@ export default function AdminDashboard() {
                     {statCards.map((stat, index) => {
                          const Icon = stat.icon;
                          return (
-                              <Card key={index} className="hover:shadow-lg transition-all duration-300 hover:scale-105">
+                              <Card key={index} className="rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
                                    <CardContent className="p-6">
                                         <div className="flex items-center justify-between">
                                              <div className="flex-1">
@@ -221,7 +218,7 @@ export default function AdminDashboard() {
                                                        {stat.change} so với tháng trước
                                                   </p>
                                              </div>
-                                             <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center">
+                                             <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center shadow-lg">
                                                   <Icon className={`w-6 h-6 ${getIconColor(stat.color)}`} />
                                              </div>
                                         </div>
@@ -233,26 +230,26 @@ export default function AdminDashboard() {
 
                {/* Recent Activities */}
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card>
+                    <Card className="rounded-2xl shadow-lg">
                          <CardHeader>
                               <div className="flex items-center justify-between">
                                    <CardTitle className="flex items-center space-x-2">
                                         <Activity className="w-5 h-5 text-blue-600" />
                                         <span>Hoạt động gần đây</span>
                                    </CardTitle>
-                                   <Badge variant="secondary">
+                                   <Badge variant="secondary" className="rounded-2xl">
                                         <Clock className="w-3 h-3 mr-1" />
                                         Real-time
                                    </Badge>
                               </div>
                          </CardHeader>
-                         <CardContent>
+                         <CardContent className="scrollbar-hide overflow-auto max-h-96">
                               <div className="space-y-4">
                                    {recentActivities.map((activity) => {
                                         const Icon = activity.icon;
                                         return (
-                                             <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-                                                  <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                             <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-2xl hover:bg-slate-50 transition-colors shadow-sm">
+                                                  <div className="w-8 h-8 bg-slate-100 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
                                                        <Icon className="w-4 h-4 text-slate-600" />
                                                   </div>
                                                   <div className="flex-1 min-w-0">
@@ -267,22 +264,22 @@ export default function AdminDashboard() {
                     </Card>
 
                     {/* Quick Actions */}
-                    <Card>
+                    <Card className="rounded-2xl shadow-lg">
                          <CardHeader>
                               <div className="flex items-center justify-between">
                                    <CardTitle className="flex items-center space-x-2">
                                         <Settings className="w-5 h-5 text-green-600" />
                                         <span>Thao tác nhanh</span>
                                    </CardTitle>
-                                   <Badge variant="outline">
+                                   <Badge variant="outline" className="rounded-2xl">
                                         <Eye className="w-3 h-3 mr-1" />
                                         Quick Access
                                    </Badge>
                               </div>
                          </CardHeader>
-                         <CardContent>
+                         <CardContent className="scrollbar-hide overflow-auto max-h-96">
                               <div className="space-y-3">
-                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-red-50 hover:border-red-200">
+                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-red-50 hover:border-red-200 rounded-2xl shadow-sm">
                                         <div className="flex items-center space-x-3">
                                              <Users className="w-5 h-5 text-red-600" />
                                              <div className="text-left">
@@ -291,7 +288,7 @@ export default function AdminDashboard() {
                                              </div>
                                         </div>
                                    </Button>
-                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-orange-50 hover:border-orange-200">
+                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-orange-50 hover:border-orange-200 rounded-2xl shadow-sm">
                                         <div className="flex items-center space-x-3">
                                              <AlertTriangle className="w-5 h-5 text-orange-600" />
                                              <div className="text-left">
@@ -300,7 +297,7 @@ export default function AdminDashboard() {
                                              </div>
                                         </div>
                                    </Button>
-                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-blue-50 hover:border-blue-200">
+                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-blue-50 hover:border-blue-200 rounded-2xl shadow-sm">
                                         <div className="flex items-center space-x-3">
                                              <Bell className="w-5 h-5 text-blue-600" />
                                              <div className="text-left">
@@ -309,7 +306,7 @@ export default function AdminDashboard() {
                                              </div>
                                         </div>
                                    </Button>
-                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-purple-50 hover:border-purple-200">
+                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-purple-50 hover:border-purple-200 rounded-2xl shadow-sm">
                                         <div className="flex items-center space-x-3">
                                              <Building2 className="w-5 h-5 text-purple-600" />
                                              <div className="text-left">

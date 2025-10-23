@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
      Card,
-     CardContent,
-     CardHeader,
-     CardTitle,
      Button,
      Input,
      Select,
@@ -13,10 +10,7 @@ import {
      SelectValue,
      Textarea,
      Table,
-     Badge,
-     Alert,
-     AlertDescription,
-     DatePicker
+     Modal
 } from "../../components/ui";
 import {
      Bell,
@@ -29,15 +23,7 @@ import {
      Users,
      AlertCircle,
      CheckCircle,
-     Clock,
-     X,
-     Filter,
-     Search,
-     Globe,
-     Mail,
-     AlertTriangle,
-     Info,
-     Megaphone
+     Clock
 } from "lucide-react";
 
 export default function SystemNotificationsManagement() {
@@ -47,7 +33,6 @@ export default function SystemNotificationsManagement() {
      const [typeFilter, setTypeFilter] = useState("all");
      const [statusFilter, setStatusFilter] = useState("all");
      const [showCreateModal, setShowCreateModal] = useState(false);
-     const [showEditModal, setShowEditModal] = useState(false);
      const [selectedNotification, setSelectedNotification] = useState(null);
      const [showDetailModal, setShowDetailModal] = useState(false);
 
@@ -170,7 +155,7 @@ export default function SystemNotificationsManagement() {
 
      const handleEditNotification = (notification) => {
           setSelectedNotification(notification);
-          setShowEditModal(true);
+          setShowDetailModal(true);
      };
 
      const handleDeleteNotification = (notification) => {
@@ -215,21 +200,6 @@ export default function SystemNotificationsManagement() {
                     return "destructive";
                default:
                     return "outline";
-          }
-     };
-
-     const getTypeIcon = (type) => {
-          switch (type) {
-               case "General":
-                    return Info;
-               case "Promotion":
-                    return Megaphone;
-               case "Warning":
-                    return AlertTriangle;
-               case "Update":
-                    return Globe;
-               default:
-                    return Bell;
           }
      };
 
@@ -365,7 +335,7 @@ export default function SystemNotificationsManagement() {
                </div>
 
                {/* Filters */}
-               <Card className="p-6">
+               <Card className="p-6 rounded-2xl shadow-lg">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
                          <div className="flex-1">
                               <div className="relative">
@@ -379,26 +349,28 @@ export default function SystemNotificationsManagement() {
                               </div>
                          </div>
                          <div className="flex space-x-4">
-                              <Select
-                                   value={typeFilter}
-                                   onChange={(e) => setTypeFilter(e.target.value)}
-                                   className="w-40"
-                              >
-                                   <option value="all">Tất cả loại</option>
-                                   <option value="General">Chung</option>
-                                   <option value="Promotion">Khuyến mãi</option>
-                                   <option value="Warning">Cảnh báo</option>
-                                   <option value="Update">Cập nhật</option>
+                              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                                   <SelectTrigger className="w-40 rounded-2xl">
+                                        <SelectValue placeholder="Tất cả loại" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                        <SelectItem value="all">Tất cả loại</SelectItem>
+                                        <SelectItem value="General">Chung</SelectItem>
+                                        <SelectItem value="Promotion">Khuyến mãi</SelectItem>
+                                        <SelectItem value="Warning">Cảnh báo</SelectItem>
+                                        <SelectItem value="Update">Cập nhật</SelectItem>
+                                   </SelectContent>
                               </Select>
-                              <Select
-                                   value={statusFilter}
-                                   onChange={(e) => setStatusFilter(e.target.value)}
-                                   className="w-40"
-                              >
-                                   <option value="all">Tất cả trạng thái</option>
-                                   <option value="Sent">Đã gửi</option>
-                                   <option value="Draft">Bản nháp</option>
-                                   <option value="Failed">Thất bại</option>
+                              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                   <SelectTrigger className="w-40 rounded-2xl">
+                                        <SelectValue placeholder="Tất cả trạng thái" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                        <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                                        <SelectItem value="Sent">Đã gửi</SelectItem>
+                                        <SelectItem value="Draft">Bản nháp</SelectItem>
+                                        <SelectItem value="Failed">Thất bại</SelectItem>
+                                   </SelectContent>
                               </Select>
                          </div>
                     </div>
@@ -406,7 +378,7 @@ export default function SystemNotificationsManagement() {
 
                {/* Stats */}
                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card className="p-4">
+                    <Card className="p-4 rounded-2xl shadow-lg">
                          <div className="flex items-center justify-between">
                               <div>
                                    <p className="text-sm font-medium text-slate-600">Tổng thông báo</p>
@@ -451,7 +423,7 @@ export default function SystemNotificationsManagement() {
                </div>
 
                {/* Notifications Table */}
-               <Card className="p-6">
+               <Card className="p-6 rounded-2xl shadow-lg">
                     <div className="flex items-center justify-between mb-4">
                          <h3 className="text-lg font-bold text-slate-900">
                               Danh sách thông báo ({filteredNotifications.length})
@@ -465,199 +437,190 @@ export default function SystemNotificationsManagement() {
                </Card>
 
                {/* Create Notification Modal */}
-               {showCreateModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                         <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                              <div className="p-6">
-                                   <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-xl font-bold text-slate-900">Tạo thông báo mới</h3>
-                                        <Button
-                                             onClick={() => setShowCreateModal(false)}
-                                             variant="ghost"
-                                             size="sm"
-                                        >
-                                             <X className="w-4 h-4" />
-                                        </Button>
-                                   </div>
+               <Modal
+                    isOpen={showCreateModal}
+                    onClose={() => setShowCreateModal(false)}
+                    title="Tạo thông báo mới"
+                    size="2xl"
+                    className="max-h-[90vh] scrollbar-hide"
+               >
 
-                                   <div className="space-y-4">
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Tiêu đề *
-                                             </label>
-                                             <Input
-                                                  value={newNotification.title}
-                                                  onChange={(e) => setNewNotification({ ...newNotification, title: e.target.value })}
-                                                  placeholder="Nhập tiêu đề thông báo..."
-                                             />
-                                        </div>
+                    <div className="space-y-4">
+                         <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                                   Tiêu đề *
+                              </label>
+                              <Input
+                                   value={newNotification.title}
+                                   onChange={(e) => setNewNotification({ ...newNotification, title: e.target.value })}
+                                   placeholder="Nhập tiêu đề thông báo..."
+                              />
+                         </div>
 
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Nội dung *
-                                             </label>
-                                             <Textarea
-                                                  value={newNotification.content}
-                                                  onChange={(e) => setNewNotification({ ...newNotification, content: e.target.value })}
-                                                  placeholder="Nhập nội dung thông báo..."
-                                                  rows={4}
-                                             />
-                                        </div>
+                         <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                                   Nội dung *
+                              </label>
+                              <Textarea
+                                   value={newNotification.content}
+                                   onChange={(e) => setNewNotification({ ...newNotification, content: e.target.value })}
+                                   placeholder="Nhập nội dung thông báo..."
+                                   rows={4}
+                              />
+                         </div>
 
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                             <div>
-                                                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                       Loại thông báo
-                                                  </label>
-                                                  <Select
-                                                       value={newNotification.notificationType}
-                                                       onChange={(e) => setNewNotification({ ...newNotification, notificationType: e.target.value })}
-                                                  >
-                                                       <option value="General">Chung</option>
-                                                       <option value="Promotion">Khuyến mãi</option>
-                                                       <option value="Warning">Cảnh báo</option>
-                                                       <option value="Update">Cập nhật</option>
-                                                  </Select>
-                                             </div>
-
-                                             <div>
-                                                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                       Đối tượng nhận
-                                                  </label>
-                                                  <Select
-                                                       value={newNotification.sentToRole}
-                                                       onChange={(e) => setNewNotification({ ...newNotification, sentToRole: e.target.value })}
-                                                  >
-                                                       <option value="all">Tất cả</option>
-                                                       <option value="Player">Người chơi</option>
-                                                       <option value="FieldOwner">Chủ sân</option>
-                                                       <option value="Admin">Admin</option>
-                                                  </Select>
-                                             </div>
-                                        </div>
-
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Gửi đến người dùng cụ thể (ID, cách nhau bởi dấu phẩy)
-                                             </label>
-                                             <Input
-                                                  value={newNotification.sentToSpecificUsers}
-                                                  onChange={(e) => setNewNotification({ ...newNotification, sentToSpecificUsers: e.target.value })}
-                                                  placeholder="123,456,789"
-                                             />
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                             <div className="flex items-center space-x-2">
-                                                  <input
-                                                       type="checkbox"
-                                                       id="isUrgent"
-                                                       checked={newNotification.isUrgent}
-                                                       onChange={(e) => setNewNotification({ ...newNotification, isUrgent: e.target.checked })}
-                                                       className="rounded border-slate-300"
-                                                  />
-                                                  <label htmlFor="isUrgent" className="text-sm font-medium text-slate-700">
-                                                       Thông báo khẩn cấp
-                                                  </label>
-                                             </div>
-
-                                             <div>
-                                                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                       Hết hạn
-                                                  </label>
-                                                  <Input
-                                                       type="datetime-local"
-                                                       value={newNotification.expiresAt}
-                                                       onChange={(e) => setNewNotification({ ...newNotification, expiresAt: e.target.value })}
-                                                  />
-                                             </div>
-                                        </div>
-
-                                        <div className="flex space-x-3 pt-4 border-t border-slate-200">
-                                             <Button
-                                                  onClick={handleCreateNotification}
-                                                  className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700"
-                                                  disabled={!newNotification.title || !newNotification.content}
-                                             >
-                                                  Tạo thông báo
-                                             </Button>
-                                             <Button
-                                                  onClick={() => setShowCreateModal(false)}
-                                                  variant="outline"
-                                                  className="flex-1"
-                                             >
-                                                  Hủy
-                                             </Button>
-                                        </div>
-                                   </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                   <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Loại thông báo
+                                   </label>
+                                   <Select
+                                        value={newNotification.notificationType}
+                                        onValueChange={(value) => setNewNotification({ ...newNotification, notificationType: value })}
+                                   >
+                                        <SelectTrigger className="rounded-2xl">
+                                             <SelectValue placeholder="Chọn loại thông báo" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                             <SelectItem value="General">Chung</SelectItem>
+                                             <SelectItem value="Promotion">Khuyến mãi</SelectItem>
+                                             <SelectItem value="Warning">Cảnh báo</SelectItem>
+                                             <SelectItem value="Update">Cập nhật</SelectItem>
+                                        </SelectContent>
+                                   </Select>
                               </div>
-                         </Card>
+
+                              <div>
+                                   <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Đối tượng nhận
+                                   </label>
+                                   <Select
+                                        value={newNotification.sentToRole}
+                                        onValueChange={(value) => setNewNotification({ ...newNotification, sentToRole: value })}
+                                   >
+                                        <SelectTrigger className="rounded-2xl">
+                                             <SelectValue placeholder="Chọn đối tượng" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                             <SelectItem value="all">Tất cả</SelectItem>
+                                             <SelectItem value="Player">Người chơi</SelectItem>
+                                             <SelectItem value="FieldOwner">Chủ sân</SelectItem>
+                                             <SelectItem value="Admin">Admin</SelectItem>
+                                        </SelectContent>
+                                   </Select>
+                              </div>
+                         </div>
+
+                         <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                                   Gửi đến người dùng cụ thể (ID, cách nhau bởi dấu phẩy)
+                              </label>
+                              <Input
+                                   value={newNotification.sentToSpecificUsers}
+                                   onChange={(e) => setNewNotification({ ...newNotification, sentToSpecificUsers: e.target.value })}
+                                   placeholder="123,456,789"
+                              />
+                         </div>
+
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="flex items-center space-x-2">
+                                   <input
+                                        type="checkbox"
+                                        id="isUrgent"
+                                        checked={newNotification.isUrgent}
+                                        onChange={(e) => setNewNotification({ ...newNotification, isUrgent: e.target.checked })}
+                                        className="rounded border-slate-300"
+                                   />
+                                   <label htmlFor="isUrgent" className="text-sm font-medium text-slate-700">
+                                        Thông báo khẩn cấp
+                                   </label>
+                              </div>
+
+                              <div>
+                                   <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Hết hạn
+                                   </label>
+                                   <Input
+                                        type="datetime-local"
+                                        value={newNotification.expiresAt}
+                                        onChange={(e) => setNewNotification({ ...newNotification, expiresAt: e.target.value })}
+                                   />
+                              </div>
+                         </div>
+
+                         <div className="flex space-x-3 pt-4 border-t border-slate-200">
+                              <Button
+                                   onClick={handleCreateNotification}
+                                   className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 rounded-2xl"
+                                   disabled={!newNotification.title || !newNotification.content}
+                              >
+                                   Tạo thông báo
+                              </Button>
+                              <Button
+                                   onClick={() => setShowCreateModal(false)}
+                                   variant="outline"
+                                   className="flex-1 rounded-2xl"
+                              >
+                                   Hủy
+                              </Button>
+                         </div>
                     </div>
-               )}
+               </Modal>
 
                {/* Notification Detail Modal */}
-               {showDetailModal && selectedNotification && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                         <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                              <div className="p-6">
-                                   <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-xl font-bold text-slate-900">Chi tiết thông báo</h3>
-                                        <Button
-                                             onClick={() => setShowDetailModal(false)}
-                                             variant="ghost"
-                                             size="sm"
-                                        >
-                                             <X className="w-4 h-4" />
-                                        </Button>
-                                   </div>
-
-                                   <div className="space-y-4">
-                                        <div className="flex items-center space-x-2">
-                                             {getUrgentIcon(selectedNotification.isUrgent)}
-                                             <h4 className="text-lg font-bold text-slate-900">{selectedNotification.title}</h4>
-                                        </div>
-
-                                        <div className="flex space-x-2">
-                                             <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getTypeBadgeVariant(selectedNotification.notificationType)}`}>
-                                                  {selectedNotification.notificationType}
-                                             </span>
-                                             <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadgeVariant(selectedNotification.status)}`}>
-                                                  {selectedNotification.status}
-                                             </span>
-                                        </div>
-
-                                        <div>
-                                             <p className="text-sm font-medium text-slate-600 mb-2">Nội dung:</p>
-                                             <p className="text-slate-900 whitespace-pre-wrap">{selectedNotification.content}</p>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                             <div>
-                                                  <p className="text-sm font-medium text-slate-600">Đối tượng:</p>
-                                                  <p className="text-slate-900">
-                                                       {selectedNotification.sentToRole === "all" ? "Tất cả" : selectedNotification.sentToRole}
-                                                  </p>
-                                             </div>
-                                             <div>
-                                                  <p className="text-sm font-medium text-slate-600">Ngày gửi:</p>
-                                                  <p className="text-slate-900">
-                                                       {new Date(selectedNotification.sentAt).toLocaleString('vi-VN')}
-                                                  </p>
-                                             </div>
-                                             {selectedNotification.expiresAt && (
-                                                  <div>
-                                                       <p className="text-sm font-medium text-slate-600">Hết hạn:</p>
-                                                       <p className="text-slate-900">
-                                                            {new Date(selectedNotification.expiresAt).toLocaleString('vi-VN')}
-                                                       </p>
-                                                  </div>
-                                             )}
-                                        </div>
-                                   </div>
+               <Modal
+                    isOpen={showDetailModal}
+                    onClose={() => setShowDetailModal(false)}
+                    title="Chi tiết thông báo"
+                    size="2xl"
+                    className="max-h-[90vh] scrollbar-hide"
+               >
+                    {selectedNotification && (
+                         <div className="space-y-4">
+                              <div className="flex items-center space-x-2">
+                                   {getUrgentIcon(selectedNotification.isUrgent)}
+                                   <h4 className="text-lg font-bold text-slate-900">{selectedNotification.title}</h4>
                               </div>
-                         </Card>
-                    </div>
-               )}
+
+                              <div className="flex space-x-2">
+                                   <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getTypeBadgeVariant(selectedNotification.notificationType)}`}>
+                                        {selectedNotification.notificationType}
+                                   </span>
+                                   <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadgeVariant(selectedNotification.status)}`}>
+                                        {selectedNotification.status}
+                                   </span>
+                              </div>
+
+                              <div>
+                                   <p className="text-sm font-medium text-slate-600 mb-2">Nội dung:</p>
+                                   <p className="text-slate-900 whitespace-pre-wrap">{selectedNotification.content}</p>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                   <div>
+                                        <p className="text-sm font-medium text-slate-600">Đối tượng:</p>
+                                        <p className="text-slate-900">
+                                             {selectedNotification.sentToRole === "all" ? "Tất cả" : selectedNotification.sentToRole}
+                                        </p>
+                                   </div>
+                                   <div>
+                                        <p className="text-sm font-medium text-slate-600">Ngày gửi:</p>
+                                        <p className="text-slate-900">
+                                             {new Date(selectedNotification.sentAt).toLocaleString('vi-VN')}
+                                        </p>
+                                   </div>
+                                   {selectedNotification.expiresAt && (
+                                        <div>
+                                             <p className="text-sm font-medium text-slate-600">Hết hạn:</p>
+                                             <p className="text-slate-900">
+                                                  {new Date(selectedNotification.expiresAt).toLocaleString('vi-VN')}
+                                             </p>
+                                        </div>
+                                   )}
+                              </div>
+                         </div>
+                    )}
+               </Modal>
           </div>
      );
 }

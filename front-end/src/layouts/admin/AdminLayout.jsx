@@ -8,11 +8,11 @@ import {
      FileText,
      LogOut,
      Menu,
-     X,
      ChevronLeft,
      ChevronRight,
      Shield,
-     Settings
+     Settings,
+     UserCheck
 } from "lucide-react";
 import { Button } from "../../components/ui";
 import logo from "../../components/assets/logo.png";
@@ -26,10 +26,11 @@ export default function AdminLayout({ user, onLoggedOut, children }) {
      const navigationItems = [
           { id: "admin", label: "Tổng quan", icon: Home, path: "/admin" },
           { id: "users", label: "Quản lý người dùng", icon: Users, path: "/admin/users" },
+          { id: "owner-registration", label: "Duyệt đăng ký Owner", icon: UserCheck, path: "/admin/owner-registration" },
           { id: "notifications", label: "Thông báo hệ thống", icon: Bell, path: "/admin/notifications" },
           { id: "violations", label: "Báo cáo vi phạm", icon: AlertTriangle, path: "/admin/violations" },
           { id: "blog", label: "Quản lý blog", icon: FileText, path: "/admin/blog" },
-          { id: "settings", label: "Cài đặt hệ thống", icon: Settings, path: "/admin/settings" },
+          { id: "settings", label: "Cài đặt hệ thống", icon: Settings, path: "/admin/system-settings" },
      ];
 
      const handleNavigation = (path) => {
@@ -130,16 +131,15 @@ export default function AdminLayout({ user, onLoggedOut, children }) {
                                              <p className="text-xs text-slate-500 font-medium">{user?.email}</p>
                                         </div>
                                    )}
-                                   {!sidebarCollapsed && (
-                                        <Button
-                                             onClick={onLoggedOut}
-                                             variant="ghost"
-                                             size="sm"
-                                             className="rounded-full hover:bg-red-50 hover:text-red-600 transition-all duration-300"
-                                        >
-                                             <LogOut className="w-4 h-4" />
-                                        </Button>
-                                   )}
+                                   <Button
+                                        onClick={onLoggedOut}
+                                        variant="ghost"
+                                        size="sm"
+                                        className="rounded-full hover:bg-red-50 hover:text-red-600 transition-all duration-300 ml-auto"
+                                        title={sidebarCollapsed ? "Đăng xuất" : undefined}
+                                   >
+                                        <LogOut className="w-4 h-4" />
+                                   </Button>
                               </div>
                          </div>
                     </div>

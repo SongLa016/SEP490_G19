@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
      Card,
-     CardContent,
-     CardHeader,
-     CardTitle,
      Button,
      Input,
      Select,
@@ -13,22 +10,15 @@ import {
      SelectValue,
      Textarea,
      Table,
-     Badge,
-     Alert,
-     AlertDescription,
-     Avatar,
-     AvatarFallback
+     Modal
 } from "../../components/ui";
 import {
      AlertTriangle,
      Search,
      Eye,
      CheckCircle,
-     XCircle,
      Clock,
-     User,
      Calendar,
-     MessageSquare,
      Flag,
      Shield
 } from "lucide-react";
@@ -337,7 +327,7 @@ export default function ViolationReportsManagement() {
                </div>
 
                {/* Filters */}
-               <Card className="p-6">
+               <Card className="p-6 rounded-2xl shadow-lg">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
                          <div className="flex-1">
                               <div className="relative">
@@ -351,27 +341,29 @@ export default function ViolationReportsManagement() {
                               </div>
                          </div>
                          <div className="flex space-x-4">
-                              <Select
-                                   value={typeFilter}
-                                   onChange={(e) => setTypeFilter(e.target.value)}
-                                   className="w-48"
-                              >
-                                   <option value="all">Tất cả loại vi phạm</option>
-                                   <option value="Spam">Spam</option>
-                                   <option value="Inappropriate Content">Nội dung không phù hợp</option>
-                                   <option value="Harassment">Quấy rối</option>
-                                   <option value="Fake Information">Thông tin giả</option>
+                              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                                   <SelectTrigger className="w-48 rounded-2xl">
+                                        <SelectValue placeholder="Tất cả loại vi phạm" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                        <SelectItem value="all">Tất cả loại vi phạm</SelectItem>
+                                        <SelectItem value="Spam">Spam</SelectItem>
+                                        <SelectItem value="Inappropriate Content">Nội dung không phù hợp</SelectItem>
+                                        <SelectItem value="Harassment">Quấy rối</SelectItem>
+                                        <SelectItem value="Fake Information">Thông tin giả</SelectItem>
+                                   </SelectContent>
                               </Select>
-                              <Select
-                                   value={statusFilter}
-                                   onChange={(e) => setStatusFilter(e.target.value)}
-                                   className="w-40"
-                              >
-                                   <option value="all">Tất cả trạng thái</option>
-                                   <option value="Pending">Chờ xử lý</option>
-                                   <option value="In Progress">Đang xử lý</option>
-                                   <option value="Resolved">Đã giải quyết</option>
-                                   <option value="Dismissed">Đã bỏ qua</option>
+                              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                   <SelectTrigger className="w-40 rounded-2xl">
+                                        <SelectValue placeholder="Tất cả trạng thái" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                        <SelectItem value="all">Tất cả trạng thái</SelectItem>
+                                        <SelectItem value="Pending">Chờ xử lý</SelectItem>
+                                        <SelectItem value="In Progress">Đang xử lý</SelectItem>
+                                        <SelectItem value="Resolved">Đã giải quyết</SelectItem>
+                                        <SelectItem value="Dismissed">Đã bỏ qua</SelectItem>
+                                   </SelectContent>
                               </Select>
                          </div>
                     </div>
@@ -379,7 +371,7 @@ export default function ViolationReportsManagement() {
 
                {/* Stats */}
                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card className="p-4">
+                    <Card className="p-4 rounded-2xl shadow-lg">
                          <div className="flex items-center justify-between">
                               <div>
                                    <p className="text-sm font-medium text-slate-600">Tổng báo cáo</p>
@@ -424,7 +416,7 @@ export default function ViolationReportsManagement() {
                </div>
 
                {/* Reports Table */}
-               <Card className="p-6">
+               <Card className="p-6 rounded-2xl shadow-lg">
                     <div className="flex items-center justify-between mb-4">
                          <h3 className="text-lg font-bold text-slate-900">
                               Danh sách báo cáo ({filteredReports.length})
@@ -438,186 +430,166 @@ export default function ViolationReportsManagement() {
                </Card>
 
                {/* Report Detail Modal */}
-               {showDetailModal && selectedReport && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                         <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-                              <div className="p-6">
-                                   <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-xl font-bold text-slate-900">Chi tiết báo cáo vi phạm</h3>
-                                        <Button
-                                             onClick={() => setShowDetailModal(false)}
-                                             variant="ghost"
-                                             size="sm"
-                                        >
-                                             <XCircle className="w-4 h-4" />
-                                        </Button>
+               <Modal
+                    isOpen={showDetailModal}
+                    onClose={() => setShowDetailModal(false)}
+                    title="Chi tiết báo cáo vi phạm"
+                    size="4xl"
+                    className="max-h-[90vh] scrollbar-hide"
+               >
+                    {selectedReport && (
+                         <div className="space-y-6">
+                              {/* Report Info */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                   <div>
+                                        <h4 className="text-lg font-bold text-slate-900 mb-3">Người bị báo cáo</h4>
+                                        <div className="flex items-center space-x-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                                             <div className="w-12 h-12 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center">
+                                                  <span className="text-lg font-bold text-white">
+                                                       {selectedReport.reportedUserName.charAt(0)}
+                                                  </span>
+                                             </div>
+                                             <div>
+                                                  <p className="font-bold text-slate-900">{selectedReport.reportedUserName}</p>
+                                                  <p className="text-sm text-slate-600">{selectedReport.reportedUserEmail}</p>
+                                                  <p className="text-sm text-slate-600">ID: {selectedReport.reportedUserID}</p>
+                                             </div>
+                                        </div>
                                    </div>
 
-                                   <div className="space-y-6">
-                                        {/* Report Info */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                             <div>
-                                                  <h4 className="text-lg font-bold text-slate-900 mb-3">Người bị báo cáo</h4>
-                                                  <div className="flex items-center space-x-3 p-3 bg-red-50 rounded-lg border border-red-200">
-                                                       <div className="w-12 h-12 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center">
-                                                            <span className="text-lg font-bold text-white">
-                                                                 {selectedReport.reportedUserName.charAt(0)}
-                                                            </span>
-                                                       </div>
-                                                       <div>
-                                                            <p className="font-bold text-slate-900">{selectedReport.reportedUserName}</p>
-                                                            <p className="text-sm text-slate-600">{selectedReport.reportedUserEmail}</p>
-                                                            <p className="text-sm text-slate-600">ID: {selectedReport.reportedUserID}</p>
-                                                       </div>
-                                                  </div>
+                                   <div>
+                                        <h4 className="text-lg font-bold text-slate-900 mb-3">Người báo cáo</h4>
+                                        <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                             <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
+                                                  <span className="text-lg font-bold text-white">
+                                                       {selectedReport.reporterName.charAt(0)}
+                                                  </span>
                                              </div>
-
                                              <div>
-                                                  <h4 className="text-lg font-bold text-slate-900 mb-3">Người báo cáo</h4>
-                                                  <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                                       <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
-                                                            <span className="text-lg font-bold text-white">
-                                                                 {selectedReport.reporterName.charAt(0)}
-                                                            </span>
-                                                       </div>
-                                                       <div>
-                                                            <p className="font-bold text-slate-900">{selectedReport.reporterName}</p>
-                                                            <p className="text-sm text-slate-600">{selectedReport.reporterEmail}</p>
-                                                            <p className="text-sm text-slate-600">ID: {selectedReport.reporterID}</p>
-                                                       </div>
-                                                  </div>
+                                                  <p className="font-bold text-slate-900">{selectedReport.reporterName}</p>
+                                                  <p className="text-sm text-slate-600">{selectedReport.reporterEmail}</p>
+                                                  <p className="text-sm text-slate-600">ID: {selectedReport.reporterID}</p>
                                              </div>
                                         </div>
-
-                                        {/* Report Details */}
-                                        <div>
-                                             <h4 className="text-lg font-bold text-slate-900 mb-3">Thông tin báo cáo</h4>
-                                             <div className="space-y-3">
-                                                  <div className="flex items-center space-x-2">
-                                                       <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getTypeBadgeColor(selectedReport.reportType)}`}>
-                                                            {selectedReport.reportType}
-                                                       </span>
-                                                       <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(selectedReport.status)}`}>
-                                                            {selectedReport.status}
-                                                       </span>
-                                                  </div>
-                                                  <div>
-                                                       <p className="text-sm font-medium text-slate-600 mb-1">Mô tả:</p>
-                                                       <p className="text-slate-900 bg-slate-50 p-3 rounded-lg border">
-                                                            {selectedReport.description}
-                                                       </p>
-                                                  </div>
-                                                  <div className="flex items-center space-x-2">
-                                                       <Calendar className="w-4 h-4 text-slate-400" />
-                                                       <span className="text-sm text-slate-600">
-                                                            Ngày báo cáo: {new Date(selectedReport.createdAt).toLocaleString('vi-VN')}
-                                                       </span>
-                                                  </div>
-                                             </div>
-                                        </div>
-
-                                        {/* Admin Actions */}
-                                        {selectedReport.handledBy && (
-                                             <div>
-                                                  <h4 className="text-lg font-bold text-slate-900 mb-3">Hành động của admin</h4>
-                                                  <div className="space-y-2">
-                                                       <div>
-                                                            <p className="text-sm font-medium text-slate-600">Hành động:</p>
-                                                            <p className="text-slate-900">{selectedReport.actionTaken}</p>
-                                                       </div>
-                                                       <div>
-                                                            <p className="text-sm font-medium text-slate-600">Ghi chú:</p>
-                                                            <p className="text-slate-900 bg-slate-50 p-3 rounded-lg border">
-                                                                 {selectedReport.adminNote}
-                                                            </p>
-                                                       </div>
-                                                       <div className="flex items-center space-x-2">
-                                                            <Calendar className="w-4 h-4 text-slate-400" />
-                                                            <span className="text-sm text-slate-600">
-                                                                 Xử lý lúc: {new Date(selectedReport.handledAt).toLocaleString('vi-VN')}
-                                                            </span>
-                                                       </div>
-                                                  </div>
-                                             </div>
-                                        )}
-
-                                        {/* Action Buttons */}
-                                        {selectedReport.status === "Pending" && (
-                                             <div className="flex space-x-3 pt-4 border-t border-slate-200">
-                                                  <Button
-                                                       onClick={() => handleTakeAction(selectedReport, "Warning")}
-                                                       className="flex-1 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700"
-                                                  >
-                                                       <Flag className="w-4 h-4 mr-2" />
-                                                       Cảnh báo
-                                                  </Button>
-                                                  <Button
-                                                       onClick={() => handleTakeAction(selectedReport, "Dismiss")}
-                                                       className="flex-1 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700"
-                                                  >
-                                                       <CheckCircle className="w-4 h-4 mr-2" />
-                                                       Bỏ qua
-                                                  </Button>
-                                             </div>
-                                        )}
                                    </div>
                               </div>
-                         </Card>
-                    </div>
-               )}
+
+                              {/* Report Details */}
+                              <div>
+                                   <h4 className="text-lg font-bold text-slate-900 mb-3">Thông tin báo cáo</h4>
+                                   <div className="space-y-3">
+                                        <div className="flex items-center space-x-2">
+                                             <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getTypeBadgeColor(selectedReport.reportType)}`}>
+                                                  {selectedReport.reportType}
+                                             </span>
+                                             <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(selectedReport.status)}`}>
+                                                  {selectedReport.status}
+                                             </span>
+                                        </div>
+                                        <div>
+                                             <p className="text-sm font-medium text-slate-600 mb-1">Mô tả:</p>
+                                             <p className="text-slate-900 bg-slate-50 p-3 rounded-lg border">
+                                                  {selectedReport.description}
+                                             </p>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                             <Calendar className="w-4 h-4 text-slate-400" />
+                                             <span className="text-sm text-slate-600">
+                                                  Ngày báo cáo: {new Date(selectedReport.createdAt).toLocaleString('vi-VN')}
+                                             </span>
+                                        </div>
+                                   </div>
+                              </div>
+
+                              {/* Admin Actions */}
+                              {selectedReport.handledBy && (
+                                   <div>
+                                        <h4 className="text-lg font-bold text-slate-900 mb-3">Hành động của admin</h4>
+                                        <div className="space-y-2">
+                                             <div>
+                                                  <p className="text-sm font-medium text-slate-600">Hành động:</p>
+                                                  <p className="text-slate-900">{selectedReport.actionTaken}</p>
+                                             </div>
+                                             <div>
+                                                  <p className="text-sm font-medium text-slate-600">Ghi chú:</p>
+                                                  <p className="text-slate-900 bg-slate-50 p-3 rounded-lg border">
+                                                       {selectedReport.adminNote}
+                                                  </p>
+                                             </div>
+                                             <div className="flex items-center space-x-2">
+                                                  <Calendar className="w-4 h-4 text-slate-400" />
+                                                  <span className="text-sm text-slate-600">
+                                                       Xử lý lúc: {new Date(selectedReport.handledAt).toLocaleString('vi-VN')}
+                                                  </span>
+                                             </div>
+                                        </div>
+                                   </div>
+                              )}
+
+                              {/* Action Buttons */}
+                              {selectedReport.status === "Pending" && (
+                                   <div className="flex space-x-3 pt-4 border-t border-slate-200">
+                                        <Button
+                                             onClick={() => handleTakeAction(selectedReport, "Warning")}
+                                             className="flex-1 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700"
+                                        >
+                                             <Flag className="w-4 h-4 mr-2" />
+                                             Cảnh báo
+                                        </Button>
+                                        <Button
+                                             onClick={() => handleTakeAction(selectedReport, "Dismiss")}
+                                             className="flex-1 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700"
+                                        >
+                                             <CheckCircle className="w-4 h-4 mr-2" />
+                                             Bỏ qua
+                                        </Button>
+                                   </div>
+                              )}
+                         </div>
+                    )
+                    }
+               </Modal >
 
                {/* Action Modal */}
-               {showActionModal && selectedReport && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                         <Card className="w-full max-w-2xl">
-                              <div className="p-6">
-                                   <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-xl font-bold text-slate-900">
-                                             {actionType === "Warning" ? "Cảnh báo người dùng" : "Bỏ qua báo cáo"}
-                                        </h3>
-                                        <Button
-                                             onClick={() => setShowActionModal(false)}
-                                             variant="ghost"
-                                             size="sm"
-                                        >
-                                             <XCircle className="w-4 h-4" />
-                                        </Button>
-                                   </div>
+               < Modal
+                    isOpen={showActionModal}
+                    onClose={() => setShowActionModal(false)}
+                    title={actionType === "Warning" ? "Cảnh báo người dùng" : "Bỏ qua báo cáo"}
+                    size="2xl"
+                    className="max-h-[90vh] scrollbar-hide"
+               >
 
-                                   <div className="space-y-4">
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Ghi chú hành động *
-                                             </label>
-                                             <Textarea
-                                                  value={actionNote}
-                                                  onChange={(e) => setActionNote(e.target.value)}
-                                                  placeholder="Nhập ghi chú về hành động này..."
-                                                  rows={4}
-                                             />
-                                        </div>
+                    <div className="space-y-4">
+                         <div>
+                              <label className="block text-sm font-medium text-slate-700 mb-2">
+                                   Ghi chú hành động *
+                              </label>
+                              <Textarea
+                                   value={actionNote}
+                                   onChange={(e) => setActionNote(e.target.value)}
+                                   placeholder="Nhập ghi chú về hành động này..."
+                                   rows={4}
+                              />
+                         </div>
 
-                                        <div className="flex space-x-3 pt-4 border-t border-slate-200">
-                                             <Button
-                                                  onClick={handleSubmitAction}
-                                                  className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700"
-                                                  disabled={!actionNote.trim()}
-                                             >
-                                                  {actionType === "Warning" ? "Gửi cảnh báo" : "Bỏ qua báo cáo"}
-                                             </Button>
-                                             <Button
-                                                  onClick={() => setShowActionModal(false)}
-                                                  variant="outline"
-                                                  className="flex-1"
-                                             >
-                                                  Hủy
-                                             </Button>
-                                        </div>
-                                   </div>
-                              </div>
-                         </Card>
+                         <div className="flex space-x-3 pt-4 border-t border-slate-200">
+                              <Button
+                                   onClick={handleSubmitAction}
+                                   className="flex-1 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 rounded-2xl"
+                                   disabled={!actionNote.trim()}
+                              >
+                                   {actionType === "Warning" ? "Gửi cảnh báo" : "Bỏ qua báo cáo"}
+                              </Button>
+                              <Button
+                                   onClick={() => setShowActionModal(false)}
+                                   variant="outline"
+                                   className="flex-1 rounded-2xl"
+                              >
+                                   Hủy
+                              </Button>
+                         </div>
                     </div>
-               )}
-          </div>
+               </Modal >
+          </div >
      );
 }
