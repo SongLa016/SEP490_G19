@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, MapPin, Star, ArrowRight, ChevronLeft, ChevronRight, DollarSign, ShieldCheck, Sparkles, CheckCircle, Users, Calendar, BarChart3, Zap, Globe, Clock, TrendingUp } from "lucide-react";
-import { Container, Section, Card, CardContent, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Row } from "../components/ui";
+import { Container, Section, Card, CardContent, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Row } from "../shared/components/ui";
 import { useNavigate } from "react-router-dom";
 
 

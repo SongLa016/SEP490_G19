@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui';
-import logo from '../components/assets/logo.png';
+import { Button } from '../shared/components/ui';
+import logo from '../shared/components/assets/logo.png';
 import {
      ArrowRight,
      CheckCircle,
@@ -149,7 +149,7 @@ const LandingPage = () => {
                                              <ArrowRight className="w-5 h-5 ml-2" />
                                         </Button>
                                         <Button
-                                             onClick={() => selectedPersona === 'business' ? navigate('/demo') : navigate('/owner-demo')}
+                                             onClick={() => selectedPersona === 'business' ? navigate('/demo') : navigate('/auth')}
                                              variant="outline"
                                              size="lg"
                                              className="px-8 py-4 text-lg font-semibold border-2 border-white/20 hover:border-white/40 text-teal-500 hover:bg-transparent hover:text-white rounded-xl transition-all duration-[350ms] ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-95 hover:scale-105"

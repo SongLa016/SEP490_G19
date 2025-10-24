@@ -9,15 +9,15 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ModalProvider } from "./contexts/ModalContext";
 
 // Layouts
-import MainLayout from "./layouts/MainLayout";
-import AuthLayout from "./layouts/AuthLayout";
-import AdminLayout from "./layouts/admin/AdminLayout";
+import MainLayout from "./shared/layouts/MainLayout";
+import AuthLayout from "./shared/layouts/AuthLayout";
+import AdminLayout from "./roles/admin/layouts/AdminLayout";
 
 // Pages
 import LandingPage from "./pages/LandingPage";
 import HomePage from "./pages/HomePage";
-import Dashboard from "./pages/dashboard/Dashboard";
-import OwnerDashboard from "./pages/owner/OwnerDashboard";
+import Dashboard from "./roles/player/pages/dashboard/Dashboard";
+import OwnerDashboard from "./roles/owner/pages/owner/OwnerDashboard";
 import {
   FieldManagement,
   PricingManagement,
@@ -28,17 +28,17 @@ import {
   PromotionsManagement,
   PaymentTracking,
   NotificationsManagement,
-} from "./pages/owner";
-import TimeSlotManagement from "./pages/owner/TimeSlotManagement";
-import FieldSearch from "./pages/fields/FieldSearch";
+} from "./roles/owner/pages/owner";
+import TimeSlotManagement from "./roles/owner/pages/owner/TimeSlotManagement";
+import FieldSearch from "./roles/player/pages/fields/FieldSearch";
 
-import BookingHistory from "./pages/booking/BookingHistory";
-import ComplexDetail from "./pages/fields/ComplexDetail";
-import Community from "./pages/community/Community";
+import BookingHistory from "./roles/player/pages/booking/BookingHistory";
+import ComplexDetail from "./roles/player/pages/fields/ComplexDetail";
+import Community from "./roles/player/pages/community/Community";
 
 // Profile Pages
-import ProfileIndex from "./pages/profile";
-import ProfileDemo from "./pages/profile/ProfileDemo";
+import ProfileIndex from "./roles/player/pages/profile";
+import ProfileDemo from "./roles/player/pages/profile/ProfileDemo";
 
 // Admin Pages
 import {
@@ -48,8 +48,8 @@ import {
   ViolationReportsManagement,
   BlogManagement,
   SystemSettings,
-} from "./pages/admin";
-import OwnerRegistrationApproval from "./pages/admin/OwnerRegistrationApproval";
+} from "./roles/admin/pages";
+import OwnerRegistrationApproval from "./roles/admin/pages/OwnerRegistrationApproval";
 
 // Demo Pages
 
@@ -97,9 +97,9 @@ function AppContent() {
           path="/dashboard"
           element={
             user ? (
-              user.role === "Admin" ? (
+              user.roleName === "Admin" ? (
                 <Navigate to="/admin" replace />
-              ) : user.role === "FieldOwner" ? (
+              ) : user.roleName === "Owner" ? (
                 <Navigate to="/owner" replace />
               ) : (
                 <Dashboard user={user} />
@@ -155,7 +155,7 @@ function AppContent() {
           path="/owner"
           element={
             user ? (
-              user.role === "FieldOwner" ? (
+              user.roleName === "Owner" ? (
                 <OwnerDashboard />
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -169,7 +169,7 @@ function AppContent() {
           path="/owner/fields"
           element={
             user ? (
-              user.role === "FieldOwner" ? (
+              user.roleName === "Owner" ? (
                 <FieldManagement />
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -183,7 +183,7 @@ function AppContent() {
           path="/owner/timeslots"
           element={
             user ? (
-              user.role === "FieldOwner" ? (
+              user.roleName === "Owner" ? (
                 <TimeSlotManagement />
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -197,7 +197,7 @@ function AppContent() {
           path="/owner/pricing"
           element={
             user ? (
-              user.role === "FieldOwner" ? (
+              user.roleName === "Owner" ? (
                 <PricingManagement />
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -211,7 +211,7 @@ function AppContent() {
           path="/owner/bookings"
           element={
             user ? (
-              user.role === "FieldOwner" ? (
+              user.roleName === "Owner" ? (
                 <BookingManagement />
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -225,7 +225,7 @@ function AppContent() {
           path="/owner/reports"
           element={
             user ? (
-              user.role === "FieldOwner" ? (
+              user.roleName === "Owner" ? (
                 <RevenueReports />
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -239,7 +239,7 @@ function AppContent() {
           path="/owner/policies"
           element={
             user ? (
-              user.role === "FieldOwner" ? (
+              user.roleName === "Owner" ? (
                 <CancellationPolicies />
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -253,7 +253,7 @@ function AppContent() {
           path="/owner/promotions"
           element={
             user ? (
-              user.role === "FieldOwner" ? (
+              user.roleName === "Owner" ? (
                 <PromotionsManagement />
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -267,7 +267,7 @@ function AppContent() {
           path="/owner/notifications"
           element={
             user ? (
-              user.role === "FieldOwner" ? (
+              user.roleName === "Owner" ? (
                 <NotificationsManagement />
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -317,7 +317,7 @@ function AppContent() {
           path="/admin"
           element={
             user ? (
-              user.role === "Admin" ? (
+              user.roleName === "Admin" ? (
                 <AdminLayout user={user}>
                   <AdminDashboard />
                 </AdminLayout>
@@ -333,7 +333,7 @@ function AppContent() {
           path="/admin/users"
           element={
             user ? (
-              user.role === "Admin" ? (
+              user.roleName === "Admin" ? (
                 <AdminLayout user={user}>
                   <UserManagement />
                 </AdminLayout>
@@ -349,7 +349,7 @@ function AppContent() {
           path="/admin/notifications"
           element={
             user ? (
-              user.role === "Admin" ? (
+              user.roleName === "Admin" ? (
                 <AdminLayout user={user}>
                   <SystemNotificationsManagement />
                 </AdminLayout>
@@ -365,7 +365,7 @@ function AppContent() {
           path="/admin/violations"
           element={
             user ? (
-              user.role === "Admin" ? (
+              user.roleName === "Admin" ? (
                 <AdminLayout user={user}>
                   <ViolationReportsManagement />
                 </AdminLayout>
@@ -381,7 +381,7 @@ function AppContent() {
           path="/admin/blog"
           element={
             user ? (
-              user.role === "Admin" ? (
+              user.roleName === "Admin" ? (
                 <AdminLayout user={user}>
                   <BlogManagement />
                 </AdminLayout>
@@ -397,7 +397,7 @@ function AppContent() {
           path="/admin/system-settings"
           element={
             user ? (
-              user.role === "Admin" ? (
+              user.roleName === "Admin" ? (
                 <AdminLayout user={user}>
                   <SystemSettings />
                 </AdminLayout>
@@ -413,7 +413,7 @@ function AppContent() {
           path="/admin/owner-registration"
           element={
             user ? (
-              user.role === "Admin" ? (
+              user.roleName === "Admin" ? (
                 <AdminLayout user={user}>
                   <OwnerRegistrationApproval />
                 </AdminLayout>
