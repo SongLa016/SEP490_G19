@@ -51,10 +51,12 @@ namespace BallSport.Application.Services
             var user = _userRepository.GetUserByPhone(phone);
             if (user == null) return null;
 
+            var roles = _userRepository.GetRolesByUserId(user.UserId);
+
             if (CheckPassword(phone, inputPassword))
             {
 
-                return _jwtService.GenerateToken(user.UserId, user.Email, user.FullName, user.Phone
+                return _jwtService.GenerateToken(user.UserId, user.Email, user.FullName, user.Phone, roles
                 );
             }
 
@@ -102,8 +104,8 @@ namespace BallSport.Application.Services
                 user = newUser;
             }
 
-           
-            var token = _jwtService.GenerateToken(user.UserId, user.Email, user.FullName, user.Phone);
+            var roles = _userRepository.GetRolesByUserId(user.UserId);
+            var token = _jwtService.GenerateToken(user.UserId, user.Email, user.FullName, user.Phone , roles);
 
            
             return token;
@@ -232,8 +234,8 @@ namespace BallSport.Application.Services
             string subject = "Đăng ký BallSport thành công";
             string message = $"<p>Xin chào <b>{pending.FullName}</b>,</p>" +
                              $"<p>Tài khoản của bạn đã được tạo thành công với vai trò <b>{pending.RoleName}</b>.</p>" +
-                             $"<p>Chúc bạn trải nghiệm vui vẻ cùng BallSport!</p>";
-
+                             $"<p>Chúc bạn trải nghiệm vui vẻ cùng BallSport!</p>" +
+                             $"<p>Trân trọng,<br/>Đội ngũ BallSport</p>";
             await _emailService.SendEmailAsync(pending.Email, subject, message);
 
             return true;
