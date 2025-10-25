@@ -79,10 +79,10 @@ export default function OwnerRegistrationApproval() {
      const loadData = async () => {
           try {
                const [requestsData, statsData] = await Promise.all([
-                    import("../../../../../shared/index").then(module =>
+                    import("../../../shared/index").then(module =>
                          module.fetchOwnerRegistrationRequests("all")
                     ),
-                    import("../../services/ownerRegistrationRequests").then(module =>
+                    import("../../../shared/services/ownerRegistrationRequests").then(module =>
                          module.getOwnerRegistrationStats()
                     )
                ]);
@@ -114,7 +114,7 @@ export default function OwnerRegistrationApproval() {
 
      const confirmApproval = async () => {
           try {
-               const { approveOwnerRegistrationRequest } = await import("../../services/ownerRegistrationRequests");
+               const { approveOwnerRegistrationRequest } = await import("../../../shared/services/ownerRegistrationRequests");
                await approveOwnerRegistrationRequest(selectedRequest.id, 1, approvalNotes);
 
                // Update local state
@@ -141,7 +141,7 @@ export default function OwnerRegistrationApproval() {
 
      const confirmRejection = async () => {
           try {
-               const { rejectOwnerRegistrationRequest } = await import("../../services/ownerRegistrationRequests");
+               const { rejectOwnerRegistrationRequest } = await import("../../../shared/services/ownerRegistrationRequests");
                await rejectOwnerRegistrationRequest(selectedRequest.id, 1, rejectionReason, rejectionNotes);
 
                // Update local state

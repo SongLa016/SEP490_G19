@@ -895,7 +895,7 @@ function scheduleStatus(fieldId, date, slotId) {
   return s ? s.Status : "Available";
 }
 
-export async function fetchTimeSlots() {
+export async function fetchFieldTimeSlots() {
   return TIME_SLOTS.map((s) => ({
     slotId: s.SlotID,
     name: `${s.StartTime} – ${s.EndTime}`,

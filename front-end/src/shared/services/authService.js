@@ -192,61 +192,60 @@ export const authService = {
           // Decode JWT payload (without verification for now)
           const payload = JSON.parse(atob(token.split(".")[1]));
           console.log("🔍 JWT Payload:", payload);
+          console.log("🔍 Raw Role from JWT:", payload.Role);
           console.log("🔍 Raw RoleID from JWT:", payload.RoleID);
           console.log("🔍 Raw RoleName from JWT:", payload.RoleName);
+
+          // Extract role information from JWT token (backend format)
+          let roleID, roleName;
+
+          // Backend uses "Role" field instead of "RoleID" and "RoleName"
+          if (payload.Role) {
+            // Map role name to role ID
+            roleID = roleMapping.getRoleID(payload.Role);
+            roleName = payload.Role;
+            console.log(
+              "🔍 Role from token (backend format):",
+              payload.Role,
+              "→ RoleID:",
+              roleID
+            );
+          } else if (payload.RoleID && payload.RoleName) {
+            // Fallback for old format
+            roleID = payload.RoleID;
+            roleName = payload.RoleName;
+            console.log(
+              "🔍 Role from token (old format):",
+              payload.RoleID,
+              "→",
+              payload.RoleName
+            );
+          } else {
+            console.warn("⚠️ No role information found in token");
+            roleID = 1;
+            roleName = "Player";
+          }
 
           userData = {
             userID: payload.UserID,
             email: payload.Email,
             fullName: payload.FullName,
             phone: payload.Phone,
-            roleID: payload.RoleID || 1, // Default to Player (RoleID = 1)
-            roleName: payload.RoleName || "Player", // Default role if not in token
+            roleID: roleID,
+            roleName: roleName,
             emailVerified:
               payload.EmailVerified !== undefined
                 ? payload.EmailVerified
-                : true, // Mặc định true nếu không có trong token
+                : true,
           };
 
-          console.log("🔍 UserData before mapping:", userData);
+          console.log("🔍 Final UserData from JWT token:", userData);
           console.log(
-            "🔍 Is RoleID valid?",
-            roleMapping.isValidRoleID(userData.roleID)
+            "✅ Role successfully extracted from token:",
+            roleID,
+            "→",
+            roleName
           );
-
-          // If JWT doesn't contain RoleID, fetch from database
-          if (!userData.roleID || !roleMapping.isValidRoleID(userData.roleID)) {
-            console.log("🔄 JWT missing RoleID, fetching from database...");
-            const dbRoleData = await this.getUserRoleFromDatabase(
-              userData.userID
-            );
-
-            if (dbRoleData && dbRoleData.roleID) {
-              userData.roleID = dbRoleData.roleID;
-              userData.roleName = roleMapping.getRoleName(dbRoleData.roleID);
-              console.log(
-                "✅ Role fetched from database:",
-                userData.roleID,
-                "→",
-                userData.roleName
-              );
-            } else {
-              console.log(
-                "❌ Could not fetch role from database, defaulting to Player"
-              );
-              userData.roleID = 1;
-              userData.roleName = "Player";
-            }
-          } else {
-            // Map RoleID to RoleName based on database mapping
-            userData.roleName = roleMapping.getRoleName(userData.roleID);
-            console.log(
-              "✅ RoleID mapping successful:",
-              userData.roleID,
-              "→",
-              userData.roleName
-            );
-          }
 
           console.log("🔍 Final UserData:", userData);
         } catch (error) {
@@ -302,29 +301,62 @@ export const authService = {
       if (token) {
         try {
           const payload = JSON.parse(atob(token.split(".")[1]));
+
+          // Extract role information from JWT token (backend format)
+          let roleID, roleName;
+
+          // Backend uses "Role" field instead of "RoleID" and "RoleName"
+          if (payload.Role) {
+            // Map role name to role ID
+            roleID = roleMapping.getRoleID(payload.Role);
+            roleName = payload.Role;
+            console.log(
+              "🔍 Google Login - Role from token (backend format):",
+              payload.Role,
+              "→ RoleID:",
+              roleID
+            );
+          } else if (payload.RoleID && payload.RoleName) {
+            // Fallback for old format
+            roleID = payload.RoleID;
+            roleName = payload.RoleName;
+            console.log(
+              "🔍 Google Login - Role from token (old format):",
+              payload.RoleID,
+              "→",
+              payload.RoleName
+            );
+          } else {
+            console.warn(
+              "⚠️ Google Login - No role information found in token"
+            );
+            roleID = 1;
+            roleName = "Player";
+          }
+
           userData = {
             userID: payload.UserID,
             email: payload.Email,
             fullName: payload.FullName,
             phone: payload.Phone || "",
-            roleID: payload.RoleID || 1, // Default to Player (RoleID = 1)
-            roleName: payload.RoleName || "Player", // Default role if not in token
+            roleID: roleID,
+            roleName: roleName,
             emailVerified:
               payload.EmailVerified !== undefined
                 ? payload.EmailVerified
                 : false, // Google login might not be verified
           };
 
-          // Map RoleID to RoleName based on database mapping
-          if (userData.roleID && roleMapping.isValidRoleID(userData.roleID)) {
-            userData.roleName = roleMapping.getRoleName(userData.roleID);
-          } else {
-            userData.roleName = "Player";
-            userData.roleID = 1;
-            console.log(
-              "Invalid or missing RoleID, defaulting to Player (RoleID = 1)"
-            );
-          }
+          console.log(
+            "🔍 Google Login - Final UserData from JWT token:",
+            userData
+          );
+          console.log(
+            "✅ Google Login - Role successfully extracted from token:",
+            roleID,
+            "→",
+            roleName
+          );
           console.log("Decoded user data from Google token:", userData);
         } catch (error) {
           console.error("Error decoding JWT token:", error);

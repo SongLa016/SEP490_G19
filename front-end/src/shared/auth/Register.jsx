@@ -92,7 +92,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                // Nếu đăng ký với role Owner, tạo owner registration request
                if (formData.roleName === 'Owner') {
                     try {
-                         const { createOwnerRegistrationRequest } = await import('../../services/ownerRegistrationRequests');
+                         const { createOwnerRegistrationRequest } = await import('../services/ownerRegistrationRequests');
                          await createOwnerRegistrationRequest({
                               userId: result.user?.userID || Date.now(), // Fallback ID
                               businessName: `${formData.fullName} - Sân bóng`,

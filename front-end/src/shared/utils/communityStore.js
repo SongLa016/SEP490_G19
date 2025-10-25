@@ -132,7 +132,7 @@ export function updateJoinStatus(joinId, status) {
 }
 
 // Notifications(NotificationId, UserId, Type, RefId, Message, IsRead)
-export function createNotification({ userId, type, refId, message }) {
+export function createCommunityNotification({ userId, type, refId, message }) {
   const notifs = load(KEYS.notifications);
   const n = {
     notificationId: `NT-${Date.now()}`,
@@ -260,7 +260,7 @@ export function acceptJoin({ joinId }) {
     memberUserIds,
   });
   memberUserIds.forEach((uid) =>
-    createNotification({
+    createCommunityNotification({
       userId: uid,
       type: "MatchRoom",
       refId: room.roomId,
@@ -424,7 +424,7 @@ export function joinMatchRequest({ requestId, userId, level }) {
   };
   joins.push(j);
   save(KEYS.matchJoins, joins);
-  createNotification({
+  createCommunityNotification({
     userId: req.ownerId,
     type: "MatchJoin",
     refId: requestId,
@@ -452,13 +452,13 @@ export function acceptMatchJoin({ joinId }) {
   save(KEYS.matchJoins, joins);
   const req = updateMatchRequest(target.requestId, { status: "Matched" });
   // notify both sides
-  createNotification({
+  createCommunityNotification({
     userId: req.ownerId,
     type: "Match",
     refId: req.requestId,
     message: "Bạn đã ghép trận thành công",
   });
-  createNotification({
+  createCommunityNotification({
     userId: target.userId,
     type: "Match",
     refId: req.requestId,
@@ -614,7 +614,7 @@ export function createTeamJoinRequest({ teamId, userId, message, userName }) {
   save(KEYS.teamJoinRequests, requests);
 
   // Notify team creator
-  createNotification({
+  createCommunityNotification({
     userId: team.createdBy,
     type: "TeamJoinRequest",
     refId: teamId,
@@ -664,7 +664,7 @@ export function approveTeamJoinRequest({ requestId, respondedBy }) {
   });
 
   // Notify the user
-  createNotification({
+  createCommunityNotification({
     userId: request.userId,
     type: "TeamJoinApproved",
     refId: request.teamId,
@@ -690,7 +690,7 @@ export function rejectTeamJoinRequest({ requestId, respondedBy }) {
 
   // Notify the user
   const team = getTeamById(request.teamId);
-  createNotification({
+  createCommunityNotification({
     userId: request.userId,
     type: "TeamJoinRejected",
     refId: request.teamId,
