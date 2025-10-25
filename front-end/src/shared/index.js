@@ -16,9 +16,9 @@ export { default as RecurringOpponentModal } from "./components/RecurringOpponen
 export { default as RecurringOpponentSelection } from "./components/RecurringOpponentSelection";
 export { default as RescheduleModal } from "./components/RescheduleModal";
 // Shared layouts exports
-export { default as MainLayout } from "./layouts/MainLayout";
-export { default as AuthLayout } from "./layouts/AuthLayout";
-export { default as Auth } from "./layouts/auth/Auth";
+// export { default as MainLayout } from "./layouts/MainLayout";
+// export { default as AuthLayout } from "./layouts/AuthLayout";
+// export { default as Auth } from "./layouts/auth/Auth";
 
 // Shared services exports
 export * from "./services/authService";

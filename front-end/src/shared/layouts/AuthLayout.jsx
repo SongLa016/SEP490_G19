@@ -2,7 +2,7 @@ import React from 'react';
 
 import Auth from './auth/Auth';
 
-const AuthLayout = () => {
+export default function AuthLayout() {
      return (
           <div className="relative min-h-screen">
                <img
@@ -26,6 +26,5 @@ const AuthLayout = () => {
                </div>
           </div>
      );
-};
+}
 
-export default AuthLayout;
