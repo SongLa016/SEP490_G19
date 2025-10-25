@@ -117,6 +117,14 @@ namespace BallSport.Infrastructure.Repositories
             _context.SaveChanges();
         }
 
+        public List<string> GetRolesByUserId(int userId)
+        {
+            return _context.UserRoles
+                .Where(ur => ur.UserId == userId)
+                .Select(ur => ur.Role.RoleName)
+                .ToList();
+        }
+
 
     }
 }
