@@ -1,14 +1,19 @@
 using BallSport.Application.Services;
-using BallSport.Infrastructure.Repositories;
+using BallSport.Application.Services.Community;
 using BallSport.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
+using BallSport.Infrastructure.Models;
+using BallSport.Infrastructure.Repositories;
+using BallSport.Infrastructure.Repositories.Community;
+using BallSport.Infrastructure.Settings;
+using Banking.Application.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
-using BallSport.Infrastructure.Models;
-using Banking.Application.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,6 +54,28 @@ services.AddScoped<FieldPriceService>();
 
 services.AddScoped<TimeSlotRepository>();
 services.AddScoped<TimeSlotService>();
+// ============ THÊM COMMUNITY REPOSITORIES ============
+services.AddScoped<IPostRepository, PostRepository>();
+services.AddScoped<ICommentRepository, CommentRepository>();
+services.AddScoped<IPostLikeRepository, PostLikeRepository>();
+services.AddScoped<INotificationRepository, NotificationRepository>();
+services.AddScoped<IReportRepository, ReportRepository>();
+
+services.AddScoped<IPostService, PostService>();
+services.AddScoped<ICommentService, CommentService>();
+services.AddScoped<INotificationService, NotificationService>();
+services.AddScoped<IReportService, ReportService>();
+
+// ===== CẤU HÌNH COMMUNITY / NOTIFICATION / REPORT =====
+builder.Services.Configure<CommunitySettings>(
+    builder.Configuration.GetSection("CommunitySettings"));
+
+builder.Services.Configure<NotificationSettings>(
+    builder.Configuration.GetSection("NotificationSettings"));
+
+builder.Services.Configure<ReportSettings>(
+    builder.Configuration.GetSection("ReportSettings"));
+
 
 // Đăng ký DbContext (chỉ giữ 1 lần)
 services.AddDbContext<Sep490G19v1Context>(options =>
