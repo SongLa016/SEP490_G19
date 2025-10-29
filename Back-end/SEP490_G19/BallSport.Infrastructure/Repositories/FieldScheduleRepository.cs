@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BallSport.Infrastructure.Repositories
 {
-    public class FieldScheduleRepository
+    public class FieldScheduleRepository : IFieldScheduleRepository
     {
         private readonly Sep490G19v1Context _context;
 
@@ -65,6 +65,11 @@ namespace BallSport.Infrastructure.Repositories
             _context.FieldSchedules.Remove(schedule);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task SaveChangesAsync()
+        {
+            await _context.SaveChangesAsync();
         }
     }
 }

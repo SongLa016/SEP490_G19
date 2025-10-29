@@ -46,7 +46,11 @@ public partial class Sep490G19v1Context : DbContext
 
     public virtual DbSet<Notification> Notifications { get; set; }
 
+    public virtual DbSet<OwnerBankAccount> OwnerBankAccounts { get; set; }
+
     public virtual DbSet<Payment> Payments { get; set; }
+
+    public virtual DbSet<PayoutTransaction> PayoutTransactions { get; set; }
 
     public virtual DbSet<PlayerMatchHistory> PlayerMatchHistories { get; set; }
 
@@ -74,9 +78,13 @@ public partial class Sep490G19v1Context : DbContext
 
     public virtual DbSet<ViolationReport> ViolationReports { get; set; }
 
+<<<<<<< Updated upstream
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Data Source=localhost;Initial Catalog=SEP490_G19V1;Trusted_Connection=True;User ID=sa;Password=123;Encrypt=False;TrustServerCertificate=True");
+=======
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) { }
+>>>>>>> Stashed changes
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -425,31 +433,82 @@ public partial class Sep490G19v1Context : DbContext
                 .HasConstraintName("FK_Notifications_Users");
         });
 
+        modelBuilder.Entity<OwnerBankAccount>(entity =>
+        {
+            entity.HasKey(e => e.BankAccountId).HasName("PK__OwnerBan__4FC8E741191644A7");
+
+            entity.Property(e => e.BankAccountId).HasColumnName("BankAccountID");
+            entity.Property(e => e.AccountHolder).HasMaxLength(100);
+            entity.Property(e => e.AccountNumber).HasMaxLength(30);
+            entity.Property(e => e.BankName).HasMaxLength(100);
+            entity.Property(e => e.BankShortCode).HasMaxLength(20);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.IsDefault).HasDefaultValue(true);
+            entity.Property(e => e.OwnerId).HasColumnName("OwnerID");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())");
+
+            entity.HasOne(d => d.Owner).WithMany(p => p.OwnerBankAccounts)
+                .HasForeignKey(d => d.OwnerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__OwnerBank__Owner__7849DB76");
+        });
+
         modelBuilder.Entity<Payment>(entity =>
         {
             entity.HasKey(e => e.PaymentId).HasName("PK__Payments__9B556A58C2D12AD2");
+
+            entity.HasIndex(e => e.OrderCode, "UQ_Payments_OrderCode").IsUnique();
 
             entity.Property(e => e.PaymentId).HasColumnName("PaymentID");
             entity.Property(e => e.Amount).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.BookingId).HasColumnName("BookingID");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Method)
+                .HasMaxLength(50)
+                .HasDefaultValue("PayOS");
+            entity.Property(e => e.OrderCode).HasMaxLength(100);
+            entity.Property(e => e.OwnerId).HasColumnName("OwnerID");
+            entity.Property(e => e.PayOrderInfo).HasMaxLength(255);
+            entity.Property(e => e.PayUrl).HasColumnName("PayURL");
+            entity.Property(e => e.ResponseCode).HasMaxLength(20);
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValue("Pending");
+            entity.Property(e => e.TransactionCode).HasMaxLength(100);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())");
-            entity.Property(e => e.VnpayOrderInfo)
-                .HasMaxLength(255)
-                .HasColumnName("VNPayOrderInfo");
-            entity.Property(e => e.VnpayResponseCode)
-                .HasMaxLength(10)
-                .HasColumnName("VNPayResponseCode");
-            entity.Property(e => e.VnpayTransactionCode)
-                .HasMaxLength(100)
-                .HasColumnName("VNPayTransactionCode");
 
             entity.HasOne(d => d.Booking).WithMany(p => p.Payments)
                 .HasForeignKey(d => d.BookingId)
                 .HasConstraintName("FK__Payments__Bookin__0A9D95DB");
+
+            entity.HasOne(d => d.Owner).WithMany(p => p.Payments)
+                .HasForeignKey(d => d.OwnerId)
+                .HasConstraintName("FK_Payments_OwnerID");
+        });
+
+        modelBuilder.Entity<PayoutTransaction>(entity =>
+        {
+            entity.HasKey(e => e.PayoutId).HasName("PK__PayoutTr__35C3DFAE775DB01B");
+
+            entity.Property(e => e.PayoutId).HasColumnName("PayoutID");
+            entity.Property(e => e.Amount).HasColumnType("decimal(10, 2)");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.OwnerId).HasColumnName("OwnerID");
+            entity.Property(e => e.PaymentId).HasColumnName("PaymentID");
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValue("Pending");
+            entity.Property(e => e.TransactionCode).HasMaxLength(100);
+
+            entity.HasOne(d => d.Owner).WithMany(p => p.PayoutTransactions)
+                .HasForeignKey(d => d.OwnerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__PayoutTra__Owner__7E02B4CC");
+
+            entity.HasOne(d => d.Payment).WithMany(p => p.PayoutTransactions)
+                .HasForeignKey(d => d.PaymentId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__PayoutTra__Payme__7EF6D905");
         });
 
         modelBuilder.Entity<PlayerMatchHistory>(entity =>

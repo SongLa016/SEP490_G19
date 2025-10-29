@@ -3,18 +3,28 @@
   "WorkspaceRootPath": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\",
   "Documents": [
     {
+<<<<<<< Updated upstream
       "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\depositpolicycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\depositpolicycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\timeslotcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\timeslotcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+=======
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\services\\payosservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\services\\payosservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+>>>>>>> Stashed changes
     },
     {
       "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
+<<<<<<< Updated upstream
       "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\ballsport.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
       "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\ballsport.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     },
@@ -37,18 +47,31 @@
     {
       "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\repositories\\fieldrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\repositories\\fieldrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+=======
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\services\\paymentservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\services\\paymentservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+>>>>>>> Stashed changes
     },
     {
-      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\services\\fieldcomplexservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\services\\fieldcomplexservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\repositories\\paymentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\repositories\\paymentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
+<<<<<<< Updated upstream
       "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\fieldcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\fieldcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\services\\fieldservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\services\\fieldservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+=======
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\repositories\\ipaymentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\repositories\\ipaymentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|c:\\la\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\models\\payment.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\models\\payment.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+>>>>>>> Stashed changes
     }
   ],
   "DocumentGroupContainers": [
@@ -57,7 +80,11 @@
       "VerticalTabListWidth": 256,
       "DocumentGroups": [
         {
+<<<<<<< Updated upstream
           "DockedWidth": 200,
+=======
+          "DockedWidth": 58,
+>>>>>>> Stashed changes
           "SelectedChildIndex": 196,
           "Children": [
             {
@@ -847,6 +874,7 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+<<<<<<< Updated upstream
               "Title": "DepositPolicyController.cs",
               "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\DepositPolicyController.cs",
               "RelativeDocumentMoniker": "BallSport.API\\Controllers\\DepositPolicyController.cs",
@@ -907,10 +935,21 @@
               "ViewState": "AgIAACAAAAAAAAAAAAAwwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-07T17:14:44.507Z",
+=======
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.json",
+              "RelativeDocumentMoniker": "BallSport.API\\appsettings.json",
+              "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.json",
+              "RelativeToolTip": "BallSport.API\\appsettings.json",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-10-29T10:28:10.915Z",
+>>>>>>> Stashed changes
               "EditorCaption": ""
             },
             {
               "$type": "Document",
+<<<<<<< Updated upstream
               "DocumentIndex": 8,
               "Title": "FieldRepository.cs",
               "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\FieldRepository.cs",
@@ -933,11 +972,23 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-07T17:14:38.847Z",
+=======
+              "DocumentIndex": 2,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Program.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Program.cs",
+              "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Program.cs",
+              "RelativeToolTip": "BallSport.API\\Program.cs",
+              "ViewState": "AgIAAJYAAAAAAAAAAAAAAK0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-29T10:11:56.362Z",
+>>>>>>> Stashed changes
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 3,
+<<<<<<< Updated upstream
               "Title": "BallSport.Application.csproj",
               "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\BallSport.Application.csproj",
               "RelativeDocumentMoniker": "BallSport.Application\\BallSport.Application.csproj",
@@ -946,11 +997,48 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
               "WhenOpened": "2025-10-07T17:14:15.488Z",
+=======
+              "Title": "PaymentService.cs",
+              "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\PaymentService.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\Services\\PaymentService.cs",
+              "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\PaymentService.cs",
+              "RelativeToolTip": "BallSport.Application\\Services\\PaymentService.cs",
+              "ViewState": "AgIAABgAAAAAAAAAAAA9wCQAAAArAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-29T09:41:43.997Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "PayOSService.cs",
+              "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\PayOSService.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\Services\\PayOSService.cs",
+              "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\PayOSService.cs",
+              "RelativeToolTip": "BallSport.Application\\Services\\PayOSService.cs",
+              "ViewState": "AgIAABAAAAAAAAAAAAAowB4AAABYAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-28T17:06:20.681Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "IPaymentRepository.cs",
+              "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\IPaymentRepository.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\IPaymentRepository.cs",
+              "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\IPaymentRepository.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Repositories\\IPaymentRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAgAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-28T16:52:20.428Z",
+>>>>>>> Stashed changes
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 4,
+<<<<<<< Updated upstream
               "Title": "FieldComplexController.cs",
               "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\FieldComplexController.cs",
               "RelativeDocumentMoniker": "BallSport.API\\Controllers\\FieldComplexController.cs",
@@ -985,11 +1073,22 @@
               "ViewState": "AgIAAAAAAAAAAAAAAAAAADcAAAAzAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-07T16:48:43.482Z",
+=======
+              "Title": "PaymentRepository.cs",
+              "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\PaymentRepository.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\PaymentRepository.cs",
+              "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\PaymentRepository.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Repositories\\PaymentRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-28T16:52:45.221Z",
+>>>>>>> Stashed changes
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 6,
+<<<<<<< Updated upstream
               "Title": "FieldPriceController.cs",
               "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\FieldPriceController.cs",
               "RelativeDocumentMoniker": "BallSport.API\\Controllers\\FieldPriceController.cs",
@@ -999,6 +1098,16 @@
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-07T16:48:15.625Z",
               "EditorCaption": ""
+=======
+              "Title": "Payment.cs",
+              "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Payment.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\Payment.cs",
+              "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Payment.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Models\\Payment.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-28T17:23:52.092Z"
+>>>>>>> Stashed changes
             }
           ]
         },
