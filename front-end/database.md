@@ -81,6 +81,17 @@ CREATE TABLE TimeSlots (
     UNIQUE(StartTime, EndTime)
 );
 
+CREATE TABLE OwnerBankAccounts (
+    BankAccountID INT IDENTITY(1,1) PRIMARY KEY,
+    OwnerID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    BankName NVARCHAR(100) NOT NULL,                -- Tên ngân hàng (VD: Vietcombank)
+    BankShortCode NVARCHAR(20),                     -- Mã ngân hàng (VD: VCB, MB, TPB)
+    AccountNumber NVARCHAR(30) NOT NULL,            -- Số tài khoản
+    AccountHolder NVARCHAR(100) NOT NULL,           -- Chủ tài khoản
+    IsDefault BIT DEFAULT 1,
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE()
+);
 
 -- (lịch sân ) 
 CREATE TABLE FieldSchedules (

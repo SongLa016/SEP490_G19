@@ -1,9 +1,23 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, MapPin, Star, Clock, Grid, List, Heart, SlidersHorizontal, ChevronLeft, ChevronRight, Sparkles, User, Map, RefreshCcw, CircleDollarSign, EyeIcon } from "lucide-react";
-import { Section, Container, Card, CardContent, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, DatePicker } from "../../../../shared/components/ui";
-import { Link, useNavigate } from "react-router-dom";
+import { MapPin, Star } from "lucide-react";
+import { Section, Container, Card, CardContent, StaggerContainer } from "../../../../shared/components/ui";
+import { useNavigate } from "react-router-dom";
 import MapSearch from "./components/MapSearch";
 import { fetchComplexes, fetchFields, fetchTimeSlots } from "../../../../shared/index";
+import Swal from 'sweetalert2';
+import SearchHeader from "./components/SearchHeader";
+import SearchFiltersBar from "./components/SearchFiltersBar";
+import QuickPresets from "./components/QuickPresets";
+import AdvancedFilters from "./components/AdvancedFilters";
+import ResultsHeader from "./components/ResultsHeader";
+import LoadingState from "./components/LoadingState";
+import EmptyState from "./components/EmptyState";
+import Pagination from "./components/Pagination";
+import FieldCard from "./components/FieldCard";
+import FieldListItem from "./components/FieldListItem";
+import ComplexCard from "./components/ComplexCard";
+import ComplexListItem from "./components/ComplexListItem";
+import GroupedViewSection from "./components/GroupedViewSection";
 export default function FieldSearch({ user }) {
      const navigate = useNavigate();
      const [entityTab, setEntityTab] = useState("fields"); // complexes | fields
@@ -111,7 +125,11 @@ export default function FieldSearch({ user }) {
           let mounted = true;
           fetchTimeSlots().then((slots) => {
                if (!mounted) return;
-               setTimeSlots(slots);
+               setTimeSlots(Array.isArray(slots) ? slots : []);
+          }).catch((error) => {
+               console.error("Error loading time slots:", error);
+               if (!mounted) return;
+               setTimeSlots([]);
           });
           return () => { mounted = false; };
      }, []);
@@ -249,9 +267,23 @@ export default function FieldSearch({ user }) {
           ));
      };
 
+     // Toast notification helper
+     const showToastMessage = (message, type = 'info') => {
+          const config = {
+               text: message,
+               icon: type,
+               toast: true,
+               position: 'top-end',
+               showConfirmButton: false,
+               timer: 3000,
+               timerProgressBar: true,
+          };
+          Swal.fire(config);
+     };
+
      const handleToggleFavorite = (fieldId) => {
           if (!user) {
-               navigate("/auth", { state: { msg: "Vui lòng đăng nhập để sử dụng danh sách yêu thích." } });
+               showToastMessage("Vui lòng đăng nhập để sử dụng danh sách yêu thích.", 'warning');
                return;
           }
           toggleFavorite(fieldId);
@@ -259,7 +291,7 @@ export default function FieldSearch({ user }) {
 
      const handleBook = (fieldId) => {
           if (!user) {
-               navigate("/auth", { state: { msg: "Bạn cần đăng nhập để đặt sân." } });
+               showToastMessage("Bạn cần đăng nhập để đặt sân.", 'warning');
                return;
           }
           navigate(`/booking/${fieldId}`);
@@ -387,112 +419,27 @@ export default function FieldSearch({ user }) {
                </div>
                <Container className="-mt-32 md:-mt-36 px-5 py-2 relative z-10 mb-20" >
                     {/* Search Header */}
-                    <Card className="mb-4 border p-1 bg-white/80 backdrop-blur rounded-[30px] shadow-xl ring-1 ring-teal-100 border-teal-200"><CardContent>
-                         {/* SaaS-style header */}
-                         <div className="pt-4">
-                              <div className="flex items-center justify-between">
-                                   <div>
-                                        <h1 className="text-2xl font-bold text-teal-800">Danh sách sân</h1>
-                                        <div className="mt-1 h-1.5 w-24 bg-gradient-to-r from-teal-500 via-emerald-400 to-transparent rounded-full" />
-                                        <p className="text-teal-700 font-semibold mt-2">Dành cho {user ? "người dùng đã đăng nhập" : "khách truy cập"}</p>
-                                   </div>
-                                   <div className="hidden md:flex items-center gap-2">
-                                        <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 shadow-sm">
-                                             {entityTab === "complexes" ? complexes.length : filteredFields.length} kết quả
-                                        </span>
-                                   </div>
-                              </div>
-                         </div>
-                         <div className="lg:w-64 pt-4 mb-4">
-                              <div className="inline-flex rounded-xl overflow-hidden border border-teal-200 bg-white/80">
-                                   <Button
-                                        type="button"
-                                        onClick={() => setEntityTab("fields")}
-                                        variant={entityTab === "fields" ? "default" : "outline"}
-                                        className={`${entityTab === "fields" ? "bg-teal-500 text-white hover:bg-teal-600" : "border-0 text-teal-700 hover:bg-teal-50"} rounded-none px-4 py-2 text-sm font-medium`}
-                                   >
-                                        Sân nhỏ
-                                   </Button>
-                                   <Button
-                                        type="button"
-                                        onClick={() => setEntityTab("complexes")}
-                                        variant={entityTab === "complexes" ? "default" : "outline"}
-                                        className={`${entityTab === "complexes" ? "bg-teal-500 text-white hover:bg-teal-600" : "border-l border-teal-200 text-teal-700 hover:bg-teal-50"} rounded-none px-4 py-2 text-sm font-medium`}
-                                   >
-                                        Khu vực
-                                   </Button>
-                              </div>
-                         </div>
-                         <div className="flex flex-col lg:flex-row gap-2 md:gap-4">
-                              <div className="flex-1">
-                                   <div className="relative">
-                                        <Search color="teal" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none z-10" />
-                                        <Input
-                                             placeholder="Tìm kiếm sân bóng, địa điểm..."
-                                             value={searchQuery}
-                                             onChange={(e) => setSearchQuery(e.target.value)}
-                                             className="pl-10 pr-10 border rounded-xl border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0 focus-visible:outline-none"
-                                        />
-                                        {searchQuery && (
-                                             <Button
-                                                  onClick={() => setSearchQuery("")}
-                                                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0 h-auto bg-transparent border-0 hover:bg-transparent"
-                                             >
-                                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                  </svg>
-                                             </Button>
-                                        )}
-                                   </div>
-                              </div>
-
-                              <div className="lg:w-48">
-                                   <Select value={getLocationValue()} onValueChange={handleLocationChange}>
-                                        <SelectTrigger className="border rounded-xl border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0 bg-white/80">
-                                             <SelectValue placeholder="Tất cả khu vực" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             <SelectItem value="all">Tất cả khu vực</SelectItem>
-                                             <SelectItem value="Quận Hoàn Kiếm">Quận Hoàn Kiếm</SelectItem>
-                                             <SelectItem value="Quận Ba Đình">Quận Ba Đình</SelectItem>
-                                             <SelectItem value="Quận Đống Đa">Quận Đống Đa</SelectItem>
-                                             <SelectItem value="Quận Cầu Giấy">Quận Cầu Giấy</SelectItem>
-                                             <SelectItem value="Quận Hai Bà Trưng">Quận Hai Bà Trưng</SelectItem>
-                                        </SelectContent>
-                                   </Select>
-                              </div>
-                              <div className="lg:w-48">
-                                   <Select value={getPriceValue()} onValueChange={handlePriceChange}>
-                                        <SelectTrigger className="border rounded-xl border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0 bg-white/80">
-                                             <SelectValue placeholder="Mọi mức giá" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             <SelectItem value="all">Mọi mức giá</SelectItem>
-                                             <SelectItem value="under100">Dưới 100k</SelectItem>
-                                             <SelectItem value="100-200">100k - 200k</SelectItem>
-                                             <SelectItem value="200-300">200k - 300k</SelectItem>
-                                             <SelectItem value="over300">Trên 300k</SelectItem>
-                                        </SelectContent>
-                                   </Select>
-                              </div>
-
-                              <Button
-                                   onClick={() => setShowFilters(!showFilters)}
-                                   variant="outline"
-                                   className="px-4 py-2 rounded-xl transition-all bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 flex items-center shadow-sm"
-                              >
-                                   <SlidersHorizontal className="w-5 h-5 mr-2" />
-                                   Bộ lọc
-                              </Button>
-                              <Button
-                                   onClick={() => setShowMapSearch(true)}
-                                   className="px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-semibold transition-colors flex items-center gap-2 shadow-sm"
-                              >
-                                   <Map className="w-4 h-4" />
-                                   Tìm bằng bản đồ
-                              </Button>
-                              <Button
-                                   onClick={() => {
+                    <Card className="mb-4 border p-1 bg-white/80 backdrop-blur rounded-[30px] shadow-xl ring-1 ring-teal-100 border-teal-200">
+                         <CardContent>
+                              <SearchHeader
+                                   entityTab={entityTab}
+                                   setEntityTab={setEntityTab}
+                                   resultCount={entityTab === "complexes" ? complexes.length : filteredFields.length}
+                                   user={user}
+                              />
+                              <SearchFiltersBar
+                                   searchQuery={searchQuery}
+                                   setSearchQuery={setSearchQuery}
+                                   selectedLocation={selectedLocation}
+                                   handleLocationChange={handleLocationChange}
+                                   getLocationValue={getLocationValue}
+                                   selectedPrice={selectedPrice}
+                                   handlePriceChange={handlePriceChange}
+                                   getPriceValue={getPriceValue}
+                                   showFilters={showFilters}
+                                   setShowFilters={setShowFilters}
+                                   setShowMapSearch={setShowMapSearch}
+                                   onResetFilters={() => {
                                         setSearchQuery("");
                                         setSelectedLocation("");
                                         setSelectedPrice("");
@@ -500,825 +447,211 @@ export default function FieldSearch({ user }) {
                                         setActiveTab("all");
                                         setSortBy("relevance");
                                         setPage(1);
-
                                         setForceList(false);
                                         setEntityTab("fields");
                                         setDate(new Date().toISOString().split('T')[0]);
                                         setSlotId("");
-                                        setMapSearchKey(prev => prev + 1); // Force MapSearch reset
+                                        setMapSearchKey(prev => prev + 1);
                                         localStorage.removeItem('searchPreset');
                                    }}
-                                   variant="outline"
-                                   className="px-4 py-3 rounded-xl border border-red-200 text-red-700 hover:text-red-700 hover:bg-red-50"
-                              >
-                                   <RefreshCcw className="w-4 h-4" />
-                              </Button>
-                         </div>
-
-                         {/* Quick presets */}
-                         <div className="mt-4 flex flex-wrap gap-2 items-center">
-                              {quickPresets.map(p => (
-                                   <Button
-                                        key={p.key}
-                                        onClick={() => setActiveTab(p.key)}
-                                        className={`px-2 h-8 rounded-full text-xs border ${activeTab === p.key ? "bg-teal-100 hover:bg-teal-100 text-teal-700 border-teal-200" : "bg-white text-teal-600 transition-all duration-200 border-gray-200 hover:bg-teal-600 hover:text-white hover:border-gray-300"}`}
-                                   >
-                                        <Sparkles className="w-3 h-3 inline mr-1" /> {p.label}
-                                   </Button>
-                              ))}
-
-                              {/* Type tabs for viewing more small fields by type */}
-                              <div className="ml-3 inline-flex rounded-full overflow-hidden border border-teal-200">
-                                   {[
-                                        { k: "all", l: "Tất cả" },
-                                        { k: "5vs5", l: "5 người" },
-                                        { k: "7vs7", l: "7 người" },
-
-                                   ].map(t => (
-                                        <Button
-                                             key={t.k}
-                                             type="button"
-                                             onClick={() => { setTypeTab(t.k); setPage(1); }}
-                                             className={`px-3 h-8 text-xs rounded-none ${typeTab === t.k ? "bg-teal-500 text-white" : "bg-white text-teal-700 hover:bg-teal-50"}`}
-                                        >
-                                             {t.l}
-                                        </Button>
-                                   ))}
-                              </div>
-                         </div>
-
-                         {/* Advanced Filters */}
-                         {showFilters && (
-                              <div className="mt-4 pt-4 border-t border-teal-100">
-                                   <div className="flex items-start justify-between gap-4">
-                                        <div>
-                                             <div className="flex items-center gap-2">
-                                                  <SlidersHorizontal className="w-4 h-4 text-teal-600" />
-                                                  <h2 className="text-base font-semibold text-teal-800">Bộ lọc nâng cao</h2>
-                                             </div>
-                                             <p className="text-xs text-gray-500 mt-1">Tinh chỉnh kết quả theo đánh giá và sắp xếp.</p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                             <Button
-                                                  onClick={() => {
-                                                       setSelectedRating("");
-                                                       setSortBy("relevance");
-                                                       setDate(new Date().toISOString().split('T')[0]);
-                                                       setSlotId("");
-                                                  }}
-                                                  variant="outline"
-                                                  className="h-9 px-3 rounded-xl border border-teal-200 text-teal-700 hover:bg-teal-50"
-                                             >
-                                                  Đặt lại
-                                             </Button>
-                                             <Button
-                                                  onClick={() => setShowFilters(false)}
-                                                  className="h-9 px-3 rounded-xl bg-teal-500 hover:bg-teal-600 text-white"
-                                             >
-                                                  Áp dụng
-                                             </Button>
-                                        </div>
-                                   </div>
-
-                                   <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-                                        <div>
-                                             <label className="block text-sm font-medium text-teal-600 mb-2">Ngày</label>
-                                             <DatePicker value={date} onChange={setDate} className="border border-teal-300 rounded-xl focus-visible:border-teal-500 focus-visible:ring-0" />
-                                        </div>
-                                        <div>
-                                             <label className="block text-sm font-medium text-teal-600 mb-2">Slot</label>
-                                             <Select value={getSlotValue()} onValueChange={(v) => setSlotId(v === "all" ? "" : v)}>
-                                                  <SelectTrigger className="border border-teal-300 rounded-xl focus-visible:border-teal-500 focus-visible:ring-0 bg-white/80">
-                                                       <SelectValue placeholder="Tất cả slot" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="all">Tất cả slot</SelectItem>
-                                                       {timeSlots.map((s) => (
-                                                            <SelectItem key={s.slotId} value={String(s.slotId)}>{s.name}</SelectItem>
-                                                       ))}
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-                                        <div>
-                                             <label className="block text-sm font-medium text-teal-600 mb-2">Đánh giá tối thiểu</label>
-                                             <Select value={getRatingValue()} onValueChange={handleRatingChange}>
-                                                  <SelectTrigger className="border border-teal-300 rounded-xl focus-visible:border-teal-500 focus-visible:ring-0">
-                                                       <SelectValue placeholder="Tất cả" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="all">Tất cả</SelectItem>
-                                                       <SelectItem value="4.5">4.5+ sao</SelectItem>
-                                                       <SelectItem value="4.0">4.0+ sao</SelectItem>
-                                                       <SelectItem value="3.5">3.5+ sao</SelectItem>
-                                                       <SelectItem value="3.0">3.0+ sao</SelectItem>
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-                                        <div>
-                                             <label className="block text-sm font-medium text-teal-600 mb-2">Sắp xếp theo</label>
-                                             <Select value={sortBy} onValueChange={setSortBy}>
-                                                  <SelectTrigger className="border border-teal-300 rounded-xl focus-visible:border-teal-500 focus-visible:ring-0">
-                                                       <SelectValue placeholder="Liên quan" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="relevance">Liên quan</SelectItem>
-                                                       <SelectItem value="price-low">Giá thấp đến cao</SelectItem>
-                                                       <SelectItem value="price-high">Giá cao đến thấp</SelectItem>
-                                                       <SelectItem value="rating">Đánh giá cao</SelectItem>
-                                                       <SelectItem value="distance">Khoảng cách gần</SelectItem>
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-                                        <div className="md:col-span-4">
-                                             <label className="block text-sm font-medium text-teal-600 mb-2">Đang chọn</label>
-                                             <div className="flex flex-wrap gap-2">
-                                                  {searchQuery && (
-                                                       <span className="px-2 py-1 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Từ khóa: {searchQuery}</span>
-                                                  )}
-                                                  {selectedLocation && (
-                                                       <span className="px-2 py-1 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Khu vực</span>
-                                                  )}
-                                                  {date && (
-                                                       <span className="px-2 py-1 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Ngày: {date}</span>
-                                                  )}
-                                                  {slotId && (
-                                                       <span className="px-2 py-1 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Slot: {timeSlots.find(s => String(s.slotId) === String(slotId))?.name}</span>
-                                                  )}
-                                                  {selectedPrice && (
-                                                       <span className="px-2 py-1 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Giá</span>
-                                                  )}
-                                                  {selectedRating && selectedRating !== "all" && (
-                                                       <span className="px-2 py-1 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Đánh giá {selectedRating}+</span>
-                                                  )}
-                                                  {!searchQuery && !selectedLocation && !selectedPrice && (!selectedRating || selectedRating === "all") && !slotId && (
-                                                       <span className="text-xs text-gray-500">Chưa có bộ lọc nào được chọn</span>
-                                                  )}
-                                             </div>
-                                        </div>
-                                   </div>
-                              </div>
-                         )}
-
-                    </CardContent></Card>
+                              />
+                              <QuickPresets
+                                   quickPresets={quickPresets}
+                                   activeTab={activeTab}
+                                   setActiveTab={setActiveTab}
+                                   typeTab={typeTab}
+                                   setTypeTab={setTypeTab}
+                                   setPage={setPage}
+                              />
+                              <AdvancedFilters
+                                   showFilters={showFilters}
+                                   setShowFilters={setShowFilters}
+                                   date={date}
+                                   setDate={setDate}
+                                   slotId={slotId}
+                                   setSlotId={setSlotId}
+                                   getSlotValue={getSlotValue}
+                                   timeSlots={timeSlots}
+                                   selectedRating={selectedRating}
+                                   handleRatingChange={handleRatingChange}
+                                   getRatingValue={getRatingValue}
+                                   sortBy={sortBy}
+                                   setSortBy={setSortBy}
+                                   searchQuery={searchQuery}
+                                   selectedLocation={selectedLocation}
+                                   selectedPrice={selectedPrice}
+                                   onResetAdvancedFilters={() => {
+                                        setSelectedRating("");
+                                        setSortBy("relevance");
+                                        setDate(new Date().toISOString().split('T')[0]);
+                                        setSlotId("");
+                                   }}
+                              />
+                         </CardContent>
+                    </Card>
 
                     {/* Results Header */}
-                    <div className="flex justify-between items-center mb-5">
-                         <div>
-                              <h1 className="text-2xl font-bold text-teal-800">
-                                   {(() => {
-                                        const count = entityTab === "complexes" ? complexes.length : filteredFields.length;
-                                        const noun = entityTab === "complexes" ? "khu sân" : "sân bóng";
-                                        const filterLabel = activeTab === "near" ? "• Gần bạn" : activeTab === "best-price" ? "• Giá tốt" : activeTab === "top-rated" ? "• Đánh giá cao" : activeTab === "favorites" ? "• Yêu thích" : "";
-                                        return `Tìm thấy ${count} ${noun} ${filterLabel}`.trim();
-                                   })()}
-                              </h1>
-                              <div className="mt-1 h-1.5 w-44 bg-gradient-to-l from-teal-500 via-emerald-400 to-transparent rounded-full justify-self-end" />
-
-                              <p className="text-teal-700">
-                                   {searchQuery && `Kết quả cho "${searchQuery}"`}
-                              </p>
-                         </div>
-                         <div className="flex items-center space-x-2">
-                              <Button
-                                   type="button"
-                                   onClick={() => updateViewMode("grid")}
-                                   className={`p-2 rounded-xl ${viewMode === "grid" ? "bg-teal-500 text-white hover:bg-teal-600" : "bg-teal-50 text-gray-400 border border-gray-200 hover:bg-teal-600"}`}
-                              >
-                                   <Grid className="w-5 h-5" />
-                              </Button>
-                              <Button
-                                   type="button"
-                                   onClick={() => updateViewMode("list")}
-                                   className={`px-2 rounded-xl ${viewMode === "list" ? "bg-teal-500 text-white hover:bg-teal-600" : "bg-teal-50 text-gray-400 border border-gray-200 hover:bg-teal-600"}`}
-                              >
-                                   <List className="w-5 h-5" />
-                              </Button>
-                         </div>
-                    </div>
+                    <ResultsHeader
+                         entityTab={entityTab}
+                         complexesCount={complexes.length}
+                         filteredFieldsCount={filteredFields.length}
+                         activeTab={activeTab}
+                         viewMode={viewMode}
+                         updateViewMode={updateViewMode}
+                    />
 
                     {/* Loading State */}
-                    {isLoading && (
-                         <div className="flex items-center justify-center py-12">
-                              <div className="flex items-center space-x-2 text-teal-600">
-                                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-600"></div>
-                                   <span className="text-lg font-medium">Đang tải...</span>
-                              </div>
-                         </div>
-                    )}
+                    {isLoading && <LoadingState />}
 
                     {/* Results */}
                     {!isLoading && entityTab === "complexes" ? (
                          <>
                               {viewMode === "grid" ? (
-                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6  items-stretch">
-                                        {pageItemsComplex.map((c) => (
-                                             <Link
+                                   <StaggerContainer staggerDelay={50} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-stretch">
+                                        {pageItemsComplex.map((c, index) => (
+                                             <ComplexCard
                                                   key={c.complexId}
-                                                  to={`/complex/${c.complexId}`}
-                                                  onClick={(e) => { e.preventDefault(); navigate(`/complex/${c.complexId}`); }}
-                                                  className="group bg-white rounded-xl shadow-lg overflow-hidden h-full flex flex-col cursor-pointer"
-                                             >
-                                                  <div className="relative overflow-hidden">
-                                                       <img src={c.image} alt={c.name} className="w-full h-40 object-cover" draggable={false} />
-                                                  </div>
-                                                  <div className="p-5 flex-1 flex flex-col">
-                                                       <h3 className="text-xl font-semibold text-teal-800 mb-1">{c.name}</h3>
-                                                       <div className="flex items-center text-teal-700 mb-2">
-                                                            <MapPin className="w-4 h-4 mr-1" />
-                                                            <span className="text-sm">{c.address}</span>
-                                                       </div>
-                                                       <div className="flex items-center justify-between mb-3">
-                                                            <span className="text-sm bg-teal-50 text-teal-700 px-2 py-1 rounded-full border border-teal-200">{c.availableFields}/{c.totalFields} sân trống</span>
-                                                            <span className="text-lg font-bold text-teal-600">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(c.minPriceForSelectedSlot)}</span>
-                                                       </div>
-                                                       <div className="mt-auto">
-                                                            <Button className=" bg-teal-500 hover:bg-teal-600 text-white text-xs rounded-xl font-semibold"><EyeIcon className="w-6 h-6" /></Button>
-                                                       </div>
-                                                  </div>
-                                             </Link>
+                                                  complex={c}
+                                                  index={index}
+                                                  navigate={navigate}
+                                                  formatPrice={formatPrice}
+                                             />
                                         ))}
-                                   </div>
+                                   </StaggerContainer>
                               ) : (
                                    <div className="space-y-4">
-                                        {pageItemsComplex.map((c) => (
-                                             <Link
+                                        {pageItemsComplex.map((c, index) => (
+                                             <ComplexListItem
                                                   key={c.complexId}
-                                                  to={`/complex/${c.complexId}`}
-                                                  onClick={(e) => { e.preventDefault(); navigate(`/complex/${c.complexId}`); }}
-                                                  className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden border border-teal-100 cursor-pointer"
-                                             >
-                                                  <div className="flex">
-                                                       <div className="w-96 h-52 flex-shrink-0">
-                                                            <img src={c.image} alt={c.name} className="w-full h-full rounded-2xl object-cover" draggable={false} />
-                                                       </div>
-                                                       <div className="flex-1 px-4 py-1">
-                                                            <div className="flex justify-between items-start">
-                                                                 <div className="flex bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-1">
-                                                                      <MapPin className="w-4 h-4 mr-1" />
-                                                                      <span className="text-xs font-semibold">{c.address}</span>
-                                                                 </div>
-                                                            </div>
-                                                            <div className="flex items-center justify-between mb-3">
-                                                                 <div className="flex-1 items-center">
-                                                                      <h3 className="text-2xl font-bold text-teal-800 px-2">{c.name}</h3>
-                                                                 </div>
-                                                                 <div className="text-xl font-bold text-teal-600">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(c.minPriceForSelectedSlot)}</div>
-                                                            </div>
-                                                            <div className="flex justify-between items-center">
-                                                                 <div className="text-sm items-center flex text-gray-500">
-                                                                      <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{c.availableFields}/{c.totalFields} sân</span>
-                                                                 </div>
-                                                                 <div className="flex space-x-2">
-                                                                      <Button type="button" className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-4 rounded-xl font-semibold"><EyeIcon className="w-4 h-4" /></Button>
-                                                                 </div>
-                                                            </div>
-                                                       </div>
-                                                  </div>
-                                             </Link>
+                                                  complex={c}
+                                                  index={index}
+                                                  navigate={navigate}
+                                                  formatPrice={formatPrice}
+                                             />
                                         ))}
-                                   </div>
-                              )}
-                              {/* Pagination for complexes */}
-                              {totalComplex > 0 && (
-                                   <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                        <div className="text-sm text-teal-700">
-                                             Trang {currentPageComplex}/{totalPagesComplex} • {Math.min(endIdxComplex, totalComplex)} trên {totalComplex} khu sân
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                             <Button type="button" onClick={handlePrevComplex} disabled={currentPageComplex === 1} className={`px-3 py-1 rounded-full items-center justify-center border transition-colors ${currentPageComplex === 1 ? "bg-gray-50 text-gray-400 border-gray-300 cursor-not-allowed" : "bg-white text-teal-600 border-teal-200 hover:border-teal-300 hover:bg-teal-50"}`}>
-                                                  <ChevronLeft className="w-4 h-4" />
-                                             </Button>
-                                             <div className="flex items-center gap-1">
-                                                  {(() => {
-                                                       const pages = [];
-                                                       const maxVisiblePages = 5;
-                                                       let startPage = Math.max(1, currentPageComplex - Math.floor(maxVisiblePages / 2));
-                                                       let endPage = Math.min(totalPagesComplex, startPage + maxVisiblePages - 1);
-                                                       if (endPage - startPage + 1 < maxVisiblePages) startPage = Math.max(1, endPage - maxVisiblePages + 1);
-                                                       if (startPage > 1) {
-                                                            pages.push(<Button key={1} onClick={() => setPageComplex(1)} className="px-3 py-1 rounded-full border border-teal-200 text-teal-600 bg-teal-50 hover:bg-teal-500 hover:text-white hover:border-teal-300 transition-colors">1</Button>);
-                                                            if (startPage > 2) pages.push(<span key="ellipsis1" className="px-2 text-teal-400 bg-teal-50">...</span>);
-                                                       }
-                                                       for (let i = startPage; i <= endPage; i++) {
-                                                            pages.push(<Button key={i} onClick={() => setPageComplex(i)} className={`px-4 py-1 rounded-full border transition-colors ${i === currentPageComplex ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600" : "border-teal-200 text-teal-600 bg-teal-50 hover:bg-teal-500 hover:text-white hover:border-teal-300"}`}>{i}</Button>);
-                                                       }
-                                                       if (endPage < totalPagesComplex) {
-                                                            if (endPage < totalPagesComplex - 1) pages.push(<span key="ellipsis2" className="px-2 text-teal-400 bg-teal-50">...</span>);
-                                                            pages.push(<Button key={totalPagesComplex} onClick={() => setPageComplex(totalPagesComplex)} className="px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300 transition-colors">{totalPagesComplex}</Button>);
-                                                       }
-                                                       return pages;
-                                                  })()}
-                                             </div>
-                                             <Button type="button" onClick={handleNextComplex} disabled={currentPageComplex === totalPagesComplex} className={`px-3 py-1 rounded-full border transition-colors ${currentPageComplex === totalPagesComplex ? "bg-gray-50 text-gray-400 border-gray-300 cursor-not-allowed" : "bg-white text-teal-600 border-teal-200 hover:border-teal-300 hover:bg-teal-50"}`}>
-                                                  <ChevronRight className="w-4 h-4 " />
-                                             </Button>
-                                        </div>
                                    </div>
                               )}
                          </>
                     ) : !isLoading && isGroupedView ? (
-                         <div className="space-y-10">
-                              <div>
-                                   <div className="flex items-center justify-between mb-4">
-                                        <h2 className="text-lg font-extrabold text-teal-800 tracking-tight">
-                                             <span className="inline-flex items-center gap-2 px-2 py-1 rounded-full border border-teal-300 bg-teal-50">
-                                                  <MapPin className="w-5 h-5 text-teal-600" />
-                                                  <span>Gần bạn</span>
-                                             </span>
-                                        </h2>
-                                        <Button
-                                             type="button"
-                                             onClick={() => { setActiveTab("near"); setForceList(true); setPage(1); setEntityTab("complexes"); }}
-                                             className="px-3 py-1 rounded-2xl hover:border-b-2 bg-transparent hover:bg-teal-50 hover:border-teal-300 text-teal-700 text-sm"
-                                        >
-                                             Xem tất cả
-                                        </Button>
-                                   </div>
-                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-                                        {complexes.slice(0, 4).map((c) => (
-                                             <Link
-                                                  key={c.complexId}
-                                                  to={`/complex/${c.complexId}`}
-                                                  onClick={(e) => { e.preventDefault(); navigate(`/complex/${c.complexId}`); }}
-                                                  className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-lg overflow-hidden h-full flex flex-col cursor-pointer"
-                                             >
-                                                  <div className="relative overflow-hidden">
-                                                       <img src={c.image} alt={c.name} className="w-full h-48 object-cover rounded-xl" draggable={false} />
-                                                  </div>
-                                                  <div className="px-2 py-3 flex-1 flex flex-col">
-                                                       <div className="flex bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2">
-                                                            <MapPin className="w-4 h-4 mr-1" />
-                                                            <span className="text-xs font-semibold line-clamp-1">{c.address}</span>
-                                                       </div>
-                                                       <div className="flex items-center justify-between mb-3">
-                                                            <h3 className="text-lg font-bold text-teal-800 line-clamp-1">{c.name}</h3>
-                                                       </div>
-
-
-                                                       <div className="flex items-center justify-between gap-2 mb-4">
-                                                            <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{c.availableFields}/{c.totalFields} sân</span>
-                                                            <div className="text-xs flex items-center text-gray-500">
-                                                                 <MapPin className="w-4 h-4 mr-1" /> <p> {c.distanceKm ? `${c.distanceKm.toFixed(1)} km` : ""}</p>
-                                                            </div>
-                                                       </div>
-                                                       <div className="mt-auto flex items-center justify-between">
-                                                            <div className="text-lg font-bold text-teal-500">{formatPrice(c.minPriceForSelectedSlot || 0)}/trận</div>
-                                                            <Button type="button" className="w-fit bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full font-semibold">
-                                                                 <EyeIcon className="w-4 h-4" />
-                                                            </Button>
-                                                       </div>
-                                                  </div>
-                                             </Link>
-                                        ))}
-                                   </div>
-                              </div>
-                              <div>
-                                   <div className="flex items-center justify-between mb-4">
-                                        <h2 className="text-lg font-extrabold text-red-700 tracking-tight">
-                                             <span className="inline-flex items-center gap-2 px-2 py-1 rounded-full border border-red-300 bg-red-50">
-                                                  <CircleDollarSign className="w-4 h-4 text-red-600" />
-                                                  <span>Giá tốt</span>
-                                             </span>
-                                        </h2>
-                                        <Button
-                                             type="button"
-                                             onClick={() => { setActiveTab("best-price"); setForceList(true); setPage(1); }}
-
-                                             className="px-3 py-1 rounded-2xl hover:border-b-2 bg-transparent hover:bg-teal-50 hover:border-teal-300 text-teal-700 text-sm"
-                                        >
-                                             Xem tất cả
-                                        </Button>
-                                   </div>
-                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-                                        {bestPriceGroup.map((field) => (
-                                             <Link
-                                                  key={field.fieldId}
-                                                  to={`/field/${field.fieldId}`}
-                                                  onClick={(e) => { e.preventDefault(); navigate(`/field/${field.fieldId}`); }}
-                                                  className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-lg overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer"
-                                             >
-                                                  <div className="relative overflow-hidden">
-                                                       <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" draggable={false} />
-                                                       <div className="absolute top-4 right-4 flex space-x-2">
-                                                            <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName}</p></div>
-                                                       </div>
-                                                  </div>
-                                                  <div className="px-2 py-3 flex-1 flex flex-col">
-                                                       <div className="flex bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2">
-                                                            <MapPin className="w-4 h-4 mr-1" />
-                                                            <span className="text-xs font-semibold line-clamp-1">{field.address}</span>
-                                                       </div>
-
-                                                       <div className="flex items-center justify-between mb-3">
-                                                            <h3 className="text-lg font-bold text-teal-800 line-clamp-1">{field.name}</h3>
-                                                            <div className="flex items-center">
-                                                                 <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full">Giá tốt nhất</span>
-                                                            </div>
-                                                       </div>
-                                                       <div className="flex items-center gap-2 mb-4">
-                                                            {Array.isArray(field.amenities) && field.amenities.length > 0 && (
-                                                                 <>
-                                                                      <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{field.amenities[0]}</span>
-                                                                      {field.amenities.length > 1 && (
-                                                                           <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">+{field.amenities.length - 1}</span>
-                                                                      )}
-                                                                 </>
-                                                            )}
-                                                       </div>
-                                                       <div className="mt-auto flex items-center justify-between">
-                                                            <div className="text-lg font-bold text-teal-500">{formatPrice(field.priceForSelectedSlot || 0)}/trận</div>
-                                                            <Button
-                                                                 type="button"
-                                                                 onClick={(e) => {
-                                                                      e.stopPropagation();
-                                                                      handleBook(field.fieldId);
-                                                                 }}
-                                                                 className="w-fit hover:scale-90 duration-200 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full font-semibold transition-colors"
-                                                            >
-                                                                 Đặt sân
-                                                            </Button>
-                                                       </div>
-                                                  </div>
-                                             </Link>
-                                        ))}
-                                   </div>
-                              </div>
-                              <div>
-                                   <div className="flex items-center justify-between mb-4">
-                                        <h2 className="text-lg font-extrabold text-teal-800 tracking-tight">
-                                             <span className="inline-flex items-center gap-2 px-2 py-1 rounded-full border border-yellow-300 bg-yellow-50">
-                                                  <Star className="w-5 h-5 text-yellow-500" />
-                                                  <span>Đánh giá cao</span>
-                                             </span>
-                                        </h2>
-                                        <Button
-                                             type="button"
-                                             onClick={() => { setActiveTab("top-rated"); setForceList(true); setPage(1); }}
-                                             className="px-3 py-1 rounded-2xl hover:border-b-2 bg-transparent hover:bg-teal-50 hover:border-teal-300 text-teal-700 text-sm"
-                                        >
-                                             Xem tất cả
-                                        </Button>
-                                   </div>
-                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-                                        {topRatedGroup.map((field) => (
-                                             <Link
-                                                  key={field.fieldId}
-                                                  to={`/field/${field.fieldId}`}
-                                                  onClick={(e) => { e.preventDefault(); navigate(`/field/${field.fieldId}`); }}
-                                                  className="group pt-3 px-3 border border-teal-100 bg-white rounded-xl shadow-lg overflow-hidden transition-all hover:scale-100 duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer"
-                                             >
-                                                  <div className="relative overflow-hidden">
-                                                       <img src={field.image} alt={field.name} className="w-full h-48 object-cover rounded-xl" draggable={false} />
-                                                       <div className="absolute top-4 right-4 flex space-x-2">
-                                                            <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1"><User size={16} /> <p>{slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName}</p></div>
-                                                       </div>
-                                                  </div>
-                                                  <div className="px-2 py-3 flex-1 flex flex-col">
-                                                       <div className="flex bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2">
-                                                            <MapPin className="w-4 h-4 mr-1" />
-                                                            <span className="text-xs font-semibold line-clamp-1">{field.address}</span>
-                                                       </div>
-
-                                                       <div className="flex items-center justify-between mb-3">
-                                                            <h3 className="text-lg font-bold text-teal-800 line-clamp-1">{field.name}</h3>
-                                                            <div className="flex items-center">
-                                                                 <Star className="w-4 h-4 text-red-500 mr-1" />
-                                                                 <span className="text-sm font-bold text-red-600">{field.rating}</span>
-                                                                 <span className="text-sm text-red-500 ml-1">({field.reviewCount})</span>
-                                                            </div>
-                                                       </div>
-                                                       <div className="flex items-center gap-2 mb-4">
-                                                            {Array.isArray(field.amenities) && field.amenities.length > 0 && (
-                                                                 <>
-                                                                      <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{field.amenities[0]}</span>
-                                                                      {field.amenities.length > 1 && (
-                                                                           <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">+{field.amenities.length - 1}</span>
-                                                                      )}
-                                                                 </>
-                                                            )}
-                                                       </div>
-                                                       <div className="mt-auto flex items-center justify-between">
-                                                            <div className="text-lg font-bold text-teal-500">{formatPrice(field.priceForSelectedSlot || 0)}/trận</div>
-                                                            <Button
-                                                                 type="button"
-                                                                 onClick={(e) => {
-                                                                      e.stopPropagation();
-                                                                      handleBook(field.fieldId);
-                                                                 }}
-                                                                 className="w-fit hover:scale-90 duration-200 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-full font-semibold transition-colors"
-                                                            >
-                                                                 Đặt sân
-                                                            </Button>
-                                                       </div>
-                                                  </div>
-                                             </Link>
-                                        ))}
-                                   </div>
-                              </div>
+                         <div className="space-y-6">
+                              <GroupedViewSection
+                                   title="Gần bạn"
+                                   icon={MapPin}
+                                   iconColor="text-teal-800"
+                                   bgColor="bg-teal-50"
+                                   borderColor="border-teal-300"
+                                   items={complexes.slice(0, 4)}
+                                   type="complex"
+                                   navigate={navigate}
+                                   formatPrice={formatPrice}
+                                   handleViewAll={() => { setActiveTab("near"); setForceList(true); setPage(1); setEntityTab("complexes"); }}
+                              />
+                              <GroupedViewSection
+                                   title="Giá tốt"
+                                   icon={Star}
+                                   iconColor="text-red-700"
+                                   bgColor="bg-red-50"
+                                   borderColor="border-red-300"
+                                   items={bestPriceGroup}
+                                   type="field"
+                                   navigate={navigate}
+                                   formatPrice={formatPrice}
+                                   handleBook={handleBook}
+                                   slotId={slotId}
+                                   handleViewAll={() => { setActiveTab("best-price"); setForceList(true); setPage(1); }}
+                                   delay={300}
+                              />
+                              <GroupedViewSection
+                                   title="Đánh giá cao"
+                                   icon={Star}
+                                   iconColor="text-yellow-700"
+                                   bgColor="bg-yellow-50"
+                                   borderColor="border-yellow-300"
+                                   items={topRatedGroup}
+                                   type="field"
+                                   navigate={navigate}
+                                   formatPrice={formatPrice}
+                                   handleBook={handleBook}
+                                   slotId={slotId}
+                                   handleViewAll={() => { setActiveTab("top-rated"); setForceList(true); setPage(1); }}
+                                   delay={500}
+                              />
                          </div>
                     ) : !isLoading && viewMode === "grid" ? (
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-                              {pageItems.map((field) => (
-                                   <Link
+                         <StaggerContainer staggerDelay={50} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+                              {pageItems.map((field, index) => (
+                                   <FieldCard
                                         key={field.fieldId}
-                                        to={`/field/${field.fieldId}`}
-                                        onClick={(e) => { e.preventDefault(); navigate(`/field/${field.fieldId}`); }}
-                                        className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-200 hover:shadow-xl hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer"
-                                   >
-                                        <div className="relative overflow-hidden">
-                                             <img
-                                                  src={field.image}
-                                                  alt={field.name}
-                                                  className="w-full h-40 object-cover transition-transform duration-300 ease-out group-hover:scale-105"
-                                                  draggable={false}
-                                             />
-                                             <div className="absolute top-4 right-4 flex space-x-2">
-                                                  <Button
-                                                       type="button"
-                                                       onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleToggleFavorite(field.id);
-                                                       }}
-                                                       variant="outline"
-                                                       className={`h-8 w-8 p-0 rounded-full shadow-sm transition-colors border ${field.isFavorite ? "bg-teal-500 text-white border-teal-500" : "bg-white text-teal-700 border-teal-200 hover:bg-teal-50"}`}
-                                                  >
-                                                       <Heart className="w-4 h-4" />
-                                                  </Button>
-                                                  <div className="bg-white/95 backdrop-blur px-2 py-1 rounded-full text-sm font-semibold text-teal-600 border border-teal-200 shadow-sm">
-                                                       {slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName}
-                                                  </div>
-                                             </div>
-                                        </div>
-                                        <div className="p-4 flex-1 flex flex-col">
-                                             <h3 className="text-xl font-semibold text-teal-800 mb-2">{field.name}</h3>
-                                             <div className="flex bg-teal-50 border border-teal-100 p-1 rounded-full w-fit items-center text-teal-700 mb-2">
-                                                  <MapPin className="w-4 h-4 mr-1" />
-                                                  <span className="text-xs line-clamp-1">{field.address}</span>
-                                             </div>
-
-                                             <div className="flex items-center justify-between mb-4">
-                                                  <div className="flex items-center">
-                                                       {activeTab === "near" ? (
-                                                            <>
-                                                                 <MapPin className="w-4 h-4 text-red-500 mr-1" />
-                                                                 <span className="text-sm font-bold text-red-600">{field.distanceKm ? `${Number(field.distanceKm).toFixed(1)} km` : ""}</span>
-                                                            </>
-                                                       ) : activeTab === "best-price" ? (
-                                                            <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full">Giá tốt nhất</span>
-                                                       ) : activeTab === "top-rated" ? (
-                                                            <>
-                                                                 <Star className="w-4 h-4 text-red-500 mr-1" />
-                                                                 <span className="text-sm font-bold text-red-600">{field.rating}</span>
-                                                                 <span className="text-sm text-red-500 ml-1">({field.reviewCount})</span>
-                                                            </>
-                                                       ) : (
-                                                            <>
-                                                                 <Star className="w-4 h-4 text-teal-400 mr-1" />
-                                                                 <span className="text-sm font-semibold">{field.rating}</span>
-                                                                 <span className="text-sm text-gray-500 ml-1">({field.reviewCount})</span>
-                                                            </>
-                                                       )}
-                                                  </div>
-                                                  <div className={`text-lg font-bold ${activeTab === "best-price" ? "text-red-500" : "text-teal-600"}`}>{formatPrice(field.priceForSelectedSlot || 0)}/trận</div>
-                                             </div>
-                                             <div className="flex items-center gap-2 mb-4">
-                                                  {Array.isArray(field.amenities) && field.amenities.length > 0 && (
-                                                       <>
-                                                            <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200">{field.amenities[0]}</span>
-                                                            {field.amenities.length > 1 && (
-                                                                 <span className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200">+{field.amenities.length - 1}</span>
-                                                            )}
-                                                       </>
-                                                  )}
-                                             </div>
-                                             <div className="mt-auto">
-                                                  <Button
-                                                       type="button"
-                                                       onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleBook(field.fieldId);
-                                                       }}
-                                                       className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-xl font-semibold transition-colors"
-                                                  >
-                                                       Đặt sân
-                                                  </Button>
-                                             </div>
-                                        </div>
-                                   </Link>
+                                        field={field}
+                                        index={index}
+                                        activeTab={activeTab}
+                                        slotId={slotId}
+                                        formatPrice={formatPrice}
+                                        handleToggleFavorite={handleToggleFavorite}
+                                        handleBook={handleBook}
+                                        navigate={navigate}
+                                   />
                               ))}
-                         </div>
-                    ) : (
+                         </StaggerContainer>
+                    ) : !isLoading ? (
                          <div className="space-y-4">
-                              {pageItems.map((field) => (
-                                   <Link
+                              {pageItems.map((field, index) => (
+                                   <FieldListItem
                                         key={field.fieldId}
-                                        to={`/field/${field.fieldId}`}
-                                        onClick={(e) => { e.preventDefault(); navigate(`/field/${field.fieldId}`); }}
-                                        className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden hover:scale-105 duration-300 transition-all border border-teal-100 hover:border-teal-200 cursor-pointer"
-                                   >
-                                        <div className="flex">
-                                             <div className="w-96 h-52 flex-shrink-0">
-                                                  <img
-                                                       src={field.image}
-                                                       alt={field.name}
-                                                       className="w-full h-full rounded-2xl object-cover"
-                                                       draggable={false}
-                                                  />
-                                             </div>
-                                             <div className="flex-1 px-4 py-1">
-                                                  <div className="flex justify-between items-start">
-                                                       <div className="flex  bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-1">
-                                                            <MapPin className="w-4 h-4 mr-1" />
-                                                            <span className="text-xs font-semibold">{field.address}</span>
-                                                       </div>
-                                                       <Button
-                                                            onClick={(e) => {
-                                                                 e.stopPropagation();
-                                                                 handleToggleFavorite(field.id);
-                                                            }}
-                                                            className={`px-3 rounded-full ${field.isFavorite ? "bg-red-500 text-white hover:bg-red-600" : "bg-teal-100 text-teal-700 hover:border-red-100 hover:border hover:text-red-600 hover:bg-red-50"}`}
-                                                       >
-                                                            <Heart className="w-4 h-4" />
-                                                       </Button>
-                                                  </div>
-
-                                                  <div className="flex items-center justify-between mb-3">
-                                                       <div className="flex-1 items-center">
-                                                            <h3 className="text-2xl font-bold text-teal-800 px-2">{field.name}</h3>
-                                                            <div className="flex items-center"> <Star className="w-4 h-4 text-teal-400 mr-1" />
-                                                                 <span className="text-sm font-semibold">{field.rating}</span>
-                                                                 <span className="text-sm text-gray-500 ml-1">({field.reviewCount} đánh giá)</span>
-                                                            </div>
-                                                       </div>
-                                                       <div className="text-xl font-bold text-teal-600">{formatPrice(field.priceForSelectedSlot || 0)}/trận</div>
-                                                  </div>
-                                                  <div className="text-xs text-teal-700 mb-2 break-words">
-                                                       {field.address}
-                                                       <a
-                                                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(field.address || "")}`}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="ml-2 text-teal-600 underline"
-                                                       >
-                                                            Xem bản đồ
-                                                       </a>
-                                                  </div>
-                                                  <div className="flex flex-wrap gap-2 mb-5">
-                                                       {(field.amenities || []).map((amenity, index) => (
-                                                            <span
-                                                                 key={index}
-                                                                 className="bg-teal-50 text-teal-700 px-2 py-1 rounded-full text-xs border border-teal-200"
-                                                            >
-                                                                 {amenity}
-                                                            </span>
-                                                       ))}
-                                                  </div>
-                                                  <div className="flex justify-between items-center">
-                                                       <div className="text-sm items-center flex text-gray-500">
-                                                            <Clock className="w-4 h-4 inline mr-1" />
-                                                            <p> {slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName} • {field.distanceKm ? `${Number(field.distanceKm).toFixed(1)} km` : ""} </p>
-                                                       </div>
-                                                       <div className="flex space-x-2">
-                                                            <Button
-                                                                 type="button"
-                                                                 onClick={(e) => {
-                                                                      e.stopPropagation();
-                                                                      handleBook(field.fieldId);
-                                                                 }}
-                                                                 className="bg-teal-500 hover:bg-teal-600 text-white py-1 px-4 rounded-xl font-semibold"
-                                                            >
-                                                                 Đặt sân
-                                                            </Button>
-                                                       </div>
-                                                  </div>
-                                             </div>
-                                        </div>
-                                   </Link>
+                                        field={field}
+                                        index={index}
+                                        slotId={slotId}
+                                        formatPrice={formatPrice}
+                                        handleToggleFavorite={handleToggleFavorite}
+                                        handleBook={handleBook}
+                                        navigate={navigate}
+                                   />
                               ))}
                          </div>
+                    ) : null}
+
+                    {/* Pagination for complexes */}
+                    {totalComplex > 0 && entityTab === "complexes" && (
+                         <Pagination
+                              currentPage={currentPageComplex}
+                              totalPages={totalPagesComplex}
+                              onPrev={handlePrevComplex}
+                              onNext={handleNextComplex}
+                              onPageChange={setPageComplex}
+                              totalItems={totalComplex}
+                              startIdx={startIdxComplex}
+                              endIdx={endIdxComplex}
+                         />
                     )}
 
                     {/* Pagination for fields (only when viewing Sân nhỏ list) */}
                     {entityTab === "fields" && filteredFields.length > 0 && !isGroupedView && (
-                         <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-                              <div className="text-sm text-teal-700">
-                                   Trang {currentPage}/{totalPages} • {Math.min(endIdx, totalItems)} trên {totalItems} sân
-                              </div>
-                              <div className="flex items-center gap-2">
-                                   <Button
-                                        type="button"
-                                        onClick={handlePrev}
-                                        disabled={currentPage === 1}
-                                        className={`px-3 py-1 rounded-full items-center justify-center border transition-colors ${currentPage === 1 ? "bg-gray-50 text-gray-400 border-gray-300 cursor-not-allowed" : "bg-white text-teal-600 border-teal-200 hover:border-teal-300 hover:bg-teal-50"}`}
-                                   >
-                                        <ChevronLeft className="w-4 h-4" />
-                                   </Button>
-
-                                   {/* Page numbers */}
-                                   <div className="flex items-center gap-1">
-                                        {(() => {
-                                             const pages = [];
-                                             const maxVisiblePages = 5;
-                                             let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-                                             let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-                                             if (endPage - startPage + 1 < maxVisiblePages) {
-                                                  startPage = Math.max(1, endPage - maxVisiblePages + 1);
-                                             }
-
-                                             // First page
-                                             if (startPage > 1) {
-                                                  pages.push(
-                                                       <Button
-                                                            key={1}
-                                                            onClick={() => setPage(1)}
-                                                            className="px-3 py-1 rounded-full border border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300 transition-colors"
-                                                       >
-                                                            1
-                                                       </Button>
-                                                  );
-                                                  if (startPage > 2) {
-                                                       pages.push(
-                                                            <span key="ellipsis1" className="px-2 text-teal-400">...</span>
-                                                       );
-                                                  }
-                                             }
-
-                                             // Middle pages
-                                             for (let i = startPage; i <= endPage; i++) {
-                                                  pages.push(
-                                                       <Button
-                                                            key={i}
-                                                            onClick={() => setPage(i)}
-                                                            className={`px-4 py-1 rounded-full border transition-colors ${i === currentPage
-                                                                 ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600"
-                                                                 : "border-teal-200 text-teal-600 bg-teal-50 hover:bg-teal-500 hover:text-white hover:border-teal-300"
-                                                                 }`}
-                                                       >
-                                                            {i}
-                                                       </Button>
-                                                  );
-                                             }
-
-                                             // Last page
-                                             if (endPage < totalPages) {
-                                                  if (endPage < totalPages - 1) {
-                                                       pages.push(
-                                                            <span key="ellipsis2" className="px-2 text-teal-400 bg-teal-50">...</span>
-                                                       );
-                                                  }
-                                                  pages.push(
-                                                       <Button
-                                                            key={totalPages}
-                                                            onClick={() => setPage(totalPages)}
-                                                            className="px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300 transition-colors"
-                                                       >
-                                                            {totalPages}
-                                                       </Button>
-                                                  );
-                                             }
-
-                                             return pages;
-                                        })()}
-                                   </div>
-
-                                   <Button
-                                        onClick={handleNext}
-                                        disabled={currentPage === totalPages}
-                                        className={`px-3 py-1 rounded-full border transition-colors ${currentPage === totalPages ? "bg-gray-50 text-gray-400 border-gray-300 cursor-not-allowed" : "bg-white text-teal-600 border-teal-200 hover:border-teal-300 hover:bg-teal-50"}`}
-                                   >
-                                        <ChevronRight className="w-4 h-4 " />
-                                   </Button>
-                              </div>
-                         </div>
+                         <Pagination
+                              currentPage={currentPage}
+                              totalPages={totalPages}
+                              onPrev={handlePrev}
+                              onNext={handleNext}
+                              onPageChange={setPage}
+                              totalItems={totalItems}
+                              startIdx={startIdx}
+                              endIdx={endIdx}
+                         />
                     )}
 
                     {!isLoading && filteredFields.length === 0 && (
-                         <div className="text-center py-12">
-                              <div className="text-gray-400 mb-4">
-                                   <Search className="w-16 h-16 mx-auto" />
-                              </div>
-                              <h3 className="text-lg font-semibold text-teal-800 mb-2">Không tìm thấy sân bóng</h3>
-                              <p className="text-teal-700 mb-4">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm</p>
-                              <Button
-                                   onClick={() => {
-                                        setSearchQuery("");
-                                        setSelectedLocation("");
-                                        setSelectedPrice("");
-                                        setSelectedRating("");
-                                        setActiveTab("all");
-                                        setViewMode("grid");
-                                        setPage(1);
-                                        // reset map-driven filters
-                                        setForceList(false);
-                                        setMapSearchKey(prev => prev + 1); // Force MapSearch reset
-
-                                   }}
-                                   className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-xl font-semibold transition-colors"
-                              >
-                                   <RefreshCcw className="w-4 h-4" />
-                              </Button>
-                         </div>
+                         <EmptyState
+                              onReset={() => {
+                                   setSearchQuery("");
+                                   setSelectedLocation("");
+                                   setSelectedPrice("");
+                                   setSelectedRating("");
+                                   setActiveTab("all");
+                                   setViewMode("grid");
+                                   setPage(1);
+                                   setForceList(false);
+                                   setMapSearchKey(prev => prev + 1);
+                              }}
+                         />
                     )}
                </Container>
 
@@ -1329,7 +662,7 @@ export default function FieldSearch({ user }) {
                     onClose={() => setShowMapSearch(false)}
                     onLocationSelect={handleMapLocationSelect}
                />
-          </Section>
+          </Section >
      );
 }
 

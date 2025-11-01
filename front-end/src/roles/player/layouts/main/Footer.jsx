@@ -55,7 +55,7 @@ export default function Footer() {
                               <div className="space-y-3">
                                    <div className="flex items-center">
                                         <MapPin className="w-4 h-4 mr-2 text-teal-500" />
-                                        <span className="text-gray-300">123 Đường ABC, Quận 1, TP.HCM</span>
+                                        <span className="text-gray-300">Khu CNC Hòa lạc, Thạch Thất, Hà Nội</span>
                                    </div>
                                    <div className="flex items-center">
                                         <Phone className="w-4 h-4 mr-2 text-teal-500" />
@@ -63,7 +63,7 @@ export default function Footer() {
                                    </div>
                                    <div className="flex items-center">
                                         <Mail className="w-4 h-4 mr-2 text-teal-500" />
-                                        <span className="text-gray-300">support@ballspot.vn</span>
+                                        <span className="text-gray-300">ballspot@gmail.com</span>
                                    </div>
                               </div>
                          </div>

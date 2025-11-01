@@ -92,7 +92,7 @@ export default function FindMatch() {
      }, [matchRequests.length, visibleMatchRequests.length]);
 
      return (
-          <div className="border border-b-0 overflow-y-auto scrollbar-hide rounded-t-3xl bg-white border-gray-400 flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
+          <div className="border border-b-0 overflow-y-auto scrollbar-hide rounded-t-3xl bg-white border-gray-400 flex flex-col" style={{ height: 'calc(108.5vh - 120px)' }}>
                {/* Filter for Tìm đối thủ */}
                <div className="grid sticky top-0 z-10 grid-cols-1 md:grid-cols-4 gap-3 p-4 bg-gray-50 border-b border-gray-200">
                     <div className="md:col-span-1">

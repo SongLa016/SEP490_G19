@@ -43,5 +43,27 @@ export {
   TableFooter,
 } from "./table";
 
+// Loading components
+export {
+  LoadingSpinner,
+  LoadingPage,
+  LoadingCard,
+  LoadingGrid,
+  LoadingList,
+  LoadingSkeleton,
+} from "./loading";
+
+// Animation components
+export {
+  FadeIn,
+  SlideIn,
+  ScaleIn,
+  StaggerContainer,
+  HoverScale,
+  Pulse,
+  Bounce,
+  Shimmer,
+} from "./animations";
+
 // Utility
 export { cn } from "../../../lib/utils";
