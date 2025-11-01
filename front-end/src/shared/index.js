@@ -1,5 +1,6 @@
 // Shared components exports
 export * from "./components/ui";
+export { default as AddressPicker } from "./components/AddressPicker";
 export { default as BookingModal } from "./components/BookingModal";
 export { default as CancellationPolicyDisplay } from "./components/CancellationPolicyDisplay";
 export { default as DemoAccountPromotionManager } from "./components/DemoAccountPromotionManager";
@@ -24,6 +25,7 @@ export { default as RescheduleModal } from "./components/RescheduleModal";
 export * from "./services/authService";
 export * from "./services/bookings";
 export * from "./services/cancellationPolicies";
+export * from "./services/depositPolicies";
 export * from "./services/fields";
 export * from "./services/notifications";
 export * from "./services/ownerRegistrationRequests";

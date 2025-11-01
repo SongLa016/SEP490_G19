@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
      Heart,
      MessageCircle,
@@ -13,7 +14,9 @@ import {
      Instagram,
      Copy,
      Edit,
-     Trash2
+     Trash2,
+     User,
+     LogIn
 } from "lucide-react";
 import {
      Button,
@@ -24,6 +27,10 @@ import {
      Textarea,
      Card,
      CardContent,
+     LoadingSkeleton,
+     FadeIn,
+     SlideIn,
+     StaggerContainer,
 } from "../../../../../shared/components/ui";
 import NewThreadModal from "./NewThreadModal";
 import ReplyModal from "./ReplyModal";
@@ -159,6 +166,7 @@ const mockComments = [
 
 export default function ThreadsFeed() {
      const { user } = useAuth();
+     const navigate = useNavigate();
      const [posts, setPosts] = useState(mockPosts);
      const [comments, setComments] = useState(mockComments);
      const [newPostContent, setNewPostContent] = useState("");
@@ -431,279 +439,283 @@ export default function ThreadsFeed() {
 
                     {/* Posts Feed */}
                     <div className="divide-y divide-gray-200">
-                         {posts.map((post) => (
-                              <div key={post.PostID} className="p-4 hover:bg-gray-50 transition-colors">
-                                   <div className="flex gap-3">
-                                        {/* Avatar */}
-                                        <Avatar className="w-10 h-10">
-                                             <AvatarImage src={post.author.Avatar} />
-                                             <AvatarFallback className="bg-gray-200 text-gray-700">
-                                                  {post.author.FullName.charAt(0)}
-                                             </AvatarFallback>
-                                        </Avatar>
+                         <StaggerContainer staggerDelay={100}>
+                              {posts.map((post, index) => (
+                                   <FadeIn key={post.PostID} delay={index * 100}>
+                                        <div key={post.PostID} className="p-4 hover:bg-gray-50 transition-all duration-200 hover:shadow-sm">
+                                             <div className="flex gap-3">
+                                                  {/* Avatar */}
+                                                  <Avatar className="w-10 h-10">
+                                                       <AvatarImage src={post.author.Avatar} />
+                                                       <AvatarFallback className="bg-gray-200 text-gray-700">
+                                                            {post.author.FullName.charAt(0)}
+                                                       </AvatarFallback>
+                                                  </Avatar>
 
-                                        {/* Content */}
-                                        <div className="flex-1 min-w-0">
-                                             {/* User Info */}
-                                             <div className="flex items-center gap-2 mb-1">
-                                                  <span className="font-semibold text-gray-900">{post.author.FullName}</span>
-                                                  <span className="text-gray-500 text-sm">@{post.author.Username}</span>
-                                                  {post.author.Verified && (
-                                                       <Badge variant="secondary" className="text-xs bg-blue-500 text-white px-1.5 py-0.5 rounded-full">
-                                                            ✓
-                                                       </Badge>
-                                                  )}
-                                                  {user && user.id === post.UserID && (
-                                                       <Badge variant="secondary" className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
-                                                            bài viết của bạn
-                                                       </Badge>
-                                                  )}
-                                                  <span className="text-gray-500 text-sm">•</span>
-                                                  <span className="text-gray-500 text-sm">{formatTimeAgo(post.CreatedAt)}</span>
-                                                  {user && (
-                                                       <Button variant="ghost" size="sm" className="ml-auto p-1 h-6 w-6 hover:bg-gray-100 rounded-full transition-colors">
-                                                            <Plus className="w-4 h-4 text-gray-400" />
-                                                       </Button>
-                                                  )}
-                                             </div>
-
-                                             {/* Post Title */}
-                                             {post.Title && (
-                                                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.Title}</h3>
-                                             )}
-
-                                             {/* Post Content */}
-                                             <div className="mb-3">
-                                                  <p className="text-gray-900 whitespace-pre-wrap">{post.Content}</p>
-
-                                                  {/* Field Tag */}
-                                                  {post.field && (
-                                                       <div className="flex items-center gap-1 mt-2">
-                                                            <MapPin className="w-4 h-4 text-gray-400" />
-                                                            <span className="text-blue-500 text-sm">{post.field.FieldName}</span>
+                                                  {/* Content */}
+                                                  <div className="flex-1 min-w-0">
+                                                       {/* User Info */}
+                                                       <div className="flex items-center gap-2 mb-1">
+                                                            <span className="font-semibold text-gray-900">{post.author.FullName}</span>
+                                                            <span className="text-gray-500 text-sm">@{post.author.Username}</span>
+                                                            {post.author.Verified && (
+                                                                 <Badge variant="secondary" className="text-xs bg-blue-500 text-white px-1.5 py-0.5 rounded-full">
+                                                                      ✓
+                                                                 </Badge>
+                                                            )}
+                                                            {user && user.id === post.UserID && (
+                                                                 <Badge variant="secondary" className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
+                                                                      bài viết của bạn
+                                                                 </Badge>
+                                                            )}
                                                             <span className="text-gray-500 text-sm">•</span>
-                                                            <span className="text-gray-500 text-sm">{post.field.Location}</span>
+                                                            <span className="text-gray-500 text-sm">{formatTimeAgo(post.CreatedAt)}</span>
+                                                            {user && (
+                                                                 <Button variant="ghost" size="sm" className="ml-auto p-1 h-6 w-6 hover:bg-gray-100 rounded-full transition-colors">
+                                                                      <Plus className="w-4 h-4 text-gray-400" />
+                                                                 </Button>
+                                                            )}
                                                        </div>
-                                                  )}
-                                             </div>
 
-                                             {/* Media */}
-                                             {post.MediaURL && (
-                                                  <div className="mb-3 rounded-xl overflow-hidden border border-gray-200">
-                                                       <img
-                                                            src={post.MediaURL}
-                                                            alt="Post content"
-                                                            className="w-full h-auto object-cover"
-                                                       />
-                                                  </div>
-                                             )}
+                                                       {/* Post Title */}
+                                                       {post.Title && (
+                                                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.Title}</h3>
+                                                       )}
 
-                                             {/* Interaction Buttons */}
-                                             <div className="flex items-center space-x-1 max-w-md">
-                                                  <Button
-                                                       variant="ghost"
-                                                       size="sm"
-                                                       onClick={() => toggleLike(post.PostID)}
-                                                       className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors hover:bg-red-50 ${post.isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
-                                                  >
-                                                       <Heart className={`w-5 h-5 ${post.isLiked ? 'fill-current' : ''}`} />
-                                                       <span className="text-sm">{post.likes}</span>
-                                                  </Button>
-                                                  <Button
-                                                       variant="ghost"
-                                                       size="sm"
-                                                       onClick={() => toggleCommentInput(post.PostID)}
-                                                       className="flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors text-gray-500 hover:text-blue-500 hover:bg-blue-50"
-                                                  >
-                                                       <MessageCircle className="w-5 h-5" />
-                                                       <span className="text-sm">{post.comments}</span>
-                                                  </Button>
-                                                  <Button
-                                                       variant="ghost"
-                                                       size="sm"
-                                                       onClick={() => toggleRepost(post.PostID)}
-                                                       className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors hover:bg-green-50 ${post.isReposted ? 'text-green-500' : 'text-gray-500 hover:text-green-500'}`}
-                                                  >
-                                                       <Repeat2 className={`w-5 h-5 ${post.isReposted ? 'fill-current' : ''}`} />
-                                                       <span className="text-sm">{post.reposts}</span>
-                                                  </Button>
-                                                  <Button
-                                                       variant="ghost"
-                                                       size="sm"
-                                                       className="flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors text-gray-500 hover:text-blue-500 hover:bg-blue-50"
-                                                  >
-                                                       <Share className="w-5 h-5" />
-                                                       <span className="text-sm">{post.shares}</span>
-                                                  </Button>
-                                                  {user && (
-                                                       <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => toggleBookmark(post.PostID)}
-                                                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors hover:bg-yellow-50 ${post.isBookmarked ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}`}
-                                                       >
-                                                            <Bookmark className={`w-5 h-5 ${post.isBookmarked ? 'fill-current' : ''}`} />
-                                                       </Button>
-                                                  )}
-                                             </div>
+                                                       {/* Post Content */}
+                                                       <div className="mb-3">
+                                                            <p className="text-gray-900 whitespace-pre-wrap">{post.Content}</p>
 
-                                             {/* Comment Input Section */}
-                                             {user && showCommentInput[post.PostID] && (
-                                                  <div className="mt-4">
-                                                       {/* Timeline line from post */}
-                                                       <div className="flex">
-                                                            <div className="w-8 flex justify-center">
-                                                                 <div className="w-px h-8 bg-gray-300"></div>
+                                                            {/* Field Tag */}
+                                                            {post.field && (
+                                                                 <div className="flex items-center gap-1 mt-2">
+                                                                      <MapPin className="w-4 h-4 text-gray-400" />
+                                                                      <span className="text-blue-500 text-sm">{post.field.FieldName}</span>
+                                                                      <span className="text-gray-500 text-sm">•</span>
+                                                                      <span className="text-gray-500 text-sm">{post.field.Location}</span>
+                                                                 </div>
+                                                            )}
+                                                       </div>
+
+                                                       {/* Media */}
+                                                       {post.MediaURL && (
+                                                            <div className="mb-3 rounded-xl overflow-hidden border border-gray-200">
+                                                                 <img
+                                                                      src={post.MediaURL}
+                                                                      alt="Post content"
+                                                                      className="w-full h-auto object-cover"
+                                                                 />
                                                             </div>
-                                                            <div className="flex-1">
-                                                                 <div className="flex gap-2">
-                                                                      <Avatar className="w-8 h-8">
-                                                                           <AvatarImage src={user.avatar} />
-                                                                           <AvatarFallback className="bg-gray-200 text-gray-700">
-                                                                                {user.name?.charAt(0) || "U"}
-                                                                           </AvatarFallback>
-                                                                      </Avatar>
-                                                                      <div className="flex-1 ">
-                                                                           <div className="flex items-center gap-2">
-                                                                                <span className="text-sm font-semibold text-gray-900">{user.name}</span>
-                                                                                <span className="text-gray-500">&gt;</span>
-                                                                                <span className="text-sm text-gray-500">Thêm bình luận</span>
-                                                                           </div>
-                                                                           <Textarea
-                                                                                placeholder={`Trả lời ${post.author.FullName}...`}
-                                                                                value={commentContent[post.PostID] || ""}
-                                                                                onChange={(e) => handleCommentChange(post.PostID, e.target.value)}
-                                                                                className="min-h-[40px] max-h-[200px] resize-none border-0 focus:ring-0 text-sm placeholder:text-gray-500 bg-transparent overflow-hidden"
-                                                                                style={{
-                                                                                     height: 'auto',
-                                                                                     minHeight: '60px',
-                                                                                     maxHeight: '200px'
-                                                                                }}
-                                                                                onInput={(e) => {
-                                                                                     e.target.style.height = 'auto';
-                                                                                     e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
-                                                                                }}
-                                                                           />
+                                                       )}
 
+                                                       {/* Interaction Buttons */}
+                                                       <div className="flex items-center space-x-1 max-w-md">
+                                                            <Button
+                                                                 variant="ghost"
+                                                                 size="sm"
+                                                                 onClick={() => toggleLike(post.PostID)}
+                                                                 className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors hover:bg-red-50 ${post.isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
+                                                            >
+                                                                 <Heart className={`w-5 h-5 ${post.isLiked ? 'fill-current' : ''}`} />
+                                                                 <span className="text-sm">{post.likes}</span>
+                                                            </Button>
+                                                            <Button
+                                                                 variant="ghost"
+                                                                 size="sm"
+                                                                 onClick={() => toggleCommentInput(post.PostID)}
+                                                                 className="flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors text-gray-500 hover:text-blue-500 hover:bg-blue-50"
+                                                            >
+                                                                 <MessageCircle className="w-5 h-5" />
+                                                                 <span className="text-sm">{post.comments}</span>
+                                                            </Button>
+                                                            <Button
+                                                                 variant="ghost"
+                                                                 size="sm"
+                                                                 onClick={() => toggleRepost(post.PostID)}
+                                                                 className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors hover:bg-green-50 ${post.isReposted ? 'text-green-500' : 'text-gray-500 hover:text-green-500'}`}
+                                                            >
+                                                                 <Repeat2 className={`w-5 h-5 ${post.isReposted ? 'fill-current' : ''}`} />
+                                                                 <span className="text-sm">{post.reposts}</span>
+                                                            </Button>
+                                                            <Button
+                                                                 variant="ghost"
+                                                                 size="sm"
+                                                                 className="flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors text-gray-500 hover:text-blue-500 hover:bg-blue-50"
+                                                            >
+                                                                 <Share className="w-5 h-5" />
+                                                                 <span className="text-sm">{post.shares}</span>
+                                                            </Button>
+                                                            {user && (
+                                                                 <Button
+                                                                      variant="ghost"
+                                                                      size="sm"
+                                                                      onClick={() => toggleBookmark(post.PostID)}
+                                                                      className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors hover:bg-yellow-50 ${post.isBookmarked ? 'text-yellow-500' : 'text-gray-500 hover:text-yellow-500'}`}
+                                                                 >
+                                                                      <Bookmark className={`w-5 h-5 ${post.isBookmarked ? 'fill-current' : ''}`} />
+                                                                 </Button>
+                                                            )}
+                                                       </div>
+
+                                                       {/* Comment Input Section */}
+                                                       {user && showCommentInput[post.PostID] && (
+                                                            <div className="mt-4">
+                                                                 {/* Timeline line from post */}
+                                                                 <div className="flex">
+                                                                      <div className="w-8 flex justify-center">
+                                                                           <div className="w-px h-8 bg-gray-300"></div>
                                                                       </div>
-                                                                      <div className="flex items-center gap-2">
-                                                                           <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                onClick={() => handleOpenReply(post)}
-                                                                                className="w-8 h-8 p-0 rounded-full border border-gray-300 hover:bg-gray-100"
-                                                                           >
-                                                                                <div className="w-4 h-4 flex items-center justify-center">
-                                                                                     <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                                                                                     </svg>
-                                                                                </div>
-                                                                           </Button>
-                                                                           {(commentContent[post.PostID] && commentContent[post.PostID].trim()) && (
-                                                                                <Button
-                                                                                     variant="ghost"
-                                                                                     size="sm"
-                                                                                     onClick={() => handleCommentSubmit(post.PostID)}
-                                                                                     className="w-8 h-8 p-0 rounded-full bg-gray-900 hover:bg-gray-800"
-                                                                                >
-                                                                                     <div className="w-4 h-4 flex items-center justify-center">
-                                                                                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                                                                          </svg>
+                                                                      <div className="flex-1">
+                                                                           <div className="flex gap-2">
+                                                                                <Avatar className="w-8 h-8">
+                                                                                     <AvatarImage src={user.avatar} />
+                                                                                     <AvatarFallback className="bg-gray-200 text-gray-700">
+                                                                                          {user.name?.charAt(0) || "U"}
+                                                                                     </AvatarFallback>
+                                                                                </Avatar>
+                                                                                <div className="flex-1 ">
+                                                                                     <div className="flex items-center gap-2">
+                                                                                          <span className="text-sm font-semibold text-gray-900">{user.name}</span>
+                                                                                          <span className="text-gray-500">&gt;</span>
+                                                                                          <span className="text-sm text-gray-500">Thêm bình luận</span>
                                                                                      </div>
-                                                                                </Button>
-                                                                           )}
+                                                                                     <Textarea
+                                                                                          placeholder={`Trả lời ${post.author.FullName}...`}
+                                                                                          value={commentContent[post.PostID] || ""}
+                                                                                          onChange={(e) => handleCommentChange(post.PostID, e.target.value)}
+                                                                                          className="min-h-[40px] max-h-[200px] resize-none border-0 focus:ring-0 text-sm placeholder:text-gray-500 bg-transparent overflow-hidden"
+                                                                                          style={{
+                                                                                               height: 'auto',
+                                                                                               minHeight: '60px',
+                                                                                               maxHeight: '200px'
+                                                                                          }}
+                                                                                          onInput={(e) => {
+                                                                                               e.target.style.height = 'auto';
+                                                                                               e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                                                                                          }}
+                                                                                     />
+
+                                                                                </div>
+                                                                                <div className="flex items-center gap-2">
+                                                                                     <Button
+                                                                                          variant="ghost"
+                                                                                          size="sm"
+                                                                                          onClick={() => handleOpenReply(post)}
+                                                                                          className="w-8 h-8 p-0 rounded-full border border-gray-300 hover:bg-gray-100"
+                                                                                     >
+                                                                                          <div className="w-4 h-4 flex items-center justify-center">
+                                                                                               <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                                                                               </svg>
+                                                                                          </div>
+                                                                                     </Button>
+                                                                                     {(commentContent[post.PostID] && commentContent[post.PostID].trim()) && (
+                                                                                          <Button
+                                                                                               variant="ghost"
+                                                                                               size="sm"
+                                                                                               onClick={() => handleCommentSubmit(post.PostID)}
+                                                                                               className="w-8 h-8 p-0 rounded-full bg-gray-900 hover:bg-gray-800"
+                                                                                          >
+                                                                                               <div className="w-4 h-4 flex items-center justify-center">
+                                                                                                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                                                                                    </svg>
+                                                                                               </div>
+                                                                                          </Button>
+                                                                                     )}
+                                                                                </div>
+                                                                           </div>
                                                                       </div>
                                                                  </div>
                                                             </div>
-                                                       </div>
+                                                       )}
                                                   </div>
-                                             )}
-                                        </div>
 
-                                        {/* More Options */}
-                                        {user && (
-                                             <div className="flex flex-col gap-1 relative post-menu-container">
-                                                  <Button
-                                                       variant="ghost"
-                                                       size="sm"
-                                                       className="p-1 h-6 w-6 hover:bg-gray-100 rounded-full transition-colors"
-                                                       onClick={() => togglePostMenu(post.PostID)}
-                                                  >
-                                                       <MoreHorizontal className="w-4 h-4 text-gray-400" />
-                                                  </Button>
+                                                  {/* More Options */}
+                                                  {user && (
+                                                       <div className="flex flex-col gap-1 relative post-menu-container">
+                                                            <Button
+                                                                 variant="ghost"
+                                                                 size="sm"
+                                                                 className="p-1 h-6 w-6 hover:bg-gray-100 rounded-full transition-colors"
+                                                                 onClick={() => togglePostMenu(post.PostID)}
+                                                            >
+                                                                 <MoreHorizontal className="w-4 h-4 text-gray-400" />
+                                                            </Button>
 
-                                                  {/* Dropdown Menu */}
-                                                  {showPostMenu[post.PostID] && (
-                                                       <div className="absolute right-0 top-8 w-44 bg-white rounded-lg shadow-xl py-2 z-50 border border-gray-200">
-                                                            <div className="px-2 space-y-3 text-base">
-                                                                 <Button
-                                                                      onClick={() => handleMenuAction(post.PostID, 'save')}
-                                                                      className={`flex items-center w-full px-3 py-2  hover:bg-yellow-50 hover:text-yellow-600 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors ${post.isBookmarked ? 'text-yellow-600' : 'text-gray-700'
-                                                                           }`}
-                                                                 >
-                                                                      <Bookmark className={`w-5 h-5 mr-3 ${post.isBookmarked ? 'fill-current' : ''}`} />
-                                                                      {post.isBookmarked ? 'Đã lưu' : 'Lưu'}
-                                                                 </Button>
-                                                                 <Button
-                                                                      onClick={() => handleMenuAction(post.PostID, 'report')}
-                                                                      className="flex items-center w-full px-3 py-2  text-red-700 hover:bg-red-50 hover:text-red-600 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors"
-                                                                 >
-                                                                      <Flag className="w-5 h-5 mr-3" />
-                                                                      Báo cáo
-                                                                 </Button>
-                                                                 <Button
-                                                                      onClick={() => handleMenuAction(post.PostID, 'copy')}
-                                                                      className="flex items-center w-full px-3 py-2  text-blue-700 hover:bg-blue-50 hover:text-blue-600 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors"
-                                                                 >
-                                                                      <Copy className="w-5 h-5 mr-3" />
-                                                                      Sao chép liên kết
-                                                                 </Button>
-                                                            </div>
-
-                                                            {/* Owner-only options */}
-                                                            {user.id === post.UserID && (
-                                                                 <>
-                                                                      <div className="border-t border-gray-200 my-2"></div>
-                                                                      <div className="px-2">
+                                                            {/* Dropdown Menu */}
+                                                            {showPostMenu[post.PostID] && (
+                                                                 <div className="absolute right-0 top-8 w-44 bg-white rounded-lg shadow-xl py-2 z-50 border border-gray-200">
+                                                                      <div className="px-2 space-y-3 text-base">
                                                                            <Button
-                                                                                onClick={() => handleMenuAction(post.PostID, 'edit')}
-                                                                                className="flex items-center w-full px-3 py-2 text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors"
+                                                                                onClick={() => handleMenuAction(post.PostID, 'save')}
+                                                                                className={`flex items-center w-full px-3 py-2  hover:bg-yellow-50 hover:text-yellow-600 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors ${post.isBookmarked ? 'text-yellow-600' : 'text-gray-700'
+                                                                                     }`}
                                                                            >
-                                                                                <Edit className="w-5 h-5 mr-3" />
-                                                                                Chỉnh sửa
+                                                                                <Bookmark className={`w-5 h-5 mr-3 ${post.isBookmarked ? 'fill-current' : ''}`} />
+                                                                                {post.isBookmarked ? 'Đã lưu' : 'Lưu'}
                                                                            </Button>
                                                                            <Button
-                                                                                onClick={() => handleMenuAction(post.PostID, 'delete')}
-                                                                                className="flex items-center w-full px-3 py-2 text-red-600 hover:bg-red-50 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors"
+                                                                                onClick={() => handleMenuAction(post.PostID, 'report')}
+                                                                                className="flex items-center w-full px-3 py-2  text-red-700 hover:bg-red-50 hover:text-red-600 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors"
                                                                            >
-                                                                                <Trash2 className="w-5 h-5 mr-3" />
-                                                                                Xóa bài viết
+                                                                                <Flag className="w-5 h-5 mr-3" />
+                                                                                Báo cáo
+                                                                           </Button>
+                                                                           <Button
+                                                                                onClick={() => handleMenuAction(post.PostID, 'copy')}
+                                                                                className="flex items-center w-full px-3 py-2  text-blue-700 hover:bg-blue-50 hover:text-blue-600 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors"
+                                                                           >
+                                                                                <Copy className="w-5 h-5 mr-3" />
+                                                                                Sao chép liên kết
                                                                            </Button>
                                                                       </div>
-                                                                 </>
+
+                                                                      {/* Owner-only options */}
+                                                                      {user.id === post.UserID && (
+                                                                           <>
+                                                                                <div className="border-t border-gray-200 my-2"></div>
+                                                                                <div className="px-2">
+                                                                                     <Button
+                                                                                          onClick={() => handleMenuAction(post.PostID, 'edit')}
+                                                                                          className="flex items-center w-full px-3 py-2 text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors"
+                                                                                     >
+                                                                                          <Edit className="w-5 h-5 mr-3" />
+                                                                                          Chỉnh sửa
+                                                                                     </Button>
+                                                                                     <Button
+                                                                                          onClick={() => handleMenuAction(post.PostID, 'delete')}
+                                                                                          className="flex items-center w-full px-3 py-2 text-red-600 hover:bg-red-50 p-0 h-auto bg-transparent border-0 justify-start rounded-md transition-colors"
+                                                                                     >
+                                                                                          <Trash2 className="w-5 h-5 mr-3" />
+                                                                                          Xóa bài viết
+                                                                                     </Button>
+                                                                                </div>
+                                                                           </>
+                                                                      )}
+                                                                 </div>
+                                                            )}
+
+                                                            {/* Quick Report Button - Only show for others' posts */}
+                                                            {user.id !== post.UserID && (
+                                                                 <Button
+                                                                      variant="ghost"
+                                                                      size="sm"
+                                                                      className="p-1 h-6 w-6 hover:bg-red-50 rounded-full transition-colors"
+                                                                      onClick={() => handleMenuAction(post.PostID, 'report')}
+                                                                      title="Báo cáo bài viết"
+                                                                 >
+                                                                      <Flag className="w-4 h-4 text-gray-400 hover:text-red-500" />
+                                                                 </Button>
                                                             )}
                                                        </div>
                                                   )}
-
-                                                  {/* Quick Report Button - Only show for others' posts */}
-                                                  {user.id !== post.UserID && (
-                                                       <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="p-1 h-6 w-6 hover:bg-red-50 rounded-full transition-colors"
-                                                            onClick={() => handleMenuAction(post.PostID, 'report')}
-                                                            title="Báo cáo bài viết"
-                                                       >
-                                                            <Flag className="w-4 h-4 text-gray-400 hover:text-red-500" />
-                                                       </Button>
-                                                  )}
                                              </div>
-                                        )}
-                                   </div>
 
-                              </div>
-                         ))}
+                                        </div>
+                                   </FadeIn>
+                              ))}
+                         </StaggerContainer>
                     </div>
 
                </div>
@@ -755,7 +767,7 @@ export default function ThreadsFeed() {
                {/* Login/Signup Modal for non-logged users */}
                {!user && showNewThread && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                         <Card className="w-full max-w-md bg-white border border-gray-200">
+                         <Card className="w-full rounded-2xl max-w-md bg-white border border-gray-200">
                               <CardContent className="p-6">
                                    <div className="flex items-center justify-between mb-4">
                                         <h2 className="text-xl font-bold text-gray-900">Đăng nhập hoặc đăng ký</h2>
@@ -768,16 +780,25 @@ export default function ThreadsFeed() {
                                         </Button>
                                    </div>
 
-                                   <p className="text-gray-600 mb-6">Xem những gì mọi người đang nói và tham gia cuộc trò chuyện.</p>
+                                   <p className="text-gray-600 mb-6 text-sm">Xem những gì mọi người đang nói và tham gia cuộc trò chuyện.</p>
 
-                                   <Button className="w-full bg-gray-900 hover:bg-gray-800 text-white mb-3">
-                                        <Instagram className="w-5 h-5 mr-2" />
-                                        Tiếp tục với Instagram
+                                   <Button
+                                        className="w-full bg-gray-900 hover:bg-gray-800 text-white mb-3"
+                                        onClick={() => setShowNewThread(false)}
+                                   >
+                                        <User className="w-5 h-5 mr-2" />
+                                        Tiếp tục trải nghiệm BallSpot
                                    </Button>
 
-                                   <Button variant="ghost" className="w-full text-gray-600">
-                                        Đăng nhập bằng tên người dùng
-                                   </Button>
+                                   <Link to="/login">
+                                        <Button
+                                             variant="ghost"
+                                             className="w-full text-gray-600 hover:bg-gray-100"
+                                        >
+                                             <LogIn className="w-5 h-5 mr-2" />
+                                             Đăng nhập bằng tài khoản của bạn
+                                        </Button>
+                                   </Link>
                               </CardContent>
                          </Card>
                     </div>

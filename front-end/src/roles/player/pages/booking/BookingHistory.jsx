@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Calendar, MapPin, Receipt, Search, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ArrowUpDown, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon } from "lucide-react";
-import { Section, Container, Card, CardContent, Input, Button, Badge, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, DatePicker } from "../../../../shared/components/ui";
+import { Section, Container, Card, CardContent, Input, Button, Badge, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, DatePicker, LoadingList, LoadingSkeleton, FadeIn, SlideIn, StaggerContainer } from "../../../../shared/components/ui";
 import { useNavigate } from "react-router-dom";
 import { listBookingsByUser, updateBooking } from "../../../../shared/index";
 import { listMatchRequests, listMatchJoinsByRequest, acceptMatchJoin, rejectMatchJoin, expireMatchRequestsNow, listPlayerHistoriesByUser } from "../../../../shared/index";
@@ -31,6 +31,15 @@ export default function BookingHistory({ user }) {
      const [showRescheduleModal, setShowRescheduleModal] = useState(false);
      const [selectedBooking, setSelectedBooking] = useState(null);
      const [opponentData, setOpponentData] = useState(null);
+
+     // Scroll to top when filters or sorting change
+     useEffect(() => {
+          window.scrollTo({
+               top: 0,
+               behavior: 'smooth'
+          });
+          // Brief loading indication for filter changes
+     }, [statusFilter, sortBy, dateFrom, dateTo, currentPage]);
 
      useEffect(() => {
           const userBookings = listBookingsByUser(user?.id || "");
@@ -424,15 +433,17 @@ export default function BookingHistory({ user }) {
 
                     <div className="space-y-4">
                          {/* Recurring Bookings */}
-                         {visibleGroups.map((group) => {
-                              const status = getRecurringStatus(group);
-                              const sortedBookings = (group.bookings || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
-                              const firstBooking = sortedBookings.length > 0 ? sortedBookings[0] : null;
-                              const lastBooking = sortedBookings.length > 0 ? sortedBookings[sortedBookings.length - 1] : null;
-
-                              return (
-                                   <div key={group.groupId} className="p-5 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 to-emerald-50 hover:shadow-lg transition-shadow">
-                                        <div className="flex justify-between items-start mb-4">
+                         {visibleGroups.length > 0 && (
+                              <StaggerContainer staggerDelay={50}>
+                                   {visibleGroups.map((group, index) => {
+                                        const status = getRecurringStatus(group);
+                                        const sortedBookings = (group.bookings || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+                                        const firstBooking = sortedBookings.length > 0 ? sortedBookings[0] : null;
+                                        const lastBooking = sortedBookings.length > 0 ? sortedBookings[sortedBookings.length - 1] : null;
+                                        return (
+                                             <FadeIn key={group.groupId} delay={index * 50}>
+                                                  <div key={group.groupId} className="p-5 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 to-emerald-50 hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
+                                                       <div className="flex justify-between items-start mb-4">
                                              <div className="flex items-center gap-3 flex-wrap">
                                                   <div className="flex items-center gap-2">
                                                        <Repeat className="w-6 h-6 text-teal-600" />
@@ -561,13 +572,19 @@ export default function BookingHistory({ user }) {
                                                   </div>
                                              </div>
                                         )}
-                                   </div>
-                              );
-                         })}
+                                                  </div>
+                                             </FadeIn>
+                                        );
+                                   })}
+                              </StaggerContainer>
+                         )}
 
                          {/* Single Bookings */}
-                         {paginatedSingles.map((b) => (
-                              <div key={b.id} className="p-5 rounded-2xl border border-teal-100 bg-white/80 backdrop-blur hover:shadow-lg transition-shadow">
+                         {paginatedSingles.length > 0 && (
+                              <StaggerContainer staggerDelay={50}>
+                                   {paginatedSingles.map((b, index) => (
+                                        <FadeIn key={b.id} delay={index * 50}>
+                                             <div key={b.id} className="p-5 rounded-2xl border border-teal-100 bg-white/80 backdrop-blur hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
                                    <div className="flex justify-between items-start gap-4">
                                         <div className="min-w-0 flex-1">
                                              <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -715,28 +732,35 @@ export default function BookingHistory({ user }) {
                                         </div>
                                    )}
                               </div>
-                         ))}
+                                        </FadeIn>
+                                   ))}
+                              </StaggerContainer>
+                         )}
 
                          {/* Player Match History */}
                          {playerHistories && playerHistories.length > 0 && (
-                              <div className="p-5 rounded-2xl border border-emerald-200 bg-emerald-50/50">
-                                   <div className="text-lg font-bold text-emerald-800 mb-2">Lịch sử ghép đối</div>
-                                   <div className="space-y-2">
-                                        {playerHistories.map(h => (
-                                             <div key={h.historyId} className="flex justify-between items-center bg-white/80 border border-emerald-100 rounded-xl p-3">
-                                                  <div className="flex flex-col">
-                                                       <div className="font-semibold text-emerald-800">{h.fieldName || "Sân"}</div>
-                                                       <div className="text-sm text-gray-700">{h.address}</div>
-                                                       <div className="text-xs text-gray-600">{h.date} • {h.slotName}</div>
-                                                  </div>
-                                                  <div className="text-right">
-                                                       <div className="text-xs text-gray-500">{new Date(h.createdAt).toLocaleString('vi-VN')}</div>
-                                                       <div className="text-xs font-semibold text-emerald-700">{h.role} • {h.finalStatus}</div>
-                                                  </div>
-                                             </div>
-                                        ))}
+                              <SlideIn direction="up" delay={200}>
+                                   <div className="p-5 rounded-2xl border border-emerald-200 bg-emerald-50/50">
+                                        <div className="text-lg font-bold text-emerald-800 mb-2">Lịch sử ghép đối</div>
+                                        <div className="space-y-2">
+                                             {playerHistories.map((h, index) => (
+                                                  <FadeIn key={h.historyId} delay={index * 50}>
+                                                       <div key={h.historyId} className="flex justify-between items-center bg-white/80 border border-emerald-100 rounded-xl p-3 transition-all duration-200 hover:shadow-md hover:scale-[1.01]">
+                                                            <div className="flex flex-col">
+                                                                 <div className="font-semibold text-emerald-800">{h.fieldName || "Sân"}</div>
+                                                                 <div className="text-sm text-gray-700">{h.address}</div>
+                                                                 <div className="text-xs text-gray-600">{h.date} • {h.slotName}</div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                 <div className="text-xs text-gray-500">{new Date(h.createdAt).toLocaleString('vi-VN')}</div>
+                                                                 <div className="text-xs font-semibold text-emerald-700">{h.role} • {h.finalStatus}</div>
+                                                            </div>
+                                                       </div>
+                                                  </FadeIn>
+                                             ))}
+                                        </div>
                                    </div>
-                              </div>
+                              </SlideIn>
                          )}
 
                          {/* Pagination for Single Bookings */}

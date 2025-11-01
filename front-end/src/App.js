@@ -25,6 +25,7 @@ import {
   RevenueReports,
   ScheduleManagement,
   CancellationPolicies,
+  DepositPolicies,
   PromotionsManagement,
   PaymentTracking,
   NotificationsManagement,
@@ -140,6 +141,10 @@ function AppContent() {
           element={<CancellationPolicies isDemo={true} />}
         />
         <Route
+          path="/demo/deposit-policies"
+          element={<DepositPolicies isDemo={true} />}
+        />
+        <Route
           path="/demo/promotions"
           element={<PromotionsManagement isDemo={true} />}
         />
@@ -241,6 +246,20 @@ function AppContent() {
             user ? (
               user.roleName === "Owner" ? (
                 <CancellationPolicies />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/owner/deposit-policies"
+          element={
+            user ? (
+              user.roleName === "Owner" ? (
+                <DepositPolicies />
               ) : (
                 <Navigate to="/dashboard" replace />
               )

@@ -1,3 +1,271 @@
+// Service layer for Field, FieldComplex, FieldPrice APIs
+import axios from "axios";
+
+// Determine base URL based on environment
+// In development, use proxy if available, otherwise use direct URL
+const getBaseURL = () => {
+  // Check if we're in development and proxy is available
+  if (process.env.NODE_ENV === 'development') {
+    // Try to use proxy first (if setupProxy.js exists)
+    return "/api";
+  }
+  // Production or no proxy available
+  return "https://sep490-g19-zxph.onrender.com/api";
+};
+
+// Create axios instance with base configuration
+const apiClient = axios.create({
+  baseURL: getBaseURL(),
+  timeout: 30000, // Increased timeout for slower connections
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Add request interceptor to include auth token if available
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Helper function to handle API errors
+const handleApiError = (error) => {
+  let errorMessage = "Có lỗi xảy ra khi gọi API";
+  let details = "";
+
+  if (error.response) {
+    const { status, statusText, data } = error.response;
+    if (status === 404) {
+      errorMessage = "API endpoint không tồn tại.";
+    } else if (status === 500) {
+      errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau.";
+    } else if (data && data.message) {
+      errorMessage = data.message;
+    } else {
+      errorMessage = `Lỗi ${status}: ${statusText}`;
+    }
+  } else if (error.request) {
+    // Check if it's a CORS error
+    if (error.code === 'ERR_NETWORK' || error.message?.includes('CORS') || error.message?.includes('Network Error')) {
+      errorMessage = "Lỗi CORS: Backend chưa cấu hình cho phép truy cập từ domain này.";
+      details = "Vui lòng kiểm tra cấu hình CORS trên backend hoặc liên hệ admin.";
+    } else {
+      errorMessage = "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
+    }
+  } else {
+    errorMessage = error.message || "Đã xảy ra lỗi không xác định.";
+  }
+
+  console.error("API Error:", {
+    message: error.message,
+    code: error.code,
+    response: error.response?.data,
+    request: error.request,
+    config: error.config?.url,
+  });
+
+  const fullError = new Error(errorMessage);
+  if (details) {
+    fullError.details = details;
+  }
+  throw fullError;
+};
+
+// ========== REAL API FUNCTIONS ==========
+
+// FieldComplex API functions
+export async function createFieldComplex(complexData) {
+  try {
+    const response = await apiClient.post("/FieldComplex", {
+      ownerId: complexData.ownerId,
+      name: complexData.name,
+      address: complexData.address,
+      description: complexData.description || "",
+      image: complexData.image || "",
+      status: complexData.status || "Active",
+      fields: complexData.fields || [],
+    });
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+export async function fetchFieldComplexes() {
+  try {
+    const response = await apiClient.get("/FieldComplex");
+    return response.data.map((complex) => ({
+      complexId: complex.complexId,
+      ownerId: complex.ownerId,
+      name: complex.name,
+      address: complex.address,
+      description: complex.description || "",
+      image: complex.image || "",
+      status: complex.status,
+      createdAt: complex.createdAt,
+      ownerName: complex.ownerName || "",
+    }));
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+export async function fetchFieldComplex(id) {
+  try {
+    const response = await apiClient.get(`/FieldComplex/${id}`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+export async function updateFieldComplex(id, complexData) {
+  try {
+    const response = await apiClient.put(`/FieldComplex/${id}`, complexData);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+export async function deleteFieldComplex(id) {
+  try {
+    const response = await apiClient.delete(`/FieldComplex/${id}`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+// Field API functions
+export async function createField(fieldData) {
+  try {
+    const response = await apiClient.post("/Field", {
+      complexId: fieldData.complexId,
+      typeId: fieldData.typeId,
+      name: fieldData.name,
+      size: fieldData.size || "",
+      grassType: fieldData.grassType || "",
+      description: fieldData.description || "",
+      image: fieldData.image || "",
+      pricePerHour: fieldData.pricePerHour || 0,
+      status: fieldData.status || "Available",
+    });
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+export async function fetchFieldsByComplex(complexId) {
+  try {
+    const response = await apiClient.get(`/Field/complex/${complexId}`);
+    return response.data.map((field) => ({
+      fieldId: field.fieldId,
+      complexId: field.complexId,
+      typeId: field.typeId,
+      name: field.name,
+      size: field.size || "",
+      grassType: field.grassType || "",
+      description: field.description || "",
+      image: field.image || "",
+      pricePerHour: field.pricePerHour,
+      status: field.status,
+      createdAt: field.createdAt,
+      complexName: field.complexName || "",
+      typeName: field.typeName || "",
+    }));
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+export async function fetchField(fieldId) {
+  try {
+    const response = await apiClient.get(`/Field/${fieldId}`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+export async function updateField(fieldId, fieldData) {
+  try {
+    const response = await apiClient.put(`/Field/${fieldId}`, fieldData);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+export async function deleteField(fieldId) {
+  try {
+    const response = await apiClient.delete(`/Field/${fieldId}`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+// FieldPrice API functions
+export async function createFieldPrice(priceData) {
+  try {
+    const response = await apiClient.post("/FieldPrice", {
+      fieldId: priceData.fieldId,
+      slotId: priceData.slotId,
+      price: priceData.price,
+    });
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+export async function fetchFieldPrices() {
+  try {
+    const response = await apiClient.get("/FieldPrice");
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+export async function fetchFieldPrice(id) {
+  try {
+    const response = await apiClient.get(`/FieldPrice/${id}`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+export async function updateFieldPrice(id, priceData) {
+  try {
+    const response = await apiClient.put(`/FieldPrice/${id}`, priceData);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+export async function deleteFieldPrice(id) {
+  try {
+    const response = await apiClient.delete(`/FieldPrice/${id}`);
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+// ========== MOCK DATA (for backward compatibility) ==========
 // Mocked service layer aligned with your database schema
 // Tables mirrored: FieldComplexes, Fields, FieldTypes, TimeSlots, FieldSchedules, FieldPrices
 
@@ -909,7 +1177,58 @@ export async function fetchComplexes(params = {}) {
     query = "",
     date = new Date().toISOString().split("T")[0],
     slotId = "",
+    useApi = false,
   } = params;
+  
+  // Use real API if requested
+  if (useApi) {
+    try {
+      const complexes = await fetchFieldComplexes();
+      // Fetch fields for each complex to get counts
+      const complexesWithFields = await Promise.all(
+        complexes.map(async (complex) => {
+          try {
+            const fields = await fetchFieldsByComplex(complex.complexId);
+            return {
+              complexId: complex.complexId,
+              name: complex.name,
+              address: complex.address,
+              image: complex.image,
+              totalFields: fields.length,
+              availableFields: fields.filter(f => f.status === "Available").length,
+              minPriceForSelectedSlot: fields.length > 0 
+                ? Math.min(...fields.map(f => f.pricePerHour || 0).filter(p => p > 0)) 
+                : 0,
+              rating: 0, // API might not return rating
+            };
+          } catch (error) {
+            console.error(`Error fetching fields for complex ${complex.complexId}:`, error);
+            return {
+              complexId: complex.complexId,
+              name: complex.name,
+              address: complex.address,
+              image: complex.image,
+              totalFields: 0,
+              availableFields: 0,
+              minPriceForSelectedSlot: 0,
+              rating: 0,
+            };
+          }
+        })
+      );
+      
+      return complexesWithFields.filter(
+        (item) =>
+          item.name.toLowerCase().includes(query.toLowerCase()) ||
+          item.address.toLowerCase().includes(query.toLowerCase())
+      );
+    } catch (error) {
+      console.error("Error fetching complexes from API, falling back to mock:", error);
+      // Fall through to mock data
+    }
+  }
+  
+  // Mock data fallback
   const complexes = FIELD_COMPLEXES.filter(
     (c) => c.ApprovalStatus === "Approved"
   );
@@ -957,7 +1276,44 @@ export async function fetchFields(params = {}) {
     date = new Date().toISOString().split("T")[0],
     slotId = "",
     typeId,
+    useApi = false,
   } = params;
+  
+  // Use real API if requested
+  if (useApi && complexId) {
+    try {
+      const fields = await fetchFieldsByComplex(complexId);
+      return fields
+        .filter((f) => !typeId || f.typeId === Number(typeId))
+        .map((f) => ({
+          fieldId: f.fieldId,
+          complexId: f.complexId,
+          complexName: f.complexName || "",
+          name: f.name,
+          typeName: f.typeName || "",
+          size: f.size || "",
+          grassType: f.grassType || "",
+          description: f.description || "",
+          address: "", // Will need to fetch from complex
+          image: f.image,
+          priceForSelectedSlot: f.pricePerHour,
+          rating: 0,
+          reviewCount: 0,
+          distanceKm: 0,
+          isAvailableForSelectedSlot: f.status === "Available",
+        }))
+        .filter(
+          (item) =>
+            item.name.toLowerCase().includes(query.toLowerCase()) ||
+            item.address.toLowerCase().includes(query.toLowerCase())
+        );
+    } catch (error) {
+      console.error("Error fetching fields from API, falling back to mock:", error);
+      // Fall through to mock data
+    }
+  }
+  
+  // Mock data fallback
   let list = FIELDS.filter(
     (f) => f.ApprovalStatus === "Approved" && !f.IsHidden
   );
