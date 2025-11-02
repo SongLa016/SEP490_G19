@@ -11,29 +11,81 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using System.Text;
-
-
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Lấy service collection và configuration
 var services = builder.Services;
 var config = builder.Configuration;
 
-// Add services to the container.
+// ===================== CONTROLLERS + SWAGGER =====================
 services.AddControllers();
 services.AddEndpointsApiExplorer();
-services.AddSwaggerGen();
+
+services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new() { Title = "BallSport API", Version = "v1" });
+
+    // Thêm JWT Bearer vào Swagger
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Nhập token JWT dạng: Bearer {token}"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+// ===================== CORS =====================
+services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.WithOrigins(
+            "http://localhost:3000",             // React local
+            "http://localhost:5049",             // Swagger HTTP
+            "https://localhost:7062",            // Swagger HTTPS
+            "https://sep490-g19.onrender.com",   // Backend Render
+            "https://ballsport-frontend.onrender.com" // React render (ví dụ)
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
+    });
+});
+
+// ===================== DATABASE =====================
+services.AddDbContext<Sep490G19v1Context>(options =>
+    options.UseSqlServer(config.GetConnectionString("MyCnn")));
+
+// ===================== REPOSITORIES & SERVICES =====================
 services.AddMemoryCache();
 
-// Đăng ký Repository và Service từ Trung
+// --- Core user / auth ---
 services.AddScoped<UserRepositories>();
 services.AddScoped<UserService>();
 services.AddScoped<JwtService>();
 services.AddScoped<OTPService>();
 
-// Đăng ký Repository và Service từ main
+// --- Field-related ---
 services.AddScoped<FieldTypesRepository>();
 services.AddScoped<FieldTypeService>();
 
@@ -54,7 +106,8 @@ services.AddScoped<FieldPriceService>();
 
 services.AddScoped<TimeSlotRepository>();
 services.AddScoped<TimeSlotService>();
-// ============ THÊM COMMUNITY REPOSITORIES ============
+
+// --- Community module ---
 services.AddScoped<IPostRepository, PostRepository>();
 services.AddScoped<ICommentRepository, CommentRepository>();
 services.AddScoped<IPostLikeRepository, PostLikeRepository>();
@@ -66,22 +119,19 @@ services.AddScoped<ICommentService, CommentService>();
 services.AddScoped<INotificationService, NotificationService>();
 services.AddScoped<IReportService, ReportService>();
 
-// ===== CẤU HÌNH COMMUNITY / NOTIFICATION / REPORT =====
-builder.Services.Configure<CommunitySettings>(
-    builder.Configuration.GetSection("CommunitySettings"));
+// --- Settings ---
+builder.Services.Configure<CommunitySettings>(config.GetSection("CommunitySettings"));
+builder.Services.Configure<NotificationSettings>(config.GetSection("NotificationSettings"));
+builder.Services.Configure<ReportSettings>(config.GetSection("ReportSettings"));
 
-builder.Services.Configure<NotificationSettings>(
-    builder.Configuration.GetSection("NotificationSettings"));
+// ===================== SMTP (Email) =====================
+var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
+services.AddSingleton(smtpSettings);
+services.AddTransient<EmailService>();
 
-builder.Services.Configure<ReportSettings>(
-    builder.Configuration.GetSection("ReportSettings"));
+// ===================== AUTHENTICATION =====================
 
-
-// Đăng ký DbContext (chỉ giữ 1 lần)
-services.AddDbContext<Sep490G19v1Context>(options =>
-    options.UseSqlServer(config.GetConnectionString("MyCnn")));
-
-// Cấu hình Authentication với JWT
+// --- JWT ---
 services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -98,47 +148,54 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// Cấu hình Google Authentication
-services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-})
-.AddCookie()
-.AddGoogle(options =>
-{
-    var googleAuthNSection = config.GetSection("Authentication:Google");
-    options.ClientId = googleAuthNSection["ClientId"];
-    options.ClientSecret = googleAuthNSection["ClientSecret"];
-    options.CallbackPath = "/signin-google";
-});
+// --- Google Auth ---
+var googleSection = config.GetSection("Authentication:Google");
+var googleClientId = googleSection["ClientId"];
+var googleClientSecret = googleSection["ClientSecret"];
 
-// SMTP + Email Service
-var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
-services.AddSingleton(smtpSettings);
-services.AddTransient<EmailService>();
-
-var app = builder.Build();
-
-//deployment port
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-app.Urls.Add($"http://*:{port}");
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
+    })
+    .AddCookie()
+    .AddGoogle(options =>
+    {
+        options.ClientId = googleClientId;
+        options.ClientSecret = googleClientSecret;
+        options.CallbackPath = "/signin-google";
+    });
 }
 
-app.UseHttpsRedirection();
+// ===================== BUILD APP =====================
+var app = builder.Build();
 
-// Thêm Authentication trước Authorization
+// ===================== DEPLOYMENT PORT =====================
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+app.Urls.Add($"http://*:{port}");
+
+// ===================== MIDDLEWARE PIPELINE =====================
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "BallSport API v1");
+    c.RoutePrefix = "swagger";
+});
+
+// Nếu bạn test local bằng HTTP → có thể tắt HTTPS redirect
+// app.UseHttpsRedirection();
+
+app.UseCors("AllowAll");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-//check api is running
-app.MapGet("/", () => "✅ API is running on Render!");
+
+// Check API is running
+app.MapGet("/", () => "✅ BallSport API is running with JWT + CORS + Swagger!");
 
 app.Run();

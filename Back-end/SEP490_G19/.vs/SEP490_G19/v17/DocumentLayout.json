@@ -3,24 +3,72 @@
   "WorkspaceRootPath": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\ballsport.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\ballsport.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
       "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\depositpolicycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\depositpolicycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\community\\postcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\community\\postcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\community\\commentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\community\\commentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\extensions\\repositoryserviceextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\extensions\\repositoryserviceextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\data\\sep490g19v1context.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\data\\sep490g19v1context.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\handlereportdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\handlereportdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\ballsport.api.http||{5703B403-55E7-4C63-8C88-A8F52C7A45C5}",
       "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\ballsport.api.http||{5703B403-55E7-4C63-8C88-A8F52C7A45C5}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\createpostdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\createpostdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\ballsport.api.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\ballsport.api.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\community\\reportcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\community\\reportcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\community\\notificationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\community\\notificationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\services\\community\\icommentservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\services\\community\\icommentservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\ballsport.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\ballsport.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     },
     {
       "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\models\\role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -127,16 +175,8 @@
       "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\postdetaildto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\handlereportdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\handlereportdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\createreportdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\createreportdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\createpostdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\createpostdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\createnotificationdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -149,22 +189,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\ballsport.infrastructure.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
       "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\ballsport.infrastructure.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\community\\reportcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\community\\reportcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\community\\postcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\community\\postcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\community\\notificationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\community\\notificationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\community\\commentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\community\\commentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\doanfall25\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\resertpasscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -182,8 +206,85 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 31,
+          "SelectedChildIndex": 37,
           "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{269a02dc-6af8-11d3-bdc4-00c04f688e50}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "DepositPolicyController.cs",
+              "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\DepositPolicyController.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Controllers\\DepositPolicyController.cs",
+              "ToolTip": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\DepositPolicyController.cs",
+              "RelativeToolTip": "BallSport.API\\Controllers\\DepositPolicyController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-02T07:21:40.01Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "RepositoryServiceExtensions.cs",
+              "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Extensions\\RepositoryServiceExtensions.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Extensions\\RepositoryServiceExtensions.cs",
+              "ToolTip": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Extensions\\RepositoryServiceExtensions.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Extensions\\RepositoryServiceExtensions.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-29T09:01:58.59Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "Sep490G19v1Context.cs",
+              "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs",
+              "ToolTip": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs",
+              "ViewState": "AgIAAGABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-29T09:01:53.49Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "BallSport.API",
+              "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.csproj",
+              "RelativeDocumentMoniker": "BallSport.API\\BallSport.API.csproj",
+              "ToolTip": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.csproj",
+              "RelativeToolTip": "BallSport.API\\BallSport.API.csproj",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-10-28T14:43:36.552Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "ICommentService.cs",
+              "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\Community\\ICommentService.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\Services\\Community\\ICommentService.cs",
+              "ToolTip": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\Community\\ICommentService.cs",
+              "RelativeToolTip": "BallSport.Application\\Services\\Community\\ICommentService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-28T14:42:42.609Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "launchSettings.json",
+              "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Properties\\launchSettings.json",
+              "RelativeDocumentMoniker": "BallSport.API\\Properties\\launchSettings.json",
+              "ToolTip": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Properties\\launchSettings.json",
+              "RelativeToolTip": "BallSport.API\\Properties\\launchSettings.json",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-10-28T14:38:59.555Z"
+            },
             {
               "$type": "Document",
               "DocumentIndex": 2,
@@ -192,14 +293,14 @@
               "RelativeDocumentMoniker": "BallSport.API\\Program.cs",
               "ToolTip": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Program.cs",
               "RelativeToolTip": "BallSport.API\\Program.cs",
-              "ViewState": "AgIAAFcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAACoAAAAAAAAAAAAAAMkAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-27T06:23:39.229Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 17,
               "Title": "Role.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Role.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\Role.cs",
@@ -211,7 +312,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 18,
               "Title": "Report.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Report.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\Report.cs",
@@ -223,7 +324,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 19,
               "Title": "Post.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Post.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\Post.cs",
@@ -235,7 +336,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 20,
               "Title": "PostLike.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\PostLike.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\PostLike.cs",
@@ -247,7 +348,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 21,
               "Title": "FieldComplex.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\FieldComplex.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\FieldComplex.cs",
@@ -259,7 +360,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 26,
               "Title": "IReportRepository.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\IReportRepository.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\IReportRepository.cs",
@@ -271,7 +372,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 16,
+              "DocumentIndex": 28,
               "Title": "ICommentRepository.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\ICommentRepository.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\ICommentRepository.cs",
@@ -283,7 +384,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 17,
+              "DocumentIndex": 29,
               "Title": "CommentRepository.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\CommentRepository.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\CommentRepository.cs",
@@ -295,7 +396,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 25,
               "Title": "PostLikeRepository.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\PostLikeRepository.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\PostLikeRepository.cs",
@@ -307,7 +408,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 18,
+              "DocumentIndex": 30,
               "Title": "NotificationRepository.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\NotificationRepository.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\NotificationRepository.cs",
@@ -319,7 +420,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 19,
+              "DocumentIndex": 31,
               "Title": "IPostRepository.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\IPostRepository.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\IPostRepository.cs",
@@ -331,7 +432,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 27,
               "Title": "IPostLikeRepository.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\IPostLikeRepository.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\IPostLikeRepository.cs",
@@ -343,7 +444,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 20,
+              "DocumentIndex": 32,
               "Title": "FieldComplexRepository.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\FieldComplexRepository.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\FieldComplexRepository.cs",
@@ -355,7 +456,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 21,
+              "DocumentIndex": 33,
               "Title": "BallSport.API.csproj",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.csproj",
               "RelativeDocumentMoniker": "BallSport.API\\BallSport.API.csproj",
@@ -363,12 +464,11 @@
               "RelativeToolTip": "BallSport.API\\BallSport.API.csproj",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-10-25T05:43:18.184Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-25T05:43:18.184Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 9,
               "Title": "BallSport.API.http",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.http",
               "RelativeDocumentMoniker": "BallSport.API\\BallSport.API.http",
@@ -376,12 +476,11 @@
               "RelativeToolTip": "BallSport.API\\BallSport.API.http",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003502|",
-              "WhenOpened": "2025-10-25T05:39:02.035Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-25T05:39:02.035Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 25,
+              "DocumentIndex": 37,
               "Title": "ReportDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\ReportDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\ReportDTO.cs",
@@ -393,7 +492,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 26,
+              "DocumentIndex": 38,
               "Title": "PostFilterDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\PostFilterDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\PostFilterDTO.cs",
@@ -405,7 +504,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 27,
+              "DocumentIndex": 39,
               "Title": "PostFeedDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\PostFeedDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\PostFeedDTO.cs",
@@ -417,7 +516,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 29,
+              "DocumentIndex": 41,
               "Title": "NotificationDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\NotificationDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\NotificationDTO.cs",
@@ -429,7 +528,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 31,
+              "DocumentIndex": 8,
               "Title": "HandleReportDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\HandleReportDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\HandleReportDTO.cs",
@@ -441,7 +540,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 32,
+              "DocumentIndex": 43,
               "Title": "CreateReportDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\CreateReportDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\CreateReportDTO.cs",
@@ -453,7 +552,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 33,
+              "DocumentIndex": 10,
               "Title": "CreatePostDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\CreatePostDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\CreatePostDTO.cs",
@@ -465,7 +564,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 34,
+              "DocumentIndex": 44,
               "Title": "CreateNotificationDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\CreateNotificationDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\CreateNotificationDTO.cs",
@@ -477,7 +576,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 35,
+              "DocumentIndex": 45,
               "Title": "CommentDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\CommentDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\CommentDTO.cs",
@@ -489,7 +588,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 22,
               "Title": "ReportSettings.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Settings\\ReportSettings.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Settings\\ReportSettings.cs",
@@ -501,7 +600,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 23,
               "Title": "NotificationSettings.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Settings\\NotificationSettings.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Settings\\NotificationSettings.cs",
@@ -513,7 +612,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 24,
               "Title": "CommunitySettings.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Settings\\CommunitySettings.cs",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\Settings\\CommunitySettings.cs",
@@ -525,7 +624,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 36,
+              "DocumentIndex": 46,
               "Title": "BallSport.Infrastructure.csproj",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
               "RelativeDocumentMoniker": "BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
@@ -533,12 +632,11 @@
               "RelativeToolTip": "BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-10-25T05:21:29.422Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-25T05:21:29.422Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 1,
               "Title": "appsettings.Development.json",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.Development.json",
               "RelativeDocumentMoniker": "BallSport.API\\appsettings.Development.json",
@@ -551,20 +649,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "appsettings.json",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.json",
               "RelativeDocumentMoniker": "BallSport.API\\appsettings.json",
               "ToolTip": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.json",
               "RelativeToolTip": "BallSport.API\\appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACoAAAAWAAAAAAAAAA==",
+              "ViewState": "AgIAAC0AAAAAAAAAAAAswB4AAAAEAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
               "WhenOpened": "2025-10-25T04:48:44.611Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 16,
               "Title": "BallSport.Application.csproj",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\BallSport.Application.csproj",
               "RelativeDocumentMoniker": "BallSport.Application\\BallSport.Application.csproj",
@@ -572,12 +670,11 @@
               "RelativeToolTip": "BallSport.Application\\BallSport.Application.csproj",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-10-25T01:01:55.835Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-10-25T01:01:55.835Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 22,
+              "DocumentIndex": 34,
               "Title": "UpdatePostDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\UpdatePostDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\UpdatePostDTO.cs",
@@ -589,7 +686,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 23,
+              "DocumentIndex": 35,
               "Title": "UpdateCommentDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\UpdateCommentDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\UpdateCommentDTO.cs",
@@ -601,7 +698,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 24,
+              "DocumentIndex": 36,
               "Title": "ReportStatsDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\ReportStatsDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\ReportStatsDTO.cs",
@@ -613,7 +710,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 30,
+              "DocumentIndex": 42,
               "Title": "PostDetailDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\PostDetailDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\PostDetailDTO.cs",
@@ -625,7 +722,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 28,
+              "DocumentIndex": 40,
               "Title": "PostDTO.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\PostDTO.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\PostDTO.cs",
@@ -637,19 +734,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 40,
+              "DocumentIndex": 5,
               "Title": "CommentController.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\CommentController.cs",
               "RelativeDocumentMoniker": "BallSport.API\\Controllers\\Community\\CommentController.cs",
               "ToolTip": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\CommentController.cs",
               "RelativeToolTip": "BallSport.API\\Controllers\\Community\\CommentController.cs",
-              "ViewState": "AgIAAJcAAAAAAAAAAAAkwMIAAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAI8AAAAAAAAAAAAAwMIAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-25T01:01:42.4Z"
+              "WhenOpened": "2025-10-25T01:01:42.4Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 38,
+              "DocumentIndex": 4,
               "Title": "PostController.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\PostController.cs",
               "RelativeDocumentMoniker": "BallSport.API\\Controllers\\Community\\PostController.cs",
@@ -657,23 +755,24 @@
               "RelativeToolTip": "BallSport.API\\Controllers\\Community\\PostController.cs",
               "ViewState": "AgIAADwBAAAAAAAAAAAkwGcBAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-10-25T01:01:41.261Z"
+              "WhenOpened": "2025-10-25T01:01:41.261Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 39,
+              "DocumentIndex": 14,
               "Title": "NotificationController.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\NotificationController.cs",
               "RelativeDocumentMoniker": "BallSport.API\\Controllers\\Community\\NotificationController.cs",
               "ToolTip": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\NotificationController.cs",
               "RelativeToolTip": "BallSport.API\\Controllers\\Community\\NotificationController.cs",
-              "ViewState": "AgIAAOkAAAAAAAAAAAAkwBQBAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAF8AAAAAAAAAAAAIwBQBAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-10-25T01:01:40.141Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 37,
+              "DocumentIndex": 13,
               "Title": "ReportController.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\ReportController.cs",
               "RelativeDocumentMoniker": "BallSport.API\\Controllers\\Community\\ReportController.cs",
@@ -685,7 +784,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 41,
+              "DocumentIndex": 47,
               "Title": "ResertPassController.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\ResertPassController.cs",
               "RelativeDocumentMoniker": "BallSport.API\\Controllers\\ResertPassController.cs",
@@ -697,7 +796,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 42,
+              "DocumentIndex": 48,
               "Title": "IReportService.cs",
               "DocumentMoniker": "D:\\DOANFALL25\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\Community\\IReportService.cs",
               "RelativeDocumentMoniker": "BallSport.Application\\Services\\Community\\IReportService.cs",
