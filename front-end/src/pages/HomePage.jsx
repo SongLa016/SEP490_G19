@@ -1,8 +1,98 @@
 import { useState, useEffect, useRef } from "react";
+import { motion, useInView } from "framer-motion";
+import { gsap } from "gsap";
 import { Search, MapPin, Star, ArrowRight, ChevronLeft, ChevronRight, DollarSign, ShieldCheck, Sparkles, CheckCircle, Users, Calendar, BarChart3, Zap, Globe, Clock, TrendingUp } from "lucide-react";
 import { Container, Section, Card, CardContent, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Row } from "../shared/components/ui";
 import { useNavigate } from "react-router-dom";
 
+
+// Count-up Stats Card Component với animated background và icons
+const StatsCard = ({ targetValue, suffix, label, index, decimals = 0, Icon }) => {
+     const [count, setCount] = useState(0);
+     const ref = useRef(null);
+     const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+     useEffect(() => {
+          if (isInView) {
+               const duration = 2000;
+               const steps = 60;
+               const increment = targetValue / steps;
+               const stepDuration = duration / steps;
+
+               let current = 0;
+               const timer = setInterval(() => {
+                    current += increment;
+                    if (current >= targetValue) {
+                         setCount(targetValue);
+                         clearInterval(timer);
+                    } else {
+                         setCount(current);
+                    }
+               }, stepDuration);
+
+               return () => clearInterval(timer);
+          }
+     }, [isInView, targetValue]);
+
+     return (
+          <motion.div
+               ref={ref}
+               className="relative hover:scale-110 transition-all duration-300 hover:cursor-pointer p-6 rounded-2xl bg-gradient-to-br from-white to-teal-50/30 border border-teal-100"
+               initial={{ opacity: 0, y: 20 }}
+               animate={isInView ? { opacity: 1, y: 0 } : {}}
+               transition={{ delay: index * 0.1, duration: 0.5 }}
+               whileHover={{ scale: 1.1, y: -8, rotate: [0, 1, -1, 0] }}
+          >
+               {/* Animated Background Gradient */}
+               <motion.div
+                    className="absolute inset-0 rounded-2xl opacity-0 hover:opacity-100 transition-opacity"
+                    animate={{
+                         background: [
+                              "linear-gradient(135deg, rgba(20, 184, 166, 0.05) 0%, rgba(20, 184, 166, 0.15) 100%)",
+                              "linear-gradient(135deg, rgba(20, 184, 166, 0.15) 0%, rgba(20, 184, 166, 0.05) 100%)",
+                              "linear-gradient(135deg, rgba(20, 184, 166, 0.05) 0%, rgba(20, 184, 166, 0.15) 100%)",
+                         ],
+                    }}
+                    transition={{
+                         duration: 3,
+                         repeat: Infinity,
+                         ease: "easeInOut",
+                    }}
+               />
+
+               <div className="relative z-10">
+                    {Icon && (
+                         <motion.div
+                              className="mb-4 flex justify-center"
+                              animate={{
+                                   rotate: [0, 10, -10, 0],
+                                   scale: [1, 1.1, 1],
+                              }}
+                              transition={{
+                                   duration: 3,
+                                   repeat: Infinity,
+                                   ease: "easeInOut",
+                                   delay: index * 0.2,
+                              }}
+                         >
+                              <div className="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center">
+                                   <Icon className="w-6 h-6 text-teal-600" />
+                              </div>
+                         </motion.div>
+                    )}
+
+                    <motion.div
+                         className="text-4xl font-bold text-teal-500 mb-2"
+                         animate={isInView ? { scale: [1, 1.1, 1] } : {}}
+                         transition={{ delay: index * 0.1 + 0.3, duration: 0.4 }}
+                    >
+                         {decimals > 0 ? count.toFixed(decimals) : Math.floor(count).toLocaleString()}{suffix}
+                    </motion.div>
+                    <div className="text-gray-600 font-semibold">{label}</div>
+               </div>
+          </motion.div>
+     );
+};
 
 export default function HomePage({ user }) {
      const navigate = useNavigate();
@@ -10,10 +100,13 @@ export default function HomePage({ user }) {
      const [selectedLocation, setSelectedLocation] = useState("all");
      const [selectedPrice, setSelectedPrice] = useState("all");
      const [hoveredCardId, setHoveredCardId] = useState(null);
+     const [searchFocused, setSearchFocused] = useState(false);
+     const [testimonialIndex, setTestimonialIndex] = useState(0);
 
      // Ref for hero parallax only
      const heroRef = useRef(null);
      const suggestRef = useRef(null);
+     const particlesRef = useRef(null);
 
      // Helper functions to convert between "all" and empty string
      const handleLocationChange = (value) => {
@@ -130,12 +223,14 @@ export default function HomePage({ user }) {
           return [field.image, ...rotated];
      };
 
-     // A presentational card with hover expand and auto image slideshow
-     const FieldCard = ({ field }) => {
+     // A presentational card with hover expand and auto image slideshow + animations
+     const FieldCard = ({ field, index = 0 }) => {
           const images = getFieldImages(field);
           const [imageIndex, setImageIndex] = useState(0);
           const [isHovered, setIsHovered] = useState(false);
           const collapseTimeoutRef = useRef(null);
+          const cardRef = useRef(null);
+          const isInView = useInView(cardRef, { once: true, margin: "-50px" });
 
           useEffect(() => {
                if (images.length <= 1 || !isHovered) return;
@@ -151,8 +246,37 @@ export default function HomePage({ user }) {
           }, []);
 
           return (
-               <div
-                    className={`group/card rounded-xl transition-transform duration-300 hover:scale-105 ease-out hover:cursor-pointer border border-gray-100 shadow-md bg-white/90 backdrop-blur ${hoveredCardId === field.id ? 'scale-[1.03] ring-2 ring-teal-500/80 shadow-lg' : 'hover:shadow-lg'}`}
+               <motion.div
+                    ref={cardRef}
+                    className={`group/card rounded-xl ease-out hover:cursor-pointer border border-gray-100 shadow-md bg-white/90 backdrop-blur ${hoveredCardId === field.id ? 'ring-2 ring-teal-500/80 shadow-lg' : ''}`}
+                    initial={{ opacity: 0, y: 50, rotateY: -15 }}
+                    animate={isInView ? {
+                         opacity: 1,
+                         rotateY: 0,
+                         y: [0, -8, 0], // Floating animation
+                    } : { opacity: 0, y: 50 }}
+                    transition={{
+                         opacity: { delay: index * 0.1, duration: 0.5 },
+                         rotateY: { delay: index * 0.1, duration: 0.5 },
+                         y: {
+                              delay: index * 0.1 + 0.5,
+                              duration: 3 + index * 0.2,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                              // Don't use spring for keyframe animations with more than 2 values
+                         },
+                    }}
+                    whileHover={{
+                         scale: 1.05,
+                         rotateY: 5,
+                         rotateX: 5,
+                         z: 50,
+                         transition: { duration: 0.3 }
+                    }}
+                    style={{
+                         transformStyle: "preserve-3d",
+                         perspective: "1000px",
+                    }}
                     onMouseEnter={() => {
                          if (collapseTimeoutRef.current) { clearTimeout(collapseTimeoutRef.current); collapseTimeoutRef.current = null; }
                          setHoveredCardId(field.id);
@@ -219,7 +343,7 @@ export default function HomePage({ user }) {
                               </div>
                          </div>
                     </div>
-               </div>
+               </motion.div>
           );
      };
 
@@ -241,6 +365,44 @@ export default function HomePage({ user }) {
           } catch { }
           navigate("/search");
      };
+
+     // Floating particles for hero background
+     useEffect(() => {
+          if (!particlesRef.current) return;
+
+          const particles = [];
+          for (let i = 0; i < 30; i++) {
+               const particle = document.createElement('div');
+               particle.className = 'absolute w-1 h-1 bg-teal-400/40 rounded-full pointer-events-none';
+               particle.style.left = Math.random() * 100 + '%';
+               particle.style.top = Math.random() * 100 + '%';
+               particle.style.width = Math.random() * 3 + 2 + 'px';
+               particle.style.height = particle.style.width;
+               particlesRef.current.appendChild(particle);
+               particles.push(particle);
+          }
+
+          particles.forEach((particle, i) => {
+               gsap.to(particle, {
+                    x: Math.random() * 300 - 150,
+                    y: Math.random() * 300 - 150,
+                    opacity: Math.random() * 0.5 + 0.2,
+                    duration: Math.random() * 4 + 3,
+                    repeat: -1,
+                    yoyo: true,
+                    ease: "sine.inOut",
+                    delay: i * 0.2,
+               });
+          });
+
+          return () => {
+               particles.forEach(particle => {
+                    if (particle.parentNode) {
+                         particle.parentNode.removeChild(particle);
+                    }
+               });
+          };
+     }, []);
 
      // Parallax scroll effect for Hero Section only
      useEffect(() => {
@@ -268,84 +430,213 @@ export default function HomePage({ user }) {
           return () => window.removeEventListener('scroll', handleScroll);
      }, []);
 
+     // Auto-scroll testimonials
+     const testimonials = [
+          { name: "Sebastian", role: "Graphic design" },
+          { name: "Evangeline", role: "Model" },
+          { name: "Alexander", role: "Software engineer" },
+     ];
+
+     useEffect(() => {
+          const timer = setInterval(() => {
+               setTestimonialIndex((prev) => (prev + 1) % testimonials.length);
+          }, 5000); // Change every 5 seconds
+          return () => clearInterval(timer);
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, []);
+
      return (
           <Section className="min-h-screen">
                {/* Hero Section */}
                <Section ref={heroRef} className="relative h-screen text-white overflow-hidden">
                     <div className="hero-parallax-bg" style={{ backgroundImage: "url('https://c1.staticflickr.com/4/3764/33659811165_3a90d35fdb_b.jpg')" }}></div>
                     <div className="absolute inset-0 bg-black/50"></div>
+                    {/* Floating Particles */}
+                    <div ref={particlesRef} className="absolute inset-0 z-10"></div>
+
                     <Container className="relative h-full py-52 mx-auto flex z-10">
-                         <div className="text-start ml-24">
-                              <h1 className="text-5xl md:text-7xl w-8/12  font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-teal-300 to-teal-500">Khám phá và đặt sân dễ dàng</h1>
-                              <p className="text-lg md:text-xl mb-2  text-teal-50">Tìm sân phù hợp, đặt lịch nhanh chóng</p>
-                              <div className="max-w-2xl w-full">
-                                   <Card className="rounded-2xl bg-white/50 border-none backdrop-blur-sm">
-                                        <CardContent className="p-4">
-                                             <div className="flex flex-col text-black md:flex-row gap-3">
-                                                  <div className="flex-1 relative ">
-                                                       <Search className="absolute left-1 top-1/2 -translate-y-1/2 text-white w-5 h-5" />
-                                                       <Input placeholder="Tìm kiếm sân bóng..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-8 text-white bg-transparent border-0 rounded-none focus-visible:border-b-2 focus-visible:border-teal-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0" />
+                         <motion.div
+                              className="text-start ml-24"
+                              initial={{ opacity: 0, y: 50 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.8, ease: "easeOut" }}
+                         >
+                              {/* Animated Gradient Heading */}
+                              <motion.h1
+                                   className="text-5xl md:text-7xl w-8/12 font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-teal-300 via-teal-400 to-teal-500"
+                                   animate={{
+                                        backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+                                   }}
+                                   transition={{
+                                        duration: 5,
+                                        repeat: Infinity,
+                                        ease: "linear",
+                                   }}
+                                   style={{
+                                        backgroundSize: "200% 100%",
+                                   }}
+                              >
+                                   Khám phá và đặt sân dễ dàng
+                              </motion.h1>
+
+                              <motion.p
+                                   className="text-lg md:text-xl mb-2 text-teal-50"
+                                   initial={{ opacity: 0, x: -20 }}
+                                   animate={{ opacity: 1, x: 0 }}
+                                   transition={{ delay: 0.3, duration: 0.6 }}
+                              >
+                                   Tìm sân phù hợp, đặt lịch nhanh chóng
+                              </motion.p>
+
+                              <motion.div
+                                   className="max-w-2xl w-full"
+                                   initial={{ opacity: 0, y: 20 }}
+                                   animate={{ opacity: 1, y: 0 }}
+                                   transition={{ delay: 0.5, duration: 0.6 }}
+                              >
+                                   <motion.div
+                                        animate={searchFocused ? {
+                                             boxShadow: [
+                                                  "0 0 0px rgba(20, 184, 166, 0)",
+                                                  "0 0 20px rgba(20, 184, 166, 0.6)",
+                                                  "0 0 0px rgba(20, 184, 166, 0)",
+                                             ],
+                                        } : {}}
+                                        transition={{
+                                             duration: 2,
+                                             repeat: Infinity,
+                                             ease: "easeInOut",
+                                        }}
+                                   >
+                                        <Card className="rounded-2xl bg-white/50 border-none backdrop-blur-sm">
+                                             <CardContent className="p-4">
+                                                  <div className="flex flex-col text-black md:flex-row gap-3">
+                                                       <motion.div
+                                                            className="flex-1 relative"
+                                                            whileFocus={{ scale: 1.02 }}
+                                                       >
+                                                            <motion.div
+                                                                 animate={{
+                                                                      scale: searchFocused ? [1, 1.1, 1] : 1,
+                                                                      rotate: searchFocused ? [0, 5, -5, 0] : 0,
+                                                                 }}
+                                                                 transition={{
+                                                                      duration: 2,
+                                                                      repeat: searchFocused ? Infinity : 0,
+                                                                      ease: "easeInOut",
+                                                                 }}
+                                                            >
+                                                                 <Search className="absolute left-1 top-1/2 -translate-y-1/2 text-teal-600 w-5 h-5" />
+                                                            </motion.div>
+                                                            <Input
+                                                                 placeholder="Tìm kiếm sân bóng..."
+                                                                 value={searchQuery}
+                                                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                                                 onFocus={() => setSearchFocused(true)}
+                                                                 onBlur={() => setSearchFocused(false)}
+                                                                 className="pl-8 text-gray-800 bg-transparent border-0 rounded-none focus-visible:border-b-2 focus-visible:border-teal-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                                            />
+                                                       </motion.div>
+                                                       <hr className="w-[1px] h-10 bg-white" />
+                                                       <Select value={getLocationValue()} onValueChange={handleLocationChange}>
+                                                            <SelectTrigger className="md:w-20 w-10 px-1 bg-transparent border-0 rounded-xl text-white focus:border-b-2 focus:border-teal-500 focus:outline-none focus:ring-0 focus-visible:border-b-2 focus-visible:border-teal-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
+                                                                 <SelectValue placeholder="All Locations" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                 <SelectItem value="all">All Locations</SelectItem>
+                                                                 <SelectItem value="quan1">Quận Hoàn Kiếm</SelectItem>
+                                                                 <SelectItem value="quan3">Quận Ba Đình</SelectItem>
+                                                                 <SelectItem value="quan7">Quận Đống Đa</SelectItem>
+                                                                 <SelectItem value="quan10">Quận Hoàn Kiếm0</SelectItem>
+                                                            </SelectContent>
+                                                       </Select>
+                                                       <hr className="w-[1px] h-10 bg-white" />
+                                                       <Select value={getPriceValue()} onValueChange={handlePriceChange}>
+                                                            <SelectTrigger className="md:w-28 px-1 bg-transparent border-0 rounded-xl text-white focus:border-b-2 focus:border-teal-500 focus:outline-none focus:ring-0 focus-visible:border-b-2 focus-visible:border-teal-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
+                                                                 <SelectValue placeholder="Mọi mức giá" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                 <SelectItem value="all">Mọi mức giá</SelectItem>
+                                                                 <SelectItem value="under100">Dưới 100k</SelectItem>
+                                                                 <SelectItem value="100-200">100k - 200k</SelectItem>
+                                                                 <SelectItem value="200-300">200k - 300k</SelectItem>
+                                                                 <SelectItem value="over300">Trên 300k</SelectItem>
+                                                            </SelectContent>
+                                                       </Select>
+                                                       <motion.div
+                                                            whileHover={{ scale: 1.05 }}
+                                                            whileTap={{ scale: 0.95 }}
+                                                       >
+                                                            <Button
+                                                                 onClick={handleSearch}
+                                                                 className="px-4 rounded-xl bg-teal-500 text-white hover:bg-teal-600 transition-all duration-300 hover:cursor-pointer"
+                                                                 animate={{
+                                                                      boxShadow: [
+                                                                           "0 0 0px rgba(20, 184, 166, 0)",
+                                                                           "0 0 15px rgba(20, 184, 166, 0.5)",
+                                                                           "0 0 0px rgba(20, 184, 166, 0)",
+                                                                      ],
+                                                                 }}
+                                                                 transition={{
+                                                                      duration: 2,
+                                                                      repeat: Infinity,
+                                                                      ease: "easeInOut",
+                                                                 }}
+                                                            >
+                                                                 <motion.span
+                                                                      animate={{ x: [0, 3, 0] }}
+                                                                      transition={{
+                                                                           duration: 1.5,
+                                                                           repeat: Infinity,
+                                                                           ease: "easeInOut",
+                                                                      }}
+                                                                      className="inline-flex items-center"
+                                                                 >
+                                                                      <Search className="w-5 h-5 mr-2" /> Tìm kiếm
+                                                                 </motion.span>
+                                                            </Button>
+                                                       </motion.div>
                                                   </div>
-                                                  <hr className="w-[1px] h-10 bg-white" />
-                                                  <Select value={getLocationValue()} onValueChange={handleLocationChange}>
-                                                       <SelectTrigger className="md:w-20 w-10 px-1 bg-transparent border-0 rounded-xl text-white focus:border-b-2 focus:border-teal-500 focus:outline-none focus:ring-0 focus-visible:border-b-2 focus-visible:border-teal-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
-                                                            <SelectValue placeholder="All Locations" />
-                                                       </SelectTrigger>
-                                                       <SelectContent>
-                                                            <SelectItem value="all">All Locations</SelectItem>
-                                                            <SelectItem value="quan1">Quận Hoàn Kiếm</SelectItem>
-                                                            <SelectItem value="quan3">Quận Ba Đình</SelectItem>
-                                                            <SelectItem value="quan7">Quận Đống Đa</SelectItem>
-                                                            <SelectItem value="quan10">Quận Hoàn Kiếm0</SelectItem>
-                                                       </SelectContent>
-                                                  </Select>
-                                                  <hr className="w-[1px] h-10 bg-white" />
-                                                  <Select value={getPriceValue()} onValueChange={handlePriceChange}>
-                                                       <SelectTrigger className="md:w-28 px-1 bg-transparent border-0 rounded-xl text-white focus:border-b-2 focus:border-teal-500 focus:outline-none focus:ring-0 focus-visible:border-b-2 focus-visible:border-teal-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
-                                                            <SelectValue placeholder="Mọi mức giá" />
-                                                       </SelectTrigger>
-                                                       <SelectContent>
-                                                            <SelectItem value="all">Mọi mức giá</SelectItem>
-                                                            <SelectItem value="under100">Dưới 100k</SelectItem>
-                                                            <SelectItem value="100-200">100k - 200k</SelectItem>
-                                                            <SelectItem value="200-300">200k - 300k</SelectItem>
-                                                            <SelectItem value="over300">Trên 300k</SelectItem>
-                                                       </SelectContent>
-                                                  </Select>
-                                                  <Button onClick={handleSearch} className="px-4 rounded-xl bg-teal-500 text-white hover:bg-teal-600 transition-all duration-300 hover:scale-105 hover:cursor-pointer">
-                                                       <Search className="w-5 h-5 mr-2" /> Tìm kiếm
-                                                  </Button>
-                                             </div>
-                                        </CardContent>
-                                   </Card>
-                              </div>
-                         </div>
+                                             </CardContent>
+                                        </Card>
+                                   </motion.div>
+                              </motion.div>
+                         </motion.div>
                     </Container>
                </Section>
 
-               {/* Stats Section */}
-               <Section className="py-8 bg-gray-100">
-                    <Container>
+               {/* Stats Section with Count-up Animation */}
+               <motion.section
+                    className="py-8 bg-gradient-to-br from-gray-100 via-teal-50/30 to-gray-100 relative overflow-hidden"
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true, margin: "-100px" }}
+                    transition={{ duration: 0.8 }}
+               >
+                    <motion.div
+                         className="absolute inset-0 opacity-20"
+                         animate={{
+                              backgroundPosition: ["0% 0%", "100% 100%", "0% 0%"],
+                         }}
+                         transition={{
+                              duration: 20,
+                              repeat: Infinity,
+                              ease: "linear",
+                         }}
+                         style={{
+                              backgroundImage: "linear-gradient(45deg, transparent 30%, rgba(20, 184, 166, 0.3) 50%, transparent 70%)",
+                              backgroundSize: "200% 200%",
+                         }}
+                    />
+                    <Container className="relative z-10">
                          <Row className="md:grid-cols-4 text-center">
-                              <div className="hover:scale-110 transition-all duration-300 hover:cursor-pointer">
-                                   <div className="text-4xl font-bold text-teal-500 mb-2">500+</div>
-                                   <div className="text-gray-600 font-semibold">Sân bóng</div>
-                              </div>
-                              <div className="hover:scale-110 transition-all duration-300 hover:cursor-pointer">
-                                   <div className="text-4xl font-bold text-teal-500 mb-2">10,000+</div>
-                                   <div className="text-gray-600 font-semibold">Người dùng</div>
-                              </div>
-                              <div className="hover:scale-110 transition-all duration-300 hover:cursor-pointer">
-                                   <div className="text-4xl font-bold text-teal-500 mb-2">50,000+</div>
-                                   <div className="text-gray-600 font-semibold">Lượt đặt sân</div>
-                              </div>
-                              <div className="hover:scale-110 transition-all duration-300 hover:cursor-pointer">
-                                   <div className="text-4xl font-bold text-teal-500 mb-2">4.8</div>
-                                   <div className="text-gray-600 font-semibold">Đánh giá trung bình</div>
-                              </div>
+                              <StatsCard targetValue={500} suffix="+" label="Sân bóng" index={0} Icon={Calendar} />
+                              <StatsCard targetValue={10000} suffix="+" label="Người dùng" index={1} Icon={Users} />
+                              <StatsCard targetValue={50000} suffix="+" label="Lượt đặt sân" index={2} Icon={TrendingUp} />
+                              <StatsCard targetValue={4.8} suffix="" label="Đánh giá trung bình" index={3} decimals={1} Icon={Star} />
                          </Row>
                     </Container>
-               </Section>
+               </motion.section>
 
                {/* Quick Categories */}
                <Section className="py-5">
@@ -413,8 +704,8 @@ export default function HomePage({ user }) {
                                    {hoveredCardId !== null && (
                                         <div className="pointer-events-none absolute inset-0 rounded-xl backdrop-blur-[1px] transition-opacity" />
                                    )}
-                                   {featuredFields.map((field) => (
-                                        <FieldCard key={field.id} field={field} />
+                                   {featuredFields.map((field, index) => (
+                                        <FieldCard key={field.id} field={field} index={index} />
                                    ))}
                               </div>
 
@@ -530,17 +821,50 @@ export default function HomePage({ user }) {
                     </Container>
                </Container>
 
-               {/* Testimonials - like reference design */}
+               {/* Testimonials - Auto-scrolling Carousel */}
                <div className="relative overflow-hidden py-12 bg-cover bg-center bg-no-repeat" style={{
                     backgroundImage: "url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1920&h=1080&fit=crop')"
                }}>
                     <div className="absolute inset-0 bg-black/45" />
                     <Container className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                         <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-6">Một số bài viết nổi bật</h2>
-                         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                              {[{ name: "Sebastian", role: "Graphic design" }, { name: "Evangeline", role: "Model" }, { name: "Alexander", role: "Software engineer" }].map((u, idx) => (
-                                   <div key={idx} className="relative mt-10 hover:scale-105 transition-all duration-300 hover:cursor-pointer">
-                                        <div className="absolute -top-6 left-6 w-12 h-12 rounded-full ring-4 ring-white overflow-hidden">
+                         <motion.h2
+                              className="text-3xl md:text-4xl font-extrabold text-white mb-6"
+                              initial={{ opacity: 0, y: -20 }}
+                              whileInView={{ opacity: 1, y: 0 }}
+                              viewport={{ once: true }}
+                              transition={{ duration: 0.6 }}
+                         >
+                              Một số bài viết nổi bật
+                         </motion.h2>
+
+                         <div className="relative grid grid-cols-1 md:grid-cols-3 gap-10 overflow-hidden" style={{ minHeight: '300px' }}>
+                              {testimonials.map((u, idx) => (
+                                   <motion.div
+                                        key={idx}
+                                        className="relative mt-10"
+                                        initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                                        animate={{
+                                             opacity: idx === testimonialIndex ? 1 : 0.3,
+                                             scale: idx === testimonialIndex ? 1 : 0.9,
+                                             y: idx === testimonialIndex ? 0 : 20,
+                                        }}
+                                        transition={{
+                                             duration: 0.8,
+                                             ease: "easeInOut",
+                                        }}
+                                        whileHover={{ scale: 1.05 }}
+                                   >
+                                        <motion.div
+                                             className="absolute -top-6 left-6 w-12 h-12 rounded-full ring-4 ring-white overflow-hidden"
+                                             animate={{
+                                                  rotate: idx === testimonialIndex ? [0, 360] : 0,
+                                             }}
+                                             transition={{
+                                                  duration: 2,
+                                                  repeat: idx === testimonialIndex ? Infinity : 0,
+                                                  ease: "linear",
+                                             }}
+                                        >
                                              <img
                                                   src={`https://images.unsplash.com/photo-${1500000000000 + idx * 1000000}?w=100&h=100&fit=crop&crop=face`}
                                                   alt={u.name}
@@ -549,8 +873,22 @@ export default function HomePage({ user }) {
                                                        e.target.src = `https://ui-avatars.com/api/?name=${u.name}&background=0ea5e9&color=fff&size=100`;
                                                   }}
                                              />
-                                        </div>
-                                        <div className="bg-white rounded-2xl shadow-md p-5 pt-8">
+                                        </motion.div>
+                                        <motion.div
+                                             className="bg-white rounded-2xl shadow-md p-5 pt-8"
+                                             animate={{
+                                                  boxShadow: idx === testimonialIndex ? [
+                                                       "0 4px 6px rgba(0,0,0,0.1)",
+                                                       "0 10px 20px rgba(0,0,0,0.15)",
+                                                       "0 4px 6px rgba(0,0,0,0.1)",
+                                                  ] : "0 4px 6px rgba(0,0,0,0.1)",
+                                             }}
+                                             transition={{
+                                                  duration: 2,
+                                                  repeat: idx === testimonialIndex ? Infinity : 0,
+                                                  ease: "easeInOut",
+                                             }}
+                                        >
                                              <div className="flex items-start justify-between">
                                                   <div>
                                                        <div className="font-semibold text-gray-900">{u.name}</div>
@@ -558,23 +896,71 @@ export default function HomePage({ user }) {
                                                   </div>
                                                   <div className="flex items-center gap-1">
                                                        {Array.from({ length: 5 }).map((_, i) => (
-                                                            <Star key={i} className={`w-4 h-4 ${i < 5 ? 'text-yellow-400' : 'text-gray-300'}`} />
+                                                            <motion.div
+                                                                 key={i}
+                                                                 animate={{
+                                                                      scale: idx === testimonialIndex ? [1, 1.2, 1] : 1,
+                                                                 }}
+                                                                 transition={{
+                                                                      delay: i * 0.1,
+                                                                      duration: 0.5,
+                                                                      repeat: idx === testimonialIndex ? Infinity : 0,
+                                                                 }}
+                                                            >
+                                                                 <Star className={`w-4 h-4 ${i < 5 ? 'text-yellow-400' : 'text-gray-300'}`} />
+                                                            </motion.div>
                                                        ))}
                                                   </div>
                                              </div>
                                              <p className="mt-3 text-sm text-gray-700 leading-relaxed">
                                                   Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text.
                                              </p>
-                                        </div>
-                                   </div>
+                                        </motion.div>
+                                   </motion.div>
                               ))}
                          </div>
+
                          <div className="mt-4 flex items-center justify-center gap-2">
-                              {Array.from({ length: 5 }).map((_, i) => (<span key={i} className={`h-2 w-2 rounded-full ${i === 2 ? 'bg-white' : 'bg-white/60'}`}></span>))}
+                              {testimonials.map((_, i) => (
+                                   <motion.span
+                                        key={i}
+                                        className={`h-2 w-2 rounded-full cursor-pointer ${i === testimonialIndex ? 'bg-white' : 'bg-white/60'}`}
+                                        animate={{
+                                             scale: i === testimonialIndex ? [1, 1.3, 1] : 1,
+                                        }}
+                                        transition={{
+                                             duration: 1.5,
+                                             repeat: i === testimonialIndex ? Infinity : 0,
+                                             ease: "easeInOut",
+                                        }}
+                                        onClick={() => setTestimonialIndex(i)}
+                                   />
+                              ))}
                          </div>
+
                          <div className="hidden md:block">
-                              <Button className="absolute left-6 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white"><ChevronLeft className="w-5 h-5" /></Button>
-                              <Button className="absolute right-6 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white"><ChevronRight className="w-5 h-5" /></Button>
+                              <motion.div
+                                   whileHover={{ scale: 1.1 }}
+                                   whileTap={{ scale: 0.9 }}
+                              >
+                                   <Button
+                                        className="absolute left-6 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white"
+                                        onClick={() => setTestimonialIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length)}
+                                   >
+                                        <ChevronLeft className="w-5 h-5" />
+                                   </Button>
+                              </motion.div>
+                              <motion.div
+                                   whileHover={{ scale: 1.1 }}
+                                   whileTap={{ scale: 0.9 }}
+                              >
+                                   <Button
+                                        className="absolute right-6 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/20 hover:bg-white/30 text-white"
+                                        onClick={() => setTestimonialIndex((prev) => (prev + 1) % testimonials.length)}
+                                   >
+                                        <ChevronRight className="w-5 h-5" />
+                                   </Button>
+                              </motion.div>
                          </div>
                     </Container>
                </div>

@@ -20,10 +20,11 @@ import {
      CheckSquare
 } from "lucide-react";
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Card, Button, Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../../../../shared/components/ui";
-import OwnerLayout from "../../../owner/layouts/owner/OwnerLayout";
-import { useAuth } from "../../../../contexts/AuthContext";
-import DemoRestrictedModal from "../../../../shared/components/DemoRestrictedModal";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Card, Button, Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../../../shared/components/ui";
+import OwnerLayout from "../layouts/OwnerLayout";
+import { useAuth } from "../../../contexts/AuthContext";
+import { DemoRestrictedModal } from "../../../shared";
+
 
 const BookingManagement = ({ isDemo = false }) => {
      const { user, logout } = useAuth();

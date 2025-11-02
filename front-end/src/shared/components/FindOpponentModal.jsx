@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Users, Star, MessageSquare, Calendar, MapPin, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { Button, Modal, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from "./ui/index";
 import { createMatchRequest, createCommunityPost } from "../utils/communityStore";
+import { Link } from "react-router-dom";
 
 export default function FindOpponentModal({
      isOpen,
@@ -234,9 +235,9 @@ export default function FindOpponentModal({
                                    />
                                    <div className="text-sm text-gray-700">
                                         <span className="text-red-500">*</span> Tôi đồng ý với{" "}
-                                        <a href="/terms" className="text-teal-600 hover:underline">
+                                        <Link to="/terms" className="text-teal-600 hover:underline">
                                              quy tắc cộng đồng
-                                        </a>{" "}
+                                        </Link>{" "}
                                         và cam kết tuân thủ fair-play
                                    </div>
                               </label>

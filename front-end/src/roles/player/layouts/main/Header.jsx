@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Search, User, Menu, X, LogOut, Settings, Home, MapPin, Calendar, Users, BarChart3, LogIn } from "lucide-react";
 import logo from "../../../../shared/components/assets/logo.png";
 import { Button } from "../../../../shared/components/ui";
@@ -10,9 +10,20 @@ export default function Header({ user, onLoggedOut }) {
      const [isMenuOpen, setIsMenuOpen] = useState(false);
      const [isProfileOpen, setIsProfileOpen] = useState(false);
      const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+     const [isScrolled, setIsScrolled] = useState(false);
      const navigate = useNavigate();
      const location = useLocation();
      const { isBookingModalOpen } = useModal();
+
+     useEffect(() => {
+          const handleScroll = () => {
+               const scrollPosition = window.scrollY;
+               setIsScrolled(scrollPosition > 50);
+          };
+
+          window.addEventListener("scroll", handleScroll);
+          return () => window.removeEventListener("scroll", handleScroll);
+     }, []);
 
      const getRoleDisplayName = (role) => {
           if (role && roleMapping.isValidRoleName(role)) {
@@ -71,13 +82,15 @@ export default function Header({ user, onLoggedOut }) {
      const navigationItems = getNavigationItems();
 
      return (
-          <header className={`bg-transparent backdrop-blur-sm rounded-b-2xl border-b border-teal-500 fixed top-0 left-0 right-0 z-50 shadow-sm transition-transform duration-300 ${isBookingModalOpen ? '-translate-y-full' : 'translate-y-0'}`}>
+          <header className={`${isScrolled ? 'bg-white/70' : 'bg-transparent'} backdrop-blur-sm rounded-b-2xl border-b border-teal-500 fixed top-0 left-0 right-0 z-50 shadow-sm transition-all duration-300 ${isBookingModalOpen ? '-translate-y-full' : 'translate-y-0'}`}>
                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                          {/* Logo */}
                          <div className="flex items-center">
                               <div className="flex-shrink-0 hover:cursor-pointer flex items-center">
-                                   <a href="/"><img src={logo} alt="Logo" className="h-36 hover:scale-105 transition-all duration-300" /></a>
+                                   <Link to="/">
+                                        <img src={logo} alt="Logo" className="h-36 hover:scale-105 transition-all duration-300" />
+                                   </Link>
                               </div>
                          </div>
 
@@ -86,17 +99,17 @@ export default function Header({ user, onLoggedOut }) {
                               {navigationItems.map((item) => {
                                    const Icon = item.icon;
                                    return (
-                                        <Button
+                                        <Link
                                              key={item.id}
-                                             onClick={() => navigate(`/${item.id}`)}
-                                             className={`flex items-center px-3 py-2 rounded-xl text-sm font-medium transition-colors ${location.pathname === `/${item.id}`
-                                                  ? "text-white border-b-teal-500 border-b-2"
-                                                  : "text-white hover:border-b-2 hover:border-teal-500"
+                                             to={`/${item.id}`}
+                                             className={`flex items-center px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${location.pathname === `/${item.id}`
+                                                  ? `${isScrolled ? 'text-teal-600  border-b-teal-600' : 'text-white border-b-teal-500'} border-b-2`
+                                                  : `${isScrolled ? 'text-gray-700 hover:text-teal-600' : 'text-white'} hover:border-b-2 hover:border-teal-500`
                                                   }`}
                                         >
                                              <Icon className="w-4 h-4 mr-2" />
                                              {item.label}
-                                        </Button>
+                                        </Link>
                                    );
                               })}
                          </nav>
@@ -170,14 +183,18 @@ export default function Header({ user, onLoggedOut }) {
                               ) : (
                                    <div className="flex items-center gap-2">
                                         <Button
-                                             onClick={() => navigate("/auth")}
-                                             className="flex items-center space-x-2 border-0 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 bg-transparent text-white px-4 py-2 rounded-full text-sm font-medium hover:border-b-2 hover:border-teal-500 hover:cursor-pointer hover:scale-105 hover:bg-transparent hover:text-white transition-colors"
+                                             onClick={() => {
+                                                  navigate("/auth");
+                                             }}
+                                             className={`flex items-center space-x-2 border-0 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 bg-transparent px-4 py-2 rounded-full text-sm font-medium hover:border-b-2 hover:border-teal-500 hover:cursor-pointer hover:scale-105 transition-colors ${isScrolled ? 'text-gray-700 hover:text-teal-600' : 'text-white hover:bg-transparent hover:text-white'}`}
                                         >
                                              Login
                                              <LogIn className="w-5 h-5 ml-2" />
                                         </Button>
                                         <Button
-                                             onClick={() => navigate("/auth")}
+                                             onClick={() => {
+                                                  navigate("/auth");
+                                             }}
                                              className="bg-teal-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-teal-600 transition-colors"
                                         >
                                              Register
@@ -188,7 +205,7 @@ export default function Header({ user, onLoggedOut }) {
                               {/* Mobile menu button */}
                               <Button
                                    onClick={() => setIsMenuOpen(!isMenuOpen)}
-                                   className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+                                   className={`md:hidden  inline-flex items-center justify-center p-2 rounded-md hover:bg-gray-100 transition-colors ${isScrolled ? 'text-gray-700  hover:text-gray-900' : 'text-gray-400 hover:text-gray-500'}`}
                               >
                                    {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                               </Button>
@@ -202,12 +219,10 @@ export default function Header({ user, onLoggedOut }) {
                                    {navigationItems.map((item) => {
                                         const Icon = item.icon;
                                         return (
-                                             <Button
+                                             <Link
                                                   key={item.id}
-                                                  onClick={() => {
-                                                       navigate(`/${item.id}`);
-                                                       setIsMenuOpen(false);
-                                                  }}
+                                                  to={`/${item.id}`}
+                                                  onClick={() => setIsMenuOpen(false)}
                                                   className={`flex items-center w-full px-3 py-2 rounded-md text-base font-medium ${location.pathname === `/${item.id}`
                                                        ? "bg-teal-100 text-teal-700"
                                                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
@@ -215,7 +230,7 @@ export default function Header({ user, onLoggedOut }) {
                                              >
                                                   <Icon className="w-5 h-5 mr-3" />
                                                   {item.label}
-                                             </Button>
+                                             </Link>
                                         );
                                    })}
                               </div>

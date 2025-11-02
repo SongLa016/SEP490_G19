@@ -4,20 +4,15 @@ import {
      Edit,
      Trash2,
      MapPin,
-     Camera,
-     Upload,
      Save,
-     Star,
-     Users,
      DollarSign,
-     Calendar,
      Loader2
 } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Card, Modal, Input, Textarea } from "../../../../shared/components/ui";
-import OwnerLayout from "../../../owner/layouts/owner/OwnerLayout";
-import { useAuth } from "../../../../contexts/AuthContext";
-import DemoRestrictedModal from "../../../../shared/components/DemoRestrictedModal";
-import AddressPicker from "../../../../shared/components/AddressPicker";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Card, Modal, Input, Textarea } from "../../../shared/components/ui";
+import OwnerLayout from "../layouts/OwnerLayout";
+import { useAuth } from "../../../contexts/AuthContext";
+import { DemoRestrictedModal } from "../../../shared";
+import AddressPicker from "../../../shared/components/AddressPicker";
 import {
      createField,
      createFieldComplex,
@@ -26,8 +21,8 @@ import {
      deleteField,
      fetchFieldComplexes,
      createFieldPrice
-} from "../../../../shared/services/fields";
-import { fetchTimeSlots } from "../../../../shared/services/timeSlots";
+} from "../../../shared/services/fields";
+import { fetchTimeSlots } from "../../../shared/services/timeSlots";
 
 const FieldManagement = ({ isDemo = false }) => {
      const { user, logout } = useAuth();
@@ -227,7 +222,7 @@ const FieldManagement = ({ isDemo = false }) => {
           const typeKey = Object.keys(fieldTypeMap).find(
                key => fieldTypeMap[key] === field.typeId
           ) || "";
-          
+
           setFormData({
                fieldId: field.fieldId,
                complexId: field.complexId,

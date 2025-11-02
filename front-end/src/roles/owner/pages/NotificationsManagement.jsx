@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import OwnerLayout from "../../../owner/layouts/owner/OwnerLayout";
-import { useAuth } from "../../../../contexts/AuthContext";
-import { Card, Button, Input, Textarea, Modal } from "../../../../shared/components/ui";
-import DemoRestrictedModal from "../../../../shared/components/DemoRestrictedModal";
+import OwnerLayout from "../layouts/OwnerLayout";
+import { useAuth } from "../../../contexts/AuthContext";
+import { Card, Button, Input, Textarea, Modal } from "../../../shared/components/ui";
+import { DemoRestrictedModal } from "../../../shared";
 import {
      Bell,
      Plus,
@@ -23,8 +23,8 @@ import {
      updateNotification,
      deleteNotification,
      getNotificationStats
-} from "../../../../shared/index";
-import { fetchComplexes } from "../../../../shared/index";
+} from "../../../shared/index";
+import { fetchComplexes } from "../../../shared/index";
 
 export default function NotificationsManagement({ isDemo = false }) {
      const { user, logout } = useAuth();

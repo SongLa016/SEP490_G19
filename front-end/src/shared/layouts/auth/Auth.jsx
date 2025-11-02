@@ -25,20 +25,20 @@ export default function Auth() {
 
                switch (role) {
                     case 'admin':
-                         window.location.href = '/admin';
+                         navigate('/admin');
                          break;
                     case 'owner':
-                         window.location.href = '/owner';
+                         navigate('/owner');
                          break;
                     case 'player':
                     default:
-                         window.location.href = '/home';
+                         navigate('/home');
                          break;
                }
           } else {
                // Fallback to home if no role (treat as Player)
                console.log("No role found, redirecting to Player home");
-               window.location.href = '/home';
+               navigate('/home');
           }
      };
 

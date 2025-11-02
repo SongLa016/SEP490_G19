@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import OwnerLayout from "../../../owner/layouts/owner/OwnerLayout";
-import { useAuth } from "../../../../contexts/AuthContext";
-import { Card, Button, Input, Textarea, Modal } from "../../../../shared/components/ui";
-import DemoRestrictedModal from "../../../../shared/components/DemoRestrictedModal";
+import OwnerLayout from "../layouts/OwnerLayout";
+import { useAuth } from "../../../contexts/AuthContext";
+import { Card, Button, Input, Textarea, Modal } from "../../../shared/components/ui";
+import { DemoRestrictedModal } from "../../../shared";
 import {
      Shield,
      Plus,
@@ -19,8 +19,8 @@ import {
      createCancellationPolicy,
      updateCancellationPolicy,
      deleteCancellationPolicy
-} from "../../../../shared/index";
-import { fetchComplexes } from "../../../../shared/index";
+} from "../../../shared/index";
+import { fetchComplexes } from "../../../shared/index";
 
 export default function CancellationPolicies({ isDemo = false }) {
      const { user, logout } = useAuth();

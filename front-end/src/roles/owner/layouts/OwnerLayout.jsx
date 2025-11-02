@@ -18,9 +18,10 @@ import {
      Timer,
      Wallet
 } from "lucide-react";
-import { Button } from "../../../../shared/components/ui";
-import logo from "../../../../shared/components/assets/logo.png";
-import DemoAccountPromotionManager from "../../../../shared/components/DemoAccountPromotionManager";
+import { Button } from "../../../shared/components/ui";
+import logo from "../../../shared/components/assets/logo.png";
+import DemoAccountPromotionManager from "../../../shared/components/DemoAccountPromotionManager";
+import ScrollProgressBar from "../../../shared/components/ScrollProgressBar";
 
 export default function OwnerLayout({ user, onLoggedOut, children, isDemo = false }) {
      const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -61,6 +62,7 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
 
      return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
+               <ScrollProgressBar />
                {/* Demo Account Promotion Manager */}
                <DemoAccountPromotionManager isDemo={isDemo} />
 

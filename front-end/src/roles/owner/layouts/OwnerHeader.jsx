@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
      Search,
      User,
@@ -53,9 +53,9 @@ export default function OwnerHeader({ user, onLoggedOut }) {
                          {/* Logo */}
                          <div className="flex items-center">
                               <div className="flex-shrink-0 hover:cursor-pointer flex items-center">
-                                   <a href="/">
+                                   <Link to="/">
                                         <img src={logo} alt="Logo" className="h-12 hover:scale-105 transition-all duration-300" />
-                                   </a>
+                                   </Link>
                               </div>
                               <div className="ml-4">
                                    <h1 className="text-xl font-bold text-gray-900">Owner Panel</h1>

@@ -12,13 +12,13 @@ import {
      Clock,
      MapPin
 } from "lucide-react";
-import { Button } from "../../../../shared/components/ui";
-import { Card } from "../../../../shared/components/ui";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../shared/components/ui";
-import { DatePicker } from "../../../../shared/components/ui";
-import OwnerLayout from "../../../owner/layouts/owner/OwnerLayout";
-import { useAuth } from "../../../../contexts/AuthContext";
-import DemoRestrictedModal from "../../../../shared/components/DemoRestrictedModal";
+import { Button } from "../../../shared/components/ui";
+import { Card } from "../../../shared/components/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../shared/components/ui";
+import { DatePicker } from "../../../shared/components/ui";
+import OwnerLayout from "../layouts/OwnerLayout";
+import { useAuth } from "../../../contexts/AuthContext";
+import { DemoRestrictedModal } from "../../../shared";
 
 const RevenueReports = ({ isDemo = false }) => {
      const { user, logout } = useAuth();

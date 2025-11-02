@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Button, Card, Input, Modal, Table, Badge, Alert, AlertDescription } from '../../../../shared/components/ui';
+import { Button, Card, Input, Modal, Table, Badge, Alert, AlertDescription } from '../../../shared/components/ui';
 import {
      Plus,
      Edit,
@@ -15,10 +15,10 @@ import {
      Settings,
      BarChart3
 } from 'lucide-react';
-import { fetchTimeSlots, createTimeSlot, updateTimeSlot, deleteTimeSlot } from '../../../../shared/index';
-import DemoRestrictedModal from '../../../../shared/components/DemoRestrictedModal';
-import OwnerLayout from '../../../owner/layouts/owner/OwnerLayout';
-import { useAuth } from '../../../../contexts/AuthContext';
+import { fetchTimeSlots, createTimeSlot, updateTimeSlot, deleteTimeSlot } from '../../../shared/services/timeSlots';
+import { DemoRestrictedModal } from '../../../shared';
+import OwnerLayout from '../layouts/OwnerLayout';
+import { useAuth } from '../../../contexts/AuthContext';
 
 
 export default function TimeSlotManagement({ isDemo = false }) {

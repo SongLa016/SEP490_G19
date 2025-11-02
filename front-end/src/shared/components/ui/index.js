@@ -34,6 +34,15 @@ export { Avatar, AvatarImage, AvatarFallback } from "./avatar";
 export { Alert, AlertDescription } from "./alert";
 export { Modal } from "./modal";
 export {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  BreadcrumbEllipsis,
+} from "./breadcrumb";
+export {
   Table,
   TableHeader,
   TableRow,

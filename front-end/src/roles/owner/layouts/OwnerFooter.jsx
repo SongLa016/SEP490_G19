@@ -13,6 +13,7 @@ import {
      Users,
      BarChart3
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import logo from "@/components/assets/logo.png";
 
 export default function OwnerFooter() {
@@ -30,21 +31,21 @@ export default function OwnerFooter() {
                                    Quản lý sân, booking, doanh thu và khách hàng một cách chuyên nghiệp.
                               </p>
                               <div className="flex space-x-4">
-                                   <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                                   <Link to="#" className="text-gray-400 hover:text-white transition-colors">
                                         <Facebook className="w-5 h-5" />
-                                   </a>
-                                   <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                                   </Link>
+                                   <Link to="#" className="text-gray-400 hover:text-white transition-colors">
                                         <Instagram className="w-5 h-5" />
-                                   </a>
-                                   <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                                   </Link>
+                                   <Link to="#" className="text-gray-400 hover:text-white transition-colors">
                                         <Twitter className="w-5 h-5" />
-                                   </a>
-                                   <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                                   </Link>
+                                   <Link to="#" className="text-gray-400 hover:text-white transition-colors">
                                         <Linkedin className="w-5 h-5" />
-                                   </a>
-                                   <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                                   </Link>
+                                   <Link to="#" className="text-gray-400 hover:text-white transition-colors">
                                         <MessageCircle className="w-5 h-5" />
-                                   </a>
+                                   </Link>
                               </div>
                          </div>
 
@@ -55,11 +56,11 @@ export default function OwnerFooter() {
                                    Công cụ quản lý
                               </h3>
                               <ul className="space-y-2">
-                                   <li><a href="/owner/dashboard" className="text-gray-300 hover:text-white transition-colors">Dashboard</a></li>
-                                   <li><a href="/owner/fields" className="text-gray-300 hover:text-white transition-colors">Quản lý sân</a></li>
-                                   <li><a href="/owner/bookings" className="text-gray-300 hover:text-white transition-colors">Quản lý booking</a></li>
-                                   <li><a href="/owner/reports" className="text-gray-300 hover:text-white transition-colors">Báo cáo doanh thu</a></li>
-                                   <li><a href="/owner/promotions" className="text-gray-300 hover:text-white transition-colors">Khuyến mãi</a></li>
+                                   <li><Link to="/owner/dashboard" className="text-gray-300 hover:text-white transition-colors">Dashboard</Link></li>
+                                   <li><Link to="/owner/fields" className="text-gray-300 hover:text-white transition-colors">Quản lý sân</Link></li>
+                                   <li><Link to="/owner/bookings" className="text-gray-300 hover:text-white transition-colors">Quản lý booking</Link></li>
+                                   <li><Link to="/owner/reports" className="text-gray-300 hover:text-white transition-colors">Báo cáo doanh thu</Link></li>
+                                   <li><Link to="/owner/promotions" className="text-gray-300 hover:text-white transition-colors">Khuyến mãi</Link></li>
                               </ul>
                          </div>
 
@@ -85,18 +86,18 @@ export default function OwnerFooter() {
                               </div>
 
                               <div className="mt-4 space-y-2">
-                                   <a href="#" className="text-gray-300 hover:text-white transition-colors flex items-center">
+                                   <Link to="#" className="text-gray-300 hover:text-white transition-colors flex items-center">
                                         <FileText className="w-4 h-4 mr-2" />
                                         Hướng dẫn sử dụng
-                                   </a>
-                                   <a href="#" className="text-gray-300 hover:text-white transition-colors flex items-center">
+                                   </Link>
+                                   <Link to="#" className="text-gray-300 hover:text-white transition-colors flex items-center">
                                         <Users className="w-4 h-4 mr-2" />
                                         Cộng đồng chủ sân
-                                   </a>
-                                   <a href="#" className="text-gray-300 hover:text-white transition-colors flex items-center">
+                                   </Link>
+                                   <Link to="#" className="text-gray-300 hover:text-white transition-colors flex items-center">
                                         <Shield className="w-4 h-4 mr-2" />
                                         Chính sách bảo mật
-                                   </a>
+                                   </Link>
                               </div>
                          </div>
                     </div>
@@ -107,18 +108,18 @@ export default function OwnerFooter() {
                                    © 2025 BallSpot Owner Panel. Tất cả quyền được bảo lưu.
                               </p>
                               <div className="flex space-x-6 mt-4 md:mt-0">
-                                   <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
+                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
                                         Điều khoản sử dụng
-                                   </a>
-                                   <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
+                                   </Link>
+                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
                                         Chính sách bảo mật
-                                   </a>
-                                   <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
+                                   </Link>
+                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
                                         Chính sách hủy
-                                   </a>
-                                   <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
+                                   </Link>
+                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
                                         Liên hệ hỗ trợ
-                                   </a>
+                                   </Link>
                               </div>
                          </div>
                     </div>

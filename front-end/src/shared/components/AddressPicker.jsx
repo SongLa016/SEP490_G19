@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MapPin, X, Search } from 'lucide-react';
+import { MapPin, X } from 'lucide-react';
 import { Input, Button } from './ui';
 
 const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ hoặc chọn trên bản đồ", onLocationSelect }) => {

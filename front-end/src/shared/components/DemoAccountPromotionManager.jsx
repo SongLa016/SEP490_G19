@@ -1,15 +1,17 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/index";
 import { UserPlus, X, ArrowRight, Gift, Star, CheckCircle } from "lucide-react";
 
 // Inline DemoTopBanner component
 function DemoTopBanner({ isVisible, onClose, onSignUp }) {
      const [isDismissed, setIsDismissed] = useState(false);
+     const navigate = useNavigate();
 
      if (!isVisible || isDismissed) return null;
 
      const handleSignUp = () => {
-          window.location.href = "/register";
+          navigate("/register");
           if (onSignUp) onSignUp();
      };
 
@@ -67,11 +69,12 @@ function DemoTopBanner({ isVisible, onClose, onSignUp }) {
 // Inline DemoAccountPrompt component
 function DemoAccountPrompt({ isVisible, onClose, onSignUp }) {
      const [isMinimized, setIsMinimized] = useState(false);
+     const navigate = useNavigate();
 
      if (!isVisible) return null;
 
      const handleSignUp = () => {
-          window.location.href = "/register";
+          navigate("/register");
           if (onSignUp) onSignUp();
      };
 
@@ -157,7 +160,7 @@ function DemoAccountPrompt({ isVisible, onClose, onSignUp }) {
                               <span className="text-xs text-gray-500">
                                    Đã có tài khoản?
                                    <button
-                                        onClick={() => window.location.href = "/login"}
+                                        onClick={() => navigate("/login")}
                                         className="text-blue-600 hover:text-blue-700 font-medium ml-1"
                                    >
                                         Đăng nhập

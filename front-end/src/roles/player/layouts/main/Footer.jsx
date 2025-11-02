@@ -1,6 +1,7 @@
 
 import { MapPin, Phone, Mail, Facebook, Instagram, Twitter, Linkedin, MessageCircle } from "lucide-react";
 import logo from "../../../../shared/components/assets/logo.png";
+import { Link } from "react-router-dom";
 
 export default function Footer() {
      return (
@@ -17,21 +18,21 @@ export default function Footer() {
                                    Tìm sân, đặt sân, kết nối cộng đồng bóng đá một cách dễ dàng.
                               </p>
                               <div className="flex space-x-4">
-                                   <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                                   <Link to="#" className="text-gray-400 hover:text-white transition-colors">
                                         <Facebook className="w-5 h-5" />
-                                   </a>
-                                   <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                                   </Link>
+                                   <Link to="#" className="text-gray-400 hover:text-white transition-colors">
                                         <Instagram className="w-5 h-5" />
-                                   </a>
-                                   <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                                   </Link>
+                                   <Link to="#" className="text-gray-400 hover:text-white transition-colors">
                                         <Twitter className="w-5 h-5" />
-                                   </a>
-                                   <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                                   </Link>
+                                   <Link to="#" className="text-gray-400 hover:text-white transition-colors">
                                         <Linkedin className="w-5 h-5" />
-                                   </a>
-                                   <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                                   </Link>
+                                   <Link to="#" className="text-gray-400 hover:text-white transition-colors">
                                         <MessageCircle className="w-5 h-5" />
-                                   </a>
+                                   </Link>
 
 
                               </div>
@@ -41,11 +42,11 @@ export default function Footer() {
                          <div>
                               <h3 className="text-lg font-semibold mb-4">Liên kết nhanh</h3>
                               <ul className="space-y-2">
-                                   <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Tìm sân</a></li>
-                                   <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Đăng ký chủ sân</a></li>
-                                   <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Giải đấu</a></li>
-                                   <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Cộng đồng</a></li>
-                                   <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Blog</a></li>
+                                   <li><Link to="#" className="text-gray-300 hover:text-white transition-colors">Tìm sân</Link></li>
+                                   <li><Link to="#" className="text-gray-300 hover:text-white transition-colors">Đăng ký chủ sân</Link></li>
+                                   <li><Link to="#" className="text-gray-300 hover:text-white transition-colors">Giải đấu</Link></li>
+                                   <li><Link to="#" className="text-gray-300 hover:text-white transition-colors">Cộng đồng</Link></li>
+                                   <li><Link to="#" className="text-gray-300 hover:text-white transition-colors">Blog</Link></li>
                               </ul>
                          </div>
 
@@ -75,15 +76,15 @@ export default function Footer() {
                                    © 2025 BallSpot. Tất cả quyền được bảo lưu.
                               </p>
                               <div className="flex space-x-6 mt-4 md:mt-0">
-                                   <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
+                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
                                         Điều khoản sử dụng
-                                   </a>
-                                   <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
+                                   </Link>
+                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
                                         Chính sách bảo mật
-                                   </a>
-                                   <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
+                                   </Link>
+                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
                                         Chính sách hủy
-                                   </a>
+                                   </Link>
                               </div>
                          </div>
                     </div>

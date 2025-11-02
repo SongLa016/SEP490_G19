@@ -1,7 +1,7 @@
 import React from "react";
-import OwnerLayout from "../../layouts/owner/OwnerLayout";
-import { useAuth } from "../../../../contexts/AuthContext";
-import { Card } from "../../../../shared/components/ui";
+import OwnerLayout from "../layouts/OwnerLayout";
+import { useAuth } from "../../../contexts/AuthContext";
+import { Card } from "../../../shared/components/ui";
 import { Clock } from "lucide-react";
 
 export default function ScheduleManagement({ isDemo = false }) {

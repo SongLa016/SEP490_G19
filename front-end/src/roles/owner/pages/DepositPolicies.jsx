@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import OwnerLayout from "../../../owner/layouts/owner/OwnerLayout";
-import { useAuth } from "../../../../contexts/AuthContext";
-import { Card, Button, Input, Modal } from "../../../../shared/components/ui";
-import DemoRestrictedModal from "../../../../shared/components/DemoRestrictedModal";
+import OwnerLayout from "../layouts/OwnerLayout";
+import { useAuth } from "../../../contexts/AuthContext";
+import { Card, Button, Input, Modal } from "../../../shared/components/ui";
+import { DemoRestrictedModal } from "../../../shared";
 import {
      Shield,
      Plus,
@@ -12,16 +12,14 @@ import {
      DollarSign,
      Building2,
      AlertTriangle,
-     CheckCircle,
-     XCircle
 } from "lucide-react";
 import {
      fetchDepositPolicies,
      createDepositPolicy,
      updateDepositPolicy,
      deleteDepositPolicy
-} from "../../../../shared/services/depositPolicies";
-import { fetchFields, fetchComplexes } from "../../../../shared/index";
+} from "../../../shared/services/depositPolicies";
+import { fetchFields, fetchComplexes } from "../../../shared/index";
 
 export default function DepositPolicies({ isDemo = false }) {
      const { user, logout } = useAuth();

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { useAuth } from "../../../../contexts/AuthContext";
-import OwnerLayout from "../../../owner/layouts/owner/OwnerLayout";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Card, Button } from "../../../../shared/components/ui";
+import { useAuth } from "../../../contexts/AuthContext";
+import OwnerLayout from "../layouts/OwnerLayout";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Card, Button } from "../../../shared/components/ui";
 import {
      DollarSign,
      Calendar,
@@ -19,6 +19,7 @@ import {
      AlertCircle,
      CheckCircle,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function OwnerDashboard({ isDemo = false }) {
      const { user, logout } = useAuth();
@@ -359,7 +360,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                                         <h3 className="font-medium text-blue-900">Chế độ Demo</h3>
                                         <p className="text-sm text-blue-700 mt-1">
                                              Đây là dữ liệu mẫu để bạn trải nghiệm hệ thống.
-                                             <a href="/register" className="underline ml-1 font-medium">Đăng ký ngay</a> để sử dụng đầy đủ tính năng.
+                                             <Link to="/register" className="underline ml-1 font-medium">Đăng ký ngay</Link> để sử dụng đầy đủ tính năng.
                                         </p>
                                    </div>
                               </div>

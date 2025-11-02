@@ -12,10 +12,10 @@ import {
      CheckSquare,
      FilterIcon
 } from "lucide-react";
-import { Button, Card, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../../../../shared/components/ui";
-import OwnerLayout from "../../../owner/layouts/owner/OwnerLayout";
-import { useAuth } from "../../../../contexts/AuthContext";
-import DemoRestrictedModal from "../../../../shared/components/DemoRestrictedModal";
+import { Button, Card, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../../../shared/components/ui";
+import OwnerLayout from "../layouts/OwnerLayout";
+import { useAuth } from "../../../contexts/AuthContext";
+import { DemoRestrictedModal } from "../../../shared";
 
 const PricingManagement = ({ isDemo = false }) => {
      const { user, logout } = useAuth();

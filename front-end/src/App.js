@@ -1,56 +1,143 @@
-import React from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import React, { Suspense, lazy } from "react";
+import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ModalProvider } from "./contexts/ModalContext";
 
-// Layouts
+// Layouts - Keep these synchronous as they're always needed
 import MainLayout from "./shared/layouts/MainLayout";
 import AuthLayout from "./shared/layouts/AuthLayout";
 import AdminLayout from "./roles/admin/layouts/AdminLayout";
 
-// Pages
-import LandingPage from "./pages/LandingPage";
-import HomePage from "./pages/HomePage";
-import Dashboard from "./roles/player/pages/dashboard/Dashboard";
-import OwnerDashboard from "./roles/owner/pages/owner/OwnerDashboard";
-import {
-  FieldManagement,
-  PricingManagement,
-  BookingManagement,
-  RevenueReports,
-  ScheduleManagement,
-  CancellationPolicies,
-  DepositPolicies,
-  PromotionsManagement,
-  PaymentTracking,
-  NotificationsManagement,
-} from "./roles/owner/pages/owner";
-import TimeSlotManagement from "./roles/owner/pages/owner/TimeSlotManagement";
+// FieldSearch - Import directly (frequently used, don't lazy load for better navigation speed)
 import FieldSearch from "./roles/player/pages/fields/FieldSearch";
 
-import BookingHistory from "./roles/player/pages/booking/BookingHistory";
-import ComplexDetail from "./roles/player/pages/fields/ComplexDetail";
-import Community from "./roles/player/pages/community/Community";
+// Loading component
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
+  </div>
+);
+
+// Lazy load pages for better performance
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const HomePage = lazy(() => import("./pages/HomePage"));
+const Dashboard = lazy(() =>
+  import("./roles/player/pages/dashboard/Dashboard")
+);
+
+// Lazy load owner pages
+const OwnerDashboard = lazy(() =>
+  import("./roles/owner/pages/OwnerDashboard").then((m) => ({
+    default: m.OwnerDashboard,
+  }))
+);
+const FieldManagement = lazy(() =>
+  import("./roles/owner/pages/FieldManagement").then((m) => ({
+    default: m.FieldManagement,
+  }))
+);
+const PricingManagement = lazy(() =>
+  import("./roles/owner/pages/PricingManagement").then((m) => ({
+    default: m.PricingManagement,
+  }))
+);
+const BookingManagement = lazy(() =>
+  import("./roles/owner/pages/BookingManagement").then((m) => ({
+    default: m.BookingManagement,
+  }))
+);
+const RevenueReports = lazy(() =>
+  import("./roles/owner/pages/RevenueReports").then((m) => ({
+    default: m.RevenueReports,
+  }))
+);
+const ScheduleManagement = lazy(() =>
+  import("./roles/owner/pages/ScheduleManagement").then((m) => ({
+    default: m.ScheduleManagement,
+  }))
+);
+const CancellationPolicies = lazy(() =>
+  import("./roles/owner/pages/CancellationPolicies").then((m) => ({
+    default: m.CancellationPolicies,
+  }))
+);
+const DepositPolicies = lazy(() =>
+  import("./roles/owner/pages/DepositPolicies").then((m) => ({
+    default: m.DepositPolicies,
+  }))
+);
+const PromotionsManagement = lazy(() =>
+  import("./roles/owner/pages/PromotionsManagement").then((m) => ({
+    default: m.PromotionsManagement,
+  }))
+);
+const PaymentTracking = lazy(() =>
+  import("./roles/owner/pages/PaymentTracking").then((m) => ({
+    default: m.PaymentTracking,
+  }))
+);
+const NotificationsManagement = lazy(() =>
+  import("./roles/owner/pages/NotificationsManagement").then((m) => ({
+    default: m.NotificationsManagement,
+  }))
+);
+const TimeSlotManagement = lazy(() =>
+  import("./roles/owner/pages/TimeSlotManagement").then((m) => ({
+    default: m.TimeSlotManagement,
+  }))
+);
+
+// Lazy load other player pages
+const BookingHistory = lazy(() =>
+  import("./roles/player/pages/booking/BookingHistory")
+);
+const ComplexDetail = lazy(() =>
+  import("./roles/player/pages/fields/ComplexDetail")
+);
+const Community = lazy(() =>
+  import("./roles/player/pages/community/Community")
+);
 
 // Profile Pages
-import ProfileIndex from "./roles/player/pages/profile";
-import ProfileDemo from "./roles/player/pages/profile/ProfileDemo";
+const ProfileIndex = lazy(() => import("./roles/player/pages/profile"));
+const ProfileDemo = lazy(() =>
+  import("./roles/player/pages/profile/ProfileDemo")
+);
 
 // Admin Pages
-import {
-  AdminDashboard,
-  UserManagement,
-  SystemNotificationsManagement,
-  ViolationReportsManagement,
-  BlogManagement,
-  SystemSettings,
-} from "./roles/admin/pages";
-import OwnerRegistrationApproval from "./roles/admin/pages/OwnerRegistrationApproval";
+const AdminDashboard = lazy(() =>
+  import("./roles/admin/pages/AdminDashboard").then((m) => ({
+    default: m.AdminDashboard,
+  }))
+);
+const UserManagement = lazy(() =>
+  import("./roles/admin/pages/UserManagement").then((m) => ({
+    default: m.UserManagement,
+  }))
+);
+const SystemNotificationsManagement = lazy(() =>
+  import("./roles/admin/pages/SystemNotificationsManagement").then((m) => ({
+    default: m.SystemNotificationsManagement,
+  }))
+);
+const ViolationReportsManagement = lazy(() =>
+  import("./roles/admin/pages/ViolationReportsManagement").then((m) => ({
+    default: m.ViolationReportsManagement,
+  }))
+);
+const BlogManagement = lazy(() =>
+  import("./roles/admin/pages/BlogManagement").then((m) => ({
+    default: m.BlogManagement,
+  }))
+);
+const SystemSettings = lazy(() =>
+  import("./roles/admin/pages/SystemSettings").then((m) => ({
+    default: m.SystemSettings,
+  }))
+);
+const OwnerRegistrationApproval = lazy(() =>
+  import("./roles/admin/pages/OwnerRegistrationApproval")
+);
 
 // Demo Pages
 
@@ -66,10 +153,17 @@ function AppContent() {
   }
 
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
         {/* Landing Page */}
-        <Route path="/" element={<LandingPage />} />
+        <Route
+          path="/"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <LandingPage />
+            </Suspense>
+          }
+        />
 
         {/* Auth Routes */}
         <Route
@@ -90,7 +184,9 @@ function AppContent() {
           path="/home"
           element={
             <MainLayout>
-              <HomePage user={user} />
+              <Suspense fallback={<LoadingFallback />}>
+                <HomePage user={user} />
+              </Suspense>
             </MainLayout>
           }
         />
@@ -103,7 +199,9 @@ function AppContent() {
               ) : user.roleName === "Owner" ? (
                 <Navigate to="/owner" replace />
               ) : (
-                <Dashboard user={user} />
+                <Suspense fallback={<LoadingFallback />}>
+                  <Dashboard user={user} />
+                </Suspense>
               )
             ) : (
               <Navigate to="/auth" replace />
@@ -309,7 +407,9 @@ function AppContent() {
           exact
           element={
             <MainLayout>
-              <ComplexDetail user={user} />
+              <Suspense fallback={<LoadingFallback />}>
+                <ComplexDetail user={user} />
+              </Suspense>
             </MainLayout>
           }
         />
@@ -317,7 +417,9 @@ function AppContent() {
           path="/field/:id"
           element={
             <MainLayout>
-              <ComplexDetail user={user} />
+              <Suspense fallback={<LoadingFallback />}>
+                <ComplexDetail user={user} />
+              </Suspense>
             </MainLayout>
           }
         />
@@ -325,11 +427,20 @@ function AppContent() {
           path="/bookings"
           element={
             <MainLayout>
-              <BookingHistory user={user} />
+              <Suspense fallback={<LoadingFallback />}>
+                <BookingHistory user={user} />
+              </Suspense>
             </MainLayout>
           }
         />
-        <Route path="/community" element={<Community />} />
+        <Route
+          path="/community"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <Community />
+            </Suspense>
+          }
+        />
 
         {/* Admin Routes */}
         <Route
@@ -470,7 +581,7 @@ function AppContent() {
         {/* Catch all route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
 
