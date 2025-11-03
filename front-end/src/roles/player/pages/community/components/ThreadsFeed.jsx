@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import {
      Heart,
      MessageCircle,
@@ -28,10 +28,7 @@ import {
      Textarea,
      Card,
      CardContent,
-     LoadingSkeleton,
-     FadeIn,
-     SlideIn,
-     StaggerContainer,
+
 } from "../../../../../shared/components/ui";
 import NewThreadModal from "./NewThreadModal";
 import ReplyModal from "./ReplyModal";
@@ -507,7 +504,6 @@ function PostCard({
 
 export default function ThreadsFeed() {
      const { user } = useAuth();
-     const navigate = useNavigate();
      const [posts, setPosts] = useState(mockPosts);
      const [comments, setComments] = useState(mockComments);
      const [newPostContent, setNewPostContent] = useState("");

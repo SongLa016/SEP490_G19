@@ -508,8 +508,8 @@ export default function HomePage({ user }) {
                                              ease: "easeInOut",
                                         }}
                                    >
-                                        <Card className="rounded-2xl bg-white/50 border-none backdrop-blur-sm">
-                                             <CardContent className="p-4">
+                                        <Card className="rounded-3xl bg-white/50 border-none backdrop-blur-sm">
+                                             <CardContent className="p-3">
                                                   <div className="flex flex-col text-black md:flex-row gap-3">
                                                        <motion.div
                                                             className="flex-1 relative"

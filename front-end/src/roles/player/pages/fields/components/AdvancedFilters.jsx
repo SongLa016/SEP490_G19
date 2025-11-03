@@ -184,6 +184,7 @@ export default function AdvancedFilters({
                                         <AnimatePresence>
                                              {searchQuery && (
                                                   <motion.span
+                                                       key="search-query"
                                                        initial={{ opacity: 0, scale: 0.8 }}
                                                        animate={{ opacity: 1, scale: 1 }}
                                                        exit={{ opacity: 0, scale: 0.8 }}
@@ -194,6 +195,7 @@ export default function AdvancedFilters({
                                              )}
                                              {selectedLocation && (
                                                   <motion.span
+                                                       key="selected-location"
                                                        initial={{ opacity: 0, scale: 0.8 }}
                                                        animate={{ opacity: 1, scale: 1 }}
                                                        exit={{ opacity: 0, scale: 0.8 }}
@@ -204,6 +206,7 @@ export default function AdvancedFilters({
                                              )}
                                              {date && (
                                                   <motion.span
+                                                       key="date"
                                                        initial={{ opacity: 0, scale: 0.8 }}
                                                        animate={{ opacity: 1, scale: 1 }}
                                                        exit={{ opacity: 0, scale: 0.8 }}
@@ -214,6 +217,7 @@ export default function AdvancedFilters({
                                              )}
                                              {slotId && (
                                                   <motion.span
+                                                       key="slot-id"
                                                        initial={{ opacity: 0, scale: 0.8 }}
                                                        animate={{ opacity: 1, scale: 1 }}
                                                        exit={{ opacity: 0, scale: 0.8 }}
@@ -224,6 +228,7 @@ export default function AdvancedFilters({
                                              )}
                                              {selectedPrice && (
                                                   <motion.span
+                                                       key="selected-price"
                                                        initial={{ opacity: 0, scale: 0.8 }}
                                                        animate={{ opacity: 1, scale: 1 }}
                                                        exit={{ opacity: 0, scale: 0.8 }}
@@ -234,6 +239,7 @@ export default function AdvancedFilters({
                                              )}
                                              {selectedRating && selectedRating !== "all" && (
                                                   <motion.span
+                                                       key="selected-rating"
                                                        initial={{ opacity: 0, scale: 0.8 }}
                                                        animate={{ opacity: 1, scale: 1 }}
                                                        exit={{ opacity: 0, scale: 0.8 }}
@@ -244,6 +250,7 @@ export default function AdvancedFilters({
                                              )}
                                              {!searchQuery && !selectedLocation && !selectedPrice && (!selectedRating || selectedRating === "all") && !slotId && (
                                                   <motion.span
+                                                       key="no-filters"
                                                        initial={{ opacity: 0 }}
                                                        animate={{ opacity: 1 }}
                                                        exit={{ opacity: 0 }}

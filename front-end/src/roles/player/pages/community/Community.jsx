@@ -142,7 +142,7 @@ export default function Community() {
                                              transition={{ delay: index * 0.1, duration: 0.3 }}
                                         >
                                              <motion.div
-                                                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 rounded-full"
+                                                  className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
                                                   initial={{ scaleX: 0 }}
                                                   animate={{ scaleX: activeTab === tab.id ? 1 : 0 }}
                                                   transition={{ duration: 0.3, ease: "easeInOut" }}
@@ -153,13 +153,13 @@ export default function Community() {
                                              >
                                                   <Button
                                                        onClick={() => setActiveTab(tab.id)}
-                                                       className={`px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 relative ${activeTab === tab.id
-                                                            ? "border-transparent bg-white text-gray-900"
+                                                       className={`px-3 py-1 text-sm font-medium rounded-xl transition-all duration-200 relative ${activeTab === tab.id
+                                                            ? "border-b-4 border-teal-500 bg-white text-gray-900"
                                                             : "border-transparent bg-transparent text-gray-500 hover:text-gray-700"
                                                             }`}
                                                   >
                                                        <motion.span
-                                                            animate={activeTab === tab.id ? { fontWeight: 700 } : { fontWeight: 400 }}
+                                                            animate={activeTab === tab.id ? { fontWeight: 600 } : { fontWeight: 400 }}
                                                             transition={{ duration: 0.2 }}
                                                        >
                                                             {tab.label}

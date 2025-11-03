@@ -17,8 +17,9 @@ export {
 } from "./select";
 export { Button } from "./button";
 export { Textarea } from "./textarea";
-export { Calendar as UiCalendar } from "./calendar";
+export { Calendar } from "./calendar";
 export { DatePicker } from "./datepicker";
+export { Popover, PopoverTrigger, PopoverContent } from "./popover";
 
 // Display components
 export {
