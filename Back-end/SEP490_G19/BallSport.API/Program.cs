@@ -1,15 +1,18 @@
 using BallSport.Application.Services;
-using BallSport.Infrastructure.Repositories;
+using BallSport.Application.Services.Community;
 using BallSport.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
+using BallSport.Infrastructure.Models;
+using BallSport.Infrastructure.Repositories;
+using BallSport.Infrastructure.Repositories.Community;
+using BallSport.Infrastructure.Settings;
+using Banking.Application.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
-using BallSport.Infrastructure.Models;
-using Banking.Application.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,17 +54,17 @@ services.AddSwaggerGen(c =>
     });
 });
 
-// ===================== CORS (Quan trọng) =====================
+// ===================== CORS =====================
 services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
         policy.WithOrigins(
-            "http://localhost:3000",            // React local
-            "http://localhost:5049",            // Swagger HTTP
-            "https://localhost:7062",           // Swagger HTTPS
-            "https://sep490-g19.onrender.com",  // Frontend deploy Render
-            "https://ballsport-frontend.onrender.com" // ví dụ nếu deploy React riêng
+            "http://localhost:3000",             // React local
+            "http://localhost:5049",             // Swagger HTTP
+            "https://localhost:7062",            // Swagger HTTPS
+            "https://sep490-g19.onrender.com",   // Backend Render
+            "https://ballsport-frontend.onrender.com" // Frontend Render (ví dụ)
         )
         .AllowAnyHeader()
         .AllowAnyMethod()
@@ -69,18 +72,20 @@ services.AddCors(options =>
     });
 });
 
-// ===================== DB CONTEXT =====================
+// ===================== DATABASE =====================
 services.AddDbContext<Sep490G19v1Context>(options =>
     options.UseSqlServer(config.GetConnectionString("MyCnn")));
 
-// ===================== DEPENDENCY INJECTION =====================
+// ===================== REPOSITORIES & SERVICES =====================
+services.AddMemoryCache();
+
+// --- Core user / auth ---
 services.AddScoped<UserRepositories>();
 services.AddScoped<UserService>();
 services.AddScoped<JwtService>();
 services.AddScoped<OTPService>();
-services.AddMemoryCache();
 
-// Các service khác (Field, Deposit, Schedule…)
+// --- Field-related ---
 services.AddScoped<FieldTypesRepository>();
 services.AddScoped<FieldTypeService>();
 
@@ -102,12 +107,31 @@ services.AddScoped<FieldPriceService>();
 services.AddScoped<TimeSlotRepository>();
 services.AddScoped<TimeSlotService>();
 
+// --- Community module ---
+services.AddScoped<IPostRepository, PostRepository>();
+services.AddScoped<ICommentRepository, CommentRepository>();
+services.AddScoped<IPostLikeRepository, PostLikeRepository>();
+services.AddScoped<INotificationRepository, NotificationRepository>();
+services.AddScoped<IReportRepository, ReportRepository>();
+
+services.AddScoped<IPostService, PostService>();
+services.AddScoped<ICommentService, CommentService>();
+services.AddScoped<INotificationService, NotificationService>();
+services.AddScoped<IReportService, ReportService>();
+
+// --- Settings ---
+builder.Services.Configure<CommunitySettings>(config.GetSection("CommunitySettings"));
+builder.Services.Configure<NotificationSettings>(config.GetSection("NotificationSettings"));
+builder.Services.Configure<ReportSettings>(config.GetSection("ReportSettings"));
+
 // ===================== SMTP (Email) =====================
 var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
 services.AddSingleton(smtpSettings);
 services.AddTransient<EmailService>();
 
-// ===================== JWT AUTH =====================
+// ===================== AUTHENTICATION =====================
+
+// --- JWT ---
 services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -124,8 +148,8 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// ===================== GOOGLE AUTH (nếu có) =====================
-var googleSection = builder.Configuration.GetSection("Authentication:Google");
+// --- Google Auth ---
+var googleSection = config.GetSection("Authentication:Google");
 var googleClientId = googleSection["ClientId"];
 var googleClientSecret = googleSection["ClientSecret"];
 
@@ -146,6 +170,7 @@ if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientS
     });
 }
 
+// ===================== BUILD APP =====================
 var app = builder.Build();
 
 // ===================== DEPLOYMENT PORT =====================
@@ -160,10 +185,9 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-// ⚠️ Nếu test HTTP local, tắt HTTPS redirect
+// Nếu test local bằng HTTP → có thể tắt HTTPS redirect
 // app.UseHttpsRedirection();
 
-// 🧩 Đặt CORS TRƯỚC Authentication
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
@@ -172,6 +196,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 // Check API is running
-app.MapGet("/", () => "✅ API is running on Render & CORS configured!");
+app.MapGet("/", () => "✅ BallSport API is running with JWT + CORS + Swagger + Community!");
 
 app.Run();
