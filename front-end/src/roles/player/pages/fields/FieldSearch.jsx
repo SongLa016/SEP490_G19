@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, useInView, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Star } from "lucide-react";
 import { Section, Container, Card, CardContent, StaggerContainer } from "../../../../shared/components/ui";
+import { ScrollReveal } from "../../../../shared/components/ScrollReveal";
+import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
 import { useNavigate } from "react-router-dom";
 import MapSearch from "./components/MapSearch";
 import { fetchComplexes, fetchFields, fetchTimeSlots } from "../../../../shared/index";
@@ -19,31 +21,6 @@ import FieldListItem from "./components/FieldListItem";
 import ComplexCard from "./components/ComplexCard";
 import ComplexListItem from "./components/ComplexListItem";
 import GroupedViewSection from "./components/GroupedViewSection";
-
-// Component để animate khi scroll vào viewport
-const ScrollRevealSection = ({ children, index = 0 }) => {
-     const ref = useRef(null);
-     const isInView = useInView(ref, { once: true, margin: "-100px" });
-
-     return (
-          <motion.div
-               ref={ref}
-               initial={{ opacity: 0, y: 60, scale: 0.95 }}
-               animate={isInView ? {
-                    opacity: 1,
-                    y: 0,
-                    scale: 1
-               } : { opacity: 0, y: 60, scale: 0.95 }}
-               transition={{
-                    delay: index * 0.2,
-                    duration: 0.6,
-                    ease: [0.25, 0.46, 0.45, 0.94] // Custom easing for smooth effect
-               }}
-          >
-               {children}
-          </motion.div>
-     );
-};
 
 export default function FieldSearch({ user }) {
      const navigate = useNavigate();
@@ -105,8 +82,9 @@ export default function FieldSearch({ user }) {
      const [isLoading, setIsLoading] = useState(false);
 
      const didInitRef = useRef(false);
-
-     // Run only once on mount to decide initial state based on presets or defaults
+     useEffect(() => {
+          window.scrollTo(0, 0);
+     }, []);
      useEffect(() => {
           if (didInitRef.current) return;
           didInitRef.current = true;
@@ -634,11 +612,7 @@ export default function FieldSearch({ user }) {
                     </motion.div>
 
                     {/* Results Header với Animation */}
-                    <motion.div
-                         initial={{ opacity: 0, x: -20 }}
-                         animate={{ opacity: 1, x: 0 }}
-                         transition={{ delay: 0.5, duration: 0.5 }}
-                    >
+                    <ScrollReveal direction="left" delay={0.1}>
                          <ResultsHeader
                               entityTab={entityTab}
                               complexesCount={complexes.length}
@@ -647,184 +621,186 @@ export default function FieldSearch({ user }) {
                               viewMode={viewMode}
                               updateViewMode={updateViewMode}
                          />
+                    </ScrollReveal>
 
-                         {/* Loading State với Animation */}
-                         <AnimatePresence>
-                              {isLoading && (
-                                   <motion.div
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={{ duration: 0.3 }}
-                                   >
-                                        <LoadingState />
-                                   </motion.div>
-                              )}
-                         </AnimatePresence>
+                    {/* Loading State với Animation */}
+                    <AnimatePresence>
+                         {isLoading && (
+                              <motion.div
+                                   initial={{ opacity: 0 }}
+                                   animate={{ opacity: 1 }}
+                                   exit={{ opacity: 0 }}
+                                   transition={{ duration: 0.3 }}
+                              >
+                                   <LoadingState />
+                              </motion.div>
+                         )}
+                    </AnimatePresence>
 
-                         {/* Results với View Mode Transition */}
-                         <AnimatePresence mode="wait">
-                              {!isLoading && entityTab === "complexes" ? (
-                                   <motion.div
-                                        key={`complexes-${viewMode}`}
-                                        initial={{ opacity: 0, scale: 0.95 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        transition={{ duration: 0.4 }}
-                                   >
-                                        {viewMode === "grid" ? (
-                                             <StaggerContainer staggerDelay={50} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-stretch">
-                                                  {pageItemsComplex.map((c, index) => (
-                                                       <ComplexCard
-                                                            key={c.complexId}
+                    {/* Results với View Mode Transition */}
+                    <AnimatePresence mode="wait">
+                         {!isLoading && entityTab === "complexes" ? (
+                              <motion.div
+                                   key={`complexes-${viewMode}`}
+                                   initial={{ opacity: 0, scale: 0.95 }}
+                                   animate={{ opacity: 1, scale: 1 }}
+                                   exit={{ opacity: 0, scale: 0.95 }}
+                                   transition={{ duration: 0.4 }}
+                              >
+                                   {viewMode === "grid" ? (
+                                        <StaggerContainer staggerDelay={50} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-stretch">
+                                             {pageItemsComplex.map((c, index) => (
+                                                  <ComplexCard
+                                                       key={c.complexId}
+                                                       complex={c}
+                                                       index={index}
+                                                       navigate={navigate}
+                                                       formatPrice={formatPrice}
+                                                  />
+                                             ))}
+                                        </StaggerContainer>
+                                   ) : (
+                                        <motion.div
+                                             className="space-y-4"
+                                             initial={{ opacity: 0, y: 20 }}
+                                             animate={{ opacity: 1, y: 0 }}
+                                             transition={{ delay: 0.2 }}
+                                        >
+                                             {pageItemsComplex.map((c, index) => (
+                                                  <motion.div
+                                                       key={c.complexId}
+                                                       initial={{ opacity: 0, x: -20 }}
+                                                       animate={{ opacity: 1, x: 0 }}
+                                                       transition={{ delay: index * 0.05 }}
+                                                  >
+                                                       <ComplexListItem
                                                             complex={c}
                                                             index={index}
                                                             navigate={navigate}
                                                             formatPrice={formatPrice}
                                                        />
-                                                  ))}
-                                             </StaggerContainer>
-                                        ) : (
-                                             <motion.div
-                                                  className="space-y-4"
-                                                  initial={{ opacity: 0, y: 20 }}
-                                                  animate={{ opacity: 1, y: 0 }}
-                                                  transition={{ delay: 0.2 }}
-                                             >
-                                                  {pageItemsComplex.map((c, index) => (
-                                                       <motion.div
-                                                            key={c.complexId}
-                                                            initial={{ opacity: 0, x: -20 }}
-                                                            animate={{ opacity: 1, x: 0 }}
-                                                            transition={{ delay: index * 0.05 }}
-                                                       >
-                                                            <ComplexListItem
-                                                                 complex={c}
-                                                                 index={index}
-                                                                 navigate={navigate}
-                                                                 formatPrice={formatPrice}
-                                                            />
-                                                       </motion.div>
-                                                  ))}
-                                             </motion.div>
-                                        )}
-                                   </motion.div>
-                              ) : !isLoading && isGroupedView ? (
-                                   <motion.div
-                                        className="space-y-6"
-                                        key="grouped"
-                                   >
-                                        {/* Gần bạn - Scroll trigger animation */}
-                                        <ScrollRevealSection index={0}>
-                                             <GroupedViewSection
-                                                  title="Gần bạn"
-                                                  icon={MapPin}
-                                                  iconColor="text-teal-800"
-                                                  bgColor="bg-teal-50"
-                                                  borderColor="border-teal-300"
-                                                  items={complexes.slice(0, 4)}
-                                                  type="complex"
-                                                  navigate={navigate}
-                                                  formatPrice={formatPrice}
-                                                  handleViewAll={() => { setActiveTab("near"); setForceList(true); setPage(1); setEntityTab("complexes"); }}
-                                             />
-                                        </ScrollRevealSection>
-
-                                        {/* Giá tốt - Scroll trigger animation */}
-                                        <ScrollRevealSection index={1}>
-                                             <GroupedViewSection
-                                                  title="Giá tốt"
-                                                  icon={Star}
-                                                  iconColor="text-red-700"
-                                                  bgColor="bg-red-50"
-                                                  borderColor="border-red-300"
-                                                  items={bestPriceGroup}
-                                                  type="field"
-                                                  navigate={navigate}
-                                                  formatPrice={formatPrice}
-                                                  handleBook={handleBook}
-                                                  slotId={slotId}
-                                                  handleViewAll={() => { setActiveTab("best-price"); setForceList(true); setPage(1); }}
-                                                  delay={300}
-                                             />
-                                        </ScrollRevealSection>
-
-                                        {/* Đánh giá cao - Scroll trigger animation */}
-                                        <ScrollRevealSection index={2}>
-                                             <GroupedViewSection
-                                                  title="Đánh giá cao"
-                                                  icon={Star}
-                                                  iconColor="text-yellow-700"
-                                                  bgColor="bg-yellow-50"
-                                                  borderColor="border-yellow-300"
-                                                  items={topRatedGroup}
-                                                  type="field"
-                                                  navigate={navigate}
-                                                  formatPrice={formatPrice}
-                                                  handleBook={handleBook}
-                                                  slotId={slotId}
-                                                  handleViewAll={() => { setActiveTab("top-rated"); setForceList(true); setPage(1); }}
-                                                  delay={500}
-                                             />
-                                        </ScrollRevealSection>
-                                   </motion.div>
-                              ) : !isLoading && viewMode === "grid" ? (
-                                   <motion.div
-                                        key={`fields-grid`}
-                                        initial={{ opacity: 0, scale: 0.95 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.95 }}
-                                        transition={{ duration: 0.4 }}
-                                   >
-                                        <StaggerContainer staggerDelay={50} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
-                                             {pageItems.map((field, index) => (
-                                                  <FieldCard
-                                                       key={field.fieldId}
-                                                       field={field}
-                                                       index={index}
-                                                       activeTab={activeTab}
-                                                       slotId={slotId}
-                                                       formatPrice={formatPrice}
-                                                       handleToggleFavorite={handleToggleFavorite}
-                                                       handleBook={handleBook}
-                                                       navigate={navigate}
-                                                  />
+                                                  </motion.div>
                                              ))}
-                                        </StaggerContainer>
-                                   </motion.div>
-                              ) : !isLoading ? (
-                                   <motion.div
-                                        className="space-y-4"
-                                        key={`fields-list`}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -20 }}
-                                        transition={{ duration: 0.4 }}
-                                   >
-                                        {pageItems.map((field, index) => (
-                                             <motion.div
-                                                  key={field.fieldId}
-                                                  initial={{ opacity: 0, x: -20 }}
-                                                  animate={{ opacity: 1, x: 0 }}
-                                                  transition={{ delay: index * 0.05 }}
-                                             >
-                                                  <FieldListItem
-                                                       field={field}
-                                                       index={index}
-                                                       slotId={slotId}
-                                                       formatPrice={formatPrice}
-                                                       handleToggleFavorite={handleToggleFavorite}
-                                                       handleBook={handleBook}
-                                                       navigate={navigate}
-                                                  />
-                                             </motion.div>
-                                        ))}
-                                   </motion.div>
-                              ) : null}
-                         </AnimatePresence>
+                                        </motion.div>
+                                   )}
+                              </motion.div>
+                         ) : !isLoading && isGroupedView ? (
+                              <motion.div
+                                   className="space-y-6"
+                                   key="grouped"
+                              >
+                                   {/* Gần bạn - Scroll trigger animation */}
+                                   <ScrollReveal direction="up" delay={0.1}>
+                                        <GroupedViewSection
+                                             title="Gần bạn"
+                                             icon={MapPin}
+                                             iconColor="text-teal-800"
+                                             bgColor="bg-teal-50"
+                                             borderColor="border-teal-300"
+                                             items={complexes.slice(0, 4)}
+                                             type="complex"
+                                             navigate={navigate}
+                                             formatPrice={formatPrice}
+                                             handleViewAll={() => { setActiveTab("near"); setForceList(true); setPage(1); setEntityTab("complexes"); }}
+                                        />
+                                   </ScrollReveal>
 
-                         {/* Pagination for complexes */}
-                         {totalComplex > 0 && entityTab === "complexes" && (
+                                   {/* Giá tốt - Scroll trigger animation */}
+                                   <ScrollReveal direction="up" delay={0.2}>
+                                        <GroupedViewSection
+                                             title="Giá tốt"
+                                             icon={Star}
+                                             iconColor="text-red-700"
+                                             bgColor="bg-red-50"
+                                             borderColor="border-red-300"
+                                             items={bestPriceGroup}
+                                             type="field"
+                                             navigate={navigate}
+                                             formatPrice={formatPrice}
+                                             handleBook={handleBook}
+                                             slotId={slotId}
+                                             handleViewAll={() => { setActiveTab("best-price"); setForceList(true); setPage(1); }}
+                                             delay={300}
+                                        />
+                                   </ScrollReveal>
+
+                                   {/* Đánh giá cao - Scroll trigger animation */}
+                                   <ScrollReveal direction="up" delay={0.3}>
+                                        <GroupedViewSection
+                                             title="Đánh giá cao"
+                                             icon={Star}
+                                             iconColor="text-yellow-700"
+                                             bgColor="bg-yellow-50"
+                                             borderColor="border-yellow-300"
+                                             items={topRatedGroup}
+                                             type="field"
+                                             navigate={navigate}
+                                             formatPrice={formatPrice}
+                                             handleBook={handleBook}
+                                             slotId={slotId}
+                                             handleViewAll={() => { setActiveTab("top-rated"); setForceList(true); setPage(1); }}
+                                             delay={500}
+                                        />
+                                   </ScrollReveal>
+                              </motion.div>
+                         ) : !isLoading && viewMode === "grid" ? (
+                              <motion.div
+                                   key={`fields-grid`}
+                                   initial={{ opacity: 0, scale: 0.95 }}
+                                   animate={{ opacity: 1, scale: 1 }}
+                                   exit={{ opacity: 0, scale: 0.95 }}
+                                   transition={{ duration: 0.4 }}
+                              >
+                                   <StaggerContainer staggerDelay={50} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+                                        {pageItems.map((field, index) => (
+                                             <FieldCard
+                                                  key={field.fieldId}
+                                                  field={field}
+                                                  index={index}
+                                                  activeTab={activeTab}
+                                                  slotId={slotId}
+                                                  formatPrice={formatPrice}
+                                                  handleToggleFavorite={handleToggleFavorite}
+                                                  handleBook={handleBook}
+                                                  navigate={navigate}
+                                             />
+                                        ))}
+                                   </StaggerContainer>
+                              </motion.div>
+                         ) : !isLoading ? (
+                              <motion.div
+                                   className="space-y-4"
+                                   key={`fields-list`}
+                                   initial={{ opacity: 0, y: 20 }}
+                                   animate={{ opacity: 1, y: 0 }}
+                                   exit={{ opacity: 0, y: -20 }}
+                                   transition={{ duration: 0.4 }}
+                              >
+                                   {pageItems.map((field, index) => (
+                                        <motion.div
+                                             key={field.fieldId}
+                                             initial={{ opacity: 0, x: -20 }}
+                                             animate={{ opacity: 1, x: 0 }}
+                                             transition={{ delay: index * 0.05 }}
+                                        >
+                                             <FieldListItem
+                                                  field={field}
+                                                  index={index}
+                                                  slotId={slotId}
+                                                  formatPrice={formatPrice}
+                                                  handleToggleFavorite={handleToggleFavorite}
+                                                  handleBook={handleBook}
+                                                  navigate={navigate}
+                                             />
+                                        </motion.div>
+                                   ))}
+                              </motion.div>
+                         ) : null}
+                    </AnimatePresence>
+
+                    {/* Pagination for complexes */}
+                    {totalComplex > 0 && entityTab === "complexes" && (
+                         <ScrollReveal direction="up" delay={0.1}>
                               <Pagination
                                    currentPage={currentPageComplex}
                                    totalPages={totalPagesComplex}
@@ -835,10 +811,12 @@ export default function FieldSearch({ user }) {
                                    startIdx={startIdxComplex}
                                    endIdx={endIdxComplex}
                               />
-                         )}
+                         </ScrollReveal>
+                    )}
 
-                         {/* Pagination for fields (only when viewing Sân nhỏ list) */}
-                         {entityTab === "fields" && filteredFields.length > 0 && !isGroupedView && (
+                    {/* Pagination for fields (only when viewing Sân nhỏ list) */}
+                    {entityTab === "fields" && filteredFields.length > 0 && !isGroupedView && (
+                         <ScrollReveal direction="up" delay={0.1}>
                               <Pagination
                                    currentPage={currentPage}
                                    totalPages={totalPages}
@@ -849,9 +827,11 @@ export default function FieldSearch({ user }) {
                                    startIdx={startIdx}
                                    endIdx={endIdx}
                               />
-                         )}
+                         </ScrollReveal>
+                    )}
 
-                         {!isLoading && filteredFields.length === 0 && (
+                    {!isLoading && filteredFields.length === 0 && (
+                         <ScrollReveal direction="up" delay={0.1}>
                               <EmptyState
                                    onReset={() => {
                                         setSearchQuery("");
@@ -865,8 +845,9 @@ export default function FieldSearch({ user }) {
                                         setMapSearchKey(prev => prev + 1);
                                    }}
                               />
-                         )}
-                    </motion.div>
+                         </ScrollReveal>
+                    )}
+
                </Container>
 
                {/* Map Search Modal */}
@@ -876,6 +857,9 @@ export default function FieldSearch({ user }) {
                     onClose={() => setShowMapSearch(false)}
                     onLocationSelect={handleMapLocationSelect}
                />
+
+               {/* Login Promotion Modal */}
+               <LoginPromotionModal user={user} />
           </Section >
      );
 }

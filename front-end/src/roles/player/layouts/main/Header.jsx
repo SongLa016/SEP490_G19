@@ -42,37 +42,37 @@ export default function Header({ user, onLoggedOut }) {
      const getNavigationItems = () => {
           if (!user) {
                return [
-                    { id: "home", label: "Home", icon: Home },
+                    { id: "home", label: "Trang chủ", icon: Home },
                     { id: "search", label: "Danh sách sân", icon: Search },
-                    { id: "community", label: "Community", icon: Users },
+                    { id: "community", label: "Cộng đồng", icon: Users },
                ];
           }
 
           const baseItems = [
-               { id: "home", label: "Home", icon: Home },
+               { id: "home", label: "Trang chủ", icon: Home },
                { id: "search", label: "Danh sách sân", icon: Search },
           ];
 
           if (user.roleName === "Player") {
                return [
                     ...baseItems,
-                    { id: "bookings", label: "Bookings", icon: Calendar },
-                    { id: "community", label: "Community", icon: Users },
+                    { id: "bookings", label: "Đặt sân", icon: Calendar },
+                    { id: "community", label: "Cộng đồng", icon: Users },
                ];
           } else if (user.roleName === "Owner") {
                return [
                     ...baseItems,
-                    { id: "owner", label: "My Fields", icon: MapPin },
-                    { id: "owner/bookings", label: "Bookings", icon: Calendar },
-                    { id: "owner/reports", label: "Reports", icon: BarChart3 },
-                    { id: "community", label: "Community", icon: Users },
+                    { id: "owner", label: "Sân của tôi", icon: MapPin },
+                    { id: "owner/bookings", label: "Đặt sân", icon: Calendar },
+                    { id: "owner/reports", label: "Báo cáo", icon: BarChart3 },
+                    { id: "community", label: "Cộng đồng", icon: Users },
                ];
           } else if (user.roleName === "Admin") {
                return [
                     ...baseItems,
-                    { id: "admin/users", label: "Users", icon: Users },
-                    { id: "admin", label: "Admin Panel", icon: MapPin },
-                    { id: "community", label: "Community", icon: Users },
+                    { id: "admin/users", label: "Người dùng", icon: Users },
+                    { id: "admin", label: "Trang quản trị", icon: MapPin },
+                    { id: "community", label: "Cộng đồng", icon: Users },
                ];
           }
 
@@ -164,7 +164,7 @@ export default function Header({ user, onLoggedOut }) {
                                                             className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
                                                        >
                                                             <Settings className="w-4 h-4 mr-2" />
-                                                            Settings
+                                                            Cài đặt
                                                        </Button>
                                                        <Button
                                                             onClick={() => {
@@ -174,7 +174,7 @@ export default function Header({ user, onLoggedOut }) {
                                                             className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
                                                        >
                                                             <LogOut className="w-4 h-4 mr-2" />
-                                                            Logout
+                                                            Đăng xuất
                                                        </Button>
                                                   </div>
                                              )}
@@ -188,7 +188,7 @@ export default function Header({ user, onLoggedOut }) {
                                              }}
                                              className={`flex items-center space-x-2 border-0 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 bg-transparent px-4 py-2 rounded-full text-sm font-medium hover:border-b-2 hover:border-teal-500 hover:cursor-pointer hover:scale-105 transition-colors ${isScrolled ? 'text-gray-700 hover:text-teal-600' : 'text-white hover:bg-transparent hover:text-white'}`}
                                         >
-                                             Login
+                                             Đăng nhập
                                              <LogIn className="w-5 h-5 ml-2" />
                                         </Button>
                                         <Button
@@ -197,7 +197,7 @@ export default function Header({ user, onLoggedOut }) {
                                              }}
                                              className="bg-teal-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-teal-600 transition-colors"
                                         >
-                                             Register
+                                             Đăng ký
                                         </Button>
                                    </div>
                               )}
