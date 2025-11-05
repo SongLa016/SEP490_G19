@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { Section } from "../shared/components/ui";
+import { useState, useEffect } from "react";
+import { Section } from "../../../../shared/components/ui";
 import { useNavigate } from "react-router-dom";
-import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, SuggestionsSection, TestimonialsSection, WhyChooseUsSection, NewsletterSection, FAQSection, CTASection } from "./components";
-import { LoginPromotionModal } from "../shared/components/LoginPromotionModal";
+import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, QuickBookingSection, CommunityMatchmakingSection, UserReviewsSection, EventsSection, MobileAppSection, BlogSection, WhyChooseUsSection, NewsletterSection, FAQSection, CTASection } from "./components";
+import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
 
 export default function HomePage({ user }) {
      const navigate = useNavigate();
@@ -10,6 +10,26 @@ export default function HomePage({ user }) {
      const [selectedLocation, setSelectedLocation] = useState("all");
      const [selectedPrice, setSelectedPrice] = useState("all");
      const [hoveredCardId, setHoveredCardId] = useState(null);
+
+     // Hide scrollbar but keep page scrollable while on this page
+     useEffect(() => {
+          const styleEl = document.createElement("style");
+          styleEl.setAttribute("data-homepage-scrollbar-hide", "");
+          styleEl.textContent = `
+               html, body { scrollbar-width: none; -ms-overflow-style: none; }
+               html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; }
+
+               /* Fallback: hide scrollbars on all scrollable elements */
+               * { scrollbar-width: none; }
+               *::-webkit-scrollbar { display: none; }
+          `;
+          document.head.appendChild(styleEl);
+          return () => {
+               try {
+                    document.head.removeChild(styleEl);
+               } catch { }
+          };
+     }, []);
 
      // Mock data for featured fields
      const featuredFields = [
@@ -115,7 +135,7 @@ export default function HomePage({ user }) {
      };
 
      return (
-          <Section className="min-h-screen">
+          <Section className="min-h-screen bg-[url('https://images.unsplash.com/photo-1550895030-823330fc2551?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTU5fHxiYWNrZ3JvdW5kfGVufDB8fDB8fHww&auto=format&fit=crop&q=60&w=600')] bg-current bg-center">
                <HeroSection
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
@@ -127,28 +147,21 @@ export default function HomePage({ user }) {
                />
 
                <StatsSection />
-
                <QuickCategoriesSection featuredFields={featuredFields} />
-
                <TopBookingNowSection
                     featuredFields={featuredFields}
                     hoveredCardId={hoveredCardId}
                     setHoveredCardId={setHoveredCardId}
                />
-
-               <SuggestionsSection />
-
-               <TestimonialsSection />
-
-               <WhyChooseUsSection />
-
+               <QuickBookingSection user={user} />
+               <CommunityMatchmakingSection />
+               <UserReviewsSection />
+               <EventsSection />
+               <MobileAppSection />
                <NewsletterSection />
-
-               <FAQSection />
-
+               <WhyChooseUsSection />
+               {/* <FAQSection /> */}
                <CTASection user={user} />
-
-               {/* Login Promotion Modal */}
                <LoginPromotionModal user={user} />
           </Section>
      );

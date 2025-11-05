@@ -183,14 +183,14 @@ export const LoginPromotionModal = ({ user, onClose }) => {
                                                   onClick={handleLogin}
                                                   className="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white font-semibold py-3 rounded-xl shadow-lg transition-all duration-200"
                                              >
-                                                  Đăng nhập hoặc đăng ký
+                                                  Tham gia ngay
                                              </Button>
                                         </motion.div>
 
                                         {/* Skip Link */}
                                         <button
                                              onClick={handleClose}
-                                             className="mt-4 w-full text-center text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                                             className="mt-4 w-full hover:cursor-pointer hover:underline text-center text-sm text-gray-500 hover:text-gray-700 transition-colors"
                                         >
                                              Bỏ qua
                                         </button>

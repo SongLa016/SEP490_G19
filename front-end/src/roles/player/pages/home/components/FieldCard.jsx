@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { MapPin, Star } from "lucide-react";
-import { Button } from "../../shared/components/ui";
+import { Button } from "../../../../../shared/components/ui";
 import { useNavigate } from "react-router-dom";
 
 export const FieldCard = ({ field, index = 0, hoveredCardId, setHoveredCardId }) => {

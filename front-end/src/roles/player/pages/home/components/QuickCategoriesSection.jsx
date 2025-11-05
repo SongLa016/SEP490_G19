@@ -1,7 +1,7 @@
-import { Container, Section, Button } from "../../shared/components/ui";
+import { Container, Section, Button } from "../../../../../shared/components/ui";
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { ScrollReveal } from "../../shared/components/ScrollReveal";
+import { ScrollReveal } from "../../../../../shared/components/ScrollReveal";
 
 export const QuickCategoriesSection = ({ featuredFields }) => {
      const navigate = useNavigate();

@@ -2,16 +2,10 @@ import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ModalProvider } from "./contexts/ModalContext";
-
-// Layouts - Keep these synchronous as they're always needed
 import MainLayout from "./shared/layouts/MainLayout";
 import AuthLayout from "./shared/layouts/AuthLayout";
 import AdminLayout from "./roles/admin/layouts/AdminLayout";
-
-// FieldSearch - Import directly (frequently used, don't lazy load for better navigation speed)
 import FieldSearch from "./roles/player/pages/fields/FieldSearch";
-
-// Loading component
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center">
     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
@@ -20,15 +14,13 @@ const LoadingFallback = () => (
 
 // Lazy load pages for better performance
 const LandingPage = lazy(() => import("./pages/LandingPage"));
-const HomePage = lazy(() => import("./pages/HomePage"));
+const HomePage = lazy(() => import("./roles/player/pages/home/HomePage"));
 const Dashboard = lazy(() =>
   import("./roles/player/pages/dashboard/Dashboard")
 );
 
 // Lazy load owner pages
-const OwnerDashboard = lazy(() =>
-  import("./roles/owner/pages/OwnerDashboard")
-);
+const OwnerDashboard = lazy(() => import("./roles/owner/pages/OwnerDashboard"));
 const FieldManagement = lazy(() =>
   import("./roles/owner/pages/FieldManagement")
 );
@@ -38,9 +30,7 @@ const PricingManagement = lazy(() =>
 const BookingManagement = lazy(() =>
   import("./roles/owner/pages/BookingManagement")
 );
-const RevenueReports = lazy(() =>
-  import("./roles/owner/pages/RevenueReports")
-);
+const RevenueReports = lazy(() => import("./roles/owner/pages/RevenueReports"));
 const ScheduleManagement = lazy(() =>
   import("./roles/owner/pages/ScheduleManagement")
 );

@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Search, User, Menu, X, LogOut, Settings, Home, MapPin, Calendar, Users, BarChart3, LogIn } from "lucide-react";
-import logo from "../../../../shared/components/assets/logo.png";
-import { Button } from "../../../../shared/components/ui";
-import { useModal } from "../../../../contexts/ModalContext";
-import { NotificationBell, NotificationDropdown } from "../../../../shared/components/NotificationsDisplay";
-import { roleMapping } from "../../../../shared/index";
+import logo from "../../../shared/components/assets/logo.png";
+import { Button } from "../../../shared/components/ui";
+import { useModal } from "../../../contexts/ModalContext";
+import { NotificationBell, NotificationDropdown } from "../../../shared/components/NotificationsDisplay";
+import { roleMapping } from "../../../shared/index";
 export default function Header({ user, onLoggedOut }) {
      const [isMenuOpen, setIsMenuOpen] = useState(false);
      const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -186,18 +186,10 @@ export default function Header({ user, onLoggedOut }) {
                                              onClick={() => {
                                                   navigate("/auth");
                                              }}
-                                             className={`flex items-center space-x-2 border-0 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 bg-transparent px-4 py-2 rounded-full text-sm font-medium hover:border-b-2 hover:border-teal-500 hover:cursor-pointer hover:scale-105 transition-colors ${isScrolled ? 'text-gray-700 hover:text-teal-600' : 'text-white hover:bg-transparent hover:text-white'}`}
+                                             className={`flex items-center space-x-2 border-0 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 bg-teal-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-teal-600 transition-colors`}
                                         >
-                                             Đăng nhập
+                                             Tham gia ngay
                                              <LogIn className="w-5 h-5 ml-2" />
-                                        </Button>
-                                        <Button
-                                             onClick={() => {
-                                                  navigate("/auth");
-                                             }}
-                                             className="bg-teal-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-teal-600 transition-colors"
-                                        >
-                                             Đăng ký
                                         </Button>
                                    </div>
                               )}

@@ -1,10 +1,11 @@
 import { DollarSign, ShieldCheck, Sparkles } from "lucide-react";
-import { ScrollReveal } from "../../shared/components/ScrollReveal";
+import { ScrollReveal } from "../../../../../shared/components/ScrollReveal";
+import { Container } from "../../../../../shared/components/ui";
 
 export const WhyChooseUsSection = () => {
      return (
           <ScrollReveal direction="up" delay={0.1}>
-               <div className="py-16">
+               <Container className="py-8 my-10  bg-gradient-to-br from-white to-teal-50 rounded-2xl">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                          <h2 className="text-3xl md:text-4xl font-extrabold text-center text-teal-800 mb-10">Vì sao chọn chúng tôi?</h2>
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 text-center">
@@ -31,7 +32,7 @@ export const WhyChooseUsSection = () => {
                               </div>
                          </div>
                     </div>
-               </div>
+               </Container>
           </ScrollReveal>
      );
 };

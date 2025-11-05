@@ -1,6 +1,6 @@
-import { Button } from "../../shared/components/ui";
+import { Button } from "../../../../../shared/components/ui";
 import { useNavigate } from "react-router-dom";
-import { ScrollReveal } from "../../shared/components/ScrollReveal";
+import { ScrollReveal } from "../../../../../shared/components/ScrollReveal";
 
 export const CTASection = ({ user }) => {
      const navigate = useNavigate();

@@ -1,14 +1,14 @@
 import { motion } from "framer-motion";
-import { Container, Row } from "../../shared/components/ui";
+import { Container, Row } from "../../../../../shared/components/ui";
 import { StatsCard } from "./StatsCard";
 import { Calendar, Users, TrendingUp, Star } from "lucide-react";
-import { ScrollReveal } from "../../shared/components/ScrollReveal";
+import { ScrollReveal } from "../../../../../shared/components/ScrollReveal";
 
 export const StatsSection = () => {
      return (
           <ScrollReveal direction="up" delay={0.1} once={false}>
                <motion.section
-                    className="py-8 bg-gradient-to-br from-gray-100 via-teal-50/30 to-gray-100 relative overflow-hidden"
+                    className="py-4 relative overflow-hidden"
                >
                     <motion.div
                          className="absolute inset-0 opacity-20"

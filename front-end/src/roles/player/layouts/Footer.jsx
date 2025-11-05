@@ -1,6 +1,6 @@
 
 import { MapPin, Phone, Mail, Facebook, Instagram, Twitter, Linkedin, MessageCircle } from "lucide-react";
-import logo from "../../../../shared/components/assets/logo.png";
+import logo from "../../../shared/components/assets/logo.png";
 import { Link } from "react-router-dom";
 
 export default function Footer() {

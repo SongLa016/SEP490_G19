@@ -488,7 +488,7 @@ export default function FieldSearch({ user }) {
                               transition={{ delay: 0.2, duration: 0.6 }}
                          >
                               <motion.h1
-                                   className="text-3xl md:text-4xl font-extrabold tracking-tight"
+                                   className="text-4xl md:text-5xl font-extrabold tracking-tight"
                                    animate={{
                                         backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
                                    }}
@@ -507,7 +507,7 @@ export default function FieldSearch({ user }) {
                                    Tìm sân bóng phù hợp trong vài giây
                               </motion.h1>
                               <motion.p
-                                   className="mt-2 opacity-90"
+                                   className="mt-2 opacity-90 text-xl"
                                    initial={{ opacity: 0 }}
                                    animate={{ opacity: 0.9 }}
                                    transition={{ delay: 0.4, duration: 0.6 }}

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { gsap } from 'gsap';
 import { Button } from '../shared/components/ui';
 import logo from '../shared/components/assets/logo.png';
+import TypewriterText from '../shared/components/TypewriterText';
 import {
      ArrowRight,
      CheckCircle,
@@ -288,7 +289,7 @@ const LandingPage = () => {
                                              : 'Quản lý sân bóng chuyên nghiệp'}
                                    </motion.div>
 
-                                   {/* Animated Main Headline */}
+                                   {/* Animated Main Headline with Typewriter Effect */}
                                    <motion.h1
                                         className="text-4xl md:text-6xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-white via-teal-200 to-teal-400 leading-tight"
                                         initial={{ opacity: 0, y: 20 }}
@@ -297,51 +298,43 @@ const LandingPage = () => {
                                    >
                                         {selectedPersona === 'customer' ? (
                                              <>
-                                                  Tìm và đặt sân
+                                                  <TypewriterText
+                                                       text="Tìm và đặt sân"
+                                                       speed={80}
+                                                       delay={800}
+                                                       className="text-transparent bg-clip-text bg-gradient-to-r from-white via-teal-200 to-teal-400"
+                                                       cursor={false}
+                                                       staticAnimation={true}
+                                                  />
                                                   <br />
-                                                  <motion.span
+                                                  <TypewriterText
+                                                       text="nhanh chóng"
+                                                       speed={80}
+                                                       delay={1920}
                                                        className="text-teal-400"
-                                                       animate={{
-                                                            backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-                                                       }}
-                                                       transition={{
-                                                            duration: 5,
-                                                            repeat: Infinity,
-                                                            ease: "linear",
-                                                       }}
-                                                       style={{
-                                                            backgroundImage: "linear-gradient(90deg, #2dd4bf, #5eead4, #2dd4bf)",
-                                                            backgroundSize: "200% 100%",
-                                                            WebkitBackgroundClip: "text",
-                                                            WebkitTextFillColor: "transparent",
-                                                       }}
-                                                  >
-                                                       nhanh chóng
-                                                  </motion.span>
+                                                       cursor={true}
+                                                       staticAnimation={true}
+                                                  />
                                              </>
                                         ) : (
                                              <>
-                                                  Quản lý sân bóng
+                                                  <TypewriterText
+                                                       text="Quản lý sân bóng"
+                                                       speed={80}
+                                                       delay={800}
+                                                       className="text-transparent bg-clip-text bg-gradient-to-r from-white via-teal-200 to-teal-400"
+                                                       cursor={false}
+                                                       staticAnimation={true}
+                                                  />
                                                   <br />
-                                                  <motion.span
+                                                  <TypewriterText
+                                                       text="thông minh"
+                                                       speed={80}
+                                                       delay={2080}
                                                        className="text-teal-400"
-                                                       animate={{
-                                                            backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-                                                       }}
-                                                       transition={{
-                                                            duration: 5,
-                                                            repeat: Infinity,
-                                                            ease: "linear",
-                                                       }}
-                                                       style={{
-                                                            backgroundImage: "linear-gradient(90deg, #2dd4bf, #5eead4, #2dd4bf)",
-                                                            backgroundSize: "200% 100%",
-                                                            WebkitBackgroundClip: "text",
-                                                            WebkitTextFillColor: "transparent",
-                                                       }}
-                                                  >
-                                                       thông minh
-                                                  </motion.span>
+                                                       cursor={true}
+                                                       staticAnimation={true}
+                                                  />
                                              </>
                                         )}
                                    </motion.h1>

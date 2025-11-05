@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { gsap } from "gsap";
 import { Search } from "lucide-react";
-import { Container, Section, Card, CardContent, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../shared/components/ui";
+import { Container, Section, Card, CardContent, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../shared/components/ui";
 
 
 export const HeroSection = ({ searchQuery, setSearchQuery, selectedLocation, setSelectedLocation, selectedPrice, setSelectedPrice, onSearch }) => {
@@ -116,12 +116,12 @@ export const HeroSection = ({ searchQuery, setSearchQuery, selectedLocation, set
                          </motion.h1>
 
                          <motion.p
-                              className="text-lg md:text-xl mb-2 text-teal-50"
+                              className="text-base md:text-lg mb-2 text-white"
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: 0.3, duration: 0.6 }}
                          >
-                              Tìm sân phù hợp, đặt lịch nhanh chóng
+                              Từ đặt sân, tìm đối thủ đến tạo đội – tất cả chỉ trong một nền tảng duy nhất.
                          </motion.p>
 
                          <motion.div

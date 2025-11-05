@@ -31,7 +31,7 @@ export const StatsCard = ({ targetValue, suffix, label, index, decimals = 0, Ico
      return (
           <motion.div
                ref={ref}
-               className="relative hover:scale-105 transition-all duration-300 hover:cursor-pointer p-3 rounded-2xl bg-gradient-to-br from-white to-teal-50/30 border border-teal-200"
+               className="relative hover:scale-105 transition-all duration-300 hover:cursor-pointer p-3 rounded-2xl bg-gradient-to-br from-white to-teal-50 border border-teal-300"
                initial={{ opacity: 0, y: 15 }}
                animate={isInView ? { opacity: 1, y: 0 } : {}}
                transition={{ delay: index * 0.1, duration: 0.5 }}

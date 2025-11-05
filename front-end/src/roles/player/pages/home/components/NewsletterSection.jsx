@@ -1,5 +1,5 @@
-import { Button, Input } from "../../shared/components/ui";
-import { ScrollReveal } from "../../shared/components/ScrollReveal";
+import { Button, Input } from "../../../../../shared/components/ui";
+import { ScrollReveal } from "../../../../../shared/components/ScrollReveal";
 
 export const NewsletterSection = () => {
      return (
