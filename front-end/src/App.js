@@ -1,56 +1,109 @@
-import React from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import React, { Suspense, lazy } from "react";
+import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ModalProvider } from "./contexts/ModalContext";
-
-// Layouts
 import MainLayout from "./shared/layouts/MainLayout";
 import AuthLayout from "./shared/layouts/AuthLayout";
 import AdminLayout from "./roles/admin/layouts/AdminLayout";
-
-// Pages
-import LandingPage from "./pages/LandingPage";
-import HomePage from "./pages/HomePage";
-import Dashboard from "./roles/player/pages/dashboard/Dashboard";
-import OwnerDashboard from "./roles/owner/pages/owner/OwnerDashboard";
-import {
-  FieldManagement,
-  PricingManagement,
-  BookingManagement,
-  RevenueReports,
-  ScheduleManagement,
-  CancellationPolicies,
-  DepositPolicies,
-  PromotionsManagement,
-  PaymentTracking,
-  NotificationsManagement,
-} from "./roles/owner/pages/owner";
-import TimeSlotManagement from "./roles/owner/pages/owner/TimeSlotManagement";
 import FieldSearch from "./roles/player/pages/fields/FieldSearch";
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
+  </div>
+);
 
-import BookingHistory from "./roles/player/pages/booking/BookingHistory";
-import ComplexDetail from "./roles/player/pages/fields/ComplexDetail";
-import Community from "./roles/player/pages/community/Community";
+// Lazy load pages for better performance
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const HomePage = lazy(() => import("./roles/player/pages/home/HomePage"));
+const Dashboard = lazy(() =>
+  import("./roles/player/pages/dashboard/Dashboard")
+);
+
+// Lazy load owner pages
+const OwnerDashboard = lazy(() => import("./roles/owner/pages/OwnerDashboard"));
+const FieldManagement = lazy(() =>
+  import("./roles/owner/pages/FieldManagement")
+);
+const PricingManagement = lazy(() =>
+  import("./roles/owner/pages/PricingManagement")
+);
+const BookingManagement = lazy(() =>
+  import("./roles/owner/pages/BookingManagement")
+);
+const RevenueReports = lazy(() => import("./roles/owner/pages/RevenueReports"));
+const ScheduleManagement = lazy(() =>
+  import("./roles/owner/pages/ScheduleManagement")
+);
+const CancellationPolicies = lazy(() =>
+  import("./roles/owner/pages/CancellationPolicies")
+);
+const DepositPolicies = lazy(() =>
+  import("./roles/owner/pages/DepositPolicies")
+);
+const PromotionsManagement = lazy(() =>
+  import("./roles/owner/pages/PromotionsManagement")
+);
+const PaymentTracking = lazy(() =>
+  import("./roles/owner/pages/PaymentTracking")
+);
+const NotificationsManagement = lazy(() =>
+  import("./roles/owner/pages/NotificationsManagement")
+);
+const TimeSlotManagement = lazy(() =>
+  import("./roles/owner/pages/TimeSlotManagement")
+);
+
+// Lazy load other player pages
+const BookingHistory = lazy(() =>
+  import("./roles/player/pages/booking/BookingHistory")
+);
+const ComplexDetail = lazy(() =>
+  import("./roles/player/pages/fields/ComplexDetail")
+);
+const Community = lazy(() =>
+  import("./roles/player/pages/community/Community")
+);
 
 // Profile Pages
-import ProfileIndex from "./roles/player/pages/profile";
-import ProfileDemo from "./roles/player/pages/profile/ProfileDemo";
+const ProfileIndex = lazy(() => import("./roles/player/pages/profile"));
+const ProfileDemo = lazy(() =>
+  import("./roles/player/pages/profile/ProfileDemo")
+);
 
 // Admin Pages
-import {
-  AdminDashboard,
-  UserManagement,
-  SystemNotificationsManagement,
-  ViolationReportsManagement,
-  BlogManagement,
-  SystemSettings,
-} from "./roles/admin/pages";
-import OwnerRegistrationApproval from "./roles/admin/pages/OwnerRegistrationApproval";
+const AdminDashboard = lazy(() =>
+  import("./roles/admin/pages/AdminDashboard").then((m) => ({
+    default: m.AdminDashboard,
+  }))
+);
+const UserManagement = lazy(() =>
+  import("./roles/admin/pages/UserManagement").then((m) => ({
+    default: m.UserManagement,
+  }))
+);
+const SystemNotificationsManagement = lazy(() =>
+  import("./roles/admin/pages/SystemNotificationsManagement").then((m) => ({
+    default: m.SystemNotificationsManagement,
+  }))
+);
+const ViolationReportsManagement = lazy(() =>
+  import("./roles/admin/pages/ViolationReportsManagement").then((m) => ({
+    default: m.ViolationReportsManagement,
+  }))
+);
+const BlogManagement = lazy(() =>
+  import("./roles/admin/pages/BlogManagement").then((m) => ({
+    default: m.BlogManagement,
+  }))
+);
+const SystemSettings = lazy(() =>
+  import("./roles/admin/pages/SystemSettings").then((m) => ({
+    default: m.SystemSettings,
+  }))
+);
+const OwnerRegistrationApproval = lazy(() =>
+  import("./roles/admin/pages/OwnerRegistrationApproval")
+);
 
 // Demo Pages
 
@@ -66,10 +119,17 @@ function AppContent() {
   }
 
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
         {/* Landing Page */}
-        <Route path="/" element={<LandingPage />} />
+        <Route
+          path="/"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <LandingPage />
+            </Suspense>
+          }
+        />
 
         {/* Auth Routes */}
         <Route
@@ -90,7 +150,9 @@ function AppContent() {
           path="/home"
           element={
             <MainLayout>
-              <HomePage user={user} />
+              <Suspense fallback={<LoadingFallback />}>
+                <HomePage user={user} />
+              </Suspense>
             </MainLayout>
           }
         />
@@ -103,65 +165,120 @@ function AppContent() {
               ) : user.roleName === "Owner" ? (
                 <Navigate to="/owner" replace />
               ) : (
-                <Dashboard user={user} />
+                <Suspense fallback={<LoadingFallback />}>
+                  <Dashboard user={user} />
+                </Suspense>
               )
             ) : (
               <Navigate to="/auth" replace />
             )
           }
         />
-        <Route path="/demo" element={<OwnerDashboard isDemo={true} />} />
+        <Route
+          path="/demo"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <OwnerDashboard isDemo={true} />
+            </Suspense>
+          }
+        />
 
         <Route
           path="/demo/fields"
-          element={<FieldManagement isDemo={true} />}
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <FieldManagement isDemo={true} />
+            </Suspense>
+          }
         />
         <Route
           path="/demo/timeslots"
-          element={<TimeSlotManagement isDemo={true} />}
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <TimeSlotManagement isDemo={true} />
+            </Suspense>
+          }
         />
         <Route
           path="/demo/pricing"
-          element={<PricingManagement isDemo={true} />}
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <PricingManagement isDemo={true} />
+            </Suspense>
+          }
         />
         <Route
           path="/demo/bookings"
-          element={<BookingManagement isDemo={true} />}
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <BookingManagement isDemo={true} />
+            </Suspense>
+          }
         />
         <Route
           path="/demo/reports"
-          element={<RevenueReports isDemo={true} />}
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <RevenueReports isDemo={true} />
+            </Suspense>
+          }
         />
         <Route
           path="/demo/schedule"
-          element={<ScheduleManagement isDemo={true} />}
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <ScheduleManagement isDemo={true} />
+            </Suspense>
+          }
         />
         <Route
           path="/demo/policies"
-          element={<CancellationPolicies isDemo={true} />}
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <CancellationPolicies isDemo={true} />
+            </Suspense>
+          }
         />
         <Route
           path="/demo/deposit-policies"
-          element={<DepositPolicies isDemo={true} />}
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <DepositPolicies isDemo={true} />
+            </Suspense>
+          }
         />
         <Route
           path="/demo/promotions"
-          element={<PromotionsManagement isDemo={true} />}
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <PromotionsManagement isDemo={true} />
+            </Suspense>
+          }
         />
         <Route
           path="/demo/payments"
-          element={<PaymentTracking isDemo={true} />}
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <PaymentTracking isDemo={true} />
+            </Suspense>
+          }
         />
         <Route
           path="/demo/notifications"
-          element={<NotificationsManagement isDemo={true} />}
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <NotificationsManagement isDemo={true} />
+            </Suspense>
+          }
         />
         <Route
           path="/owner"
           element={
             user ? (
               user.roleName === "Owner" ? (
-                <OwnerDashboard />
+                <Suspense fallback={<LoadingFallback />}>
+                  <OwnerDashboard />
+                </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
@@ -175,7 +292,9 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Owner" ? (
-                <FieldManagement />
+                <Suspense fallback={<LoadingFallback />}>
+                  <FieldManagement />
+                </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
@@ -189,7 +308,9 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Owner" ? (
-                <TimeSlotManagement />
+                <Suspense fallback={<LoadingFallback />}>
+                  <TimeSlotManagement />
+                </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
@@ -203,7 +324,9 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Owner" ? (
-                <PricingManagement />
+                <Suspense fallback={<LoadingFallback />}>
+                  <PricingManagement />
+                </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
@@ -217,7 +340,9 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Owner" ? (
-                <BookingManagement />
+                <Suspense fallback={<LoadingFallback />}>
+                  <BookingManagement />
+                </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
@@ -231,7 +356,9 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Owner" ? (
-                <RevenueReports />
+                <Suspense fallback={<LoadingFallback />}>
+                  <RevenueReports />
+                </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
@@ -245,7 +372,9 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Owner" ? (
-                <CancellationPolicies />
+                <Suspense fallback={<LoadingFallback />}>
+                  <CancellationPolicies />
+                </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
@@ -259,7 +388,9 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Owner" ? (
-                <DepositPolicies />
+                <Suspense fallback={<LoadingFallback />}>
+                  <DepositPolicies />
+                </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
@@ -273,7 +404,9 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Owner" ? (
-                <PromotionsManagement />
+                <Suspense fallback={<LoadingFallback />}>
+                  <PromotionsManagement />
+                </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
@@ -287,7 +420,9 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Owner" ? (
-                <NotificationsManagement />
+                <Suspense fallback={<LoadingFallback />}>
+                  <NotificationsManagement />
+                </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
@@ -309,7 +444,9 @@ function AppContent() {
           exact
           element={
             <MainLayout>
-              <ComplexDetail user={user} />
+              <Suspense fallback={<LoadingFallback />}>
+                <ComplexDetail user={user} />
+              </Suspense>
             </MainLayout>
           }
         />
@@ -317,7 +454,9 @@ function AppContent() {
           path="/field/:id"
           element={
             <MainLayout>
-              <ComplexDetail user={user} />
+              <Suspense fallback={<LoadingFallback />}>
+                <ComplexDetail user={user} />
+              </Suspense>
             </MainLayout>
           }
         />
@@ -325,11 +464,20 @@ function AppContent() {
           path="/bookings"
           element={
             <MainLayout>
-              <BookingHistory user={user} />
+              <Suspense fallback={<LoadingFallback />}>
+                <BookingHistory user={user} />
+              </Suspense>
             </MainLayout>
           }
         />
-        <Route path="/community" element={<Community />} />
+        <Route
+          path="/community"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <Community />
+            </Suspense>
+          }
+        />
 
         {/* Admin Routes */}
         <Route
@@ -470,7 +618,7 @@ function AppContent() {
         {/* Catch all route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
 

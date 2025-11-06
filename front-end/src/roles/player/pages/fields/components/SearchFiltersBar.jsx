@@ -1,6 +1,6 @@
-import { Search, SlidersHorizontal, Map, RefreshCcw } from "lucide-react";
+import { Search, Map, RefreshCcw } from "lucide-react";
 import FilterListIcon from '@mui/icons-material/FilterList';
-import TuneIcon from '@mui/icons-material/Tune';
+
 import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button } from "../../../../../shared/components/ui";
 
 export default function SearchFiltersBar({
@@ -74,7 +74,7 @@ export default function SearchFiltersBar({
                <Button
                     onClick={() => setShowFilters(!showFilters)}
                     variant="outline"
-                    className="px-4 py-2 rounded-xl transition-all bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 flex items-center shadow-sm"
+                    className="px-4 py-2 rounded-xl transition-all bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 hover:text-teal-800 flex items-center shadow-sm"
                >
                     <FilterListIcon className="w-5 h-5 mr-2" />
                     Bộ lọc

@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Settings, Shield, Bell, Trash2, AlertTriangle, Phone, Mail, User, Calendar, CheckCircle, AlertCircle, Clock, Activity, Database, Key, Eye } from "lucide-react";
 import { Container, Card, CardContent, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../shared/components/ui";
 import ErrorDisplay from "../../../../shared/components/ErrorDisplay";
 
 export default function ProfileSettings({ user }) {
      const [activeTab, setActiveTab] = useState("account");
-     const [isLoading, setIsLoading] = useState(false);
      const [error, setError] = useState('');
      const [info, setInfo] = useState('');
      const [passwordData, setPasswordData] = useState({

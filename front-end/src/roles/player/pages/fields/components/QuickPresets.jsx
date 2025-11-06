@@ -25,7 +25,7 @@ export default function QuickPresets({ quickPresets, activeTab, setActiveTab, ty
                               key={t.k}
                               type="button"
                               onClick={() => { setTypeTab(t.k); setPage(1); }}
-                              className={`px-3 h-8 text-xs rounded-none ${typeTab === t.k ? "bg-teal-500 scale-110 transition-all duration-200 text-white" : "bg-white text-teal-700 hover:bg-teal-50 hover:scale-110 transition-all duration-200"}`}
+                              className={`px-3 h-8 text-xs rounded-none ${typeTab === t.k ? "bg-teal-500 scale-110 transition-all duration-200 text-white" : "bg-white text-teal-700 hover:bg-teal-600 hover:scale-110 transition-all duration-200"}`}
                          >
                               {t.l}
                          </Button>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { ImageIcon, Video, Smile, Pin, List } from "lucide-react";
 import { Modal } from '../../../../../shared/components/ui';
 import { Button, Avatar, AvatarImage, AvatarFallback, Textarea } from '../../../../../shared/components/ui';
@@ -26,9 +27,14 @@ const ReplyModal = ({
                onClose={onClose}
                title="Trả lời bài viết"
                className="max-w-2xl px-2 bg-white rounded-2xl"
-
           >
-               <div className="space-y-4">
+               <motion.div
+                    className="space-y-4"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+               >
                     {/* Original Post */}
                     {originalPost && (
                          <div className="">
@@ -122,7 +128,7 @@ const ReplyModal = ({
                               </div>
                          </div>
                     </div>
-               </div>
+               </motion.div>
           </Modal>
      );
 };

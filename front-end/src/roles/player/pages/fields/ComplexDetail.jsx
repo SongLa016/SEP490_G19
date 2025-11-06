@@ -600,7 +600,7 @@ export default function ComplexDetail({ user }) {
                                         setNewComment={setNewComment}
                                         setReviewPage={setReviewPage}
                                         onShowToast={showToastMessage}
-                                        onLoginPrompt={() => showToastMessage("Vui lòng đăng nhập để viết đánh giá.", 'warning')}
+                                        onLoginPrompt={() => navigate('/login')}
                                    />
                               )}
 

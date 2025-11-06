@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { MapPin, Star, User, EyeIcon } from "lucide-react";
 import StadiumIcon from '@mui/icons-material/Stadium';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
@@ -18,9 +18,12 @@ export default function GroupedViewSection({
      handleBook,
      slotId,
      handleViewAll,
+     user,
+     handleLoginRequired,
      delay = 100
 }) {
      // handleViewAll is passed as prop from parent
+     const nav = useNavigate();
 
      return (
           <SlideIn direction="up" delay={delay}>
@@ -44,9 +47,21 @@ export default function GroupedViewSection({
                          {items.map((item, index) => (
                               <FadeIn key={type === 'complex' ? item.complexId : item.fieldId} delay={index * 50}>
                                    <Link
-                                        key={type === 'complex' ? item.complexId : item.fieldId}
                                         to={type === 'complex' ? `/complex/${item.complexId}` : `/field/${item.fieldId}`}
                                         className="group pt-3 px-3 border border-teal-100 bg-white rounded-2xl shadow-lg overflow-hidden h-full flex flex-col cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:-translate-y-1"
+                                        onMouseEnter={() => {
+                                             // Prefetch the route when user hovers (React Router v6.4+)
+                                             const targetUrl = type === 'complex' ? `/complex/${item.complexId}` : `/field/${item.fieldId}`;
+                                             // This helps reduce perceived delay
+                                        }}
+                                        onClick={(e) => {
+                                             // Prevent navigation if clicking on a button or its children
+                                             const clickedButton = e.target.closest('button');
+                                             if (clickedButton) {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                             }
+                                        }}
                                    >
                                         <div className="relative overflow-hidden">
                                              <img
@@ -92,7 +107,7 @@ export default function GroupedViewSection({
                                                        <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">
                                                             {item.availableFields}/{item.totalFields} sân
                                                        </span>
-                                                       <div className="text-xs flex items-center text-gray-500">
+                                                       <div className="text-xs font-semibold flex items-center text-red-500">
                                                             <MapPin className="w-4 h-4 mr-1" />
                                                             <p>{item.distanceKm ? `${item.distanceKm.toFixed(1)} km` : ""}</p>
                                                        </div>
@@ -111,14 +126,19 @@ export default function GroupedViewSection({
                                                   </div>
                                              )}
                                              <div className="mt-auto flex items-center justify-between">
-                                                  <div className="text-sm font-bold text-orange-600 flex items-center">
+                                                  <div className="text-base font-bold text-orange-600 flex items-center">
                                                        <AttachMoneyIcon className="w-1 h-1" />
                                                        {formatPrice(type === 'complex' ? item.minPriceForSelectedSlot || 0 : item.priceForSelectedSlot || 0)}/trận
                                                   </div>
                                                   {type === 'field' ? (
                                                        <Button
                                                             type="button"
+                                                            onMouseDown={(e) => {
+                                                                 e.preventDefault();
+                                                                 e.stopPropagation();
+                                                            }}
                                                             onClick={(e) => {
+                                                                 e.preventDefault();
                                                                  e.stopPropagation();
                                                                  handleBook(item.fieldId);
                                                             }}
@@ -128,14 +148,27 @@ export default function GroupedViewSection({
                                                             Đặt sân
                                                        </Button>
                                                   ) : (
-                                                       <Link
-
-                                                            to={type === 'complex' ? `/complex/${item.complexId}` : `/field/${item.fieldId}`}
+                                                       <Button
+                                                            type="button"
+                                                            onMouseDown={(e) => {
+                                                                 e.preventDefault();
+                                                                 e.stopPropagation();
+                                                            }}
+                                                            onClick={(e) => {
+                                                                 e.preventDefault();
+                                                                 e.stopPropagation();
+                                                                 if (!user && handleLoginRequired) {
+                                                                      handleLoginRequired('Bạn cần đăng nhập để xem chi tiết. Vui lòng đăng nhập để tiếp tục.');
+                                                                      return;
+                                                                 }
+                                                                 // Use navigate() for dynamic navigation (preserves state)
+                                                                 const targetUrl = type === 'complex' ? `/complex/${item.complexId}` : `/field/${item.fieldId}`;
+                                                                 nav(targetUrl);
+                                                            }}
+                                                            className="w-fit bg-teal-500 hover:bg-teal-600 text-white px-3 py-0.5 rounded-full font-semibold transition-all duration-200 hover:scale-105"
                                                        >
-                                                            <div className="w-fit bg-teal-500 hover:bg-teal-600 text-white px-3 py-0.5 rounded-full font-semibold transition-all duration-200 hover:scale-105">
-                                                                 <EyeIcon className="w-5 h-5" />
-                                                            </div>
-                                                       </Link>
+                                                            <EyeIcon className="w-5 h-5" />
+                                                       </Button>
                                                   )}
                                              </div>
                                         </div>

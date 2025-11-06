@@ -1,95 +1,82 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Calendar as CalendarIcon } from "lucide-react";
-import ReactDatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { Button } from "./button";
+import * as React from "react"
+import { format } from "date-fns"
+import { ChevronDown } from "lucide-react"
 
-function format(date) {
-     if (!date) return "";
-     const y = date.getFullYear();
-     const m = String(date.getMonth() + 1).padStart(2, "0");
-     const d = String(date.getDate()).padStart(2, "0");
-     return `${y}-${m}-${d}`;
-}
+import { cn } from "../../../lib/utils"
+import { Calendar } from "./calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "./popover"
 
 export function DatePicker({
-     value,
-     onChange,
-     minDate,
-     className = "",
-     fromYear = 2020,
-     toYear = 2030,
-     placeholder = "Chọn ngày"
+  value,
+  onChange,
+  min,
+  minDate,
+  className = "",
+  placeholder = "Chọn ngày",
+  disabled,
+  fromYear = 2020,
+  toYear = 2030,
+  ...props
 }) {
-     const [open, setOpen] = useState(false);
-     const containerRef = useRef(null);
-     const selectedDate = value ? new Date(value) : undefined;
-     const minDateObj = typeof minDate === "string" ? new Date(minDate) : minDate;
+  const [open, setOpen] = React.useState(false)
+  const date = value ? (typeof value === "string" ? new Date(value) : value) : undefined
+  // Support both min and minDate props for backward compatibility
+  const minDateValue = minDate || min
+  const minDateObj = minDateValue ? (typeof minDateValue === "string" ? new Date(minDateValue) : minDateValue) : undefined
 
-     useEffect(() => {
-          function onDocClick(e) {
-               if (!containerRef.current) return;
-               if (!containerRef.current.contains(e.target)) setOpen(false);
-          }
-          document.addEventListener("mousedown", onDocClick);
-          return () => document.removeEventListener("mousedown", onDocClick);
-     }, []);
+  // Format date as d/M/yyyy to match image format (e.g., "2/11/2025")
+  const formatDate = (date) => {
+    if (!date) return ""
+    const day = date.getDate()
+    const month = date.getMonth() + 1
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
+  }
 
-     return (
-          <div className={`relative ${className}`} ref={containerRef}>
-               <Button
-                    type="button"
-                    onClick={() => setOpen((o) => !o)}
-                    className="w-full flex items-center justify-between text-gray-700 hover:text-gray-900 hover:bg-gray-50 bg-white px-3 py-2 text-sm border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-               >
-                    <span className={value ? "text-gray-900" : "text-gray-500"}>
-                         {value || placeholder}
-                    </span>
-                    <CalendarIcon className="w-4 h-4 text-gray-500" />
-               </Button>
-               {open && (
-                    <div className="absolute z-50 mt-2 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
-                         <div className="p-3">
-                              <ReactDatePicker
-                                   selected={selectedDate}
-                                   onChange={(d) => {
-                                        if (!d) return;
-                                        const str = format(d);
-                                        onChange && onChange(str);
-                                        setOpen(false);
-                                   }}
-                                   inline
-                                   minDate={minDateObj}
-                                   showPopperArrow={false}
-                                   calendarClassName="!border-0 !shadow-none"
-                                   dayClassName={(date) => {
-                                        const today = new Date();
-                                        const isToday = date.toDateString() === today.toDateString();
-                                        const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
-                                        const isDisabled = minDateObj && date < minDateObj;
-
-                                        let className = "hover:bg-teal-50 hover:text-teal-700 rounded-lg transition-colors";
-
-                                        if (isToday) {
-                                             className += " bg-teal-100 text-teal-700 font-semibold";
-                                        }
-                                        if (isSelected) {
-                                             className += " bg-teal-600 text-white hover:bg-teal-700";
-                                        }
-                                        if (isDisabled) {
-                                             className += " text-gray-300 cursor-not-allowed hover:bg-transparent hover:text-gray-300";
-                                        }
-
-                                        return className;
-                                   }}
-                                   monthClassName={() => "text-gray-900 font-semibold"}
-                                   yearClassName={() => "text-gray-900 font-semibold"}
-                              />
-                         </div>
-                    </div>
-               )}
-          </div>
-     );
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          className={cn(
+            "flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            !date && "text-gray-500",
+            date && "text-gray-900",
+            className
+          )}
+        >
+          <span className={cn("line-clamp-1", !date && "text-gray-500")}>
+            {date ? formatDate(date) : placeholder}
+          </span>
+          <ChevronDown className="h-4 w-4 opacity-50 flex-shrink-0 ml-2" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={date}
+          captionLayout="dropdown"
+          fromYear={fromYear}
+          toYear={toYear}
+          onSelect={(selectedDate) => {
+            if (selectedDate) {
+              // Format as YYYY-MM-DD string for compatibility
+              const formatted = format(selectedDate, "yyyy-MM-dd")
+              onChange && onChange(formatted)
+              setOpen(false)
+            } else {
+              onChange && onChange("")
+            }
+          }}
+          disabled={minDateObj ? (date) => date < minDateObj : undefined}
+          {...props}
+        />
+      </PopoverContent>
+    </Popover>
+  )
 }
-
-
