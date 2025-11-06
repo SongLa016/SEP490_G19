@@ -115,7 +115,7 @@ export default function Community() {
                <CommunityHeader user={user} onLoggedOut={logout} />
 
                {/* Main Content */}
-               <div className="ml-16 flex justify-center">
+               <div className="ml-0 md:ml-8 lg:ml-16 px-3 md:px-4 flex justify-center">
                     <div className="max-w-2xl w-full">
 
 
@@ -126,7 +126,7 @@ export default function Community() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.5 }}
                          >
-                              <div className="flex justify-center gap-1 relative">
+                              <div className="flex justify-center gap-1 relative overflow-x-auto whitespace-nowrap px-1">
                                    {[
                                         { id: "danh-cho-ban", label: "Dành cho bạn" },
                                         ...(user ? [

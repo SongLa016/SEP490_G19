@@ -288,6 +288,12 @@ export default function FieldSearch({ user }) {
           ));
      };
 
+     const toggleFavoriteComplex = (complexId) => {
+          setComplexes(prev => prev.map(c =>
+               c.complexId === complexId ? { ...c, isFavorite: !c.isFavorite } : c
+          ));
+     };
+
      // Toast notification helper
      const showToastMessage = (message, type = 'info') => {
           const config = {
@@ -310,6 +316,14 @@ export default function FieldSearch({ user }) {
           toggleFavorite(fieldId);
      };
 
+     const handleToggleFavoriteComplex = (complexId) => {
+          if (!user) {
+               showToastMessage("Vui lòng đăng nhập để sử dụng danh sách yêu thích.", 'warning');
+               return;
+          }
+          toggleFavoriteComplex(complexId);
+     };
+
      const handleBook = (fieldId) => {
           if (!user) {
                Swal.fire({
@@ -318,14 +332,13 @@ export default function FieldSearch({ user }) {
                     icon: 'warning',
                     showCancelButton: true,
                     confirmButtonText: 'Đăng nhập ngay',
-                    cancelButtonText: 'Hủy',
+                    cancelButtonText: 'Đóng',
                     confirmButtonColor: '#14b8a6',
                     cancelButtonColor: '#6b7280',
-                    allowOutsideClick: false,
+                    allowOutsideClick: true,
                     allowEscapeKey: true,
                }).then((result) => {
                     if (result.isConfirmed) {
-                         // Close modal and navigate using React Router (preserves state)
                          Swal.close();
                          navigate('/login');
                     }
@@ -701,6 +714,9 @@ export default function FieldSearch({ user }) {
                                              type="complex"
                                              navigate={navigate}
                                              formatPrice={formatPrice}
+                                             user={user}
+                                             handleLoginRequired={(msg) => showToastMessage(msg, 'warning')}
+                                             onToggleFavoriteComplex={handleToggleFavoriteComplex}
                                              handleViewAll={() => { setActiveTab("near"); setForceList(true); setPage(1); setEntityTab("complexes"); }}
                                         />
                                    </ScrollReveal>
@@ -719,6 +735,9 @@ export default function FieldSearch({ user }) {
                                              formatPrice={formatPrice}
                                              handleBook={handleBook}
                                              slotId={slotId}
+                                             user={user}
+                                             handleLoginRequired={(msg) => showToastMessage(msg, 'warning')}
+                                             onToggleFavoriteField={handleToggleFavorite}
                                              handleViewAll={() => { setActiveTab("best-price"); setForceList(true); setPage(1); }}
                                              delay={300}
                                         />
@@ -738,6 +757,9 @@ export default function FieldSearch({ user }) {
                                              formatPrice={formatPrice}
                                              handleBook={handleBook}
                                              slotId={slotId}
+                                             user={user}
+                                             handleLoginRequired={(msg) => showToastMessage(msg, 'warning')}
+                                             onToggleFavoriteField={handleToggleFavorite}
                                              handleViewAll={() => { setActiveTab("top-rated"); setForceList(true); setPage(1); }}
                                              delay={500}
                                         />
@@ -791,6 +813,8 @@ export default function FieldSearch({ user }) {
                                                   handleToggleFavorite={handleToggleFavorite}
                                                   handleBook={handleBook}
                                                   navigate={navigate}
+                                                  user={user}
+                                                  handleLoginRequired={(msg) => showToastMessage(msg, 'warning')}
                                              />
                                         </motion.div>
                                    ))}

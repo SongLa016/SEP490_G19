@@ -30,8 +30,8 @@ export default function FieldCardDetail({ field, selectedSlotId, onViewDetail, o
                               <h3 className="text-lg font-bold flex items-center gap-1 bg-gradient-to-r from-teal-700 to-emerald-700 bg-clip-text text-transparent flex-1">
                                    <StadiumOutlined className="w-4 h-4 text-teal-600" />{field.name}
                               </h3>
-                              <div className="text-base font-bold bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent flex items-center">
-                                   <LocalOfferOutlined className="w-3 h-3 text-orange-500 mr-1" />
+                              <div className="text-base font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent flex items-center">
+                                   <LocalOfferOutlined className="w-3 h-3 text-orange-600 mr-1" />
                                    {selectedSlotId ?
                                         (field.priceForSelectedSlot ? field.priceForSelectedSlot.toLocaleString("vi-VN") + "₫" : "Liên hệ") :
                                         (field.priceForSelectedSlot ? field.priceForSelectedSlot.toLocaleString("vi-VN") + "₫" : "Liên hệ")

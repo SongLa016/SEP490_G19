@@ -59,6 +59,55 @@ export default function ComplexDetail({ user }) {
      // Booking modal state
      const [bookingModalData, setBookingModalData] = useState(null);
      const [bookingType, setBookingType] = useState("field"); // "field" | "complex" | "quick"
+     const showToastMessage = (message, type = 'info') => {
+          const config = {
+               title: type === 'success' ? 'Thành công!' :
+                    type === 'warning' ? 'Cảnh báo!' :
+                         type === 'error' ? 'Lỗi!' : 'Thông báo',
+               text: message,
+               timer: 3000,
+               timerProgressBar: true,
+               showConfirmButton: false,
+               toast: true,
+               position: 'top-end',
+               icon: type === 'success' ? 'success' :
+                    type === 'warning' ? 'warning' :
+                         type === 'error' ? 'error' : 'info'
+          };
+          Swal.fire(config);
+     };
+
+     const toggleFavoriteField = (fieldId) => {
+          setComplexData(prev => ({
+               ...prev,
+               fields: (prev.fields || []).map(f => Number(f.fieldId) === Number(fieldId) ? { ...f, isFavorite: !f.isFavorite } : f)
+          }));
+     };
+
+     const toggleFavoriteComplex = (complexId) => {
+          setComplexData(prev => ({
+               ...prev,
+               complex: prev.complex && String(prev.complex.complexId) === String(complexId)
+                    ? { ...prev.complex, isFavorite: !prev.complex.isFavorite }
+                    : prev.complex
+          }));
+     };
+
+     const handleToggleFavoriteField = (fieldId) => {
+          if (!user) {
+               showToastMessage("Vui lòng đăng nhập để sử dụng danh sách yêu thích.", 'warning');
+               return;
+          }
+          toggleFavoriteField(fieldId);
+     };
+
+     const handleToggleFavoriteComplex = (complexId) => {
+          if (!user) {
+               showToastMessage("Vui lòng đăng nhập để sử dụng danh sách yêu thích.", 'warning');
+               return;
+          }
+          toggleFavoriteComplex(complexId);
+     };
 
      // Reviews state (mirroring FieldDetail behaviors)
      const [newRating, setNewRating] = useState(0);
@@ -267,23 +316,6 @@ export default function ComplexDetail({ user }) {
           setRepeatDays((prev) => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
      };
 
-     const showToastMessage = (message, type = 'info') => {
-          const config = {
-               title: type === 'success' ? 'Thành công!' :
-                    type === 'warning' ? 'Cảnh báo!' :
-                         type === 'error' ? 'Lỗi!' : 'Thông báo',
-               text: message,
-               timer: 3000,
-               timerProgressBar: true,
-               showConfirmButton: false,
-               toast: true,
-               position: 'top-end',
-               icon: type === 'success' ? 'success' :
-                    type === 'warning' ? 'warning' :
-                         type === 'error' ? 'error' : 'info'
-          };
-          Swal.fire(config);
-     };
 
      const handleBookComplex = () => {
           if (!user) {
@@ -526,7 +558,7 @@ export default function ComplexDetail({ user }) {
 
      return (
           <Section className="min-h-screen bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center">
-               <HeaderSection complex={complex} />
+               <HeaderSection complex={complex} user={user} onToggleFavoriteComplex={handleToggleFavoriteComplex} />
 
                <TabsHeader activeTab={activeTab} setActiveTab={setActiveTab} />
 
@@ -584,6 +616,7 @@ export default function ComplexDetail({ user }) {
                                         onBack={() => setSelectedFieldId(null)}
                                         onFieldSelect={(fieldId) => setSelectedFieldId(fieldId)}
                                         onQuickBookField={handleQuickBookField}
+                                        onToggleFavoriteField={handleToggleFavoriteField}
                                    />
                               )}
 

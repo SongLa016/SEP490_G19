@@ -133,7 +133,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                     initMap();
                } else {
                     const existing = document.getElementById('gmaps-script');
-                    const apiKey = "AIzaSyCacoGIE6Qci-WIdKjjz2LF6hNDAnBwZWw";
+                    const apiKey = "AIzaSyDv_Uvlg2rEBOtMgs37tATqaPMaVDiZ1mA";
                     if (!apiKey) {
                          // eslint-disable-next-line no-console
                          console.warn('Missing REACT_APP_GOOGLE_MAPS_API_KEY in environment');
@@ -511,7 +511,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                                                             <div className="text-xs text-blue-600 mt-1">📍 Địa điểm từ Google</div>
                                                        )}
                                                        {!suggestion.place_id && suggestion.price && (
-                                                            <div className="text-xs text-teal-600 mt-1">
+                                                            <div className="text-xs text-orange-600 mt-1">
                                                                  ⚽ Sân bóng • {formatPrice(suggestion.price)}/trận
                                                             </div>
                                                        )}
@@ -658,7 +658,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                                                                  <div className="flex-1">
                                                                       <div className="text-sm font-medium text-gray-900">{field.name}</div>
                                                                       <div className="text-xs text-gray-600">{field.address}</div>
-                                                                      <div className="text-xs text-gray-500">
+                                                                      <div className="text-xs text-orange-600">
                                                                            {formatPrice(field.price)}/trận • ⭐ {field.rating}
                                                                       </div>
                                                                  </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Section } from "../../../../shared/components/ui";
 import { useNavigate } from "react-router-dom";
-import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, QuickBookingSection, CommunityMatchmakingSection, UserReviewsSection, EventsSection, MobileAppSection, BlogSection, WhyChooseUsSection, NewsletterSection, FAQSection, CTASection } from "./components";
+import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, QuickBookingSection, CommunityMatchmakingSection, UserReviewsSection, EventsSection, MobileAppSection, WhyChooseUsSection, NewsletterSection, CTASection } from "./components";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
 
 export default function HomePage({ user }) {
@@ -135,7 +135,7 @@ export default function HomePage({ user }) {
      };
 
      return (
-          <Section className="min-h-screen bg-[url('https://images.unsplash.com/photo-1550895030-823330fc2551?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTU5fHxiYWNrZ3JvdW5kfGVufDB8fDB8fHww&auto=format&fit=crop&q=60&w=600')] bg-current bg-center">
+          <Section className="min-h-screen bg-[url('https://images.unsplash.com/photo-1550895030-823330fc2551?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTU5fHxiYWNrZ3JvdW5kfGVufDB8fDB8fHww&auto=format&fit=crop&q=60&w=600')] bg-current bg-center bg-cover">
                <HeroSection
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
