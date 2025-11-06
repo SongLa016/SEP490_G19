@@ -16,12 +16,21 @@ export default function Header({ user, onLoggedOut }) {
      const { isBookingModalOpen } = useModal();
 
      useEffect(() => {
+          let lastScrollY = window.scrollY;
           const handleScroll = () => {
-               const scrollPosition = window.scrollY;
-               setIsScrolled(scrollPosition > 50);
+               const currentY = window.scrollY;
+               const isScrollingDown = currentY > lastScrollY;
+               // Hide when scrolling down any amount, show when scrolling up or at top
+               if (isScrollingDown && currentY > 0) {
+                    setIsScrolled(true);
+                    setIsMenuOpen(false);
+               } else {
+                    setIsScrolled(false);
+               }
+               lastScrollY = currentY;
           };
 
-          window.addEventListener("scroll", handleScroll);
+          window.addEventListener("scroll", handleScroll, { passive: true });
           return () => window.removeEventListener("scroll", handleScroll);
      }, []);
 
@@ -82,11 +91,14 @@ export default function Header({ user, onLoggedOut }) {
      const navigationItems = getNavigationItems();
 
      return (
-          <header className={`${isScrolled ? 'bg-white/70' : 'bg-transparent'} backdrop-blur-sm rounded-b-2xl border-b border-teal-500 fixed top-0 left-0 right-0 z-50 shadow-sm transition-all duration-300 ${isBookingModalOpen ? '-translate-y-full' : 'translate-y-0'}`}>
-               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <header className={`${(isScrolled && !isMenuOpen) ? 'bg-transparent border-0 shadow-none backdrop-blur-0' : 'bg-white/30 backdrop-blur-sm'} fixed top-0 rounded-[35px] my-6 mx-32 left-0 right-0 z-50 transition-all duration-300 ${isBookingModalOpen ? '-translate-y-full' : 'translate-y-0'}`}>
+               <div className="max-w-7xl mx-auto p-2 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                          {/* Logo */}
-                         <div className="flex items-center">
+                         <div className={`hidden md:flex items-center mr-5 transition-all duration-300 ease-out transform ${(isScrolled && !isMenuOpen)
+                              ? '-translate-y-4 opacity-0 pointer-events-none'
+                              : 'translate-y-0 opacity-100'
+                              }`}>
                               <div className="flex-shrink-0 hover:cursor-pointer flex items-center">
                                    <Link to="/">
                                         <img src={logo} alt="Logo" className="h-36 hover:scale-105 transition-all duration-300" />
@@ -95,7 +107,10 @@ export default function Header({ user, onLoggedOut }) {
                          </div>
 
                          {/* Desktop Navigation */}
-                         <nav className="hidden md:flex space-x-8">
+                         <nav className={`hidden md:flex space-x-8 transition-all duration-300 ease-out transform ${(isScrolled && !isMenuOpen)
+                              ? '-translate-y-4 opacity-0 pointer-events-none'
+                              : 'translate-y-0 opacity-100'
+                              }`}>
                               {navigationItems.map((item) => {
                                    const Icon = item.icon;
                                    return (
@@ -104,7 +119,7 @@ export default function Header({ user, onLoggedOut }) {
                                              to={`/${item.id}`}
                                              className={`flex items-center px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${location.pathname === `/${item.id}`
                                                   ? `${isScrolled ? 'text-teal-600  border-b-teal-600' : 'text-white border-b-teal-500'} border-b-2`
-                                                  : `${isScrolled ? 'text-gray-700 hover:text-teal-600' : 'text-white'} hover:border-b-2 hover:border-teal-500`
+                                                  : `${isScrolled ? 'text-white hover:text-teal-600' : 'text-teal-800 hover:text-gray-700'} hover:border-b-2 hover:border-teal-500`
                                                   }`}
                                         >
                                              <Icon className="w-4 h-4 mr-2" />
@@ -115,70 +130,74 @@ export default function Header({ user, onLoggedOut }) {
                          </nav>
 
                          {/* User Menu */}
-                         <div className="flex items-center space-x-4">
+                         <div className="flex items-center space-x-4 ml-auto">
                               {user ? (
                                    <>
-                                        {/* Notification Bell */}
-                                        <div className="relative">
-                                             <NotificationBell
-                                                  userId={user.id}
-                                                  onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                                             />
-                                             <NotificationDropdown
-                                                  userId={user.id}
-                                                  isOpen={isNotificationOpen}
-                                                  onClose={() => setIsNotificationOpen(false)}
-                                             />
-                                        </div>
-
-                                        {/* User Profile */}
-                                        <div className="relative">
-                                             <Button
-                                                  onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                                  className="flex items-center space-x-2 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-                                             >
-                                                  <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
-                                                       <User className="w-4 h-4" />
+                                        {!(isScrolled && !isMenuOpen) && (
+                                             <>
+                                                  {/* Notification Bell */}
+                                                  <div className="relative">
+                                                       <NotificationBell
+                                                            userId={user.id}
+                                                            onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                                                       />
+                                                       <NotificationDropdown
+                                                            userId={user.id}
+                                                            isOpen={isNotificationOpen}
+                                                            onClose={() => setIsNotificationOpen(false)}
+                                                       />
                                                   </div>
-                                                  <span className="hidden md:block text-gray-700">{user.fullName || user.email || "User"}</span>
-                                                  <span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.roleName)}`}>
-                                                       {getRoleDisplayName(user.roleName)}
-                                                  </span>
-                                             </Button>
 
-                                             {/* Profile Dropdown */}
-                                             {isProfileOpen && (
-                                                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                                                       <div className="px-4 py-2 border-b">
-                                                            <p className="text-sm font-medium text-gray-900">{user.fullName || user.email || "User"}</p>
-                                                            {user.email && (
-                                                                 <p className="text-xs text-gray-500">{user.email}</p>
-                                                            )}
-                                                            <p className="text-xs text-gray-400">{getRoleDisplayName(user.roleName)}</p>
-                                                       </div>
+                                                  {/* User Profile */}
+                                                  <div className="relative">
                                                        <Button
-                                                            onClick={() => {
-                                                                 navigate("/profile");
-                                                                 setIsProfileOpen(false);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
+                                                            onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                                            className="flex items-center space-x-2 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
                                                        >
-                                                            <Settings className="w-4 h-4 mr-2" />
-                                                            Cài đặt
+                                                            <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
+                                                                 <User className="w-4 h-4" />
+                                                            </div>
+                                                            <span className="hidden md:block text-gray-700">{user.fullName || user.email || "User"}</span>
+                                                            <span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.roleName)}`}>
+                                                                 {getRoleDisplayName(user.roleName)}
+                                                            </span>
                                                        </Button>
-                                                       <Button
-                                                            onClick={() => {
-                                                                 onLoggedOut();
-                                                                 setIsProfileOpen(false);
-                                                            }}
-                                                            className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
-                                                       >
-                                                            <LogOut className="w-4 h-4 mr-2" />
-                                                            Đăng xuất
-                                                       </Button>
+
+                                                       {/* Profile Dropdown */}
+                                                       {isProfileOpen && (
+                                                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                                                                 <div className="px-4 py-2 border-b">
+                                                                      <p className="text-sm font-medium text-gray-900">{user.fullName || user.email || "User"}</p>
+                                                                      {user.email && (
+                                                                           <p className="text-xs text-gray-500">{user.email}</p>
+                                                                      )}
+                                                                      <p className="text-xs text-gray-400">{getRoleDisplayName(user.roleName)}</p>
+                                                                 </div>
+                                                                 <Button
+                                                                      onClick={() => {
+                                                                           navigate("/profile");
+                                                                           setIsProfileOpen(false);
+                                                                      }}
+                                                                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
+                                                                 >
+                                                                      <Settings className="w-4 h-4 mr-2" />
+                                                                      Cài đặt
+                                                                 </Button>
+                                                                 <Button
+                                                                      onClick={() => {
+                                                                           onLoggedOut();
+                                                                           setIsProfileOpen(false);
+                                                                      }}
+                                                                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
+                                                                 >
+                                                                      <LogOut className="w-4 h-4 mr-2" />
+                                                                      Đăng xuất
+                                                                 </Button>
+                                                            </div>
+                                                       )}
                                                   </div>
-                                             )}
-                                        </div>
+                                             </>
+                                        )}
                                    </>
                               ) : (
                                    <div className="flex items-center gap-2">
@@ -192,6 +211,14 @@ export default function Header({ user, onLoggedOut }) {
                                              <LogIn className="w-5 h-5 ml-2" />
                                         </Button>
                                    </div>
+                              )}
+                              {(isScrolled && !isMenuOpen) && (
+                                   <Button
+                                        onClick={() => setIsMenuOpen(true)}
+                                        className={`hidden md:inline-flex items-center justify-center px-4 py-2 rounded-full transition-colors bg-teal-600 text-white hover:bg-teal-700`}
+                                   >
+                                        <Menu className="w-5 h-5" />
+                                   </Button>
                               )}
 
                               {/* Mobile menu button */}

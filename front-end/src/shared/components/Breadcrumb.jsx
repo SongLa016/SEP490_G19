@@ -104,7 +104,7 @@ export default function AppBreadcrumb() {
 
      return (
           <div className={`${hasHeroSection
-               ? 'absolute top-16 left-0 right-0 z-50 px-4 py-3 bg-transparent'
+               ? 'absolute top-24 left-0 right-0 z-50 pl-10 py-4 bg-transparent'
                : 'sticky top-16 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 py-2.5 shadow-sm'
                }`}>
                <div className="max-w-7xl mx-auto">
