@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using BallSport.Infrastructure.Repositories.MatchFinding;
+using BallSport.Application.Services.MatchFinding;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -118,6 +120,11 @@ services.AddScoped<IPostService, PostService>();
 services.AddScoped<ICommentService, CommentService>();
 services.AddScoped<INotificationService, NotificationService>();
 services.AddScoped<IReportService, ReportService>();
+// --- Match Finding module ---
+
+services.AddScoped<IMatchRequestRepository, MatchRequestRepository>();
+services.AddScoped<IMatchParticipantRepository, MatchParticipantRepository>();
+services.AddScoped<IMatchRequestService, MatchRequestService>();
 
 // --- Settings ---
 builder.Services.Configure<CommunitySettings>(config.GetSection("CommunitySettings"));
