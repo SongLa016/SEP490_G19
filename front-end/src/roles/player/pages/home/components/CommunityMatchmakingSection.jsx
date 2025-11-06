@@ -88,7 +88,7 @@ export const CommunityMatchmakingSection = () => {
                          style={{ backgroundImage: "url('https://plus.unsplash.com/premium_photo-1709168768941-ef59f7489002?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1333')" }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-slate-900/60 to-slate-900/80" />
-                    <div className="relative z-10 max-w-7xl mx-auto">
+                    <div className="relative z-10 max-w-7xl mx-auto px-4">
                          <motion.div
                               initial={{ opacity: 0, y: 20 }}
                               whileInView={{ opacity: 1, y: 0 }}

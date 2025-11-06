@@ -112,7 +112,7 @@ export default function CommunityHeader({ user, onLoggedOut }) {
      return (
           <motion.div
                ref={headerRef}
-               className="fixed justify-center left-0 top-0 rounded-lg w-16 h-full border-r border-gray-200 flex flex-col items-center py-4 z-10 overflow-hidden"
+               className="hidden md:flex fixed justify-center left-0 top-0 rounded-lg w-16 h-full border-r border-gray-200 flex-col items-center py-4 z-10 overflow-hidden"
                initial={{ x: -64 }}
                animate={{ x: 0 }}
                transition={{ duration: 0.5, ease: "easeOut" }}
