@@ -11,16 +11,16 @@ import { motion, useInView } from "framer-motion";
  * @param {string} direction - Animation direction: 'up', 'down', 'left', 'right', 'fade'
  * @param {number} amount - Viewport threshold (0-1) - how much of element must be visible
  */
-export const ScrollReveal = ({ 
-     children, 
-     className = "", 
-     delay = 0, 
+export const ScrollReveal = ({
+     children,
+     className = "",
+     delay = 0,
      direction = "up",
      amount = 0.2,
-     once = false 
+     once = false
 }) => {
      const ref = useRef(null);
-     const isInView = useInView(ref, { 
+     const isInView = useInView(ref, {
           once: once, // If true, animation only plays once. If false, animates every time it enters viewport
           amount: amount, // Trigger when 20% of element is visible
           margin: "-100px 0px" // Trigger 100px before element enters viewport (top and bottom)
@@ -30,7 +30,7 @@ export const ScrollReveal = ({
      const getVariants = () => {
           const baseVariants = {
                hidden: { opacity: 0 },
-               visible: { 
+               visible: {
                     opacity: 1,
                     transition: {
                          duration: 0.6,
@@ -44,7 +44,7 @@ export const ScrollReveal = ({
                case "up":
                     return {
                          hidden: { ...baseVariants.hidden, y: 50 },
-                         visible: { 
+                         visible: {
                               ...baseVariants.visible,
                               y: 0,
                          }
@@ -52,7 +52,7 @@ export const ScrollReveal = ({
                case "down":
                     return {
                          hidden: { ...baseVariants.hidden, y: -50 },
-                         visible: { 
+                         visible: {
                               ...baseVariants.visible,
                               y: 0,
                          }
@@ -60,7 +60,7 @@ export const ScrollReveal = ({
                case "left":
                     return {
                          hidden: { ...baseVariants.hidden, x: 50 },
-                         visible: { 
+                         visible: {
                               ...baseVariants.visible,
                               x: 0,
                          }
@@ -68,7 +68,7 @@ export const ScrollReveal = ({
                case "right":
                     return {
                          hidden: { ...baseVariants.hidden, x: -50 },
-                         visible: { 
+                         visible: {
                               ...baseVariants.visible,
                               x: 0,
                          }

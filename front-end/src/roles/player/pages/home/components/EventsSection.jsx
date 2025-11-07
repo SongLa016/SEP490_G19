@@ -77,21 +77,21 @@ export const EventsSection = () => {
      };
 
      return (
-          <ScrollReveal direction="up" delay={0.4}>
-               <Container className="my-10 py-8 rounded-2xl shadow-lg from-teal-50 via-white to-orange-50 border border-gray-200 bg-white">
+          <ScrollReveal direction="up" delay={0.4} margin="70px 0px">
+               <Container className=" py-5 max-h-[100vh] rounded-2xl shadow-lg from-teal-50 via-white to-orange-50 border border-gray-200 bg-white">
                     <div className="max-w-7xl mx-auto">
                          <motion.div
                               initial={{ opacity: 0, y: 20 }}
                               whileInView={{ opacity: 1, y: 0 }}
                               viewport={{ once: true }}
                               transition={{ duration: 0.6 }}
-                              className="text-center mb-6"
+                              className="text-center mb-3"
                          >
-                              <div className="inline-flex items-center gap-2 px-4 py-2 bg-teal-100 rounded-full mb-4">
+                              <div className="inline-flex items-center gap-2 px-3 py-1 bg-teal-100 rounded-full mb-2">
                                    <Trophy className="w-5 h-5 text-teal-600" />
                                    <span className="text-teal-600 font-semibold">Sự kiện & Giải đấu</span>
                               </div>
-                              <h2 className="text-4xl md:text-5xl font-bold text-teal-900 mb-3">
+                              <h2 className="text-4xl md:text-5xl font-bold text-teal-900 mb-2">
                                    Giải đấu nổi bật
                               </h2>
                               <p className="text-lg text-teal-600 max-w-2xl mx-auto">
@@ -104,7 +104,7 @@ export const EventsSection = () => {
                               initial="hidden"
                               whileInView="visible"
                               viewport={{ once: true }}
-                              className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+                              className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"
                          >
                               {events.map((event) => (
                                    <motion.div key={event.id} variants={itemVariants}>
@@ -119,16 +119,16 @@ export const EventsSection = () => {
                                                        {getStatusBadge(event.status, event.statusColor)}
                                                   </div>
                                                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                                                  <div className="absolute bottom-4 left-4 right-4">
-                                                       <Trophy className="w-8 h-8 text-white mb-2" />
+                                                  <div className="absolute bottom-3 left-4 right-4">
+                                                       <Trophy className="w-8 h-8 text-white mb-1" />
                                                   </div>
                                              </div>
 
-                                             <div className="p-6 flex-1 flex flex-col">
-                                                  <h3 className="text-xl font-bold text-teal-900 mb-2 line-clamp-2">{event.title}</h3>
-                                                  <p className="text-teal-600 text-sm mb-4 line-clamp-3 flex-1">{event.description}</p>
+                                             <div className="p-4 flex-1 flex flex-col">
+                                                  <h3 className="text-xl font-bold text-teal-900 mb-1 pb-1 line-clamp-2">{event.title}</h3>
+                                                  <p className="text-teal-600 text-sm mb-3 line-clamp-3 flex-1">{event.description}</p>
 
-                                                  <div className="space-y-2 mb-4">
+                                                  <div className="space-y-2 mb-3">
                                                        <div className="flex items-center gap-1 text-sm text-teal-600">
                                                             <Calendar className="w-4 h-4 text-teal-600" />
                                                             <span>{event.date}</span>
@@ -165,7 +165,7 @@ export const EventsSection = () => {
                          >
                               <Button
                                    onClick={() => navigate("/events")}
-                                   className="bg-teal-500 hover:bg-teal-600 text-white px-8 py-3 rounded-2xl font-semibold text-lg"
+                                   className="bg-teal-500 hover:bg-teal-600 text-white px-8 rounded-2xl font-semibold text-lg"
                               >
                                    Xem tất cả sự kiện
                                    <ArrowRight className="w-5 h-5 ml-2" />

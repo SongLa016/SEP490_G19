@@ -90,20 +90,20 @@ export const QuickBookingSection = ({ user }) => {
      };
 
      return (
-          <ScrollReveal direction="up" delay={0.1}>
-               <Container className="my-10 py-8 bg-gradient-to-br rounded-2xl shadow-lg from-teal-50 via-white to-orange-50 border border-gray-200">
+          <ScrollReveal direction="up" delay={0.1} margin="70px 0px">
+               <Container className=" py-5 rounded-2xl shadow-lg max-h-[100vh] bg-white/80 backdrop-blur-sm border border-gray-200">
                     <div className="max-w-7xl mx-auto">
                          <motion.div
-                              initial={{ opacity: 0, y: 20 }}
+                              initial={{ opacity: 0, y: 16 }}
                               whileInView={{ opacity: 1, y: 0 }}
                               viewport={{ once: true }}
-                              transition={{ duration: 0.6 }}
-                              className="text-center mb-12"
+                              transition={{ duration: 0.5 }}
+                              className="text-center mb-3"
                          >
-                              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900 mb-3">
                                    Đặt sân nhanh chóng
                               </h2>
-                              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                              <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto">
                                    Tìm sân phù hợp, đặt lịch dễ dàng với những gợi ý được yêu thích nhất
                               </p>
                          </motion.div>
@@ -113,12 +113,12 @@ export const QuickBookingSection = ({ user }) => {
                               initial="hidden"
                               whileInView="visible"
                               viewport={{ once: true }}
-                              className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-5"
+                              className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6 mb-3"
                          >
                               {/* Đặt sân gần bạn */}
                               <motion.div variants={itemVariants}>
-                                   <Card className="h-full p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-teal-100">
-                                        <div className="flex items-center gap-3 mb-2">
+                                   <Card className="h-full p-3 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-teal-100">
+                                        <div className="flex items-center gap-3 mb-3">
                                              <div className="p-3 bg-teal-100 rounded-xl">
                                                   <MapPin className="w-6 h-6 text-teal-600" />
                                              </div>
@@ -148,20 +148,22 @@ export const QuickBookingSection = ({ user }) => {
                                              ))}
                                         </div>
 
-                                        <Button
-                                             onClick={() => navigate("/search")}
-                                             className="w-full mt-4 bg-teal-500 hover:bg-teal-600 text-white rounded-2xl"
-                                        >
-                                             Xem thêm sân gần bạn
-                                             <ArrowRight className="w-4 h-4 ml-2" />
-                                        </Button>
+                                        <div className="mt-5">
+                                             <Button
+                                                  onClick={() => navigate("/search")}
+                                                  className="w-full bg-teal-500 hover:bg-teal-600 text-white rounded-2xl"
+                                             >
+                                                  Xem thêm sân gần bạn
+                                                  <ArrowRight className="w-4 h-4 ml-2" />
+                                             </Button>
+                                        </div>
                                    </Card>
                               </motion.div>
 
                               {/* Đánh giá tốt nhất */}
                               <motion.div variants={itemVariants}>
-                                   <Card className="h-full p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-yellow-100">
-                                        <div className="flex items-center gap-3 mb-2">
+                                   <Card className="h-full p-3 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-yellow-100">
+                                        <div className="flex items-center gap-3 mb-3">
                                              <div className="p-3 bg-yellow-100 rounded-xl">
                                                   <Star className="w-6 h-6 text-yellow-600" />
                                              </div>
@@ -193,19 +195,21 @@ export const QuickBookingSection = ({ user }) => {
                                              ))}
                                         </div>
 
-                                        <Button
-                                             onClick={() => navigate("/search")}
-                                             className="w-full mt-4 bg-yellow-500 hover:bg-yellow-600 text-white rounded-2xl"
-                                        >
-                                             Xem tất cả sân đánh giá cao
-                                             <ArrowRight className="w-4 h-4 ml-2" />
-                                        </Button>
+                                        <div className="mt-5">
+                                             <Button
+                                                  onClick={() => navigate("/search")}
+                                                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-white rounded-2xl"
+                                             >
+                                                  Xem tất cả sân đánh giá cao
+                                                  <ArrowRight className="w-4 h-4 ml-2" />
+                                             </Button>
+                                        </div>
                                    </Card>
                               </motion.div>
 
                               {/* Ưu đãi đặt cố định */}
                               <motion.div variants={itemVariants}>
-                                   <Card className="h-full p-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 text-white relative overflow-hidden">
+                                   <Card className="h-full p-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 text-white relative overflow-hidden">
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
                                         <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
 
@@ -218,12 +222,12 @@ export const QuickBookingSection = ({ user }) => {
                                              </div>
                                              <p className="text-white/90 mb-6 text-sm">Đặt lịch cố định để nhận mức giảm giá hấp dẫn</p>
 
-                                             <div className="space-y-4 mb-6">
+                                             <div className="space-y-4 mb-4">
                                                   {promotions.map((promo) => (
                                                        <motion.div
                                                             key={promo.id}
                                                             whileHover={{ scale: 1.05 }}
-                                                            className="p-4 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30"
+                                                            className="p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30"
                                                        >
                                                             <div className="flex items-start justify-between mb-2">
                                                                  <div>
@@ -239,13 +243,15 @@ export const QuickBookingSection = ({ user }) => {
                                                   ))}
                                              </div>
 
-                                             <Button
-                                                  onClick={() => navigate("/search")}
-                                                  className="w-full bg-white text-purple-600 hover:bg-gray-100 hover:text-purple-600 rounded-2xl font-semibold"
-                                             >
-                                                  Xem tất cả ưu đãi
-                                                  <ArrowRight className="w-4 h-4 ml-2" />
-                                             </Button>
+                                             <div className="mt-2">
+                                                  <Button
+                                                       onClick={() => navigate("/search")}
+                                                       className="w-full bg-white text-purple-600 hover:bg-gray-100 hover:text-purple-600 rounded-2xl font-semibold"
+                                                  >
+                                                       Xem tất cả ưu đãi
+                                                       <ArrowRight className="w-4 h-4 ml-2" />
+                                                  </Button>
+                                             </div>
                                         </div>
                                    </Card>
                               </motion.div>
@@ -259,9 +265,9 @@ export const QuickBookingSection = ({ user }) => {
                                    viewport={{ once: true }}
                                    transition={{ duration: 0.6 }}
                               >
-                                   <Card className="p-3 bg-gradient-to-r from-teal-500 to-teal-600 rounded-2xl shadow-lg text-white">
+                                   <Card className="py-2 px-3  bg-gradient-to-r from-teal-500 to-teal-600 rounded-3xl shadow-lg text-white">
                                         <div className="flex items-center justify-between flex-wrap gap-4">
-                                             <div className="flex items-center gap-4">
+                                             <div className="flex items-center gap-3">
                                                   <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
                                                        <LogIn className="w-6 h-6" />
                                                   </div>

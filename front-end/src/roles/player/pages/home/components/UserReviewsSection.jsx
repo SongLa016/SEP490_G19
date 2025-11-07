@@ -95,15 +95,15 @@ export const UserReviewsSection = () => {
      };
 
      return (
-          <ScrollReveal direction="up" delay={0.3}>
-               <Container className="my-10 py-8 bg-gradient-to-br rounded-2xl shadow-lg from-teal-50 via-white to-orange-50 border border-gray-200">
+          <ScrollReveal direction="up" delay={0.3} margin="70px 0px">
+               <Container className=" py-12 max-h-[100vh] bg-gradient-to-br rounded-2xl shadow-lg from-teal-50 via-white to-orange-50 border border-gray-200">
                     <div className="max-w-7xl mx-auto">
                          <motion.div
                               initial={{ opacity: 0, y: 20 }}
                               whileInView={{ opacity: 1, y: 0 }}
                               viewport={{ once: true }}
                               transition={{ duration: 0.6 }}
-                              className="text-center mb-6"
+                              className="text-center mb-6 pb-6"
                          >
                               <h2 className="text-4xl md:text-5xl font-bold text-teal-900 mb-3">
                                    Đánh giá & Cộng đồng người dùng
@@ -122,7 +122,7 @@ export const UserReviewsSection = () => {
                          >
                               {reviews.map((review) => (
                                    <motion.div key={review.id} variants={itemVariants}>
-                                        <Card className="p-4 bg-white rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-teal-100 h-full">
+                                        <Card className="p-4 bg-white rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 border border-teal-600 h-full">
                                              <div className="flex items-start gap-4 mb-4">
                                                   <img
                                                        src={review.avatar}
@@ -147,7 +147,7 @@ export const UserReviewsSection = () => {
                                                   </div>
                                              </div>
 
-                                             <p className="text-teal-700 mb-4 leading-relaxed">{review.review}</p>
+                                             <p className="text-teal-800 mb-4 leading-relaxed">{review.review}</p>
 
                                              <div className="flex items-center gap-5 pt-4 border-t border-teal-100">
                                                   <div className="flex items-center gap-1 text-sm text-teal-600">

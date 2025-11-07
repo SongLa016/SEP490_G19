@@ -80,8 +80,8 @@ export const CommunityMatchmakingSection = () => {
      };
 
      return (
-          <ScrollReveal direction="up" delay={0.2}>
-               <Section className="relative my-10 py-12 overflow-hidden">
+          <ScrollReveal direction="up" delay={0.2} margin="70px 0px">
+               <Section className="relative px-5  max-h-[100vh] py-10 overflow-hidden">
                     {/* Background image + gradient overlay */}
                     <div
                          className="absolute inset-0 bg-cover bg-center"
@@ -94,7 +94,7 @@ export const CommunityMatchmakingSection = () => {
                               whileInView={{ opacity: 1, y: 0 }}
                               viewport={{ once: true }}
                               transition={{ duration: 0.6 }}
-                              className="text-center mb-8"
+                              className="text-center mb-3"
                          >
                               <h2 className="text-4xl md:text-5xl font-bold text-white mb-3">
                                    Cộng đồng & Matchmaking
@@ -110,7 +110,7 @@ export const CommunityMatchmakingSection = () => {
                               initial="hidden"
                               whileInView="visible"
                               viewport={{ once: true }}
-                              className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10"
+                              className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3"
                          >
                               {matchmakingFeatures.map((feature, index) => {
                                    const Icon = feature.icon;
@@ -121,7 +121,7 @@ export const CommunityMatchmakingSection = () => {
                                    };
                                    return (
                                         <motion.div key={index} variants={itemVariants}>
-                                             <Card className="p-5 text-center bg-white/95 backdrop-blur rounded-2xl hover:shadow-xl transition-all duration-300 border border-white/20">
+                                             <Card className="p-3 text-center bg-white/95 backdrop-blur rounded-2xl hover:shadow-xl transition-all duration-300 border border-white/20">
                                                   <div className={`inline-flex p-3 rounded-2xl mb-4 ${colorClasses[feature.color]}`}>
                                                        <Icon className="w-8 h-8" />
                                                   </div>
@@ -139,17 +139,17 @@ export const CommunityMatchmakingSection = () => {
                               whileInView={{ opacity: 1, y: 0 }}
                               viewport={{ once: true }}
                               transition={{ duration: 0.6 }}
-                              className="mb-10"
+                              className="mb-5"
                          >
                               <h3 className="text-2xl font-bold text-white mb-4">Cơ hội đang chờ bạn</h3>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                    {matchPosts.map((post) => (
                                         <motion.div
                                              key={post.id}
                                              whileHover={{ scale: 1.02, y: -5 }}
                                              className="relative"
                                         >
-                                             <Card className="p-5 bg-white/95 backdrop-blur rounded-2xl hover:shadow-xl transition-all duration-300 border border-white/20 h-full">
+                                             <Card className="p-3 bg-white/95 backdrop-blur rounded-2xl hover:shadow-xl transition-all duration-300 border border-white/20 h-full max-h-[200px]">
                                                   {post.type === "tournament" && (
                                                        <div className="absolute top-4 right-4">
                                                             <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold flex items-center gap-1">
@@ -158,7 +158,7 @@ export const CommunityMatchmakingSection = () => {
                                                             </span>
                                                        </div>
                                                   )}
-                                                  <div className="flex items-start gap-3 mb-4">
+                                                  <div className="flex items-start gap-3 mb-2">
                                                        <div className="p-2 bg-teal-100 rounded-lg">
                                                             <Users className="w-5 h-5 text-teal-600" />
                                                        </div>
@@ -168,7 +168,7 @@ export const CommunityMatchmakingSection = () => {
                                                        </div>
                                                   </div>
 
-                                                  <div className="space-y-2 mb-4">
+                                                  <div className="space-y-2 mb-2">
                                                        <div className="flex items-center gap-2 text-sm text-gray-600">
                                                             <Clock className="w-4 h-4" />
                                                             <span>{post.time}</span>
