@@ -1,6 +1,6 @@
 using BallSport.Application.Services;
 using BallSport.Infrastructure.Repositories;
-using BallSport.Infrastructure.Data;
+using BallSport.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.Google;
 using BallSport.Infrastructure.Models;
 using Banking.Application.Services;
 using Microsoft.OpenApi.Models;
+using BallSport.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,6 +58,7 @@ services.AddCors(options =>
     options.AddPolicy("AllowAll", policy =>
     {
         policy.WithOrigins(
+            "http://localhost:8080",
             "http://localhost:3000",            // React local
             "http://localhost:5049",            // Swagger HTTP
             "https://localhost:7062",           // Swagger HTTPS
@@ -64,8 +66,8 @@ services.AddCors(options =>
             "https://ballsport-frontend.onrender.com" // ví dụ nếu deploy React riêng
         )
         .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials();
+        .AllowAnyMethod();
+       
     });
 });
 
@@ -74,33 +76,44 @@ services.AddDbContext<Sep490G19v1Context>(options =>
     options.UseSqlServer(config.GetConnectionString("MyCnn")));
 
 // ===================== DEPENDENCY INJECTION =====================
+
+services.AddScoped<BookingCancellationRepository>();
+services.AddScoped<BookingCancellationReRepository>();
+services.AddScoped<PlayerBankAccountRepository>();
+services.AddScoped<OwnerBankAccountRepository>();
+services.AddScoped<PaymentRepository>();
+services.AddScoped<BookingFieldsRepoitory>();
+services.AddScoped<FieldTypesRepository>();
+services.AddScoped<FieldTypeService>();
+services.AddScoped<FieldComplexRepository>();
+services.AddScoped<FieldComplexService>();
+services.AddScoped<FieldRepository>();
+services.AddScoped<DepositPolicyRepository>();
+services.AddScoped<FieldScheduleRepository>();
+services.AddScoped<FieldPriceRepository>();
+services.AddScoped<TimeSlotRepository>();
+
+
 services.AddScoped<UserRepositories>();
 services.AddScoped<UserService>();
 services.AddScoped<JwtService>();
 services.AddScoped<OTPService>();
+services.AddScoped<BookingService>();
+services.AddScoped<OwnerBankAccountService>();
+services.AddScoped<PlayerBankAccountService>();
+services.AddScoped<BookingCancellationReService>();
+services.AddScoped<TimeSlotService>();
+services.AddScoped<FieldService>();
+services.AddScoped<DepositPolicyService>();
+services.AddScoped<FieldScheduleService>();
+services.AddScoped<FieldPriceService>();
+
 services.AddMemoryCache();
 
 // Các service khác (Field, Deposit, Schedule…)
-services.AddScoped<FieldTypesRepository>();
-services.AddScoped<FieldTypeService>();
 
-services.AddScoped<FieldComplexRepository>();
-services.AddScoped<FieldComplexService>();
 
-services.AddScoped<FieldRepository>();
-services.AddScoped<FieldService>();
 
-services.AddScoped<DepositPolicyRepository>();
-services.AddScoped<DepositPolicyService>();
-
-services.AddScoped<FieldScheduleRepository>();
-services.AddScoped<FieldScheduleService>();
-
-services.AddScoped<FieldPriceRepository>();
-services.AddScoped<FieldPriceService>();
-
-services.AddScoped<TimeSlotRepository>();
-services.AddScoped<TimeSlotService>();
 
 // ===================== SMTP (Email) =====================
 var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
@@ -124,7 +137,7 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// ===================== GOOGLE AUTH (nếu có) =====================
+/*// ===================== GOOGLE AUTH (nếu có) =====================
 var googleSection = builder.Configuration.GetSection("Authentication:Google");
 var googleClientId = googleSection["ClientId"];
 var googleClientSecret = googleSection["ClientSecret"];
@@ -144,7 +157,7 @@ if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientS
         options.ClientSecret = googleClientSecret;
         options.CallbackPath = "/signin-google";
     });
-}
+}*/
 
 var app = builder.Build();
 
@@ -158,6 +171,7 @@ app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "BallSport API v1");
     c.RoutePrefix = "swagger";
+
 });
 
 // ⚠️ Nếu test HTTP local, tắt HTTPS redirect

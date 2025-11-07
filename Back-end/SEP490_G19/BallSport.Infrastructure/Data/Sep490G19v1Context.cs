@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿using System;
 using System.Collections.Generic;
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
@@ -46,7 +46,11 @@ public partial class Sep490G19v1Context : DbContext
 
     public virtual DbSet<Notification> Notifications { get; set; }
 
+    public virtual DbSet<OwnerBankAccount> OwnerBankAccounts { get; set; }
+
     public virtual DbSet<Payment> Payments { get; set; }
+
+    public virtual DbSet<PlayerBankAccount> PlayerBankAccounts { get; set; }
 
     public virtual DbSet<PlayerMatchHistory> PlayerMatchHistories { get; set; }
 
@@ -74,14 +78,15 @@ public partial class Sep490G19v1Context : DbContext
 
     public virtual DbSet<ViolationReport> ViolationReports { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder){}
-
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Server=DESKTOP-UBB3LO2;Database=SEP490_G19V1;User=sa;Password=123;Encrypt=false;TrustServerCertificate=true");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<BlogPost>(entity =>
         {
-            entity.HasKey(e => e.PostId).HasName("PK__BlogPost__AA12603854E2211A");
+            entity.HasKey(e => e.PostId).HasName("PK__BlogPost__AA12603833AB0D25");
 
             entity.Property(e => e.PostId).HasColumnName("PostID");
             entity.Property(e => e.AuthorId).HasColumnName("AuthorID");
@@ -94,12 +99,12 @@ public partial class Sep490G19v1Context : DbContext
             entity.HasOne(d => d.Author).WithMany(p => p.BlogPosts)
                 .HasForeignKey(d => d.AuthorId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__BlogPosts__Autho__2DE6D218");
+                .HasConstraintName("FK__BlogPosts__Autho__236943A5");
         });
 
         modelBuilder.Entity<Booking>(entity =>
         {
-            entity.HasKey(e => e.BookingId).HasName("PK__Bookings__73951ACD1EC79F6B");
+            entity.HasKey(e => e.BookingId).HasName("PK__Bookings__73951ACD3F1D6103");
 
             entity.Property(e => e.BookingId).HasColumnName("BookingID");
             entity.Property(e => e.BookingStatus)
@@ -130,17 +135,17 @@ public partial class Sep490G19v1Context : DbContext
             entity.HasOne(d => d.Schedule).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.ScheduleId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Bookings__Schedu__03F0984C");
+                .HasConstraintName("FK__Bookings__Schedu__797309D9");
 
             entity.HasOne(d => d.User).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Bookings__UserID__02FC7413");
+                .HasConstraintName("FK__Bookings__UserID__787EE5A0");
         });
 
         modelBuilder.Entity<BookingCancellation>(entity =>
         {
-            entity.HasKey(e => e.CancellationId).HasName("PK__BookingC__6A2D9A1AF5D2730B");
+            entity.HasKey(e => e.CancellationId).HasName("PK__BookingC__6A2D9A1AFAD0F417");
 
             entity.Property(e => e.CancellationId).HasColumnName("CancellationID");
             entity.Property(e => e.BookingId).HasColumnName("BookingID");
@@ -156,23 +161,24 @@ public partial class Sep490G19v1Context : DbContext
             entity.HasOne(d => d.Booking).WithMany(p => p.BookingCancellations)
                 .HasForeignKey(d => d.BookingId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__BookingCa__Booki__1BC821DD");
+                .HasConstraintName("FK__BookingCa__Booki__114A936A");
 
             entity.HasOne(d => d.Request).WithMany(p => p.BookingCancellations)
                 .HasForeignKey(d => d.RequestId)
-                .HasConstraintName("FK__BookingCa__Reque__1CBC4616");
+                .HasConstraintName("FK__BookingCa__Reque__123EB7A3");
 
             entity.HasOne(d => d.VerifiedByNavigation).WithMany(p => p.BookingCancellations)
                 .HasForeignKey(d => d.VerifiedBy)
-                .HasConstraintName("FK__BookingCa__Verif__1F98B2C1");
+                .HasConstraintName("FK__BookingCa__Verif__151B244E");
         });
 
         modelBuilder.Entity<BookingCancellationRequest>(entity =>
         {
-            entity.HasKey(e => e.RequestId).HasName("PK__BookingC__33A8519AF3EB802F");
+            entity.HasKey(e => e.RequestId).HasName("PK__BookingC__33A8519A54076F12");
 
             entity.Property(e => e.RequestId).HasColumnName("RequestID");
             entity.Property(e => e.BookingId).HasColumnName("BookingID");
+            entity.Property(e => e.FinalRefundAmount).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.PenaltyAmount).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.RefundAmount).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.RequestReason).HasMaxLength(255);
@@ -188,21 +194,21 @@ public partial class Sep490G19v1Context : DbContext
             entity.HasOne(d => d.Booking).WithMany(p => p.BookingCancellationRequests)
                 .HasForeignKey(d => d.BookingId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__BookingCa__Booki__151B244E");
+                .HasConstraintName("FK__BookingCa__Booki__0A9D95DB");
 
             entity.HasOne(d => d.RequestedByUser).WithMany(p => p.BookingCancellationRequestRequestedByUsers)
                 .HasForeignKey(d => d.RequestedByUserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__BookingCa__Reque__160F4887");
+                .HasConstraintName("FK__BookingCa__Reque__0B91BA14");
 
             entity.HasOne(d => d.ReversedByUser).WithMany(p => p.BookingCancellationRequestReversedByUsers)
                 .HasForeignKey(d => d.ReversedByUserId)
-                .HasConstraintName("FK__BookingCa__Rever__18EBB532");
+                .HasConstraintName("FK__BookingCa__Rever__0E6E26BF");
         });
 
         modelBuilder.Entity<CancellationPolicy>(entity =>
         {
-            entity.HasKey(e => e.PolicyId).HasName("PK__Cancella__2E1339449156DC7C");
+            entity.HasKey(e => e.PolicyId).HasName("PK__Cancella__2E1339446C8E5B6C");
 
             entity.Property(e => e.PolicyId).HasColumnName("PolicyID");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
@@ -215,12 +221,12 @@ public partial class Sep490G19v1Context : DbContext
             entity.HasOne(d => d.Field).WithMany(p => p.CancellationPolicies)
                 .HasForeignKey(d => d.FieldId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Cancellat__Field__10566F31");
+                .HasConstraintName("FK__Cancellat__Field__05D8E0BE");
         });
 
         modelBuilder.Entity<Comment>(entity =>
         {
-            entity.HasKey(e => e.CommentId).HasName("PK__Comments__C3B4DFAAD34D73A3");
+            entity.HasKey(e => e.CommentId).HasName("PK__Comments__C3B4DFAAB7F9B484");
 
             entity.Property(e => e.CommentId).HasColumnName("CommentID");
             entity.Property(e => e.CreatedAt)
@@ -250,7 +256,7 @@ public partial class Sep490G19v1Context : DbContext
 
         modelBuilder.Entity<DepositPolicy>(entity =>
         {
-            entity.HasKey(e => e.DepositPolicyId).HasName("PK__DepositP__0B7CD7A3C28E2CA7");
+            entity.HasKey(e => e.DepositPolicyId).HasName("PK__DepositP__0B7CD7A3AFACB82D");
 
             entity.Property(e => e.DepositPolicyId).HasColumnName("DepositPolicyID");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
@@ -262,14 +268,15 @@ public partial class Sep490G19v1Context : DbContext
             entity.HasOne(d => d.Field).WithMany(p => p.DepositPolicies)
                 .HasForeignKey(d => d.FieldId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__DepositPo__Field__7F2BE32F");
+                .HasConstraintName("FK__DepositPo__Field__74AE54BC");
         });
 
         modelBuilder.Entity<Field>(entity =>
         {
-            entity.HasKey(e => e.FieldId).HasName("PK__Fields__C8B6FF27298E251A");
+            entity.HasKey(e => e.FieldId).HasName("PK__Fields__C8B6FF273AB66C90");
 
             entity.Property(e => e.FieldId).HasColumnName("FieldID");
+            entity.Property(e => e.BankAccountId).HasColumnName("BankAccountID");
             entity.Property(e => e.ComplexId).HasColumnName("ComplexID");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.GrassType).HasMaxLength(100);
@@ -281,18 +288,22 @@ public partial class Sep490G19v1Context : DbContext
                 .HasDefaultValue("Available");
             entity.Property(e => e.TypeId).HasColumnName("TypeID");
 
+            entity.HasOne(d => d.BankAccount).WithMany(p => p.Fields)
+                .HasForeignKey(d => d.BankAccountId)
+                .HasConstraintName("FK_Fields_OwnerBankAccounts");
+
             entity.HasOne(d => d.Complex).WithMany(p => p.Fields)
                 .HasForeignKey(d => d.ComplexId)
-                .HasConstraintName("FK__Fields__ComplexI__6C190EBB");
+                .HasConstraintName("FK__Fields__ComplexI__619B8048");
 
             entity.HasOne(d => d.Type).WithMany(p => p.Fields)
                 .HasForeignKey(d => d.TypeId)
-                .HasConstraintName("FK__Fields__TypeID__6D0D32F4");
+                .HasConstraintName("FK__Fields__TypeID__628FA481");
         });
 
         modelBuilder.Entity<FieldComplex>(entity =>
         {
-            entity.HasKey(e => e.ComplexId).HasName("PK__FieldCom__E14B3DF6C564DC94");
+            entity.HasKey(e => e.ComplexId).HasName("PK__FieldCom__E14B3DF668A4569F");
 
             entity.Property(e => e.ComplexId).HasColumnName("ComplexID");
             entity.Property(e => e.Address).HasMaxLength(500);
@@ -305,14 +316,14 @@ public partial class Sep490G19v1Context : DbContext
 
             entity.HasOne(d => d.Owner).WithMany(p => p.FieldComplexes)
                 .HasForeignKey(d => d.OwnerId)
-                .HasConstraintName("FK__FieldComp__Owner__6754599E");
+                .HasConstraintName("FK__FieldComp__Owner__5CD6CB2B");
         });
 
         modelBuilder.Entity<FieldPrice>(entity =>
         {
-            entity.HasKey(e => e.PriceId).HasName("PK__FieldPri__4957584F96F85008");
+            entity.HasKey(e => e.PriceId).HasName("PK__FieldPri__4957584F6417A502");
 
-            entity.HasIndex(e => new { e.FieldId, e.SlotId }, "UQ__FieldPri__2817DB828D11A09C").IsUnique();
+            entity.HasIndex(e => new { e.FieldId, e.SlotId }, "UQ__FieldPri__2817DB823439E8DC").IsUnique();
 
             entity.Property(e => e.PriceId).HasColumnName("PriceID");
             entity.Property(e => e.FieldId).HasColumnName("FieldID");
@@ -321,18 +332,18 @@ public partial class Sep490G19v1Context : DbContext
 
             entity.HasOne(d => d.Field).WithMany(p => p.FieldPrices)
                 .HasForeignKey(d => d.FieldId)
-                .HasConstraintName("FK__FieldPric__Field__7B5B524B");
+                .HasConstraintName("FK__FieldPric__Field__70DDC3D8");
 
             entity.HasOne(d => d.Slot).WithMany(p => p.FieldPrices)
                 .HasForeignKey(d => d.SlotId)
-                .HasConstraintName("FK__FieldPric__SlotI__7C4F7684");
+                .HasConstraintName("FK__FieldPric__SlotI__71D1E811");
         });
 
         modelBuilder.Entity<FieldSchedule>(entity =>
         {
-            entity.HasKey(e => e.ScheduleId).HasName("PK__FieldSch__9C8A5B69F6D4B224");
+            entity.HasKey(e => e.ScheduleId).HasName("PK__FieldSch__9C8A5B69C9B647FD");
 
-            entity.HasIndex(e => new { e.FieldId, e.Date, e.SlotId }, "UQ__FieldSch__F1CF6ABC23B06D84").IsUnique();
+            entity.HasIndex(e => new { e.FieldId, e.Date, e.SlotId }, "UQ__FieldSch__F1CF6ABC02AE2AE5").IsUnique();
 
             entity.Property(e => e.ScheduleId).HasColumnName("ScheduleID");
             entity.Property(e => e.FieldId).HasColumnName("FieldID");
@@ -343,18 +354,18 @@ public partial class Sep490G19v1Context : DbContext
 
             entity.HasOne(d => d.Field).WithMany(p => p.FieldSchedules)
                 .HasForeignKey(d => d.FieldId)
-                .HasConstraintName("FK__FieldSche__Field__75A278F5");
+                .HasConstraintName("FK__FieldSche__Field__6B24EA82");
 
             entity.HasOne(d => d.Slot).WithMany(p => p.FieldSchedules)
                 .HasForeignKey(d => d.SlotId)
-                .HasConstraintName("FK__FieldSche__SlotI__76969D2E");
+                .HasConstraintName("FK__FieldSche__SlotI__6C190EBB");
         });
 
         modelBuilder.Entity<FieldType>(entity =>
         {
-            entity.HasKey(e => e.TypeId).HasName("PK__FieldTyp__516F0395D2C20DB7");
+            entity.HasKey(e => e.TypeId).HasName("PK__FieldTyp__516F03952DB61ED1");
 
-            entity.HasIndex(e => e.TypeName, "UQ__FieldTyp__D4E7DFA81808CAAC").IsUnique();
+            entity.HasIndex(e => e.TypeName, "UQ__FieldTyp__D4E7DFA8A98A70C9").IsUnique();
 
             entity.Property(e => e.TypeId).HasColumnName("TypeID");
             entity.Property(e => e.TypeName).HasMaxLength(50);
@@ -362,7 +373,7 @@ public partial class Sep490G19v1Context : DbContext
 
         modelBuilder.Entity<MatchParticipant>(entity =>
         {
-            entity.HasKey(e => e.ParticipantId).HasName("PK__MatchPar__7227997EDBBEB7A3");
+            entity.HasKey(e => e.ParticipantId).HasName("PK__MatchPar__7227997E0CC0A8DB");
 
             entity.Property(e => e.ParticipantId).HasColumnName("ParticipantID");
             entity.Property(e => e.IsCreator).HasDefaultValue(false);
@@ -373,17 +384,17 @@ public partial class Sep490G19v1Context : DbContext
             entity.HasOne(d => d.MatchRequest).WithMany(p => p.MatchParticipants)
                 .HasForeignKey(d => d.MatchRequestId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__MatchPart__Match__45BE5BA9");
+                .HasConstraintName("FK__MatchPart__Match__3B40CD36");
 
             entity.HasOne(d => d.User).WithMany(p => p.MatchParticipants)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__MatchPart__UserI__46B27FE2");
+                .HasConstraintName("FK__MatchPart__UserI__3C34F16F");
         });
 
         modelBuilder.Entity<MatchRequest>(entity =>
         {
-            entity.HasKey(e => e.MatchRequestId).HasName("PK__MatchReq__AE45CD7688ABB306");
+            entity.HasKey(e => e.MatchRequestId).HasName("PK__MatchReq__AE45CD76F9ECB289");
 
             entity.Property(e => e.MatchRequestId).HasColumnName("MatchRequestID");
             entity.Property(e => e.BookingId).HasColumnName("BookingID");
@@ -395,18 +406,17 @@ public partial class Sep490G19v1Context : DbContext
 
             entity.HasOne(d => d.Booking).WithMany(p => p.MatchRequests)
                 .HasForeignKey(d => d.BookingId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__MatchRequ__Booki__3F115E1A");
+                .HasConstraintName("FK__MatchRequ__Booki__3493CFA7");
 
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.MatchRequests)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__MatchRequ__Creat__40058253");
+                .HasConstraintName("FK__MatchRequ__Creat__3587F3E0");
         });
 
         modelBuilder.Entity<Notification>(entity =>
         {
-            entity.HasKey(e => e.NotificationId).HasName("PK__Notifica__20CF2E32A7514067");
+            entity.HasKey(e => e.NotificationId).HasName("PK__Notifica__20CF2E327469AD80");
 
             entity.Property(e => e.NotificationId).HasColumnName("NotificationID");
             entity.Property(e => e.CreatedAt)
@@ -424,36 +434,78 @@ public partial class Sep490G19v1Context : DbContext
                 .HasConstraintName("FK_Notifications_Users");
         });
 
+        modelBuilder.Entity<OwnerBankAccount>(entity =>
+        {
+            entity.HasKey(e => e.BankAccountId).HasName("PK__OwnerBan__4FC8E7416736DED5");
+
+            entity.Property(e => e.BankAccountId).HasColumnName("BankAccountID");
+            entity.Property(e => e.AccountHolder).HasMaxLength(100);
+            entity.Property(e => e.AccountNumber).HasMaxLength(30);
+            entity.Property(e => e.BankName).HasMaxLength(100);
+            entity.Property(e => e.BankShortCode).HasMaxLength(20);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.IsDefault).HasDefaultValue(true);
+            entity.Property(e => e.OwnerId).HasColumnName("OwnerID");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())");
+
+            entity.HasOne(d => d.Owner).WithMany(p => p.OwnerBankAccounts)
+                .HasForeignKey(d => d.OwnerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__OwnerBank__Owner__756D6ECB");
+        });
+
         modelBuilder.Entity<Payment>(entity =>
         {
-            entity.HasKey(e => e.PaymentId).HasName("PK__Payments__9B556A58C2D12AD2");
+            entity.HasKey(e => e.PaymentId).HasName("PK__Payments__9B556A580D32C6B5");
+
+            entity.HasIndex(e => e.OrderCode, "UQ_Payments_OrderCode").IsUnique();
 
             entity.Property(e => e.PaymentId).HasColumnName("PaymentID");
             entity.Property(e => e.Amount).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.BookingId).HasColumnName("BookingID");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Method)
+                .HasMaxLength(50)
+                .HasDefaultValue("PayOS");
+            entity.Property(e => e.OrderCode).HasMaxLength(100);
+            entity.Property(e => e.PayOrderInfo).HasMaxLength(255);
+            entity.Property(e => e.PayUrl).HasColumnName("PayURL");
+            entity.Property(e => e.PaymentType).HasMaxLength(50);
+            entity.Property(e => e.ResponseCode).HasMaxLength(20);
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValue("Pending");
+            entity.Property(e => e.TransactionCode).HasMaxLength(100);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())");
-            entity.Property(e => e.VnpayOrderInfo)
-                .HasMaxLength(255)
-                .HasColumnName("VNPayOrderInfo");
-            entity.Property(e => e.VnpayResponseCode)
-                .HasMaxLength(10)
-                .HasColumnName("VNPayResponseCode");
-            entity.Property(e => e.VnpayTransactionCode)
-                .HasMaxLength(100)
-                .HasColumnName("VNPayTransactionCode");
 
             entity.HasOne(d => d.Booking).WithMany(p => p.Payments)
                 .HasForeignKey(d => d.BookingId)
-                .HasConstraintName("FK__Payments__Bookin__0A9D95DB");
+                .HasConstraintName("FK__Payments__Bookin__00200768");
+        });
+
+        modelBuilder.Entity<PlayerBankAccount>(entity =>
+        {
+            entity.HasKey(e => e.BankAccountId).HasName("PK__PlayerBa__4FC8E741E8399AB7");
+
+            entity.Property(e => e.BankAccountId).HasColumnName("BankAccountID");
+            entity.Property(e => e.AccountHolder).HasMaxLength(100);
+            entity.Property(e => e.AccountNumber).HasMaxLength(30);
+            entity.Property(e => e.BankName).HasMaxLength(100);
+            entity.Property(e => e.BankShortCode).HasMaxLength(20);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.IsDefault).HasDefaultValue(true);
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.UserId).HasColumnName("UserID");
+
+            entity.HasOne(d => d.User).WithMany(p => p.PlayerBankAccounts)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__PlayerBan__UserI__1B9317B3");
         });
 
         modelBuilder.Entity<PlayerMatchHistory>(entity =>
         {
-            entity.HasKey(e => e.HistoryId).HasName("PK__PlayerMa__4D7B4ADDED361D2A");
+            entity.HasKey(e => e.HistoryId).HasName("PK__PlayerMa__4D7B4ADD11DF0DB5");
 
             entity.ToTable("PlayerMatchHistory");
 
@@ -468,17 +520,17 @@ public partial class Sep490G19v1Context : DbContext
             entity.HasOne(d => d.MatchRequest).WithMany(p => p.PlayerMatchHistories)
                 .HasForeignKey(d => d.MatchRequestId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PlayerMat__Match__4C6B5938");
+                .HasConstraintName("FK__PlayerMat__Match__41EDCAC5");
 
             entity.HasOne(d => d.User).WithMany(p => p.PlayerMatchHistories)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__PlayerMat__UserI__4B7734FF");
+                .HasConstraintName("FK__PlayerMat__UserI__40F9A68C");
         });
 
         modelBuilder.Entity<Post>(entity =>
         {
-            entity.HasKey(e => e.PostId).HasName("PK__Posts__AA1260383600C9B7");
+            entity.HasKey(e => e.PostId).HasName("PK__Posts__AA1260385ACE9BE0");
 
             entity.Property(e => e.PostId).HasColumnName("PostID");
             entity.Property(e => e.CreatedAt)
@@ -507,7 +559,7 @@ public partial class Sep490G19v1Context : DbContext
 
         modelBuilder.Entity<PostLike>(entity =>
         {
-            entity.HasKey(e => e.LikeId).HasName("PK__PostLike__A2922CF496270017");
+            entity.HasKey(e => e.LikeId).HasName("PK__PostLike__A2922CF4D8340BB2");
 
             entity.HasIndex(e => new { e.PostId, e.UserId }, "UQ_PostLikes").IsUnique();
 
@@ -531,7 +583,7 @@ public partial class Sep490G19v1Context : DbContext
 
         modelBuilder.Entity<Report>(entity =>
         {
-            entity.HasKey(e => e.ReportId).HasName("PK__Reports__D5BD48E5FBC8B357");
+            entity.HasKey(e => e.ReportId).HasName("PK__Reports__D5BD48E53AE7A2FF");
 
             entity.Property(e => e.ReportId).HasColumnName("ReportID");
             entity.Property(e => e.CreatedAt)
@@ -557,9 +609,9 @@ public partial class Sep490G19v1Context : DbContext
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.RoleId).HasName("PK__Roles__8AFACE3AD34415ED");
+            entity.HasKey(e => e.RoleId).HasName("PK__Roles__8AFACE3A38EC6744");
 
-            entity.HasIndex(e => e.RoleName, "UQ__Roles__8A2B61609AECA4D9").IsUnique();
+            entity.HasIndex(e => e.RoleName, "UQ__Roles__8A2B616012173E19").IsUnique();
 
             entity.Property(e => e.RoleId).HasColumnName("RoleID");
             entity.Property(e => e.RoleName).HasMaxLength(50);
@@ -567,7 +619,7 @@ public partial class Sep490G19v1Context : DbContext
 
         modelBuilder.Entity<SystemNotification>(entity =>
         {
-            entity.HasKey(e => e.NotificationId).HasName("PK__SystemNo__20CF2E321A857864");
+            entity.HasKey(e => e.NotificationId).HasName("PK__SystemNo__20CF2E3247B2B39F");
 
             entity.Property(e => e.NotificationId).HasColumnName("NotificationID");
             entity.Property(e => e.InsUrgent).HasDefaultValue(false);
@@ -581,12 +633,12 @@ public partial class Sep490G19v1Context : DbContext
             entity.HasOne(d => d.SentByNavigation).WithMany(p => p.SystemNotifications)
                 .HasForeignKey(d => d.SentBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__SystemNot__SentB__245D67DE");
+                .HasConstraintName("FK__SystemNot__SentB__19DFD96B");
         });
 
         modelBuilder.Entity<Team>(entity =>
         {
-            entity.HasKey(e => e.TeamId).HasName("PK__Teams__123AE7B93CD69A59");
+            entity.HasKey(e => e.TeamId).HasName("PK__Teams__123AE7B9F41C7002");
 
             entity.Property(e => e.TeamId).HasColumnName("TeamID");
             entity.Property(e => e.ContactPhone).HasMaxLength(20);
@@ -603,12 +655,12 @@ public partial class Sep490G19v1Context : DbContext
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.Teams)
                 .HasForeignKey(d => d.CreatedBy)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Teams__CreatedBy__32AB8735");
+                .HasConstraintName("FK__Teams__CreatedBy__282DF8C2");
         });
 
         modelBuilder.Entity<TeamJoinRequest>(entity =>
         {
-            entity.HasKey(e => e.RequestId).HasName("PK__TeamJoin__33A8519AFE2EC7A3");
+            entity.HasKey(e => e.RequestId).HasName("PK__TeamJoin__33A8519AF308DD09");
 
             entity.Property(e => e.RequestId).HasColumnName("RequestID");
             entity.Property(e => e.Message).HasMaxLength(255);
@@ -621,24 +673,24 @@ public partial class Sep490G19v1Context : DbContext
 
             entity.HasOne(d => d.RespondedByNavigation).WithMany(p => p.TeamJoinRequestRespondedByNavigations)
                 .HasForeignKey(d => d.RespondedBy)
-                .HasConstraintName("FK__TeamJoinR__Respo__3C34F16F");
+                .HasConstraintName("FK__TeamJoinR__Respo__31B762FC");
 
             entity.HasOne(d => d.Team).WithMany(p => p.TeamJoinRequests)
                 .HasForeignKey(d => d.TeamId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__TeamJoinR__TeamI__3864608B");
+                .HasConstraintName("FK__TeamJoinR__TeamI__2DE6D218");
 
             entity.HasOne(d => d.User).WithMany(p => p.TeamJoinRequestUsers)
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__TeamJoinR__UserI__395884C4");
+                .HasConstraintName("FK__TeamJoinR__UserI__2EDAF651");
         });
 
         modelBuilder.Entity<TimeSlot>(entity =>
         {
-            entity.HasKey(e => e.SlotId).HasName("PK__TimeSlot__0A124A4F8CEF51F7");
+            entity.HasKey(e => e.SlotId).HasName("PK__TimeSlot__0A124A4FB1680F1C");
 
-            entity.HasIndex(e => new { e.StartTime, e.EndTime }, "UQ__TimeSlot__F4AF5A9CBD4598A7").IsUnique();
+            entity.HasIndex(e => new { e.StartTime, e.EndTime }, "UQ__TimeSlot__F4AF5A9C54149FFE").IsUnique();
 
             entity.Property(e => e.SlotId).HasColumnName("SlotID");
             entity.Property(e => e.SlotName).HasMaxLength(50);
@@ -646,9 +698,9 @@ public partial class Sep490G19v1Context : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.UserId).HasName("PK__Users__1788CCAC02BF27C6");
+            entity.HasKey(e => e.UserId).HasName("PK__Users__1788CCACF80E6B0E");
 
-            entity.HasIndex(e => e.Email, "UQ__Users__A9D105344598CEEA").IsUnique();
+            entity.HasIndex(e => e.Email, "UQ__Users__A9D1053449DCA7A5").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("UserID");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
@@ -663,9 +715,9 @@ public partial class Sep490G19v1Context : DbContext
 
         modelBuilder.Entity<UserProfile>(entity =>
         {
-            entity.HasKey(e => e.ProfileId).HasName("PK__UserProf__290C8884AB6E7EBD");
+            entity.HasKey(e => e.ProfileId).HasName("PK__UserProf__290C888465AA0478");
 
-            entity.HasIndex(e => e.UserId, "UQ__UserProf__1788CCADBCD7C343").IsUnique();
+            entity.HasIndex(e => e.UserId, "UQ__UserProf__1788CCAD01035ECC").IsUnique();
 
             entity.Property(e => e.ProfileId).HasColumnName("ProfileID");
             entity.Property(e => e.Address).HasMaxLength(500);
@@ -679,14 +731,14 @@ public partial class Sep490G19v1Context : DbContext
 
             entity.HasOne(d => d.User).WithOne(p => p.UserProfile)
                 .HasForeignKey<UserProfile>(d => d.UserId)
-                .HasConstraintName("FK__UserProfi__UserI__619B8048");
+                .HasConstraintName("FK__UserProfi__UserI__571DF1D5");
         });
 
         modelBuilder.Entity<UserRole>(entity =>
         {
-            entity.HasKey(e => e.UserRoleId).HasName("PK__UserRole__3D978A551BA405F5");
+            entity.HasKey(e => e.UserRoleId).HasName("PK__UserRole__3D978A55A5AFEB15");
 
-            entity.HasIndex(e => new { e.UserId, e.RoleId }, "UQ__UserRole__AF27604E94EC7384").IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.RoleId }, "UQ__UserRole__AF27604EA2C5F7A0").IsUnique();
 
             entity.Property(e => e.UserRoleId).HasColumnName("UserRoleID");
             entity.Property(e => e.RoleId).HasColumnName("RoleID");
@@ -694,16 +746,16 @@ public partial class Sep490G19v1Context : DbContext
 
             entity.HasOne(d => d.Role).WithMany(p => p.UserRoles)
                 .HasForeignKey(d => d.RoleId)
-                .HasConstraintName("FK__UserRoles__RoleI__5DCAEF64");
+                .HasConstraintName("FK__UserRoles__RoleI__534D60F1");
 
             entity.HasOne(d => d.User).WithMany(p => p.UserRoles)
                 .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK__UserRoles__UserI__5CD6CB2B");
+                .HasConstraintName("FK__UserRoles__UserI__52593CB8");
         });
 
         modelBuilder.Entity<ViolationReport>(entity =>
         {
-            entity.HasKey(e => e.ReportId).HasName("PK__Violatio__D5BD48E59E2DC535");
+            entity.HasKey(e => e.ReportId).HasName("PK__Violatio__D5BD48E5023AD08D");
 
             entity.Property(e => e.ReportId).HasColumnName("ReportID");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
@@ -718,12 +770,12 @@ public partial class Sep490G19v1Context : DbContext
             entity.HasOne(d => d.ReportedUser).WithMany(p => p.ViolationReportReportedUsers)
                 .HasForeignKey(d => d.ReportedUserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Violation__Repor__282DF8C2");
+                .HasConstraintName("FK__Violation__Repor__1DB06A4F");
 
             entity.HasOne(d => d.Reporter).WithMany(p => p.ViolationReportReporters)
                 .HasForeignKey(d => d.ReporterId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK__Violation__Repor__29221CFB");
+                .HasConstraintName("FK__Violation__Repor__1EA48E88");
         });
 
         OnModelCreatingPartial(modelBuilder);
