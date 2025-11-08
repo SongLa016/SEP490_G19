@@ -27,6 +27,10 @@ public partial class Field
 
     public DateTime? CreatedAt { get; set; }
 
+    public int? BankAccountId { get; set; }
+
+    public virtual OwnerBankAccount? BankAccount { get; set; }
+
     public virtual ICollection<CancellationPolicy> CancellationPolicies { get; set; } = new List<CancellationPolicy>();
 
     public virtual FieldComplex? Complex { get; set; }

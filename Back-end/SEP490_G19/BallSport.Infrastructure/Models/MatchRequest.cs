@@ -7,7 +7,7 @@ public partial class MatchRequest
 {
     public int MatchRequestId { get; set; }
 
-    public int BookingId { get; set; }
+    public int? BookingId { get; set; }
 
     public int CreatedBy { get; set; }
 
@@ -17,7 +17,7 @@ public partial class MatchRequest
 
     public DateTime? CreatedAt { get; set; }
 
-    public virtual Booking Booking { get; set; } = null!;
+    public virtual Booking? Booking { get; set; }
 
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 

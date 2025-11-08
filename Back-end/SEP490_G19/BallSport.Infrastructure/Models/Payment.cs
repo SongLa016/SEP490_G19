@@ -11,17 +11,27 @@ public partial class Payment
 
     public decimal Amount { get; set; }
 
-    public string VnpayTransactionCode { get; set; } = null!;
-
-    public string? VnpayOrderInfo { get; set; }
-
-    public string? VnpayResponseCode { get; set; }
-
     public string? Status { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+
+    public string? Method { get; set; }
+
+    public string? TransactionCode { get; set; }
+
+    public string? OrderCode { get; set; }
+
+    public string? PayOrderInfo { get; set; }
+
+    public string? ResponseCode { get; set; }
+
+    public string? PayUrl { get; set; }
+
+    public DateTime? PaidAt { get; set; }
+
+    public string? PaymentType { get; set; }
 
     public virtual Booking? Booking { get; set; }
 }

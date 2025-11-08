@@ -1,6 +1,8 @@
 ﻿using BallSport.Application.DTOs;
 using BallSport.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace BallSport.API.Controllers
 {
@@ -16,15 +18,20 @@ namespace BallSport.API.Controllers
         }
 
         // CREATE
+        [Authorize]
         [HttpPost]
-        public async Task<IActionResult> AddField([FromBody] FieldDTO dto)
+        public async Task<IActionResult> AddField([FromForm] FieldDTO dto)
         {
-            if (dto == null)
-                return BadRequest("Invalid data.");
+            // 🔹 Lấy OwnerId từ claim "UserID"
+            var ownerIdClaim = User.FindFirst("UserID");
+            if (ownerIdClaim == null) return Unauthorized("Không tìm thấy OwnerId trong token.");
 
-            var result = await _fieldService.AddFieldAsync(dto);
+            int ownerId = int.Parse(ownerIdClaim.Value);
+
+            var result = await _fieldService.AddFieldAsync(dto, ownerId);
             return CreatedAtAction(nameof(GetFieldById), new { fieldId = result.FieldId }, result);
         }
+
 
         // READ ALL BY COMPLEX
         [HttpGet("complex/{complexId}")]

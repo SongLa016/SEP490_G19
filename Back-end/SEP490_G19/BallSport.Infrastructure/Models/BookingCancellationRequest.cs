@@ -33,6 +33,8 @@ public partial class BookingCancellationRequest
 
     public string? ReversalReason { get; set; }
 
+    public decimal? FinalRefundAmount { get; set; }
+
     public virtual Booking Booking { get; set; } = null!;
 
     public virtual ICollection<BookingCancellation> BookingCancellations { get; set; } = new List<BookingCancellation>();

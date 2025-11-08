@@ -41,6 +41,10 @@ public partial class User
 
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
+    public virtual ICollection<OwnerBankAccount> OwnerBankAccounts { get; set; } = new List<OwnerBankAccount>();
+
+    public virtual ICollection<PlayerBankAccount> PlayerBankAccounts { get; set; } = new List<PlayerBankAccount>();
+
     public virtual ICollection<PlayerMatchHistory> PlayerMatchHistories { get; set; } = new List<PlayerMatchHistory>();
 
     public virtual ICollection<PostLike> PostLikes { get; set; } = new List<PostLike>();

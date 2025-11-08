@@ -60,15 +60,15 @@ services.AddCors(options =>
     options.AddPolicy("AllowAll", policy =>
     {
         policy.WithOrigins(
+            "http://localhost:8080",             // thêm cho local dev
             "http://localhost:3000",             // React local
             "http://localhost:5049",             // Swagger HTTP
             "https://localhost:7062",            // Swagger HTTPS
             "https://sep490-g19.onrender.com",   // Backend Render
-            "https://ballsport-frontend.onrender.com" // Frontend Render (ví dụ)
+            "https://ballsport-frontend.onrender.com" // Frontend Render
         )
         .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials();
+        .AllowAnyMethod();
     });
 });
 
@@ -76,7 +76,7 @@ services.AddCors(options =>
 services.AddDbContext<Sep490G19v1Context>(options =>
     options.UseSqlServer(config.GetConnectionString("MyCnn")));
 
-// ===================== REPOSITORIES & SERVICES =====================
+// ===================== DEPENDENCY INJECTION =====================
 services.AddMemoryCache();
 
 // --- Core user / auth ---
@@ -85,25 +85,33 @@ services.AddScoped<UserService>();
 services.AddScoped<JwtService>();
 services.AddScoped<OTPService>();
 
+// --- Booking & Payment ---
+services.AddScoped<BookingService>();
+services.AddScoped<BookingFieldsRepoitory>();
+services.AddScoped<BookingCancellationRepository>();
+services.AddScoped<BookingCancellationReRepository>();
+services.AddScoped<BookingCancellationReService>();
+services.AddScoped<PaymentRepository>();
+
+// --- Bank accounts ---
+services.AddScoped<PlayerBankAccountRepository>();
+services.AddScoped<OwnerBankAccountRepository>();
+services.AddScoped<OwnerBankAccountService>();
+services.AddScoped<PlayerBankAccountService>();
+
 // --- Field-related ---
-services.AddScoped<FieldTypesRepository>();
-services.AddScoped<FieldTypeService>();
-
-services.AddScoped<FieldComplexRepository>();
-services.AddScoped<FieldComplexService>();
-
 services.AddScoped<FieldRepository>();
 services.AddScoped<FieldService>();
-
+services.AddScoped<FieldTypesRepository>();
+services.AddScoped<FieldTypeService>();
+services.AddScoped<FieldComplexRepository>();
+services.AddScoped<FieldComplexService>();
 services.AddScoped<DepositPolicyRepository>();
 services.AddScoped<DepositPolicyService>();
-
 services.AddScoped<FieldScheduleRepository>();
 services.AddScoped<FieldScheduleService>();
-
 services.AddScoped<FieldPriceRepository>();
 services.AddScoped<FieldPriceService>();
-
 services.AddScoped<TimeSlotRepository>();
 services.AddScoped<TimeSlotService>();
 
