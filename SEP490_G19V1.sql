@@ -460,3 +460,5 @@ ALTER TABLE BookingCancellationRequests
 ADD FinalRefundAmount DECIMAL(18,2) NULL;
 
 
+ALTER TABLE FieldComplexes
+ALTER COLUMN Image VARBINARY(MAX) NULL;
