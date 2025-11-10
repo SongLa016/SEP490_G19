@@ -190,6 +190,7 @@ app.UseSwaggerUI(c =>
 
 // Nếu test local bằng HTTP → có thể tắt HTTPS redirect
 // app.UseHttpsRedirection();
+app.UseRouting();
 
 app.UseCors("AllowAll");
 
