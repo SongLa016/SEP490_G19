@@ -59,18 +59,13 @@ services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins(
-            "http://localhost:8080",             // thêm cho local dev
-            "http://localhost:3000",             // React local
-            "http://localhost:5049",             // Swagger HTTP
-            "https://localhost:7062",            // Swagger HTTPS
-            "https://sep490-g19.onrender.com",   // Backend Render
-            "https://ballsport-frontend.onrender.com" // Frontend Render
-        )
-        .AllowAnyHeader()
-        .AllowAnyMethod();
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
+
 
 // ===================== DATABASE =====================
 services.AddDbContext<Sep490G19v1Context>(options =>
