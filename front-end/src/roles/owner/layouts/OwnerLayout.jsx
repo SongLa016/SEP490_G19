@@ -16,7 +16,8 @@ import {
      ChevronLeft,
      ChevronRight,
      Timer,
-     Wallet
+     Wallet,
+     CreditCard
 } from "lucide-react";
 import { Button } from "../../../shared/components/ui";
 import logo from "../../../shared/components/assets/logo.png";
@@ -49,6 +50,7 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
           { id: "deposit-policies", label: "Chính sách đặt cọc", icon: Wallet, path: "/owner/deposit-policies" },
           { id: "promotions", label: "Khuyến mãi", icon: CalendarCog, path: "/owner/promotions" },
           { id: "notifications", label: "Thông báo", icon: Bell, path: "/owner/notifications" },
+          { id: "bank-accounts", label: "Tài khoản ngân hàng", icon: CreditCard, path: "/owner/bank-accounts" },
      ];
 
      const handleNavigation = (path) => {

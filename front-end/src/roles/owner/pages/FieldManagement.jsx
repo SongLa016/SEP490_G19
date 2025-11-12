@@ -6,8 +6,11 @@ import {
      MapPin,
      Save,
      DollarSign,
-     Loader2
+     Loader2,
+     Building2,
+     CheckCircle
 } from "lucide-react";
+import Swal from "sweetalert2";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Card, Modal, Input, Textarea } from "../../../shared/components/ui";
 import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -28,19 +31,22 @@ const FieldManagement = ({ isDemo = false }) => {
      const { user, logout } = useAuth();
      const [isAddModalOpen, setIsAddModalOpen] = useState(false);
      const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+     const [isAddComplexModalOpen, setIsAddComplexModalOpen] = useState(false);
      const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
      const [loading, setLoading] = useState(true);
      const [fields, setFields] = useState([]);
      const [complexes, setComplexes] = useState([]);
      const [timeSlots, setTimeSlots] = useState([]);
+     const [complexFormData, setComplexFormData] = useState({
+          name: "",
+          address: "",
+          lat: null,
+          lng: null,
+          description: "",
+          image: "",
+     });
      const [formData, setFormData] = useState({
           complexId: "",
-          complexName: "",
-          complexAddress: "",
-          complexLat: null,
-          complexLng: null,
-          complexDescription: "",
-          complexImage: "",
           name: "",
           typeId: "",
           size: "",
@@ -49,7 +55,6 @@ const FieldManagement = ({ isDemo = false }) => {
           image: "",
           pricePerHour: "",
           status: "Available",
-          createNewComplex: false,
      });
 
      // Map field types
@@ -77,9 +82,23 @@ const FieldManagement = ({ isDemo = false }) => {
                if (!isDemo && user?.id) {
                     // Fetch complexes owned by user
                     const complexesData = await fetchFieldComplexes();
-                    const ownerComplexes = complexesData.filter(
-                         complex => complex.ownerId === user.id || complex.ownerId === Number(user.id)
-                    );
+                    const ownerComplexes = complexesData
+                         .filter(
+                              complex => complex.ownerId === user.id || complex.ownerId === Number(user.id)
+                         )
+                         .map(complex => ({
+                              // Only keep fields from API response
+                              complexId: complex.complexId,
+                              ownerId: complex.ownerId,
+                              name: complex.name,
+                              address: complex.address,
+                              description: complex.description || null,
+                              image: complex.image || null,
+                              status: complex.status,
+                              createdAt: complex.createdAt,
+                              ownerName: complex.ownerName || null,
+                              fields: complex.fields || []
+                         }));
                     setComplexes(ownerComplexes);
 
                     // Fetch all fields from owner's complexes
@@ -139,6 +158,88 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     const handleComplexSubmit = async (e) => {
+          e.preventDefault();
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
+
+          try {
+               const newComplexResponse = await createFieldComplex({
+                    ownerId: user?.id || user?.userId || 1,
+                    name: complexFormData.name,
+                    address: complexFormData.address,
+                    description: complexFormData.description || "",
+                    image: complexFormData.image || "",
+                    status: "Active",
+                    fields: [],
+               });
+
+               // Handle response - API may return array or single object
+               let newComplex;
+               if (Array.isArray(newComplexResponse)) {
+                    newComplex = newComplexResponse[0];
+               } else {
+                    newComplex = newComplexResponse;
+               }
+
+               // Extract only fields from API response
+               const normalizedComplex = {
+                    complexId: newComplex.complexId,
+                    ownerId: newComplex.ownerId,
+                    name: newComplex.name,
+                    address: newComplex.address,
+                    description: newComplex.description || null,
+                    image: newComplex.image || null,
+                    status: newComplex.status,
+                    createdAt: newComplex.createdAt,
+                    ownerName: newComplex.ownerName || null,
+                    fields: newComplex.fields || []
+               };
+
+               // Add new complex to the list with only API fields
+               setComplexes(prev => [...prev, normalizedComplex]);
+
+               // Show success message
+               const result = await Swal.fire({
+                    icon: 'success',
+                    title: 'Tạo khu sân thành công!',
+                    text: `Khu sân "${normalizedComplex.name}" đã được tạo thành công.`,
+                    confirmButtonColor: '#10b981',
+                    showCancelButton: true,
+                    cancelButtonText: 'Đóng',
+                    confirmButtonText: 'Thêm sân ngay',
+                    timer: 5000
+               });
+
+               // Close complex modal and reset form
+               setIsAddComplexModalOpen(false);
+               resetComplexForm();
+
+               // If user wants to add field immediately, open field modal
+               if (result.isConfirmed) {
+                    setFormData(prev => ({
+                         ...prev,
+                         complexId: normalizedComplex.complexId
+                    }));
+                    setIsAddModalOpen(true);
+               } else {
+                    loadData();
+               }
+          } catch (error) {
+               console.error('Error creating complex:', error);
+               const errorMessage = error.message || "Có lỗi xảy ra khi tạo khu sân";
+
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi!',
+                    html: `<p>${errorMessage}</p>${error.message?.includes('CORS') ? '<p class="text-xs mt-2 text-gray-500">Vui lòng kiểm tra cấu hình CORS trên backend.</p>' : ''}`,
+                    confirmButtonColor: '#ef4444'
+               });
+          }
+     };
+
      const handleSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {
@@ -147,26 +248,19 @@ const FieldManagement = ({ isDemo = false }) => {
           }
 
           try {
-               let targetComplexId = formData.complexId;
-
-               // If creating new complex
-               if (formData.createNewComplex) {
-                    const newComplex = await createFieldComplex({
-                         ownerId: user?.id || user?.userId || 1,
-                         name: formData.complexName,
-                         address: formData.complexAddress,
-                         description: formData.complexDescription || "",
-                         image: formData.complexImage || "",
-                         status: "Active",
-                         fields: [],
-                         // Note: API might need lat/lng if supported
+               if (!formData.complexId) {
+                    await Swal.fire({
+                         icon: 'warning',
+                         title: 'Chưa chọn khu sân!',
+                         text: 'Vui lòng chọn khu sân để thêm sân vào.',
+                         confirmButtonColor: '#f59e0b'
                     });
-                    targetComplexId = newComplex.complexId;
+                    return;
                }
 
                // Create or update field
                const fieldPayload = {
-                    complexId: targetComplexId,
+                    complexId: formData.complexId,
                     typeId: fieldTypeMap[formData.typeId] || parseInt(formData.typeId),
                     name: formData.name,
                     size: formData.size || "",
@@ -201,7 +295,18 @@ const FieldManagement = ({ isDemo = false }) => {
                     }
                }
 
-               alert(isEditModalOpen ? "Cập nhật sân thành công!" : "Tạo sân thành công!");
+               // Show success message with SweetAlert2
+               await Swal.fire({
+                    icon: 'success',
+                    title: isEditModalOpen ? 'Cập nhật thành công!' : 'Tạo sân thành công!',
+                    text: isEditModalOpen
+                         ? 'Thông tin sân đã được cập nhật.'
+                         : `Sân "${formData.name}" đã được tạo thành công.`,
+                    confirmButtonColor: '#10b981',
+                    timer: 2000,
+                    showConfirmButton: true
+               });
+
                setIsAddModalOpen(false);
                setIsEditModalOpen(false);
                resetForm();
@@ -210,7 +315,13 @@ const FieldManagement = ({ isDemo = false }) => {
                console.error('Error saving field:', error);
                const errorMessage = error.message || "Có lỗi xảy ra khi lưu sân";
                const errorDetails = error.details || "";
-               alert(`${errorMessage}${errorDetails ? '\n\n' + errorDetails : ''}\n\nNếu lỗi CORS, vui lòng kiểm tra:\n1. Backend đã cấu hình CORS cho phép localhost:3000\n2. Proxy đã được cấu hình trong setupProxy.js`);
+
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi!',
+                    html: `<p>${errorMessage}</p>${errorDetails ? `<p class="text-sm mt-2">${errorDetails}</p>` : ''}${error.message?.includes('CORS') ? '<p class="text-xs mt-2 text-gray-500">Vui lòng kiểm tra cấu hình CORS trên backend.</p>' : ''}`,
+                    confirmButtonColor: '#ef4444'
+               });
           }
      };
 
@@ -226,12 +337,6 @@ const FieldManagement = ({ isDemo = false }) => {
           setFormData({
                fieldId: field.fieldId,
                complexId: field.complexId,
-               complexName: field.complexName || "",
-               complexAddress: field.complexAddress || "",
-               complexLat: null,
-               complexLng: null,
-               complexDescription: "",
-               complexImage: "",
                name: field.name,
                typeId: typeKey,
                size: field.size || "",
@@ -240,7 +345,6 @@ const FieldManagement = ({ isDemo = false }) => {
                image: field.image || "",
                pricePerHour: field.pricePerHour || "",
                status: field.status || "Available",
-               createNewComplex: false,
           });
           setIsEditModalOpen(true);
      };
@@ -250,14 +354,36 @@ const FieldManagement = ({ isDemo = false }) => {
                setShowDemoRestrictedModal(true);
                return;
           }
-          if (window.confirm("Bạn có chắc chắn muốn xóa sân này?")) {
+          const result = await Swal.fire({
+               title: 'Bạn có chắc chắn?',
+               text: "Bạn không thể hoàn tác hành động này!",
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (result.isConfirmed) {
                try {
                     await deleteField(fieldId);
-                    alert("Xóa sân thành công!");
+                    await Swal.fire({
+                         icon: 'success',
+                         title: 'Đã xóa!',
+                         text: 'Sân đã được xóa thành công.',
+                         confirmButtonColor: '#10b981',
+                         timer: 2000
+                    });
                     loadData();
                } catch (error) {
                     console.error('Error deleting field:', error);
-                    alert(error.message || "Có lỗi xảy ra khi xóa sân");
+                    await Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi!',
+                         text: error.message || "Có lỗi xảy ra khi xóa sân",
+                         confirmButtonColor: '#ef4444'
+                    });
                }
           }
      };
@@ -267,19 +393,49 @@ const FieldManagement = ({ isDemo = false }) => {
                setShowDemoRestrictedModal(true);
                return;
           }
+          if (complexes.length === 0) {
+               Swal.fire({
+                    icon: 'info',
+                    title: 'Chưa có khu sân!',
+                    text: 'Vui lòng tạo khu sân trước khi thêm sân.',
+                    confirmButtonColor: '#3b82f6',
+                    showCancelButton: true,
+                    cancelButtonText: 'Hủy',
+                    confirmButtonText: 'Tạo khu sân',
+               }).then((result) => {
+                    if (result.isConfirmed) {
+                         handleAddComplex();
+                    }
+               });
+               return;
+          }
           resetForm();
           setIsAddModalOpen(true);
+     };
+
+     const handleAddComplex = () => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
+          resetComplexForm();
+          setIsAddComplexModalOpen(true);
+     };
+
+     const resetComplexForm = () => {
+          setComplexFormData({
+               name: "",
+               address: "",
+               lat: null,
+               lng: null,
+               description: "",
+               image: "",
+          });
      };
 
      const resetForm = () => {
           setFormData({
                complexId: "",
-               complexName: "",
-               complexAddress: "",
-               complexLat: null,
-               complexLng: null,
-               complexDescription: "",
-               complexImage: "",
                name: "",
                typeId: "",
                size: "",
@@ -288,17 +444,16 @@ const FieldManagement = ({ isDemo = false }) => {
                image: "",
                pricePerHour: "",
                status: "Available",
-               createNewComplex: false,
           });
      };
 
-     // Handle address selection from AddressPicker
-     const handleAddressSelect = (locationData) => {
-          setFormData(prev => ({
+     // Handle address selection from AddressPicker for complex
+     const handleComplexAddressSelect = (locationData) => {
+          setComplexFormData(prev => ({
                ...prev,
-               complexAddress: locationData.address,
-               complexLat: locationData.lat,
-               complexLng: locationData.lng,
+               address: locationData.address,
+               lat: locationData.lat,
+               lng: locationData.lng,
           }));
      };
 
@@ -344,13 +499,23 @@ const FieldManagement = ({ isDemo = false }) => {
                               <p className="text-gray-600 mt-1">Thêm, chỉnh sửa và quản lý thông tin sân bóng</p>
                          </div>
 
-                         <Button
-                              onClick={handleAddField}
-                              className="flex items-center space-x-2 rounded-2xl"
-                         >
-                              <Plus className="w-4 h-4" />
-                              <span>Thêm sân mới</span>
-                         </Button>
+                         <div className="flex space-x-3">
+                              <Button
+                                   onClick={handleAddComplex}
+                                   variant="outline"
+                                   className="flex items-center space-x-2 rounded-2xl border-blue-200 text-blue-600 hover:bg-blue-50"
+                              >
+                                   <Building2 className="w-4 h-4" />
+                                   <span>Thêm khu sân</span>
+                              </Button>
+                              <Button
+                                   onClick={handleAddField}
+                                   className="flex items-center space-x-2 rounded-2xl"
+                              >
+                                   <Plus className="w-4 h-4" />
+                                   <span>Thêm sân mới</span>
+                              </Button>
+                         </div>
                     </div>
 
                     {/* Fields Grid */}
@@ -453,87 +618,49 @@ const FieldManagement = ({ isDemo = false }) => {
                          className="max-w-2xl rounded-2xl shadow-lg px-3 max-h-[90vh] overflow-y-auto scrollbar-hide"
                     >
                          <form onSubmit={handleSubmit} className="space-y-4">
-                              {/* Create New Complex Toggle */}
+                              {/* Complex Selection - Required for new fields */}
                               {!isEditModalOpen && (
-                                   <div className="flex items-center space-x-2 pb-2 border-b">
-                                        <input
-                                             type="checkbox"
-                                             id="createNewComplex"
-                                             checked={formData.createNewComplex}
-                                             onChange={(e) => setFormData(prev => ({ ...prev, createNewComplex: e.target.checked }))}
-                                             className="rounded"
-                                        />
-                                        <label htmlFor="createNewComplex" className="text-sm font-medium text-gray-700">
-                                             Tạo khu sân mới
-                                        </label>
-                                   </div>
-                              )}
-
-                              {/* Complex Selection or Creation */}
-                              {formData.createNewComplex && !isEditModalOpen ? (
-                                   <>
-                                        <div>
-                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                  Tên khu sân <span className="text-red-500">*</span>
-                                             </label>
-                                             <Input
-                                                  name="complexName"
-                                                  value={formData.complexName}
-                                                  onChange={handleInputChange}
-                                                  placeholder="Nhập tên khu sân"
-                                                  required
-                                             />
-                                        </div>
-                                        <div>
-                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                  Địa chỉ khu sân <span className="text-red-500">*</span>
-                                             </label>
-                                             <AddressPicker
-                                                  value={formData.complexAddress}
-                                                  onChange={(address) => setFormData(prev => ({ ...prev, complexAddress: address }))}
-                                                  onLocationSelect={handleAddressSelect}
-                                                  placeholder="Nhập địa chỉ hoặc chọn trên bản đồ"
-                                             />
-                                             {formData.complexLat && formData.complexLng && (
-                                                  <p className="text-xs text-gray-500 mt-1">
-                                                       Vị trí: {formData.complexLat.toFixed(6)}, {formData.complexLng.toFixed(6)}
-                                                  </p>
-                                             )}
-                                        </div>
-                                        <div>
-                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                  Mô tả khu sân
-                                             </label>
-                                             <Textarea
-                                                  name="complexDescription"
-                                                  value={formData.complexDescription}
-                                                  onChange={handleInputChange}
-                                                  placeholder="Mô tả về khu sân"
-                                                  rows={2}
-                                             />
-                                        </div>
-                                   </>
-                              ) : !isEditModalOpen ? (
                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                             <Building2 className="w-4 h-4 inline mr-1 text-blue-600" />
                                              Chọn khu sân <span className="text-red-500">*</span>
                                         </label>
-                                        <select
-                                             name="complexId"
-                                             value={formData.complexId}
-                                             onChange={handleInputChange}
-                                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                             required
-                                        >
-                                             <option value="">Chọn khu sân</option>
-                                             {complexes.map((complex) => (
-                                                  <option key={complex.complexId} value={complex.complexId}>
-                                                       {complex.name} - {complex.address}
-                                                  </option>
-                                             ))}
-                                        </select>
+                                        {complexes.length === 0 ? (
+                                             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                                  <p className="text-sm text-yellow-800 mb-2">
+                                                       Chưa có khu sân nào. Vui lòng tạo khu sân trước.
+                                                  </p>
+                                                  <Button
+                                                       type="button"
+                                                       onClick={() => {
+                                                            setIsAddModalOpen(false);
+                                                            handleAddComplex();
+                                                       }}
+                                                       variant="outline"
+                                                       className="text-yellow-700 border-yellow-300 hover:bg-yellow-100"
+                                                  >
+                                                       <Building2 className="w-4 h-4 mr-2" />
+                                                       Tạo khu sân
+                                                  </Button>
+                                             </div>
+                                        ) : (
+                                             <select
+                                                  name="complexId"
+                                                  value={formData.complexId}
+                                                  onChange={handleInputChange}
+                                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                  required
+                                             >
+                                                  <option value="">Chọn khu sân</option>
+                                                  {complexes.map((complex) => (
+                                                       <option key={complex.complexId} value={complex.complexId}>
+                                                            {complex.name} - {complex.address}
+                                                       </option>
+                                                  ))}
+                                             </select>
+                                        )}
                                    </div>
-                              ) : null}
+                              )}
 
                               {/* Field Information */}
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -682,6 +809,107 @@ const FieldManagement = ({ isDemo = false }) => {
                                    <Button type="submit" className="rounded-2xl">
                                         <Save className="w-5 h-5 mr-2" />
                                         {isEditModalOpen ? "Cập nhật sân" : "Lưu sân"}
+                                   </Button>
+                              </div>
+                         </form>
+                    </Modal>
+
+                    {/* Add Complex Modal */}
+                    <Modal
+                         isOpen={isAddComplexModalOpen}
+                         onClose={() => {
+                              setIsAddComplexModalOpen(false);
+                              resetComplexForm();
+                         }}
+                         title="Thêm khu sân mới"
+                         className="max-w-2xl rounded-2xl shadow-lg px-3"
+                    >
+                         <form onSubmit={handleComplexSubmit} className="space-y-4">
+                              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mb-4">
+                                   <p className="text-sm text-blue-800">
+                                        <Building2 className="w-4 h-4 inline mr-1" />
+                                        Tạo khu sân mới để quản lý các sân bóng của bạn
+                                   </p>
+                              </div>
+
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <Building2 className="w-4 h-4 inline mr-1 text-blue-600" />
+                                        Tên khu sân <span className="text-red-500">*</span>
+                                   </label>
+                                   <Input
+                                        name="name"
+                                        value={complexFormData.name}
+                                        onChange={(e) => setComplexFormData(prev => ({ ...prev, name: e.target.value }))}
+                                        placeholder="Ví dụ: Sân bóng ABC, Khu thể thao XYZ..."
+                                        required
+                                        className="w-full"
+                                   />
+                              </div>
+
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        <MapPin className="w-4 h-4 inline mr-1 text-green-600" />
+                                        Địa chỉ khu sân <span className="text-red-500">*</span>
+                                   </label>
+                                   <AddressPicker
+                                        value={complexFormData.address}
+                                        onChange={(address) => setComplexFormData(prev => ({ ...prev, address }))}
+                                        onLocationSelect={handleComplexAddressSelect}
+                                        placeholder="Nhập địa chỉ hoặc chọn trên bản đồ"
+                                   />
+                                   {complexFormData.lat && complexFormData.lng && (
+                                        <div className="mt-2 flex items-center text-xs text-gray-500 bg-green-50 p-2 rounded">
+                                             <CheckCircle className="w-3 h-3 mr-1 text-green-600" />
+                                             <span>Vị trí: {complexFormData.lat.toFixed(6)}, {complexFormData.lng.toFixed(6)}</span>
+                                        </div>
+                                   )}
+                              </div>
+
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Mô tả khu sân
+                                   </label>
+                                   <Textarea
+                                        name="description"
+                                        value={complexFormData.description}
+                                        onChange={(e) => setComplexFormData(prev => ({ ...prev, description: e.target.value }))}
+                                        placeholder="Mô tả về khu sân, tiện ích, quy mô..."
+                                        rows={3}
+                                        className="w-full"
+                                   />
+                                   <p className="text-xs text-gray-500 mt-1">
+                                        Mô tả chi tiết về khu sân sẽ giúp khách hàng hiểu rõ hơn
+                                   </p>
+                              </div>
+
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Hình ảnh (URL)
+                                   </label>
+                                   <Input
+                                        name="image"
+                                        value={complexFormData.image}
+                                        onChange={(e) => setComplexFormData(prev => ({ ...prev, image: e.target.value }))}
+                                        placeholder="Nhập URL hình ảnh khu sân"
+                                        className="w-full"
+                                   />
+                              </div>
+
+                              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                                   <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => {
+                                             setIsAddComplexModalOpen(false);
+                                             resetComplexForm();
+                                        }}
+                                   >
+                                        Hủy
+                                   </Button>
+                                   <Button type="submit" className="rounded-2xl">
+                                        <Save className="w-5 h-5 mr-2" />
+                                        Tạo khu sân
                                    </Button>
                               </div>
                          </form>

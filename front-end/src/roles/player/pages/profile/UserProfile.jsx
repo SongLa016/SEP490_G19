@@ -162,448 +162,516 @@ export default function UserProfile({ user }) {
      };
 
      return (
-          <div className="min-h-screen bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center">
+          <div className="relative min-h-screen bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center">
+               <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/85 to-teal-50/70 backdrop-blur-[1px]" aria-hidden="true" />
                <Container>
-                    {/* Header */}
-                    <SlideIn direction="down" delay={100}>
-                         <div className="my-2 text-center">
-                              <div className="inline-flex items-center justify-center w-12 h-10 bg-teal-100 rounded-2xl mb-2">
-                                   <User className="w-8 h-8 text-teal-600" />
+                    <div className="relative z-10 py-10">
+                         {/* Header */}
+                         <SlideIn direction="down" delay={100}>
+                              <div className="my-4 text-center">
+                                   <div className="inline-flex items-center justify-center w-14 h-14 bg-white/90 border border-teal-100 rounded-3xl shadow-sm mb-3">
+                                        <User className="w-8 h-8 text-teal-600" />
+                                   </div>
+                                   <h1 className="text-4xl font-bold text-teal-900 mb-2">Hồ sơ cá nhân</h1>
+                                   <p className="text-teal-600 text-lg max-w-2xl mx-auto">
+                                        Quản lý thông tin cá nhân và tài khoản của bạn với giao diện trực quan, dễ thao tác
+                                   </p>
                               </div>
-                              <h1 className="text-4xl font-bold text-teal-900 mb-2">Hồ sơ cá nhân</h1>
-                              <p className="text-teal-600 text-lg">Quản lý thông tin cá nhân và tài khoản của bạn</p>
-                         </div>
-                    </SlideIn>
+                         </SlideIn>
 
-                    {/* Error and Info Messages */}
-                    {error && (
-                         <ErrorDisplay
-                              type="error"
-                              title="Lỗi cập nhật"
-                              message={error}
-                              onClose={() => setError('')}
-                         />
-                    )}
-                    {info && (
-                         <ErrorDisplay
-                              type="success"
-                              title="Thành công"
-                              message={info}
-                              onClose={() => setInfo('')}
-                         />
-                    )}
+                         {/* Error and Info Messages */}
+                         {error && (
+                              <ErrorDisplay
+                                   type="error"
+                                   title="Lỗi cập nhật"
+                                   message={error}
+                                   onClose={() => setError('')}
+                              />
+                         )}
+                         {info && (
+                              <ErrorDisplay
+                                   type="success"
+                                   title="Thành công"
+                                   message={info}
+                                   onClose={() => setInfo('')}
+                              />
+                         )}
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-6">
-                         {/* Profile Overview Card */}
-                         <FadeIn delay={200}>
-                              <div className="lg:col-span-1 ">
-                                   <Card className="sticky top-8 shadow-xl bg-white/80 border-2 border-teal-300 backdrop-blur-sm rounded-2xl transition-all duration-300 hover:shadow-2xl">
-                                        <CardHeader className="text-center pb-6">
-                                             <div className="relative inline-block">
-                                                  <Avatar className="w-36 h-36 mx-auto mb-6 ring-4 ring-teal-100">
-                                                       {formData.avatar ? (
-                                                            <img
-                                                                 src={formData.avatar}
-                                                                 alt="Avatar"
-                                                                 className="w-full h-full object-cover rounded-2xl"
-                                                            />
-                                                       ) : (
-                                                            <div className="w-full h-full bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center">
-                                                                 <User className="w-20 h-20 text-white" />
-                                                            </div>
+                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-6">
+                              {/* Profile Overview Card */}
+                              <FadeIn delay={200}>
+                                   <div className="lg:col-span-1 ">
+                                        <Card className="sticky top-28 border border-teal-200/80 bg-white/90 shadow-xl backdrop-blur rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+                                             <CardHeader className="text-center pb-6 border-b border-teal-100/70 bg-gradient-to-br from-teal-50 via-white to-white rounded-t-3xl">
+                                                  <div className="relative inline-block">
+                                                       <Avatar className="w-36 h-36 mx-auto mb-6 ring-4 ring-teal-100">
+                                                            {formData.avatar ? (
+                                                                 <img
+                                                                      src={formData.avatar}
+                                                                      alt="Avatar"
+                                                                      className="w-full h-full object-cover rounded-2xl"
+                                                                 />
+                                                            ) : (
+                                                                 <div className="w-full h-full bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center">
+                                                                      <User className="w-20 h-20 text-white" />
+                                                                 </div>
+                                                            )}
+                                                       </Avatar>
+                                                       {isEditing && (
+                                                            <label className="absolute -bottom-2 -right-2 bg-teal-500 text-white p-3 rounded-2xl cursor-pointer hover:bg-teal-600 transition-all duration-300 shadow-lg hover:scale-105">
+                                                                 <Camera className="w-5 h-5" />
+                                                                 <input
+                                                                      type="file"
+                                                                      accept="image/*"
+                                                                      onChange={handleAvatarUpload}
+                                                                      className="hidden"
+                                                                 />
+                                                            </label>
                                                        )}
-                                                  </Avatar>
-                                                  {isEditing && (
-                                                       <label className="absolute -bottom-2 -right-2 bg-teal-500 text-white p-3 rounded-2xl cursor-pointer hover:bg-teal-600 transition-all duration-300 shadow-lg hover:scale-105">
-                                                            <Camera className="w-5 h-5" />
-                                                            <input
-                                                                 type="file"
-                                                                 accept="image/*"
-                                                                 onChange={handleAvatarUpload}
-                                                                 className="hidden"
-                                                            />
-                                                       </label>
-                                                  )}
-                                             </div>
-                                             <CardTitle className="text-2xl font-bold text-teal-900 mb-2">{formData.fullName}</CardTitle>
-                                             <div className="flex items-center justify-center text-teal-600 mb-4">
-                                                  <Mail className="w-4 h-4 mr-2" />
-                                                  <span className="text-sm">{formData.email}</span>
-                                             </div>
-                                             <div className={`inline-flex items-center px-4 py-2 rounded-2xl text-sm font-medium ${formData.status === 'Active'
-                                                  ? 'bg-green-100 text-green-700 border border-green-200'
-                                                  : 'bg-red-100 text-red-700 border border-red-200'
-                                                  }`}>
-                                                  <Shield className="w-4 h-4 mr-2" />
-                                                  {formData.roleName === 'Admin' ? 'Quản trị viên' :
-                                                       formData.roleName === 'Owner' ? 'Chủ sân' : 'Người chơi'}
-                                             </div>
-                                        </CardHeader>
-                                        <CardContent className="pt-0">
-                                             <div className="space-y-4">
-                                                  <div className="flex items-center p-3 bg-blue-100 border border-blue-200 rounded-2xl">
-                                                       <div className="p-2 bg-blue-500 rounded-xl mr-3">
-                                                            <Calendar className="w-5 h-5 text-white" />
+                                                  </div>
+                                                  <CardTitle className="text-2xl font-bold text-teal-900 mb-2">{formData.fullName}</CardTitle>
+                                                  <div className="flex items-center justify-center text-teal-600 mb-4">
+                                                       <Mail className="w-4 h-4 mr-2" />
+                                                       <span className="text-sm">{formData.email}</span>
+                                                  </div>
+                                                  <div className={`inline-flex items-center px-4 py-2 rounded-2xl text-sm font-medium ${formData.status === 'Active'
+                                                       ? 'bg-green-100 text-green-700 border border-green-200'
+                                                       : 'bg-red-100 text-red-700 border border-red-200'
+                                                       }`}>
+                                                       <Shield className="w-4 h-4 mr-2" />
+                                                       {formData.roleName === 'Admin' ? 'Quản trị viên' :
+                                                            formData.roleName === 'Owner' ? 'Chủ sân' : 'Người chơi'}
+                                                  </div>
+                                             </CardHeader>
+                                             <CardContent className="pt-6">
+                                                  <div className="space-y-4">
+                                                       <div className="flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50/90 px-4 py-3">
+                                                            <div className="flex items-center gap-3">
+                                                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500 text-white shadow-sm">
+                                                                      <Calendar className="w-5 h-5" />
+                                                                 </div>
+                                                                 <div>
+                                                                      <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Tham gia</p>
+                                                                      <p className="text-base font-semibold text-blue-900">{formatDate(formData.createdAt)}</p>
+                                                                 </div>
+                                                            </div>
                                                        </div>
-                                                       <div>
-                                                            <p className="text-sm font-medium text-blue-900">Tham gia</p>
-                                                            <p className="text-xs text-blue-600">{formatDate(formData.createdAt)}</p>
+                                                       <div className="flex items-center justify-between rounded-2xl border border-green-200 bg-green-50/90 px-4 py-3">
+                                                            <div className="flex items-center gap-3">
+                                                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500 text-white shadow-sm">
+                                                                      <Phone className="w-5 h-5" />
+                                                                 </div>
+                                                                 <div>
+                                                                      <p className="text-xs font-semibold uppercase tracking-wide text-green-700">Số điện thoại</p>
+                                                                      <p className="text-base font-semibold text-green-900">{formData.phone || 'Chưa cập nhật'}</p>
+                                                                 </div>
+                                                            </div>
                                                        </div>
                                                   </div>
-                                                  <div className="flex items-center p-3 bg-green-100 border border-green-200 rounded-2xl">
-                                                       <div className="p-2 bg-green-500 rounded-xl mr-3">
-                                                            <Phone className="w-5 h-5 text-white" />
-                                                       </div>
-                                                       <div>
-                                                            <p className="text-sm font-medium text-green-900">Số điện thoại</p>
-                                                            <p className="text-xs text-green-600">{formData.phone}</p>
-                                                       </div>
-                                                  </div>
-                                             </div>
-                                        </CardContent>
-                                   </Card>
-                              </div>
-                         </FadeIn>
+                                             </CardContent>
+                                        </Card>
+                                   </div>
+                              </FadeIn>
 
-                         {/* Profile Details */}
-                         <FadeIn delay={300}>
-                              <div className="lg:col-span-2 space-y-6">
-                                   {/* Basic Information */}
-                                   <SlideIn direction="right" delay={100}>
-                                        <Card className="border-2 shadow-lg bg-white/90  border-teal-300 backdrop-blur-sm rounded-2xl transition-all duration-300 hover:shadow-xl">
-                                             <CardHeader className="flex flex-row items-center justify-between py-3 px-5 bg-gradient-to-r from-teal-50 to-teal-100 rounded-t-2xl">
-                                                  <CardTitle className="flex items-center text-teal-900">
-                                                       <div className="p-2 bg-teal-200 rounded-xl mr-3">
-                                                            <User className="w-5 h-5 text-teal-700" />
-                                                       </div>
-                                                       Thông tin cơ bản
-                                                  </CardTitle>
-                                                  {!isEditing ? (
-                                                       <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => setIsEditing(true)}
-                                                            className="border-teal-300 text-teal-700 hover:bg-teal-50 rounded-xl"
-                                                       >
-                                                            <Edit3 className="w-4 h-4 mr-2" />
-                                                            Chỉnh sửa
-                                                       </Button>
-                                                  ) : (
-                                                       <div className="flex gap-2">
+                              {/* Profile Details */}
+                              <FadeIn delay={300}>
+                                   <div className="lg:col-span-2 space-y-6">
+                                        {/* Basic Information */}
+                                        <SlideIn direction="right" delay={100}>
+                                             <Card className="border border-teal-200/80 bg-white/95 shadow-xl backdrop-blur rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+                                                  <CardHeader className="flex flex-row items-center justify-between py-4 px-6 border-b border-teal-100/70 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
+                                                       <CardTitle className="flex items-center text-teal-900">
+                                                            <div className="p-2 bg-teal-200 rounded-xl mr-3">
+                                                                 <User className="w-5 h-5 text-teal-700" />
+                                                            </div>
+                                                            Thông tin cơ bản
+                                                       </CardTitle>
+                                                       {!isEditing ? (
                                                             <Button
                                                                  variant="outline"
                                                                  size="sm"
-                                                                 onClick={handleCancel}
-                                                                 className="border-red-300 text-red-700 hover:bg-red-50 rounded-xl"
+                                                                 onClick={() => setIsEditing(true)}
+                                                                 className="border-teal-300 text-teal-700 hover:bg-teal-50 rounded-xl shadow-sm"
                                                             >
-                                                                 <X className="w-4 h-4 mr-2" />
-                                                                 Hủy
+                                                                 <Edit3 className="w-4 h-4 mr-2" />
+                                                                 Chỉnh sửa
                                                             </Button>
-                                                            <Button
-                                                                 size="sm"
-                                                                 onClick={handleSave}
-                                                                 disabled={isLoading}
-                                                                 className="bg-teal-500 hover:bg-teal-600 rounded-xl"
-                                                            >
-                                                                 {isLoading ? (
-                                                                      <>
-                                                                           <LoadingSpinner size="sm" className="mr-2" />
-                                                                           Đang lưu...
-                                                                      </>
-                                                                 ) : (
-                                                                      <>
-                                                                           <Save className="w-4 h-4 mr-2" />
-                                                                           Lưu
-                                                                      </>
-                                                                 )}
-                                                            </Button>
-                                                       </div>
-                                                  )}
-                                             </CardHeader>
-                                             <CardContent className="space-y-6 p-6">
-                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                       <div className="space-y-2">
-                                                            <label className="flex items-center text-sm font-semibold text-teal-800 mb-2">
-                                                                 <User className="w-4 h-4 mr-2 text-teal-600" />
-                                                                 Họ và tên
-                                                            </label>
-                                                            {isEditing ? (
-                                                                 <Input
-                                                                      value={formData.fullName}
-                                                                      onChange={(e) => handleInputChange('fullName', e.target.value)}
-                                                                      placeholder="Nhập họ và tên"
-                                                                      className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
-                                                                 />
-                                                            ) : (
-                                                                 <div className="p-3 bg-teal-50 rounded-xl">
-                                                                      <p className="text-teal-900 font-medium">{formData.fullName || "Chưa cập nhật"}</p>
-                                                                 </div>
-                                                            )}
-                                                       </div>
-                                                       <div className="space-y-2">
-                                                            <label className="flex items-center text-sm font-semibold text-teal-800 mb-2">
-                                                                 <Mail className="w-4 h-4 mr-2 text-teal-600" />
-                                                                 Email
-                                                            </label>
-                                                            <div className="p-3 bg-teal-50 rounded-xl">
-                                                                 <div className="flex items-center justify-between">
-                                                                      <div className="flex items-center">
-                                                                           <Mail className="w-4 h-4 mr-2 text-teal-600" />
-                                                                           <p className="text-teal-900 font-medium">{formData.email}</p>
+                                                       ) : (
+                                                            <div className="flex gap-2">
+                                                                 <Button
+                                                                      variant="outline"
+                                                                      size="sm"
+                                                                      onClick={handleCancel}
+                                                                      className="border-red-300 text-red-700 hover:bg-red-50 rounded-xl shadow-sm"
+                                                                 >
+                                                                      <X className="w-4 h-4 mr-2" />
+                                                                      Hủy
+                                                                 </Button>
+                                                                 <Button
+                                                                      size="sm"
+                                                                      onClick={handleSave}
+                                                                      disabled={isLoading}
+                                                                      className="bg-teal-500 hover:bg-teal-600 rounded-xl shadow-sm"
+                                                                 >
+                                                                      {isLoading ? (
+                                                                           <>
+                                                                                <LoadingSpinner size="sm" className="mr-2" />
+                                                                                Đang lưu...
+                                                                           </>
+                                                                      ) : (
+                                                                           <>
+                                                                                <Save className="w-4 h-4 mr-2" />
+                                                                                Lưu
+                                                                           </>
+                                                                      )}
+                                                                 </Button>
+                                                            </div>
+                                                       )}
+                                                  </CardHeader>
+                                                  <CardContent className="space-y-6 p-6">
+                                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                                 <div className="flex items-start gap-3">
+                                                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                                                                           <User className="w-5 h-5" />
                                                                       </div>
-                                                                      <div className={`flex items-center px-2 py-1 rounded-lg text-xs font-medium ${formData.emailVerified
-                                                                           ? 'bg-green-100 text-green-700 border border-green-200'
-                                                                           : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                                                                           }`}>
-                                                                           {formData.emailVerified ? (
-                                                                                <>
-                                                                                     <CheckCircle className="w-3 h-3 mr-1" />
-                                                                                     Đã xác thực
-                                                                                </>
+                                                                      <div className="flex-1 space-y-2">
+                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                                Họ và tên
+                                                                           </p>
+                                                                           {isEditing ? (
+                                                                                <Input
+                                                                                     value={formData.fullName}
+                                                                                     onChange={(e) => handleInputChange('fullName', e.target.value)}
+                                                                                     placeholder="Nhập họ và tên"
+                                                                                     className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
+                                                                                />
                                                                            ) : (
-                                                                                <>
-                                                                                     <AlertCircle className="w-3 h-3 mr-1" />
-                                                                                     Chưa xác thực
-                                                                                </>
+                                                                                <p className="text-lg font-semibold text-teal-900 leading-tight">
+                                                                                     {formData.fullName || "Chưa cập nhật"}
+                                                                                </p>
                                                                            )}
                                                                       </div>
                                                                  </div>
-                                                                 {!formData.emailVerified && (
-                                                                      <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                                                           <p className="text-yellow-800 text-xs">
-                                                                                Email chưa được xác thực qua OTP. Vui lòng kiểm tra email để xác thực.
+                                                            </div>
+
+                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                                 <div className="flex items-start gap-3">
+                                                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                                                                           <Mail className="w-5 h-5" />
+                                                                      </div>
+                                                                      <div className="flex-1 space-y-2">
+                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                                Email đăng nhập
+                                                                           </p>
+                                                                           <div className="space-y-2">
+                                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                                     <p className="text-base font-semibold text-teal-900">
+                                                                                          {formData.email}
+                                                                                     </p>
+                                                                                     <span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ${formData.emailVerified
+                                                                                          ? 'bg-green-100 text-green-700 border border-green-200'
+                                                                                          : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                                                                          }`}>
+                                                                                          {formData.emailVerified ? (
+                                                                                               <>
+                                                                                                    <CheckCircle className="w-3 h-3" />
+                                                                                                    Đã xác thực
+                                                                                               </>
+                                                                                          ) : (
+                                                                                               <>
+                                                                                                    <AlertCircle className="w-3 h-3" />
+                                                                                                    Chưa xác thực
+                                                                                               </>
+                                                                                          )}
+                                                                                     </span>
+                                                                                </div>
+                                                                                {!formData.emailVerified && (
+                                                                                     <div className="rounded-xl border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
+                                                                                          Email chưa được xác thực qua OTP. Vui lòng kiểm tra email để xác thực.
+                                                                                     </div>
+                                                                                )}
+                                                                           </div>
+                                                                      </div>
+                                                                 </div>
+                                                            </div>
+
+                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                                 <div className="flex items-start gap-3">
+                                                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                                                                           <Phone className="w-5 h-5" />
+                                                                      </div>
+                                                                      <div className="flex-1 space-y-2">
+                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                                Số điện thoại
+                                                                           </p>
+                                                                           {isEditing ? (
+                                                                                <Input
+                                                                                     value={formData.phone}
+                                                                                     onChange={(e) => handleInputChange('phone', e.target.value)}
+                                                                                     placeholder="Nhập số điện thoại"
+                                                                                     className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
+                                                                                />
+                                                                           ) : (
+                                                                                <p className="text-base font-semibold text-teal-900">
+                                                                                     {formData.phone || "Chưa cập nhật"}
+                                                                                </p>
+                                                                           )}
+                                                                      </div>
+                                                                 </div>
+                                                            </div>
+
+                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                                 <div className="flex items-start gap-3">
+                                                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                                                                           <Calendar className="w-5 h-5" />
+                                                                      </div>
+                                                                      <div className="flex-1 space-y-2">
+                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                                Ngày sinh
+                                                                           </p>
+                                                                           {isEditing ? (
+                                                                                <Input
+                                                                                     type="date"
+                                                                                     value={formData.dateOfBirth}
+                                                                                     onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                                                                                     className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
+                                                                                />
+                                                                           ) : (
+                                                                                <p className="text-base font-semibold text-teal-900">
+                                                                                     {formData.dateOfBirth ? formatDate(formData.dateOfBirth) : "Chưa cập nhật"}
+                                                                                </p>
+                                                                           )}
+                                                                      </div>
+                                                                 </div>
+                                                            </div>
+
+                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                                 <div className="flex items-start gap-3">
+                                                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                                                                           <Heart className="w-5 h-5" />
+                                                                      </div>
+                                                                      <div className="flex-1 space-y-2">
+                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                                Giới tính
+                                                                           </p>
+                                                                           {isEditing ? (
+                                                                                <Select
+                                                                                     value={formData.gender}
+                                                                                     onValueChange={(value) => handleInputChange('gender', value)}
+                                                                                >
+                                                                                     <SelectTrigger className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500">
+                                                                                          <SelectValue placeholder="Chọn giới tính" />
+                                                                                     </SelectTrigger>
+                                                                                     <SelectContent>
+                                                                                          {genders.map((gender) => (
+                                                                                               <SelectItem key={gender} value={gender}>
+                                                                                                    {gender}
+                                                                                               </SelectItem>
+                                                                                          ))}
+                                                                                     </SelectContent>
+                                                                                </Select>
+                                                                           ) : (
+                                                                                <p className="text-base font-semibold text-teal-900">
+                                                                                     {formData.gender || "Chưa cập nhật"}
+                                                                                </p>
+                                                                           )}
+                                                                      </div>
+                                                                 </div>
+                                                            </div>
+
+                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                                 <div className="flex items-start gap-3">
+                                                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                                                                           <Star className="w-5 h-5" />
+                                                                      </div>
+                                                                      <div className="flex-1 space-y-2">
+                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                                Trình độ
+                                                                           </p>
+                                                                           {isEditing ? (
+                                                                                <Select
+                                                                                     value={formData.skillLevel}
+                                                                                     onValueChange={(value) => handleInputChange('skillLevel', value)}
+                                                                                >
+                                                                                     <SelectTrigger className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500">
+                                                                                          <SelectValue placeholder="Chọn trình độ" />
+                                                                                     </SelectTrigger>
+                                                                                     <SelectContent>
+                                                                                          {skillLevels.map((level) => (
+                                                                                               <SelectItem key={level.value} value={level.value}>
+                                                                                                    {level.label}
+                                                                                               </SelectItem>
+                                                                                          ))}
+                                                                                     </SelectContent>
+                                                                                </Select>
+                                                                           ) : (
+                                                                                <p className="text-base font-semibold text-teal-900">
+                                                                                     {formData.skillLevel ? skillLevels.find(s => s.value === formData.skillLevel)?.label : "Chưa cập nhật"}
+                                                                                </p>
+                                                                           )}
+                                                                      </div>
+                                                                 </div>
+                                                            </div>
+                                                       </div>
+
+                                                       <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                            <div className="flex items-start gap-3">
+                                                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                                                                      <MapPin className="w-5 h-5" />
+                                                                 </div>
+                                                                 <div className="flex-1 space-y-2">
+                                                                      <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                           Địa chỉ
+                                                                      </p>
+                                                                      {isEditing ? (
+                                                                           <Textarea
+                                                                                value={formData.address}
+                                                                                onChange={(e) => handleInputChange('address', e.target.value)}
+                                                                                placeholder="Nhập địa chỉ"
+                                                                                rows={3}
+                                                                                className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
+                                                                           />
+                                                                      ) : (
+                                                                           <p className="text-base font-semibold text-teal-900 leading-relaxed">
+                                                                                {formData.address || "Chưa cập nhật"}
+                                                                           </p>
+                                                                      )}
+                                                                 </div>
+                                                            </div>
+                                                       </div>
+                                                  </CardContent>
+                                             </Card>
+                                        </SlideIn>
+
+                                        {/* Football Preferences */}
+                                        <SlideIn direction="right" delay={200}>
+                                             <Card className="border border-teal-200/80 bg-white/95 shadow-xl backdrop-blur rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+                                                  <CardHeader className="border-b border-teal-100/70 bg-gradient-to-r from-teal-50 via-white to-white py-4 px-6 rounded-t-3xl">
+                                                       <CardTitle className="flex items-center text-teal-900">
+                                                            <div className="p-2 bg-teal-200 rounded-xl mr-3">
+                                                                 <Target className="w-5 h-5 text-teal-700" />
+                                                            </div>
+                                                            Sở thích bóng đá
+                                                       </CardTitle>
+                                                  </CardHeader>
+                                                  <CardContent className="space-y-5 p-6">
+                                                       <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                            <div className="flex items-start gap-3">
+                                                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                                                                      <Users className="w-5 h-5" />
+                                                                 </div>
+                                                                 <div className="flex-1 space-y-2">
+                                                                      <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                           Vị trí ưa thích
+                                                                      </p>
+                                                                      {isEditing ? (
+                                                                           <Select
+                                                                                value={formData.preferredPositions}
+                                                                                onValueChange={(value) => handleInputChange('preferredPositions', value)}
+                                                                           >
+                                                                                <SelectTrigger className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500">
+                                                                                     <SelectValue placeholder="Chọn vị trí" />
+                                                                                </SelectTrigger>
+                                                                                <SelectContent>
+                                                                                     {positions.map((position) => (
+                                                                                          <SelectItem key={position} value={position}>
+                                                                                               {position}
+                                                                                          </SelectItem>
+                                                                                     ))}
+                                                                                </SelectContent>
+                                                                           </Select>
+                                                                      ) : (
+                                                                           <p className="text-base font-semibold text-teal-900">
+                                                                                {formData.preferredPositions || "Chưa cập nhật"}
+                                                                           </p>
+                                                                      )}
+                                                                 </div>
+                                                            </div>
+                                                       </div>
+                                                       <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                            <div className="flex items-start gap-3">
+                                                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                                                                      <Heart className="w-5 h-5" />
+                                                                 </div>
+                                                                 <div className="flex-1 space-y-2">
+                                                                      <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                           Giới thiệu bản thân
+                                                                      </p>
+                                                                      {isEditing ? (
+                                                                           <Textarea
+                                                                                value={formData.bio}
+                                                                                onChange={(e) => handleInputChange('bio', e.target.value)}
+                                                                                placeholder="Viết một chút về bản thân..."
+                                                                                rows={4}
+                                                                                className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
+                                                                           />
+                                                                      ) : (
+                                                                           <p className="text-base font-semibold text-teal-900 leading-relaxed">
+                                                                                {formData.bio || "Chưa cập nhật"}
+                                                                           </p>
+                                                                      )}
+                                                                 </div>
+                                                            </div>
+                                                       </div>
+                                                  </CardContent>
+                                             </Card>
+                                        </SlideIn>
+
+                                        {/* Account Information */}
+                                        <SlideIn direction="right" delay={300}>
+                                             <Card className="border border-teal-200/80 bg-white/95 shadow-xl backdrop-blur rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+                                                  <CardHeader className="border-b border-teal-100/70 bg-gradient-to-r from-teal-50 via-white to-white py-4 px-6 rounded-t-3xl">
+                                                       <CardTitle className="flex items-center text-teal-900">
+                                                            <div className="p-2 bg-teal-200 rounded-xl mr-3">
+                                                                 <Shield className="w-5 h-5 text-teal-700" />
+                                                            </div>
+                                                            Thông tin tài khoản
+                                                       </CardTitle>
+                                                  </CardHeader>
+                                                  <CardContent className="space-y-5 p-6">
+                                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                                 <div className="flex items-start gap-3">
+                                                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                                                                           <Shield className="w-5 h-5" />
+                                                                      </div>
+                                                                      <div className="flex-1 space-y-2">
+                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                                Trạng thái tài khoản
+                                                                           </p>
+                                                                           <span className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold ${formData.status === 'Active'
+                                                                                ? 'bg-green-100 text-green-700 border border-green-200'
+                                                                                : 'bg-red-100 text-red-700 border border-red-200'
+                                                                                }`}>
+                                                                                <Shield className="w-4 h-4" />
+                                                                                {formData.status === 'Active' ? 'Hoạt động' : 'Không hoạt động'}
+                                                                           </span>
+                                                                      </div>
+                                                                 </div>
+                                                            </div>
+                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                                 <div className="flex items-start gap-3">
+                                                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                                                                           <Clock className="w-5 h-5" />
+                                                                      </div>
+                                                                      <div className="flex-1 space-y-2">
+                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                                Ngày tạo tài khoản
+                                                                           </p>
+                                                                           <p className="text-base font-semibold text-teal-900">
+                                                                                {formatDate(formData.createdAt)}
                                                                            </p>
                                                                       </div>
-                                                                 )}
-                                                            </div>
-                                                       </div>
-                                                       <div className="space-y-2">
-                                                            <label className="flex items-center text-sm font-semibold text-teal-800 mb-2">
-                                                                 <Phone className="w-4 h-4 mr-2 text-teal-600" />
-                                                                 Số điện thoại
-                                                            </label>
-                                                            {isEditing ? (
-                                                                 <Input
-                                                                      value={formData.phone}
-                                                                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                                                                      placeholder="Nhập số điện thoại"
-                                                                      className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
-                                                                 />
-                                                            ) : (
-                                                                 <div className="p-3 bg-teal-50 rounded-xl">
-                                                                      <div className="flex items-center">
-                                                                           <Phone className="w-4 h-4 mr-2 text-teal-600" />
-                                                                           <p className="text-teal-900 font-medium">{formData.phone || "Chưa cập nhật"}</p>
-                                                                      </div>
-                                                                 </div>
-                                                            )}
-                                                       </div>
-                                                       <div className="space-y-2">
-                                                            <label className="flex items-center text-sm font-semibold text-teal-800 mb-2">
-                                                                 <Calendar className="w-4 h-4 mr-2 text-teal-600" />
-                                                                 Ngày sinh
-                                                            </label>
-                                                            {isEditing ? (
-                                                                 <Input
-                                                                      type="date"
-                                                                      value={formData.dateOfBirth}
-                                                                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                                                                      className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
-                                                                 />
-                                                            ) : (
-                                                                 <div className="p-3 bg-teal-50 rounded-xl">
-                                                                      <p className="text-teal-900 font-medium">{formData.dateOfBirth ? formatDate(formData.dateOfBirth) : "Chưa cập nhật"}</p>
-                                                                 </div>
-                                                            )}
-                                                       </div>
-                                                       <div className="space-y-2">
-                                                            <label className="flex items-center text-sm font-semibold text-teal-800 mb-2">
-                                                                 <Heart className="w-4 h-4 mr-2 text-teal-600" />
-                                                                 Giới tính
-                                                            </label>
-                                                            {isEditing ? (
-                                                                 <Select
-                                                                      value={formData.gender}
-                                                                      onValueChange={(value) => handleInputChange('gender', value)}
-                                                                 >
-                                                                      <SelectTrigger className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500">
-                                                                           <SelectValue placeholder="Chọn giới tính" />
-                                                                      </SelectTrigger>
-                                                                      <SelectContent>
-                                                                           {genders.map((gender) => (
-                                                                                <SelectItem key={gender} value={gender}>
-                                                                                     {gender}
-                                                                                </SelectItem>
-                                                                           ))}
-                                                                      </SelectContent>
-                                                                 </Select>
-                                                            ) : (
-                                                                 <div className="p-3 bg-teal-50 rounded-xl">
-                                                                      <p className="text-teal-900 font-medium">{formData.gender || "Chưa cập nhật"}</p>
-                                                                 </div>
-                                                            )}
-                                                       </div>
-                                                       <div className="space-y-2">
-                                                            <label className="flex items-center text-sm font-semibold text-teal-800 mb-2">
-                                                                 <Star className="w-4 h-4 mr-2 text-teal-600" />
-                                                                 Trình độ
-                                                            </label>
-                                                            {isEditing ? (
-                                                                 <Select
-                                                                      value={formData.skillLevel}
-                                                                      onValueChange={(value) => handleInputChange('skillLevel', value)}
-                                                                 >
-                                                                      <SelectTrigger className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500">
-                                                                           <SelectValue placeholder="Chọn trình độ" />
-                                                                      </SelectTrigger>
-                                                                      <SelectContent>
-                                                                           {skillLevels.map((level) => (
-                                                                                <SelectItem key={level.value} value={level.value}>
-                                                                                     {level.label}
-                                                                                </SelectItem>
-                                                                           ))}
-                                                                      </SelectContent>
-                                                                 </Select>
-                                                            ) : (
-                                                                 <div className="p-3 bg-teal-50 rounded-xl">
-                                                                      <p className="text-teal-900 font-medium">
-                                                                           {formData.skillLevel ? skillLevels.find(s => s.value === formData.skillLevel)?.label : "Chưa cập nhật"}
-                                                                      </p>
-                                                                 </div>
-                                                            )}
-                                                       </div>
-                                                  </div>
-                                                  <div className="space-y-2">
-                                                       <label className="flex items-center text-sm font-semibold text-teal-800 mb-2">
-                                                            <MapPin className="w-4 h-4 mr-2 text-teal-600" />
-                                                            Địa chỉ
-                                                       </label>
-                                                       {isEditing ? (
-                                                            <Textarea
-                                                                 value={formData.address}
-                                                                 onChange={(e) => handleInputChange('address', e.target.value)}
-                                                                 placeholder="Nhập địa chỉ"
-                                                                 rows={3}
-                                                                 className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
-                                                            />
-                                                       ) : (
-                                                            <div className="p-3 bg-teal-50 rounded-xl">
-                                                                 <div className="flex items-start">
-                                                                      <MapPin className="w-4 h-4 mr-2 text-teal-600 mt-1" />
-                                                                      <p className="text-teal-900 font-medium">{formData.address || "Chưa cập nhật"}</p>
                                                                  </div>
                                                             </div>
-                                                       )}
-                                                  </div>
-                                             </CardContent>
-                                        </Card>
-                                   </SlideIn>
-
-                                   {/* Football Preferences */}
-                                   <SlideIn direction="right" delay={200}>
-                                        <Card className="border-2 border-teal-300 shadow-lg bg-white/90 backdrop-blur-sm rounded-2xl transition-all duration-300 hover:shadow-xl">
-                                             <CardHeader className="bg-gradient-to-r py-3 px-5 from-teal-50 to-teal-100 rounded-t-2xl">
-                                                  <CardTitle className="flex items-center text-teal-900">
-                                                       <div className="p-2 bg-teal-200 rounded-xl mr-3">
-                                                            <Target className="w-5 h-5 text-teal-700" />
                                                        </div>
-                                                       Sở thích bóng đá
-                                                  </CardTitle>
-                                             </CardHeader>
-                                             <CardContent className="space-y-6 p-6">
-                                                  <div className="space-y-2">
-                                                       <label className="flex items-center text-sm font-semibold text-teal-800 mb-2">
-                                                            <Users className="w-4 h-4 mr-2 text-teal-600" />
-                                                            Vị trí ưa thích
-                                                       </label>
-                                                       {isEditing ? (
-                                                            <Select
-                                                                 value={formData.preferredPositions}
-                                                                 onValueChange={(value) => handleInputChange('preferredPositions', value)}
-                                                            >
-                                                                 <SelectTrigger className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500">
-                                                                      <SelectValue placeholder="Chọn vị trí" />
-                                                                 </SelectTrigger>
-                                                                 <SelectContent>
-                                                                      {positions.map((position) => (
-                                                                           <SelectItem key={position} value={position}>
-                                                                                {position}
-                                                                           </SelectItem>
-                                                                      ))}
-                                                                 </SelectContent>
-                                                            </Select>
-                                                       ) : (
-                                                            <div className="p-3 bg-teal-50 rounded-xl">
-                                                                 <p className="text-teal-900 font-medium">{formData.preferredPositions || "Chưa cập nhật"}</p>
-                                                            </div>
-                                                       )}
-                                                  </div>
-                                                  <div className="space-y-2">
-                                                       <label className="flex items-center text-sm font-semibold text-teal-800 mb-2">
-                                                            <Heart className="w-4 h-4 mr-2 text-teal-600" />
-                                                            Giới thiệu bản thân
-                                                       </label>
-                                                       {isEditing ? (
-                                                            <Textarea
-                                                                 value={formData.bio}
-                                                                 onChange={(e) => handleInputChange('bio', e.target.value)}
-                                                                 placeholder="Viết một chút về bản thân..."
-                                                                 rows={4}
-                                                                 className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
-                                                            />
-                                                       ) : (
-                                                            <div className="p-3 bg-teal-50 rounded-xl">
-                                                                 <p className="text-teal-900 font-medium">{formData.bio || "Chưa cập nhật"}</p>
-                                                            </div>
-                                                       )}
-                                                  </div>
-                                             </CardContent>
-                                        </Card>
-                                   </SlideIn>
-
-                                   {/* Account Information */}
-                                   <SlideIn direction="right" delay={300}>
-                                        <Card className="border-2 shadow-lg bg-white/90 border-teal-300 backdrop-blur-sm rounded-2xl transition-all duration-300 hover:shadow-xl">
-                                             <CardHeader className="bg-gradient-to-r py-3 px-5 from-teal-50 to-teal-100 rounded-t-2xl">
-                                                  <CardTitle className="flex items-center text-teal-900">
-                                                       <div className="p-2 bg-teal-200 rounded-xl mr-3">
-                                                            <Shield className="w-5 h-5 text-teal-700" />
-                                                       </div>
-                                                       Thông tin tài khoản
-                                                  </CardTitle>
-                                             </CardHeader>
-                                             <CardContent className="space-y-6 p-6">
-                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                       <div className="space-y-2">
-                                                            <label className="flex items-center text-sm font-semibold text-teal-800 mb-2">
-                                                                 <Shield className="w-4 h-4 mr-2 text-teal-600" />
-                                                                 Trạng thái tài khoản
-                                                            </label>
-                                                            <div className="p-1 rounded-xl">
-                                                                 <span className={`inline-flex items-center px-3 py-1 rounded-xl text-sm font-medium ${formData.status === 'Active'
-                                                                      ? 'bg-green-100 text-green-800 border border-green-200'
-                                                                      : 'bg-red-100 text-red-800 border border-red-200'
-                                                                      }`}>
-                                                                      <Shield className="w-4 h-4 mr-2" />
-                                                                      {formData.status === 'Active' ? 'Hoạt động' : 'Không hoạt động'}
-                                                                 </span>
-                                                            </div>
-                                                       </div>
-                                                       <div className="space-y-2">
-                                                            <label className="flex items-center text-sm font-semibold text-teal-800 mb-2">
-                                                                 <Clock className="w-4 h-4 mr-2 text-teal-600" />
-                                                                 Ngày tạo tài khoản
-                                                            </label>
-                                                            <div className="p-3 bg-green-50 rounded-xl">
-                                                                 <p className="text-green-900 font-medium">{formatDate(formData.createdAt)}</p>
-                                                            </div>
-                                                       </div>
-                                                  </div>
-                                             </CardContent>
-                                        </Card>
-                                   </SlideIn>
-                              </div>
-                         </FadeIn>
+                                                  </CardContent>
+                                             </Card>
+                                        </SlideIn>
+                                   </div>
+                              </FadeIn>
+                         </div>
                     </div>
                </Container>
           </div>

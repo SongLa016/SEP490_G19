@@ -3,6 +3,7 @@ export { Container, Section, Row, Col } from "./layout";
 
 // Form components
 export { Input } from "./input";
+export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "./input-otp";
 export {
   Select,
   SelectContent,

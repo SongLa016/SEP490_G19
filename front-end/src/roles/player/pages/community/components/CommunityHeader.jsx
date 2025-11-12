@@ -42,6 +42,8 @@ export default function CommunityHeader({ user, onLoggedOut }) {
           const baseItems = [
                { id: "home", label: "Home", icon: Home },
                { id: "search", label: "Danh sách sân", icon: Search },
+               { id: "bookings", label: "Đặt sân", icon: Calendar },
+               { id: "community", label: "Cộng đồng", icon: Users },
           ];
 
           if (user.role === "User") {
@@ -112,7 +114,7 @@ export default function CommunityHeader({ user, onLoggedOut }) {
      return (
           <motion.div
                ref={headerRef}
-               className="hidden md:flex fixed justify-center left-0 top-0 rounded-lg w-16 h-full border-r border-gray-200 flex-col items-center py-4 z-10 overflow-hidden"
+               className="hidden md:flex fixed justify-center left-0 top-0 rounded-lg w-16 h-full border-r border-gray-200 flex-col items-center py-4 z-10 overflow-visible"
                initial={{ x: -64 }}
                animate={{ x: 0 }}
                transition={{ duration: 0.5, ease: "easeOut" }}
@@ -183,7 +185,7 @@ export default function CommunityHeader({ user, onLoggedOut }) {
                                    >
                                         <Button
                                              onClick={() => navigate(`/${item.id}`)}
-                                             className={`p-1 w-10 h-10 rounded-xl transition-colors ${isActive
+                                             className={`p-1 w-10 h-10 rounded-xl transition-colors border-none shadow-none outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 ${isActive
                                                   ? "bg-teal-800 text-white hover:bg-teal-900"
                                                   : "text-gray-500 hover:text-gray-700 bg-transparent hover:bg-teal-100"
                                                   }`}
@@ -227,10 +229,10 @@ export default function CommunityHeader({ user, onLoggedOut }) {
                                              animate={{ opacity: 1, scale: 1, x: 0 }}
                                              exit={{ opacity: 0, scale: 0.95, x: -10 }}
                                              transition={{ duration: 0.2 }}
-                                             className="absolute left-16 bottom-0 w-56 bg-white rounded-xl shadow-lg py-1 z-50 border border-gray-200"
+                                             className="absolute left-16 bottom-0 w-fit bg-white rounded-xl shadow-lg py-1 z-50 border border-gray-200"
                                         >
                                              <div className="p-2 border-b">
-                                                  <p className="text-sm flex items-center gap-2 font-medium text-gray-900">{user.name || `@${user.username}`}<span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.role)}`}>
+                                                  <p className="text-sm flex items-center gap-2 font-medium text-gray-900">{user.fullName || `@${user.username}`}<span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.role)}`}>
                                                        {getRoleDisplayName(user.role)}
                                                   </span></p>
                                                   {user.name && <p className="text-xs text-gray-500">@{user.username}</p>}

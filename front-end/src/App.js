@@ -52,6 +52,9 @@ const NotificationsManagement = lazy(() =>
 const TimeSlotManagement = lazy(() =>
   import("./roles/owner/pages/TimeSlotManagement")
 );
+const BankAccountManagement = lazy(() =>
+  import("./roles/owner/pages/BankAccountManagement")
+);
 
 // Lazy load other player pages
 const BookingHistory = lazy(() =>
@@ -272,6 +275,14 @@ function AppContent() {
           }
         />
         <Route
+          path="/demo/bank-accounts"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <BankAccountManagement isDemo={true} />
+            </Suspense>
+          }
+        />
+        <Route
           path="/owner"
           element={
             user ? (
@@ -422,6 +433,22 @@ function AppContent() {
               user.roleName === "Owner" ? (
                 <Suspense fallback={<LoadingFallback />}>
                   <NotificationsManagement />
+                </Suspense>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/owner/bank-accounts"
+          element={
+            user ? (
+              user.roleName === "Owner" ? (
+                <Suspense fallback={<LoadingFallback />}>
+                  <BankAccountManagement />
                 </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />

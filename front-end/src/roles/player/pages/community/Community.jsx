@@ -7,7 +7,6 @@ import {
      Avatar,
      AvatarImage,
      AvatarFallback,
-     SlideIn,
      Card,
      CardContent,
 } from "../../../../shared/components/ui";
@@ -32,7 +31,6 @@ export default function Community() {
      const [newPostContent, setNewPostContent] = useState("");
      const [newPostTitle, setNewPostTitle] = useState("");
      const [selectedField, setSelectedField] = useState(null);
-     const [showTeamCreation, setShowTeamCreation] = useState(false);
      const [showLoginPrompt, setShowLoginPrompt] = useState(true); // Control visibility of login prompt
      const highlightRef = useRef(null);
      const matchEndRef = useRef(null);
@@ -43,6 +41,10 @@ export default function Community() {
      const handlePostSubmit = (title, content, field) => {
           console.log("Posting:", { title, content, field });
           // Add your post submission logic here
+     };
+
+     const handleOpenTeamCreation = () => {
+          // TODO: Hiển thị form tạo đội khi phần này được triển khai
      };
 
 
@@ -148,13 +150,13 @@ export default function Community() {
                                                   transition={{ duration: 0.3, ease: "easeInOut" }}
                                              />
                                              <motion.div
-                                                  whileHover={{ scale: 1.05, y: -2 }}
-                                                  whileTap={{ scale: 0.95 }}
+
+                                                  whileTap={{ y: 1 }}
                                              >
                                                   <Button
                                                        onClick={() => setActiveTab(tab.id)}
                                                        className={`px-3 py-1 text-sm font-medium rounded-xl transition-all duration-200 relative ${activeTab === tab.id
-                                                            ? "border-b-4 border-teal-500 bg-white text-gray-900"
+                                                            ? "border-b-2 border-teal-500 font-bold bg-white text-teal-600"
                                                             : "border-transparent bg-transparent text-gray-500 hover:text-gray-700"
                                                             }`}
                                                   >
@@ -188,7 +190,7 @@ export default function Community() {
                                    >
                                         {user && (
                                              <motion.div
-                                                  className="px-3 py-2 flex gap-2 items-center border-b border-gray-300"
+                                                  className="px-3 py-0.5 flex gap-2 items-center border-b border-gray-300"
                                                   initial={{ opacity: 0, y: -10 }}
                                                   animate={{ opacity: 1, y: 0 }}
                                                   transition={{ delay: 0.2, duration: 0.4 }}
@@ -208,7 +210,7 @@ export default function Community() {
                                                        <div className="flex items-center justify-between w-full gap-3">
                                                             <motion.div
                                                                  onClick={() => setShowNewThread(true)}
-                                                                 className="min-h-[60px] rounded-md px-3 py-2 flex items-center cursor-pointer border border-gray-200 hover:border-teal-400 transition-colors w-full"
+                                                                 className="min-h-[60px] rounded-md px-3 py-2 flex items-center cursor-pointer  hover:border-teal-400 transition-colors w-full"
                                                                  whileHover={{ scale: 1.02, borderColor: "#14b8a6" }}
                                                                  whileTap={{ scale: 0.98 }}
                                                             >
@@ -217,25 +219,9 @@ export default function Community() {
                                                        </div>
                                                   </div>
                                                   <motion.div
-                                                       whileHover={{ scale: 1.05 }}
-                                                       whileTap={{ scale: 0.95 }}
-                                                       animate={{
-                                                            boxShadow: [
-                                                                 "0 0 0px rgba(20, 184, 166, 0)",
-                                                                 "0 0 15px rgba(20, 184, 166, 0.5)",
-                                                                 "0 0 0px rgba(20, 184, 166, 0)",
-                                                            ],
-                                                       }}
-                                                       transition={{
-                                                            boxShadow: {
-                                                                 duration: 2,
-                                                                 repeat: Infinity,
-                                                                 ease: "easeInOut",
-                                                            },
-                                                       }}
                                                   >
                                                        <Button
-                                                            className="w-1/12 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-xl"
+                                                            className="w-full h-[35px] bg-teal-500 hover:bg-teal-600 text-white px-3 py-0.5 rounded-xl border-none shadow-none outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                                                             onClick={() => setShowNewThread(true)}
                                                        >
                                                             Đăng
@@ -274,7 +260,7 @@ export default function Community() {
                                         exit={{ opacity: 0, x: -20 }}
                                         transition={{ duration: 0.4, ease: "easeInOut" }}
                                    >
-                                        <TeamList onOpenTeamCreation={() => setShowTeamCreation(true)} />
+                                        <TeamList onOpenTeamCreation={handleOpenTeamCreation} />
                                    </motion.div>
                               )}
                          </AnimatePresence>

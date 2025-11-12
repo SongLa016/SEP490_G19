@@ -2,14 +2,8 @@
 import axios from "axios";
 
 // Determine base URL based on environment
-// In development, use proxy if available, otherwise use direct URL
+// Always use full URL to avoid proxy issues
 const getBaseURL = () => {
-  // Check if we're in development and proxy is available
-  if (process.env.NODE_ENV === 'development') {
-    // Try to use proxy first (if setupProxy.js exists)
-    return "/api";
-  }
-  // Production or no proxy available
   return "https://sep490-g19-zxph.onrender.com/api";
 };
 
@@ -54,11 +48,18 @@ const handleApiError = (error) => {
     }
   } else if (error.request) {
     // Check if it's a CORS error
-    if (error.code === 'ERR_NETWORK' || error.message?.includes('CORS') || error.message?.includes('Network Error')) {
-      errorMessage = "Lỗi CORS: Backend chưa cấu hình cho phép truy cập từ domain này.";
-      details = "Vui lòng kiểm tra cấu hình CORS trên backend hoặc liên hệ admin.";
+    if (
+      error.code === "ERR_NETWORK" ||
+      error.message?.includes("CORS") ||
+      error.message?.includes("Network Error")
+    ) {
+      errorMessage =
+        "Lỗi CORS: Backend chưa cấu hình cho phép truy cập từ domain này.";
+      details =
+        "Vui lòng kiểm tra cấu hình CORS trên backend hoặc liên hệ admin.";
     } else {
-      errorMessage = "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
+      errorMessage =
+        "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
     }
   } else {
     errorMessage = error.message || "Đã xảy ra lỗi không xác định.";
@@ -84,7 +85,18 @@ const handleApiError = (error) => {
 // FieldComplex API functions
 export async function createFieldComplex(complexData) {
   try {
-    const response = await apiClient.post("/FieldComplex", {
+    // Try different endpoint variations
+    const endpoints = [
+      "/FieldComplex",
+      "/fieldComplex",
+      "/field-complex",
+      "/FieldComplexes",
+      "/fieldComplexes",
+    ];
+    let response = null;
+    let lastError = null;
+
+    const payload = {
       ownerId: complexData.ownerId,
       name: complexData.name,
       address: complexData.address,
@@ -92,17 +104,85 @@ export async function createFieldComplex(complexData) {
       image: complexData.image || "",
       status: complexData.status || "Active",
       fields: complexData.fields || [],
-    });
+    };
+
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`Trying POST endpoint: ${getBaseURL()}${endpoint}`);
+        response = await apiClient.post(endpoint, payload);
+        console.log(`Success with POST endpoint: ${endpoint}`);
+        break;
+      } catch (err) {
+        console.log(
+          `Failed with POST endpoint: ${endpoint}`,
+          err.response?.status
+        );
+        lastError = err;
+        // If it's not a 404, stop trying other endpoints
+        if (err.response?.status !== 404) {
+          break;
+        }
+      }
+    }
+
+    if (!response) {
+      throw lastError || new Error("Tất cả endpoint đều thất bại");
+    }
+
     return response.data;
   } catch (error) {
+    console.error("Error creating field complex:", error);
     handleApiError(error);
   }
 }
 
 export async function fetchFieldComplexes() {
   try {
-    const response = await apiClient.get("/FieldComplex");
-    return response.data.map((complex) => ({
+    // Try different endpoint variations
+    const endpoints = [
+      "/FieldComplex",
+      "/fieldComplex",
+      "/field-complex",
+      "/FieldComplexes",
+      "/fieldComplexes",
+    ];
+    let response = null;
+    let lastError = null;
+
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`Trying GET endpoint: ${getBaseURL()}${endpoint}`);
+        response = await apiClient.get(endpoint);
+        console.log(`Success with GET endpoint: ${endpoint}`);
+        break;
+      } catch (err) {
+        console.log(
+          `Failed with GET endpoint: ${endpoint}`,
+          err.response?.status
+        );
+        lastError = err;
+        // If it's not a 404, stop trying other endpoints
+        if (err.response?.status !== 404) {
+          break;
+        }
+      }
+    }
+
+    if (!response) {
+      throw lastError || new Error("Tất cả endpoint đều thất bại");
+    }
+
+    // Handle response - can be array or object
+    let data = response.data;
+    if (!Array.isArray(data)) {
+      if (data && Array.isArray(data.data)) {
+        data = data.data;
+      } else {
+        data = [];
+      }
+    }
+
+    return data.map((complex) => ({
       complexId: complex.complexId,
       ownerId: complex.ownerId,
       name: complex.name,
@@ -1179,7 +1259,7 @@ export async function fetchComplexes(params = {}) {
     slotId = "",
     useApi = false,
   } = params;
-  
+
   // Use real API if requested
   if (useApi) {
     try {
@@ -1195,14 +1275,23 @@ export async function fetchComplexes(params = {}) {
               address: complex.address,
               image: complex.image,
               totalFields: fields.length,
-              availableFields: fields.filter(f => f.status === "Available").length,
-              minPriceForSelectedSlot: fields.length > 0 
-                ? Math.min(...fields.map(f => f.pricePerHour || 0).filter(p => p > 0)) 
-                : 0,
+              availableFields: fields.filter((f) => f.status === "Available")
+                .length,
+              minPriceForSelectedSlot:
+                fields.length > 0
+                  ? Math.min(
+                      ...fields
+                        .map((f) => f.pricePerHour || 0)
+                        .filter((p) => p > 0)
+                    )
+                  : 0,
               rating: 0, // API might not return rating
             };
           } catch (error) {
-            console.error(`Error fetching fields for complex ${complex.complexId}:`, error);
+            console.error(
+              `Error fetching fields for complex ${complex.complexId}:`,
+              error
+            );
             return {
               complexId: complex.complexId,
               name: complex.name,
@@ -1216,18 +1305,21 @@ export async function fetchComplexes(params = {}) {
           }
         })
       );
-      
+
       return complexesWithFields.filter(
         (item) =>
           item.name.toLowerCase().includes(query.toLowerCase()) ||
           item.address.toLowerCase().includes(query.toLowerCase())
       );
     } catch (error) {
-      console.error("Error fetching complexes from API, falling back to mock:", error);
+      console.error(
+        "Error fetching complexes from API, falling back to mock:",
+        error
+      );
       // Fall through to mock data
     }
   }
-  
+
   // Mock data fallback
   const complexes = FIELD_COMPLEXES.filter(
     (c) => c.ApprovalStatus === "Approved"
@@ -1278,7 +1370,7 @@ export async function fetchFields(params = {}) {
     typeId,
     useApi = false,
   } = params;
-  
+
   // Use real API if requested
   if (useApi && complexId) {
     try {
@@ -1308,11 +1400,14 @@ export async function fetchFields(params = {}) {
             item.address.toLowerCase().includes(query.toLowerCase())
         );
     } catch (error) {
-      console.error("Error fetching fields from API, falling back to mock:", error);
+      console.error(
+        "Error fetching fields from API, falling back to mock:",
+        error
+      );
       // Fall through to mock data
     }
   }
-  
+
   // Mock data fallback
   let list = FIELDS.filter(
     (f) => f.ApprovalStatus === "Approved" && !f.IsHidden
