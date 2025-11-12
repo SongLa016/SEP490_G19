@@ -55,15 +55,7 @@ namespace BallSport.Application.Services
                 Description = c.Description,
                 Status = c.Status,
                 CreatedAt = c.CreatedAt,
-                Fields = c.Fields?.Select(f => new FieldDTO
-                {
-                    FieldId = f.FieldId,
-                    Name = f.Name,
-                    Size = f.Size,
-                    GrassType = f.GrassType,
-                    PricePerHour = f.PricePerHour,
-                    Status = f.Status
-                }).ToList()
+                
             }).ToList();
         }
 
@@ -83,15 +75,7 @@ namespace BallSport.Application.Services
                 Image = c.Image,
                 Status = c.Status,
                 CreatedAt = c.CreatedAt,
-                Fields = c.Fields?.Select(f => new FieldDTO
-                {
-                    FieldId = f.FieldId,
-                    Name = f.Name,
-                    Size = f.Size,
-                    GrassType = f.GrassType,
-                    PricePerHour = f.PricePerHour,
-                    Status = f.Status
-                }).ToList()
+                
             };
         }
 

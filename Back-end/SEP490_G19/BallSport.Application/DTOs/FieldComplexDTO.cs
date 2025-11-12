@@ -26,6 +26,5 @@ namespace BallSport.Application.DTOs
 
         public string? OwnerName { get; set; }
 
-        public List<FieldDTO>? Fields { get; set; }
     }
 }
