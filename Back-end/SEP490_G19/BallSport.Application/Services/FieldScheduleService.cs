@@ -1,12 +1,15 @@
 ﻿using BallSport.Application.DTOs;
+using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace BallSport.Application.Services
 {
     public class FieldScheduleService
     {
         private readonly FieldScheduleRepository _repo;
+        private readonly Sep490G19v1Context _context; // <-- thêm dòng này
 
         public FieldScheduleService(FieldScheduleRepository repo)
         {
@@ -64,11 +67,19 @@ namespace BallSport.Application.Services
 
             var created = await _repo.AddAsync(schedule);
 
+            // 🔹 Truy vấn lại sân và khung giờ để trả thêm thông tin
+            var field = await _context.Fields.FirstOrDefaultAsync(f => f.FieldId == created.FieldId);
+            var slot = await _context.TimeSlots.FirstOrDefaultAsync(s => s.SlotId == created.SlotId);
+
             return new FieldScheduleDTO
             {
                 ScheduleId = created.ScheduleId,
                 FieldId = created.FieldId,
+                FieldName = field?.Name,
                 SlotId = created.SlotId,
+                SlotName = slot?.SlotName,
+                StartTime = slot?.StartTime,
+                EndTime = slot?.EndTime,
                 Date = created.Date,
                 Status = created.Status
             };
