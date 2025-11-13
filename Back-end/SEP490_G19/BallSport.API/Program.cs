@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,12 +23,10 @@ var config = builder.Configuration;
 // ===================== CONTROLLERS + SWAGGER =====================
 services.AddControllers();
 services.AddEndpointsApiExplorer();
-
 services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "BallSport API", Version = "v1" });
 
-    // Thêm JWT Bearer vào Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -62,12 +61,11 @@ services.AddCors(options =>
         builder
             .WithOrigins(
                 "http://localhost:3000",
-                "https://localhost:3000",
                 "https://sep490-g19-zxph.onrender.com"
             )
             .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowAnyMethod();
+            // .AllowCredentials(); // bỏ nếu dùng JWT Bearer
     });
 });
 
@@ -136,14 +134,16 @@ var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
 services.AddSingleton(smtpSettings);
 services.AddTransient<EmailService>();
 
-// ===================== AUTHENTICATION =====================
+// ===================== AUTHENTICATION (JWT + Google + Cookie) =====================
+var googleSection = config.GetSection("Authentication:Google");
+var googleClientId = googleSection["ClientId"];
+var googleClientSecret = googleSection["ClientSecret"];
 
-// --- JWT ---
 services.AddAuthentication(options =>
 {
-    // Default scheme cho cookie + JWT
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
@@ -158,32 +158,18 @@ services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(config["JwtSettings:SecretKey"]))
     };
-});
-
-// --- Google Auth ---
-var googleSection = config.GetSection("Authentication:Google");
-var googleClientId = googleSection["ClientId"];
-var googleClientSecret = googleSection["ClientSecret"];
-
-if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
+})
+.AddCookie(options =>
 {
-    services.AddAuthentication(options =>
-    {
-        options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-    })
-    .AddCookie(options =>
-    {
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-        options.Cookie.SameSite = SameSiteMode.Lax;
-    })
-    .AddGoogle(options =>
-    {
-        options.ClientId = googleClientId;
-        options.ClientSecret = googleClientSecret;
-        options.CallbackPath = "/signin-google";
-    });
-}
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+})
+.AddGoogle(options =>
+{
+    options.ClientId = googleClientId;
+    options.ClientSecret = googleClientSecret;
+    options.CallbackPath = "/signin-google";
+});
 
 // ===================== BUILD APP =====================
 var app = builder.Build();
@@ -200,11 +186,16 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-// Nếu test local bằng HTTP → có thể tắt HTTPS redirect
+// Nếu test local bằng HTTP → comment HTTPS redirect
 // app.UseHttpsRedirection();
-app.UseRouting();
 
+app.UseRouting();
 app.UseCors("AllowAll");
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 app.UseAuthentication();
 app.UseAuthorization();
