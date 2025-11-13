@@ -19,8 +19,7 @@ namespace BallSport.Application.DTOs
 
         public string? Description { get; set; }
 
-        public IFormFile? ImageFile { get; set; }
-
+        public List<IFormFile>? ImageFiles { get; set; } 
         public decimal? PricePerHour { get; set; }
 
         public string? Status { get; set; }
