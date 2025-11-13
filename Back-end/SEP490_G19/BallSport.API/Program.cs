@@ -57,15 +57,19 @@ services.AddSwaggerGen(c =>
 // ===================== CORS =====================
 services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowAll", builder =>
     {
-        policy
-            .AllowAnyOrigin()
+        builder
+            .WithOrigins(
+                "http://localhost:3000",
+                "https://localhost:3000",
+                "https://sep490-g19-zxph.onrender.com"
+            )
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
-
 
 // ===================== DATABASE =====================
 services.AddDbContext<Sep490G19v1Context>(options =>
