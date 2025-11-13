@@ -1,20 +1,22 @@
 // Service layer for Field, FieldComplex, FieldPrice APIs
 import axios from "axios";
 
-// Determine base URL based on environment
-// Always use full URL to avoid proxy issues
-const getBaseURL = () => {
-  return "https://sep490-g19-zxph.onrender.com/api";
-};
-
 // Create axios instance with base configuration
 const apiClient = axios.create({
-  baseURL: getBaseURL(),
   timeout: 30000, // Increased timeout for slower connections
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+const buildMultipartHeaders = () => {
+  const token = localStorage.getItem("token");
+  const headers = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+};
 
 // Add request interceptor to include auth token if available
 apiClient.interceptors.request.use(
@@ -22,6 +24,10 @@ apiClient.interceptors.request.use(
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (config.data instanceof FormData) {
+      delete config.headers["Content-Type"];
+      delete config.headers["content-type"];
     }
     return config;
   },
@@ -85,42 +91,71 @@ const handleApiError = (error) => {
 // FieldComplex API functions
 export async function createFieldComplex(complexData) {
   try {
+    // Validate token before making request
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
+    }
+
     // Try different endpoint variations
     const endpoints = [
-      "/FieldComplex",
-      "/fieldComplex",
-      "/field-complex",
-      "/FieldComplexes",
-      "/fieldComplexes",
+      "https://sep490-g19-zxph.onrender.com/api/FieldComplex",
+      "https://sep490-g19-zxph.onrender.com/api/fieldComplex",
+      "https://sep490-g19-zxph.onrender.com/api/field-complex",
+      "https://sep490-g19-zxph.onrender.com/api/FieldComplexes",
+      "https://sep490-g19-zxph.onrender.com/api/fieldComplexes",
     ];
     let response = null;
     let lastError = null;
 
-    const payload = {
-      ownerId: complexData.ownerId,
-      name: complexData.name,
-      address: complexData.address,
-      description: complexData.description || "",
-      image: complexData.image || "",
-      status: complexData.status || "Active",
-      fields: complexData.fields || [],
-    };
-
-    for (const endpoint of endpoints) {
-      try {
-        console.log(`Trying POST endpoint: ${getBaseURL()}${endpoint}`);
-        response = await apiClient.post(endpoint, payload);
-        console.log(`Success with POST endpoint: ${endpoint}`);
-        break;
-      } catch (err) {
-        console.log(
-          `Failed with POST endpoint: ${endpoint}`,
-          err.response?.status
-        );
-        lastError = err;
-        // If it's not a 404, stop trying other endpoints
-        if (err.response?.status !== 404) {
+    // If complexData is FormData, send as multipart/form-data
+    if (complexData instanceof FormData) {
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Trying POST endpoint: ${endpoint}`);
+          response = await apiClient.post(endpoint, complexData);
+          console.log(`Success with POST endpoint: ${endpoint}`);
           break;
+        } catch (err) {
+          console.log(
+            `Failed with POST endpoint: ${endpoint}`,
+            err.response?.status
+          );
+          lastError = err;
+          // If it's not a 404, stop trying other endpoints
+          if (err.response?.status !== 404) {
+            break;
+          }
+        }
+      }
+    } else {
+      // Prepare payload according to new backend structure
+      const payload = {
+        complexId: complexData.complexId || 0,
+        ownerId: complexData.ownerId,
+        name: complexData.name,
+        address: complexData.address,
+        description: complexData.description || "",
+        image: complexData.image || "",
+        status: complexData.status || "Active",
+      };
+
+      for (const endpoint of endpoints) {
+        try {
+          console.log(`Trying POST endpoint: ${endpoint}`);
+          response = await apiClient.post(endpoint, payload);
+          console.log(`Success with POST endpoint: ${endpoint}`);
+          break;
+        } catch (err) {
+          console.log(
+            `Failed with POST endpoint: ${endpoint}`,
+            err.response?.status
+          );
+          lastError = err;
+          // If it's not a 404, stop trying other endpoints
+          if (err.response?.status !== 404) {
+            break;
+          }
         }
       }
     }
@@ -138,44 +173,23 @@ export async function createFieldComplex(complexData) {
 
 export async function fetchFieldComplexes() {
   try {
-    // Try different endpoint variations
-    const endpoints = [
-      "/FieldComplex",
-      "/fieldComplex",
-      "/field-complex",
-      "/FieldComplexes",
-      "/fieldComplexes",
-    ];
-    let response = null;
-    let lastError = null;
+    console.log(
+      "Fetching all field complexes from:",
+      "https://sep490-g19-zxph.onrender.com/api/FieldComplex"
+    );
 
-    for (const endpoint of endpoints) {
-      try {
-        console.log(`Trying GET endpoint: ${getBaseURL()}${endpoint}`);
-        response = await apiClient.get(endpoint);
-        console.log(`Success with GET endpoint: ${endpoint}`);
-        break;
-      } catch (err) {
-        console.log(
-          `Failed with GET endpoint: ${endpoint}`,
-          err.response?.status
-        );
-        lastError = err;
-        // If it's not a 404, stop trying other endpoints
-        if (err.response?.status !== 404) {
-          break;
-        }
-      }
-    }
-
-    if (!response) {
-      throw lastError || new Error("Tất cả endpoint đều thất bại");
-    }
+    // Use the correct endpoint from Swagger: GET /api/FieldComplex
+    const response = await apiClient.get(
+      "https://sep490-g19-zxph.onrender.com/api/FieldComplex"
+    );
+    console.log("FieldComplexes response:", response.data);
 
     // Handle response - can be array or object
     let data = response.data;
     if (!Array.isArray(data)) {
       if (data && Array.isArray(data.data)) {
+        data = data.data;
+      } else if (data && data.data && Array.isArray(data.data)) {
         data = data.data;
       } else {
         data = [];
@@ -183,24 +197,27 @@ export async function fetchFieldComplexes() {
     }
 
     return data.map((complex) => ({
-      complexId: complex.complexId,
-      ownerId: complex.ownerId,
-      name: complex.name,
-      address: complex.address,
-      description: complex.description || "",
-      image: complex.image || "",
-      status: complex.status,
-      createdAt: complex.createdAt,
-      ownerName: complex.ownerName || "",
+      complexId: complex.complexId || complex.ComplexID,
+      ownerId: complex.ownerId || complex.OwnerID,
+      name: complex.name || complex.Name,
+      address: complex.address || complex.Address,
+      description: complex.description || complex.Description || "",
+      image: complex.image || complex.Image || "",
+      status: complex.status || complex.Status || "Active",
+      createdAt: complex.createdAt || complex.CreatedAt,
+      ownerName: complex.ownerName || complex.OwnerName || "",
     }));
   } catch (error) {
+    console.error("Error fetching field complexes:", error);
     handleApiError(error);
   }
 }
 
 export async function fetchFieldComplex(id) {
   try {
-    const response = await apiClient.get(`/FieldComplex/${id}`);
+    const response = await apiClient.get(
+      `https://sep490-g19-zxph.onrender.com/api/FieldComplex/${id}`
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -209,7 +226,20 @@ export async function fetchFieldComplex(id) {
 
 export async function updateFieldComplex(id, complexData) {
   try {
-    const response = await apiClient.put(`/FieldComplex/${id}`, complexData);
+    let response;
+
+    if (complexData instanceof FormData) {
+      response = await apiClient.put(
+        `https://sep490-g19-zxph.onrender.com/api/FieldComplex/${id}`,
+        complexData
+      );
+    } else {
+      response = await apiClient.put(
+        `https://sep490-g19-zxph.onrender.com/api/FieldComplex/${id}`,
+        complexData
+      );
+    }
+
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -218,7 +248,9 @@ export async function updateFieldComplex(id, complexData) {
 
 export async function deleteFieldComplex(id) {
   try {
-    const response = await apiClient.delete(`/FieldComplex/${id}`);
+    const response = await apiClient.delete(
+      `https://sep490-g19-zxph.onrender.com/api/FieldComplex/${id}`
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -228,49 +260,140 @@ export async function deleteFieldComplex(id) {
 // Field API functions
 export async function createField(fieldData) {
   try {
-    const response = await apiClient.post("/Field", {
-      complexId: fieldData.complexId,
-      typeId: fieldData.typeId,
-      name: fieldData.name,
-      size: fieldData.size || "",
-      grassType: fieldData.grassType || "",
-      description: fieldData.description || "",
-      image: fieldData.image || "",
-      pricePerHour: fieldData.pricePerHour || 0,
-      status: fieldData.status || "Available",
-    });
+    // If fieldData is FormData, send as multipart/form-data
+    if (fieldData instanceof FormData) {
+      const response = await apiClient.post(
+        "https://sep490-g19-zxph.onrender.com/api/Field",
+        fieldData
+      );
+      return response.data;
+    }
+
+    // Otherwise, send as JSON (for backward compatibility)
+    const response = await apiClient.post(
+      "https://sep490-g19-zxph.onrender.com/api/Field",
+      {
+        complexId: fieldData.complexId,
+        typeId: fieldData.typeId,
+        name: fieldData.name,
+        size: fieldData.size || "",
+        grassType: fieldData.grassType || "",
+        description: fieldData.description || "",
+        image: fieldData.image || "",
+        pricePerHour: fieldData.pricePerHour || 0,
+        status: fieldData.status || "Available",
+        bankAccountId: fieldData.bankAccountId || null,
+        bankName: fieldData.bankName || "",
+        bankShortCode: fieldData.bankShortCode || "",
+        accountNumber: fieldData.accountNumber || "",
+        accountHolder: fieldData.accountHolder || "",
+      },
+      { headers: buildMultipartHeaders() }
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
   }
 }
 
+/**
+ * Lấy tất cả khu sân (FieldComplex) và các sân nhỏ (Field) trong mỗi khu sân
+ * @returns {Promise<Array>} Mảng các khu sân, mỗi khu sân có thuộc tính fields chứa danh sách sân nhỏ
+ */
+export async function fetchAllComplexesWithFields() {
+  try {
+    console.log("Fetching all complexes with their fields...");
+
+    // Bước 1: Lấy tất cả khu sân từ GET /api/FieldComplex
+    const complexes = await fetchFieldComplexes();
+    console.log(`Found ${complexes.length} complexes`);
+
+    // Bước 2: Với mỗi khu sân, lấy các sân nhỏ từ GET /api/Field/complex/{complexId}
+    const complexesWithFields = await Promise.all(
+      complexes.map(async (complex) => {
+        try {
+          const fields = await fetchFieldsByComplex(complex.complexId);
+          return {
+            ...complex,
+            fields: fields || [],
+            fieldCount: fields?.length || 0,
+          };
+        } catch (error) {
+          console.error(
+            `Error fetching fields for complex ${complex.complexId}:`,
+            error
+          );
+          return {
+            ...complex,
+            fields: [],
+            fieldCount: 0,
+          };
+        }
+      })
+    );
+
+    console.log(
+      `Successfully fetched ${complexesWithFields.length} complexes with their fields`
+    );
+    return complexesWithFields;
+  } catch (error) {
+    console.error("Error fetching complexes with fields:", error);
+    handleApiError(error);
+  }
+}
+
 export async function fetchFieldsByComplex(complexId) {
   try {
-    const response = await apiClient.get(`/Field/complex/${complexId}`);
-    return response.data.map((field) => ({
-      fieldId: field.fieldId,
-      complexId: field.complexId,
-      typeId: field.typeId,
-      name: field.name,
-      size: field.size || "",
-      grassType: field.grassType || "",
-      description: field.description || "",
-      image: field.image || "",
-      pricePerHour: field.pricePerHour,
-      status: field.status,
-      createdAt: field.createdAt,
-      complexName: field.complexName || "",
-      typeName: field.typeName || "",
+    const complexIdNum = Number(complexId);
+    console.log(
+      `Fetching fields for complex ${complexIdNum} from:`,
+      `https://sep490-g19-zxph.onrender.com/api/Field/complex/${complexIdNum}`
+    );
+
+    // Use the correct endpoint from Swagger: GET /api/Field/complex/{complexId}
+    const response = await apiClient.get(
+      `https://sep490-g19-zxph.onrender.com/api/Field/complex/${complexIdNum}`
+    );
+    console.log(`Fields for complex ${complexIdNum} response:`, response.data);
+
+    // Handle response - can be array or object
+    let data = response.data;
+    if (!Array.isArray(data)) {
+      if (data && Array.isArray(data.data)) {
+        data = data.data;
+      } else if (data && data.data && Array.isArray(data.data)) {
+        data = data.data;
+      } else {
+        data = [];
+      }
+    }
+
+    return data.map((field) => ({
+      fieldId: field.fieldId || field.FieldID,
+      complexId: field.complexId || field.ComplexID || complexIdNum,
+      typeId: field.typeId || field.TypeID,
+      name: field.name || field.Name,
+      size: field.size || field.Size || "",
+      grassType: field.grassType || field.GrassType || "",
+      description: field.description || field.Description || "",
+      image: field.image || field.Image || "",
+      pricePerHour: field.pricePerHour || field.PricePerHour,
+      status: field.status || field.Status || "Available",
+      createdAt: field.createdAt || field.CreatedAt,
+      complexName: field.complexName || field.ComplexName || "",
+      typeName: field.typeName || field.TypeName || "",
     }));
   } catch (error) {
+    console.error(`Error fetching fields for complex ${complexId}:`, error);
     handleApiError(error);
   }
 }
 
 export async function fetchField(fieldId) {
   try {
-    const response = await apiClient.get(`/Field/${fieldId}`);
+    const response = await apiClient.get(
+      `https://sep490-g19-zxph.onrender.com/api/Field/${fieldId}`
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -279,7 +402,23 @@ export async function fetchField(fieldId) {
 
 export async function updateField(fieldId, fieldData) {
   try {
-    const response = await apiClient.put(`/Field/${fieldId}`, fieldData);
+    // If fieldData is FormData, send as multipart/form-data
+    if (fieldData instanceof FormData) {
+      const response = await apiClient.put(
+        `https://sep490-g19-zxph.onrender.com/api/Field/${fieldId}`,
+        fieldData
+      );
+      return response.data;
+    }
+
+    // Otherwise, send as JSON (for backward compatibility)
+    const response = await apiClient.put(
+      `https://sep490-g19-zxph.onrender.com/api/Field/${fieldId}`,
+      fieldData,
+      {
+        headers: buildMultipartHeaders(),
+      }
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -288,7 +427,9 @@ export async function updateField(fieldId, fieldData) {
 
 export async function deleteField(fieldId) {
   try {
-    const response = await apiClient.delete(`/Field/${fieldId}`);
+    const response = await apiClient.delete(
+      `https://sep490-g19-zxph.onrender.com/api/Field/${fieldId}`
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -298,11 +439,14 @@ export async function deleteField(fieldId) {
 // FieldPrice API functions
 export async function createFieldPrice(priceData) {
   try {
-    const response = await apiClient.post("/FieldPrice", {
-      fieldId: priceData.fieldId,
-      slotId: priceData.slotId,
-      price: priceData.price,
-    });
+    const response = await apiClient.post(
+      "https://sep490-g19-zxph.onrender.com/api/FieldPrice",
+      {
+        fieldId: priceData.fieldId,
+        slotId: priceData.slotId,
+        price: priceData.price,
+      }
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -311,7 +455,9 @@ export async function createFieldPrice(priceData) {
 
 export async function fetchFieldPrices() {
   try {
-    const response = await apiClient.get("/FieldPrice");
+    const response = await apiClient.get(
+      "https://sep490-g19-zxph.onrender.com/api/FieldPrice"
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -320,7 +466,9 @@ export async function fetchFieldPrices() {
 
 export async function fetchFieldPrice(id) {
   try {
-    const response = await apiClient.get(`/FieldPrice/${id}`);
+    const response = await apiClient.get(
+      `https://sep490-g19-zxph.onrender.com/api/FieldPrice/${id}`
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -329,7 +477,10 @@ export async function fetchFieldPrice(id) {
 
 export async function updateFieldPrice(id, priceData) {
   try {
-    const response = await apiClient.put(`/FieldPrice/${id}`, priceData);
+    const response = await apiClient.put(
+      `https://sep490-g19-zxph.onrender.com/api/FieldPrice/${id}`,
+      priceData
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -338,7 +489,9 @@ export async function updateFieldPrice(id, priceData) {
 
 export async function deleteFieldPrice(id) {
   try {
-    const response = await apiClient.delete(`/FieldPrice/${id}`);
+    const response = await apiClient.delete(
+      `https://sep490-g19-zxph.onrender.com/api/FieldPrice/${id}`
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -1393,6 +1546,10 @@ export async function fetchFields(params = {}) {
           reviewCount: 0,
           distanceKm: 0,
           isAvailableForSelectedSlot: f.status === "Available",
+          bankName: f.bankName || "",
+          bankShortCode: f.bankShortCode || "",
+          accountNumber: f.accountNumber || "",
+          accountHolder: f.accountHolder || "",
         }))
         .filter(
           (item) =>
@@ -1437,6 +1594,10 @@ export async function fetchFields(params = {}) {
         reviewCount: 0,
         distanceKm: 0,
         isAvailableForSelectedSlot: status === "Available",
+        bankName: f.bankName || "",
+        bankShortCode: f.bankShortCode || "",
+        accountNumber: f.accountNumber || "",
+        accountHolder: f.accountHolder || "",
       };
     })
     .filter(

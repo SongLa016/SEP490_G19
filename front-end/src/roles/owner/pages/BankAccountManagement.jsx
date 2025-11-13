@@ -63,8 +63,10 @@ export default function BankAccountManagement({ isDemo = false }) {
      const loadData = useCallback(async () => {
           try {
                setLoading(true);
-               if (!isDemo && user?.id) {
-                    const accounts = await fetchOwnerBankAccounts(user.id);
+               // Get UserID from user object (OwnerID references Users(UserID))
+               const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
+               if (!isDemo && currentUserId) {
+                    const accounts = await fetchOwnerBankAccounts(Number(currentUserId));
                     setBankAccounts(accounts || []);
                } else if (isDemo) {
                     // Demo data
@@ -101,7 +103,7 @@ export default function BankAccountManagement({ isDemo = false }) {
           } finally {
                setLoading(false);
           }
-     }, [isDemo, user?.id]);
+     }, [isDemo, user?.userID || user?.UserID || user?.id || user?.userId]);
 
      useEffect(() => {
           loadData();
@@ -215,8 +217,10 @@ export default function BankAccountManagement({ isDemo = false }) {
           }
 
           try {
+               // OwnerID must reference Users(UserID) from database
+               const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
                const accountData = {
-                    ownerId: user?.id || user?.userId,
+                    ownerId: Number(currentUserId), // Ensure it's a number matching Users(UserID)
                     bankName: formData.bankName,
                     bankShortCode: formData.bankShortCode,
                     accountNumber: formData.accountNumber.replace(/\s/g, ''),
@@ -307,7 +311,9 @@ export default function BankAccountManagement({ isDemo = false }) {
           }
 
           try {
-               await setDefaultBankAccount(account.bankAccountId, user?.id || user?.userId);
+               // OwnerID must reference Users(UserID) from database
+               const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
+               await setDefaultBankAccount(account.bankAccountId, Number(currentUserId));
                await Swal.fire({
                     icon: 'success',
                     title: 'Đã đặt làm mặc định!',

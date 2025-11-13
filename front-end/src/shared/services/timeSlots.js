@@ -1,15 +1,8 @@
 // Service layer for TimeSlot API
 import axios from "axios";
 
-// Determine base URL based on environment
-const getBaseURL = () => {
-  // Force absolute backend URL to avoid dev proxy/CORS/404 issues
-  return "https://sep490-g19-zxph.onrender.com/api";
-};
-
 // Create axios instance with base configuration
 const apiClient = axios.create({
-  baseURL: getBaseURL(),
   timeout: 30000,
   headers: {
     "Content-Type": "application/json",
@@ -104,18 +97,18 @@ export async function fetchTimeSlots() {
   try {
     // Try different endpoint variations
     const endpoints = [
-      "/TimeSlot",
-      "/TimeSlots",
-      "/timeSlot",
-      "/timeSlots",
-      "/time-slot",
-      "/time-slots",
+      "https://sep490-g19-zxph.onrender.com/api/TimeSlot",
+      "https://sep490-g19-zxph.onrender.com/api/TimeSlots",
+      "https://sep490-g19-zxph.onrender.com/api/timeSlot",
+      "https://sep490-g19-zxph.onrender.com/api/timeSlots",
+      "https://sep490-g19-zxph.onrender.com/api/time-slot",
+      "https://sep490-g19-zxph.onrender.com/api/time-slots",
     ];
     let lastError = null;
 
     for (const endpoint of endpoints) {
       try {
-        console.log(`Trying endpoint: ${getBaseURL()}${endpoint}`);
+        console.log(`Trying endpoint: ${endpoint}`);
         const response = await apiClient.get(endpoint);
 
         // Handle different response structures and normalize
@@ -209,19 +202,19 @@ export async function createTimeSlot(timeSlotData) {
 
     // Try different endpoint variations
     const endpoints = [
-      "/TimeSlot",
-      "/TimeSlots",
-      "/timeSlot",
-      "/timeSlots",
-      "/time-slot",
-      "/time-slots",
+      "https://sep490-g19-zxph.onrender.com/api/TimeSlot",
+      "https://sep490-g19-zxph.onrender.com/api/TimeSlots",
+      "https://sep490-g19-zxph.onrender.com/api/timeSlot",
+      "https://sep490-g19-zxph.onrender.com/api/timeSlots",
+      "https://sep490-g19-zxph.onrender.com/api/time-slot",
+      "https://sep490-g19-zxph.onrender.com/api/time-slots",
     ];
     let response = null;
     let lastError = null;
 
     for (const endpoint of endpoints) {
       try {
-        console.log(`Trying POST endpoint: ${getBaseURL()}${endpoint}`);
+        console.log(`Trying POST endpoint: ${endpoint}`);
         response = await apiClient.post(endpoint, payload);
         console.log(`Success with POST endpoint: ${endpoint}`);
         break;
@@ -321,21 +314,19 @@ export async function updateTimeSlot(slotId, timeSlotData) {
 
     // Try different endpoint variations
     const endpoints = [
-      "/TimeSlot",
-      "/TimeSlots",
-      "/timeSlot",
-      "/timeSlots",
-      "/time-slot",
-      "/time-slots",
+      "https://sep490-g19-zxph.onrender.com/api/TimeSlot",
+      "https://sep490-g19-zxph.onrender.com/api/TimeSlots",
+      "https://sep490-g19-zxph.onrender.com/api/timeSlot",
+      "https://sep490-g19-zxph.onrender.com/api/timeSlots",
+      "https://sep490-g19-zxph.onrender.com/api/time-slot",
+      "https://sep490-g19-zxph.onrender.com/api/time-slots",
     ];
     let response = null;
     let lastError = null;
 
     for (const endpoint of endpoints) {
       try {
-        console.log(
-          `Trying PUT endpoint: ${getBaseURL()}${endpoint}/${slotId}`
-        );
+        console.log(`Trying PUT endpoint: ${endpoint}/${slotId}`);
         response = await apiClient.put(`${endpoint}/${slotId}`, payload);
         console.log(`Success with PUT endpoint: ${endpoint}`);
         break;
@@ -404,21 +395,19 @@ export async function deleteTimeSlot(slotId) {
   try {
     // Try different endpoint variations
     const endpoints = [
-      "/TimeSlot",
-      "/TimeSlots",
-      "/timeSlot",
-      "/timeSlots",
-      "/time-slot",
-      "/time-slots",
+      "https://sep490-g19-zxph.onrender.com/api/TimeSlot",
+      "https://sep490-g19-zxph.onrender.com/api/TimeSlots",
+      "https://sep490-g19-zxph.onrender.com/api/timeSlot",
+      "https://sep490-g19-zxph.onrender.com/api/timeSlots",
+      "https://sep490-g19-zxph.onrender.com/api/time-slot",
+      "https://sep490-g19-zxph.onrender.com/api/time-slots",
     ];
     let lastError = null;
     let success = false;
 
     for (const endpoint of endpoints) {
       try {
-        console.log(
-          `Trying DELETE endpoint: ${getBaseURL()}${endpoint}/${slotId}`
-        );
+        console.log(`Trying DELETE endpoint: ${endpoint}/${slotId}`);
         await apiClient.delete(`${endpoint}/${slotId}`);
         console.log(`Success with DELETE endpoint: ${endpoint}`);
         success = true;
