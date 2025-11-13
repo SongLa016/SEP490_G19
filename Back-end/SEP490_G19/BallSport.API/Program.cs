@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,12 +23,10 @@ var config = builder.Configuration;
 // ===================== CONTROLLERS + SWAGGER =====================
 services.AddControllers();
 services.AddEndpointsApiExplorer();
-
 services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "BallSport API", Version = "v1" });
 
-    // Thêm JWT Bearer vào Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -57,15 +56,19 @@ services.AddSwaggerGen(c =>
 // ===================== CORS =====================
 services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowAll", builder =>
     {
-        policy
-            .AllowAnyOrigin()
+        builder
+            .WithOrigins(
+                "http://localhost:3000",
+                "https://localhost:3000",
+                "https://sep490-g19-zxph.onrender.com"
+            )
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials(); // cần bật nếu dùng cookie
     });
 });
-
 
 // ===================== DATABASE =====================
 services.AddDbContext<Sep490G19v1Context>(options =>
@@ -132,46 +135,42 @@ var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
 services.AddSingleton(smtpSettings);
 services.AddTransient<EmailService>();
 
-// ===================== AUTHENTICATION =====================
-
-// --- JWT ---
-services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = config["JwtSettings:Issuer"],
-            ValidAudience = config["JwtSettings:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(config["JwtSettings:SecretKey"]))
-        };
-    });
-
-// --- Google Auth ---
+// ===================== AUTHENTICATION (JWT + Google + Cookie) =====================
 var googleSection = config.GetSection("Authentication:Google");
 var googleClientId = googleSection["ClientId"];
 var googleClientSecret = googleSection["ClientSecret"];
 
-if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
+services.AddAuthentication(options =>
 {
-    services.AddAuthentication(options =>
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-    })
-    .AddCookie()
-    .AddGoogle(options =>
-    {
-        options.ClientId = googleClientId;
-        options.ClientSecret = googleClientSecret;
-        options.CallbackPath = "/signin-google";
-    });
-}
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = config["JwtSettings:Issuer"],
+        ValidAudience = config["JwtSettings:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(config["JwtSettings:SecretKey"]))
+    };
+})
+.AddCookie(options =>
+{
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+})
+.AddGoogle(options =>
+{
+    options.ClientId = googleClientId;
+    options.ClientSecret = googleClientSecret;
+    options.CallbackPath = "/signin-google";
+});
 
 // ===================== BUILD APP =====================
 var app = builder.Build();
@@ -188,11 +187,16 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-// Nếu test local bằng HTTP → có thể tắt HTTPS redirect
+// Nếu test local bằng HTTP → comment HTTPS redirect
 // app.UseHttpsRedirection();
-app.UseRouting();
 
+app.UseRouting();
 app.UseCors("AllowAll");
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 app.UseAuthentication();
 app.UseAuthorization();
