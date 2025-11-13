@@ -61,11 +61,12 @@ services.AddCors(options =>
         builder
             .WithOrigins(
                 "http://localhost:3000",
+                "https://localhost:3000",
                 "https://sep490-g19-zxph.onrender.com"
             )
             .AllowAnyHeader()
-            .AllowAnyMethod();
-            // .AllowCredentials(); // bỏ nếu dùng JWT Bearer
+            .AllowAnyMethod()
+            .AllowCredentials(); // cần bật nếu dùng cookie
     });
 });
 
