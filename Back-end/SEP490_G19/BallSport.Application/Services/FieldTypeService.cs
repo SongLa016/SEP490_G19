@@ -1,57 +1,105 @@
-﻿using BallSport.Application.DTOs;
+﻿using System;
+using BallSport.Application.DTOs;
+using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
-using BallSport.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
 
-namespace BallSport.Application.Services
+public interface IFieldTypeService
 {
-    public class FieldTypeService
+    Task<List<FieldTypeReadDTO>> GetAllAsync();
+    Task<FieldTypeReadDTO?> GetByIdAsync(int typeId);
+    Task<FieldTypeReadDTO> CreateAsync(FieldTypeDTO dto, int ownerId);
+    Task<FieldTypeReadDTO?> UpdateAsync(int typeId, FieldTypeDTO dto, int ownerId);
+    Task DeleteAsync(int typeId, int ownerId);
+}
+
+public class FieldTypeService : IFieldTypeService
+{
+    private readonly IFieldTypeRepository _repo;
+    private readonly Sep490G19v1Context _context;
+
+    public FieldTypeService(IFieldTypeRepository repo, Sep490G19v1Context context)
     {
-        private readonly FieldTypesRepository _repository;
+        _repo = repo;
+        _context = context;
+    }
 
-        public FieldTypeService(FieldTypesRepository repository)
+    public async Task<List<FieldTypeReadDTO>> GetAllAsync()
+    {
+        var list = await _repo.GetAllAsync();
+        return list.Select(ft => new FieldTypeReadDTO
         {
-            _repository = repository;
-        }
+            TypeId = ft.TypeId,
+            TypeName = ft.TypeName
+        }).ToList();
+    }
 
-        // 📌 Thêm loại sân
-        public async Task<FieldTypeDTO> AddFieldTypeAsync(FieldTypeDTO dto)
+    public async Task<FieldTypeReadDTO?> GetByIdAsync(int typeId)
+    {
+        var ft = await _repo.GetByIdAsync(typeId);
+        if (ft == null) return null;
+        return new FieldTypeReadDTO
         {
-            var type = new FieldType
-            {
-                TypeName = dto.TypeName
-            };
+            TypeId = ft.TypeId,
+            TypeName = ft.TypeName
+        };
+    }
 
-            var created = await _repository.AddFieldTypeAsync(type);
+    public async Task<FieldTypeReadDTO> CreateAsync(FieldTypeDTO dto, int ownerId)
+    {
+        // Owner check: chỉ cho phép thêm kiểu sân nếu owner có ít nhất 1 sân
+        var ownsField = await _context.Fields
+            .Include(f => f.Complex)
+            .AnyAsync(f => f.Complex.OwnerId == ownerId);
 
-            return new FieldTypeDTO
-            {
-                TypeId = created.TypeId,
-                TypeName = created.TypeName
-            };
-        }
+        if (!ownsField)
+            throw new UnauthorizedAccessException("Bạn không có quyền thêm kiểu sân.");
 
-        // 📌 Lấy tất cả loại sân
-        public async Task<List<FieldTypeDTO>> GetAllFieldTypesAsync()
+        var entity = new FieldType { TypeName = dto.TypeName };
+        await _repo.AddAsync(entity);
+
+        return new FieldTypeReadDTO
         {
-            var types = await _repository.GetAllFieldTypesAsync();
-            return types.Select(t => new FieldTypeDTO
-            {
-                TypeId = t.TypeId,
-                TypeName = t.TypeName
-            }).ToList();
-        }
+            TypeId = entity.TypeId,
+            TypeName = entity.TypeName
+        };
+    }
 
-        // 📌 Lấy chi tiết 1 loại sân
-        public async Task<FieldTypeDTO?> GetFieldTypeByIdAsync(int typeId)
+    public async Task<FieldTypeReadDTO?> UpdateAsync(int typeId, FieldTypeDTO dto, int ownerId)
+    {
+        var entity = await _repo.GetByIdAsync(typeId);
+        if (entity == null) return null;
+
+        // Owner check: chỉ update nếu có sân thuộc type này mà owner sở hữu
+        var ownsField = await _context.Fields
+            .Include(f => f.Complex)
+            .AnyAsync(f => f.TypeId == typeId && f.Complex.OwnerId == ownerId);
+
+        if (!ownsField)
+            throw new UnauthorizedAccessException("Bạn không có quyền sửa kiểu sân này.");
+
+        entity.TypeName = dto.TypeName;
+        await _repo.UpdateAsync(entity);
+
+        return new FieldTypeReadDTO
         {
-            var type = await _repository.GetFieldTypeByIdAsync(typeId);
-            if (type == null) return null;
+            TypeId = entity.TypeId,
+            TypeName = entity.TypeName
+        };
+    }
 
-            return new FieldTypeDTO
-            {
-                TypeId = type.TypeId,
-                TypeName = type.TypeName
-            };
-        }
+    public async Task DeleteAsync(int typeId, int ownerId)
+    {
+        var entity = await _repo.GetByIdAsync(typeId);
+        if (entity == null) return;
+
+        var ownsField = await _context.Fields
+            .Include(f => f.Complex)
+            .AnyAsync(f => f.TypeId == typeId && f.Complex.OwnerId == ownerId);
+
+        if (!ownsField)
+            throw new UnauthorizedAccessException("Bạn không có quyền xóa kiểu sân này.");
+
+        await _repo.DeleteAsync(entity);
     }
 }

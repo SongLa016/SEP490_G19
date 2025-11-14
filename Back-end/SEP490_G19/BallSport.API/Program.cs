@@ -21,7 +21,11 @@ var services = builder.Services;
 var config = builder.Configuration;
 
 // ===================== CONTROLLERS + SWAGGER =====================
-services.AddControllers();
+services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new TimeOnlyJsonConverter());
+    });
 services.AddEndpointsApiExplorer();
 services.AddSwaggerGen(c =>
 {
@@ -100,7 +104,8 @@ services.AddScoped<PlayerBankAccountService>();
 // --- Field-related ---
 services.AddScoped<FieldRepository>();
 services.AddScoped<FieldService>();
-services.AddScoped<FieldTypesRepository>();
+builder.Services.AddScoped<IFieldTypeRepository, FieldTypeRepository>();
+builder.Services.AddScoped<IFieldTypeService, FieldTypeService>();
 services.AddScoped<FieldTypeService>();
 services.AddScoped<FieldComplexRepository>();
 services.AddScoped<FieldComplexService>();
@@ -110,7 +115,10 @@ services.AddScoped<FieldScheduleRepository>();
 services.AddScoped<FieldScheduleService>();
 services.AddScoped<FieldPriceRepository>();
 services.AddScoped<FieldPriceService>();
-services.AddScoped<TimeSlotRepository>();
+builder.Services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
+builder.Services.AddScoped<ITimeSlotService, TimeSlotService>();
+builder.Services.AddScoped<IFieldPriceRepository, FieldPriceRepository>();
+builder.Services.AddScoped<IFieldPriceService, FieldPriceService>();
 services.AddScoped<TimeSlotService>();
 
 // --- Community module ---
@@ -119,7 +127,7 @@ services.AddScoped<ICommentRepository, CommentRepository>();
 services.AddScoped<IPostLikeRepository, PostLikeRepository>();
 services.AddScoped<INotificationRepository, NotificationRepository>();
 services.AddScoped<IReportRepository, ReportRepository>();
-
+services.AddScoped<ITimeSlotService, TimeSlotService>();
 services.AddScoped<IPostService, PostService>();
 services.AddScoped<ICommentService, CommentService>();
 services.AddScoped<INotificationService, NotificationService>();

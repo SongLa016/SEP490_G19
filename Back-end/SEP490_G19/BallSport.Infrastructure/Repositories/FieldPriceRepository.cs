@@ -1,68 +1,58 @@
-﻿using BallSport.Infrastructure;
-using BallSport.Infrastructure.Data;
+﻿using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace BallSport.Infrastructure.Repositories
+public interface IFieldPriceRepository
 {
-    public class FieldPriceRepository
+    Task<List<FieldPrice>> GetAllAsync();
+    Task<FieldPrice?> GetByIdAsync(int priceId);
+    Task AddAsync(FieldPrice fieldPrice);
+    Task UpdateAsync(FieldPrice fieldPrice);
+    Task DeleteAsync(FieldPrice fieldPrice);
+}
+
+public class FieldPriceRepository : IFieldPriceRepository
+{
+    private readonly Sep490G19v1Context _context;
+
+    public FieldPriceRepository(Sep490G19v1Context context)
     {
-        private readonly Sep490G19v1Context _context;
+        _context = context;
+    }
 
-        public FieldPriceRepository(Sep490G19v1Context context)
-        {
-            _context = context;
-        }
+    public async Task<List<FieldPrice>> GetAllAsync()
+    {
+        return await _context.FieldPrices
+            .Include(fp => fp.Field)
+            .ThenInclude(f => f.Complex)
+            .Include(fp => fp.Slot)
+            .ToListAsync();
+    }
 
-        // Lấy tất cả giá sân theo slot
-        public async Task<List<FieldPrice>> GetAllAsync()
-        {
-            return await _context.FieldPrices
-                .Include(fp => fp.Slot)
-                .Include(fp => fp.Field)
-                .ToListAsync();
-        }
+    public async Task<FieldPrice?> GetByIdAsync(int priceId)
+    {
+        return await _context.FieldPrices
+            .Include(fp => fp.Field)
+            .ThenInclude(f => f.Complex)
+            .Include(fp => fp.Slot)
+            .FirstOrDefaultAsync(fp => fp.PriceId == priceId);
+    }
 
-        // Lấy theo id
-        public async Task<FieldPrice?> GetByIdAsync(int id)
-        {
-            return await _context.FieldPrices
-                .Include(fp => fp.Slot)
-                .Include(fp => fp.Field)
-                .FirstOrDefaultAsync(fp => fp.PriceId == id);
-        }
+    public async Task AddAsync(FieldPrice fieldPrice)
+    {
+        _context.FieldPrices.Add(fieldPrice);
+        await _context.SaveChangesAsync();
+    }
 
-        // Thêm mới
-        public async Task<FieldPrice> AddAsync(FieldPrice price)
-        {
-            _context.FieldPrices.Add(price);
-            await _context.SaveChangesAsync();
-            return price;
-        }
+    public async Task UpdateAsync(FieldPrice fieldPrice)
+    {
+        _context.FieldPrices.Update(fieldPrice);
+        await _context.SaveChangesAsync();
+    }
 
-        // Cập nhật
-        public async Task<bool> UpdateAsync(FieldPrice price)
-        {
-            var existing = await _context.FieldPrices.FindAsync(price.PriceId);
-            if (existing == null) return false;
-
-            existing.Price = price.Price;
-            existing.SlotId = price.SlotId;
-            existing.FieldId = price.FieldId;
-
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        // Xóa
-        public async Task<bool> DeleteAsync(int id)
-        {
-            var item = await _context.FieldPrices.FindAsync(id);
-            if (item == null) return false;
-
-            _context.FieldPrices.Remove(item);
-            await _context.SaveChangesAsync();
-            return true;
-        }
+    public async Task DeleteAsync(FieldPrice fieldPrice)
+    {
+        _context.FieldPrices.Remove(fieldPrice);
+        await _context.SaveChangesAsync();
     }
 }

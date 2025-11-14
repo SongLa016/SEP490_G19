@@ -1,60 +1,93 @@
-﻿using BallSport.Application.DTOs;
-using BallSport.Application.Services;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using BallSport.Application.DTOs;
 
-namespace BallSport.API.Controllers
+[Authorize]
+[ApiController]
+[Route("api/[controller]")]
+public class FieldPriceController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class FieldPriceController : ControllerBase
+    private readonly IFieldPriceService _service;
+
+    public FieldPriceController(IFieldPriceService service)
     {
-        private readonly FieldPriceService _service;
+        _service = service;
+    }
 
-        public FieldPriceController(FieldPriceService service)
+    private int GetOwnerId()
+    {
+        var ownerIdClaim = User.FindFirst("UserID");
+        if (ownerIdClaim == null) throw new UnauthorizedAccessException("Không tìm thấy OwnerId");
+        return int.Parse(ownerIdClaim.Value);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        int ownerId = GetOwnerId();
+        var list = await _service.GetAllAsync(ownerId);
+        return Ok(list);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        int ownerId = GetOwnerId();
+        var item = await _service.GetByIdAsync(ownerId, id);
+        if (item == null) return NotFound();
+        return Ok(item);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Add([FromBody] FieldPriceDTO dto)
+    {
+        int ownerId = GetOwnerId();
+        try
         {
-            _service = service;
+            // Service trả về entity vừa thêm
+            var added = await _service.AddAsync(ownerId, dto);
+
+            // Trả về 201 Created + object vừa tạo
+            return CreatedAtAction(nameof(GetById), new { id = added.PriceId }, added);
         }
-
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
+        catch (UnauthorizedAccessException ex)
         {
-            var result = await _service.GetAllAsync();
-            return Ok(result);
+            return Forbid(ex.Message);
         }
-
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        catch (Exception ex)
         {
-            var result = await _service.GetByIdAsync(id);
-            if (result == null) return NotFound();
-            return Ok(result);
+            return BadRequest(ex.Message);
         }
+    }
 
-        [HttpPost]
-        public async Task<IActionResult> Create(FieldPriceDTO dto)
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, [FromBody] FieldPriceDTO dto)
+    {
+        int ownerId = GetOwnerId();
+        try
         {
-            var result = await _service.AddAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = result.PriceId }, result);
+            await _service.UpdateAsync(ownerId, id, dto);
+            return Ok();
         }
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, FieldPriceDTO dto)
+        catch (UnauthorizedAccessException ex)
         {
-            if (id != dto.PriceId) return BadRequest("ID mismatch");
-
-            var success = await _service.UpdateAsync(dto);
-            if (!success) return NotFound();
-
-            return NoContent();
+            return Forbid(ex.Message);
         }
+    }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        int ownerId = GetOwnerId();
+        try
         {
-            var success = await _service.DeleteAsync(id);
-            if (!success) return NotFound();
-
-            return NoContent();
+            await _service.DeleteAsync(ownerId, id);
+            return Ok();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
         }
     }
 }

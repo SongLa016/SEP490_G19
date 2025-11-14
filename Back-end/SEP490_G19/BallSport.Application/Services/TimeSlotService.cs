@@ -1,83 +1,153 @@
 ﻿using BallSport.Application.DTOs;
+using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace BallSport.Application.Services
 {
-    public class TimeSlotService
+    public interface ITimeSlotService
     {
-        private readonly TimeSlotRepository _repo;
+        Task<List<TimeSlotReadDTO>> GetAllAsync(int ownerId);
+        Task<TimeSlotReadDTO?> GetByIdAsync(int slotId, int ownerId);
+        Task<TimeSlotReadDTO> CreateAsync(TimeSlotDTO dto, int ownerId);
+        Task<TimeSlotReadDTO?> UpdateAsync(int slotId, TimeSlotDTO dto, int ownerId);
+        Task<bool> DeleteAsync(int slotId, int ownerId);
+    }
 
-        public TimeSlotService(TimeSlotRepository repo)
+    public class TimeSlotService : ITimeSlotService
+    {
+        private readonly ITimeSlotRepository _repo;
+        private readonly Sep490G19v1Context _context;
+
+        public TimeSlotService(ITimeSlotRepository repo, Sep490G19v1Context context)
         {
             _repo = repo;
+            _context = context;
         }
 
-        public async Task<List<TimeSlotDTO>> GetAllAsync()
+        public async Task<List<TimeSlotReadDTO>> GetAllAsync(int ownerId)
         {
-            var list = await _repo.GetAllAsync();
-            return list.Select(s => new TimeSlotDTO
+            var slots = await _repo.GetAllByOwnerAsync(ownerId);
+            return slots.Select(ts => new TimeSlotReadDTO
             {
-                SlotId = s.SlotId,
-                SlotName = s.SlotName,
-                StartTime = s.StartTime,
-                EndTime = s.EndTime
+                SlotId = ts.SlotId,
+                SlotName = ts.SlotName,
+                FieldId = ts.FieldId,
+                StartTime = ts.StartTime,
+                EndTime = ts.EndTime
             }).ToList();
         }
 
-        public async Task<TimeSlotDTO?> GetByIdAsync(int id)
+        public async Task<TimeSlotReadDTO?> GetByIdAsync(int slotId, int ownerId)
         {
-            var s = await _repo.GetByIdAsync(id);
-            if (s == null) return null;
-
-            return new TimeSlotDTO
+            var ts = await _repo.GetByIdAsync(slotId, ownerId);
+            if (ts == null) return null;
+            return new TimeSlotReadDTO
             {
-                SlotId = s.SlotId,
-                SlotName = s.SlotName,
-                StartTime = s.StartTime,
-                EndTime = s.EndTime
+                SlotId = ts.SlotId,
+                SlotName = ts.SlotName,
+                FieldId = ts.FieldId,
+                StartTime = ts.StartTime,
+                EndTime = ts.EndTime
             };
         }
 
-        public async Task<TimeSlotDTO> AddAsync(TimeSlotDTO dto)
+        public async Task<TimeSlotReadDTO> CreateAsync(TimeSlotDTO dto, int ownerId)
         {
+            // Kiểm tra quyền trên Field
+            var field = await _context.Fields
+                .Include(f => f.Complex)
+                .FirstOrDefaultAsync(f => f.FieldId == dto.FieldId && f.Complex.OwnerId == ownerId);
+
+            if (field == null)
+                throw new UnauthorizedAccessException("Bạn không có quyền thêm slot cho sân này.");
+
+            // --- Check trùng giờ trong cùng Field ---
+            var exists = await _context.TimeSlots
+                .AnyAsync(ts => ts.FieldId == dto.FieldId &&
+                                ts.StartTime == dto.StartTime &&
+                                ts.EndTime == dto.EndTime);
+            if (exists)
+                throw new Exception("Sân này đã có slot trùng giờ. Vui lòng chọn khung giờ khác.");
+            //Check starttime slot 2 > endtime của slot 1
+            var overlap = await _context.TimeSlots
+            .AnyAsync(ts => ts.FieldId == dto.FieldId &&
+                    ts.StartTime < dto.EndTime &&
+                    ts.EndTime > dto.StartTime);
+
+            if (overlap)
+                throw new Exception("Khung giờ này chồng lấn với slot khác của sân.");
+
             var slot = new TimeSlot
             {
                 SlotName = dto.SlotName,
-                StartTime = dto.StartTime,
-                EndTime = dto.EndTime
-            };
-            var created = await _repo.AddAsync(slot);
-
-            dto.SlotId = created.SlotId;
-            return dto;
-        }
-
-        public async Task<TimeSlotDTO?> UpdateAsync(TimeSlotDTO dto)
-        {
-            var slot = new TimeSlot
-            {
-                SlotId = dto.SlotId,
-                SlotName = dto.SlotName,
+                FieldId = dto.FieldId,
                 StartTime = dto.StartTime,
                 EndTime = dto.EndTime
             };
 
-            var updated = await _repo.UpdateAsync(slot);
-            if (updated == null) return null;
+            await _repo.AddAsync(slot);
 
-            return new TimeSlotDTO
+            return new TimeSlotReadDTO
             {
-                SlotId = updated.SlotId,
-                SlotName = updated.SlotName,
-                StartTime = updated.StartTime,
-                EndTime = updated.EndTime
+                SlotId = slot.SlotId,
+                SlotName = slot.SlotName,
+                FieldId = slot.FieldId,
+                StartTime = slot.StartTime,
+                EndTime = slot.EndTime
             };
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<TimeSlotReadDTO?> UpdateAsync(int slotId, TimeSlotDTO dto, int ownerId)
         {
-            return await _repo.DeleteAsync(id);
+            var slot = await _repo.GetByIdAsync(slotId, ownerId);
+            if (slot == null) return null;
+
+            // --- Check trùng giờ trong cùng Field, trừ chính slot đang update ---
+            var exists = await _context.TimeSlots
+                .AnyAsync(ts => ts.FieldId == dto.FieldId &&
+                                ts.SlotId != slotId &&
+                                ts.StartTime == dto.StartTime &&
+                                ts.EndTime == dto.EndTime);
+            if (exists)
+                throw new Exception("Sân này đã có slot trùng giờ. Vui lòng chọn khung giờ khác.");
+
+            //Check starttime slot 2 > endtime của slot 1
+            var overlap = await _context.TimeSlots
+             .AnyAsync(ts => ts.FieldId == dto.FieldId &&
+                    ts.SlotId != slotId &&
+                    ts.StartTime < dto.EndTime &&
+                    ts.EndTime > dto.StartTime);
+
+            if (overlap)
+                throw new Exception("Khung giờ này trùng với slot khác của sân. Vui lòng chọn giờ khác.");
+
+            slot.SlotName = dto.SlotName;
+            slot.StartTime = dto.StartTime;
+            slot.EndTime = dto.EndTime;
+            slot.FieldId = dto.FieldId;
+
+            await _repo.UpdateAsync(slot);
+
+            return new TimeSlotReadDTO
+            {
+                SlotId = slot.SlotId,
+                SlotName = slot.SlotName,
+                FieldId = slot.FieldId,
+                StartTime = slot.StartTime,
+                EndTime = slot.EndTime
+            };
+        }
+
+        public async Task<bool> DeleteAsync(int slotId, int ownerId)
+        {
+            var slot = await _repo.GetByIdAsync(slotId, ownerId);
+            if (slot == null) return false;
+
+            await _repo.DeleteAsync(slot);
+            return true;
         }
     }
+
 }

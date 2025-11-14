@@ -82,7 +82,12 @@ public partial class Sep490G19v1Context : DbContext
     public DbSet<FieldImage> FieldImages { get; set; }
 
      protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {}
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseSqlServer("Server=tcp:ballsport-server.database.windows.net,1433;Initial Catalog=SEP490_G19V1;Persist Security Info=False;User ID=adminsql;Password=Admin@12345;Encrypt=True;TrustServerCertificate=False;MultipleActiveResultSets=False");
+        }
+    }
 
 
 
