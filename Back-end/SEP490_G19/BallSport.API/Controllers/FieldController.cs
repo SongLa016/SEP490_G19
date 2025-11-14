@@ -19,8 +19,13 @@ namespace BallSport.API.Controllers
         [HttpPost]
         public async Task<IActionResult> AddField([FromBody] FieldDTO dto)
         {
+<<<<<<< Updated upstream
             if (dto == null)
                 return BadRequest("Invalid data.");
+=======
+            var ownerIdClaim = User.FindFirst("UserID");
+            if (ownerIdClaim == null) return Unauthorized("Không tìm thấy OwnerId trong token.");
+>>>>>>> Stashed changes
 
             var result = await _fieldService.AddFieldAsync(dto);
             return CreatedAtAction(nameof(GetFieldById), new { fieldId = result.FieldId }, result);
@@ -50,7 +55,7 @@ namespace BallSport.API.Controllers
 
         // UPDATE
         [HttpPut("{fieldId}")]
-        public async Task<IActionResult> UpdateField(int fieldId, [FromBody] FieldDTO dto)
+        public async Task<IActionResult> UpdateField(int fieldId, [FromForm] FieldDTO dto)
         {
             if (dto == null || fieldId != dto.FieldId)
                 return BadRequest("Invalid data.");
@@ -61,6 +66,7 @@ namespace BallSport.API.Controllers
 
             return Ok(updatedField);
         }
+
 
         // DELETE
         [HttpDelete("{fieldId}")]

@@ -1,21 +1,46 @@
-﻿using BallSport.Application.DTOs;
+﻿
+using BallSport.Application.DTOs;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Http;
 
 namespace BallSport.Application.Services
 {
     public class FieldService
     {
         private readonly FieldRepository _fieldRepository;
+        private readonly OwnerBankAccountRepository _bankAccountRepository;
 
-        public FieldService(FieldRepository fieldRepository)
+        public FieldService(FieldRepository fieldRepository, OwnerBankAccountRepository bankAccountRepository)
         {
             _fieldRepository = fieldRepository;
+            _bankAccountRepository = bankAccountRepository;
         }
 
-        // CREATE 
-        public async Task<FieldDTO> AddFieldAsync(FieldDTO dto)
+        // 🏟️ CREATE sân + tài khoản ngân hàng
+        public async Task<FieldResponseDTO> AddFieldAsync(FieldDTO dto, int ownerId)
         {
+            int? bankAccountId = null;
+
+            // 1️⃣ Tạo tài khoản ngân hàng nếu có
+            if (!string.IsNullOrEmpty(dto.BankName) &&
+                !string.IsNullOrEmpty(dto.AccountNumber) &&
+                !string.IsNullOrEmpty(dto.AccountHolder))
+            {
+                var bankAccount = new OwnerBankAccount
+                {
+                    OwnerId = ownerId,
+                    BankName = dto.BankName,
+                    BankShortCode = dto.BankShortCode,
+                    AccountNumber = dto.AccountNumber,
+                    AccountHolder = dto.AccountHolder,
+                    IsDefault = true
+                };
+                await _bankAccountRepository.AddOwnerBankAccountAsync(bankAccount);
+                bankAccountId = bankAccount.BankAccountId;
+            }
+
+            // 2️⃣ Tạo Field
             var field = new Field
             {
                 ComplexId = dto.ComplexId,
@@ -24,15 +49,44 @@ namespace BallSport.Application.Services
                 Size = dto.Size,
                 GrassType = dto.GrassType,
                 Description = dto.Description,
-                Image = dto.Image,
                 PricePerHour = dto.PricePerHour,
                 Status = dto.Status ?? "Available",
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.Now,
+                BankAccountId = bankAccountId
             };
+
+            // 2a️⃣ Lưu ảnh chính (MainImage)
+            if (dto.MainImage != null && dto.MainImage.Length > 0)
+            {
+                using var ms = new MemoryStream();
+                await dto.MainImage.CopyToAsync(ms);
+                field.Image = ms.ToArray();
+            }
 
             var created = await _fieldRepository.AddFieldAsync(field);
 
-            return new FieldDTO
+            // 3️⃣ Lưu ảnh phụ (ImageFiles) nếu có
+            if (dto.ImageFiles != null && dto.ImageFiles.Count > 0)
+            {
+                var imageBytesList = new List<byte[]>();
+                foreach (var file in dto.ImageFiles)
+                {
+                    if (file.Length > 0)
+                    {
+                        using var ms = new MemoryStream();
+                        await file.CopyToAsync(ms);
+                        imageBytesList.Add(ms.ToArray());
+                    }
+                }
+
+                if (imageBytesList.Count > 0)
+                {
+                    await _fieldRepository.AddFieldImagesAsync(created.FieldId, imageBytesList);
+                }
+            }
+
+            // 4️⃣ Trả về DTO
+            return new FieldResponseDTO
             {
                 FieldId = created.FieldId,
                 ComplexId = created.ComplexId,
@@ -43,15 +97,88 @@ namespace BallSport.Application.Services
                 Description = created.Description,
                 PricePerHour = created.PricePerHour,
                 Status = created.Status,
-                CreatedAt = created.CreatedAt
+                CreatedAt = created.CreatedAt,
+                BankName = dto.BankName,
+                BankShortCode = dto.BankShortCode,
+                AccountNumber = dto.AccountNumber,
+                AccountHolder = dto.AccountHolder,
+                MainImageBase64 = created.Image != null ? Convert.ToBase64String(created.Image) : null,
+                ImageFilesBase64 = created.FieldImages?.Select(f => Convert.ToBase64String(f.Image)).ToList()
             };
         }
 
-        //  Lấy tất cả sân trong khu sân
+        // 🔄 UPDATE sân + ảnh
+        public async Task<FieldResponseDTO?> UpdateFieldAsync(FieldDTO dto)
+        {
+            var existingField = await _fieldRepository.GetFieldByIdAsync(dto.FieldId);
+            if (existingField == null) return null;
+
+            // Cập nhật thông tin cơ bản
+            existingField.Name = dto.Name;
+            existingField.Size = dto.Size;
+            existingField.GrassType = dto.GrassType;
+            existingField.Description = dto.Description;
+            existingField.TypeId = dto.TypeId;
+            existingField.PricePerHour = dto.PricePerHour;
+            existingField.Status = dto.Status;
+
+            // 1️⃣ Cập nhật ảnh chính nếu có
+            if (dto.MainImage != null && dto.MainImage.Length > 0)
+            {
+                using var ms = new MemoryStream();
+                await dto.MainImage.CopyToAsync(ms);
+                existingField.Image = ms.ToArray();
+            }
+
+            // 2️⃣ Cập nhật ảnh phụ nếu có
+            if (dto.ImageFiles != null && dto.ImageFiles.Count > 0)
+            {
+                var imageBytesList = new List<byte[]>();
+                foreach (var file in dto.ImageFiles)
+                {
+                    if (file.Length > 0)
+                    {
+                        using var ms = new MemoryStream();
+                        await file.CopyToAsync(ms);
+                        imageBytesList.Add(ms.ToArray());
+                    }
+                }
+
+                if (imageBytesList.Count > 0)
+                {
+                    await _fieldRepository.AddFieldImagesAsync(existingField.FieldId, imageBytesList);
+                }
+            }
+
+            // Lưu thay đổi
+            var updated = await _fieldRepository.UpdateFieldAsync(existingField);
+
+            // Trả về DTO
+            return new FieldResponseDTO
+            {
+                FieldId = updated.FieldId,
+                ComplexId = updated.ComplexId,
+                TypeId = updated.TypeId,
+                Name = updated.Name,
+                Size = updated.Size,
+                GrassType = updated.GrassType,
+                Description = updated.Description,
+                PricePerHour = updated.PricePerHour,
+                Status = updated.Status,
+                CreatedAt = updated.CreatedAt,
+                BankName = dto.BankName,
+                BankShortCode = dto.BankShortCode,
+                AccountNumber = dto.AccountNumber,
+                AccountHolder = dto.AccountHolder,
+                MainImageBase64 = updated.Image != null ? Convert.ToBase64String(updated.Image) : null,
+                ImageFilesBase64 = updated.FieldImages?.Select(f => Convert.ToBase64String(f.Image)).ToList()
+            };
+        }
+
+        // 🧾 Lấy tất cả sân theo ComplexId
         public async Task<List<FieldDTO>> GetFieldsByComplexIdAsync(int complexId)
         {
             var fields = await _fieldRepository.GetFieldsByComplexIdAsync(complexId);
-
             return fields.Select(f => new FieldDTO
             {
                 FieldId = f.FieldId,
@@ -67,7 +194,7 @@ namespace BallSport.Application.Services
             }).ToList();
         }
 
-        //Lấy thông tin chi tiết 1 sân
+        // 🔍 Lấy chi tiết 1 sân
         public async Task<FieldDTO?> GetFieldByIdAsync(int fieldId)
         {
             var f = await _fieldRepository.GetFieldByIdAsync(fieldId);
@@ -77,9 +204,7 @@ namespace BallSport.Application.Services
             {
                 FieldId = f.FieldId,
                 ComplexId = f.ComplexId,
-                ComplexName = f.Complex?.Name,
                 TypeId = f.TypeId,
-                TypeName = f.Type?.TypeName,
                 Name = f.Name,
                 Size = f.Size,
                 GrassType = f.GrassType,
@@ -90,39 +215,7 @@ namespace BallSport.Application.Services
             };
         }
 
-        // UPDATE 
-        public async Task<FieldDTO?> UpdateFieldAsync(FieldDTO dto)
-        {
-            var existingField = await _fieldRepository.GetFieldByIdAsync(dto.FieldId);
-            if (existingField == null) return null;
-
-            existingField.Name = dto.Name;
-            existingField.Size = dto.Size;
-            existingField.GrassType = dto.GrassType;
-            existingField.Description = dto.Description;
-            existingField.TypeId = dto.TypeId;
-            existingField.PricePerHour = dto.PricePerHour;
-            existingField.Status = dto.Status;
-            existingField.Image = dto.Image;
-
-            var updated = await _fieldRepository.UpdateFieldAsync(existingField);
-
-            return new FieldDTO
-            {
-                FieldId = updated.FieldId,
-                ComplexId = updated.ComplexId,
-                TypeId = updated.TypeId,
-                Name = updated.Name,
-                Size = updated.Size,
-                GrassType = updated.GrassType,
-                Description = updated.Description,
-                PricePerHour = updated.PricePerHour,
-                Status = updated.Status,
-                CreatedAt = updated.CreatedAt
-            };
-        }
-
-        // DELETE 
+        // ❌ DELETE sân
         public async Task<bool> DeleteFieldAsync(int fieldId)
         {
             var existingField = await _fieldRepository.GetFieldByIdAsync(fieldId);

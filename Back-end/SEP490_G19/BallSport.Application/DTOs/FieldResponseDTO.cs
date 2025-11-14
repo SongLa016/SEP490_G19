@@ -6,47 +6,25 @@ using System.Threading.Tasks;
 
 namespace BallSport.Application.DTOs
 {
-    public class FieldDTO
+    public class FieldResponseDTO
     {
         public int FieldId { get; set; }
-
         public int? ComplexId { get; set; }
-
         public int? TypeId { get; set; }
-
         public string Name { get; set; } = null!;
-
         public string? Size { get; set; }
-
         public string? GrassType { get; set; }
-
         public string? Description { get; set; }
-
-<<<<<<< Updated upstream
-        public byte[]? Image { get; set; }
-
-=======
-        public IFormFile? MainImage { get; set; }          // file upload ảnh chính
-        public List<IFormFile>? ImageFiles { get; set; }
->>>>>>> Stashed changes
         public decimal? PricePerHour { get; set; }
-
         public string? Status { get; set; }
-
         public DateTime? CreatedAt { get; set; }
-<<<<<<< Updated upstream
-        public string? ComplexName { get; set; }
-        public string? TypeName { get; set; }
-=======
 
-        // 🏦 Thông tin tài khoản ngân hàng (user nhập)
         public string? BankName { get; set; }
-
-        public string ? BankShortCode {  get; set; }
+        public string? BankShortCode { get; set; }
         public string? AccountNumber { get; set; }
         public string? AccountHolder { get; set; }
-       
 
->>>>>>> Stashed changes
+        public string? MainImageBase64 { get; set; }
+        public List<string>? ImageFilesBase64 { get; set; }
     }
 }
