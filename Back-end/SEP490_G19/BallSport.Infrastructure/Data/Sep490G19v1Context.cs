@@ -81,14 +81,8 @@ public partial class Sep490G19v1Context : DbContext
     public virtual DbSet<ViolationReport> ViolationReports { get; set; }
     public DbSet<FieldImage> FieldImages { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
-        {
-            optionsBuilder.UseSqlServer("Data Source = localhost; Initial Catalog = SEP490V1; Trusted_Connection = True; User ID = sa; Password = 123; Encrypt = False; TrustServerCertificate = True"
-);
-        }
-    }
+     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {}
 
 
 
