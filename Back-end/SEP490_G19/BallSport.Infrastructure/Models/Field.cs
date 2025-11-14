@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace BallSport.Infrastructure.Models;
@@ -43,6 +42,7 @@ public partial class Field
     public virtual ICollection<FieldSchedule> FieldSchedules { get; set; } = new List<FieldSchedule>();
 
     public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
+    public virtual ICollection<FieldImage> FieldImages { get; set; } = new List<FieldImage>();
 
     public virtual FieldType? Type { get; set; }
 }

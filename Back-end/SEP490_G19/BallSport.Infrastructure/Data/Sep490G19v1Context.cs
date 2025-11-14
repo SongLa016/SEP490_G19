@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
-
+using Microsoft.Extensions.Configuration;
+using System.IO;
 namespace BallSport.Infrastructure.Data;
 
 public partial class Sep490G19v1Context : DbContext
@@ -77,8 +78,16 @@ public partial class Sep490G19v1Context : DbContext
     public virtual DbSet<UserRole> UserRoles { get; set; }
 
     public virtual DbSet<ViolationReport> ViolationReports { get; set; }
+    public DbSet<FieldImage> FieldImages { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) { }
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseSqlServer("Server=localhost;Initial Catalog=SEP490V1;Persist Security Info=False;User ID=sa;Password=123;Encrypt=True;TrustServerCertificate=True;");
+        }
+    }
+
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

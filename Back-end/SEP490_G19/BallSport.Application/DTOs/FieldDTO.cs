@@ -19,7 +19,8 @@ namespace BallSport.Application.DTOs
 
         public string? Description { get; set; }
 
-        public IFormFile? ImageFile { get; set; }
+        public IFormFile? MainImage { get; set; }          // file upload ảnh chính
+        public List<IFormFile>? ImageFiles { get; set; }
         public decimal? PricePerHour { get; set; }
 
         public string? Status { get; set; }

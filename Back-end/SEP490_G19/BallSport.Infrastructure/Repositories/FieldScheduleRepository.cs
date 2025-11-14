@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BallSport.Infrastructure.Repositories
 {
-    public class FieldScheduleRepository : IFieldScheduleRepository
+    public class FieldScheduleRepository 
     {
         private readonly Sep490G19v1Context _context;
 
