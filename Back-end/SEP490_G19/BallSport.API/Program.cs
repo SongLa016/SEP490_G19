@@ -1,38 +1,32 @@
-using BallSport.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 using BallSport.Application.Services;
+using BallSport.Application.Services.Community;
+using BallSport.Infrastructure.Data;
+using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
+using BallSport.Infrastructure.Repositories.Community;
+using BallSport.Infrastructure.Settings;
+using Banking.Application.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+var services = builder.Services;
+var config = builder.Configuration;
 
-builder.Services.AddDbContext<Sep490G19v1Context>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("MyCnn")));
-
-<<<<<<< Updated upstream
-builder.Services.AddScoped<FieldTypesRepository>();
-builder.Services.AddScoped<FieldTypeService>();
-builder.Services.AddScoped<FieldComplexRepository>();
-builder.Services.AddScoped<FieldComplexService>();
-builder.Services.AddScoped<FieldRepository>();
-builder.Services.AddScoped<FieldService>();
-builder.Services.AddScoped<DepositPolicyRepository>();
-builder.Services.AddScoped<DepositPolicyService>();
-builder.Services.AddScoped<FieldScheduleRepository>();
-builder.Services.AddScoped<FieldScheduleService>();
-builder.Services.AddScoped<FieldPriceRepository>();
-builder.Services.AddScoped<FieldPriceService>();
-builder.Services.AddScoped<TimeSlotRepository>();
-builder.Services.AddScoped<TimeSlotService>();
-=======
+// ===================== CONTROLLERS + SWAGGER =====================
+services.AddControllers();
+services.AddEndpointsApiExplorer();
 services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "BallSport API", Version = "v1" });
 
-    // Thêm JWT Bearer vào Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -59,146 +53,157 @@ services.AddSwaggerGen(c =>
     });
 });
 
-// ===================== CORS (Quan trọng) =====================
+// ===================== CORS =====================
 services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowAll", builder =>
     {
-        policy.WithOrigins(
-            "http://localhost:3000",            // React local
-            "http://localhost:5049",            // Swagger HTTP
-            "https://localhost:7062",           // Swagger HTTPS
-            "https://sep490-g19.onrender.com",  // Frontend deploy Render
-            "https://ballsport-frontend.onrender.com" // ví dụ nếu deploy React riêng
-        )
-        .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials();
+        builder
+            .WithOrigins(
+                "http://localhost:3000",
+                "https://localhost:3000",
+                "https://sep490-g19-zxph.onrender.com"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials(); // cần bật nếu dùng cookie
     });
 });
 
-// ===================== DB CONTEXT =====================
+// ===================== DATABASE =====================
 services.AddDbContext<Sep490G19v1Context>(options =>
-    options.UseSqlServer(
-        config.GetConnectionString("MyCnn"),
-        sqlOptions => sqlOptions.EnableRetryOnFailure() // tự retry khi lỗi tạm thời
-    ));
+    options.UseSqlServer(config.GetConnectionString("MyCnn")));
 
 // ===================== DEPENDENCY INJECTION =====================
-// User
+services.AddMemoryCache();
+
+// --- Core user / auth ---
 services.AddScoped<UserRepositories>();
 services.AddScoped<UserService>();
 services.AddScoped<JwtService>();
 services.AddScoped<OTPService>();
-services.AddMemoryCache();
 
-// Field related
-services.AddScoped<FieldTypesRepository>();
-services.AddScoped<FieldTypeService>();
+// --- Booking & Payment ---
+services.AddScoped<BookingService>();
+services.AddScoped<BookingFieldsRepoitory>();
+services.AddScoped<BookingCancellationRepository>();
+services.AddScoped<BookingCancellationReRepository>();
+services.AddScoped<BookingCancellationReService>();
+services.AddScoped<PaymentRepository>();
 
-services.AddScoped<FieldComplexRepository>();
-services.AddScoped<FieldComplexService>();
+// --- Bank accounts ---
+services.AddScoped<PlayerBankAccountRepository>();
+services.AddScoped<OwnerBankAccountRepository>();
+services.AddScoped<OwnerBankAccountService>();
+services.AddScoped<PlayerBankAccountService>();
 
+// --- Field-related ---
 services.AddScoped<FieldRepository>();
 services.AddScoped<FieldService>();
-
+services.AddScoped<FieldTypesRepository>();
+services.AddScoped<FieldTypeService>();
+services.AddScoped<FieldComplexRepository>();
+services.AddScoped<FieldComplexService>();
 services.AddScoped<DepositPolicyRepository>();
 services.AddScoped<DepositPolicyService>();
-
 services.AddScoped<FieldScheduleRepository>();
-services.AddScoped<IFieldScheduleRepository, FieldScheduleRepository>();
 services.AddScoped<FieldScheduleService>();
-
 services.AddScoped<FieldPriceRepository>();
 services.AddScoped<FieldPriceService>();
-
 services.AddScoped<TimeSlotRepository>();
 services.AddScoped<TimeSlotService>();
 
-// Booking
-services.AddScoped<IBookingRepository, BookingRepository>();
-services.AddScoped<BookingService>();
-// Đăng ký PayOsService cùng HttpClient
-services.AddHttpClient<PayOsService>();
-services.AddHttpClient<PaymentService>();
+// --- Community module ---
+services.AddScoped<IPostRepository, PostRepository>();
+services.AddScoped<ICommentRepository, CommentRepository>();
+services.AddScoped<IPostLikeRepository, PostLikeRepository>();
+services.AddScoped<INotificationRepository, NotificationRepository>();
+services.AddScoped<IReportRepository, ReportRepository>();
 
-services.AddScoped<IOwnerBankAccountRepository, OwnerBankAccountRepository>();
+services.AddScoped<IPostService, PostService>();
+services.AddScoped<ICommentService, CommentService>();
+services.AddScoped<INotificationService, NotificationService>();
+services.AddScoped<IReportService, ReportService>();
 
+// --- Settings ---
+builder.Services.Configure<CommunitySettings>(config.GetSection("CommunitySettings"));
+builder.Services.Configure<NotificationSettings>(config.GetSection("NotificationSettings"));
+builder.Services.Configure<ReportSettings>(config.GetSection("ReportSettings"));
 
-// Payment
-services.AddScoped<IPaymentRepository, PaymentRepository>();
-services.AddScoped<PaymentService>();
 // ===================== SMTP (Email) =====================
 var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
 services.AddSingleton(smtpSettings);
 services.AddTransient<EmailService>();
 
-// ===================== JWT AUTH =====================
-services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = config["JwtSettings:Issuer"],
-            ValidAudience = config["JwtSettings:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(config["JwtSettings:SecretKey"]))
-        };
-    });
-
-// ===================== GOOGLE AUTH (nếu có) =====================
-var googleSection = builder.Configuration.GetSection("Authentication:Google");
+// ===================== AUTHENTICATION (JWT + Google + Cookie) =====================
+var googleSection = config.GetSection("Authentication:Google");
 var googleClientId = googleSection["ClientId"];
 var googleClientSecret = googleSection["ClientSecret"];
 
-if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
+services.AddAuthentication(options =>
 {
-    services.AddAuthentication(options =>
-    {
-        options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-    })
-    .AddCookie()
-    .AddGoogle(options =>
-    {
-        options.ClientId = googleClientId;
-        options.ClientSecret = googleClientSecret;
-        options.CallbackPath = "/signin-google";
-    });
-}
-//===================== PayOS HTTP CLIENT CONFIG =====================
-services.AddHttpClient<PayOsService>(client =>
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
 {
-    var payosConfig = builder.Configuration.GetSection("PayOS");
-    client.BaseAddress = new Uri(payosConfig["BaseUrl"]);  
-    client.DefaultRequestHeaders.Add("X-API-KEY", payosConfig["ApiKey"]);
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = config["JwtSettings:Issuer"],
+        ValidAudience = config["JwtSettings:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(config["JwtSettings:SecretKey"]))
+    };
+})
+.AddCookie(options =>
+{
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+})
+.AddGoogle(options =>
+{
+    options.ClientId = googleClientId;
+    options.ClientSecret = googleClientSecret;
+    options.CallbackPath = "/signin-google";
 });
-services.AddScoped<PayOsService>();
 
-
-
->>>>>>> Stashed changes
-
+// ===================== BUILD APP =====================
 var app = builder.Build();
 
-// Cho Render tự lấy port đúng
+// ===================== DEPLOYMENT PORT =====================
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 app.Urls.Add($"http://*:{port}");
 
-// Luôn bật Swagger
+// ===================== MIDDLEWARE PIPELINE =====================
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "BallSport API v1");
+    c.RoutePrefix = "swagger";
+});
 
-app.UseHttpsRedirection();
+// Nếu test local bằng HTTP → comment HTTPS redirect
+// app.UseHttpsRedirection();
+
+app.UseRouting();
+app.UseCors("AllowAll");
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
+app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 
-// Route test
-app.MapGet("/", () => "✅ API is running on Render!");
+// Check API is running
+app.MapGet("/", () => "✅ BallSport API is running with JWT + CORS + Swagger + Community!");
 
 app.Run();

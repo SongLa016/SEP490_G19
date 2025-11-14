@@ -43,9 +43,7 @@ public partial class User
 
     public virtual ICollection<OwnerBankAccount> OwnerBankAccounts { get; set; } = new List<OwnerBankAccount>();
 
-    public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
-
-    public virtual ICollection<PayoutTransaction> PayoutTransactions { get; set; } = new List<PayoutTransaction>();
+    public virtual ICollection<PlayerBankAccount> PlayerBankAccounts { get; set; } = new List<PlayerBankAccount>();
 
     public virtual ICollection<PlayerMatchHistory> PlayerMatchHistories { get; set; } = new List<PlayerMatchHistory>();
 

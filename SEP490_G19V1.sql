@@ -147,15 +147,19 @@ CREATE TABLE Bookings (
 
 
 CREATE TABLE Payments (
-    PaymentID INT IDENTITY(1,1) PRIMARY KEY,                     -- ID thanh toán
-    BookingID INT FOREIGN KEY REFERENCES Bookings(BookingID),    -- Liên kết đặt sân
-    Amount DECIMAL(10,2) NOT NULL,                               -- Số tiền thanh toán
-    VNPayTransactionCode NVARCHAR(100) NOT NULL,                 -- Mã giao dịch từ VNPay
-    VNPayOrderInfo NVARCHAR(255),                                -- Nội dung đơn hàng
-    VNPayResponseCode NVARCHAR(10),                              -- Mã phản hồi từ VNPay
-    Status NVARCHAR(20) DEFAULT 'Pending',                       -- Trạng thái (Pending, Success, Failed)
-    CreatedAt DATETIME2 DEFAULT GETDATE(),                       -- Ngày tạo
-    UpdatedAt DATETIME2 DEFAULT GETDATE()                        -- Ngày cập nhật
+    PaymentID INT IDENTITY(1,1) PRIMARY KEY,
+    BookingID INT NOT NULL FOREIGN KEY REFERENCES Bookings(BookingID),
+    OwnerID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),       -- Ai nhận tiền (chủ sân)
+    Amount DECIMAL(10,2) NOT NULL,
+    Method NVARCHAR(50) DEFAULT 'PayOS',                            -- PayOS / VNPay / Momo
+    TransactionCode NVARCHAR(100) NULL,                             -- Mã giao dịch
+    OrderCode NVARCHAR(100) NULL,                                   -- Mã đơn hàng (unique)
+    ResponseCode NVARCHAR(20) NULL,
+    PayURL NVARCHAR(MAX) NULL,                                      -- Link thanh toán
+    Status NVARCHAR(20) DEFAULT 'Pending',                          -- Pending / Success / Failed
+    PaidAt DATETIME2 NULL,
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE()
 );
 
 
@@ -386,18 +390,75 @@ CREATE TABLE Notifications (
 
 
 
+CREATE TABLE OwnerBankAccounts (
+    BankAccountID INT IDENTITY(1,1) PRIMARY KEY,
+    OwnerID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    BankName NVARCHAR(100) NOT NULL,                -- Tên ngân hàng (VD: Vietcombank)
+    BankShortCode NVARCHAR(20),                     -- Mã ngân hàng (VD: VCB, MB, TPB)
+    AccountNumber NVARCHAR(30) NOT NULL,            -- Số tài khoản
+    AccountHolder NVARCHAR(100) NOT NULL,           -- Chủ tài khoản
+    IsDefault BIT DEFAULT 1,
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE()
+);
 
 
 
 
 
+CREATE TABLE PayoutTransactions (
+    PayoutID INT IDENTITY(1,1) PRIMARY KEY,
+    OwnerID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    PaymentID INT NOT NULL FOREIGN KEY REFERENCES Payments(PaymentID),
+    Amount DECIMAL(10,2) NOT NULL,
+    Status NVARCHAR(20) DEFAULT 'Pending',           -- Pending / Completed / Failed
+    TransactionCode NVARCHAR(100) NULL,
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    CompletedAt DATETIME2 NULL
+);
+
+
+ALTER TABLE MatchRequests
+ALTER COLUMN BookingID INT NULL;
+
+
+ALTER TABLE Fields
+ADD BankAccountID INT NULL 
+    CONSTRAINT FK_Fields_OwnerBankAccounts 
+    REFERENCES OwnerBankAccounts(BankAccountID);
 
 
 
+	ALTER TABLE Fields
+    ALTER COLUMN Image VARBINARY(MAX);
+ 
+
+ ALTER TABLE Payments
+DROP CONSTRAINT FK_Payments_OwnerID;
+
+ ALTER TABLE Payments
+DROP COLUMN OwnerID;
+
+CREATE TABLE PlayerBankAccounts (
+    BankAccountID INT IDENTITY(1,1) PRIMARY KEY,        -- ID tài khoản ngân hàng
+    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),  -- Liên kết với người dùng
+    BankName NVARCHAR(100) NOT NULL,                    -- Tên ngân hàng (VD: Vietcombank)
+    BankShortCode NVARCHAR(20),                         -- Mã ngân hàng (VD: VCB, MB, TPB)
+    AccountNumber NVARCHAR(30) NOT NULL,                -- Số tài khoản
+    AccountHolder NVARCHAR(100) NOT NULL,               -- Chủ tài khoản
+    IsDefault BIT DEFAULT 1,                             -- Có phải tài khoản mặc định không
+    CreatedAt DATETIME2 DEFAULT GETDATE(),             
+    UpdatedAt DATETIME2 DEFAULT GETDATE()
+);
 
 
+DROP TABLE IF EXISTS PayoutTransactions;
+
+ALTER TABLE Payments ADD PaymentType NVARCHAR(50);
+
+ALTER TABLE BookingCancellationRequests
+ADD FinalRefundAmount DECIMAL(18,2) NULL;
 
 
-
-
-
+ALTER TABLE FieldComplexes
+ALTER COLUMN Image VARBINARY(MAX) NULL;

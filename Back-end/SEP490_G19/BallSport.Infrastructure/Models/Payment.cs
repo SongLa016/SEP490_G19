@@ -17,8 +17,6 @@ public partial class Payment
 
     public DateTime? UpdatedAt { get; set; }
 
-    public int? OwnerId { get; set; }
-
     public string? Method { get; set; }
 
     public string? TransactionCode { get; set; }
@@ -33,9 +31,7 @@ public partial class Payment
 
     public DateTime? PaidAt { get; set; }
 
+    public string? PaymentType { get; set; }
+
     public virtual Booking? Booking { get; set; }
-
-    public virtual User? Owner { get; set; }
-
-    public virtual ICollection<PayoutTransaction> PayoutTransactions { get; set; } = new List<PayoutTransaction>();
 }

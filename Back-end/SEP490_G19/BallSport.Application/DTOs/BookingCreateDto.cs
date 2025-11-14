@@ -12,6 +12,7 @@ namespace BallSport.Application.DTOs
         public int ScheduleId { get; set; }
         public decimal TotalPrice { get; set; }
         public decimal DepositAmount { get; set; }
-        public bool? HasOpponent { get; set; }
+        public bool HasOpponent { get; set; }
+        public int? MatchRequestId { get; set; }
     }
 }

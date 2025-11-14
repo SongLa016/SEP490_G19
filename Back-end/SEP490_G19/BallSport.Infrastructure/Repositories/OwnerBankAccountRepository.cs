@@ -1,40 +1,65 @@
-﻿using BallSport.Infrastructure.Data;
+﻿
+using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
-using BallSport.Infrastructure.Repositories;
-using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-public class OwnerBankAccountRepository : IOwnerBankAccountRepository
+namespace BallSport.Infrastructure.Repositories
 {
-    private readonly Sep490G19v1Context _context;
-    public OwnerBankAccountRepository(Sep490G19v1Context context)
+    public class OwnerBankAccountRepository
     {
-        _context = context;
+        private readonly Sep490G19v1Context _context;
+
+        public OwnerBankAccountRepository(Sep490G19v1Context context)
+        {
+            _context = context;
+        }
+
+        public async Task AddOwnerBankAccountAsync(OwnerBankAccount account)
+        {
+
+            if (account.IsDefault == true)
+            {
+
+                var existingDefaults = _context.OwnerBankAccounts
+                    .Where(x => x.OwnerId == account.OwnerId && x.IsDefault == true);
+
+                foreach (var acc in existingDefaults)
+                    acc.IsDefault = false;
+            }
+
+
+            account.CreatedAt = DateTime.Now;
+            account.UpdatedAt = DateTime.Now;
+
+            _context.OwnerBankAccounts.Add(account);
+            await _context.SaveChangesAsync();
+        }
+
+        public IEnumerable<OwnerBankAccount> GetAccountsByOwner(int ownerId)
+        {
+            return _context.OwnerBankAccounts
+                .Where(x => x.OwnerId == ownerId)
+                .ToList();
+        }
+
+
+        public async Task UpdateOwnerBankAccountAsync(OwnerBankAccount account)
+        {
+            var existing = await _context.OwnerBankAccounts.FindAsync(account.BankAccountId);
+            if (existing == null) return;
+
+            existing.BankName = account.BankName;
+            existing.BankShortCode = account.BankShortCode;
+            existing.AccountNumber = account.AccountNumber;
+            existing.AccountHolder = account.AccountHolder;
+            existing.IsDefault = account.IsDefault;
+            existing.UpdatedAt = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+        }
     }
-
-    public async Task<OwnerBankAccount> GetDefaultByFieldIdAsync(int fieldId)
-    {
-        // Lấy ComplexId của sân
-        var complexId = await _context.Fields
-            .Where(f => f.FieldId == fieldId)
-            .Select(f => f.ComplexId)
-            .FirstOrDefaultAsync();
-
-        if (complexId == null)
-            return null;
-
-        // Lấy OwnerId của Complex
-        var ownerId = await _context.FieldComplexes
-            .Where(c => c.ComplexId == complexId)
-            .Select(c => c.OwnerId)
-            .FirstOrDefaultAsync();
-
-        if (ownerId == 0)
-            return null;
-
-        // Lấy tài khoản ngân hàng mặc định của chủ sân
-        return await _context.OwnerBankAccounts
-            .Where(a => a.IsDefault == true && a.OwnerId == ownerId)
-            .FirstOrDefaultAsync();
-    }
-
 }

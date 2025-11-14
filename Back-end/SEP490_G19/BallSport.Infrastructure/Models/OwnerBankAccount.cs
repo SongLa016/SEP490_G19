@@ -23,5 +23,7 @@ public partial class OwnerBankAccount
 
     public DateTime? UpdatedAt { get; set; }
 
+    public virtual ICollection<Field> Fields { get; set; } = new List<Field>();
+
     public virtual User Owner { get; set; } = null!;
 }

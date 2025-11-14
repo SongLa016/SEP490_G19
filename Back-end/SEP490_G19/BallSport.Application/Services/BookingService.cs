@@ -1,36 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using BallSport.Application.DTOs;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
+using Banking.Application.Services;
+using System;
+using System.Globalization;
+
 
 namespace BallSport.Application.Services
 {
     public class BookingService
     {
-        private readonly IBookingRepository _bookingRepo;
-        private readonly IFieldScheduleRepository _scheduleRepo;
-        private readonly PayOsService _payos;
+        private readonly BookingFieldsRepoitory _bookingRepo;
+        private readonly PaymentRepository _paymentRepo;
+        private readonly EmailService _emailRepo;
 
-        public BookingService(
-            IBookingRepository bookingRepo,
-            IFieldScheduleRepository scheduleRepo,
-            PayOsService payos)
+        public BookingService(BookingFieldsRepoitory bookingRepo, PaymentRepository paymentRepo, EmailService emailRepo)
         {
             _bookingRepo = bookingRepo;
-            _scheduleRepo = scheduleRepo;
-            _payos = payos;
+            _paymentRepo = paymentRepo;
+            _emailRepo = emailRepo;
         }
 
-        // Tạo booking mới
-        public async Task<BookingDto> CreateBookingAsync(BookingCreateDto dto)
+        public async Task<Booking> CreateBookingAsync(BookingCreateDto dto)
         {
-            var schedule = await _scheduleRepo.GetByIdAsync(dto.ScheduleId);
-            if (schedule == null) throw new Exception("Không tìm thấy lịch sân");
-            if (schedule.Status == "Booked") throw new Exception("Slot đã được đặt");
-
+            // 1. tạo booking
             var booking = new Booking
             {
                 UserId = dto.UserId,
@@ -40,84 +33,144 @@ namespace BallSport.Application.Services
                 RemainingAmount = dto.TotalPrice - dto.DepositAmount,
                 BookingStatus = "Pending",
                 PaymentStatus = "Unpaid",
-                HasOpponent = dto.HasOpponent ?? false,
-                CreatedAt = DateTime.UtcNow
+                HasOpponent = dto.HasOpponent,
+                MatchRequestId = dto.MatchRequestId,
+                CreatedAt = DateTime.Now
             };
 
-            // Lưu booking tạm thời
-            await _bookingRepo.AddAsync(booking);
-            await _bookingRepo.SaveChangesAsync();
+            booking = await _bookingRepo.AddAsync(booking);
 
-            // Tạo QR code từ PayOS
-            if (schedule.FieldId == null)
-                throw new Exception("FieldId của lịch sân chưa được gán.");
 
-            var qrCode = await _payos.CreatePaymentQRCodeAsync(
-                booking.BookingId,
-                booking.TotalPrice,
-                schedule.FieldId.Value
-            );
-            booking.Qrcode = qrCode.Code;
-            booking.QrexpiresAt = qrCode.ExpiresAt;
+            string qrUrl = await _paymentRepo.GenerateVietQRAsync(booking.BookingId);
 
-            booking.Qrcode = qrCode.Code;
-            booking.QrexpiresAt = qrCode.ExpiresAt;
-            await _bookingRepo.SaveChangesAsync();
+            // 3. lưu QR và expires vào DB (10 phút)
+            var expiresAt = DateTime.Now.AddMinutes(10);
+            await _bookingRepo.UpdateQRCodeAsync(booking.BookingId, qrUrl, expiresAt);
 
-            return MapToDto(booking);
+            // 4. cập nhật object trả về (tùy nếu bạn muốn)
+            booking.Qrcode = qrUrl;
+            booking.QrexpiresAt = expiresAt;
+
+            return booking;
         }
 
-        // Lấy tất cả booking
-        public async Task<List<BookingDto>> GetAllBookingsAsync()
-        {
-            var bookings = await _bookingRepo.GetAllAsync();
-            return bookings.Select(MapToDto).ToList();
-        }
 
-        // Callback từ PayOS
-        public async Task HandlePayOsCallbackAsync(int bookingId, string paymentStatus)
+        public async Task<bool> ConfirmPaymentManualAsync(int bookingId, decimal amount)
         {
+            // Cập nhật booking + sân
+            var success = await _bookingRepo.ConfirmPaymentManualAsync(bookingId);
+            if (!success) return false;
+
             var booking = await _bookingRepo.GetByIdAsync(bookingId);
-            if (booking == null) throw new Exception("Booking không tồn tại");
-
-            if (paymentStatus == "Success")
+            // Thêm record vào Payments
+            var payment = new Payment
             {
-                booking.PaymentStatus = "Paid";
-                booking.BookingStatus = "Confirmed";
+                BookingId = bookingId,
+                Amount = amount,
+                Status = "Paid",
+                CreatedAt = DateTime.Now,
+                Method = "Manual",
+                PaymentType = "Deposit",
+                TransactionCode = $"MANUAL-{Guid.NewGuid().ToString().Substring(0, 8)}",
+                OrderCode = $"ManualConfirm_{Guid.NewGuid().ToString().Substring(0, 8)}",
+                PayOrderInfo = $"Thanh toán cọc cho sân {booking.Schedule?.Field?.Name}, slot {booking.Schedule?.Slot?.StartTime:HH:mm}-{booking.Schedule?.Slot?.EndTime:HH:mm}",
+                PaidAt = DateTime.Now
+            };
 
-                var schedule = await _scheduleRepo.GetByIdAsync(booking.ScheduleId);
-                if (schedule != null)
-                {
-                    schedule.Status = "Booked";
-                    await _scheduleRepo.SaveChangesAsync();
-                }
-            }
-            else
+
+            if (booking?.User?.Email != null)
             {
-                booking.PaymentStatus = "Failed";
-                booking.BookingStatus = "Cancelled";
+                string subject = "Xác nhận thanh toán cọc";
+                string message = $"Chào {booking.User.FullName},<br/><br/>" +
+                                 $"Chúng tôi đã nhận được **tiền cọc {amount:C}** từ bạn cho booking sân <b>{booking.Schedule.Field.Name}</b> trong khu sân <b>{booking.Schedule.Field.Complex.Name}</b>.<br/>" +
+                                 $"Cảm ơn bạn đã lựa chọn FieldComplexes của chúng tôi.<br/><br/>" +
+                                 $"Trân trọng,<br/>{booking.Schedule.Field.Complex.Name}";
+                await _emailRepo.SendEmailAsync(booking.User.Email, subject, message);
             }
 
-            await _bookingRepo.SaveChangesAsync();
+            await _paymentRepo.AddAsync(payment);
+            return true;
         }
 
-        // Helper map entity -> DTO, xử lý nullable
-        private BookingDto MapToDto(Booking booking) => new BookingDto
-        {
-            BookingId = booking.BookingId,
-            UserId = booking.UserId,
-            ScheduleId = booking.ScheduleId,
-            TotalPrice = booking.TotalPrice,
-            DepositAmount = booking.DepositAmount,
-            RemainingAmount = booking.RemainingAmount ?? 0,
-            BookingStatus = booking.BookingStatus ?? "Pending",
-            PaymentStatus = booking.PaymentStatus ?? "Unpaid",
-            HasOpponent = booking.HasOpponent ?? false,
-            QRCode = booking.Qrcode ?? "",
-            QRExpiresAt = booking.QrexpiresAt ?? DateTime.UtcNow.AddMinutes(15),
-            CreatedAt = booking.CreatedAt ?? DateTime.UtcNow,
-            ConfirmedAt = booking.ConfirmedAt ?? DateTime.MinValue,
 
-        };
+        public async Task<string> GeneratePaymentRequestAsync(int bookingId)
+        {
+
+            var booking = await _bookingRepo.GetBookingWithBankAsync(bookingId)
+                          ?? throw new Exception("Không tìm thấy booking.");
+
+            if (booking.RemainingAmount <= 0)
+                throw new Exception("Booking này không còn tiền cần thanh toán.");
+
+            var bank = booking.Schedule.Field.BankAccount
+                       ?? throw new Exception("Không tìm thấy tài khoản ngân hàng của sân.");
+
+            string addInfo = $"Chuyen khoan tien san {booking.Schedule.Field.Name} {booking.Schedule.Slot.StartTime}";
+            string amountString = (booking.RemainingAmount ?? 0).ToString("0.##", CultureInfo.InvariantCulture);
+
+            string qrUrl = $"https://img.vietqr.io/image/{bank.BankShortCode}-{bank.AccountNumber}-compact2.jpg" +
+                           $"?amount={amountString}" +
+                           $"&addInfo={Uri.EscapeDataString(addInfo)}" +
+                           $"&accountName={Uri.EscapeDataString(bank.AccountHolder)}";
+
+
+            var expiresAt = DateTime.Now.AddMinutes(10);
+            await _bookingRepo.UpdateQRCodeAsync(booking.BookingId, qrUrl, expiresAt);
+
+
+            booking.Qrcode = qrUrl;
+            booking.QrexpiresAt = expiresAt;
+
+            return qrUrl;
+        }
+
+
+        public async Task<bool> ConfirmBookingByOwnerAsync(int bookingId)
+        {
+            // Chỉ gọi repo xác nhận, repo đã làm đủ việc update trạng thái
+            var success = await _bookingRepo.CompleteBookingAsync(bookingId);
+            if (!success)
+                throw new Exception("Xác nhận booking thất bại hoặc không tìm thấy booking.");
+            var booking = await _bookingRepo.GetByIdAsync(bookingId);
+
+            var payment = new Payment
+            {
+                BookingId = booking.BookingId,
+                Amount = booking.RemainingAmount ?? 0m,
+                Status = "Success",
+                Method = "VNPay",
+                PaymentType = "Remaining",
+                CreatedAt = DateTime.Now,
+                TransactionCode = $"MANUAL-{Guid.NewGuid().ToString().Substring(0, 8)}",
+                OrderCode = $"ManualConfirm_{Guid.NewGuid().ToString().Substring(0, 8)}",
+                PayOrderInfo = $"Thanh toán phần còn lại cho sân {booking.Schedule?.Field?.Name}, slot {booking.Schedule?.Slot?.StartTime:HH:mm}-{booking.Schedule?.Slot?.EndTime:HH:mm}"
+            };
+
+            await _paymentRepo.AddAsync(payment);
+
+
+            if (booking?.User?.Email != null && booking.Schedule != null)
+            {
+                var slot = booking.Schedule.Slot;
+                var field = booking.Schedule.Field;
+                var complex = field?.Complex;
+
+                string subject = "Booking đã được xác nhận";
+                string message = $"Chào {booking.User.FullName},<br/><br/>" +
+                                 $"Cảm ơn quý khách đã sử dụng dịch vụ của chúng tôi.<br/>" +
+                                 $"Booking slot <b>{slot?.StartTime:HH:mm} - {slot?.EndTime:HH:mm}</b> " +
+                                 $"của sân <b>{field?.Name}</b> trong khu sân <b>{complex?.Name}</b> " +
+                                 $"đã được <b>thanh toán đầy đủ</b>.<br/><br/>" +
+                                 $"Trân trọng cảm ơn,<br/>{complex?.Name}";
+
+                await _emailRepo.SendEmailAsync(booking.User.Email, subject, message);
+            }
+
+            return true;
+        }
+
+
+
+
     }
 }
