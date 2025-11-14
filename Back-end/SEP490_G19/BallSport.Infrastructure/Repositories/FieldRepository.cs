@@ -13,12 +13,17 @@ namespace BallSport.Infrastructure.Repositories
             _context = context;
         }
 
-        // 🔹 CREATE Field
+        // 🔹 CREATE Field + lưu main image
         public async Task<Field> AddFieldAsync(Field field)
         {
             _context.Fields.Add(field);
             await _context.SaveChangesAsync();
-            return field;
+
+            // Load lại Field kèm FieldImages để tránh Base64 null
+            return await _context.Fields
+                .Include(f => f.FieldImages)
+                .FirstOrDefaultAsync(f => f.FieldId == field.FieldId)
+                ?? field;
         }
 
         // 🔹 Thêm nhiều ảnh cho Field
@@ -36,7 +41,7 @@ namespace BallSport.Infrastructure.Repositories
             await _context.SaveChangesAsync();
         }
 
-        // 🔹 Lấy tất cả sân theo ComplexId (có thể include ảnh + type + complex)
+        // 🔹 Lấy tất cả sân theo ComplexId (include ảnh, type, complex)
         public async Task<List<Field>> GetFieldsByComplexIdAsync(int complexId)
         {
             return await _context.Fields
@@ -47,7 +52,7 @@ namespace BallSport.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        // 🔹 Lấy 1 sân theo ID (có include ảnh + type + complex)
+        // 🔹 Lấy 1 sân theo ID (include ảnh, type, complex)
         public async Task<Field?> GetFieldByIdAsync(int fieldId)
         {
             return await _context.Fields
@@ -57,23 +62,33 @@ namespace BallSport.Infrastructure.Repositories
                 .FirstOrDefaultAsync(f => f.FieldId == fieldId);
         }
 
-        // 🔹 UPDATE Field
+        // 🔹 UPDATE Field + main image
         public async Task<Field> UpdateFieldAsync(Field field)
         {
             _context.Fields.Update(field);
             await _context.SaveChangesAsync();
-            return field;
+
+            // Load lại để đảm bảo navigation properties
+            return await _context.Fields
+                .Include(f => f.FieldImages)
+                .FirstOrDefaultAsync(f => f.FieldId == field.FieldId)
+                ?? field;
         }
 
-        // 🔹 DELETE Field (xóa luôn ảnh phụ)
+        // 🔹 DELETE Field (xóa ảnh phụ luôn)
         public async Task<bool> DeleteFieldAsync(int fieldId)
         {
-            var field = await _context.Fields.FindAsync(fieldId);
+            var field = await _context.Fields
+                .Include(f => f.FieldImages)
+                .FirstOrDefaultAsync(f => f.FieldId == fieldId);
+
             if (field == null) return false;
 
             // Xóa ảnh phụ
-            var images = _context.FieldImages.Where(fi => fi.FieldId == fieldId);
-            _context.FieldImages.RemoveRange(images);
+            if (field.FieldImages.Any())
+            {
+                _context.FieldImages.RemoveRange(field.FieldImages);
+            }
 
             // Xóa field
             _context.Fields.Remove(field);

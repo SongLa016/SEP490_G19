@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using System.IO;
+using static System.Net.WebRequestMethods;
 namespace BallSport.Infrastructure.Data;
 
 public partial class Sep490G19v1Context : DbContext
@@ -84,7 +85,8 @@ public partial class Sep490G19v1Context : DbContext
     {
         if (!optionsBuilder.IsConfigured)
         {
-            optionsBuilder.UseSqlServer("Server=localhost;Initial Catalog=SEP490V1;Persist Security Info=False;User ID=sa;Password=123;Encrypt=True;TrustServerCertificate=True;");
+            optionsBuilder.UseSqlServer("Data Source = localhost; Initial Catalog = SEP490V1; Trusted_Connection = True; User ID = sa; Password = 123; Encrypt = False; TrustServerCertificate = True"
+);
         }
     }
 

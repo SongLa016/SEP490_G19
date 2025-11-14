@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BallSport.Infrastructure.Migrations
 {
     [DbContext(typeof(Sep490G19v1Context))]
-    [Migration("20251114133337_AddFieldImageTable")]
-    partial class AddFieldImageTable
+    [Migration("20251114174532_AddFieldImagesTable")]
+    partial class AddFieldImagesTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
