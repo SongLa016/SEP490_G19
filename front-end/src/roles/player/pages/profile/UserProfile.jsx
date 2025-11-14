@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { User, Mail, Phone, MapPin, Calendar, Users, Edit3, Save, X, Camera, Heart, Target, Shield, Clock, Star, CheckCircle, AlertCircle } from "lucide-react";
-import { Input, Button, Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Avatar, Container, Textarea, LoadingSpinner, FadeIn, SlideIn } from "../../../../shared/components/ui";
+import { Input, Button, Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Avatar, Textarea, LoadingSpinner, FadeIn, SlideIn, Section, Container } from "../../../../shared/components/ui";
 import { profileService } from "../../../../shared/index";
 import ErrorDisplay from "../../../../shared/components/ErrorDisplay";
+import BankingManagement from "./BankingManagement";
 
 export default function UserProfile({ user }) {
      const [isEditing, setIsEditing] = useState(false);
@@ -162,18 +163,19 @@ export default function UserProfile({ user }) {
      };
 
      return (
-          <div className="relative min-h-screen bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center">
-               <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/85 to-teal-50/70 backdrop-blur-[1px]" aria-hidden="true" />
+          <Section className="relative min-h-screen ">
+
+               <div className="absolute inset-0 bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center border border-teal-600 rounded-3xl" />
                <Container>
-                    <div className="relative z-10 py-10">
+                    <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
                          {/* Header */}
-                         <SlideIn direction="down" delay={100}>
-                              <div className="my-4 text-center">
-                                   <div className="inline-flex items-center justify-center w-14 h-14 bg-white/90 border border-teal-100 rounded-3xl shadow-sm mb-3">
+                         <SlideIn direction="down" delay={300}>
+                              <div className="my-2 text-center">
+                                   <div className="inline-flex items-center justify-center w-12 h-12 bg-white/90 border border-teal-300 rounded-3xl shadow-sm mb-1">
                                         <User className="w-8 h-8 text-teal-600" />
                                    </div>
-                                   <h1 className="text-4xl font-bold text-teal-900 mb-2">Hồ sơ cá nhân</h1>
-                                   <p className="text-teal-600 text-lg max-w-2xl mx-auto">
+                                   <h1 className="text-3xl font-bold text-teal-900 mb-1">Hồ sơ cá nhân</h1>
+                                   <p className="text-teal-600 text-base max-w-2xl mx-auto">
                                         Quản lý thông tin cá nhân và tài khoản của bạn với giao diện trực quan, dễ thao tác
                                    </p>
                               </div>
@@ -196,90 +198,87 @@ export default function UserProfile({ user }) {
                                    onClose={() => setInfo('')}
                               />
                          )}
-
-                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-6">
+                         <div className="flex gap-5 px-5 my-2">
                               {/* Profile Overview Card */}
                               <FadeIn delay={200}>
-                                   <div className="lg:col-span-1 ">
-                                        <Card className="sticky top-28 border border-teal-200/80 bg-white/90 shadow-xl backdrop-blur rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
-                                             <CardHeader className="text-center pb-6 border-b border-teal-100/70 bg-gradient-to-br from-teal-50 via-white to-white rounded-t-3xl">
-                                                  <div className="relative inline-block">
-                                                       <Avatar className="w-36 h-36 mx-auto mb-6 ring-4 ring-teal-100">
-                                                            {formData.avatar ? (
-                                                                 <img
-                                                                      src={formData.avatar}
-                                                                      alt="Avatar"
-                                                                      className="w-full h-full object-cover rounded-2xl"
+                                   <Card className="sticky top-28 border border-teal-200/80 bg-white/90 shadow-xl backdrop-blur rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
+                                        <CardHeader className="text-center pb-3 border-b border-teal-300/70 bg-gradient-to-br from-teal-50 via-white to-white rounded-t-3xl">
+                                             <div className="relative inline-block">
+                                                  <Avatar className="w-28 h-28 mx-auto mb-4 ring-4 ring-teal-300">
+                                                       {formData.avatar ? (
+                                                            <img
+                                                                 src={formData.avatar}
+                                                                 alt="Avatar"
+                                                                 className="w-full h-full object-cover rounded-2xl"
+                                                            />
+                                                       ) : (
+                                                            <div className="w-full h-full bg-gradient-to-br from-teal-600 to-teal-600 rounded-2xl flex items-center justify-center">
+                                                                 <User className="w-20 h-20 text-white" />
+                                                            </div>
+                                                       )}
+                                                  </Avatar>
+                                                  {isEditing && (
+                                                       <label className="absolute -bottom-2 -right-2 bg-teal-600 text-white p-3 rounded-2xl cursor-pointer hover:bg-teal-600 transition-all duration-300 shadow-lg hover:scale-105">
+                                                            <Camera className="w-5 h-5" />
+                                                            <input
+                                                                 type="file"
+                                                                 accept="image/*"
+                                                                 onChange={handleAvatarUpload}
+                                                                 className="hidden"
+                                                            />
+                                                       </label>
+                                                  )}
+                                             </div>
+                                             <CardTitle className="text-2xl font-bold text-teal-900 mb-2">{formData.fullName}</CardTitle>
+                                             <div className="flex items-center justify-center text-teal-600 mb-4">
+                                                  <Mail className="w-4 h-4 mr-1" />
+                                                  <span className="text-sm">{formData.email}</span>
+                                             </div>
+                                             <div className={`inline-flex items-center px-3 py-1 rounded-xl text-sm font-medium ${formData.status === 'Active'
+                                                  ? 'bg-green-100 text-green-600 border border-green-200'
+                                                  : 'bg-red-300 text-red-700 border border-red-200'
+                                                  }`}>
+                                                  <Shield className="w-4 h-4 mr-2" />
+                                                  {formData.roleName === 'Admin' ? 'Quản trị viên' :
+                                                       formData.roleName === 'Owner' ? 'Chủ sân' : 'Người chơi'}
+                                             </div>
+                                        </CardHeader>
+                                        <CardContent className="pt-3">
+                                             <div className="rounded-2xl border border-gray-200 bg-gray-50/90 px-2 py-2">
+                                                  <div className="flex items-start gap-3">
+                                                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-600 text-white shadow-sm">
+                                                            <Heart className="w-5 h-5" />
+                                                       </div>
+                                                       <div className="flex-1">
+                                                            <p className="text-sm font-semibold tracking-wide text-gray-700 mb-2">Giới thiệu</p>
+                                                            {isEditing ? (
+                                                                 <Textarea
+                                                                      value={formData.bio}
+                                                                      onChange={(e) => handleInputChange('bio', e.target.value)}
+                                                                      placeholder="Viết một chút về bản thân..."
+                                                                      rows={3}
+                                                                      className="rounded-xl border-gray-200 focus:border-gray-600 focus:ring-gray-600 text-sm"
                                                                  />
                                                             ) : (
-                                                                 <div className="w-full h-full bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center">
-                                                                      <User className="w-20 h-20 text-white" />
-                                                                 </div>
+                                                                 <p className="text-xs font-medium text-gray-900 leading-relaxed">
+                                                                      {formData.bio || "Chưa có giới thiệu"}
+                                                                 </p>
                                                             )}
-                                                       </Avatar>
-                                                       {isEditing && (
-                                                            <label className="absolute -bottom-2 -right-2 bg-teal-500 text-white p-3 rounded-2xl cursor-pointer hover:bg-teal-600 transition-all duration-300 shadow-lg hover:scale-105">
-                                                                 <Camera className="w-5 h-5" />
-                                                                 <input
-                                                                      type="file"
-                                                                      accept="image/*"
-                                                                      onChange={handleAvatarUpload}
-                                                                      className="hidden"
-                                                                 />
-                                                            </label>
-                                                       )}
-                                                  </div>
-                                                  <CardTitle className="text-2xl font-bold text-teal-900 mb-2">{formData.fullName}</CardTitle>
-                                                  <div className="flex items-center justify-center text-teal-600 mb-4">
-                                                       <Mail className="w-4 h-4 mr-2" />
-                                                       <span className="text-sm">{formData.email}</span>
-                                                  </div>
-                                                  <div className={`inline-flex items-center px-4 py-2 rounded-2xl text-sm font-medium ${formData.status === 'Active'
-                                                       ? 'bg-green-100 text-green-700 border border-green-200'
-                                                       : 'bg-red-100 text-red-700 border border-red-200'
-                                                       }`}>
-                                                       <Shield className="w-4 h-4 mr-2" />
-                                                       {formData.roleName === 'Admin' ? 'Quản trị viên' :
-                                                            formData.roleName === 'Owner' ? 'Chủ sân' : 'Người chơi'}
-                                                  </div>
-                                             </CardHeader>
-                                             <CardContent className="pt-6">
-                                                  <div className="space-y-4">
-                                                       <div className="flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50/90 px-4 py-3">
-                                                            <div className="flex items-center gap-3">
-                                                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500 text-white shadow-sm">
-                                                                      <Calendar className="w-5 h-5" />
-                                                                 </div>
-                                                                 <div>
-                                                                      <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Tham gia</p>
-                                                                      <p className="text-base font-semibold text-blue-900">{formatDate(formData.createdAt)}</p>
-                                                                 </div>
-                                                            </div>
-                                                       </div>
-                                                       <div className="flex items-center justify-between rounded-2xl border border-green-200 bg-green-50/90 px-4 py-3">
-                                                            <div className="flex items-center gap-3">
-                                                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-500 text-white shadow-sm">
-                                                                      <Phone className="w-5 h-5" />
-                                                                 </div>
-                                                                 <div>
-                                                                      <p className="text-xs font-semibold uppercase tracking-wide text-green-700">Số điện thoại</p>
-                                                                      <p className="text-base font-semibold text-green-900">{formData.phone || 'Chưa cập nhật'}</p>
-                                                                 </div>
-                                                            </div>
                                                        </div>
                                                   </div>
-                                             </CardContent>
-                                        </Card>
-                                   </div>
+                                             </div>
+                                        </CardContent>
+                                   </Card>
+
                               </FadeIn>
 
                               {/* Profile Details */}
                               <FadeIn delay={300}>
-                                   <div className="lg:col-span-2 space-y-6">
+                                   <div className=" space-y-6">
                                         {/* Basic Information */}
-                                        <SlideIn direction="right" delay={100}>
+                                        <SlideIn direction="right" delay={300}>
                                              <Card className="border border-teal-200/80 bg-white/95 shadow-xl backdrop-blur rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
-                                                  <CardHeader className="flex flex-row items-center justify-between py-4 px-6 border-b border-teal-100/70 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
+                                                  <CardHeader className="flex flex-row items-center justify-between py-4 px-6 border-b border-teal-300/70 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
                                                        <CardTitle className="flex items-center text-teal-900">
                                                             <div className="p-2 bg-teal-200 rounded-xl mr-3">
                                                                  <User className="w-5 h-5 text-teal-700" />
@@ -311,7 +310,7 @@ export default function UserProfile({ user }) {
                                                                       size="sm"
                                                                       onClick={handleSave}
                                                                       disabled={isLoading}
-                                                                      className="bg-teal-500 hover:bg-teal-600 rounded-xl shadow-sm"
+                                                                      className="bg-teal-600 hover:bg-teal-600 rounded-xl shadow-sm"
                                                                  >
                                                                       {isLoading ? (
                                                                            <>
@@ -328,15 +327,15 @@ export default function UserProfile({ user }) {
                                                             </div>
                                                        )}
                                                   </CardHeader>
-                                                  <CardContent className="space-y-6 p-6">
-                                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
-                                                                 <div className="flex items-start gap-3">
+                                                  <CardContent className="space-y-3 p-6">
+                                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                            <div className="rounded-2xl border border-teal-300 bg-white/80 p-2 shadow-sm">
+                                                                 <div className="flex items-start gap-2">
                                                                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
                                                                            <User className="w-5 h-5" />
                                                                       </div>
-                                                                      <div className="flex-1 space-y-2">
-                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                      <div className="flex-1 space-y-1">
+                                                                           <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Họ và tên
                                                                            </p>
                                                                            {isEditing ? (
@@ -344,7 +343,7 @@ export default function UserProfile({ user }) {
                                                                                      value={formData.fullName}
                                                                                      onChange={(e) => handleInputChange('fullName', e.target.value)}
                                                                                      placeholder="Nhập họ và tên"
-                                                                                     className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
+                                                                                     className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
                                                                                 />
                                                                            ) : (
                                                                                 <p className="text-lg font-semibold text-teal-900 leading-tight">
@@ -355,13 +354,13 @@ export default function UserProfile({ user }) {
                                                                  </div>
                                                             </div>
 
-                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                            <div className="rounded-2xl border border-teal-300 bg-white/80 p-2 shadow-sm">
                                                                  <div className="flex items-start gap-3">
-                                                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
+                                                                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
                                                                            <Mail className="w-5 h-5" />
                                                                       </div>
                                                                       <div className="flex-1 space-y-2">
-                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                           <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Email đăng nhập
                                                                            </p>
                                                                            <div className="space-y-2">
@@ -369,9 +368,9 @@ export default function UserProfile({ user }) {
                                                                                      <p className="text-base font-semibold text-teal-900">
                                                                                           {formData.email}
                                                                                      </p>
-                                                                                     <span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold ${formData.emailVerified
-                                                                                          ? 'bg-green-100 text-green-700 border border-green-200'
-                                                                                          : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                                                                                     <span className={`inline-flex items-center gap-1 rounded-2xl px-2 py-1 text-sm font-semibold ${formData.emailVerified
+                                                                                          ? 'bg-green-300 text-green-700 border border-green-200'
+                                                                                          : 'bg-yellow-300 text-yellow-700 border border-yellow-200'
                                                                                           }`}>
                                                                                           {formData.emailVerified ? (
                                                                                                <>
@@ -387,7 +386,7 @@ export default function UserProfile({ user }) {
                                                                                      </span>
                                                                                 </div>
                                                                                 {!formData.emailVerified && (
-                                                                                     <div className="rounded-xl border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
+                                                                                     <div className="rounded-xl border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
                                                                                           Email chưa được xác thực qua OTP. Vui lòng kiểm tra email để xác thực.
                                                                                      </div>
                                                                                 )}
@@ -396,13 +395,13 @@ export default function UserProfile({ user }) {
                                                                  </div>
                                                             </div>
 
-                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                            <div className="rounded-2xl border border-teal-300 bg-white/80 p-2 shadow-sm">
                                                                  <div className="flex items-start gap-3">
                                                                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
                                                                            <Phone className="w-5 h-5" />
                                                                       </div>
                                                                       <div className="flex-1 space-y-2">
-                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                           <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Số điện thoại
                                                                            </p>
                                                                            {isEditing ? (
@@ -410,7 +409,7 @@ export default function UserProfile({ user }) {
                                                                                      value={formData.phone}
                                                                                      onChange={(e) => handleInputChange('phone', e.target.value)}
                                                                                      placeholder="Nhập số điện thoại"
-                                                                                     className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
+                                                                                     className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
                                                                                 />
                                                                            ) : (
                                                                                 <p className="text-base font-semibold text-teal-900">
@@ -421,13 +420,13 @@ export default function UserProfile({ user }) {
                                                                  </div>
                                                             </div>
 
-                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                            <div className="rounded-2xl border border-teal-300 bg-white/80 p-2 shadow-sm">
                                                                  <div className="flex items-start gap-3">
                                                                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
                                                                            <Calendar className="w-5 h-5" />
                                                                       </div>
                                                                       <div className="flex-1 space-y-2">
-                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                           <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Ngày sinh
                                                                            </p>
                                                                            {isEditing ? (
@@ -435,7 +434,7 @@ export default function UserProfile({ user }) {
                                                                                      type="date"
                                                                                      value={formData.dateOfBirth}
                                                                                      onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                                                                                     className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
+                                                                                     className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
                                                                                 />
                                                                            ) : (
                                                                                 <p className="text-base font-semibold text-teal-900">
@@ -446,13 +445,13 @@ export default function UserProfile({ user }) {
                                                                  </div>
                                                             </div>
 
-                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                            <div className="rounded-2xl border border-teal-300 bg-white/80 p-2 shadow-sm">
                                                                  <div className="flex items-start gap-3">
                                                                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
                                                                            <Heart className="w-5 h-5" />
                                                                       </div>
                                                                       <div className="flex-1 space-y-2">
-                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                           <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Giới tính
                                                                            </p>
                                                                            {isEditing ? (
@@ -460,7 +459,7 @@ export default function UserProfile({ user }) {
                                                                                      value={formData.gender}
                                                                                      onValueChange={(value) => handleInputChange('gender', value)}
                                                                                 >
-                                                                                     <SelectTrigger className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500">
+                                                                                     <SelectTrigger className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600">
                                                                                           <SelectValue placeholder="Chọn giới tính" />
                                                                                      </SelectTrigger>
                                                                                      <SelectContent>
@@ -480,13 +479,13 @@ export default function UserProfile({ user }) {
                                                                  </div>
                                                             </div>
 
-                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                            <div className="rounded-2xl border border-teal-300 bg-white/80 p-2 shadow-sm">
                                                                  <div className="flex items-start gap-3">
                                                                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
                                                                            <Star className="w-5 h-5" />
                                                                       </div>
                                                                       <div className="flex-1 space-y-2">
-                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                           <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Trình độ
                                                                            </p>
                                                                            {isEditing ? (
@@ -494,7 +493,7 @@ export default function UserProfile({ user }) {
                                                                                      value={formData.skillLevel}
                                                                                      onValueChange={(value) => handleInputChange('skillLevel', value)}
                                                                                 >
-                                                                                     <SelectTrigger className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500">
+                                                                                     <SelectTrigger className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600">
                                                                                           <SelectValue placeholder="Chọn trình độ" />
                                                                                      </SelectTrigger>
                                                                                      <SelectContent>
@@ -515,13 +514,13 @@ export default function UserProfile({ user }) {
                                                             </div>
                                                        </div>
 
-                                                       <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                       <div className="rounded-2xl border border-teal-300 bg-white/80 p-2 shadow-sm">
                                                             <div className="flex items-start gap-3">
                                                                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
                                                                       <MapPin className="w-5 h-5" />
                                                                  </div>
                                                                  <div className="flex-1 space-y-2">
-                                                                      <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                      <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                            Địa chỉ
                                                                       </p>
                                                                       {isEditing ? (
@@ -530,7 +529,7 @@ export default function UserProfile({ user }) {
                                                                                 onChange={(e) => handleInputChange('address', e.target.value)}
                                                                                 placeholder="Nhập địa chỉ"
                                                                                 rows={3}
-                                                                                className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
+                                                                                className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
                                                                            />
                                                                       ) : (
                                                                            <p className="text-base font-semibold text-teal-900 leading-relaxed">
@@ -547,7 +546,7 @@ export default function UserProfile({ user }) {
                                         {/* Football Preferences */}
                                         <SlideIn direction="right" delay={200}>
                                              <Card className="border border-teal-200/80 bg-white/95 shadow-xl backdrop-blur rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
-                                                  <CardHeader className="border-b border-teal-100/70 bg-gradient-to-r from-teal-50 via-white to-white py-4 px-6 rounded-t-3xl">
+                                                  <CardHeader className="border-b border-teal-300/70 bg-gradient-to-r from-teal-50 via-white to-white py-4 px-6 rounded-t-3xl">
                                                        <CardTitle className="flex items-center text-teal-900">
                                                             <div className="p-2 bg-teal-200 rounded-xl mr-3">
                                                                  <Target className="w-5 h-5 text-teal-700" />
@@ -556,13 +555,13 @@ export default function UserProfile({ user }) {
                                                        </CardTitle>
                                                   </CardHeader>
                                                   <CardContent className="space-y-5 p-6">
-                                                       <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                       <div className="rounded-2xl border border-teal-300 bg-white/80 p-2 shadow-sm">
                                                             <div className="flex items-start gap-3">
                                                                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
                                                                       <Users className="w-5 h-5" />
                                                                  </div>
                                                                  <div className="flex-1 space-y-2">
-                                                                      <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                      <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                            Vị trí ưa thích
                                                                       </p>
                                                                       {isEditing ? (
@@ -570,7 +569,7 @@ export default function UserProfile({ user }) {
                                                                                 value={formData.preferredPositions}
                                                                                 onValueChange={(value) => handleInputChange('preferredPositions', value)}
                                                                            >
-                                                                                <SelectTrigger className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500">
+                                                                                <SelectTrigger className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600">
                                                                                      <SelectValue placeholder="Chọn vị trí" />
                                                                                 </SelectTrigger>
                                                                                 <SelectContent>
@@ -589,13 +588,13 @@ export default function UserProfile({ user }) {
                                                                  </div>
                                                             </div>
                                                        </div>
-                                                       <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                       <div className="rounded-2xl border border-teal-300 bg-white/80 p-2 shadow-sm">
                                                             <div className="flex items-start gap-3">
                                                                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
                                                                       <Heart className="w-5 h-5" />
                                                                  </div>
                                                                  <div className="flex-1 space-y-2">
-                                                                      <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                      <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                            Giới thiệu bản thân
                                                                       </p>
                                                                       {isEditing ? (
@@ -604,7 +603,7 @@ export default function UserProfile({ user }) {
                                                                                 onChange={(e) => handleInputChange('bio', e.target.value)}
                                                                                 placeholder="Viết một chút về bản thân..."
                                                                                 rows={4}
-                                                                                className="rounded-xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
+                                                                                className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
                                                                            />
                                                                       ) : (
                                                                            <p className="text-base font-semibold text-teal-900 leading-relaxed">
@@ -618,10 +617,13 @@ export default function UserProfile({ user }) {
                                              </Card>
                                         </SlideIn>
 
+                                        {/* Banking Management */}
+                                        <BankingManagement user={user} />
+
                                         {/* Account Information */}
-                                        <SlideIn direction="right" delay={300}>
+                                        <SlideIn direction="right" delay={600}>
                                              <Card className="border border-teal-200/80 bg-white/95 shadow-xl backdrop-blur rounded-3xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl">
-                                                  <CardHeader className="border-b border-teal-100/70 bg-gradient-to-r from-teal-50 via-white to-white py-4 px-6 rounded-t-3xl">
+                                                  <CardHeader className="border-b border-teal-300/70 bg-gradient-to-r from-teal-50 via-white to-white py-4 px-6 rounded-t-3xl">
                                                        <CardTitle className="flex items-center text-teal-900">
                                                             <div className="p-2 bg-teal-200 rounded-xl mr-3">
                                                                  <Shield className="w-5 h-5 text-teal-700" />
@@ -631,18 +633,18 @@ export default function UserProfile({ user }) {
                                                   </CardHeader>
                                                   <CardContent className="space-y-5 p-6">
                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                            <div className="rounded-2xl border border-teal-300 bg-white/80 p-2 shadow-sm">
                                                                  <div className="flex items-start gap-3">
                                                                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
                                                                            <Shield className="w-5 h-5" />
                                                                       </div>
                                                                       <div className="flex-1 space-y-2">
-                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                           <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Trạng thái tài khoản
                                                                            </p>
                                                                            <span className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold ${formData.status === 'Active'
-                                                                                ? 'bg-green-100 text-green-700 border border-green-200'
-                                                                                : 'bg-red-100 text-red-700 border border-red-200'
+                                                                                ? 'bg-green-300 text-green-700 border border-green-200'
+                                                                                : 'bg-red-300 text-red-700 border border-red-200'
                                                                                 }`}>
                                                                                 <Shield className="w-4 h-4" />
                                                                                 {formData.status === 'Active' ? 'Hoạt động' : 'Không hoạt động'}
@@ -650,13 +652,13 @@ export default function UserProfile({ user }) {
                                                                       </div>
                                                                  </div>
                                                             </div>
-                                                            <div className="rounded-2xl border border-teal-100 bg-white/80 p-4 shadow-sm">
+                                                            <div className="rounded-2xl border border-teal-300 bg-white/80 p-2 shadow-sm">
                                                                  <div className="flex items-start gap-3">
                                                                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
                                                                            <Clock className="w-5 h-5" />
                                                                       </div>
                                                                       <div className="flex-1 space-y-2">
-                                                                           <p className="text-xs font-semibold uppercase tracking-wide text-teal-500">
+                                                                           <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Ngày tạo tài khoản
                                                                            </p>
                                                                            <p className="text-base font-semibold text-teal-900">
@@ -672,8 +674,9 @@ export default function UserProfile({ user }) {
                                    </div>
                               </FadeIn>
                          </div>
+
                     </div>
                </Container>
-          </div>
+          </Section>
      );
 }

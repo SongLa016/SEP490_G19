@@ -23,6 +23,7 @@ export { default as RescheduleModal } from "./components/RescheduleModal";
 
 // Shared services exports
 export * from "./services/authService";
+export * from "./services/bankingService";
 export * from "./services/bookings";
 export * from "./services/cancellationPolicies";
 export * from "./services/depositPolicies";

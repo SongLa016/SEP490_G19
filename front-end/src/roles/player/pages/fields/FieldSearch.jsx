@@ -153,8 +153,8 @@ export default function FieldSearch({ user }) {
                     }
                     // Start fetching immediately for better perceived performance
                     const [cList, fList] = await Promise.all([
-                         fetchComplexes({ query: searchQuery, date, slotId }),
-                         fetchFields({ query: searchQuery, date, slotId, sortBy })
+                         fetchComplexes({ query: searchQuery, date, slotId, useApi: true }),
+                         fetchFields({ query: searchQuery, date, slotId, sortBy, useApi: true })
                     ]);
                     if (!ignore) {
                          setComplexes(cList);
@@ -186,7 +186,7 @@ export default function FieldSearch({ user }) {
      }, [searchQuery, date, slotId, sortBy]);
 
      useEffect(() => {
-          let filtered = fields;
+          let filtered = Array.isArray(fields) ? [...fields] : [];
 
           // Filter by search query
           if (searchQuery) {

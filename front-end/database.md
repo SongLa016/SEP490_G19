@@ -31,7 +31,7 @@ CREATE TABLE UserProfiles (
     Address NVARCHAR(500),                                     -- Địa chỉ
     PreferredPositions NVARCHAR(100),                          -- Vị trí ưa thích (thủ môn, tiền đạo...)
     SkillLevel NVARCHAR(20),                                    -- Trình độ (beginner, intermediate,    advanced)
-    bio  NVARCHAR(20)  
+    bio NVARCHAR(500)                                           -- Giới thiệu bản thân  
 );
 
 -- 2. Sân bóng & Quản lý (6 bảng)
@@ -89,6 +89,18 @@ CREATE TABLE OwnerBankAccounts (
     AccountNumber NVARCHAR(30) NOT NULL,            -- Số tài khoản
     AccountHolder NVARCHAR(100) NOT NULL,           -- Chủ tài khoản
     IsDefault BIT DEFAULT 1,
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE()
+);
+
+CREATE TABLE PlayerBankAccounts (
+    BankAccountID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    BankName NVARCHAR(100) NOT NULL,                -- Tên ngân hàng (VD: Vietcombank)
+    BankShortCode NVARCHAR(20),                     -- Mã ngân hàng (VD: VCB, MB, TPB)
+    AccountNumber NVARCHAR(30) NOT NULL,            -- Số tài khoản
+    AccountHolder NVARCHAR(100) NOT NULL,           -- Chủ tài khoản
+    IsDefault BIT DEFAULT 0,                        -- Chỉ có 1 tài khoản mặc định
     CreatedAt DATETIME2 DEFAULT GETDATE(),
     UpdatedAt DATETIME2 DEFAULT GETDATE()
 );

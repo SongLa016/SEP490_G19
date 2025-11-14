@@ -6,7 +6,9 @@ import {
      MapPin,
      DollarSign,
      Loader2,
-     Building2
+     Building2,
+     Power,
+     PowerOff
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { Button, Card } from "../../../shared/components/ui";
@@ -973,6 +975,73 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     const handleToggleComplexStatus = async (complex) => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
+
+          const complexId = complex.complexId || complex.ComplexID;
+          const currentStatus = complex.status || "Active";
+          const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
+
+          // Optimistic update
+          setComplexes(prevComplexes =>
+               prevComplexes.map(c =>
+                    (c.complexId || c.ComplexID) === complexId
+                         ? { ...c, status: newStatus }
+                         : c
+               )
+          );
+
+          try {
+               const updatePayload = {
+                    complexId: complexId,
+                    ownerId: complex.ownerId || complex.OwnerID,
+                    name: complex.name || complex.Name,
+                    address: complex.address || complex.Address,
+                    description: complex.description || complex.Description || "",
+                    image: complex.image || complex.Image || "",
+                    status: newStatus,
+               };
+
+               if (complex.lat !== null && complex.lat !== undefined) {
+                    updatePayload.lat = complex.lat || complex.Lat;
+               }
+               if (complex.lng !== null && complex.lng !== undefined) {
+                    updatePayload.lng = complex.lng || complex.Lng;
+               }
+
+               await updateFieldComplex(complexId, updatePayload);
+
+               await Swal.fire({
+                    icon: 'success',
+                    title: newStatus === "Active" ? 'Đã kích hoạt!' : 'Đã vô hiệu hóa!',
+                    text: `Khu sân "${complex.name || complex.Name}" đã được ${newStatus === "Active" ? "kích hoạt" : "vô hiệu hóa"}.`,
+                    confirmButtonColor: '#10b981',
+                    timer: 2000,
+                    showConfirmButton: false
+               });
+          } catch (error) {
+               // Revert optimistic update on error
+               setComplexes(prevComplexes =>
+                    prevComplexes.map(c =>
+                         (c.complexId || c.ComplexID) === complexId
+                              ? { ...c, status: currentStatus }
+                              : c
+                    )
+               );
+
+               console.error('Error toggling complex status:', error);
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi!',
+                    text: error.message || 'Có lỗi xảy ra khi cập nhật trạng thái khu sân',
+                    confirmButtonColor: '#ef4444'
+               });
+          }
+     };
+
      const resetComplexForm = () => {
           // Revoke object URL if exists to prevent memory leak
           if (complexFormData.image && complexFormData.image.startsWith('blob:')) {
@@ -1145,42 +1214,69 @@ const FieldManagement = ({ isDemo = false }) => {
                                    {complexes.map((complex) => {
                                         const fieldCount = complexFieldCounts[complex.complexId] || 0;
                                         return (
-                                             <Card key={complex.complexId} className="h-full border border-blue-100 rounded-2xl hover:shadow-lg transition-all duration-300">
+                                             <Card key={complex.complexId} className={`h-full border rounded-2xl hover:shadow-lg transition-all duration-300 ${(complex.status || "Active") === "Active"
+                                                  ? "border-blue-100 bg-white"
+                                                  : "border-gray-200 bg-gray-50/50 opacity-75"
+                                                  }`}>
                                                   <div className="p-4 space-y-4">
                                                        <div className="flex items-start justify-between">
-                                                            <div>
-                                                                 <h3 className="text-xl font-bold line-clamp-1 text-gray-900">{complex.name}</h3>
+                                                            <div className="flex-1 min-w-0">
+                                                                 <h3 className={`text-xl font-bold line-clamp-1 ${(complex.status || "Active") === "Active"
+                                                                      ? "text-gray-900"
+                                                                      : "text-gray-500"
+                                                                      }`}>
+                                                                      {complex.name}
+                                                                 </h3>
                                                                  <p className="text-xs text-gray-500 mt-1">
                                                                       Tạo ngày: {complex.createdAt ? new Date(complex.createdAt).toLocaleDateString("vi-VN") : "-"}
                                                                  </p>
                                                             </div>
-                                                            <div className="flex items-center gap-2">
-                                                                 <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-50 text-green-600 border border-green-200">
-                                                                      {complex.status || "Active"}
-                                                                 </span>
+                                                            <div className="flex items-center gap-1.5 ml-2">
                                                                  <button
                                                                       type="button"
-                                                                      size="icon"
-                                                                      className=" text-yellow-600  rounded-full"
+                                                                      onClick={() => handleToggleComplexStatus(complex)}
+                                                                      className={`p-1.5 rounded-lg transition-all duration-200 ${(complex.status || "Active") === "Active"
+                                                                           ? "bg-green-100 text-green-600 hover:bg-green-200"
+                                                                           : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+                                                                           }`}
+                                                                      title={(complex.status || "Active") === "Active" ? "Vô hiệu hóa" : "Kích hoạt"}
+                                                                 >
+                                                                      {(complex.status || "Active") === "Active" ? (
+                                                                           <Power className="w-4 h-4" />
+                                                                      ) : (
+                                                                           <PowerOff className="w-4 h-4" />
+                                                                      )}
+                                                                 </button>
+                                                                 <button
+                                                                      type="button"
                                                                       onClick={() => handleEditComplex(complex)}
+                                                                      className="p-1.5 rounded-lg text-yellow-600 hover:bg-yellow-50 transition-colors"
+                                                                      title="Chỉnh sửa"
                                                                  >
                                                                       <Edit className="w-4 h-4" />
                                                                  </button>
                                                                  <button
                                                                       type="button"
-                                                                      variant="outline"
-                                                                      size="icon"
-                                                                      className=" text-red-600  rounded-full"
                                                                       onClick={() => handleDeleteComplex(complex.complexId || complex.ComplexID)}
+                                                                      className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                                                                      title="Xóa"
                                                                  >
                                                                       <Trash2 className="w-4 h-4" />
                                                                  </button>
                                                             </div>
                                                        </div>
+                                                       <div className="flex items-center gap-2">
+                                                            <span className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${(complex.status || "Active") === "Active"
+                                                                 ? "bg-green-50 text-green-700 border-green-200"
+                                                                 : "bg-gray-100 text-gray-600 border-gray-300"
+                                                                 }`}>
+                                                                 {(complex.status || "Active") === "Active" ? "Đang hoạt động" : "Đã vô hiệu hóa"}
+                                                            </span>
+                                                       </div>
                                                        {complex.address && (
-                                                            <div className="flex items-start border border-blue-200 rounded-lg p-1 gap-2 text-xs text-gray-600">
+                                                            <div className="flex items-start border border-blue-200 rounded-2xl p-1 gap-2 text-xs text-gray-600">
                                                                  <MapPin className="w-4 h-4 mt-0.5 text-blue-400" />
-                                                                 <span className="line-clamp-2">{complex.address}</span>
+                                                                 <span className="line-clamp-2 font-medium">{complex.address}</span>
                                                             </div>
                                                        )}
                                                        {complex.description && (
@@ -1216,7 +1312,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     </section>
 
                     {/* Fields Section */}
-                    <section className="bg-white/90 backdrop-blur-sm border border-slate-200/60 rounded-3xl shadow-sm p-6 space-y-6">
+                    <section className="bg-white/90 backdrop-blur-sm border border-teal-200/60 rounded-3xl shadow-sm p-6 space-y-6">
                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                               <div>
                                    <h2 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">

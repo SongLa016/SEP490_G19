@@ -4,6 +4,7 @@ import StadiumIcon from '@mui/icons-material/Stadium';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import { Button, SlideIn, StaggerContainer, FadeIn } from "../../../../../shared/components/ui";
+import { getImageProps } from "../../../../../shared/utils/imageUtils";
 
 export default function GroupedViewSection({
      title,
@@ -62,8 +63,7 @@ export default function GroupedViewSection({
                                    >
                                         <div className="relative overflow-hidden">
                                              <img
-                                                  src={item.image}
-                                                  alt={item.name}
+                                                  {...getImageProps(item.image, item.name)}
                                                   className="w-full h-48 object-cover rounded-xl transition-transform duration-300 group-hover:scale-110"
                                                   draggable={false}
                                              />

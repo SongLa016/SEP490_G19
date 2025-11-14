@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Shield, Bell, Trash2, AlertTriangle, Phone, Mail, User, Calendar, CheckCircle, AlertCircle, Clock, Activity, Database, Key, Eye, MapPin } from "lucide-react";
+import { Settings, Shield, Bell, Trash2, AlertTriangle, Phone, Mail, User, Calendar, CheckCircle, AlertCircle, Clock, Activity, Database, Key } from "lucide-react";
 import { Container, Card, CardContent, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, FadeIn, SlideIn } from "../../../../shared/components/ui";
 import ErrorDisplay from "../../../../shared/components/ErrorDisplay";
 
@@ -11,13 +11,6 @@ export default function ProfileSettings({ user }) {
           currentPassword: "",
           newPassword: "",
           confirmPassword: ""
-     });
-     const [notificationSettings, setNotificationSettings] = useState({
-          emailNotifications: true,
-          smsNotifications: false,
-          pushNotifications: true,
-          bookingReminders: true,
-          promotionalEmails: false
      });
      const [accountInfo, setAccountInfo] = useState({
           email: user?.email || "",
@@ -31,8 +24,7 @@ export default function ProfileSettings({ user }) {
      const tabs = [
           { id: "account", label: "Tài khoản", icon: Settings },
           { id: "security", label: "Bảo mật", icon: Shield },
-          { id: "notifications", label: "Thông báo", icon: Bell },
-          { id: "privacy", label: "Quyền riêng tư", icon: Shield }
+
      ];
 
      const handlePasswordChange = (field, value) => {
@@ -42,12 +34,6 @@ export default function ProfileSettings({ user }) {
           }));
      };
 
-     const handleNotificationChange = (field, value) => {
-          setNotificationSettings(prev => ({
-               ...prev,
-               [field]: value
-          }));
-     };
 
      const handleChangePassword = () => {
           if (passwordData.newPassword !== passwordData.confirmPassword) {
@@ -67,7 +53,7 @@ export default function ProfileSettings({ user }) {
      };
 
      const renderAccountSettings = () => (
-          <div className="space-y-6">
+          <div className="space-y-4 ">
                <FadeIn delay={100}>
                     <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
                          <CardHeader className="flex flex-col gap-2 border-b border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
@@ -361,11 +347,11 @@ export default function ProfileSettings({ user }) {
      );
 
      const renderSecuritySettings = () => (
-          <div className="space-y-6">
+          <div className="space-y-4">
                <FadeIn delay={100}>
                     <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
-                         <CardHeader className="border-b border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
-                              <CardTitle className="flex items-center gap-2 text-teal-900">
+                         <CardHeader className="border-b py-3 border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
+                              <CardTitle className="flex text-2xl items-center gap-2 text-teal-900">
                                    <Key className="w-5 h-5 text-teal-600" />
                                    Đổi mật khẩu
                               </CardTitle>
@@ -373,7 +359,7 @@ export default function ProfileSettings({ user }) {
                                    Tăng cường bảo mật bằng cách cập nhật mật khẩu định kỳ
                               </p>
                          </CardHeader>
-                         <CardContent className="space-y-4 p-6">
+                         <CardContent className="space-y-2 px-5 pt-2">
                               <div className="space-y-2">
                                    <label className="block text-sm font-semibold text-teal-800">
                                         Mật khẩu hiện tại
@@ -421,89 +407,6 @@ export default function ProfileSettings({ user }) {
                     </Card>
                </FadeIn>
 
-               <FadeIn delay={160}>
-                    <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
-                         <CardHeader className="border-b border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
-                              <CardTitle className="flex items-center gap-2 text-teal-900">
-                                   <Shield className="w-5 h-5 text-teal-600" />
-                                   Xác thực hai yếu tố
-                              </CardTitle>
-                         </CardHeader>
-                         <CardContent className="space-y-4 p-6">
-                              <div className="flex items-center justify-between rounded-2xl border border-teal-100 bg-teal-50/80 px-4 py-4">
-                                   <div>
-                                        <h4 className="font-semibold text-teal-900">SMS Authentication</h4>
-                                        <p className="text-sm text-teal-600">Nhận mã xác thực qua tin nhắn điện thoại</p>
-                                   </div>
-                                   <Button variant="outline" size="sm" className="rounded-xl border-teal-300 text-teal-700 hover:bg-teal-50">
-                                        Bật
-                                   </Button>
-                              </div>
-                              <div className="flex items-center justify-between rounded-2xl border border-teal-100 bg-white px-4 py-4">
-                                   <div>
-                                        <h4 className="font-semibold text-teal-900">Authenticator App</h4>
-                                        <p className="text-sm text-teal-600">Sử dụng ứng dụng xác thực để lấy mã OTP</p>
-                                   </div>
-                                   <Button variant="outline" size="sm" className="rounded-xl border-teal-300 text-teal-700 hover:bg-teal-50">
-                                        Bật
-                                   </Button>
-                              </div>
-                         </CardContent>
-                    </Card>
-               </FadeIn>
-
-               <FadeIn delay={220}>
-                    <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
-                         <CardHeader className="border-b border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
-                              <CardTitle className="flex items-center gap-2 text-teal-900">
-                                   <Clock className="w-5 h-5 text-teal-600" />
-                                   Lịch sử đăng nhập
-                              </CardTitle>
-                         </CardHeader>
-                         <CardContent className="space-y-3 p-6">
-                              <div className="flex items-center justify-between rounded-2xl border border-green-100 bg-green-50/80 px-4 py-3">
-                                   <div className="flex items-center">
-                                        <div className="mr-3 h-2.5 w-2.5 rounded-full bg-green-500" />
-                                        <div>
-                                             <p className="text-sm font-semibold text-green-800">Đăng nhập thành công</p>
-                                             <p className="text-xs text-green-600">Chrome trên Windows</p>
-                                        </div>
-                                   </div>
-                                   <div className="text-right text-xs text-green-600">
-                                        <p>Hôm nay</p>
-                                        <p className="text-green-500">14:30</p>
-                                   </div>
-                              </div>
-                              <div className="flex items-center justify-between rounded-2xl border border-green-100 bg-white px-4 py-3">
-                                   <div className="flex items-center">
-                                        <div className="mr-3 h-2.5 w-2.5 rounded-full bg-green-500" />
-                                        <div>
-                                             <p className="text-sm font-semibold text-teal-800">Đăng nhập thành công</p>
-                                             <p className="text-xs text-teal-600">Mobile App</p>
-                                        </div>
-                                   </div>
-                                   <div className="text-right text-xs text-teal-600">
-                                        <p>Hôm qua</p>
-                                        <p className="text-teal-500">09:15</p>
-                                   </div>
-                              </div>
-                              <div className="flex items-center justify-between rounded-2xl border border-yellow-100 bg-yellow-50/80 px-4 py-3">
-                                   <div className="flex items-center">
-                                        <div className="mr-3 h-2.5 w-2.5 rounded-full bg-yellow-500" />
-                                        <div>
-                                             <p className="text-sm font-semibold text-yellow-800">Đăng nhập thất bại</p>
-                                             <p className="text-xs text-yellow-600">Sai mật khẩu</p>
-                                        </div>
-                                   </div>
-                                   <div className="text-right text-xs text-yellow-600">
-                                        <p>2 ngày trước</p>
-                                        <p className="text-yellow-500">16:45</p>
-                                   </div>
-                              </div>
-                         </CardContent>
-                    </Card>
-               </FadeIn>
-
                <FadeIn delay={260}>
                     <Card className="rounded-3xl border border-orange-200/70 bg-white/95 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
                          <CardHeader className="border-b border-orange-100/70 bg-gradient-to-r from-orange-50 via-white to-white rounded-t-3xl">
@@ -513,18 +416,12 @@ export default function ProfileSettings({ user }) {
                               </CardTitle>
                          </CardHeader>
                          <CardContent className="space-y-3 p-6">
+
                               <div className="flex items-start gap-3 rounded-2xl border border-orange-100 bg-orange-50/80 px-4 py-3">
-                                   <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                                   <Key className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
                                    <div className="flex-1">
-                                        <p className="text-sm font-semibold text-orange-800">Bật xác thực hai yếu tố</p>
-                                        <p className="mt-1 text-xs text-orange-600">Bảo vệ tài khoản khỏi đăng nhập trái phép</p>
-                                   </div>
-                              </div>
-                              <div className="flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3">
-                                   <Key className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                                   <div className="flex-1">
-                                        <p className="text-sm font-semibold text-blue-800">Đổi mật khẩu định kỳ</p>
-                                        <p className="mt-1 text-xs text-blue-600">Mật khẩu hiện tại đã được sử dụng 90 ngày</p>
+                                        <p className="text-sm font-semibold text-orange-800">Đổi mật khẩu định kỳ</p>
+                                        <p className="mt-1 text-xs text-orange-600">Mật khẩu hiện tại đã được sử dụng 90 ngày</p>
                                    </div>
                               </div>
                          </CardContent>
@@ -533,297 +430,7 @@ export default function ProfileSettings({ user }) {
           </div>
      );
 
-     const renderNotificationSettings = () => {
-          const accentStyles = {
-               teal: { container: 'border-teal-100 bg-teal-50/80', icon: 'bg-teal-100 text-teal-600' },
-               blue: { container: 'border-blue-100 bg-blue-50/80', icon: 'bg-blue-100 text-blue-600' },
-               green: { container: 'border-green-100 bg-green-50/80', icon: 'bg-green-100 text-green-600' },
-               purple: { container: 'border-purple-100 bg-purple-50/80', icon: 'bg-purple-100 text-purple-600' },
-               yellow: { container: 'border-yellow-100 bg-yellow-50/80', icon: 'bg-yellow-100 text-yellow-600' }
-          };
 
-          const notificationOptions = [
-               {
-                    key: 'emailNotifications',
-                    label: 'Thông báo qua email',
-                    description: 'Nhận thông báo quan trọng qua email',
-                    icon: Mail,
-                    accent: 'blue'
-               },
-               {
-                    key: 'smsNotifications',
-                    label: 'Thông báo qua SMS',
-                    description: 'Nhận thông báo qua tin nhắn điện thoại',
-                    icon: Phone,
-                    accent: 'green'
-               },
-               {
-                    key: 'pushNotifications',
-                    label: 'Thông báo đẩy',
-                    description: 'Bật thông báo trực tiếp trên thiết bị',
-                    icon: Bell,
-                    accent: 'purple'
-               },
-               {
-                    key: 'bookingReminders',
-                    label: 'Nhắc nhở đặt sân',
-                    description: 'Gửi nhắc nhở trước giờ đặt sân',
-                    icon: Calendar,
-                    accent: 'teal'
-               },
-               {
-                    key: 'promotionalEmails',
-                    label: 'Email khuyến mãi',
-                    description: 'Nhận tin khuyến mãi và ưu đãi độc quyền',
-                    icon: Activity,
-                    accent: 'yellow'
-               }
-          ];
-
-          return (
-               <div className="space-y-6">
-                    <FadeIn delay={100}>
-                         <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
-                              <CardHeader className="border-b border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
-                                   <CardTitle className="flex items-center gap-2 text-teal-900">
-                                        <Bell className="w-5 h-5 text-teal-600" />
-                                        Cài đặt thông báo
-                                   </CardTitle>
-                                   <p className="text-sm text-teal-600">
-                                        Tùy chỉnh cách thức nhận thông tin và cập nhật hoạt động
-                                   </p>
-                              </CardHeader>
-                              <CardContent className="space-y-4 p-6">
-                                   {notificationOptions.map(({ key, label, description, icon: Icon, accent }) => {
-                                        const styles = accentStyles[accent] || accentStyles.teal;
-                                        return (
-                                             <div
-                                                  key={key}
-                                                  className={`flex flex-col gap-4 rounded-2xl px-4 py-4 transition-all duration-300 hover:shadow-md md:flex-row md:items-center md:justify-between ${styles.container}`}
-                                             >
-                                                  <div className="flex items-start gap-3">
-                                                       <div className={`mt-1 flex h-10 w-10 items-center justify-center rounded-xl ${styles.icon}`}>
-                                                            <Icon className="w-4 h-4" />
-                                                       </div>
-                                                       <div>
-                                                            <h4 className="font-semibold text-teal-900">{label}</h4>
-                                                            <p className="text-sm text-teal-600">{description}</p>
-                                                       </div>
-                                                  </div>
-                                                  <Select
-                                                       value={notificationSettings[key].toString()}
-                                                       onValueChange={(value) => handleNotificationChange(key, value === 'true')}
-                                                  >
-                                                       <SelectTrigger className="w-full rounded-2xl border-teal-200 bg-white/80 focus:border-teal-500 focus:ring-teal-500 md:w-28">
-                                                            <SelectValue placeholder="Chọn" />
-                                                       </SelectTrigger>
-                                                       <SelectContent>
-                                                            <SelectItem value="true" className="text-green-600">Bật</SelectItem>
-                                                            <SelectItem value="false" className="text-red-600">Tắt</SelectItem>
-                                                       </SelectContent>
-                                                  </Select>
-                                             </div>
-                                        );
-                                   })}
-                              </CardContent>
-                         </Card>
-                    </FadeIn>
-               </div>
-          );
-     };
-
-     const renderPrivacySettings = () => {
-          const privacyControls = [
-               {
-                    id: 'publicProfile',
-                    label: 'Hiển thị hồ sơ công khai',
-                    description: 'Cho phép người chơi khác xem thông tin cơ bản của bạn',
-                    defaultValue: 'true',
-                    icon: Eye
-               },
-               {
-                    id: 'showPhone',
-                    label: 'Hiển thị số điện thoại',
-                    description: 'Người khác có thể liên hệ bạn qua số điện thoại',
-                    defaultValue: 'false',
-                    icon: Phone
-               },
-               {
-                    id: 'showAddress',
-                    label: 'Hiển thị địa chỉ',
-                    description: 'Cho phép hiển thị khu vực sinh sống của bạn',
-                    defaultValue: 'false',
-                    icon: MapPin
-               }
-          ];
-
-          const displayControls = [
-               {
-                    id: 'onlineStatus',
-                    label: 'Hiển thị trạng thái online',
-                    description: 'Thông báo khi bạn đang hoạt động trong hệ thống',
-                    defaultValue: 'true'
-               },
-               {
-                    id: 'recentActivity',
-                    label: 'Hiển thị hoạt động gần đây',
-                    description: 'Chia sẻ lịch sử hoạt động với bạn bè',
-                    defaultValue: 'true'
-               },
-               {
-                    id: 'searchable',
-                    label: 'Cho phép tìm kiếm',
-                    description: 'Người khác có thể tìm thấy bạn qua email/số điện thoại',
-                    defaultValue: 'false'
-               }
-          ];
-
-          return (
-               <div className="space-y-6">
-                    <FadeIn delay={100}>
-                         <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
-                              <CardHeader className="border-b border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
-                                   <CardTitle className="flex items-center gap-2 text-teal-900">
-                                        <Shield className="w-5 h-5 text-teal-600" />
-                                        Cài đặt quyền riêng tư
-                                   </CardTitle>
-                                   <p className="text-sm text-teal-600">
-                                        Kiểm soát dữ liệu cá nhân mà bạn muốn chia sẻ với cộng đồng
-                                   </p>
-                              </CardHeader>
-                              <CardContent className="space-y-4 p-6">
-                                   {privacyControls.map(({ id, label, description, defaultValue, icon: Icon }) => (
-                                        <div key={id} className="flex flex-col gap-4 rounded-2xl border border-teal-100 bg-white/80 px-4 py-4 transition-all duration-300 hover:shadow-md md:flex-row md:items-center md:justify-between">
-                                             <div className="flex items-start gap-3">
-                                                  <div className="mt-1 flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 text-teal-600">
-                                                       <Icon className="w-5 h-5" />
-                                                  </div>
-                                                  <div>
-                                                       <h4 className="font-semibold text-teal-900">{label}</h4>
-                                                       <p className="text-sm text-teal-600">{description}</p>
-                                                  </div>
-                                             </div>
-                                             <Select defaultValue={defaultValue}>
-                                                  <SelectTrigger className="w-full rounded-2xl border-teal-200 bg-white/80 focus:border-teal-500 focus:ring-teal-500 md:w-28">
-                                                       <SelectValue placeholder="Chọn" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="true" className="text-green-600">Bật</SelectItem>
-                                                       <SelectItem value="false" className="text-red-600">Tắt</SelectItem>
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-                                   ))}
-                              </CardContent>
-                         </Card>
-                    </FadeIn>
-
-                    <FadeIn delay={160}>
-                         <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
-                              <CardHeader className="border-b border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
-                                   <CardTitle className="text-teal-900">Dữ liệu cá nhân</CardTitle>
-                                   <p className="text-sm text-teal-600">Quản lý cách chúng tôi lưu trữ và xử lý dữ liệu của bạn</p>
-                              </CardHeader>
-                              <CardContent className="space-y-4 p-6">
-                                   <div className="rounded-2xl border border-teal-100 bg-teal-50/80 p-4">
-                                        <h4 className="font-semibold text-teal-800">Xuất dữ liệu</h4>
-                                        <p className="mt-1 text-sm text-teal-600">
-                                             Tải xuống đầy đủ dữ liệu cá nhân để lưu trữ hoặc di chuyển sang nền tảng khác
-                                        </p>
-                                        <Button variant="outline" size="sm" className="mt-3 rounded-xl border-teal-300 text-teal-700 hover:bg-teal-50">
-                                             Xuất dữ liệu
-                                        </Button>
-                                   </div>
-                                   <div className="rounded-2xl border border-red-100 bg-red-50/80 p-4">
-                                        <h4 className="font-semibold text-red-700">Xóa dữ liệu</h4>
-                                        <p className="mt-1 text-sm text-red-600">
-                                             Xóa toàn bộ dữ liệu cá nhân khỏi hệ thống (không bao gồm tài khoản)
-                                        </p>
-                                        <Button variant="destructive" size="sm" className="mt-3 rounded-xl">
-                                             Xóa dữ liệu
-                                        </Button>
-                                   </div>
-                              </CardContent>
-                         </Card>
-                    </FadeIn>
-
-                    <FadeIn delay={220}>
-                         <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
-                              <CardHeader className="border-b border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
-                                   <CardTitle className="flex items-center gap-2 text-teal-900">
-                                        <Database className="w-5 h-5 text-teal-600" />
-                                        Sử dụng dữ liệu
-                                   </CardTitle>
-                              </CardHeader>
-                              <CardContent className="space-y-4 p-6">
-                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="rounded-2xl border border-blue-100 bg-blue-50/80 p-4">
-                                             <div className="flex items-center justify-between text-sm font-semibold text-blue-800">
-                                                  <span>Dữ liệu đã tải xuống</span>
-                                                  <span className="text-blue-600">45.2 MB</span>
-                                             </div>
-                                             <div className="mt-3 h-2.5 w-full rounded-full bg-blue-200">
-                                                  <div className="h-2.5 rounded-full bg-blue-500" style={{ width: '60%' }} />
-                                             </div>
-                                        </div>
-                                        <div className="rounded-2xl border border-green-100 bg-green-50/80 p-4">
-                                             <div className="flex items-center justify-between text-sm font-semibold text-green-800">
-                                                  <span>Dữ liệu đã tải lên</span>
-                                                  <span className="text-green-600">12.8 MB</span>
-                                             </div>
-                                             <div className="mt-3 h-2.5 w-full rounded-full bg-green-200">
-                                                  <div className="h-2.5 rounded-full bg-green-500" style={{ width: '25%' }} />
-                                             </div>
-                                        </div>
-                                   </div>
-                                   <div className="rounded-2xl border border-gray-200 bg-gray-50/80 p-4">
-                                        <div className="flex items-center justify-between text-sm font-semibold text-gray-800">
-                                             <span>Tổng dung lượng sử dụng</span>
-                                             <span className="text-gray-600">58.0 MB / 1 GB</span>
-                                        </div>
-                                        <div className="mt-3 h-2.5 w-full rounded-full bg-gray-200">
-                                             <div className="h-2.5 rounded-full bg-teal-500" style={{ width: '5.8%' }} />
-                                        </div>
-                                   </div>
-                              </CardContent>
-                         </Card>
-                    </FadeIn>
-
-                    <FadeIn delay={260}>
-                         <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
-                              <CardHeader className="border-b border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
-                                   <CardTitle className="flex items-center gap-2 text-teal-900">
-                                        <Eye className="w-5 h-5 text-teal-600" />
-                                        Cài đặt hiển thị
-                                   </CardTitle>
-                                   <p className="text-sm text-teal-600">
-                                        Tùy biến mức độ hiển thị thông tin hoạt động của bạn
-                                   </p>
-                              </CardHeader>
-                              <CardContent className="space-y-4 p-6">
-                                   {displayControls.map(({ id, label, description, defaultValue }) => (
-                                        <div key={id} className="flex flex-col gap-4 rounded-2xl border border-teal-100 bg-white/80 px-4 py-4 transition-all duration-300 hover:shadow-md md:flex-row md:items-center md:justify-between">
-                                             <div>
-                                                  <h4 className="font-semibold text-teal-900">{label}</h4>
-                                                  <p className="text-sm text-teal-600">{description}</p>
-                                             </div>
-                                             <Select defaultValue={defaultValue}>
-                                                  <SelectTrigger className="w-full rounded-2xl border-teal-200 bg-white/80 focus:border-teal-500 focus:ring-teal-500 md:w-28">
-                                                       <SelectValue placeholder="Chọn" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="true" className="text-green-600">Bật</SelectItem>
-                                                       <SelectItem value="false" className="text-red-600">Tắt</SelectItem>
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-                                   ))}
-                              </CardContent>
-                         </Card>
-                    </FadeIn>
-               </div>
-          );
-     };
 
      const renderContent = () => {
           switch (activeTab) {
@@ -831,28 +438,24 @@ export default function ProfileSettings({ user }) {
                     return renderAccountSettings();
                case "security":
                     return renderSecuritySettings();
-               case "notifications":
-                    return renderNotificationSettings();
-               case "privacy":
-                    return renderPrivacySettings();
                default:
                     return renderAccountSettings();
           }
      };
 
      return (
-          <div className="relative min-h-screen bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center">
-               <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/80 to-teal-50/70 backdrop-blur-[2px]" aria-hidden="true" />
+          <div className="relative min-h-screen ">
+               <div className="absolute inset-0 bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center border border-teal-500 rounded-3xl" />
                <Container>
-                    <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                    <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
                          {/* Header */}
                          <SlideIn direction="down" delay={120}>
                               <div className="my-2 text-center">
                                    <div className="inline-flex items-center justify-center w-14 h-14 bg-white/80 border border-teal-100 rounded-3xl shadow-sm mb-3">
                                         <Settings className="w-8 h-8 text-teal-600" />
                                    </div>
-                                   <h1 className="text-4xl font-bold text-teal-900 mb-2">Cài đặt hồ sơ</h1>
-                                   <p className="text-teal-600 text-lg max-w-2xl mx-auto">
+                                   <h1 className="text-3xl font-bold text-teal-900 mb-2">Cài đặt hồ sơ</h1>
+                                   <p className="text-teal-600 text-base max-w-2xl mx-auto">
                                         Tinh chỉnh thông tin tài khoản, bảo mật và trải nghiệm sử dụng của bạn
                                    </p>
                               </div>
@@ -880,13 +483,13 @@ export default function ProfileSettings({ user }) {
                               </FadeIn>
                          )}
 
-                         <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
+                         <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
                               {/* Sidebar */}
                               <div className="lg:col-span-1">
-                                   <div className="lg:sticky lg:top-28 space-y-6">
+                                   <div className="lg:sticky lg:top-28 space-y-4">
                                         <SlideIn direction="left" delay={200}>
                                              <Card className="border border-teal-100/80 bg-white/80 backdrop-blur rounded-3xl shadow-xl">
-                                                  <CardContent className="p-4">
+                                                  <CardContent className="p-3">
                                                        <nav className="space-y-2">
                                                             {tabs.map((tab) => {
                                                                  const Icon = tab.icon;

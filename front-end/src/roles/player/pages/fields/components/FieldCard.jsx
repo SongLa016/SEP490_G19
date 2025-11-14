@@ -3,6 +3,7 @@ import StadiumIcon from '@mui/icons-material/Stadium';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import { Button, FadeIn } from "../../../../../shared/components/ui";
+import { getImageProps } from "../../../../../shared/utils/imageUtils";
 
 export default function FieldCard({ field, index, activeTab, slotId, formatPrice, handleToggleFavorite, handleBook, navigate }) {
      return (
@@ -19,8 +20,7 @@ export default function FieldCard({ field, index, activeTab, slotId, formatPrice
                >
                     <div className="relative overflow-hidden">
                          <img
-                              src={field.image}
-                              alt={field.name}
+                              {...getImageProps(field.image, field.name)}
                               className="w-full h-40 md:h-44 object-cover transition-transform duration-300 ease-out group-hover:scale-110"
                               draggable={false}
                          />

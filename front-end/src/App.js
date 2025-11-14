@@ -69,9 +69,6 @@ const Community = lazy(() =>
 
 // Profile Pages
 const ProfileIndex = lazy(() => import("./roles/player/pages/profile"));
-const ProfileDemo = lazy(() =>
-  import("./roles/player/pages/profile/ProfileDemo")
-);
 
 // Admin Pages
 const AdminDashboard = lazy(() =>
@@ -631,14 +628,6 @@ function AppContent() {
             ) : (
               <Navigate to="/auth" replace />
             )
-          }
-        />
-        <Route
-          path="/profile/demo"
-          element={
-            <MainLayout>
-              <ProfileDemo />
-            </MainLayout>
           }
         />
 

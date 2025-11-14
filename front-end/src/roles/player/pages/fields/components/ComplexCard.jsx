@@ -3,6 +3,7 @@ import { MapPin, EyeIcon } from "lucide-react";
 import StadiumIcon from '@mui/icons-material/Stadium';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { Button, FadeIn } from "../../../../../shared/components/ui";
+import { getImageProps } from "../../../../../shared/utils/imageUtils";
 
 export default function ComplexCard({ complex, index, navigate, formatPrice }) {
      return (
@@ -14,7 +15,7 @@ export default function ComplexCard({ complex, index, navigate, formatPrice }) {
                     className="group bg-white rounded-xl shadow-lg overflow-hidden h-full flex flex-col cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:-translate-y-1"
                >
                     <div className="relative overflow-hidden">
-                         <img src={complex.image} alt={complex.name} className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-110" draggable={false} />
+                         <img {...getImageProps(complex.image, complex.name)} className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-110" draggable={false} />
                     </div>
                     <div className="p-5 flex-1 flex flex-col">
                          <h3 className="text-xl font-semibold text-teal-800 mb-1 flex items-center">
