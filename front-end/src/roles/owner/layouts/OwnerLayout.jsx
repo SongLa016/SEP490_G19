@@ -15,7 +15,6 @@ import {
      Eye,
      ChevronLeft,
      ChevronRight,
-     Timer,
      Wallet,
      CreditCard
 } from "lucide-react";
@@ -42,7 +41,7 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
      const navigationItems = [
           { id: "owner", label: "Tổng quan", icon: Home, path: "/owner" },
           { id: "fields", label: "Quản lý sân", icon: Building2, path: "/owner/fields" },
-          { id: "timeslots", label: "Slot thời gian", icon: Timer, path: "/owner/timeslots" },
+          { id: "schedule", label: "Lịch trình & Slots", icon: CalendarCog, path: "/owner/schedule" },
           { id: "pricing", label: "Giá theo slot", icon: DollarSign, path: "/owner/pricing" },
           { id: "bookings", label: "Quản lý booking", icon: ClipboardList, path: "/owner/bookings" },
           { id: "reports", label: "Báo cáo doanh thu", icon: FileText, path: "/owner/reports" },

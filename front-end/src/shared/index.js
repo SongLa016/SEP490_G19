@@ -24,12 +24,24 @@ export { default as RescheduleModal } from "./components/RescheduleModal";
 // Shared services exports
 export * from "./services/authService";
 export * from "./services/bankingService";
-export * from "./services/bookings";
+// Export bookings services with specific names to avoid conflicts
+export {
+  createPendingBooking,
+  confirmPayment,
+  checkFieldAvailability,
+  validateBookingData,
+  createBooking as createBookingAPI,
+  confirmPaymentAPI,
+  generateQRCode,
+  confirmByOwner,
+} from "./services/bookings";
 export * from "./services/cancellationPolicies";
 export * from "./services/depositPolicies";
 export * from "./services/fields";
 export * from "./services/notifications";
 export * from "./services/ownerRegistrationRequests";
+export * from "./services/ownerBankAccount";
+export * from "./services/fieldSchedules";
 export * from "./services/passwordResetService";
 export * from "./services/profileService";
 export * from "./services/promotions";

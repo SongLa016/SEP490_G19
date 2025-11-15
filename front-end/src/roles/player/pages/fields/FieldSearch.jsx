@@ -129,9 +129,13 @@ export default function FieldSearch({ user }) {
      // Load time slots once
      useEffect(() => {
           let mounted = true;
-          fetchTimeSlots().then((slots) => {
+          fetchTimeSlots().then((response) => {
                if (!mounted) return;
-               setTimeSlots(Array.isArray(slots) ? slots : []);
+               // Handle fetchTimeSlots response structure
+               const slots = response?.success && Array.isArray(response.data)
+                    ? response.data
+                    : [];
+               setTimeSlots(slots);
           }).catch((error) => {
                console.error("Error loading time slots:", error);
                if (!mounted) return;

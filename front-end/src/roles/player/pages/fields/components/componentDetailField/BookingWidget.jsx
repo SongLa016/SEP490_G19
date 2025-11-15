@@ -30,7 +30,7 @@ export default function BookingWidget({
      return (
           <Card className="bg-gradient-to-br from-white via-teal-50/30 to-white border border-teal-200/50 shadow-xl rounded-2xl lg:sticky lg:top-24">
                <CardContent className="p-6">
-                    <h3 className="text-2xl font-bold text-center bg-gradient-to-r from-teal-700 to-emerald-700 bg-clip-text text-transparent mb-1">{selectedField ? "Đặt Sân nhỏ" : "Đặt Sân lớn"}</h3>
+                    <h3 className="text-2xl font-bold text-center bg-gradient-to-r from-teal-700 to-emerald-700 bg-clip-text text-transparent mb-1">{selectedField ? "" : "Đặt Sân lớn"}</h3>
                     <p className="text-teal-600 font-medium text-sm mb-5 text-center">Chọn ngày/giờ hoặc bật đặt cố định</p>
                     <div className="grid grid-cols-1 gap-3">
                          <div>
@@ -205,7 +205,7 @@ export default function BookingWidget({
                               onClick={onBook}
                               className="rounded-lg bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-600 hover:from-teal-700 hover:via-emerald-700 hover:to-teal-700 text-white font-bold py-3 shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]"
                          >
-                              {isRecurring ? "Đặt định kỳ" : (selectedField ? "Đặt Sân nhỏ" : "Đặt Sân lớn")}
+                              {isRecurring ? "Đặt định kỳ" : (selectedField ? "" : "Đặt Sân lớn")}
                          </Button>
 
                     </div>

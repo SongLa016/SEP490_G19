@@ -67,98 +67,243 @@ const handleApiError = (error) => {
   throw new Error(errorMessage);
 };
 
-// Helper function to convert time format from HH:MM to HH:MM:SS
+// Helper function to ensure time format is HH:MM (without seconds)
 const formatTimeForAPI = (timeString) => {
   if (!timeString) return timeString;
-  // If already in HH:MM:SS format, return as is
+  // If in HH:MM:SS format, remove seconds
   if (timeString.split(":").length === 3) {
-    return timeString;
+    const [hours, minutes] = timeString.split(":");
+    return `${hours}:${minutes}`;
   }
-  // If in HH:MM format, add :00 for seconds
+  // If already in HH:MM format, return as is
   if (timeString.split(":").length === 2) {
-    return `${timeString}:00`;
+    return timeString;
   }
   return timeString;
 };
 
-// Normalize API response item to internal keys
+// Normalize API response item to internal keys (lowercase for consistency)
 const normalizeTimeSlot = (item) => {
-  if (!item) return item;
+  if (!item) return null;
+
+  const slotId = item.SlotID ?? item.slotId ?? item.id;
+  const name = item.SlotName ?? item.slotName ?? item.name;
+  const startTime = item.StartTime ?? item.startTime;
+  const endTime = item.EndTime ?? item.endTime;
+  const fieldId = item.FieldId ?? item.fieldId ?? null;
+
+  // Ensure required fields exist
+  if (!slotId || !name) {
+    console.warn("Invalid time slot data (missing slotId or name):", item);
+    return null;
+  }
+
   return {
-    SlotID: item.SlotID ?? item.slotId ?? item.id ?? item.SlotID,
-    SlotName: item.SlotName ?? item.slotName ?? item.name ?? item.SlotName,
-    StartTime: item.StartTime ?? item.startTime ?? item.StartTime,
-    EndTime: item.EndTime ?? item.endTime ?? item.EndTime,
+    slotId: Number(slotId) || slotId,
+    name: String(name),
+    startTime: startTime || "00:00",
+    endTime: endTime || "00:00",
+    fieldId: fieldId ? Number(fieldId) : null,
   };
 };
 
-// Fetch all time slots
-export async function fetchTimeSlots() {
+// Mock data for testing (hardcoded)
+const MOCK_TIME_SLOTS = [
+  // Timeslots for fieldId = 32
+  {
+    SlotID: 1,
+    SlotName: "Slot 1",
+    FieldId: 32,
+    StartTime: "06:00",
+    EndTime: "07:30",
+  },
+  {
+    SlotID: 2,
+    SlotName: "Slot 2",
+    FieldId: 32,
+    StartTime: "07:30",
+    EndTime: "09:00",
+  },
+  {
+    SlotID: 3,
+    SlotName: "Slot 3",
+    FieldId: 32,
+    StartTime: "09:00",
+    EndTime: "10:30",
+  },
+  {
+    SlotID: 4,
+    SlotName: "Slot 4",
+    FieldId: 32,
+    StartTime: "10:30",
+    EndTime: "12:00",
+  },
+  {
+    SlotID: 5,
+    SlotName: "Slot 5",
+    FieldId: 32,
+    StartTime: "12:00",
+    EndTime: "13:30",
+  },
+  {
+    SlotID: 6,
+    SlotName: "Slot 6",
+    FieldId: 32,
+    StartTime: "13:30",
+    EndTime: "15:00",
+  },
+  {
+    SlotID: 7,
+    SlotName: "Slot 7",
+    FieldId: 32,
+    StartTime: "15:00",
+    EndTime: "16:30",
+  },
+  {
+    SlotID: 8,
+    SlotName: "Slot 8",
+    FieldId: 32,
+    StartTime: "16:30",
+    EndTime: "18:00",
+  },
+  {
+    SlotID: 9,
+    SlotName: "Slot 9",
+    FieldId: 32,
+    StartTime: "18:00",
+    EndTime: "19:30",
+  },
+  {
+    SlotID: 10,
+    SlotName: "Slot 10",
+    FieldId: 32,
+    StartTime: "19:30",
+    EndTime: "21:00",
+  },
+  {
+    SlotID: 11,
+    SlotName: "Slot 11",
+    FieldId: 32,
+    StartTime: "21:00",
+    EndTime: "22:30",
+  },
+  {
+    SlotID: 12,
+    SlotName: "Slot 12",
+    FieldId: 32,
+    StartTime: "22:30",
+    EndTime: "00:00",
+  },
+
+  // Timeslots for other fields (for testing)
+  {
+    SlotID: 13,
+    SlotName: "Slot 1",
+    FieldId: 48,
+    StartTime: "08:00",
+    EndTime: "09:30",
+  },
+  {
+    SlotID: 14,
+    SlotName: "Slot 2",
+    FieldId: 48,
+    StartTime: "09:30",
+    EndTime: "11:00",
+  },
+  {
+    SlotID: 15,
+    SlotName: "Slot 3",
+    FieldId: 48,
+    StartTime: "14:00",
+    EndTime: "15:30",
+  },
+];
+
+// Fetch all time slots (or by fieldId if provided)
+export async function fetchTimeSlots(fieldId = null) {
   try {
-    // Try different endpoint variations
-    const endpoints = [
-      "https://sep490-g19-zxph.onrender.com/api/TimeSlot",
-      "https://sep490-g19-zxph.onrender.com/api/TimeSlots",
-      "https://sep490-g19-zxph.onrender.com/api/timeSlot",
-      "https://sep490-g19-zxph.onrender.com/api/timeSlots",
-      "https://sep490-g19-zxph.onrender.com/api/time-slot",
-      "https://sep490-g19-zxph.onrender.com/api/time-slots",
-    ];
-    let lastError = null;
-
-    for (const endpoint of endpoints) {
-      try {
-        console.log(`Trying endpoint: ${endpoint}`);
-        const response = await apiClient.get(endpoint);
-
-        // Handle different response structures and normalize
-        let data = response.data;
-        if (Array.isArray(data)) {
-          console.log(`Success with endpoint: ${endpoint}`);
-          return {
-            success: true,
-            data: data.map(normalizeTimeSlot),
-          };
-        } else if (data && Array.isArray(data.data)) {
-          console.log(`Success with endpoint: ${endpoint}`);
-          return {
-            success: true,
-            data: data.data.map(normalizeTimeSlot),
-          };
-        } else {
-          console.log(`Success with endpoint: ${endpoint} (empty data)`);
-          return {
-            success: true,
-            data: [],
-          };
-        }
-      } catch (err) {
-        console.log(`Failed with endpoint: ${endpoint}`, err.response?.status);
-        lastError = err;
-        // If it's not a 404, stop trying other endpoints
-        if (err.response?.status !== 404) {
-          break;
-        }
-      }
+    // If fieldId is provided, use the field-specific endpoint
+    if (fieldId) {
+      return await fetchTimeSlotsByField(fieldId);
     }
 
-    // If all endpoints failed, throw the last error
-    throw lastError;
+    // Otherwise fetch all time slots
+    const endpoint = "https://sep490-g19-zxph.onrender.com/api/TimeSlot";
+    console.log(`Fetching all time slots from: ${endpoint}`);
+    const response = await apiClient.get(endpoint);
+
+    // Handle different response structures and normalize
+    let data = response.data;
+    if (Array.isArray(data)) {
+      console.log(`Success - received ${data.length} time slots`);
+      return {
+        success: true,
+        data: data.map(normalizeTimeSlot).filter(slot => slot !== null),
+      };
+    } else if (data && Array.isArray(data.data)) {
+      console.log(`Success - received ${data.data.length} time slots`);
+      return {
+        success: true,
+        data: data.data.map(normalizeTimeSlot).filter(slot => slot !== null),
+      };
+    } else {
+      console.log(`Success - empty data`);
+      return {
+        success: true,
+        data: [],
+      };
+    }
   } catch (error) {
     console.error("Error fetching time slots:", error);
-    console.error("Full error details:", {
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-    });
 
     const errorMessage =
       error.response?.data?.message ||
       error.response?.data ||
       error.message ||
       "Không thể tải danh sách slot thời gian";
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+// Fetch time slots by field ID
+export async function fetchTimeSlotsByField(fieldId) {
+  try {
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/TimeSlot/field/${fieldId}`;
+    console.log(`Fetching time slots for field ${fieldId} from: ${endpoint}`);
+    const response = await apiClient.get(endpoint);
+
+    // Handle different response structures and normalize
+    let data = response.data;
+    if (Array.isArray(data)) {
+      console.log(`Success - received ${data.length} time slots for field ${fieldId}`);
+      return {
+        success: true,
+        data: data.map(normalizeTimeSlot).filter(slot => slot !== null),
+      };
+    } else if (data && Array.isArray(data.data)) {
+      console.log(`Success - received ${data.data.length} time slots for field ${fieldId}`);
+      return {
+        success: true,
+        data: data.data.map(normalizeTimeSlot).filter(slot => slot !== null),
+      };
+    } else {
+      console.log(`Success - empty data for field ${fieldId}`);
+      return {
+        success: true,
+        data: [],
+      };
+    }
+  } catch (error) {
+    console.error(`Error fetching time slots for field ${fieldId}:`, error);
+
+    const errorMessage =
+      error.response?.data?.message ||
+      error.response?.data ||
+      error.message ||
+      `Không thể tải danh sách slot thời gian cho sân ${fieldId}`;
     return {
       success: false,
       error: errorMessage,
@@ -173,7 +318,8 @@ export async function createTimeSlot(timeSlotData) {
     if (
       (!timeSlotData.SlotName && !timeSlotData.slotName) ||
       (!timeSlotData.StartTime && !timeSlotData.startTime) ||
-      (!timeSlotData.EndTime && !timeSlotData.endTime)
+      (!timeSlotData.EndTime && !timeSlotData.endTime) ||
+      (!timeSlotData.fieldId && !timeSlotData.FieldId)
     ) {
       return {
         success: false,
@@ -195,34 +341,37 @@ export async function createTimeSlot(timeSlotData) {
     // Prepare data for API - convert time format if needed
     const payload = {
       // Send camelCase to backend
+      fieldId: parseInt(timeSlotData.fieldId ?? timeSlotData.FieldId),
       slotName: timeSlotData.SlotName ?? timeSlotData.slotName,
       startTime: formatTimeForAPI(startTime),
       endTime: formatTimeForAPI(endTime),
     };
 
+    console.log("Creating time slot with payload:", payload);
+
     // Try different endpoint variations
-    const endpoints = [
-      "https://sep490-g19-zxph.onrender.com/api/TimeSlot",
-      "https://sep490-g19-zxph.onrender.com/api/TimeSlots",
-      "https://sep490-g19-zxph.onrender.com/api/timeSlot",
-      "https://sep490-g19-zxph.onrender.com/api/timeSlots",
-      "https://sep490-g19-zxph.onrender.com/api/time-slot",
-      "https://sep490-g19-zxph.onrender.com/api/time-slots",
-    ];
+    const endpoints = ["https://sep490-g19-zxph.onrender.com/api/TimeSlot"];
     let response = null;
     let lastError = null;
 
     for (const endpoint of endpoints) {
       try {
-        console.log(`Trying POST endpoint: ${endpoint}`);
+        console.log(`Trying POST endpoint: ${endpoint}`, payload);
         response = await apiClient.post(endpoint, payload);
-        console.log(`Success with POST endpoint: ${endpoint}`);
+        console.log(`Success with POST endpoint: ${endpoint}`, response.data);
         break;
       } catch (err) {
-        console.log(
+        console.error(
           `Failed with POST endpoint: ${endpoint}`,
-          err.response?.status
+          err.response?.status,
+          err.response?.data
         );
+        console.error('Full error:', {
+          status: err.response?.status,
+          statusText: err.response?.statusText,
+          data: err.response?.data,
+          message: err.message
+        });
         lastError = err;
         // If it's not a 404, stop trying other endpoints
         if (err.response?.status !== 404) {
@@ -232,7 +381,12 @@ export async function createTimeSlot(timeSlotData) {
     }
 
     if (!response) {
-      throw lastError || new Error("Tất cả endpoint đều thất bại");
+      const errorDetail = lastError?.response?.data;
+      const errorMessage = typeof errorDetail === 'string' 
+        ? errorDetail 
+        : errorDetail?.message || errorDetail?.error || lastError?.message || "Tất cả endpoint đều thất bại";
+      
+      throw new Error(errorMessage);
     }
 
     // Handle different response structures
@@ -265,11 +419,24 @@ export async function createTimeSlot(timeSlotData) {
     }
   } catch (error) {
     console.error("Error creating time slot:", error);
-    const errorMessage =
-      error.response?.data?.message ||
-      error.response?.data ||
-      error.message ||
-      "Không thể tạo slot thời gian";
+    
+    // Parse error message from different response formats
+    let errorMessage = "Không thể tạo slot thời gian";
+    
+    if (error.response?.data) {
+      const data = error.response.data;
+      if (typeof data === 'string') {
+        errorMessage = data;
+      } else if (data.message) {
+        errorMessage = data.message;
+      } else if (data.error) {
+        errorMessage = data.error;
+      } else if (data.errors && Array.isArray(data.errors)) {
+        errorMessage = data.errors.join(', ');
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
 
     return {
       success: false,
@@ -285,7 +452,8 @@ export async function updateTimeSlot(slotId, timeSlotData) {
     if (
       (!timeSlotData.SlotName && !timeSlotData.slotName) ||
       (!timeSlotData.StartTime && !timeSlotData.startTime) ||
-      (!timeSlotData.EndTime && !timeSlotData.endTime)
+      (!timeSlotData.EndTime && !timeSlotData.endTime) ||
+      (!timeSlotData.fieldId && !timeSlotData.FieldId)
     ) {
       return {
         success: false,
@@ -307,6 +475,7 @@ export async function updateTimeSlot(slotId, timeSlotData) {
     // Prepare data for API - convert time format if needed
     const payload = {
       // Send camelCase to backend
+      fieldId: parseInt(timeSlotData.fieldId ?? timeSlotData.FieldId),
       slotName: timeSlotData.SlotName ?? timeSlotData.slotName,
       startTime: formatTimeForAPI(startTime),
       endTime: formatTimeForAPI(endTime),

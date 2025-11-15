@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 import { Button, Modal } from "./ui";
-import { createPendingBooking, confirmPayment, validateBookingData, checkFieldAvailability } from "../services/bookings";
-import { createBooking } from "../index";
+import { validateBookingData, checkFieldAvailability, confirmPaymentAPI, generateQRCode } from "../services/bookings";
+import { createBooking, createBookingAPI, fetchOwnerBankAccounts } from "../index";
 import { createMatchRequest, createCommunityPost } from "../index";
 import EmailVerificationModal from "./EmailVerificationModal";
 import RecurringOpponentSelection from "./RecurringOpponentSelection";
@@ -28,7 +28,8 @@ export default function BookingModal({
      const [isProcessing, setIsProcessing] = useState(false);
      const [errors, setErrors] = useState({});
      const [paymentMethod, setPaymentMethod] = useState("");
-     const [pendingInfo, setPendingInfo] = useState(null);
+     const [bookingInfo, setBookingInfo] = useState(null); // Lưu thông tin booking từ API
+     const [ownerBankAccount, setOwnerBankAccount] = useState(null); // Thông tin ngân hàng owner
      const [createdMatchRequest, setCreatedMatchRequest] = useState(null);
      const [createdCommunityPost, setCreatedCommunityPost] = useState(null);
      // Opponent flow: always assume user may find opponent after booking via BookingHistory
@@ -185,7 +186,8 @@ export default function BookingModal({
                setStep("details");
                setErrors({});
                setPaymentMethod("");
-               setPendingInfo(null);
+               setBookingInfo(null);
+               setOwnerBankAccount(null);
                if (fieldData?.isRecurringPreset) {
                     setIsRecurring(true);
                     if (typeof fieldData.recurringWeeksPreset === 'number' && fieldData.recurringWeeksPreset > 0) {
@@ -207,6 +209,31 @@ export default function BookingModal({
                closeBookingModal();
           }
      }, [isOpen, fieldData, openBookingModal, closeBookingModal]);
+
+     // Lấy thông tin ngân hàng owner khi modal mở
+     useEffect(() => {
+          if (!isOpen || !fieldData) return;
+
+          const fetchOwnerBank = async () => {
+               try {
+                    // Lấy ownerId từ fieldData
+                    const ownerId = fieldData.ownerId || fieldData.ownerID;
+
+                    if (ownerId) {
+                         const accounts = await fetchOwnerBankAccounts(ownerId);
+                         if (accounts && accounts.length > 0) {
+                              // Lấy tài khoản mặc định hoặc tài khoản đầu tiên
+                              const defaultAccount = accounts.find(acc => acc.isDefault) || accounts[0];
+                              setOwnerBankAccount(defaultAccount);
+                         }
+                    }
+               } catch (error) {
+                    console.error("Error fetching owner bank account:", error);
+               }
+          };
+
+          fetchOwnerBank();
+     }, [isOpen, fieldData]);
 
      const formatPrice = (price) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 
@@ -312,7 +339,7 @@ export default function BookingModal({
                     return;
                }
 
-               // Check availability before holding
+               // Check availability
                const avail = await checkFieldAvailability(booking.fieldId, booking.date, booking.slotId);
                if (!avail?.available) {
                     setErrors({ general: avail?.message || "Sân đã có người đặt trong khung giờ này." });
@@ -320,8 +347,62 @@ export default function BookingModal({
                     return;
                }
 
-               const result = await createPendingBooking(booking);
-               setPendingInfo(result);
+               // Gọi API tạo booking trực tiếp (không giữ tiền)
+               const userId = user?.id || user?.userId || user?.userID || 0;
+
+               // Tính toán depositAmount nếu chưa có
+               const totalPrice = booking.totalPrice || booking.price || 0;
+               const depositPercent = booking.depositPercent || 0.3;
+               const depositAmount = booking.depositAmount || Math.round(totalPrice * depositPercent);
+
+               console.log("Creating booking with data:", {
+                    userId,
+                    scheduleId: 0, // Backend tự tạo từ fieldId, slotId, date
+                    totalPrice,
+                    depositAmount,
+                    hasOpponent: booking.hasOpponent || false
+               });
+
+               const apiResult = await createBookingAPI({
+                    userId: userId,
+                    scheduleId: 0, // Backend sẽ tự tạo scheduleId
+                    totalPrice: totalPrice,
+                    depositAmount: depositAmount,
+                    hasOpponent: booking.hasOpponent || false,
+                    matchRequestId: booking.matchRequestId || 0
+               });
+
+               if (!apiResult.success) {
+                    setErrors({ general: apiResult.error || "Không thể tạo booking. Vui lòng thử lại." });
+                    setIsProcessing(false);
+                    return;
+               }
+
+               // Lấy thông tin booking từ API response
+               const bookingId = apiResult.data?.bookingID || apiResult.data?.bookingId || apiResult.data?.id;
+               if (!bookingId) {
+                    setErrors({ general: "Không nhận được booking ID từ server." });
+                    setIsProcessing(false);
+                    return;
+               }
+
+               // Lấy QR code từ API
+               const qrResult = await generateQRCode(bookingId);
+               const qrCodeUrl = qrResult.success ? qrResult.qrCodeUrl : null;
+
+               // Lưu thông tin booking
+               setBookingInfo({
+                    bookingId: bookingId,
+                    scheduleId: apiResult.data?.scheduleID || apiResult.data?.scheduleId,
+                    bookingStatus: apiResult.data?.bookingStatus || "Pending",
+                    paymentStatus: apiResult.data?.paymentStatus || "Pending",
+                    qrCodeUrl: qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=BOOKING-${bookingId}`,
+                    qrExpiresAt: apiResult.data?.qrExpiresAt || new Date(Date.now() + 7 * 60 * 1000).toISOString(),
+                    totalPrice: totalPrice,
+                    depositAmount: depositAmount
+               });
+
+               // Chuyển sang bước thanh toán
                setStep("payment");
           } catch (error) {
                console.error("Booking error:", error);
@@ -342,16 +423,35 @@ export default function BookingModal({
                return;
           }
 
+          if (!bookingInfo?.bookingId) {
+               setErrors({ general: "Không tìm thấy thông tin booking." });
+               return;
+          }
+
           setIsProcessing(true);
           try {
-               const result = await confirmPayment(pendingInfo.bookingId, paymentMethod);
+               // Gọi API xác nhận thanh toán
+               const apiResult = await confirmPaymentAPI(bookingInfo.bookingId);
+
+               if (!apiResult.success) {
+                    setErrors({ general: apiResult.error || "Không thể xác nhận thanh toán. Vui lòng thử lại." });
+                    setIsProcessing(false);
+                    return;
+               }
+
+               // Cập nhật thông tin booking
+               setBookingInfo(prev => ({
+                    ...prev,
+                    bookingStatus: apiResult.data?.bookingStatus || "Confirmed",
+                    paymentStatus: apiResult.data?.paymentStatus || "Paid"
+               }));
 
                // Save to local storage
                createBooking({
                     userId: user?.id || user?.userId || "guest",
                     data: {
                          ...bookingData,
-                         bookingId: result.bookingId,
+                         bookingId: bookingInfo.bookingId,
                          status: "confirmed",
                          paymentMethod,
                          createdAt: new Date().toISOString()
@@ -510,7 +610,8 @@ export default function BookingModal({
 
                     {step === "payment" && (
                          <PaymentStepSection
-                              pendingInfo={pendingInfo}
+                              bookingInfo={bookingInfo}
+                              ownerBankAccount={ownerBankAccount}
                               paymentMethod={paymentMethod}
                               setPaymentMethod={setPaymentMethod}
                               bookingData={bookingData}

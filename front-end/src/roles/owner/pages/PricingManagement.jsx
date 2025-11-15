@@ -1,128 +1,105 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
      DollarSign,
      Clock,
-     Calendar,
      Plus,
      Edit,
      Trash2,
      Save,
-     TrendingUp,
      Settings,
      CheckSquare,
-     FilterIcon
+     FilterIcon,
+     Loader2
 } from "lucide-react";
 import { Button, Card, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../../../shared/components/ui";
 import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import { DemoRestrictedModal } from "../../../shared";
+import { fetchAllComplexesWithFields } from "../../../shared/services/fields";
+import { fetchTimeSlots } from "../../../shared/services/timeSlots";
+import { fetchPricing, createPricing, updatePricing, deletePricing } from "../../../shared/services/pricing";
+import Swal from "sweetalert2";
 
 const PricingManagement = ({ isDemo = false }) => {
      const { user, logout } = useAuth();
-     const [selectedField, setSelectedField] = useState("Sân A1");
+     const [loading, setLoading] = useState(true);
+     const [fields, setFields] = useState([]);
+     const [timeSlots, setTimeSlots] = useState([]);
+     const [pricingData, setPricingData] = useState([]);
+     const [selectedField, setSelectedField] = useState("all");
      const [selectedDate, setSelectedDate] = useState("");
      const [keyword, setKeyword] = useState("");
-     const [filterDayType, setFilterDayType] = useState("");
      const [isAddModalOpen, setIsAddModalOpen] = useState(false);
      const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
      const [isEditModalOpen, setIsEditModalOpen] = useState(false);
      const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
      const [editingPrice, setEditingPrice] = useState(null);
+     const [isSubmitting, setIsSubmitting] = useState(false);
      const [formData, setFormData] = useState({
-          timeSlot: "",
-          price: "",
-          dayType: "weekday",
-          isActive: true
+          fieldId: "",
+          slotId: "",
+          price: ""
      });
      const [bulkFormData, setBulkFormData] = useState({
-          selectedTimeSlots: [],
-          price: "",
-          dayType: "weekday",
-          isActive: true
+          selectedSlotIds: [],
+          price: ""
      });
 
-     // Mock data - replace with actual API calls
-     const fields = [
-          { value: "Sân A1", label: "Sân A1" },
-          { value: "Sân A2", label: "Sân A2" },
-          { value: "Sân B1", label: "Sân B1" },
-          { value: "Sân B2", label: "Sân B2" },
-          { value: "Sân C1", label: "Sân C1" }
-     ];
+     // Get current user ID
+     const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
 
-     const timeSlots = [
-          "06:00-08:00", "08:00-10:00", "10:00-12:00", "12:00-14:00",
-          "14:00-16:00", "16:00-18:00", "18:00-20:00", "20:00-22:00", "22:00-24:00"
-     ];
 
-     const dayTypes = [
-          { value: "weekday", label: "Ngày thường" },
-          { value: "weekend", label: "Cuối tuần" },
-          { value: "holiday", label: "Ngày lễ" }
-     ];
 
-     const pricingData = [
-          {
-               id: 1,
-               field: "Sân A1",
-               timeSlot: "18:00-20:00",
-               dayType: "weekday",
-               price: 500000,
-               isActive: true,
-               bookings: 45,
-               revenue: 2250000
-          },
-          {
-               id: 2,
-               field: "Sân A1",
-               timeSlot: "20:00-22:00",
-               dayType: "weekday",
-               price: 600000,
-               isActive: true,
-               bookings: 38,
-               revenue: 2280000
-          },
-          {
-               id: 3,
-               field: "Sân A1",
-               timeSlot: "18:00-20:00",
-               dayType: "weekend",
-               price: 700000,
-               isActive: true,
-               bookings: 42,
-               revenue: 2940000
-          },
-          {
-               id: 4,
-               field: "Sân A1",
-               timeSlot: "20:00-22:00",
-               dayType: "weekend",
-               price: 800000,
-               isActive: true,
-               bookings: 35,
-               revenue: 2800000
-          },
-          {
-               id: 5,
-               field: "Sân A2",
-               timeSlot: "16:00-18:00",
-               dayType: "weekday",
-               price: 450000,
-               isActive: true,
-               bookings: 28,
-               revenue: 1260000
-          },
-          {
-               id: 6,
-               field: "Sân A2",
-               timeSlot: "18:00-20:00",
-               dayType: "weekday",
-               price: 550000,
-               isActive: false,
-               bookings: 0,
-               revenue: 0
+     // Load data from API
+     const loadData = useCallback(async () => {
+          try {
+               setLoading(true);
+
+               // Fetch all complexes with fields
+               const allComplexesWithFields = await fetchAllComplexesWithFields();
+
+               // Filter only owner's complexes
+               const ownerComplexes = allComplexesWithFields.filter(
+                    complex => complex.ownerId === currentUserId || complex.ownerId === Number(currentUserId)
+               );
+
+               // Get all fields from owner's complexes
+               const allFields = ownerComplexes.flatMap(complex =>
+                    (complex.fields || []).map(field => ({
+                         ...field,
+                         complexName: complex.name
+                    }))
+               );
+
+               setFields(allFields);
+
+               // Fetch time slots
+               const slotsResponse = await fetchTimeSlots();
+               if (slotsResponse.success) {
+                    setTimeSlots(slotsResponse.data || []);
+               }
+
+               // Fetch pricing data
+               const pricingResponse = await fetchPricing();
+               if (pricingResponse.success) {
+                    setPricingData(pricingResponse.data || []);
+               }
+          } catch (error) {
+               console.error('Error loading data:', error);
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi tải dữ liệu',
+                    text: error.message || 'Không thể tải dữ liệu',
+                    confirmButtonColor: '#ef4444'
+               });
+          } finally {
+               setLoading(false);
           }
-     ];
+     }, [currentUserId]);
+
+     useEffect(() => {
+          loadData();
+     }, [loadData]);
 
      const handleInputChange = (e) => {
           const { name, value, type, checked } = e.target;
@@ -132,17 +109,62 @@ const PricingManagement = ({ isDemo = false }) => {
           }));
      };
 
-     const handleSubmit = (e) => {
+     const handleSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {
                setShowDemoRestrictedModal(true);
                return;
           }
-          // Handle form submission
-          console.log("Form submitted:", formData);
-          setIsAddModalOpen(false);
-          setIsEditModalOpen(false);
-          resetForm();
+
+          // Validate
+          if (!formData.fieldId || !formData.slotId || !formData.price) {
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Vui lòng điền đầy đủ thông tin',
+                    confirmButtonColor: '#ef4444'
+               });
+               return;
+          }
+
+          setIsSubmitting(true);
+          try {
+               let result;
+               if (editingPrice) {
+                    result = await updatePricing(editingPrice.priceId, formData);
+               } else {
+                    result = await createPricing(formData);
+               }
+
+               if (result.success) {
+                    await Swal.fire({
+                         icon: 'success',
+                         title: editingPrice ? 'Cập nhật giá thành công!' : 'Tạo giá thành công!',
+                         confirmButtonColor: '#10b981'
+                    });
+                    setIsAddModalOpen(false);
+                    setIsEditModalOpen(false);
+                    resetForm();
+                    await loadData();
+               } else {
+                    await Swal.fire({
+                         icon: 'error',
+                         title: 'Không thể lưu giá',
+                         text: result.error || 'Có lỗi xảy ra',
+                         confirmButtonColor: '#ef4444'
+                    });
+               }
+          } catch (error) {
+               console.error('Error saving pricing:', error);
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: error.message || 'Có lỗi xảy ra khi lưu giá',
+                    confirmButtonColor: '#ef4444'
+               });
+          } finally {
+               setIsSubmitting(false);
+          }
      };
 
      const handleEdit = (price) => {
@@ -152,63 +174,162 @@ const PricingManagement = ({ isDemo = false }) => {
           }
           setEditingPrice(price);
           setFormData({
-               timeSlot: price.timeSlot,
-               price: price.price.toString(),
-               dayType: price.dayType,
-               isActive: price.isActive
+               fieldId: price.fieldId?.toString() || "",
+               slotId: price.slotId?.toString() || "",
+               price: price.price?.toString() || ""
           });
           setIsEditModalOpen(true);
      };
 
-     const handleDelete = (priceId) => {
+     const handleDelete = async (priceId) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
                return;
           }
-          if (window.confirm("Bạn có chắc chắn muốn xóa giá này?")) {
-               // Handle delete
-               console.log("Delete price:", priceId);
+
+          const confirm = await Swal.fire({
+               title: 'Xác nhận xóa',
+               text: 'Bạn có chắc chắn muốn xóa giá này?',
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonText: 'Xóa',
+               cancelButtonText: 'Hủy',
+               confirmButtonColor: '#dc2626'
+          });
+
+          if (!confirm.isConfirmed) return;
+
+          try {
+               const result = await deletePricing(priceId);
+               if (result.success) {
+                    await Swal.fire({
+                         title: 'Đã xóa',
+                         text: 'Xóa giá thành công',
+                         icon: 'success',
+                         confirmButtonText: 'OK'
+                    });
+                    await loadData();
+               } else {
+                    await Swal.fire({
+                         title: 'Không thể xóa giá',
+                         text: result.error,
+                         icon: 'error',
+                         confirmButtonText: 'OK'
+                    });
+               }
+          } catch (error) {
+               console.error('Error deleting pricing:', error);
+               await Swal.fire({
+                    title: 'Có lỗi xảy ra',
+                    text: 'Có lỗi xảy ra khi xóa giá',
+                    icon: 'error',
+                    confirmButtonText: 'OK'
+               });
           }
      };
 
      const resetForm = () => {
           setFormData({
-               timeSlot: "",
-               price: "",
-               dayType: "weekday",
-               isActive: true
+               fieldId: "",
+               slotId: "",
+               price: ""
           });
           setEditingPrice(null);
      };
 
      const resetBulkForm = () => {
           setBulkFormData({
-               selectedTimeSlots: [],
-               price: "",
-               dayType: "weekday",
-               isActive: true
+               selectedSlotIds: [],
+               price: ""
           });
      };
 
-     const handleBulkTimeSlotToggle = (timeSlot) => {
+     const handleBulkSlotToggle = (slotId) => {
           setBulkFormData(prev => ({
                ...prev,
-               selectedTimeSlots: prev.selectedTimeSlots.includes(timeSlot)
-                    ? prev.selectedTimeSlots.filter(slot => slot !== timeSlot)
-                    : [...prev.selectedTimeSlots, timeSlot]
+               selectedSlotIds: prev.selectedSlotIds.includes(slotId)
+                    ? prev.selectedSlotIds.filter(id => id !== slotId)
+                    : [...prev.selectedSlotIds, slotId]
           }));
      };
 
-     const handleBulkSubmit = (e) => {
+     const handleBulkSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {
                setShowDemoRestrictedModal(true);
                return;
           }
-          // Handle bulk form submission
-          console.log("Bulk form submitted:", bulkFormData);
-          setIsBulkModalOpen(false);
-          resetBulkForm();
+
+          if (!formData.fieldId || bulkFormData.selectedSlotIds.length === 0 || !bulkFormData.price) {
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Vui lòng điền đầy đủ thông tin',
+                    confirmButtonColor: '#ef4444'
+               });
+               return;
+          }
+
+          setIsSubmitting(true);
+          try {
+               let successCount = 0;
+               let errorCount = 0;
+               const errors = [];
+
+               for (const slotId of bulkFormData.selectedSlotIds) {
+                    try {
+                         const result = await createPricing({
+                              fieldId: formData.fieldId,
+                              slotId: slotId,
+                              price: bulkFormData.price
+                         });
+
+                         if (result.success) {
+                              successCount++;
+                         } else {
+                              errorCount++;
+                              errors.push(`Slot ${slotId}: ${result.error}`);
+                         }
+                    } catch (error) {
+                         errorCount++;
+                         errors.push(`Slot ${slotId}: ${error.message}`);
+                    }
+               }
+
+               if (errorCount === 0) {
+                    await Swal.fire({
+                         icon: 'success',
+                         title: 'Tạo giá hàng loạt thành công!',
+                         text: `Đã tạo ${successCount} giá`,
+                         confirmButtonColor: '#10b981'
+                    });
+                    setIsBulkModalOpen(false);
+                    resetBulkForm();
+                    await loadData();
+               } else {
+                    await Swal.fire({
+                         icon: errorCount === bulkFormData.selectedSlotIds.length ? 'error' : 'warning',
+                         title: errorCount === bulkFormData.selectedSlotIds.length ? 'Tạo giá thất bại' : 'Tạo một phần thành công',
+                         html: `<div class="text-left"><p>Thành công: ${successCount}</p><p>Thất bại: ${errorCount}</p>${errors.length > 0 ? `<div class="mt-2 text-sm">${errors.join('<br>')}</div>` : ''}</div>`,
+                         confirmButtonColor: errorCount === bulkFormData.selectedSlotIds.length ? '#ef4444' : '#f59e0b'
+                    });
+                    if (successCount > 0) {
+                         setIsBulkModalOpen(false);
+                         resetBulkForm();
+                         await loadData();
+                    }
+               }
+          } catch (error) {
+               console.error('Error bulk creating pricing:', error);
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: error.message || 'Có lỗi xảy ra khi tạo giá hàng loạt',
+                    confirmButtonColor: '#ef4444'
+               });
+          } finally {
+               setIsSubmitting(false);
+          }
      };
 
      const handleAddPrice = () => {
@@ -227,12 +348,27 @@ const PricingManagement = ({ isDemo = false }) => {
           setIsBulkModalOpen(true);
      };
 
+     // Helper to get field name
+     const getFieldName = (fieldId) => {
+          const field = fields.find(f => f.fieldId === fieldId);
+          return field ? `${field.name} (${field.complexName})` : `Field ${fieldId}`;
+     };
+
+     // Helper to get slot name
+     const getSlotName = (slotId) => {
+          const slot = timeSlots.find(s => (s.slotId || s.SlotID) === slotId);
+          if (!slot) return `Slot ${slotId}`;
+          const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
+          const startTime = slot.startTime || slot.StartTime || "00:00";
+          const endTime = slot.endTime || slot.EndTime || "00:00";
+          return `${slotName} (${startTime.substring(0, 5)}-${endTime.substring(0, 5)})`;
+     };
+
      const filteredPricing = pricingData.filter(price => {
-          const matchesField = !selectedField || price.field === selectedField;
-          const matchesDayType = !filterDayType || price.dayType === filterDayType;
-          const matchesKeyword = !keyword || price.field.toLowerCase().includes(keyword.toLowerCase());
-          const matchesDate = !selectedDate || true; // Date filter logic can be added later
-          return matchesField && matchesDayType && matchesKeyword && matchesDate;
+          const matchesField = !selectedField || selectedField === 'all' || price.fieldId?.toString() === selectedField;
+          const fieldName = getFieldName(price.fieldId);
+          const matchesKeyword = !keyword || fieldName.toLowerCase().includes(keyword.toLowerCase());
+          return matchesField && matchesKeyword;
      });
 
      const formatCurrency = (amount) => {
@@ -242,19 +378,15 @@ const PricingManagement = ({ isDemo = false }) => {
           }).format(amount);
      };
 
-     const getDayTypeText = (dayType) => {
-          const dayTypeObj = dayTypes.find(d => d.value === dayType);
-          return dayTypeObj ? dayTypeObj.label : dayType;
-     };
-
-     const getDayTypeColor = (dayType) => {
-          switch (dayType) {
-               case 'weekday': return 'bg-blue-100 text-blue-800';
-               case 'weekend': return 'bg-green-100 text-green-800';
-               case 'holiday': return 'bg-red-100 text-red-800';
-               default: return 'bg-gray-100 text-gray-800';
-          }
-     };
+     if (loading) {
+          return (
+               <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
+                    <div className="flex items-center justify-center h-64">
+                         <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+                    </div>
+               </OwnerLayout>
+          );
+     }
 
      return (
           <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
@@ -288,19 +420,20 @@ const PricingManagement = ({ isDemo = false }) => {
 
                     {/* Filters */}
                     <Card className="p-6 rounded-2xl shadow-lg">
-                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div>
                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Chọn sân
                                    </label>
                                    <Select value={selectedField} onValueChange={setSelectedField} >
                                         <SelectTrigger className="rounded-2xl">
-                                             <SelectValue placeholder="Chọn sân" />
+                                             <SelectValue placeholder="Tất cả" />
                                         </SelectTrigger>
                                         <SelectContent>
+                                             <SelectItem value="all">Tất cả ({fields.length} sân)</SelectItem>
                                              {fields.map(field => (
-                                                  <SelectItem key={field.value} value={field.value}>
-                                                       {field.label}
+                                                  <SelectItem key={field.fieldId} value={(field.fieldId || "").toString()}>
+                                                       {field.name} ({field.complexName})
                                                   </SelectItem>
                                              ))}
                                         </SelectContent>
@@ -323,30 +456,15 @@ const PricingManagement = ({ isDemo = false }) => {
                                    <label className="block text-sm font-medium text-gray-700 mb-2">Từ khóa</label>
                                    <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} className="rounded-2xl" placeholder="Tìm theo sân..." />
                               </div>
-
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">Loại ngày</label>
-                                   <Select value={filterDayType} onValueChange={setFilterDayType}>
-                                        <SelectTrigger className="rounded-2xl">
-                                             <SelectValue placeholder="Tất cả" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             {dayTypes.map(d => (
-                                                  <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
-                                             ))}
-                                        </SelectContent>
-                                   </Select>
-                              </div>
                          </div>
 
                          <div className="flex items-end justify-end gap-3 mt-4">
                               <Button
                                    variant="outline"
                                    onClick={() => {
-                                        setSelectedField("");
+                                        setSelectedField("all");
                                         setSelectedDate("");
                                         setKeyword("");
-                                        setFilterDayType("");
                                    }}
                                    className="rounded-2xl items-center justify-center"
                               >
@@ -362,41 +480,22 @@ const PricingManagement = ({ isDemo = false }) => {
                                    <TableRow className="bg-teal-700">
                                         <TableHead className="text-white" >Sân</TableHead>
                                         <TableHead className="text-white" >Khung giờ</TableHead>
-                                        <TableHead className="text-white" >Loại ngày</TableHead>
                                         <TableHead className="text-white" >Giá</TableHead>
-                                        <TableHead className="text-white" >Trạng thái</TableHead>
-                                        <TableHead className="text-white" >Thống kê</TableHead>
                                         <TableHead className="text-white" >Thao tác</TableHead>
                                    </TableRow>
                               </TableHeader>
                               <TableBody>
                                    {filteredPricing.map((price) => (
-                                        <TableRow key={price.id} className="hover:bg-slate-50">
-                                             <TableCell className="text-sm font-medium text-gray-900">{price.field}</TableCell>
-                                             <TableCell className="text-sm text-gray-900">{price.timeSlot}</TableCell>
-                                             <TableCell>
-                                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDayTypeColor(price.dayType)}`}>
-                                                       {getDayTypeText(price.dayType)}
-                                                  </span>
-                                             </TableCell>
-                                             <TableCell className="text-sm font-medium text-gray-900">{formatCurrency(price.price)}</TableCell>
-                                             <TableCell>
-                                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${price.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                       {price.isActive ? 'Hoạt động' : 'Tạm dừng'}
-                                                  </span>
-                                             </TableCell>
-                                             <TableCell className="text-sm text-gray-900">
-                                                  <div>
-                                                       <div>{price.bookings} booking</div>
-                                                       <div className="text-xs text-gray-500">{formatCurrency(price.revenue)}</div>
-                                                  </div>
-                                             </TableCell>
+                                        <TableRow key={price.priceId} className="hover:bg-slate-50">
+                                             <TableCell className="text-sm font-medium text-gray-900">{getFieldName(price.fieldId)}</TableCell>
+                                             <TableCell className="text-sm text-gray-900">{getSlotName(price.slotId)}</TableCell>
+                                             <TableCell className="text-sm font-bold text-teal-700">{formatCurrency(price.price)}</TableCell>
                                              <TableCell className="text-sm font-medium">
                                                   <div className="flex items-center space-x-2">
                                                        <Button variant="ghost" size="sm" onClick={() => handleEdit(price)}>
                                                             <Edit className="w-4 h-4" />
                                                        </Button>
-                                                       <Button variant="ghost" size="sm" onClick={() => handleDelete(price.id)} className="text-red-600 hover:text-red-700">
+                                                       <Button variant="ghost" size="sm" onClick={() => handleDelete(price.priceId)} className="text-red-600 hover:text-red-700">
                                                             <Trash2 className="w-4 h-4" />
                                                        </Button>
                                                   </div>
@@ -418,13 +517,27 @@ const PricingManagement = ({ isDemo = false }) => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                          <Card className="p-6 rounded-2xl shadow-lg">
                               <div className="flex items-center">
-                                   <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                        <TrendingUp className="w-6 h-6 text-green-600" />
+                                   <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                        <DollarSign className="w-6 h-6 text-purple-600" />
                                    </div>
                                    <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-600">Tổng doanh thu</p>
+                                        <p className="text-sm font-medium text-gray-600">Tổng giá đã thiết lập</p>
                                         <p className="text-2xl font-bold text-gray-900">
-                                             {formatCurrency(filteredPricing.reduce((sum, price) => sum + price.revenue, 0))}
+                                             {filteredPricing.length}
+                                        </p>
+                                   </div>
+                              </div>
+                         </Card>
+
+                         <Card className="p-6 rounded-2xl shadow-lg">
+                              <div className="flex items-center">
+                                   <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                        <CheckSquare className="w-6 h-6 text-green-600" />
+                                   </div>
+                                   <div className="ml-4">
+                                        <p className="text-sm font-medium text-gray-600">Đang hoạt động</p>
+                                        <p className="text-2xl font-bold text-gray-900">
+                                             {filteredPricing.filter(p => p.isActive).length}
                                         </p>
                                    </div>
                               </div>
@@ -433,26 +546,12 @@ const PricingManagement = ({ isDemo = false }) => {
                          <Card className="p-6 rounded-2xl shadow-lg">
                               <div className="flex items-center">
                                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                        <Calendar className="w-6 h-6 text-blue-600" />
+                                        <Clock className="w-6 h-6 text-blue-600" />
                                    </div>
                                    <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-600">Tổng booking</p>
+                                        <p className="text-sm font-medium text-gray-600">Giá trung bình</p>
                                         <p className="text-2xl font-bold text-gray-900">
-                                             {filteredPricing.reduce((sum, price) => sum + price.bookings, 0)}
-                                        </p>
-                                   </div>
-                              </div>
-                         </Card>
-
-                         <Card className="p-6 rounded-2xl shadow-lg">
-                              <div className="flex items-center">
-                                   <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                                        <Clock className="w-6 h-6 text-purple-600" />
-                                   </div>
-                                   <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-600">Khung giờ</p>
-                                        <p className="text-2xl font-bold text-gray-900">
-                                             {filteredPricing.length}
+                                             {filteredPricing.length > 0 ? formatCurrency(filteredPricing.reduce((sum, p) => sum + p.price, 0) / filteredPricing.length) : formatCurrency(0)}
                                         </p>
                                    </div>
                               </div>
@@ -474,14 +573,17 @@ const PricingManagement = ({ isDemo = false }) => {
                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Sân *
                                    </label>
-                                   <Select value={selectedField} onValueChange={setSelectedField}>
+                                   <Select value={formData.fieldId} onValueChange={(value) => {
+                                        setFormData(prev => ({ ...prev, fieldId: value }));
+                                        setBulkFormData(prev => ({ ...prev, selectedSlotIds: [] })); // Reset selected slots when field changes
+                                   }}>
                                         <SelectTrigger>
                                              <SelectValue placeholder="Chọn sân" />
                                         </SelectTrigger>
                                         <SelectContent>
                                              {fields.map(field => (
-                                                  <SelectItem key={field.value} value={field.value}>
-                                                       {field.label}
+                                                  <SelectItem key={field.fieldId} value={(field.fieldId || "").toString()}>
+                                                       {field.name} ({field.complexName})
                                                   </SelectItem>
                                              ))}
                                         </SelectContent>
@@ -492,38 +594,43 @@ const PricingManagement = ({ isDemo = false }) => {
                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Chọn khung giờ *
                                    </label>
-                                   <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3">
-                                        {timeSlots.map(slot => (
-                                             <label key={slot} className="flex items-center space-x-2 cursor-pointer">
-                                                  <input
-                                                       type="checkbox"
-                                                       checked={bulkFormData.selectedTimeSlots.includes(slot)}
-                                                       onChange={() => handleBulkTimeSlotToggle(slot)}
-                                                       className="rounded border-gray-300"
-                                                  />
-                                                  <span className="text-sm text-gray-700">{slot}</span>
-                                             </label>
-                                        ))}
-                                   </div>
-                                   <p className="text-xs text-gray-500 mt-1">
-                                        Đã chọn: {bulkFormData.selectedTimeSlots.length} khung giờ
-                                   </p>
-                              </div>
-
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Loại ngày *
-                                   </label>
-                                   <Select value={bulkFormData.dayType} onValueChange={(value) => setBulkFormData(prev => ({ ...prev, dayType: value }))}>
-                                        <SelectTrigger>
-                                             <SelectValue placeholder="Chọn loại ngày" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             {dayTypes.map(day => (
-                                                  <SelectItem key={day.value} value={day.value}>{day.label}</SelectItem>
-                                             ))}
-                                        </SelectContent>
-                                   </Select>
+                                   {!formData.fieldId ? (
+                                        <div className="border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
+                                             Vui lòng chọn sân trước
+                                        </div>
+                                   ) : (
+                                        <>
+                                             <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                                                  {timeSlots
+                                                       .filter(slot => {
+                                                            const slotFieldId = slot.fieldId || slot.FieldId;
+                                                            return !slotFieldId || slotFieldId === parseInt(formData.fieldId);
+                                                       })
+                                                       .map(slot => {
+                                                            const slotId = slot.slotId || slot.SlotID;
+                                                            const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
+                                                            const startTime = slot.startTime || slot.StartTime || "00:00";
+                                                            const endTime = slot.endTime || slot.EndTime || "00:00";
+                                                            return (
+                                                                 <label key={slotId} className="flex items-center space-x-2 cursor-pointer">
+                                                                      <input
+                                                                           type="checkbox"
+                                                                           checked={bulkFormData.selectedSlotIds.includes(slotId)}
+                                                                           onChange={() => handleBulkSlotToggle(slotId)}
+                                                                           className="rounded border-gray-300"
+                                                                      />
+                                                                      <span className="text-sm text-gray-700">
+                                                                           {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
+                                                                      </span>
+                                                                 </label>
+                                                            );
+                                                       })}
+                                             </div>
+                                             <p className="text-xs text-gray-500 mt-1">
+                                                  Đã chọn: {bulkFormData.selectedSlotIds.length} khung giờ
+                                             </p>
+                                        </>
+                                   )}
                               </div>
 
                               <div>
@@ -540,19 +647,6 @@ const PricingManagement = ({ isDemo = false }) => {
                                    />
                               </div>
 
-                              <div className="flex items-center">
-                                   <input
-                                        type="checkbox"
-                                        name="isActive"
-                                        checked={bulkFormData.isActive}
-                                        onChange={(e) => setBulkFormData(prev => ({ ...prev, isActive: e.target.checked }))}
-                                        className="rounded border-gray-300"
-                                   />
-                                   <label className="ml-2 text-sm text-gray-700">
-                                        Kích hoạt giá này
-                                   </label>
-                              </div>
-
                               <div className="flex justify-end space-x-3 pt-4">
                                    <Button
                                         type="button"
@@ -564,9 +658,18 @@ const PricingManagement = ({ isDemo = false }) => {
                                    >
                                         Hủy
                                    </Button>
-                                   <Button type="submit" disabled={bulkFormData.selectedTimeSlots.length === 0}>
-                                        <CheckSquare className="w-4 h-4 mr-2" />
-                                        Tạo {bulkFormData.selectedTimeSlots.length} giá
+                                   <Button type="submit" disabled={bulkFormData.selectedSlotIds.length === 0 || isSubmitting}>
+                                        {isSubmitting ? (
+                                             <>
+                                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                  Đang tạo...
+                                             </>
+                                        ) : (
+                                             <>
+                                                  <CheckSquare className="w-4 h-4 mr-2" />
+                                                  Tạo {bulkFormData.selectedSlotIds.length} giá
+                                             </>
+                                        )}
                                    </Button>
                               </div>
                          </form>
@@ -587,14 +690,14 @@ const PricingManagement = ({ isDemo = false }) => {
                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Sân *
                                    </label>
-                                   <Select value={selectedField} onValueChange={setSelectedField}>
+                                   <Select value={formData.fieldId} onValueChange={(value) => setFormData(prev => ({ ...prev, fieldId: value }))}>
                                         <SelectTrigger>
                                              <SelectValue placeholder="Chọn sân" />
                                         </SelectTrigger>
                                         <SelectContent>
                                              {fields.map(field => (
-                                                  <SelectItem key={field.value} value={field.value}>
-                                                       {field.label}
+                                                  <SelectItem key={field.fieldId} value={(field.fieldId || "").toString()}>
+                                                       {field.name} ({field.complexName})
                                                   </SelectItem>
                                              ))}
                                         </SelectContent>
@@ -605,30 +708,22 @@ const PricingManagement = ({ isDemo = false }) => {
                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Khung giờ *
                                    </label>
-                                   <Select value={formData.timeSlot} onValueChange={(value) => setFormData(prev => ({ ...prev, timeSlot: value }))}>
+                                   <Select value={formData.slotId} onValueChange={(value) => setFormData(prev => ({ ...prev, slotId: value }))}>
                                         <SelectTrigger>
                                              <SelectValue placeholder="Chọn khung giờ" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                             {timeSlots.map(slot => (
-                                                  <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                                             ))}
-                                        </SelectContent>
-                                   </Select>
-                              </div>
-
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Loại ngày *
-                                   </label>
-                                   <Select value={formData.dayType} onValueChange={(value) => setFormData(prev => ({ ...prev, dayType: value }))}>
-                                        <SelectTrigger>
-                                             <SelectValue placeholder="Chọn loại ngày" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             {dayTypes.map(day => (
-                                                  <SelectItem key={day.value} value={day.value}>{day.label}</SelectItem>
-                                             ))}
+                                             {timeSlots.map(slot => {
+                                                  const slotId = slot.slotId || slot.SlotID;
+                                                  const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
+                                                  const startTime = slot.startTime || slot.StartTime || "00:00";
+                                                  const endTime = slot.endTime || slot.EndTime || "00:00";
+                                                  return (
+                                                       <SelectItem key={slotId} value={(slotId || "").toString()}>
+                                                            {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
+                                                       </SelectItem>
+                                                  );
+                                             })}
                                         </SelectContent>
                                    </Select>
                               </div>
@@ -671,9 +766,18 @@ const PricingManagement = ({ isDemo = false }) => {
                                    >
                                         Hủy
                                    </Button>
-                                   <Button type="submit">
-                                        <Save className="w-4 h-4 mr-2" />
-                                        Lưu giá
+                                   <Button type="submit" disabled={isSubmitting}>
+                                        {isSubmitting ? (
+                                             <>
+                                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                                  Đang lưu...
+                                             </>
+                                        ) : (
+                                             <>
+                                                  <Save className="w-4 h-4 mr-2" />
+                                                  Lưu giá
+                                             </>
+                                        )}
                                    </Button>
                               </div>
                          </form>
@@ -705,30 +809,22 @@ const PricingManagement = ({ isDemo = false }) => {
                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Khung giờ *
                                    </label>
-                                   <Select value={formData.timeSlot} onValueChange={(value) => setFormData(prev => ({ ...prev, timeSlot: value }))}>
+                                   <Select value={formData.slotId} onValueChange={(value) => setFormData(prev => ({ ...prev, slotId: value }))}>
                                         <SelectTrigger>
                                              <SelectValue placeholder="Chọn khung giờ" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                             {timeSlots.map(slot => (
-                                                  <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                                             ))}
-                                        </SelectContent>
-                                   </Select>
-                              </div>
-
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Loại ngày *
-                                   </label>
-                                   <Select value={formData.dayType} onValueChange={(value) => setFormData(prev => ({ ...prev, dayType: value }))}>
-                                        <SelectTrigger>
-                                             <SelectValue placeholder="Chọn loại ngày" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             {dayTypes.map(day => (
-                                                  <SelectItem key={day.value} value={day.value}>{day.label}</SelectItem>
-                                             ))}
+                                             {timeSlots.map(slot => {
+                                                  const slotId = slot.slotId || slot.SlotID;
+                                                  const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
+                                                  const startTime = slot.startTime || slot.StartTime || "00:00";
+                                                  const endTime = slot.endTime || slot.EndTime || "00:00";
+                                                  return (
+                                                       <SelectItem key={slotId} value={(slotId || "").toString()}>
+                                                            {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
+                                                       </SelectItem>
+                                                  );
+                                             })}
                                         </SelectContent>
                                    </Select>
                               </div>

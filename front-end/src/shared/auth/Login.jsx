@@ -5,7 +5,6 @@ import { Button, Input } from '../components/ui';
 import { FadeIn, SlideIn } from '../components/ui/animations';
 import { Eye, EyeOff, Phone, Lock, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import ErrorDisplay from '../components/ErrorDisplay';
 import ForgotPasswordModal from '../components/ForgotPasswordModal';
 import Swal from 'sweetalert2';
 
@@ -14,7 +13,6 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
      const { login } = useAuth();
      const [phone, setPhone] = useState('');
      const [password, setPassword] = useState('');
-     const [error, setError] = useState('');
      const [phoneError, setPhoneError] = useState('');
      const [passwordError, setPasswordError] = useState('');
      const [showPassword, setShowPassword] = useState(false);
@@ -53,7 +51,6 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
 
      async function handleSubmit(e) {
           e.preventDefault();
-          setError('');
           setIsLoading(true);
 
           // Validation
@@ -84,7 +81,13 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
                          errorMessage = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet';
                     }
 
-                    setError(errorMessage);
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Đăng nhập thất bại',
+                         text: errorMessage,
+                         confirmButtonText: 'Đóng',
+                         confirmButtonColor: '#ef4444'
+                    });
                     setIsLoading(false);
                     return;
                }
@@ -109,7 +112,13 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
           } catch (error) {
                // Hiển thị lỗi chi tiết từ exception
                const errorMessage = error.message || 'Có lỗi xảy ra khi đăng nhập. Vui lòng thử lại.';
-               setError(errorMessage);
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi đăng nhập',
+                    text: errorMessage,
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#ef4444'
+               });
                console.error('Login error:', error);
                setIsLoading(false);
           }
@@ -117,15 +126,26 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
 
      async function handleGoogleLogin() {
           setIsGoogleLoading(true);
-          setError('');
 
           try {
-               setError("Chức năng đăng nhập Google chưa được tích hợp. Vui lòng sử dụng đăng nhập thường.");
+               Swal.fire({
+                    icon: 'info',
+                    title: 'Thông báo',
+                    text: 'Chức năng đăng nhập Google chưa được tích hợp. Vui lòng sử dụng đăng nhập thường.',
+                    confirmButtonText: 'Đã hiểu',
+                    confirmButtonColor: '#0d9488'
+               });
                setIsGoogleLoading(false);
                return;
           } catch (error) {
                const errorMessage = error.message || 'Có lỗi xảy ra khi đăng nhập Google. Vui lòng thử lại.';
-               setError(errorMessage);
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi đăng nhập Google',
+                    text: errorMessage,
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#ef4444'
+               });
                console.error('Google login error:', error);
                setIsGoogleLoading(false);
           }
@@ -133,17 +153,6 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
 
      return (
           <div className={compact ? "w-full" : "max-w-sm mx-auto p-3"}>
-               {error && (
-                    <FadeIn delay={0} duration={0.3}>
-                         <ErrorDisplay
-                              type="error"
-                              title="Lỗi đăng nhập"
-                              message={error}
-                              onClose={() => setError('')}
-                         />
-                    </FadeIn>
-               )}
-
                <SlideIn direction="up" delay={0} duration={0.4}>
                     <div className="w-full">
                          {/* Welcome Section */}

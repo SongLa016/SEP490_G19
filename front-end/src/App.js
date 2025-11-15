@@ -56,6 +56,14 @@ const BankAccountManagement = lazy(() =>
   import("./roles/owner/pages/BankAccountManagement")
 );
 
+// Test components
+const TestFieldSchedules = lazy(() =>
+  import("./test/TestFieldSchedules")
+);
+const TestTimeSlots = lazy(() =>
+  import("./test/TestTimeSlots")
+);
+
 // Lazy load other player pages
 const BookingHistory = lazy(() =>
   import("./roles/player/pages/booking/BookingHistory")
@@ -318,6 +326,22 @@ function AppContent() {
               user.roleName === "Owner" ? (
                 <Suspense fallback={<LoadingFallback />}>
                   <TimeSlotManagement />
+                </Suspense>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/owner/schedule"
+          element={
+            user ? (
+              user.roleName === "Owner" ? (
+                <Suspense fallback={<LoadingFallback />}>
+                  <ScheduleManagement />
                 </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -628,6 +652,24 @@ function AppContent() {
             ) : (
               <Navigate to="/auth" replace />
             )
+          }
+        />
+
+        {/* Test Routes */}
+        <Route
+          path="/test/schedules"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <TestFieldSchedules />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/test/timeslots"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <TestTimeSlots />
+            </Suspense>
           }
         />
 

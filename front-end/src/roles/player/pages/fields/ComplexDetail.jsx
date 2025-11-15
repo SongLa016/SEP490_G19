@@ -133,8 +133,8 @@ export default function ComplexDetail({ user }) {
                          if (fieldData?.fieldId) setSelectedFieldId(Number(fieldData.fieldId));
                     }
 
-                    const [slots, complexData, complexDataNoSlot, policyData, promotionsData] = await Promise.all([
-                         fetchTimeSlots(),
+                    // Fetch complex data first to get field list
+                    const [complexData, complexDataNoSlot, policyData, promotionsData] = await Promise.all([
                          fetchComplexDetail(complexIdToUse, {
                               date: selectedDate,
                               slotId: selectedSlotId
@@ -149,7 +149,29 @@ export default function ComplexDetail({ user }) {
                     ]);
 
                     if (!ignore) {
-                         setTimeSlots(Array.isArray(slots) ? slots : []);
+                         // Determine which field to fetch timeslots for
+                         // Priority: fieldData from route > selectedFieldId from state > first field in complex
+                         const fieldIdToUse = (fieldData?.fieldId ? Number(fieldData.fieldId) : null)
+                              || selectedFieldId
+                              || (complexData?.fields?.[0]?.fieldId ? Number(complexData.fields[0].fieldId) : null);
+
+                         // Fetch timeslots for the determined field
+                         let slots = [];
+                         if (fieldIdToUse) {
+                              // Ensure fieldId is a clean number
+                              const cleanFieldId = Number(fieldIdToUse);
+                              console.log('Fetching timeslots for fieldId:', cleanFieldId);
+
+                              const slotsResponse = await fetchTimeSlots(cleanFieldId);
+                              if (slotsResponse?.success && Array.isArray(slotsResponse.data)) {
+                                   slots = slotsResponse.data;
+                                   console.log('Loaded timeslots:', slots.length);
+                              } else {
+                                   console.error('Failed to load timeslots:', slotsResponse?.error);
+                              }
+                         }
+
+                         setTimeSlots(slots);
                          setComplexData(complexData);
                          setCancellationPolicy(policyData);
                          setPromotions(Array.isArray(promotionsData) ? promotionsData : []);
@@ -177,7 +199,7 @@ export default function ComplexDetail({ user }) {
 
           loadData();
           return () => { ignore = true; };
-     }, [id, isFieldRoute, selectedDate, selectedSlotId]);
+     }, [id, isFieldRoute, selectedDate, selectedSlotId, selectedFieldId]);
 
      // Compute the absolute cheapest slot price across all slots once data is ready
      useEffect(() => {
@@ -268,7 +290,7 @@ export default function ComplexDetail({ user }) {
                next.set("tab", activeTab);
                setSearchParams(next, { replace: true });
           }
-     }, [activeTab]);
+     }, [activeTab, searchParams, setSearchParams]);
 
      // Scroll to top and show loading when switching from complex to field detail
      useEffect(() => {
@@ -364,6 +386,7 @@ export default function ComplexDetail({ user }) {
                totalFields: fields.length,
                fieldType: "Complex",
                complexId: id,
+               ownerId: complex?.ownerId || complex?.ownerID, // Thêm ownerId để lấy bank account
                isRecurringPreset: isRecurring,
                recurringWeeksPreset: weeksCount,
                selectedDaysPreset: mappedDays
@@ -426,6 +449,7 @@ export default function ComplexDetail({ user }) {
                fieldSize: field.size || "Không xác định",
                complexId: id,
                complexName: complex?.name || "",
+               ownerId: complex?.ownerId || complex?.ownerID, // Thêm ownerId để lấy bank account
                isRecurringPreset: isRecurring,
                recurringWeeksPreset: weeksCount,
                selectedDaysPreset: mappedDays

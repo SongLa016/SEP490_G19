@@ -102,7 +102,7 @@ export default function GroupedViewSection({
                                              </div>
                                              <div className="flex items-center justify-between mb-3">
 
-                                                  <h3 className="text-lg font-bold flex items-center text-teal-800 line-clamp-1">
+                                                  <h3 className="text-base font-bold flex items-center text-teal-800 line-clamp-1">
                                                        <StadiumIcon className="w-2 h-2 mr-1 text-teal-500 fill-teal-500" />
                                                        {item.name}</h3>
                                                   {type === 'field' && title === 'Giá tốt' && (
@@ -119,51 +119,16 @@ export default function GroupedViewSection({
                                                   )}
                                              </div>
                                              {type === 'complex' && (
-                                                  <div className="flex items-center justify-between gap-2 mb-4">
-                                                       <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">
-                                                            {item.availableFields}/{item.totalFields} sân
-                                                       </span>
-                                                       <div className="text-xs font-semibold flex items-center text-red-500">
-                                                            <MapPin className="w-4 h-4 mr-1" />
-                                                            <p>{item.distanceKm ? `${item.distanceKm.toFixed(1)} km` : ""}</p>
+                                                  <div className="flex item-center justify-between">
+                                                       <div className="flex items-center justify-start gap-2 mb-4">
+                                                            <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">
+                                                                 {item.availableFields}/{item.totalFields} sân
+                                                            </span>
+                                                            <div className="text-xs font-semibold flex items-center text-red-500">
+                                                                 <MapPin className="w-4 h-4 mr-1" />
+                                                                 <p>{item.distanceKm ? `${item.distanceKm.toFixed(1)} km` : ""}</p>
+                                                            </div>
                                                        </div>
-                                                  </div>
-                                             )}
-                                             {type === 'field' && (
-                                                  <div className="flex items-center gap-2 mb-4">
-                                                       {Array.isArray(item.amenities) && item.amenities.length > 0 && (
-                                                            <>
-                                                                 <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{item.amenities[0]}</span>
-                                                                 {item.amenities.length > 1 && (
-                                                                      <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">+{item.amenities.length - 1}</span>
-                                                                 )}
-                                                            </>
-                                                       )}
-                                                  </div>
-                                             )}
-                                             <div className="mt-auto flex items-center justify-between">
-                                                  <div className="text-base font-bold text-orange-600 flex items-center">
-                                                       <AttachMoneyIcon className="w-1 h-1" />
-                                                       {formatPrice(type === 'complex' ? item.minPriceForSelectedSlot || 0 : item.priceForSelectedSlot || 0)}/trận
-                                                  </div>
-                                                  {type === 'field' ? (
-                                                       <Button
-                                                            type="button"
-                                                            onMouseDown={(e) => {
-                                                                 e.preventDefault();
-                                                                 e.stopPropagation();
-                                                            }}
-                                                            onClick={(e) => {
-                                                                 e.preventDefault();
-                                                                 e.stopPropagation();
-                                                                 handleBook(item.fieldId);
-                                                            }}
-                                                            className="w-fit hover:scale-105 duration-200 bg-teal-500 hover:bg-teal-600 text-white px-2 py-1 rounded-full font-semibold transition-all flex items-center gap-2"
-                                                       >
-                                                            <EventSeatIcon className="w-2 h-2" />
-                                                            Đặt sân
-                                                       </Button>
-                                                  ) : (
                                                        <Button
                                                             type="button"
                                                             onMouseDown={(e) => {
@@ -180,9 +145,43 @@ export default function GroupedViewSection({
                                                                  const targetUrl = type === 'complex' ? `/complex/${item.complexId}` : `/field/${item.fieldId}`;
                                                                  nav(targetUrl);
                                                             }}
-                                                            className="w-fit bg-teal-500 hover:bg-teal-600 text-white px-3 py-0.5 rounded-full font-semibold transition-all duration-200 hover:scale-105"
+                                                            className="w-fit hover:bg-teal-600 text-white px-3 py-0.5 rounded-full font-semibold transition-all duration-200 hover:scale-105"
                                                        >
                                                             <EyeIcon className="w-5 h-5" />
+                                                       </Button>
+                                                  </div>
+
+                                             )}
+                                             {type === 'field' && (
+                                                  <div className="flex items-center gap-2 mb-4">
+                                                       {Array.isArray(item.amenities) && item.amenities.length > 0 && (
+                                                            <>
+                                                                 <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{item.amenities[0]}</span>
+                                                                 {item.amenities.length > 1 && (
+                                                                      <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">+{item.amenities.length - 1}</span>
+                                                                 )}
+                                                            </>
+                                                       )}
+                                                  </div>
+                                             )}
+                                             <div className="mt-auto flex items-center justify-between">
+
+                                                  {type === 'field' && (
+                                                       <Button
+                                                            type="button"
+                                                            onMouseDown={(e) => {
+                                                                 e.preventDefault();
+                                                                 e.stopPropagation();
+                                                            }}
+                                                            onClick={(e) => {
+                                                                 e.preventDefault();
+                                                                 e.stopPropagation();
+                                                                 handleBook(item.fieldId);
+                                                            }}
+                                                            className="w-fit hover:scale-105 duration-200 bg-teal-500 hover:bg-teal-600 text-white px-2 py-1 rounded-full font-semibold transition-all flex items-center gap-2"
+                                                       >
+                                                            <EventSeatIcon className="w-2 h-2" />
+                                                            Đặt sân
                                                        </Button>
                                                   )}
                                              </div>

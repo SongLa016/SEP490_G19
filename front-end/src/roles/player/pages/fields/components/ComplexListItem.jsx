@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { MapPin, EyeIcon } from "lucide-react";
 import StadiumIcon from '@mui/icons-material/Stadium';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import { Button, FadeIn } from "../../../../../shared/components/ui";
 
 export default function ComplexListItem({ complex, index, navigate, formatPrice }) {
@@ -31,10 +30,7 @@ export default function ComplexListItem({ complex, index, navigate, formatPrice 
                                              {complex.name}
                                         </h3>
                                    </div>
-                                   <div className="text-xl font-bold text-teal-600 flex items-center">
-                                        <AttachMoneyIcon className="w-5 h-5 mr-1" />
-                                        {formatPrice(complex.minPriceForSelectedSlot)}
-                                   </div>
+
                               </div>
                               <div className="flex justify-between items-center">
                                    <div className="text-sm items-center flex text-gray-500">
