@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
 public class FieldScheduleController : ControllerBase
 {
     private readonly IFieldScheduleService _service;
@@ -21,16 +20,51 @@ public class FieldScheduleController : ControllerBase
         return int.Parse(claim.Value);
     }
 
+
+    /// Lấy toàn bộ lịch sân (Player xem)
+    [HttpGet("public")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAllPublic()
+    {
+        var schedules = await _service.GetPublicAllAsync();
+        return Ok(schedules);
+    }
+
+    /// Lấy lịch của 1 sân cụ thể (Player xem)
+    [HttpGet("public/field/{fieldId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetByFieldPublic(int fieldId)
+    {
+        var schedules = await _service.GetPublicByFieldAsync(fieldId);
+        return Ok(schedules);
+    }
+
+    /// Lấy chi tiết 1 lịch theo ID (public)
+    [HttpGet("public/{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPublicById(int id)
+    {
+        var schedule = await _service.GetPublicByIdAsync(id);
+        if (schedule == null) return NotFound();
+        return Ok(schedule);
+    }
+
+    // 2) OWNER API
+
+    /// Lấy toàn bộ lịch của owner
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    [Authorize]
+    public async Task<IActionResult> GetAllOwner()
     {
         var ownerId = GetOwnerId();
         var schedules = await _service.GetAllAsync(ownerId);
         return Ok(schedules);
     }
 
+    /// Lấy chi tiết lịch theo ID (chỉ owner)
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(int id)
+    [Authorize]
+    public async Task<IActionResult> GetByIdOwner(int id)
     {
         var ownerId = GetOwnerId();
         var schedule = await _service.GetByIdAsync(id, ownerId);
@@ -38,14 +72,16 @@ public class FieldScheduleController : ControllerBase
         return Ok(schedule);
     }
 
+    /// Tạo lịch mới (only owner)
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> Create([FromBody] FieldScheduleDTO dto)
     {
         try
         {
             var ownerId = GetOwnerId();
             var schedule = await _service.AddAsync(dto, ownerId);
-            return CreatedAtAction(nameof(GetById), new { id = schedule.ScheduleId }, schedule);
+            return CreatedAtAction(nameof(GetByIdOwner), new { id = schedule.ScheduleId }, schedule);
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -57,7 +93,9 @@ public class FieldScheduleController : ControllerBase
         }
     }
 
+    /// Update lịch (only owner)
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<IActionResult> Update(int id, [FromBody] FieldScheduleDTO dto)
     {
         try
@@ -77,7 +115,9 @@ public class FieldScheduleController : ControllerBase
         }
     }
 
+    /// Xoá lịch (only owner)
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<IActionResult> Delete(int id)
     {
         try

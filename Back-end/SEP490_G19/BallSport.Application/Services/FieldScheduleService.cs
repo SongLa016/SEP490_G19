@@ -1,18 +1,25 @@
 ﻿using System;
+using BallSport.Application;
 using BallSport.Application.DTOs;
 using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
+using BallSport.Application.Services;
 
 public interface IFieldScheduleService
 {
+    // OWNER CRUD
     Task<FieldScheduleDTO> AddAsync(FieldScheduleDTO dto, int ownerId);
     Task<FieldScheduleDTO?> UpdateAsync(int id, FieldScheduleDTO dto, int ownerId);
     Task<bool> DeleteAsync(int id, int ownerId);
     Task<List<FieldScheduleDTO>> GetAllAsync(int ownerId);
     Task<FieldScheduleDTO?> GetByIdAsync(int id, int ownerId);
-}
 
+    // PUBLIC
+    Task<List<FieldSchedulePublicDTO>> GetPublicAllAsync();
+    Task<FieldSchedulePublicDTO?> GetPublicByIdAsync(int scheduleId);
+    Task<List<FieldScheduleDTO>> GetPublicByFieldAsync(int fieldId);
+}
 public class FieldScheduleService : IFieldScheduleService
 {
     private readonly Sep490G19v1Context _context;
@@ -24,12 +31,14 @@ public class FieldScheduleService : IFieldScheduleService
         _repo = repo;
     }
 
+    // ------------------------ OWNER CRUD -------------------------------
+
     public async Task<FieldScheduleDTO> AddAsync(FieldScheduleDTO dto, int ownerId)
     {
         if (dto.FieldId == null || dto.SlotId == null)
             throw new Exception("FieldId và SlotId là bắt buộc.");
 
-        // Kiểm tra quyền owner
+        // Check owner quyền
         var field = await _context.Fields
             .Include(f => f.Complex)
             .FirstOrDefaultAsync(f => f.FieldId == dto.FieldId && f.Complex.OwnerId == ownerId);
@@ -37,11 +46,11 @@ public class FieldScheduleService : IFieldScheduleService
         if (field == null)
             throw new UnauthorizedAccessException("Bạn không có quyền thêm lịch cho sân này.");
 
-        // Kiểm tra trùng slot hoặc chồng lấn khung giờ
         var slot = await _context.TimeSlots.FirstOrDefaultAsync(s => s.SlotId == dto.SlotId);
         if (slot == null)
             throw new Exception("Slot không tồn tại.");
 
+        // Check trùng / chồng lấn slot
         bool overlap = await _context.FieldSchedules
             .Where(fs => fs.FieldId == dto.FieldId && fs.Date == dto.Date)
             .AnyAsync(fs =>
@@ -50,7 +59,7 @@ public class FieldScheduleService : IFieldScheduleService
             );
 
         if (overlap)
-            throw new Exception("Khung giờ này đã tồn tại hoặc chồng lấn với slot khác của sân.");
+            throw new Exception("Khung giờ này đã tồn tại hoặc chồng lấn.");
 
         var schedule = new FieldSchedule
         {
@@ -86,9 +95,8 @@ public class FieldScheduleService : IFieldScheduleService
             .FirstOrDefaultAsync(f => f.FieldId == schedule.FieldId && f.Complex.OwnerId == ownerId);
 
         if (field == null)
-            throw new UnauthorizedAccessException("Bạn không có quyền sửa lịch cho sân này.");
+            throw new UnauthorizedAccessException("Bạn không có quyền sửa lịch của sân này.");
 
-        // Kiểm tra trùng hoặc chồng lấn khung giờ mới
         var slot = await _context.TimeSlots.FirstOrDefaultAsync(s => s.SlotId == dto.SlotId);
         if (slot == null)
             throw new Exception("Slot không tồn tại.");
@@ -101,7 +109,7 @@ public class FieldScheduleService : IFieldScheduleService
             );
 
         if (overlap)
-            throw new Exception("Khung giờ này đã tồn tại hoặc chồng lấn với slot khác của sân.");
+            throw new Exception("Khung giờ mới đã tồn tại hoặc chồng lấn.");
 
         schedule.SlotId = dto.SlotId;
         schedule.Date = dto.Date;
@@ -133,7 +141,7 @@ public class FieldScheduleService : IFieldScheduleService
             .FirstOrDefaultAsync(f => f.FieldId == schedule.FieldId && f.Complex.OwnerId == ownerId);
 
         if (field == null)
-            throw new UnauthorizedAccessException("Bạn không có quyền xóa lịch cho sân này.");
+            throw new UnauthorizedAccessException("Bạn không có quyền xóa lịch của sân này.");
 
         await _repo.DeleteAsync(schedule);
         return true;
@@ -184,5 +192,68 @@ public class FieldScheduleService : IFieldScheduleService
             Date = schedule.Date,
             Status = schedule.Status
         };
+    }
+
+    // ==================================================================
+    // ---------------------- PUBLIC CHO NGƯỜI CHƠI ----------------------
+    // ==================================================================
+
+    public async Task<List<FieldSchedulePublicDTO>> GetPublicAllAsync()
+    {
+        return await _context.FieldSchedules
+            .Include(s => s.Field)
+            .Include(s => s.Slot)
+            .Select(s => new FieldSchedulePublicDTO
+            {
+                ScheduleID = s.ScheduleId,
+                FieldID = s.FieldId,
+                Date = s.Date,
+                Status = s.Status,
+                StartTime = s.Slot.StartTime,
+                EndTime = s.Slot.EndTime
+            })
+            .ToListAsync();
+    }
+
+    public async Task<FieldSchedulePublicDTO?> GetPublicByIdAsync(int scheduleId)
+    {
+        return await _context.FieldSchedules
+            .Include(s => s.Field)
+            .Include(s => s.Slot)
+            .Where(s => s.ScheduleId == scheduleId)
+            .Select(s => new FieldSchedulePublicDTO
+            {
+                ScheduleID = s.ScheduleId,
+                FieldID = s.FieldId,
+                Date = s.Date,
+                Status = s.Status,
+                StartTime = s.Slot.StartTime,
+                EndTime = s.Slot.EndTime
+            })
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<List<FieldScheduleDTO>> GetPublicByFieldAsync(int fieldId)
+    {
+        var schedules = await _context.FieldSchedules
+            .Include(fs => fs.Field)
+            .Include(fs => fs.Slot)
+            .Where(fs => fs.FieldId == fieldId)
+            .OrderBy(fs => fs.Date)
+            .ThenBy(fs => fs.Slot.StartTime)
+            .ToListAsync();
+
+        return schedules.Select(fs => new FieldScheduleDTO
+        {
+            ScheduleId = fs.ScheduleId,
+            FieldId = fs.FieldId,
+            FieldName = fs.Field!.Name,
+            SlotId = fs.SlotId,
+            SlotName = fs.Slot!.SlotName,
+            StartTime = fs.Slot.StartTime,
+            EndTime = fs.Slot.EndTime,
+            Date = fs.Date,
+            Status = fs.Status
+        }).ToList();
     }
 }
