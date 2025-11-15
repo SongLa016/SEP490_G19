@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BallSport.Application.DTOs
 {
@@ -10,9 +6,9 @@ namespace BallSport.Application.DTOs
     {
         public int ScheduleId { get; set; }
         public int? FieldId { get; set; }
-        public string? FieldName { get; set; }     // lấy từ Field.Name
+        public string? FieldName { get; set; }
         public int? SlotId { get; set; }
-        public string? SlotName { get; set; }      // lấy từ TimeSlot.SlotName
+        public string? SlotName { get; set; }
         public TimeOnly? StartTime { get; set; }
         public TimeOnly? EndTime { get; set; }
         public DateOnly Date { get; set; }

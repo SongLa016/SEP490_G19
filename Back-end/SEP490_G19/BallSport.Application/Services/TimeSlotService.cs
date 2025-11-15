@@ -13,6 +13,8 @@ namespace BallSport.Application.Services
         Task<TimeSlotReadDTO> CreateAsync(TimeSlotDTO dto, int ownerId);
         Task<TimeSlotReadDTO?> UpdateAsync(int slotId, TimeSlotDTO dto, int ownerId);
         Task<bool> DeleteAsync(int slotId, int ownerId);
+        Task<List<TimeSlotReadDTO>> GetByFieldIdAsync(int fieldId, int ownerId);
+
     }
 
     public class TimeSlotService : ITimeSlotService
@@ -52,6 +54,37 @@ namespace BallSport.Application.Services
                 EndTime = ts.EndTime
             };
         }
+
+
+        // get theo id sân
+        public async Task<List<TimeSlotReadDTO>> GetByFieldIdAsync(int fieldId, int ownerId)
+        {
+            // Kiểm tra field có thuộc owner không
+            var field = await _context.Fields
+                .Include(f => f.Complex)
+                .FirstOrDefaultAsync(f => f.FieldId == fieldId && f.Complex.OwnerId == ownerId);
+
+            if (field == null)
+                throw new UnauthorizedAccessException("Bạn không có quyền xem slot của sân này.");
+
+            // Lấy danh sách slot và sắp xếp theo StartTime (tăng dần)
+            var slots = await _context.TimeSlots
+                .Where(ts => ts.FieldId == fieldId)
+                .OrderBy(ts => ts.StartTime)               // ⭐ Sắp xếp giờ từ bé đến lớn
+                .Select(ts => new TimeSlotReadDTO
+                {
+                    SlotId = ts.SlotId,
+                    SlotName = ts.SlotName,
+                    FieldId = ts.FieldId,
+                    StartTime = ts.StartTime,
+                    EndTime = ts.EndTime
+                })
+                .ToListAsync();
+
+            return slots;
+        }
+
+
 
         public async Task<TimeSlotReadDTO> CreateAsync(TimeSlotDTO dto, int ownerId)
         {

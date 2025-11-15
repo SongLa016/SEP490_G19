@@ -1,3 +1,6 @@
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using BallSport.Application.Services;
 using BallSport.Application.Services.Community;
 using BallSport.Infrastructure.Data;
@@ -9,23 +12,24 @@ using Banking.Application.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Text;
-using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var services = builder.Services;
 var config = builder.Configuration;
 
-// ===================== CONTROLLERS + SWAGGER =====================
-services.AddControllers()
+    // ===================== CONTROLLERS + SWAGGER =====================
+    services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new TimeOnlyJsonConverter());
+        options.JsonSerializerOptions.Converters.Add(new DateOnlyJsonConverter());
     });
+
 services.AddEndpointsApiExplorer();
 services.AddSwaggerGen(c =>
 {
@@ -111,14 +115,16 @@ services.AddScoped<FieldComplexRepository>();
 services.AddScoped<FieldComplexService>();
 services.AddScoped<DepositPolicyRepository>();
 services.AddScoped<DepositPolicyService>();
-services.AddScoped<FieldScheduleRepository>();
-services.AddScoped<FieldScheduleService>();
 services.AddScoped<FieldPriceRepository>();
 services.AddScoped<FieldPriceService>();
 builder.Services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
 builder.Services.AddScoped<ITimeSlotService, TimeSlotService>();
 builder.Services.AddScoped<IFieldPriceRepository, FieldPriceRepository>();
+
 builder.Services.AddScoped<IFieldPriceService, FieldPriceService>();
+
+builder.Services.AddScoped<IFieldScheduleRepository, FieldScheduleRepository>();
+builder.Services.AddScoped<IFieldScheduleService, FieldScheduleService>();
 services.AddScoped<TimeSlotService>();
 
 // --- Community module ---

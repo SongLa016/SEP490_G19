@@ -1,76 +1,58 @@
-﻿using BallSport.Infrastructure;
+﻿using System;
 using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace BallSport.Infrastructure.Repositories
+public interface IFieldScheduleRepository
 {
-    public class FieldScheduleRepository 
+    Task<FieldSchedule> AddAsync(FieldSchedule schedule);
+    Task<FieldSchedule?> GetByIdAsync(int id);
+    Task<List<FieldSchedule>> GetAllAsync();
+    Task UpdateAsync(FieldSchedule schedule);
+    Task DeleteAsync(FieldSchedule schedule);
+}
+
+public class FieldScheduleRepository : IFieldScheduleRepository
+{
+    private readonly Sep490G19v1Context _context;
+
+    public FieldScheduleRepository(Sep490G19v1Context context)
     {
-        private readonly Sep490G19v1Context _context;
+        _context = context;
+    }
 
-        public FieldScheduleRepository(Sep490G19v1Context context)
-        {
-            _context = context;
-        }
+    public async Task<FieldSchedule> AddAsync(FieldSchedule schedule)
+    {
+        _context.FieldSchedules.Add(schedule);
+        await _context.SaveChangesAsync();
+        return schedule;
+    }
 
-        //  Lấy toàn bộ lịch sân (gồm Field + Slot)
-        public async Task<List<FieldSchedule>> GetAllAsync()
-        {
-            return await _context.FieldSchedules
-                .Include(s => s.Field)
-                .Include(s => s.Slot)
-                .ToListAsync();
-        }
+    public async Task<FieldSchedule?> GetByIdAsync(int id)
+    {
+        return await _context.FieldSchedules
+            .Include(fs => fs.Field)
+            .Include(fs => fs.Slot)
+            .FirstOrDefaultAsync(fs => fs.ScheduleId == id);
+    }
 
-        //  Lấy danh sách lịch theo FieldId
-        public async Task<List<FieldSchedule>> GetByFieldIdAsync(int fieldId)
-        {
-            return await _context.FieldSchedules
-                .Where(s => s.FieldId == fieldId)
-                .Include(s => s.Field)
-                .Include(s => s.Slot)
-                .ToListAsync();
-        }
+    public async Task<List<FieldSchedule>> GetAllAsync()
+    {
+        return await _context.FieldSchedules
+            .Include(fs => fs.Field)
+            .Include(fs => fs.Slot)
+            .ToListAsync();
+    }
 
-        //  Lấy 1 lịch theo ScheduleId
-        public async Task<FieldSchedule?> GetByIdAsync(int scheduleId)
-        {
-            return await _context.FieldSchedules
-                .Include(s => s.Field)
-                .Include(s => s.Slot)
-                .FirstOrDefaultAsync(s => s.ScheduleId == scheduleId);
-        }
+    public async Task UpdateAsync(FieldSchedule schedule)
+    {
+        _context.FieldSchedules.Update(schedule);
+        await _context.SaveChangesAsync();
+    }
 
-        //  Thêm mới
-        public async Task<FieldSchedule> AddAsync(FieldSchedule schedule)
-        {
-            _context.FieldSchedules.Add(schedule);
-            await _context.SaveChangesAsync();
-            return schedule;
-        }
-
-        //  Cập nhật
-        public async Task UpdateAsync(FieldSchedule schedule)
-        {
-            _context.FieldSchedules.Update(schedule);
-            await _context.SaveChangesAsync();
-        }
-
-        //  Xóa
-        public async Task<bool> DeleteAsync(int id)
-        {
-            var schedule = await _context.FieldSchedules.FindAsync(id);
-            if (schedule == null) return false;
-
-            _context.FieldSchedules.Remove(schedule);
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task SaveChangesAsync()
-        {
-            await _context.SaveChangesAsync();
-        }
+    public async Task DeleteAsync(FieldSchedule schedule)
+    {
+        _context.FieldSchedules.Remove(schedule);
+        await _context.SaveChangesAsync();
     }
 }
