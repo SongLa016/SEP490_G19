@@ -194,12 +194,12 @@ namespace BallSport.Application.Services
         }
 
         // 🔍 Lấy chi tiết 1 sân
-        public async Task<FieldDTO?> GetFieldByIdAsync(int fieldId)
+        public async Task<FieldResponseDTO?> GetFieldByIdAsync(int fieldId)
         {
             var f = await _fieldRepository.GetFieldByIdAsync(fieldId);
             if (f == null) return null;
 
-            return new FieldDTO
+            return new FieldResponseDTO
             {
                 FieldId = f.FieldId,
                 ComplexId = f.ComplexId,
@@ -210,9 +210,18 @@ namespace BallSport.Application.Services
                 Description = f.Description,
                 PricePerHour = f.PricePerHour,
                 Status = f.Status,
-                CreatedAt = f.CreatedAt
+                CreatedAt = f.CreatedAt,
+
+                // ảnh chính
+                MainImageBase64 = f.Image != null ? Convert.ToBase64String(f.Image) : null,
+
+                // ảnh phụ
+                ImageFilesBase64 = f.FieldImages?
+                    .Select(img => Convert.ToBase64String(img.Image))
+                    .ToList()
             };
         }
+
 
         // ❌ DELETE sân
         public async Task<bool> DeleteFieldAsync(int fieldId)
