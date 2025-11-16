@@ -54,8 +54,8 @@ namespace BallSport.API.Controllers
 
             return Ok(field);
         }
-
-        // UPDATE
+        //UPDATE FIELD - chỉ Owner
+        [Authorize(Roles = "Owner")]
         [HttpPut("{fieldId}")]
         public async Task<IActionResult> UpdateField(int fieldId, [FromBody] FieldDTO dto)
         {
@@ -68,8 +68,8 @@ namespace BallSport.API.Controllers
 
             return Ok(updatedField);
         }
-
-        // DELETE
+        // DELETE FIELD - chỉ Owner
+        [Authorize(Roles = "Owner")]
         [HttpDelete("{fieldId}")]
         public async Task<IActionResult> DeleteField(int fieldId)
         {
