@@ -82,10 +82,10 @@ public partial class Sep490G19v1Context : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-       /* if (!optionsBuilder.IsConfigured)
+        if (!optionsBuilder.IsConfigured)
         {
             optionsBuilder.UseSqlServer("Server = tcp:ballsport - server.database.windows.net, 1433; Initial Catalog = SEP490_G19V1; Persist Security Info = False; User ID = adminsql; Password = Admin@12345; MultipleActiveResultSets = True; Encrypt = True; TrustServerCertificate = True; Connection Timeout = 30;");
-        }*/
+        }
     }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
