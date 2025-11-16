@@ -206,6 +206,50 @@ export async function fetchFieldSchedulesByField(fieldId) {
 }
 
 /**
+ * Fetch public field schedules by fieldId (no authentication required)
+ * Used for getting schedules when booking small fields
+ * @param {number|string} fieldId - Field ID
+ * @returns {Promise<Object>} List of field schedules for the field
+ */
+export async function fetchPublicFieldSchedulesByField(fieldId) {
+  try {
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/FieldSchedule/public/field/${fieldId}`;
+
+    console.log(`Fetching public field schedules for fieldId: ${fieldId}`);
+
+    // Create a separate axios instance without auth token for public endpoint
+    const publicApiClient = axios.create({
+      timeout: 30000,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const response = await publicApiClient.get(endpoint);
+
+    let data = response.data;
+    let schedulesArray = [];
+
+    if (Array.isArray(data)) {
+      schedulesArray = data;
+    } else if (data && Array.isArray(data.data)) {
+      schedulesArray = data.data;
+    }
+
+    return {
+      success: true,
+      data: schedulesArray.map(normalizeFieldSchedule).filter((s) => s !== null),
+    };
+  } catch (error) {
+    console.error("Error fetching public field schedules by field:", error);
+    return {
+      success: false,
+      error: handleApiError(error),
+    };
+  }
+}
+
+/**
  * Create a new field schedule
  * @param {Object} scheduleData - Schedule data
  * @param {number} scheduleData.fieldId - Field ID
