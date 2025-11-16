@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { authService, validateRegistrationData, formatRegistrationData } from '../services/authService';
-import { Button, Input, Card, CardContent, CardHeader, CardTitle, CardDescription, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui';
+import { Button, Input, Card, CardContent, CardHeader, CardTitle, CardDescription, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '../components/ui';
 import { FadeIn, SlideIn, ScaleIn } from '../components/ui/animations';
-import { Eye, EyeOff, Mail, Lock, User, Phone, X, Camera, CheckCircle, Loader2, ArrowLeft, Trash } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Phone, X, Camera, CheckCircle, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import ErrorDisplay from '../components/ErrorDisplay';
 import { Link } from 'react-router-dom';
+import Swal from 'sweetalert2';
 
 export default function Register({ onDone, onGoLogin, compact = false }) {
      const { login } = useAuth();
@@ -16,23 +16,19 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
      const [roleName, setRoleName] = useState('Player');
      const [phone, setPhone] = useState('');
      const [avatar, setAvatar] = useState(null);
-     const [otp, setOtp] = useState(['', '', '', '', '', '']);
-     const [error, setError] = useState('');
+     const [otp, setOtp] = useState('');
      const [emailError, setEmailError] = useState('');
      const [fullNameError, setFullNameError] = useState('');
      const [passwordError, setPasswordError] = useState('');
      const [phoneError, setPhoneError] = useState('');
      const [roleNameError, setRoleNameError] = useState('');
-     const [info, setInfo] = useState('');
      const [showPassword, setShowPassword] = useState(false);
      const [isLoading, setIsLoading] = useState(false);
      const [avatarPreview, setAvatarPreview] = useState(null);
      const [countdown, setCountdown] = useState(0);
-     const otpInputRefs = useRef([]);
 
      async function handleSubmit(e) {
           e.preventDefault();
-          setError('');
           setIsLoading(true);
 
           // Validate form data
@@ -88,7 +84,13 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                          errorMessage = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet';
                     }
 
-                    setError(errorMessage);
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Đăng ký thất bại',
+                         text: errorMessage,
+                         confirmButtonText: 'Đóng',
+                         confirmButtonColor: '#ef4444'
+                    });
                     setIsLoading(false);
                     return;
                }
@@ -111,66 +113,53 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                               documents: []
                          });
 
-                         setInfo('Đăng ký thành công! Yêu cầu đăng ký chủ sân đã được gửi đến admin để duyệt. Vui lòng kiểm tra email để lấy mã OTP.');
+                         Swal.fire({
+                              icon: 'success',
+                              title: 'Đăng ký thành công!',
+                              text: 'Yêu cầu đăng ký chủ sân đã được gửi đến admin để duyệt. Vui lòng kiểm tra email để lấy mã OTP.',
+                              confirmButtonText: 'Đóng',
+                              confirmButtonColor: '#10b981'
+                         });
                     } catch (ownerRequestError) {
                          console.error('Error creating owner registration request:', ownerRequestError);
-                         setInfo('Đăng ký thành công! Tuy nhiên, có lỗi khi tạo yêu cầu đăng ký chủ sân. Vui lòng liên hệ admin. Vui lòng kiểm tra email để lấy mã OTP.');
+                         Swal.fire({
+                              icon: 'warning',
+                              title: 'Đăng ký thành công!',
+                              text: 'Tuy nhiên, có lỗi khi tạo yêu cầu đăng ký chủ sân. Vui lòng liên hệ admin. Vui lòng kiểm tra email để lấy mã OTP.',
+                              confirmButtonText: 'Đóng',
+                              confirmButtonColor: '#f59e0b'
+                         });
                     }
                } else {
-                    setInfo(result.message || 'Đăng ký thành công, vui lòng kiểm tra email để lấy mã OTP');
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đăng ký thành công!',
+                         text: result.message || 'Vui lòng kiểm tra email để lấy mã OTP',
+                         confirmButtonText: 'Đóng',
+                         confirmButtonColor: '#10b981'
+                    });
                }
 
                setStep('otp');
           } catch (error) {
                // Hiển thị lỗi chi tiết từ exception
                const errorMessage = error.message || 'Có lỗi xảy ra khi đăng ký. Vui lòng thử lại.';
-               setError(errorMessage);
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi đăng ký',
+                    text: errorMessage,
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#ef4444'
+               });
                console.error('Registration error:', error);
           }
 
           setIsLoading(false);
      }
 
-     // OTP Input handlers
-     const handleOtpChange = (index, value) => {
-          if (!/^\d*$/.test(value)) return; // Only allow digits
-
-          const newOtp = [...otp];
-          newOtp[index] = value.slice(-1); // Only take the last character
-          setOtp(newOtp);
-
-          // Auto-focus next input
-          if (value && index < 5) {
-               otpInputRefs.current[index + 1]?.focus();
-          }
-     };
-
-     const handleOtpKeyDown = (index, e) => {
-          if (e.key === 'Backspace' && !otp[index] && index > 0) {
-               otpInputRefs.current[index - 1]?.focus();
-          }
-          if (e.key === 'ArrowLeft' && index > 0) {
-               otpInputRefs.current[index - 1]?.focus();
-          }
-          if (e.key === 'ArrowRight' && index < 5) {
-               otpInputRefs.current[index + 1]?.focus();
-          }
-     };
-
-     const handleOtpPaste = (e) => {
-          e.preventDefault();
-          const pastedData = e.clipboardData.getData('text').slice(0, 6);
-          if (!/^\d+$/.test(pastedData)) return;
-
-          const newOtp = [...otp];
-          for (let i = 0; i < 6; i++) {
-               newOtp[i] = pastedData[i] || '';
-          }
-          setOtp(newOtp);
-
-          // Focus the next empty input or the last one
-          const nextIndex = Math.min(pastedData.length, 5);
-          otpInputRefs.current[nextIndex]?.focus();
+     // OTP Input handler
+     const handleOtpChange = (value) => {
+          setOtp(value);
      };
 
      // Countdown timer for resend OTP
@@ -183,25 +172,34 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
 
      async function handleVerifyOtp(e) {
           e.preventDefault();
-          setError('');
 
-          const otpString = otp.join('');
-          if (otpString.length !== 6) {
-               setError('Vui lòng nhập đầy đủ 6 số OTP');
+          if (otp.length !== 6) {
+               Swal.fire({
+                    icon: 'warning',
+                    title: 'Mã OTP không đầy đủ',
+                    text: 'Vui lòng nhập đầy đủ 6 số OTP',
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#f59e0b'
+               });
                return;
           }
 
           setIsLoading(true);
 
           try {
-               const result = await authService.verifyOtp(email, otpString);
+               const result = await authService.verifyOtp(email, otp);
                if (!result.ok) {
                     // Hiển thị lỗi chi tiết từ API
                     const errorMessage = result.reason || 'Xác thực OTP thất bại';
-                    setError(errorMessage);
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Xác thực OTP thất bại',
+                         text: errorMessage,
+                         confirmButtonText: 'Đóng',
+                         confirmButtonColor: '#ef4444'
+                    });
                     // Reset OTP on error
-                    setOtp(['', '', '', '', '', '']);
-                    otpInputRefs.current[0]?.focus();
+                    setOtp('');
                     setIsLoading(false);
                     return;
                }
@@ -212,14 +210,27 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                     login(result.user, result.token);
                }
 
-               setStep('success');
+               Swal.fire({
+                    icon: 'success',
+                    title: 'Xác thực thành công!',
+                    text: 'Tài khoản của bạn đã được kích hoạt.',
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#10b981'
+               }).then(() => {
+                    setStep('success');
+               });
           } catch (error) {
                // Hiển thị lỗi chi tiết từ exception
                const errorMessage = error.message || 'Có lỗi xảy ra khi xác thực OTP. Vui lòng thử lại.';
-               setError(errorMessage);
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi xác thực OTP',
+                    text: errorMessage,
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#ef4444'
+               });
                // Reset OTP on error
-               setOtp(['', '', '', '', '', '']);
-               otpInputRefs.current[0]?.focus();
+               setOtp('');
                console.error('OTP verification error:', error);
           }
 
@@ -236,13 +247,25 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
           if (file) {
                // Validate file type
                if (!file.type.startsWith('image/')) {
-                    setError('Vui lòng chọn file ảnh hợp lệ');
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: 'Vui lòng chọn file ảnh hợp lệ',
+                         confirmButtonText: 'Đóng',
+                         confirmButtonColor: '#ef4444'
+                    });
                     return;
                }
 
                // Validate file size (max 5MB)
                if (file.size > 5 * 1024 * 1024) {
-                    setError('Kích thước file không được vượt quá 5MB');
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: 'Kích thước file không được vượt quá 5MB',
+                         confirmButtonText: 'Đóng',
+                         confirmButtonColor: '#ef4444'
+                    });
                     return;
                }
 
@@ -263,7 +286,6 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
      }
 
      async function handleResendOtp() {
-          setError('');
           setIsLoading(true);
 
           try {
@@ -271,60 +293,50 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                if (!result.ok) {
                     // Hiển thị lỗi chi tiết từ API
                     const errorMessage = result.reason || 'Gửi lại OTP thất bại';
-                    setError(errorMessage);
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Gửi lại OTP thất bại',
+                         text: errorMessage,
+                         confirmButtonText: 'Đóng',
+                         confirmButtonColor: '#ef4444'
+                    });
                } else {
-                    setInfo(result.message || 'Mã OTP đã được gửi lại');
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đã gửi lại mã OTP',
+                         text: result.message || 'Mã OTP đã được gửi lại đến email của bạn',
+                         confirmButtonText: 'Đóng',
+                         confirmButtonColor: '#10b981'
+                    });
                     setCountdown(60); // Start 60 second countdown
                     // Reset OTP inputs
-                    setOtp(['', '', '', '', '', '']);
-                    otpInputRefs.current[0]?.focus();
+                    setOtp('');
                }
           } catch (error) {
                // Hiển thị lỗi chi tiết từ exception
                const errorMessage = error.message || 'Có lỗi xảy ra khi gửi lại OTP. Vui lòng thử lại.';
-               setError(errorMessage);
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi gửi lại OTP',
+                    text: errorMessage,
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#ef4444'
+               });
                console.error('Resend OTP error:', error);
           }
 
           setIsLoading(false);
      }
 
-     // Auto-focus first OTP input when step changes to OTP
+     // Set countdown when step changes to OTP
      useEffect(() => {
           if (step === 'otp') {
-               setTimeout(() => {
-                    otpInputRefs.current[0]?.focus();
-               }, 300);
                setCountdown(60);
           }
      }, [step]);
 
      return (
           <div className={compact ? "" : "max-w-sm mx-auto p-4"}>
-               {error && (
-                    <FadeIn delay={0} duration={0.3}>
-                         <ErrorDisplay
-                              type="error"
-                              title={
-                                   step === 'form' ? 'Lỗi đăng ký' :
-                                        step === 'otp' ? 'Lỗi xác thực OTP' : 'Lỗi'
-                              }
-                              message={error}
-                              onClose={() => setError('')}
-                         />
-                    </FadeIn>
-               )}
-
-               {info && (
-                    <FadeIn delay={0} duration={0.3}>
-                         <ErrorDisplay
-                              type="success"
-                              title="Thành công"
-                              message={info}
-                         />
-                    </FadeIn>
-               )}
-
                {step === 'form' && (
                     <SlideIn direction="up" delay={0} duration={0.4}>
                          <div className="w-full">
@@ -558,7 +570,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
 
                {step === 'otp' && (
                     <ScaleIn delay={0} duration={0.4}>
-                         <Card className={`${compact ? "" : "shadow-lg border-0 bg-white/95 backdrop-blur-sm"} transition-all duration-300 hover:shadow-xl animate-scale-in`}>
+                         <Card className={`${compact ? "" : "shadow-lg border-0 bg-white/95 backdrop-blur-sm"} transition-all mt-10 rounded-2xl duration-300 hover:shadow-xl animate-scale-in`}>
                               <CardHeader className="text-center pb-4">
                                    <SlideIn direction="down" delay={100} duration={0.4}>
                                         <div className="mx-auto w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-3 transform transition-transform hover:scale-110">
@@ -582,22 +594,24 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                                         <FadeIn delay={400} duration={0.4}>
                                              <div className="space-y-3">
                                                   <label className="text-xs font-medium text-slate-700 block text-center">Mã OTP (6 chữ số)</label>
-                                                  <div className="otp-input-container">
-                                                       {otp.map((digit, index) => (
-                                                            <input
-                                                                 key={index}
-                                                                 ref={(el) => (otpInputRefs.current[index] = el)}
-                                                                 type="text"
-                                                                 inputMode="numeric"
-                                                                 maxLength="1"
-                                                                 value={digit}
-                                                                 onChange={(e) => handleOtpChange(index, e.target.value)}
-                                                                 onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                                                                 onPaste={handleOtpPaste}
-                                                                 className={`otp-input ${digit ? 'filled' : ''}`}
-                                                                 autoFocus={index === 0}
-                                                            />
-                                                       ))}
+                                                  <div className="flex justify-center">
+                                                       <InputOTP
+                                                            value={otp}
+                                                            onChange={handleOtpChange}
+                                                            maxLength={6}
+                                                       >
+                                                            <InputOTPGroup>
+                                                                 <InputOTPSlot index={0} />
+                                                                 <InputOTPSlot index={1} />
+                                                                 <InputOTPSlot index={2} />
+                                                            </InputOTPGroup>
+                                                            <InputOTPSeparator />
+                                                            <InputOTPGroup>
+                                                                 <InputOTPSlot index={3} />
+                                                                 <InputOTPSlot index={4} />
+                                                                 <InputOTPSlot index={5} />
+                                                            </InputOTPGroup>
+                                                       </InputOTP>
                                                   </div>
                                              </div>
                                         </FadeIn>
@@ -606,8 +620,8 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                                              <div className="space-y-3">
                                                   <Button
                                                        type="submit"
-                                                       disabled={isLoading || otp.join('').length !== 6}
-                                                       className="w-full h-10 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                                                       disabled={isLoading || otp.length !== 6}
+                                                       className="w-full h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-2xl hover:from-green-600 hover:to-green-700 text-white font-semibold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
                                                   >
                                                        {isLoading ? (
                                                             <div className="flex items-center gap-2">
@@ -635,7 +649,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                                                        type="button"
                                                        onClick={() => setStep('form')}
                                                        variant="ghost"
-                                                       className="w-full text-xs text-slate-600 hover:text-slate-900"
+                                                       className="w-fit text-xs text-slate-600 hover:text-slate-900 rounded-2xl hover:border-teal-300 border border-slate-300"
                                                   >
                                                        <ArrowLeft className="w-3 h-3 mr-1" />
                                                        Quay lại đăng ký
@@ -650,7 +664,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
 
                {step === 'success' && (
                     <ScaleIn delay={0} duration={0.5}>
-                         <Card className={`${compact ? "" : "shadow-lg border-0 bg-white/95 backdrop-blur-sm"} transition-all duration-300 hover:shadow-xl animate-scale-in`}>
+                         <Card className={`${compact ? "" : "shadow-lg border-0 bg-white/95 backdrop-blur-sm"} transition-all mt-10 rounded-2xl duration-300 hover:shadow-xl animate-scale-in`}>
                               <CardHeader className="text-center pb-4">
                                    <div className="mx-auto w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mb-3 transform transition-transform animate-scale-in otp-success-animation">
                                         <CheckCircle className="w-8 h-8 text-white" />

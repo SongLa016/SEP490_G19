@@ -2,7 +2,8 @@ import { MapPin } from "lucide-react";
 import { Button } from "../../../../../shared/components/ui";
 
 export default function PaymentStepSection({
-     pendingInfo,
+     bookingInfo,
+     ownerBankAccount,
      paymentMethod,
      setPaymentMethod,
      bookingData,
@@ -26,15 +27,51 @@ export default function PaymentStepSection({
                {/* Payment Methods */}
                <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Phương thức thanh toán</h3>
-                    {pendingInfo && (
+                    
+                    {/* QR Code và Mã Booking */}
+                    {bookingInfo && (
                          <div className="mb-6 p-4 border border-teal-200 rounded-lg bg-teal-50">
-                              <div className="flex items-center justify-between">
+                              <div className="flex items-center justify-between mb-3">
                                    <div>
-                                        <div className="text-sm text-teal-700">Mã đặt chỗ tạm thời</div>
-                                        <div className="text-lg font-semibold text-teal-800">#{pendingInfo.bookingId}</div>
-                                        <div className="text-xs text-teal-600">Hết hạn: {new Date(pendingInfo.qrExpiresAt).toLocaleTimeString()}</div>
+                                        <div className="text-sm text-teal-700">Mã đặt sân</div>
+                                        <div className="text-lg font-semibold text-teal-800">#{bookingInfo.bookingId}</div>
+                                        {bookingInfo.qrExpiresAt && (
+                                             <div className="text-xs text-teal-600">Hết hạn: {new Date(bookingInfo.qrExpiresAt).toLocaleTimeString('vi-VN')}</div>
+                                        )}
                                    </div>
-                                   <img src={pendingInfo.qrCodeUrl} alt="QR" className="w-24 h-24" />
+                                   {bookingInfo.qrCodeUrl && (
+                                        <img src={bookingInfo.qrCodeUrl} alt="QR Code" className="w-24 h-24 border-2 border-teal-300 rounded" />
+                                   )}
+                              </div>
+                         </div>
+                    )}
+
+                    {/* Thông tin ngân hàng Owner khi chọn chuyển khoản */}
+                    {paymentMethod === "banking" && ownerBankAccount && (
+                         <div className="mb-6 p-4 border border-blue-200 rounded-lg bg-blue-50">
+                              <h4 className="font-semibold text-blue-900 mb-3">Thông tin chuyển khoản</h4>
+                              <div className="space-y-2 text-sm">
+                                   <div className="flex justify-between">
+                                        <span className="text-blue-700">Ngân hàng:</span>
+                                        <span className="font-medium text-blue-900">{ownerBankAccount.bankName}</span>
+                                   </div>
+                                   <div className="flex justify-between">
+                                        <span className="text-blue-700">Số tài khoản:</span>
+                                        <span className="font-medium text-blue-900">{ownerBankAccount.accountNumber}</span>
+                                   </div>
+                                   <div className="flex justify-between">
+                                        <span className="text-blue-700">Chủ tài khoản:</span>
+                                        <span className="font-medium text-blue-900">{ownerBankAccount.accountHolder}</span>
+                                   </div>
+                                   <div className="mt-3 pt-3 border-t border-blue-200">
+                                        <div className="flex justify-between">
+                                             <span className="text-blue-700 font-semibold">Số tiền cần chuyển:</span>
+                                             <span className="font-bold text-lg text-blue-900">{formatPrice(bookingInfo?.depositAmount || bookingData.depositAmount || 0)}</span>
+                                        </div>
+                                        <div className="text-xs text-blue-600 mt-1">
+                                             Nội dung: BOOKING-{bookingInfo?.bookingId || 'XXX'}
+                                        </div>
+                                   </div>
                               </div>
                          </div>
                     )}

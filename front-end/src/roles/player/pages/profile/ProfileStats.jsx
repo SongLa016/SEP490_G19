@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Trophy, Calendar, Star, Users, Target, TrendingUp, Award, Clock, BarChart3 } from "lucide-react";
-import { Container, Card, CardContent, CardHeader, CardTitle, Button } from "../../../../shared/components/ui";
+import { Container, Card, CardContent, CardHeader, CardTitle, Button, Section } from "../../../../shared/components/ui";
 
 export default function ProfileStats({ user }) {
      const [stats, setStats] = useState({
@@ -88,21 +88,22 @@ export default function ProfileStats({ user }) {
      };
 
      return (
-          <div className="min-h-screen bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center">
+          <Section className="relative min-h-screen ">
+               <div className="absolute inset-0 bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center border border-teal-600 rounded-3xl" />
                <Container>
-                    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
                          {/* Header */}
                          <div className="my-2 text-center">
                               <div className="inline-flex items-center justify-center w-12 h-12 bg-teal-100 rounded-2xl mb-4">
                                    <BarChart3 className="w-8 h-8 text-teal-600" />
                               </div>
-                              <h1 className="text-4xl font-bold text-teal-900 mb-2">Thống kê cá nhân</h1>
-                              <p className="text-teal-600 text-lg">Theo dõi hoạt động và thành tích của bạn</p>
+                              <h1 className="text-3xl font-bold text-teal-900 mb-2">Thống kê cá nhân</h1>
+                              <p className="text-teal-600 text-base">Theo dõi hoạt động và thành tích của bạn</p>
                          </div>
 
-                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                         <div className="space-y-8">
                               {/* Main Stats */}
-                              <div className="lg:col-span-2 space-y-6">
+                              <div className="space-y-6">
                                    {/* Overview Cards */}
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                         <Card className="border-0 shadow-lg bg-white/90 backdrop-blur-sm rounded-2xl hover:shadow-xl transition-all duration-300">
@@ -213,7 +214,7 @@ export default function ProfileStats({ user }) {
                               </div>
 
                               {/* Sidebar */}
-                              <div className="space-y-6">
+                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                    {/* Profile Summary */}
                                    <Card>
                                         <CardHeader>
@@ -309,6 +310,6 @@ export default function ProfileStats({ user }) {
                          </div>
                     </div>
                </Container>
-          </div>
+          </Section>
      );
 }

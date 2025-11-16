@@ -133,71 +133,67 @@ export default function Header({ user, onLoggedOut }) {
                          <div className="flex items-center space-x-4 ml-auto">
                               {user ? (
                                    <>
-                                        {!(isScrolled && !isMenuOpen) && (
-                                             <>
-                                                  {/* Notification Bell */}
-                                                  <div className="relative">
-                                                       <NotificationBell
-                                                            userId={user.id}
-                                                            onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                                                       />
-                                                       <NotificationDropdown
-                                                            userId={user.id}
-                                                            isOpen={isNotificationOpen}
-                                                            onClose={() => setIsNotificationOpen(false)}
-                                                       />
-                                                  </div>
+                                        {/* Notification Bell */}
+                                        <div className="relative">
+                                             <NotificationBell
+                                                  userId={user.id}
+                                                  onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                                             />
+                                             <NotificationDropdown
+                                                  userId={user.id}
+                                                  isOpen={isNotificationOpen}
+                                                  onClose={() => setIsNotificationOpen(false)}
+                                             />
+                                        </div>
 
-                                                  {/* User Profile */}
-                                                  <div className="relative">
+                                        {/* User Profile */}
+                                        <div className="relative">
+                                             <Button
+                                                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                                  className="flex items-center space-x-2 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+                                             >
+                                                  <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
+                                                       <User className="w-4 h-4" />
+                                                  </div>
+                                                  <span className="hidden md:block text-gray-700">{user.fullName || user.email || "User"}</span>
+                                                  <span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.roleName)}`}>
+                                                       {getRoleDisplayName(user.roleName)}
+                                                  </span>
+                                             </Button>
+
+                                             {/* Profile Dropdown */}
+                                             {isProfileOpen && (
+                                                  <div className="absolute right-0 mt-2 w-48 py-1 bg-white rounded-2xl border border-teal-500 shadow-lg z-50">
+                                                       <div className="px-4 py-2 border-b">
+                                                            <p className="text-sm font-medium text-gray-900">{user.fullName || user.email || "User"}</p>
+                                                            {user.email && (
+                                                                 <p className="text-xs text-gray-500">{user.email}</p>
+                                                            )}
+                                                            <p className="text-xs text-gray-400">{getRoleDisplayName(user.roleName)}</p>
+                                                       </div>
                                                        <Button
-                                                            onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                                            className="flex items-center space-x-2 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+                                                            onClick={() => {
+                                                                 navigate("/profile");
+                                                                 setIsProfileOpen(false);
+                                                            }}
+                                                            className="flex items-center w-full px-4 my-1 text-sm text-teal-500 hover:text-teal-700 hover:bg-teal-100 p-0 h-auto bg-transparent border-0"
                                                        >
-                                                            <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
-                                                                 <User className="w-4 h-4" />
-                                                            </div>
-                                                            <span className="hidden md:block text-gray-700">{user.fullName || user.email || "User"}</span>
-                                                            <span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.roleName)}`}>
-                                                                 {getRoleDisplayName(user.roleName)}
-                                                            </span>
+                                                            <Settings className="w-4 h-4 mr-2" />
+                                                            Cài đặt
                                                        </Button>
-
-                                                       {/* Profile Dropdown */}
-                                                       {isProfileOpen && (
-                                                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                                                                 <div className="px-4 py-2 border-b">
-                                                                      <p className="text-sm font-medium text-gray-900">{user.fullName || user.email || "User"}</p>
-                                                                      {user.email && (
-                                                                           <p className="text-xs text-gray-500">{user.email}</p>
-                                                                      )}
-                                                                      <p className="text-xs text-gray-400">{getRoleDisplayName(user.roleName)}</p>
-                                                                 </div>
-                                                                 <Button
-                                                                      onClick={() => {
-                                                                           navigate("/profile");
-                                                                           setIsProfileOpen(false);
-                                                                      }}
-                                                                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
-                                                                 >
-                                                                      <Settings className="w-4 h-4 mr-2" />
-                                                                      Cài đặt
-                                                                 </Button>
-                                                                 <Button
-                                                                      onClick={() => {
-                                                                           onLoggedOut();
-                                                                           setIsProfileOpen(false);
-                                                                      }}
-                                                                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 p-0 h-auto bg-transparent border-0"
-                                                                 >
-                                                                      <LogOut className="w-4 h-4 mr-2" />
-                                                                      Đăng xuất
-                                                                 </Button>
-                                                            </div>
-                                                       )}
+                                                       <Button
+                                                            onClick={() => {
+                                                                 onLoggedOut();
+                                                                 setIsProfileOpen(false);
+                                                            }}
+                                                            className="flex items-center w-full px-4 mb-2 text-sm text-teal-500 hover:text-teal-700 hover:bg-teal-100 p-0 h-auto bg-transparent border-0"
+                                                       >
+                                                            <LogOut className="w-4 h-4 mr-2" />
+                                                            Đăng xuất
+                                                       </Button>
                                                   </div>
-                                             </>
-                                        )}
+                                             )}
+                                        </div>
                                    </>
                               ) : (
                                    <div className="flex items-center gap-2">

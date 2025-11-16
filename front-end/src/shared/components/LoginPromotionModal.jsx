@@ -4,10 +4,6 @@ import { X, Star, Heart, Calendar, Zap, ShieldCheck, Gift } from "lucide-react";
 import { Button } from "./ui";
 import { useNavigate } from "react-router-dom";
 
-/**
- * LoginPromotionModal - Modal khuyến khích đăng nhập/đăng ký
- * Hiển thị khi user chưa đăng nhập, giới thiệu các tính năng có sẵn khi có tài khoản
- */
 export const LoginPromotionModal = ({ user, onClose }) => {
      const navigate = useNavigate();
      const [isVisible, setIsVisible] = useState(false);

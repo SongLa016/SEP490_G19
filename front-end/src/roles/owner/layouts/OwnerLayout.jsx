@@ -15,8 +15,8 @@ import {
      Eye,
      ChevronLeft,
      ChevronRight,
-     Timer,
-     Wallet
+     Wallet,
+     CreditCard
 } from "lucide-react";
 import { Button } from "../../../shared/components/ui";
 import logo from "../../../shared/components/assets/logo.png";
@@ -41,7 +41,7 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
      const navigationItems = [
           { id: "owner", label: "Tổng quan", icon: Home, path: "/owner" },
           { id: "fields", label: "Quản lý sân", icon: Building2, path: "/owner/fields" },
-          { id: "timeslots", label: "Slot thời gian", icon: Timer, path: "/owner/timeslots" },
+          { id: "schedule", label: "Lịch trình & Slots", icon: CalendarCog, path: "/owner/schedule" },
           { id: "pricing", label: "Giá theo slot", icon: DollarSign, path: "/owner/pricing" },
           { id: "bookings", label: "Quản lý booking", icon: ClipboardList, path: "/owner/bookings" },
           { id: "reports", label: "Báo cáo doanh thu", icon: FileText, path: "/owner/reports" },
@@ -49,6 +49,7 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
           { id: "deposit-policies", label: "Chính sách đặt cọc", icon: Wallet, path: "/owner/deposit-policies" },
           { id: "promotions", label: "Khuyến mãi", icon: CalendarCog, path: "/owner/promotions" },
           { id: "notifications", label: "Thông báo", icon: Bell, path: "/owner/notifications" },
+          { id: "bank-accounts", label: "Tài khoản ngân hàng", icon: CreditCard, path: "/owner/bank-accounts" },
      ];
 
      const handleNavigation = (path) => {

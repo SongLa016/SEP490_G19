@@ -52,6 +52,17 @@ const NotificationsManagement = lazy(() =>
 const TimeSlotManagement = lazy(() =>
   import("./roles/owner/pages/TimeSlotManagement")
 );
+const BankAccountManagement = lazy(() =>
+  import("./roles/owner/pages/BankAccountManagement")
+);
+
+// Test components
+const TestFieldSchedules = lazy(() =>
+  import("./test/TestFieldSchedules")
+);
+const TestTimeSlots = lazy(() =>
+  import("./test/TestTimeSlots")
+);
 
 // Lazy load other player pages
 const BookingHistory = lazy(() =>
@@ -66,9 +77,6 @@ const Community = lazy(() =>
 
 // Profile Pages
 const ProfileIndex = lazy(() => import("./roles/player/pages/profile"));
-const ProfileDemo = lazy(() =>
-  import("./roles/player/pages/profile/ProfileDemo")
-);
 
 // Admin Pages
 const AdminDashboard = lazy(() =>
@@ -272,6 +280,14 @@ function AppContent() {
           }
         />
         <Route
+          path="/demo/bank-accounts"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <BankAccountManagement isDemo={true} />
+            </Suspense>
+          }
+        />
+        <Route
           path="/owner"
           element={
             user ? (
@@ -310,6 +326,22 @@ function AppContent() {
               user.roleName === "Owner" ? (
                 <Suspense fallback={<LoadingFallback />}>
                   <TimeSlotManagement />
+                </Suspense>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/owner/schedule"
+          element={
+            user ? (
+              user.roleName === "Owner" ? (
+                <Suspense fallback={<LoadingFallback />}>
+                  <ScheduleManagement />
                 </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -422,6 +454,22 @@ function AppContent() {
               user.roleName === "Owner" ? (
                 <Suspense fallback={<LoadingFallback />}>
                   <NotificationsManagement />
+                </Suspense>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/owner/bank-accounts"
+          element={
+            user ? (
+              user.roleName === "Owner" ? (
+                <Suspense fallback={<LoadingFallback />}>
+                  <BankAccountManagement />
                 </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -606,12 +654,22 @@ function AppContent() {
             )
           }
         />
+
+        {/* Test Routes */}
         <Route
-          path="/profile/demo"
+          path="/test/schedules"
           element={
-            <MainLayout>
-              <ProfileDemo />
-            </MainLayout>
+            <Suspense fallback={<LoadingFallback />}>
+              <TestFieldSchedules />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/test/timeslots"
+          element={
+            <Suspense fallback={<LoadingFallback />}>
+              <TestTimeSlots />
+            </Suspense>
           }
         />
 

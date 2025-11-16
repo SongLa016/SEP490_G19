@@ -2,10 +2,6 @@ import axios from "axios";
 
 // Create axios instance for profile API calls
 const apiClient = axios.create({
-  baseURL:
-    process.env.NODE_ENV === "production"
-      ? "https://sep490-g19-zxph.onrender.com/api"
-      : "https://sep490-g19-zxph.onrender.com/api",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -70,7 +66,9 @@ export const profileService = {
         profileData,
       });
 
-      const response = await apiClient.post("/UpdateProfile/update-profile", {
+      const response = await apiClient.post(
+        "https://sep490-g19-zxph.onrender.com/api/UpdateProfile/update-profile",
+        {
         userId: userId,
         dateOfBirth: profileData.dateOfBirth || "",
         gender: profileData.gender || "",
@@ -106,7 +104,7 @@ export const profileService = {
       console.log("Get Profile userId:", userId);
 
       const response = await apiClient.get(
-        `/UpdateProfile/get-profile/${userId}`
+        `https://sep490-g19-zxph.onrender.com/api/UpdateProfile/get-profile/${userId}`
       );
 
       console.log("Get Profile response:", response.data);

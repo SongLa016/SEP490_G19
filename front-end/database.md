@@ -31,7 +31,7 @@ CREATE TABLE UserProfiles (
     Address NVARCHAR(500),                                     -- Địa chỉ
     PreferredPositions NVARCHAR(100),                          -- Vị trí ưa thích (thủ môn, tiền đạo...)
     SkillLevel NVARCHAR(20),                                    -- Trình độ (beginner, intermediate,    advanced)
-    bio  NVARCHAR(20)  
+    bio NVARCHAR(500)                                           -- Giới thiệu bản thân  
 );
 
 -- 2. Sân bóng & Quản lý (6 bảng)
@@ -93,6 +93,18 @@ CREATE TABLE OwnerBankAccounts (
     UpdatedAt DATETIME2 DEFAULT GETDATE()
 );
 
+CREATE TABLE PlayerBankAccounts (
+    BankAccountID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    BankName NVARCHAR(100) NOT NULL,                -- Tên ngân hàng (VD: Vietcombank)
+    BankShortCode NVARCHAR(20),                     -- Mã ngân hàng (VD: VCB, MB, TPB)
+    AccountNumber NVARCHAR(30) NOT NULL,            -- Số tài khoản
+    AccountHolder NVARCHAR(100) NOT NULL,           -- Chủ tài khoản
+    IsDefault BIT DEFAULT 0,                        -- Chỉ có 1 tài khoản mặc định
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE()
+);
+
 -- (lịch sân ) 
 CREATE TABLE FieldSchedules (
     ScheduleID INT IDENTITY(1,1) PRIMARY KEY,
@@ -130,22 +142,16 @@ CREATE TABLE Bookings (
     BookingID INT IDENTITY(1,1) PRIMARY KEY,
     UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),                        -- Người đặt
     ScheduleID INT NOT NULL FOREIGN KEY REFERENCES FieldSchedules(ScheduleID),       -- Slot sân
-
     TotalPrice DECIMAL(10,2) NOT NULL,             -- Tổng tiền
     DepositAmount DECIMAL(10,2) NOT NULL,          -- Số tiền cọc
     RemainingAmount DECIMAL(10,2) NULL,            -- Phần còn lại trả tại sân
-
     BookingStatus NVARCHAR(20) DEFAULT 'Pending',  -- Pending, Confirmed, Cancelled, Completed, Expired, Reactive
     PaymentStatus NVARCHAR(20) DEFAULT 'Pending',  -- Pending, Paid, Refunded
-
     HasOpponent BIT DEFAULT 0,                     -- 0 = chưa có đối, 1 = đã có đối
-    MatchRequestID INT  , 
-                                                  -- Nếu chưa có đối thì hệ thống auto tạo request
+    MatchRequestID INT  ,   -- Nếu chưa có đối thì hệ thống auto tạo request
                                                   -- Nếu có rồi thì null hoặc trỏ đến request đã matched
-
     QRCode NVARCHAR(255) NULL,                     -- Mã QR đặt sân
     QRExpiresAt DATETIME2 NULL,                    -- Hết hạn QR giữ chỗ (5–10 phút)
-
     CreatedAt DATETIME2 DEFAULT GETDATE(),
     ConfirmedAt DATETIME2 NULL,
     CancelledAt DATETIME2 NULL,

@@ -2,10 +2,6 @@ import axios from "axios";
 
 // Create axios instance for password reset API calls
 const apiClient = axios.create({
-  baseURL:
-    process.env.NODE_ENV === "production"
-      ? "https://sep490-g19-zxph.onrender.com/api"
-      : "https://sep490-g19-zxph.onrender.com/api",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -69,7 +65,9 @@ export const passwordResetService = {
       );
       console.log("Send Reset OTP data:", { email });
 
-      const response = await apiClient.post("/ResertPass/send-otp", {
+      const response = await apiClient.post(
+        "https://sep490-g19-zxph.onrender.com/api/ResertPass/send-otp",
+        {
         email: email,
       });
 
@@ -99,7 +97,9 @@ export const passwordResetService = {
       );
       console.log("Verify Reset OTP data:", { otp });
 
-      const response = await apiClient.post("/ResertPass/verify-otp", {
+      const response = await apiClient.post(
+        "https://sep490-g19-zxph.onrender.com/api/ResertPass/verify-otp",
+        {
         otp: otp,
       });
 

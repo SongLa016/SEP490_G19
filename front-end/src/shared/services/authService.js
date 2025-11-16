@@ -4,10 +4,6 @@ import { roleMapping } from "../utils/roleMapping";
 
 // Create axios instance with base configuration
 const apiClient = axios.create({
-  baseURL:
-    process.env.NODE_ENV === "production"
-      ? "https://sep490-g19-zxph.onrender.com/api"
-      : "https://sep490-g19-zxph.onrender.com/api",
   timeout: 15000, // 15 seconds timeout
   headers: {
     "Content-Type": "application/json",
@@ -98,11 +94,15 @@ export const authService = {
         hasAvatar: !!userData.avatar,
       });
 
-      const response = await apiClient.post("/Register/send-otp", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const response = await apiClient.post(
+        "https://sep490-g19-zxph.onrender.com/api/Register/send-otp",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
       return {
         ok: true,
@@ -128,10 +128,13 @@ export const authService = {
         "https://sep490-g19-zxph.onrender.com/api/Register/verify-otp"
       );
 
-      const response = await apiClient.post("/Register/verify-otp", {
-        email: email,
-        otp: otp,
-      });
+      const response = await apiClient.post(
+        "https://sep490-g19-zxph.onrender.com/api/Register/verify-otp",
+        {
+          email: email,
+          otp: otp,
+        }
+      );
 
       return {
         ok: true,
@@ -153,7 +156,9 @@ export const authService = {
       console.log("🔍 Fetching role from database for UserID:", userID);
 
       // Call API to get user role information
-      const response = await apiClient.get(`/Users/get-role/${userID}`);
+      const response = await apiClient.get(
+        `https://sep490-g19-zxph.onrender.com/api/Users/get-role/${userID}`
+      );
       console.log("🔍 Database role response:", response.data);
 
       return response.data;
@@ -176,10 +181,13 @@ export const authService = {
       // Test connection first
       console.log("Testing connection to:", loginUrl);
 
-      const response = await apiClient.post("/Login/login", {
-        phone: credentials.phone,
-        password: credentials.password,
-      });
+      const response = await apiClient.post(
+        "https://sep490-g19-zxph.onrender.com/api/Login/login",
+        {
+          phone: credentials.phone,
+          password: credentials.password,
+        }
+      );
 
       console.log("Login response:", response.data);
 
@@ -288,10 +296,13 @@ export const authService = {
       );
       console.log("Google Login data:", { email, name });
 
-      const response = await apiClient.post("/Login/login-google", {
-        email: email,
-        name: name,
-      });
+      const response = await apiClient.post(
+        "https://sep490-g19-zxph.onrender.com/api/Login/login-google",
+        {
+          email: email,
+          name: name,
+        }
+      );
 
       console.log("Google Login response:", response.data);
 
@@ -393,7 +404,10 @@ export const authService = {
         "https://sep490-g19-zxph.onrender.com/api/Register/resend-otp"
       );
 
-      const response = await apiClient.post("/Register/resend-otp", { email });
+      const response = await apiClient.post(
+        "https://sep490-g19-zxph.onrender.com/api/Register/resend-otp",
+        { email }
+      );
 
       return {
         ok: true,
