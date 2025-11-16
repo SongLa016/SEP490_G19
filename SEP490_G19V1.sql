@@ -462,3 +462,9 @@ ADD FinalRefundAmount DECIMAL(18,2) NULL;
 
 ALTER TABLE FieldComplexes
 ALTER COLUMN Image VARBINARY(MAX) NULL;
+
+ALTER TABLE Bookings
+DROP CONSTRAINT FK_Bookings_MatchRequests;
+
+ALTER TABLE Bookings
+DROP COLUMN MatchRequestID;

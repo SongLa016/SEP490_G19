@@ -19,8 +19,6 @@ public partial class MatchRequest
 
     public virtual Booking? Booking { get; set; }
 
-    public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
-
     public virtual User CreatedByNavigation { get; set; } = null!;
 
     public virtual ICollection<MatchParticipant> MatchParticipants { get; set; } = new List<MatchParticipant>();

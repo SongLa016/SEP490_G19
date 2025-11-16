@@ -357,7 +357,7 @@ namespace BallSport.Application.Services.MatchFinding
             return new MatchRequestDTO
             {
                 MatchRequestId = request.MatchRequestId,
-                BookingId = request.BookingId,
+              //  BookingId = request.BookingId,
                 CreatedBy = request.CreatedBy,
                 CreatorName = request.CreatedByNavigation?.FullName ?? "Unknown",
                 CreatorPhone = request.CreatedByNavigation?.Phone,
@@ -390,7 +390,7 @@ namespace BallSport.Application.Services.MatchFinding
             return new MatchRequestDetailDTO
             {
                 MatchRequestId = request.MatchRequestId,
-                BookingId = request.BookingId,
+              //  BookingId = request.BookingId,
                 CreatedBy = request.CreatedBy,
                 CreatorName = request.CreatedByNavigation?.FullName ?? "Unknown",
                 CreatorAvatar = request.CreatedByNavigation?.Avatar != null

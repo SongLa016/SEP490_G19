@@ -23,8 +23,6 @@ public partial class Booking
 
     public bool? HasOpponent { get; set; }
 
-    public int? MatchRequestId { get; set; }
-
     public string? Qrcode { get; set; }
 
     public DateTime? QrexpiresAt { get; set; }
@@ -42,8 +40,6 @@ public partial class Booking
     public virtual ICollection<BookingCancellationRequest> BookingCancellationRequests { get; set; } = new List<BookingCancellationRequest>();
 
     public virtual ICollection<BookingCancellation> BookingCancellations { get; set; } = new List<BookingCancellation>();
-
-    public virtual MatchRequest? MatchRequest { get; set; }
 
     public virtual ICollection<MatchRequest> MatchRequests { get; set; } = new List<MatchRequest>();
 

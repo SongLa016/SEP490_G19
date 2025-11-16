@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using static System.Net.WebRequestMethods;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+
 namespace BallSport.Infrastructure.Data;
 
 public partial class Sep490G19v1Context : DbContext
@@ -81,16 +80,13 @@ public partial class Sep490G19v1Context : DbContext
     public virtual DbSet<ViolationReport> ViolationReports { get; set; }
     public DbSet<FieldImage> FieldImages { get; set; }
 
-     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        if (!optionsBuilder.IsConfigured)
+       /* if (!optionsBuilder.IsConfigured)
         {
-            optionsBuilder.UseSqlServer("Server=tcp:ballsport-server.database.windows.net,1433;Initial Catalog=SEP490_G19V1;Persist Security Info=False;User ID=adminsql;Password=Admin@12345;Encrypt=True;TrustServerCertificate=False;MultipleActiveResultSets=False");
-        }
+            optionsBuilder.UseSqlServer("Server = tcp:ballsport - server.database.windows.net, 1433; Initial Catalog = SEP490_G19V1; Persist Security Info = False; User ID = adminsql; Password = Admin@12345; MultipleActiveResultSets = True; Encrypt = True; TrustServerCertificate = True; Connection Timeout = 30;");
+        }*/
     }
-
-
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<BlogPost>(entity =>
@@ -124,7 +120,6 @@ public partial class Sep490G19v1Context : DbContext
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.DepositAmount).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.HasOpponent).HasDefaultValue(false);
-            entity.Property(e => e.MatchRequestId).HasColumnName("MatchRequestID");
             entity.Property(e => e.PaymentStatus)
                 .HasMaxLength(20)
                 .HasDefaultValue("Pending");
@@ -136,10 +131,6 @@ public partial class Sep490G19v1Context : DbContext
             entity.Property(e => e.ScheduleId).HasColumnName("ScheduleID");
             entity.Property(e => e.TotalPrice).HasColumnType("decimal(10, 2)");
             entity.Property(e => e.UserId).HasColumnName("UserID");
-
-            entity.HasOne(d => d.MatchRequest).WithMany(p => p.Bookings)
-                .HasForeignKey(d => d.MatchRequestId)
-                .HasConstraintName("FK_Bookings_MatchRequests");
 
             entity.HasOne(d => d.Schedule).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.ScheduleId)

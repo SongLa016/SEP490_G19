@@ -34,7 +34,6 @@ namespace BallSport.Application.Services
                 BookingStatus = "Pending",
                 PaymentStatus = "Unpaid",
                 HasOpponent = dto.HasOpponent,
-                MatchRequestId = dto.MatchRequestId,
                 CreatedAt = DateTime.Now
             };
 
