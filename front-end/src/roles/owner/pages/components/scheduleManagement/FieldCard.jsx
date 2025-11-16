@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Button, Badge } from "../../../../shared/components/ui";
+import { Card, Button, Badge } from "../../../../../shared/components/ui";
 import { Timer, Plus, Clock, Edit, Trash2 } from "lucide-react";
 
 export default function FieldCard({ field, fieldSlots, onAddSlot, onEditSlot, onDeleteSlot }) {

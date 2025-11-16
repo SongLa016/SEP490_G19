@@ -1,6 +1,6 @@
 import React from "react";
-import { Card, Badge } from "../../../../shared/components/ui";
-import { Clock, DollarSign } from "lucide-react";
+import { Card, Badge } from "../../../../../shared/components/ui";
+import { DollarSign } from "lucide-react";
 import Swal from "sweetalert2";
 
 export default function ScheduleTable({

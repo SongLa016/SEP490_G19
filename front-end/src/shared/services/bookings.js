@@ -1,5 +1,6 @@
 // Mocked booking/payment services with pending hold logic
 import axios from "axios";
+import { decodeTokenPayload, isTokenExpired } from "../utils/tokenManager";
 
 // In-memory pending holds (front-end only). Each item: { bookingId, fieldId, date, slotId, expiresAt }
 const pendingHolds = [];
@@ -260,23 +261,92 @@ const handleApiError = (error) => {
 
 export async function createBooking(bookingData) {
   try {
+    // Check if user is authenticated (has token)
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Bạn cần đăng nhập để tạo booking. Vui lòng đăng nhập trước.",
+      };
+    }
+
+    // Check if token is expired
+    if (isTokenExpired(token)) {
+      return {
+        success: false,
+        error: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+      };
+    }
+
+    // Decode token to check user role
+    const tokenPayload = decodeTokenPayload(token);
+    if (!tokenPayload) {
+      return {
+        success: false,
+        error: "Token không hợp lệ. Vui lòng đăng nhập lại.",
+      };
+    }
+
+    // Check if user is a player (role check)
+    // Backend might use: Role, RoleID, RoleName, role, roleId, roleName
+    const userRole = tokenPayload.Role || tokenPayload.role || tokenPayload.RoleName || tokenPayload.roleName;
+    const roleId = tokenPayload.RoleID || tokenPayload.roleID || tokenPayload.RoleId || tokenPayload.roleId;
+    
+    // RoleID 3 typically means Player in many systems, or check role name
+    const isPlayer = roleId === 3 || 
+                     userRole?.toLowerCase() === 'player' || 
+                     userRole?.toLowerCase() === 'người chơi' ||
+                     userRole === 'Player';
+    
+    if (!isPlayer) {
+      console.warn("⚠️ [GỬI GIỮ CHỖ - API] User role check failed:", { userRole, roleId, tokenPayload });
+      return {
+        success: false,
+        error: "Chỉ người chơi (Player) mới có thể tạo booking. Vui lòng đăng nhập bằng tài khoản người chơi.",
+      };
+    }
+
+    console.log("✅ [GỬI GIỮ CHỖ - API] Token validated - User is a player:", { userRole, roleId, userId: tokenPayload.UserID || tokenPayload.userID });
+
+    // Validate required fields
+    if (!bookingData.userId) {
+      return {
+        success: false,
+        error: "Thiếu thông tin người dùng (userId).",
+      };
+    }
+
+    // scheduleId can be 0 if backend will create it from fieldId, slotId, date
+    // But we still validate it's a number
+    if (bookingData.scheduleId === undefined || bookingData.scheduleId === null) {
+      return {
+        success: false,
+        error: "Thiếu thông tin lịch trình (scheduleId).",
+      };
+    }
+
     const endpoint = "https://sep490-g19-zxph.onrender.com/api/Booking/create";
 
-    // Prepare payload
+    // Prepare payload according to API specification
     const payload = {
-      userId: Number(bookingData.userId) || 0,
-      scheduleId: Number(bookingData.scheduleId) || 0,
+      userId: Number(bookingData.userId),
+      scheduleId: Number(bookingData.scheduleId),
       totalPrice: Number(bookingData.totalPrice) || 0,
       depositAmount: Number(bookingData.depositAmount) || 0,
       hasOpponent: Boolean(bookingData.hasOpponent ?? false),
       matchRequestId: bookingData.matchRequestId
         ? Number(bookingData.matchRequestId)
-        : 0,
+        : null, // Use null instead of 0 when not provided
     };
 
-    console.log("Creating booking with payload:", payload);
+    console.log("📤 [GỬI GIỮ CHỖ - API] Endpoint:", endpoint);
+    console.log("📤 [GỬI GIỮ CHỖ - API] Payload (JSON):", JSON.stringify(payload, null, 2));
+    console.log("📤 [GỬI GIỮ CHỖ - API] Payload (Object):", payload);
 
     const response = await apiClient.post(endpoint, payload);
+
+    console.log("✅ [GỬI GIỮ CHỖ - API] Response:", response.data);
+    console.log("✅ [GỬI GIỮ CHỖ - API] Response (JSON):", JSON.stringify(response.data, null, 2));
 
     return {
       success: true,
@@ -285,6 +355,15 @@ export async function createBooking(bookingData) {
     };
   } catch (error) {
     console.error("Error creating booking:", error);
+    
+    // Handle 401 Unauthorized (token expired or invalid)
+    if (error.response?.status === 401) {
+      return {
+        success: false,
+        error: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+      };
+    }
+
     const errorMessage = handleApiError(error);
     return {
       success: false,
@@ -303,9 +382,19 @@ export async function confirmPaymentAPI(bookingId) {
   try {
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-payment/${bookingId}`;
 
-    console.log(`Confirming payment for booking: ${bookingId}`);
+    const payload = {
+      bookingId: Number(bookingId)
+    };
+
+    console.log("💳 [THANH TOÁN - API] Endpoint:", endpoint);
+    console.log("💳 [THANH TOÁN - API] Payload (JSON):", JSON.stringify(payload, null, 2));
+    console.log("💳 [THANH TOÁN - API] Payload (Object):", payload);
+    console.log("💳 [THANH TOÁN - API] Booking ID:", bookingId);
 
     const response = await apiClient.put(endpoint);
+
+    console.log("✅ [THANH TOÁN - API] Response:", response.data);
+    console.log("✅ [THANH TOÁN - API] Response (JSON):", JSON.stringify(response.data, null, 2));
 
     return {
       success: true,

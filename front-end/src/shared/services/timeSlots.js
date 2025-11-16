@@ -1,8 +1,12 @@
 // Service layer for TimeSlot API
 import axios from "axios";
 
+const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
+
 // Create axios instance with base configuration
 const apiClient = axios.create({
+  baseURL: `${API_BASE_URL}/api`,
   timeout: 30000,
   headers: {
     "Content-Type": "application/json",
@@ -67,19 +71,25 @@ const handleApiError = (error) => {
   throw new Error(errorMessage);
 };
 
-// Helper function to ensure time format is HH:MM (without seconds)
+// Helper function to ensure time format is HH:MM:SS (with seconds) for SQL Server TIME type
 const formatTimeForAPI = (timeString) => {
-  if (!timeString) return timeString;
-  // If in HH:MM:SS format, remove seconds
-  if (timeString.split(":").length === 3) {
-    const [hours, minutes] = timeString.split(":");
-    return `${hours}:${minutes}`;
-  }
-  // If already in HH:MM format, return as is
-  if (timeString.split(":").length === 2) {
+  if (!timeString) return "00:00:00";
+  
+  const parts = timeString.split(":");
+  
+  // If in HH:MM:SS format, return as is
+  if (parts.length === 3) {
     return timeString;
   }
-  return timeString;
+  
+  // If in HH:MM format, add seconds
+  if (parts.length === 2) {
+    return `${timeString}:00`;
+  }
+  
+  // Invalid format, return default
+  console.warn("⚠️ Invalid time format:", timeString);
+  return "00:00:00";
 };
 
 // Normalize API response item to internal keys (lowercase for consistency)
@@ -98,12 +108,19 @@ const normalizeTimeSlot = (item) => {
     return null;
   }
 
+  // Return normalized object with both camelCase and PascalCase keys for compatibility
   return {
     slotId: Number(slotId) || slotId,
+    SlotID: Number(slotId) || slotId, // For backward compatibility
     name: String(name),
+    slotName: String(name), // For API response compatibility
+    SlotName: String(name), // For backward compatibility
     startTime: startTime || "00:00",
+    StartTime: startTime || "00:00", // For backward compatibility
     endTime: endTime || "00:00",
+    EndTime: endTime || "00:00", // For backward compatibility
     fieldId: fieldId ? Number(fieldId) : null,
+    FieldId: fieldId ? Number(fieldId) : null, // For backward compatibility
   };
 };
 
@@ -238,13 +255,13 @@ export async function fetchTimeSlots(fieldId = null) {
       console.log(`Success - received ${data.length} time slots`);
       return {
         success: true,
-        data: data.map(normalizeTimeSlot).filter(slot => slot !== null),
+        data: data.map(normalizeTimeSlot).filter((slot) => slot !== null),
       };
     } else if (data && Array.isArray(data.data)) {
       console.log(`Success - received ${data.data.length} time slots`);
       return {
         success: true,
-        data: data.data.map(normalizeTimeSlot).filter(slot => slot !== null),
+        data: data.data.map(normalizeTimeSlot).filter((slot) => slot !== null),
       };
     } else {
       console.log(`Success - empty data`);
@@ -268,26 +285,39 @@ export async function fetchTimeSlots(fieldId = null) {
   }
 }
 
-// Fetch time slots by field ID
+// Fetch time slots by field ID using public endpoint
 export async function fetchTimeSlotsByField(fieldId) {
   try {
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/TimeSlot/field/${fieldId}`;
+    // Use public endpoint: /TimeSlot/public/{fieldId}
+    const endpoint = `/TimeSlot/public/${fieldId}`;
     console.log(`Fetching time slots for field ${fieldId} from: ${endpoint}`);
-    const response = await apiClient.get(endpoint);
+
+    // Public endpoint may not require authentication, so use axios directly
+    const response = await axios.get(`${API_BASE_URL}/api${endpoint}`, {
+      headers: {
+        "Content-Type": "application/json",
+        accept: "*/*",
+      },
+      timeout: 30000,
+    });
 
     // Handle different response structures and normalize
     let data = response.data;
     if (Array.isArray(data)) {
-      console.log(`Success - received ${data.length} time slots for field ${fieldId}`);
+      console.log(
+        `Success - received ${data.length} time slots for field ${fieldId}`
+      );
       return {
         success: true,
-        data: data.map(normalizeTimeSlot).filter(slot => slot !== null),
+        data: data.map(normalizeTimeSlot).filter((slot) => slot !== null),
       };
     } else if (data && Array.isArray(data.data)) {
-      console.log(`Success - received ${data.data.length} time slots for field ${fieldId}`);
+      console.log(
+        `Success - received ${data.data.length} time slots for field ${fieldId}`
+      );
       return {
         success: true,
-        data: data.data.map(normalizeTimeSlot).filter(slot => slot !== null),
+        data: data.data.map(normalizeTimeSlot).filter((slot) => slot !== null),
       };
     } else {
       console.log(`Success - empty data for field ${fieldId}`);
@@ -348,6 +378,15 @@ export async function createTimeSlot(timeSlotData) {
     };
 
     console.log("Creating time slot with payload:", payload);
+    console.log("Request details:", {
+      endpoint: "https://sep490-g19-zxph.onrender.com/api/TimeSlot",
+      method: "POST",
+      payload: payload,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: localStorage.getItem("token") ? "Bearer [TOKEN]" : "None"
+      }
+    });
 
     // Try different endpoint variations
     const endpoints = ["https://sep490-g19-zxph.onrender.com/api/TimeSlot"];
@@ -358,20 +397,38 @@ export async function createTimeSlot(timeSlotData) {
       try {
         console.log(`Trying POST endpoint: ${endpoint}`, payload);
         response = await apiClient.post(endpoint, payload);
-        console.log(`Success with POST endpoint: ${endpoint}`, response.data);
+        console.log(`✓ Success with POST endpoint: ${endpoint}`, response.data);
         break;
       } catch (err) {
         console.error(
-          `Failed with POST endpoint: ${endpoint}`,
+          `✗ Failed with POST endpoint: ${endpoint}`,
           err.response?.status,
           err.response?.data
         );
-        console.error('Full error:', {
+        
+        // Detailed error logging for debugging
+        console.error("Full error details:", {
           status: err.response?.status,
           statusText: err.response?.statusText,
           data: err.response?.data,
-          message: err.message
+          message: err.message,
+          config: {
+            url: err.config?.url,
+            method: err.config?.method,
+            data: err.config?.data,
+            headers: err.config?.headers
+          }
         });
+        
+        // Special handling for 403 errors
+        if (err.response?.status === 403) {
+          console.error("⚠️ 403 Forbidden - Possible causes:");
+          console.error("  1. Insufficient permissions (check user role)");
+          console.error("  2. Validation failed (check payload format)");
+          console.error("  3. Duplicate entry (check if slot already exists)");
+          console.error("  4. Field ownership (check if user owns this field)");
+        }
+        
         lastError = err;
         // If it's not a 404, stop trying other endpoints
         if (err.response?.status !== 404) {
@@ -382,10 +439,30 @@ export async function createTimeSlot(timeSlotData) {
 
     if (!response) {
       const errorDetail = lastError?.response?.data;
-      const errorMessage = typeof errorDetail === 'string' 
-        ? errorDetail 
-        : errorDetail?.message || errorDetail?.error || lastError?.message || "Tất cả endpoint đều thất bại";
+      let errorMessage = "Tất cả endpoint đều thất bại";
       
+      // Parse error message based on status code
+      if (lastError?.response?.status === 403) {
+        if (typeof errorDetail === "string") {
+          errorMessage = errorDetail;
+        } else if (errorDetail?.message) {
+          errorMessage = errorDetail.message;
+        } else {
+          errorMessage = "Không có quyền tạo slot thời gian. Vui lòng kiểm tra:\n" +
+                        "• Bạn có phải là chủ sân không?\n" +
+                        "• Slot này đã tồn tại chưa?\n" +
+                        "• Thời gian có hợp lệ không?";
+        }
+      } else {
+        errorMessage =
+          typeof errorDetail === "string"
+            ? errorDetail
+            : errorDetail?.message ||
+              errorDetail?.error ||
+              lastError?.message ||
+              "Tất cả endpoint đều thất bại";
+      }
+
       throw new Error(errorMessage);
     }
 
@@ -419,20 +496,20 @@ export async function createTimeSlot(timeSlotData) {
     }
   } catch (error) {
     console.error("Error creating time slot:", error);
-    
+
     // Parse error message from different response formats
     let errorMessage = "Không thể tạo slot thời gian";
-    
+
     if (error.response?.data) {
       const data = error.response.data;
-      if (typeof data === 'string') {
+      if (typeof data === "string") {
         errorMessage = data;
       } else if (data.message) {
         errorMessage = data.message;
       } else if (data.error) {
         errorMessage = data.error;
       } else if (data.errors && Array.isArray(data.errors)) {
-        errorMessage = data.errors.join(', ');
+        errorMessage = data.errors.join(", ");
       }
     } else if (error.message) {
       errorMessage = error.message;

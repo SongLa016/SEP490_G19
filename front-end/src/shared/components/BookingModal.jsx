@@ -161,9 +161,11 @@ export default function BookingModal({
                     date: fieldData.date || prev.date,
                     slotId: fieldData.slotId || prev.slotId,
                     slotName: fieldData.slotName || prev.slotName,
+                    scheduleId: fieldData.scheduleId || prev.scheduleId || 0, // Thêm scheduleId
                     duration: fieldData.duration || prev.duration,
                     price: fieldData.price || prev.price,
-                    totalPrice: fieldData.totalPrice || fieldData.price || prev.price
+                    totalPrice: fieldData.totalPrice || fieldData.price || prev.price,
+                    fieldSchedules: fieldData.fieldSchedules || prev.fieldSchedules // Thêm fieldSchedules
                }));
 
                // Initialize recurring presets from caller (right panel)
@@ -323,6 +325,28 @@ export default function BookingModal({
      const handlePayment = async () => {
           if (!validateForm()) return;
 
+          // Check if user is logged in
+          if (!user) {
+               setErrors({ general: "Bạn cần đăng nhập để tạo booking. Vui lòng đăng nhập trước." });
+               return;
+          }
+
+          // Check if user is a player
+          const userRole = user?.role || user?.Role || user?.roleName || user?.RoleName;
+          const roleId = user?.roleId || user?.roleID || user?.RoleId || user?.RoleID;
+          const isPlayer = roleId === 3 || 
+                          userRole?.toLowerCase() === 'player' || 
+                          userRole?.toLowerCase() === 'người chơi' ||
+                          userRole === 'Player';
+          
+          if (!isPlayer) {
+               console.warn("⚠️ [GỬI GIỮ CHỖ] User is not a player:", { userRole, roleId, user });
+               setErrors({ general: "Chỉ người chơi (Player) mới có thể tạo booking. Vui lòng đăng nhập bằng tài khoản người chơi." });
+               return;
+          }
+
+          console.log("✅ [GỬI GIỮ CHỖ] User validated - is a player:", { userRole, roleId, userId: user?.id || user?.userId });
+
           setIsProcessing(true);
           try {
                const booking = {
@@ -348,31 +372,78 @@ export default function BookingModal({
                }
 
                // Gọi API tạo booking trực tiếp (không giữ tiền)
-               const userId = user?.id || user?.userId || user?.userID || 0;
+               const userId = user?.id || user?.userId || user?.userID;
+               if (!userId) {
+                    setErrors({ general: "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại." });
+                    setIsProcessing(false);
+                    return;
+               }
 
                // Tính toán depositAmount nếu chưa có
                const totalPrice = booking.totalPrice || booking.price || 0;
                const depositPercent = booking.depositPercent || 0.3;
                const depositAmount = booking.depositAmount || Math.round(totalPrice * depositPercent);
 
-               console.log("Creating booking with data:", {
-                    userId,
-                    scheduleId: 0, // Backend tự tạo từ fieldId, slotId, date
-                    totalPrice,
-                    depositAmount,
-                    hasOpponent: booking.hasOpponent || false
-               });
+               // Tìm scheduleId từ fieldSchedules dựa trên slotId và date
+               let scheduleId = booking.scheduleId || 0;
+               
+               if (!scheduleId && booking.fieldSchedules && Array.isArray(booking.fieldSchedules)) {
+                    // Helper function để so sánh date
+                    const compareDate = (scheduleDate, targetDate) => {
+                         if (!scheduleDate) return false;
+                         if (typeof scheduleDate === 'string') {
+                              return scheduleDate === targetDate || scheduleDate.split('T')[0] === targetDate;
+                         }
+                         if (scheduleDate.year && scheduleDate.month && scheduleDate.day) {
+                              const formattedDate = `${scheduleDate.year}-${String(scheduleDate.month).padStart(2, '0')}-${String(scheduleDate.day).padStart(2, '0')}`;
+                              return formattedDate === targetDate;
+                         }
+                         return false;
+                    };
 
-               const apiResult = await createBookingAPI({
+                    // Tìm schedule matching với slotId và date
+                    const matchingSchedule = booking.fieldSchedules.find(s => {
+                         const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
+                         const scheduleDate = s.date || s.Date;
+                         return String(scheduleSlotId) === String(booking.slotId) && 
+                                compareDate(scheduleDate, booking.date);
+                    });
+
+                    if (matchingSchedule) {
+                         scheduleId = matchingSchedule.scheduleId || matchingSchedule.ScheduleId || 
+                                     matchingSchedule.scheduleID || matchingSchedule.ScheduleID || 0;
+                         console.log("✅ [GỬI GIỮ CHỖ] Tìm thấy scheduleId từ fieldSchedules:", scheduleId);
+                         console.log("✅ [GỬI GIỮ CHỖ] Matching schedule:", matchingSchedule);
+                    } else {
+                         console.warn("⚠️ [GỬI GIỮ CHỖ] Không tìm thấy scheduleId từ fieldSchedules, sẽ dùng 0 (backend tự tạo)");
+                         console.log("⚠️ [GỬI GIỮ CHỖ] fieldSchedules:", booking.fieldSchedules);
+                         console.log("⚠️ [GỬI GIỮ CHỖ] slotId:", booking.slotId);
+                         console.log("⚠️ [GỬI GIỮ CHỖ] date:", booking.date);
+                    }
+               } else if (!scheduleId) {
+                    console.warn("⚠️ [GỬI GIỮ CHỖ] Không có fieldSchedules hoặc scheduleId, sẽ dùng 0 (backend tự tạo)");
+               }
+
+               // Prepare payload for booking creation
+               const bookingPayload = {
                     userId: userId,
-                    scheduleId: 0, // Backend sẽ tự tạo scheduleId
+                    scheduleId: scheduleId, // Sử dụng scheduleId đã tìm được hoặc 0
                     totalPrice: totalPrice,
                     depositAmount: depositAmount,
                     hasOpponent: booking.hasOpponent || false,
-                    matchRequestId: booking.matchRequestId || 0
-               });
+                    matchRequestId: booking.matchRequestId || null // Use null instead of 0
+               };
+
+               console.log("📤 [GỬI GIỮ CHỖ] Payload:", JSON.stringify(bookingPayload, null, 2));
+               console.log("📤 [GỬI GIỮ CHỖ] Payload (Object):", bookingPayload);
+
+               const apiResult = await createBookingAPI(bookingPayload);
+
+               console.log("✅ [GỬI GIỮ CHỖ] API Result:", apiResult);
+               console.log("✅ [GỬI GIỮ CHỖ] API Result (JSON):", JSON.stringify(apiResult, null, 2));
 
                if (!apiResult.success) {
+                    console.error("❌ [GỬI GIỮ CHỖ] Error:", apiResult.error);
                     setErrors({ general: apiResult.error || "Không thể tạo booking. Vui lòng thử lại." });
                     setIsProcessing(false);
                     return;
@@ -380,6 +451,7 @@ export default function BookingModal({
 
                // Lấy thông tin booking từ API response
                const bookingId = apiResult.data?.bookingID || apiResult.data?.bookingId || apiResult.data?.id;
+               console.log("✅ [GỬI GIỮ CHỖ] Booking ID:", bookingId);
                if (!bookingId) {
                     setErrors({ general: "Không nhận được booking ID từ server." });
                     setIsProcessing(false);
@@ -430,10 +502,25 @@ export default function BookingModal({
 
           setIsProcessing(true);
           try {
+               // Prepare payload for payment confirmation
+               const paymentPayload = {
+                    bookingId: bookingInfo.bookingId,
+                    paymentMethod: paymentMethod
+               };
+
+               console.log("💳 [THANH TOÁN] Payload:", JSON.stringify(paymentPayload, null, 2));
+               console.log("💳 [THANH TOÁN] Payload (Object):", paymentPayload);
+               console.log("💳 [THANH TOÁN] Booking ID:", bookingInfo.bookingId);
+               console.log("💳 [THANH TOÁN] Payment Method:", paymentMethod);
+
                // Gọi API xác nhận thanh toán
                const apiResult = await confirmPaymentAPI(bookingInfo.bookingId);
 
+               console.log("✅ [THANH TOÁN] API Result:", apiResult);
+               console.log("✅ [THANH TOÁN] API Result (JSON):", JSON.stringify(apiResult, null, 2));
+
                if (!apiResult.success) {
+                    console.error("❌ [THANH TOÁN] Error:", apiResult.error);
                     setErrors({ general: apiResult.error || "Không thể xác nhận thanh toán. Vui lòng thử lại." });
                     setIsProcessing(false);
                     return;

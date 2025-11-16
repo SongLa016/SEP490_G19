@@ -13,7 +13,6 @@ import {
 import Swal from "sweetalert2";
 import { Button, Card } from "../../../shared/components/ui";
 import OwnerLayout from "../layouts/OwnerLayout";
-import { useAuth } from "../../../contexts/AuthContext";
 import { DemoRestrictedModal } from "../../../shared";
 import {
      createField,
@@ -27,8 +26,9 @@ import {
 } from "../../../shared/services/fields";
 import { fetchTimeSlots } from "../../../shared/services/timeSlots";
 import { fetchOwnerBankAccounts } from "../../../shared/services/ownerBankAccount";
-import FieldFormModal from "../components/field-management/FieldFormModal";
-import ComplexFormModal from "../components/field-management/ComplexFormModal";
+import FieldFormModal from "./components/fieldManagement/FieldFormModal";
+import ComplexFormModal from "./components/fieldManagement/ComplexFormModal";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const MAX_FIELD_IMAGES = 4;
 

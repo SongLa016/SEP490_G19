@@ -9,7 +9,7 @@ import {
      SelectItem,
      SelectTrigger,
      SelectValue
-} from "../../../../shared/components/ui";
+} from "../../../../../shared/components/ui";
 import { Loader2, Save, X } from "lucide-react";
 
 export default function TimeSlotModal({
@@ -20,12 +20,13 @@ export default function TimeSlotModal({
      setSlotFormData,
      slotFormErrors,
      fields,
-     selectedQuickSlots,
+     selectedQuickSlots, setSelectedQuickSlots,
      quickSlotTemplates,
      isSlotExistsForField,
      handleQuickSlotSelect,
      isSubmittingSlot,
-     onSubmit
+     onSubmit,
+     loadTimeSlotsForField
 }) {
      return (
           <Modal
@@ -63,6 +64,12 @@ export default function TimeSlotModal({
                                    value={slotFormData.fieldId}
                                    onValueChange={(value) => {
                                         setSlotFormData({ ...slotFormData, fieldId: value });
+                                        if (setSelectedQuickSlots) {
+                                             setSelectedQuickSlots([]);
+                                        }
+                                        if (loadTimeSlotsForField) {
+                                             loadTimeSlotsForField(value);
+                                        }
                                    }}
                                    disabled={editingSlot}
                               >

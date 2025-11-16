@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Button, Card, Input, Modal, Table, Badge, Alert, AlertDescription } from '../../../shared/components/ui';
 import {
      Plus,
@@ -19,7 +19,8 @@ import {
      CheckSquare,
      Square
 } from 'lucide-react';
-import { fetchTimeSlots, createTimeSlot, updateTimeSlot, deleteTimeSlot } from '../../../shared/services/timeSlots';
+import { createTimeSlot, updateTimeSlot, deleteTimeSlot } from '../../../shared/services/timeSlots';
+import { useTimeSlots } from '../../../shared/hooks';
 import { DemoRestrictedModal } from '../../../shared';
 import OwnerLayout from '../layouts/OwnerLayout';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -27,8 +28,9 @@ import Swal from 'sweetalert2';
 
 
 export default function TimeSlotManagement({ isDemo = false }) {
-     const [timeSlots, setTimeSlots] = useState([]);
-     const [loading, setLoading] = useState(false);
+     // Use React Query hook for time slots with caching
+     const { data: timeSlots = [], isLoading: loading, refetch: loadData } = useTimeSlots();
+
      const [showModal, setShowModal] = useState(false);
      const [editingSlot, setEditingSlot] = useState(null);
      const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
@@ -43,26 +45,6 @@ export default function TimeSlotManagement({ isDemo = false }) {
      const [selectedSlots, setSelectedSlots] = useState([]);
      const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
      const { user, logout } = useAuth();
-
-     const loadData = useCallback(async () => {
-          setLoading(true);
-          try {
-               const result = await fetchTimeSlots();
-               if (result.success) {
-                    setTimeSlots(result.data);
-               } else {
-                    console.error('Error loading time slots:', result.error);
-               }
-          } catch (error) {
-               console.error('Error loading time slots:', error);
-          } finally {
-               setLoading(false);
-          }
-     }, []);
-
-     useEffect(() => {
-          loadData();
-     }, [loadData]);
 
      const handleOpenModal = (slot = null) => {
           if (isDemo) {

@@ -1,5 +1,5 @@
 import React from "react";
-import { Card } from "../../../../shared/components/ui";
+import { Card } from "../../../../../shared/components/ui";
 import { BarChart3, Calendar, Clock } from "lucide-react";
 
 export default function StatisticsCards({ statistics }) {

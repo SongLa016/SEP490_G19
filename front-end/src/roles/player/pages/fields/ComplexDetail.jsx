@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { Container, Section, LoadingPage, LoadingSpinner } from "../../../../shared/components/ui";
-import { fetchComplexDetail, fetchTimeSlots, fetchFieldDetail, fetchCancellationPolicyByComplex, fetchPromotionsByComplex, fetchPublicFieldSchedulesByField } from "../../../../shared/index";
+import { fetchComplexDetail, fetchTimeSlots, fetchTimeSlotsByField, fetchFieldDetail, fetchCancellationPolicyByComplex, fetchPromotionsByComplex, fetchPublicFieldSchedulesByField } from "../../../../shared/index";
 import BookingModal from "../../../../shared/components/BookingModal";
 import { useModal } from "../../../../contexts/ModalContext";
 import Swal from 'sweetalert2';
@@ -155,19 +155,40 @@ export default function ComplexDetail({ user }) {
                               || selectedFieldId
                               || (complexData?.fields?.[0]?.fieldId ? Number(complexData.fields[0].fieldId) : null);
 
-                         // Fetch timeslots for the determined field
+                         // Fetch timeslots only if viewing complex (not a specific field)
+                         // If viewing a specific field (via route or selectedFieldId), BookingWidget will fetch schedules from public API
                          let slots = [];
-                         if (fieldIdToUse) {
-                              // Ensure fieldId is a clean number
-                              const cleanFieldId = Number(fieldIdToUse);
-                              console.log('Fetching timeslots for fieldId:', cleanFieldId);
 
-                              const slotsResponse = await fetchTimeSlots(cleanFieldId);
-                              if (slotsResponse?.success && Array.isArray(slotsResponse.data)) {
-                                   slots = slotsResponse.data;
-                                   console.log('Loaded timeslots:', slots.length);
-                              } else {
-                                   console.error('Failed to load timeslots:', slotsResponse?.error);
+                         // Only fetch timeSlots if:
+                         // 1. Not a field route (not /field/:id)
+                         // 2. No specific field is selected (no selectedFieldId)
+                         // 3. This is for complex view (sân lớn), not individual field view
+                         const shouldFetchTimeSlots = !isFieldRoute && !selectedFieldId && !fieldData?.fieldId;
+
+                         if (shouldFetchTimeSlots && fieldIdToUse) {
+                              // Only fetch timeSlots for complex view (sân lớn)
+                              // For field view (sân nhỏ), use schedules from public API in BookingWidget
+                              try {
+                                   const cleanFieldId = Number(fieldIdToUse);
+                                   console.log('Fetching timeslots for fieldId (complex view):', cleanFieldId);
+
+                                   const slotsResponse = await fetchTimeSlots(cleanFieldId);
+                                   if (slotsResponse?.success && Array.isArray(slotsResponse.data)) {
+                                        slots = slotsResponse.data;
+                                        console.log('Loaded timeslots:', slots.length);
+                                   } else {
+                                        console.warn('Failed to load timeslots (may require auth):', slotsResponse?.error);
+                                        // Don't set error, just use empty array - BookingWidget will handle field schedules
+                                   }
+                              } catch (error) {
+                                   console.warn('Error fetching timeslots (may require auth, using schedules instead):', error);
+                                   // Don't set error, just use empty array - BookingWidget will handle field schedules
+                              }
+                         } else {
+                              // When viewing specific field (via route or selection), don't fetch timeSlots
+                              // BookingWidget will fetch schedules from public API instead
+                              if (isFieldRoute || selectedFieldId || fieldData?.fieldId) {
+                                   console.log('Field view detected - skipping timeSlots fetch, will use schedules from public API');
                               }
                          }
 
@@ -409,7 +430,6 @@ export default function ComplexDetail({ user }) {
 
           // Find field data
           const field = fields.find(f => f.fieldId === fieldId);
-          const selectedSlot = timeSlots.find(s => s.slotId === selectedSlotId);
           const weeksCount = isRecurring ? Math.max(1, Math.ceil((new Date(rangeEnd) - new Date(rangeStart)) / (7 * 24 * 60 * 60 * 1000))) : 0;
           const mappedDays = isRecurring ? repeatDays.slice() : [];
 
@@ -428,6 +448,35 @@ export default function ComplexDetail({ user }) {
                }
           } catch (error) {
                console.error("Lỗi khi lấy lịch trình sân:", error);
+          }
+
+          // Lấy thông tin slot - ưu tiên từ timeSlots, nếu không có thì fetch từ API hoặc lấy từ schedules
+          let selectedSlot = timeSlots.find(s => s.slotId === selectedSlotId);
+          if (!selectedSlot) {
+               // Nếu không tìm thấy trong timeSlots, thử fetch từ API public
+               try {
+                    const slotsResult = await fetchTimeSlotsByField(fieldId);
+                    if (slotsResult.success && Array.isArray(slotsResult.data)) {
+                         selectedSlot = slotsResult.data.find(s => s.slotId === selectedSlotId || s.SlotID === selectedSlotId);
+                    }
+               } catch (error) {
+                    console.error("Lỗi khi lấy time slots:", error);
+               }
+
+               // Nếu vẫn không tìm thấy, lấy từ schedules
+               if (!selectedSlot && fieldSchedules.length > 0) {
+                    const scheduleForSlot = fieldSchedules.find(s =>
+                         String(s.slotId || s.SlotId) === String(selectedSlotId)
+                    );
+                    if (scheduleForSlot) {
+                         selectedSlot = {
+                              slotId: scheduleForSlot.slotId || scheduleForSlot.SlotId,
+                              name: scheduleForSlot.slotName || scheduleForSlot.SlotName || `Slot ${selectedSlotId}`,
+                              startTime: scheduleForSlot.startTime || scheduleForSlot.StartTime,
+                              endTime: scheduleForSlot.endTime || scheduleForSlot.EndTime
+                         };
+                    }
+               }
           }
 
           // Helper function để so sánh date
@@ -473,6 +522,24 @@ export default function ComplexDetail({ user }) {
                }
           }
 
+          // Tìm scheduleId từ fieldSchedules dựa trên slotId và date
+          let scheduleId = 0;
+          if (fieldSchedules && Array.isArray(fieldSchedules) && fieldSchedules.length > 0) {
+               const scheduleForSlot = fieldSchedules.find(s => {
+                    const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
+                    return String(scheduleSlotId) === String(selectedSlotId) &&
+                         compareDate(s.date, selectedDate);
+               });
+
+               if (scheduleForSlot) {
+                    scheduleId = scheduleForSlot.scheduleId || scheduleForSlot.ScheduleId ||
+                         scheduleForSlot.scheduleID || scheduleForSlot.ScheduleID || 0;
+                    console.log("✅ [ComplexDetail] Tìm thấy scheduleId:", scheduleId, "từ schedule:", scheduleForSlot);
+               } else {
+                    console.warn("⚠️ [ComplexDetail] Không tìm thấy scheduleId từ fieldSchedules cho slotId:", selectedSlotId, "date:", selectedDate);
+               }
+          }
+
           const bookingData = {
                fieldId: fieldId,
                fieldName: field.name,
@@ -480,6 +547,7 @@ export default function ComplexDetail({ user }) {
                date: selectedDate,
                slotId: selectedSlotId,
                slotName: selectedSlot?.name || "",
+               scheduleId: scheduleId, // Thêm scheduleId vào booking data
                duration: 1,
                price: field.priceForSelectedSlot || 0,
                totalPrice: field.priceForSelectedSlot || 0,

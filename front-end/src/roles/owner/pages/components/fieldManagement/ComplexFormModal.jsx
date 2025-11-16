@@ -1,7 +1,7 @@
 import React from "react";
 import { Building2, CheckCircle, Loader2 } from "lucide-react";
-import { Button, Input, Modal, Textarea } from "../../../../shared/components/ui";
-import AddressPicker from "../../../../shared/components/AddressPicker";
+import { Button, Input, Modal, Textarea } from "../../../../../shared/components/ui";
+import AddressPicker from "../../../../../shared/components/AddressPicker";
 
 const ComplexFormModal = ({
   isOpen,

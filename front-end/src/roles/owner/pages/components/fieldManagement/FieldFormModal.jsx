@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
-} from "../../../../shared/components/ui";
+} from "../../../../../shared/components/ui";
 
 const FieldFormModal = ({
   isOpen,

@@ -148,8 +148,8 @@ CREATE TABLE Bookings (
     BookingStatus NVARCHAR(20) DEFAULT 'Pending',  -- Pending, Confirmed, Cancelled, Completed, Expired, Reactive
     PaymentStatus NVARCHAR(20) DEFAULT 'Pending',  -- Pending, Paid, Refunded
     HasOpponent BIT DEFAULT 0,                     -- 0 = chưa có đối, 1 = đã có đối
-    MatchRequestID INT  ,   -- Nếu chưa có đối thì hệ thống auto tạo request
-                                                  -- Nếu có rồi thì null hoặc trỏ đến request đã matched
+    MatchRequestID INT  , null  -- Nếu chưa có đối thì hệ thống auto tạo request
+                                -- Nếu có rồi thì null hoặc trỏ đến request đã matched
     QRCode NVARCHAR(255) NULL,                     -- Mã QR đặt sân
     QRExpiresAt DATETIME2 NULL,                    -- Hết hạn QR giữ chỗ (5–10 phút)
     CreatedAt DATETIME2 DEFAULT GETDATE(),

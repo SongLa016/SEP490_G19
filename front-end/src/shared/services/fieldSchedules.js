@@ -1,8 +1,12 @@
 // Service layer for FieldSchedule API
 import axios from "axios";
 
+const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
+
 // Create axios instance with base configuration
 const apiClient = axios.create({
+  baseURL: `${API_BASE_URL}/api`,
   timeout: 30000,
   headers: {
     "Content-Type": "application/json",
@@ -97,7 +101,10 @@ const formatDateFromObject = (dateObj) => {
   if (!dateObj) return null;
   if (typeof dateObj === "string") return dateObj;
   const { year, month, day } = dateObj;
-  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
+    2,
+    "0"
+  )}`;
 };
 
 // Helper function to convert time object to time string
@@ -109,6 +116,7 @@ const formatTimeFromObject = (timeObj) => {
 };
 
 // Normalize API response to internal format
+// For public API, keep date and time as strings for easier comparison
 const normalizeFieldSchedule = (item) => {
   if (!item) return null;
   return {
@@ -117,21 +125,11 @@ const normalizeFieldSchedule = (item) => {
     fieldName: item.fieldName ?? item.FieldName,
     slotId: item.slotId ?? item.SlotID,
     slotName: item.slotName ?? item.SlotName,
-    startTime: item.startTime
-      ? typeof item.startTime === "string"
-        ? parseTimeToObject(item.startTime)
-        : item.startTime
-      : null,
-    endTime: item.endTime
-      ? typeof item.endTime === "string"
-        ? parseTimeToObject(item.endTime)
-        : item.endTime
-      : null,
-    date: item.date
-      ? typeof item.date === "string"
-        ? parseDateToObject(item.date)
-        : item.date
-      : null,
+    // Keep time as string for public API (easier to display and compare)
+    startTime: item.startTime || item.StartTime || null,
+    endTime: item.endTime || item.EndTime || null,
+    // Keep date as string for public API (easier to compare)
+    date: item.date || item.Date || null,
     status: item.status ?? item.Status ?? "Available",
   };
 };
@@ -142,7 +140,7 @@ const normalizeFieldSchedule = (item) => {
  */
 export async function fetchFieldSchedules() {
   try {
-    const endpoint = "https://sep490-g19-zxph.onrender.com/api/FieldSchedule";
+    const endpoint = "/FieldSchedule";
 
     console.log("Fetching all field schedules");
 
@@ -159,7 +157,9 @@ export async function fetchFieldSchedules() {
 
     return {
       success: true,
-      data: schedulesArray.map(normalizeFieldSchedule).filter((s) => s !== null),
+      data: schedulesArray
+        .map(normalizeFieldSchedule)
+        .filter((s) => s !== null),
     };
   } catch (error) {
     console.error("Error fetching field schedules:", error);
@@ -170,18 +170,72 @@ export async function fetchFieldSchedules() {
   }
 }
 
-/**
- * Fetch field schedules by fieldId
- * @param {number|string} fieldId - Field ID
- * @returns {Promise<Object>} List of field schedules for the field
- */
 export async function fetchFieldSchedulesByField(fieldId) {
   try {
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/FieldSchedule/field/${fieldId}`;
-
     console.log(`Fetching field schedules for fieldId: ${fieldId}`);
 
-    const response = await apiClient.get(endpoint);
+    // Try multiple endpoint variations
+    const endpoints = [
+      `/FieldSchedule/field/${fieldId}`,
+      `/FieldSchedule/Field/${fieldId}`,
+      `/FieldSchedule?fieldId=${fieldId}`,
+      `/FieldSchedule?FieldId=${fieldId}`,
+    ];
+
+    let response = null;
+    let lastError = null;
+
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`Trying GET endpoint: ${endpoint}`);
+        response = await apiClient.get(endpoint);
+        console.log(`Success with GET endpoint: ${endpoint}`);
+        break;
+      } catch (err) {
+        console.log(
+          `Failed with GET endpoint: ${endpoint}`,
+          err.response?.status
+        );
+        lastError = err;
+        // If it's not a 404, stop trying other endpoints
+        if (err.response?.status !== 404) {
+          break;
+        }
+      }
+    }
+
+    // If all endpoints failed, fetch all and filter by fieldId
+    if (!response) {
+      console.log(
+        `All endpoints failed, fetching all schedules and filtering by fieldId: ${fieldId}`
+      );
+      const allSchedulesResponse = await apiClient.get("/FieldSchedule");
+      let allData = allSchedulesResponse.data;
+      let allSchedulesArray = [];
+
+      if (Array.isArray(allData)) {
+        allSchedulesArray = allData;
+      } else if (allData && Array.isArray(allData.data)) {
+        allSchedulesArray = allData.data;
+      }
+
+      // Filter by fieldId
+      const filteredSchedules = allSchedulesArray.filter((schedule) => {
+        const scheduleFieldId =
+          schedule.fieldId ??
+          schedule.FieldId ??
+          schedule.fieldID ??
+          schedule.FieldID;
+        return Number(scheduleFieldId) === Number(fieldId);
+      });
+
+      return {
+        success: true,
+        data: filteredSchedules
+          .map(normalizeFieldSchedule)
+          .filter((s) => s !== null),
+      };
+    }
 
     let data = response.data;
     let schedulesArray = [];
@@ -194,7 +248,9 @@ export async function fetchFieldSchedulesByField(fieldId) {
 
     return {
       success: true,
-      data: schedulesArray.map(normalizeFieldSchedule).filter((s) => s !== null),
+      data: schedulesArray
+        .map(normalizeFieldSchedule)
+        .filter((s) => s !== null),
     };
   } catch (error) {
     console.error("Error fetching field schedules by field:", error);
@@ -205,26 +261,34 @@ export async function fetchFieldSchedulesByField(fieldId) {
   }
 }
 
-/**
- * Fetch public field schedules by fieldId (no authentication required)
- * Used for getting schedules when booking small fields
- * @param {number|string} fieldId - Field ID
- * @returns {Promise<Object>} List of field schedules for the field
- */
 export async function fetchPublicFieldSchedulesByField(fieldId) {
   try {
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/FieldSchedule/public/field/${fieldId}`;
+    const endpoint = `/FieldSchedule/public/field/${fieldId}`;
 
     console.log(`Fetching public field schedules for fieldId: ${fieldId}`);
 
     // Create a separate axios instance without auth token for public endpoint
+    // Use the same baseURL as other services
+    const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+    const API_BASE_URL =
+      process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
+
     const publicApiClient = axios.create({
+      baseURL: `${API_BASE_URL}/api`,
       timeout: 30000,
       headers: {
         "Content-Type": "application/json",
       },
     });
 
+    // Ensure no auth token is sent for public endpoint
+    publicApiClient.interceptors.request.use((config) => {
+      // Remove any auth token that might be set
+      delete config.headers.Authorization;
+      return config;
+    });
+
+    console.log(`Calling public endpoint: ${API_BASE_URL}/api${endpoint}`);
     const response = await publicApiClient.get(endpoint);
 
     let data = response.data;
@@ -238,7 +302,9 @@ export async function fetchPublicFieldSchedulesByField(fieldId) {
 
     return {
       success: true,
-      data: schedulesArray.map(normalizeFieldSchedule).filter((s) => s !== null),
+      data: schedulesArray
+        .map(normalizeFieldSchedule)
+        .filter((s) => s !== null),
     };
   } catch (error) {
     console.error("Error fetching public field schedules by field:", error);
@@ -262,7 +328,7 @@ export async function fetchPublicFieldSchedulesByField(fieldId) {
  */
 export async function createFieldSchedule(scheduleData) {
   try {
-    const endpoint = "https://sep490-g19-zxph.onrender.com/api/FieldSchedule";
+    const endpoint = "/FieldSchedule";
 
     // Validate required fields
     if (!scheduleData.fieldId || !scheduleData.slotId || !scheduleData.date) {
@@ -278,7 +344,11 @@ export async function createFieldSchedule(scheduleData) {
       dateObj = parseDateToObject(scheduleData.date);
     } else if (scheduleData.date && typeof scheduleData.date === "object") {
       // If already an object, ensure it has all required fields
-      if (scheduleData.date.year && scheduleData.date.month && scheduleData.date.day) {
+      if (
+        scheduleData.date.year &&
+        scheduleData.date.month &&
+        scheduleData.date.day
+      ) {
         const date = new Date(
           scheduleData.date.year,
           scheduleData.date.month - 1,
@@ -292,7 +362,10 @@ export async function createFieldSchedule(scheduleData) {
         };
       } else {
         dateObj = parseDateToObject(
-          `${scheduleData.date.year}-${String(scheduleData.date.month).padStart(2, "0")}-${String(scheduleData.date.day).padStart(2, "0")}`
+          `${scheduleData.date.year}-${String(scheduleData.date.month).padStart(
+            2,
+            "0"
+          )}-${String(scheduleData.date.day).padStart(2, "0")}`
         );
       }
     }
@@ -338,7 +411,10 @@ export async function createFieldSchedule(scheduleData) {
       status: String(scheduleData.status || "Available"),
     };
 
-    console.log("Creating field schedule with payload:", JSON.stringify(payload, null, 2));
+    console.log(
+      "Creating field schedule with payload:",
+      JSON.stringify(payload, null, 2)
+    );
 
     try {
       const response = await apiClient.post(endpoint, payload);
@@ -351,20 +427,20 @@ export async function createFieldSchedule(scheduleData) {
     } catch (error) {
       console.error("Error creating field schedule:", error);
       console.error("Error response:", error.response?.data);
-      
+
       // Parse error message
       let errorMessage = "Không thể tạo lịch trình";
-      
+
       if (error.response?.data) {
         const data = error.response.data;
-        if (typeof data === 'string') {
+        if (typeof data === "string") {
           errorMessage = data;
         } else if (data.message) {
           errorMessage = data.message;
         } else if (data.error) {
           errorMessage = data.error;
         } else if (data.errors && Array.isArray(data.errors)) {
-          errorMessage = data.errors.join(', ');
+          errorMessage = data.errors.join(", ");
         }
       } else if (error.message) {
         errorMessage = error.message;
@@ -392,7 +468,7 @@ export async function createFieldSchedule(scheduleData) {
  */
 export async function updateFieldScheduleStatus(scheduleId, status) {
   try {
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/FieldSchedule/${scheduleId}/status`;
+    const endpoint = `/FieldSchedule/${scheduleId}/status`;
 
     console.log(`Updating schedule ${scheduleId} status to: ${status}`);
 
@@ -419,7 +495,7 @@ export async function updateFieldScheduleStatus(scheduleId, status) {
  */
 export async function deleteFieldSchedule(scheduleId) {
   try {
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/FieldSchedule/${scheduleId}`;
+    const endpoint = `/FieldSchedule/${scheduleId}`;
 
     console.log(`Deleting field schedule: ${scheduleId}`);
 
@@ -437,4 +513,3 @@ export async function deleteFieldSchedule(scheduleId) {
     };
   }
 }
-
