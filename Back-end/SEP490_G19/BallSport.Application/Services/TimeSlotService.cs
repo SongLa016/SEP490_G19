@@ -14,6 +14,8 @@ namespace BallSport.Application.Services
         Task<TimeSlotReadDTO?> UpdateAsync(int slotId, TimeSlotDTO dto, int ownerId);
         Task<bool> DeleteAsync(int slotId, int ownerId);
         Task<List<TimeSlotReadDTO>> GetByFieldIdAsync(int fieldId, int ownerId);
+        Task<List<TimeSlotDTO>> GetPublicByFieldIdAsync(int fieldId);
+
 
     }
 
@@ -67,23 +69,43 @@ namespace BallSport.Application.Services
             if (field == null)
                 throw new UnauthorizedAccessException("Bạn không có quyền xem slot của sân này.");
 
-            // Lấy danh sách slot và sắp xếp theo StartTime (tăng dần)
             var slots = await _context.TimeSlots
                 .Where(ts => ts.FieldId == fieldId)
-                .OrderBy(ts => ts.StartTime)               // ⭐ Sắp xếp giờ từ bé đến lớn
-                .Select(ts => new TimeSlotReadDTO
-                {
-                    SlotId = ts.SlotId,
-                    SlotName = ts.SlotName,
-                    FieldId = ts.FieldId,
-                    StartTime = ts.StartTime,
-                    EndTime = ts.EndTime
-                })
+                .Include(ts => ts.FieldPrices)    // ⭐ Lấy kèm giá
+                .OrderBy(ts => ts.StartTime)
                 .ToListAsync();
 
-            return slots;
+            return slots.Select(ts => new TimeSlotReadDTO
+            {
+                SlotId = ts.SlotId,
+                SlotName = ts.SlotName,
+                FieldId = ts.FieldId,
+                StartTime = ts.StartTime,
+                EndTime = ts.EndTime,
+                Price = ts.FieldPrices.FirstOrDefault()?.Price ?? 0  // ⭐ Lấy giá
+            })
+            .ToList();
         }
 
+        //public cho player
+        public async Task<List<TimeSlotDTO>> GetPublicByFieldIdAsync(int fieldId)
+        {
+            var slots = await _context.TimeSlots
+                .Where(s => s.FieldId == fieldId)
+                .Include(s => s.FieldPrices) // 
+                .OrderBy(s => s.StartTime)
+                .ToListAsync();
+
+            return slots.Select(s => new TimeSlotDTO
+            {
+                SlotId = s.SlotId,
+                FieldId = s.FieldId,
+                SlotName = s.SlotName,
+                StartTime = s.StartTime,
+                EndTime = s.EndTime,
+                Price = s.FieldPrices.FirstOrDefault()?.Price ?? 0  
+            }).ToList();
+        }
 
 
         public async Task<TimeSlotReadDTO> CreateAsync(TimeSlotDTO dto, int ownerId)
