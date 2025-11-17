@@ -82,7 +82,7 @@ services.AddCors(options =>
 });
 
 // ===================== DATABASE =====================
-services.AddDbContext<Sep490G19v1Context>(options =>
+services.AddDbContext<Sep490v1Context>(options =>
     options.UseSqlServer(config.GetConnectionString("MyCnn")));
 
 // ===================== DEPENDENCY INJECTION =====================
@@ -179,7 +179,9 @@ services.AddAuthentication(options =>
         ValidIssuer = config["JwtSettings:Issuer"],
         ValidAudience = config["JwtSettings:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(config["JwtSettings:SecretKey"]))
+            Encoding.UTF8.GetBytes(config["JwtSettings:SecretKey"])),
+
+         RoleClaimType = "Role"
     };
 })
 .AddCookie(options =>
