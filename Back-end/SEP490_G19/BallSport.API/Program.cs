@@ -82,7 +82,7 @@ services.AddCors(options =>
 });
 
 // ===================== DATABASE =====================
-services.AddDbContext<Sep490v1Context>(options =>
+services.AddDbContext<Sep490G19v1Context >(options =>
     options.UseSqlServer(config.GetConnectionString("MyCnn")));
 
 // ===================== DEPENDENCY INJECTION =====================
