@@ -15,16 +15,14 @@ namespace BallSport.Application.Services
         Task<bool> DeleteAsync(int slotId, int ownerId);
         Task<List<TimeSlotReadDTO>> GetByFieldIdAsync(int fieldId, int ownerId);
         Task<List<TimeSlotDTO>> GetPublicByFieldIdAsync(int fieldId);
-
-
     }
 
     public class TimeSlotService : ITimeSlotService
     {
         private readonly ITimeSlotRepository _repo;
-        private readonly Sep490G19v1Context _context;
+        private readonly Sep490v1Context _context;
 
-        public TimeSlotService(ITimeSlotRepository repo, Sep490G19v1Context context)
+        public TimeSlotService(ITimeSlotRepository repo, Sep490v1Context context)
         {
             _repo = repo;
             _context = context;
@@ -39,7 +37,8 @@ namespace BallSport.Application.Services
                 SlotName = ts.SlotName,
                 FieldId = ts.FieldId,
                 StartTime = ts.StartTime,
-                EndTime = ts.EndTime
+                EndTime = ts.EndTime,
+                Price = ts.Price
             }).ToList();
         }
 
@@ -53,25 +52,25 @@ namespace BallSport.Application.Services
                 SlotName = ts.SlotName,
                 FieldId = ts.FieldId,
                 StartTime = ts.StartTime,
-                EndTime = ts.EndTime
+                EndTime = ts.EndTime,
+                Price = ts.Price
             };
         }
 
-
-        // get theo id sân
         public async Task<List<TimeSlotReadDTO>> GetByFieldIdAsync(int fieldId, int ownerId)
         {
-            // Kiểm tra field có thuộc owner không
             var field = await _context.Fields
                 .Include(f => f.Complex)
-                .FirstOrDefaultAsync(f => f.FieldId == fieldId && f.Complex.OwnerId == ownerId);
+                .FirstOrDefaultAsync(f => f.FieldId == fieldId);
 
             if (field == null)
+                throw new Exception("FieldId không tồn tại");
+
+            if (field.Complex.OwnerId != ownerId)
                 throw new UnauthorizedAccessException("Bạn không có quyền xem slot của sân này.");
 
             var slots = await _context.TimeSlots
                 .Where(ts => ts.FieldId == fieldId)
-                .Include(ts => ts.FieldPrices)    // ⭐ Lấy kèm giá
                 .OrderBy(ts => ts.StartTime)
                 .ToListAsync();
 
@@ -82,17 +81,14 @@ namespace BallSport.Application.Services
                 FieldId = ts.FieldId,
                 StartTime = ts.StartTime,
                 EndTime = ts.EndTime,
-                Price = ts.FieldPrices.FirstOrDefault()?.Price ?? 0  // ⭐ Lấy giá
-            })
-            .ToList();
+                Price = ts.Price
+            }).ToList();
         }
 
-        //public cho player
         public async Task<List<TimeSlotDTO>> GetPublicByFieldIdAsync(int fieldId)
         {
             var slots = await _context.TimeSlots
                 .Where(s => s.FieldId == fieldId)
-                .Include(s => s.FieldPrices) // 
                 .OrderBy(s => s.StartTime)
                 .ToListAsync();
 
@@ -103,33 +99,27 @@ namespace BallSport.Application.Services
                 SlotName = s.SlotName,
                 StartTime = s.StartTime,
                 EndTime = s.EndTime,
-                Price = s.FieldPrices.FirstOrDefault()?.Price ?? 0  
+                Price = s.Price
             }).ToList();
         }
 
-
         public async Task<TimeSlotReadDTO> CreateAsync(TimeSlotDTO dto, int ownerId)
         {
-            // Kiểm tra quyền trên Field
             var field = await _context.Fields
                 .Include(f => f.Complex)
-                .FirstOrDefaultAsync(f => f.FieldId == dto.FieldId && f.Complex.OwnerId == ownerId);
+                .FirstOrDefaultAsync(f => f.FieldId == dto.FieldId);
 
             if (field == null)
+                throw new Exception("FieldId không tồn tại");
+
+            if (field.Complex.OwnerId != ownerId)
                 throw new UnauthorizedAccessException("Bạn không có quyền thêm slot cho sân này.");
 
-            // --- Check trùng giờ trong cùng Field ---
-            var exists = await _context.TimeSlots
-                .AnyAsync(ts => ts.FieldId == dto.FieldId &&
-                                ts.StartTime == dto.StartTime &&
-                                ts.EndTime == dto.EndTime);
-            if (exists)
-                throw new Exception("Sân này đã có slot trùng giờ. Vui lòng chọn khung giờ khác.");
-            //Check starttime slot 2 > endtime của slot 1
+            // Check slot chồng giờ trong cùng Field
             var overlap = await _context.TimeSlots
-            .AnyAsync(ts => ts.FieldId == dto.FieldId &&
-                    ts.StartTime < dto.EndTime &&
-                    ts.EndTime > dto.StartTime);
+                .AnyAsync(ts => ts.FieldId == dto.FieldId &&
+                                ts.StartTime < dto.EndTime &&
+                                ts.EndTime > dto.StartTime);
 
             if (overlap)
                 throw new Exception("Khung giờ này chồng lấn với slot khác của sân.");
@@ -139,7 +129,8 @@ namespace BallSport.Application.Services
                 SlotName = dto.SlotName,
                 FieldId = dto.FieldId,
                 StartTime = dto.StartTime,
-                EndTime = dto.EndTime
+                EndTime = dto.EndTime,
+                Price = dto.Price
             };
 
             await _repo.AddAsync(slot);
@@ -150,7 +141,8 @@ namespace BallSport.Application.Services
                 SlotName = slot.SlotName,
                 FieldId = slot.FieldId,
                 StartTime = slot.StartTime,
-                EndTime = slot.EndTime
+                EndTime = slot.EndTime,
+                Price = slot.Price
             };
         }
 
@@ -159,29 +151,30 @@ namespace BallSport.Application.Services
             var slot = await _repo.GetByIdAsync(slotId, ownerId);
             if (slot == null) return null;
 
-            // --- Check trùng giờ trong cùng Field, trừ chính slot đang update ---
-            var exists = await _context.TimeSlots
+            var field = await _context.Fields
+                .Include(f => f.Complex)
+                .FirstOrDefaultAsync(f => f.FieldId == dto.FieldId);
+
+            if (field == null)
+                throw new Exception("FieldId không tồn tại");
+
+            if (field.Complex.OwnerId != ownerId)
+                throw new UnauthorizedAccessException("Bạn không có quyền sửa slot cho sân này.");
+
+            var overlap = await _context.TimeSlots
                 .AnyAsync(ts => ts.FieldId == dto.FieldId &&
                                 ts.SlotId != slotId &&
-                                ts.StartTime == dto.StartTime &&
-                                ts.EndTime == dto.EndTime);
-            if (exists)
-                throw new Exception("Sân này đã có slot trùng giờ. Vui lòng chọn khung giờ khác.");
-
-            //Check starttime slot 2 > endtime của slot 1
-            var overlap = await _context.TimeSlots
-             .AnyAsync(ts => ts.FieldId == dto.FieldId &&
-                    ts.SlotId != slotId &&
-                    ts.StartTime < dto.EndTime &&
-                    ts.EndTime > dto.StartTime);
+                                ts.StartTime < dto.EndTime &&
+                                ts.EndTime > dto.StartTime);
 
             if (overlap)
-                throw new Exception("Khung giờ này trùng với slot khác của sân. Vui lòng chọn giờ khác.");
+                throw new Exception("Khung giờ này chồng lấn với slot khác của sân.");
 
             slot.SlotName = dto.SlotName;
             slot.StartTime = dto.StartTime;
             slot.EndTime = dto.EndTime;
             slot.FieldId = dto.FieldId;
+            slot.Price = dto.Price;
 
             await _repo.UpdateAsync(slot);
 
@@ -191,7 +184,8 @@ namespace BallSport.Application.Services
                 SlotName = slot.SlotName,
                 FieldId = slot.FieldId,
                 StartTime = slot.StartTime,
-                EndTime = slot.EndTime
+                EndTime = slot.EndTime,
+                Price = slot.Price
             };
         }
 
@@ -204,5 +198,4 @@ namespace BallSport.Application.Services
             return true;
         }
     }
-
 }
