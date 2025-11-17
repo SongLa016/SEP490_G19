@@ -20,7 +20,7 @@ namespace BallSport.Application.Services
     public class TimeSlotService : ITimeSlotService
     {
         private readonly ITimeSlotRepository _repo;
-        private readonly Sep490v1Context _context;
+        private readonly Sep490G19v1Context _context;
 
         public TimeSlotService(ITimeSlotRepository repo, Sep490v1Context context)
         {
