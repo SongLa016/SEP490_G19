@@ -468,3 +468,6 @@ DROP CONSTRAINT FK_Bookings_MatchRequests;
 
 ALTER TABLE Bookings
 DROP COLUMN MatchRequestID;
+
+ ALTER TABLE TimeSlots
+ADD Price DECIMAL(18,2) NOT NULL DEFAULT 0;
