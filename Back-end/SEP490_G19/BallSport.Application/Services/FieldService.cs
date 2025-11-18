@@ -19,27 +19,8 @@ namespace BallSport.Application.Services
         // 🏟️ CREATE sân + tài khoản ngân hàng
         public async Task<FieldResponseDTO> AddFieldAsync(FieldDTO dto, int ownerId)
         {
-            int? bankAccountId = null;
+            int? bankAccountId = dto.BankAccountId;
 
-            // 1️⃣ Tạo tài khoản ngân hàng nếu có
-            if (!string.IsNullOrEmpty(dto.BankName) &&
-                !string.IsNullOrEmpty(dto.AccountNumber) &&
-                !string.IsNullOrEmpty(dto.AccountHolder))
-            {
-                var bankAccount = new OwnerBankAccount
-                {
-                    OwnerId = ownerId,
-                    BankName = dto.BankName,
-                    BankShortCode = dto.BankShortCode,
-                    AccountNumber = dto.AccountNumber,
-                    AccountHolder = dto.AccountHolder,
-                    IsDefault = true
-                };
-                await _bankAccountRepository.AddOwnerBankAccountAsync(bankAccount);
-                bankAccountId = bankAccount.BankAccountId;
-            }
-
-            // 2️⃣ Tạo Field
             var field = new Field
             {
                 ComplexId = dto.ComplexId,
@@ -97,10 +78,7 @@ namespace BallSport.Application.Services
                 PricePerHour = created.PricePerHour,
                 Status = created.Status,
                 CreatedAt = created.CreatedAt,
-                BankName = dto.BankName,
-                BankShortCode = dto.BankShortCode,
-                AccountNumber = dto.AccountNumber,
-                AccountHolder = dto.AccountHolder,
+                BankAccountId = created.BankAccountId,
                 MainImageBase64 = created.Image != null ? Convert.ToBase64String(created.Image) : null,
                 ImageFilesBase64 = created.FieldImages?.Select(f => Convert.ToBase64String(f.Image)).ToList()
             };
@@ -120,7 +98,7 @@ namespace BallSport.Application.Services
             existingField.TypeId = dto.TypeId;
             existingField.PricePerHour = dto.PricePerHour;
             existingField.Status = dto.Status;
-
+            existingField.BankAccountId = dto.BankAccountId;
             // 1️⃣ Cập nhật ảnh chính nếu có
             if (dto.MainImage != null && dto.MainImage.Length > 0)
             {
@@ -165,10 +143,7 @@ namespace BallSport.Application.Services
                 PricePerHour = updated.PricePerHour,
                 Status = updated.Status,
                 CreatedAt = updated.CreatedAt,
-                BankName = dto.BankName,
-                BankShortCode = dto.BankShortCode,
-                AccountNumber = dto.AccountNumber,
-                AccountHolder = dto.AccountHolder,
+                BankAccountId = updated.BankAccountId,
                 MainImageBase64 = updated.Image != null ? Convert.ToBase64String(updated.Image) : null,
                 ImageFilesBase64 = updated.FieldImages?.Select(f => Convert.ToBase64String(f.Image)).ToList()
             };

@@ -19,10 +19,7 @@ namespace BallSport.Application.DTOs
         public string? Status { get; set; }
         public DateTime? CreatedAt { get; set; }
 
-        public string? BankName { get; set; }
-        public string? BankShortCode { get; set; }
-        public string? AccountNumber { get; set; }
-        public string? AccountHolder { get; set; }
+        public int? BankAccountId { get; set; }
 
         public string? MainImageBase64 { get; set; }
         public List<string>? ImageFilesBase64 { get; set; }
