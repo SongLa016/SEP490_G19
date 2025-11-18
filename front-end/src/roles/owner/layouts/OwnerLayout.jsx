@@ -16,7 +16,8 @@ import {
      ChevronLeft,
      ChevronRight,
      Wallet,
-     CreditCard
+     CreditCard,
+     Tag
 } from "lucide-react";
 import { Button } from "../../../shared/components/ui";
 import logo from "../../../shared/components/assets/logo.png";
@@ -41,6 +42,7 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
      const navigationItems = [
           { id: "owner", label: "Tổng quan", icon: Home, path: "/owner" },
           { id: "fields", label: "Quản lý sân", icon: Building2, path: "/owner/fields" },
+          { id: "field-types", label: "Loại sân", icon: Tag, path: "/owner/field-types" },
           { id: "schedule", label: "Lịch trình & Slots", icon: CalendarCog, path: "/owner/schedule" },
           { id: "pricing", label: "Giá theo slot", icon: DollarSign, path: "/owner/pricing" },
           { id: "bookings", label: "Quản lý booking", icon: ClipboardList, path: "/owner/bookings" },

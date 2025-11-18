@@ -51,7 +51,7 @@ export default function TimeSlotsTab({
                <Alert className="border-yellow-200 bg-yellow-50 rounded-2xl">
                     <Info className="h-4 w-4 " />
                     <AlertDescription className="text-yellow-600 text-sm">
-                         Mỗi sân có thể có các khung giờ hoạt động riêng. Sau khi tạo, bạn có thể gán giá cho từng slot ở trang "Giá theo slot".
+                         Mỗi sân có thể có các khung giờ hoạt động riêng. Giá sẽ được thiết lập ngay khi tạo slot.
                     </AlertDescription>
                </Alert>
 
@@ -69,11 +69,12 @@ export default function TimeSlotsTab({
                          {fields
                               .filter(field => selectedFieldFilter === 'all' || field.fieldId.toString() === selectedFieldFilter)
                               .map((field) => {
-                                   // Get slots for this field and add fieldId to each slot
+                                   // Get slots for this field
                                    const fieldSlots = timeSlots
                                         .filter(slot => {
-                                             // Filter by slot.fieldId if available, otherwise show all
-                                             return !slot.fieldId || slot.fieldId === field.fieldId || slot.FieldId === field.fieldId;
+                                             const slotFieldId = slot.fieldId ?? slot.FieldId;
+                                             // Only show slots that belong to this field
+                                             return slotFieldId && Number(slotFieldId) === Number(field.fieldId);
                                         })
                                         .map(slot => ({
                                              ...slot,
@@ -130,6 +131,7 @@ export default function TimeSlotsTab({
                                                             const start = new Date(`2000-01-01T${slot.StartTime || slot.startTime || '00:00:00'}`);
                                                             const end = new Date(`2000-01-01T${slot.EndTime || slot.endTime || '00:00:00'}`);
                                                             const duration = (end - start) / (1000 * 60 * 60);
+                                                            const price = slot.price || slot.Price || 0;
 
                                                             return (
                                                                  <div
@@ -137,10 +139,13 @@ export default function TimeSlotsTab({
                                                                       className="bg-gradient-to-br from-teal-50 to-blue-50 p-4 rounded-lg border border-teal-200 hover:shadow-md transition-shadow"
                                                                  >
                                                                       <div className="flex items-start justify-between mb-2">
-                                                                           <div>
+                                                                           <div className="flex-1">
                                                                                 <h5 className="font-semibold text-gray-900">{slot.SlotName || slot.slotName || slot.name || 'N/A'}</h5>
                                                                                 <p className="text-sm text-gray-600 mt-1">
                                                                                      {formatTime(slot.StartTime || slot.startTime || '00:00:00')} - {formatTime(slot.EndTime || slot.endTime || '00:00:00')}
+                                                                                </p>
+                                                                                <p className="text-base font-bold text-teal-700 mt-2">
+                                                                                     {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price)}
                                                                                 </p>
                                                                            </div>
                                                                            <Badge className="bg-blue-100 text-blue-800 text-xs">

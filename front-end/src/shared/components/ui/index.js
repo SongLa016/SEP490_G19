@@ -21,6 +21,15 @@ export { Textarea } from "./textarea";
 export { Calendar } from "./calendar";
 export { DatePicker } from "./datepicker";
 export { Popover, PopoverTrigger, PopoverContent } from "./popover";
+export { Combobox } from "./combobox";
+export {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "./command";
 
 // Display components
 export {
@@ -75,6 +84,9 @@ export {
   Bounce,
   Shimmer,
 } from "./animations";
+
+// Pagination
+export { Pagination, usePagination } from "./pagination";
 
 // Utility
 export { cn } from "../../../lib/utils";

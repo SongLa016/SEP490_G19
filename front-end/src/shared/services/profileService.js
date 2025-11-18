@@ -8,6 +8,20 @@ const apiClient = axios.create({
   },
 });
 
+// Add request interceptor to include auth token
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // Helper function to handle API errors
 const handleApiError = (error) => {
   let errorMessage = "Có lỗi xảy ra khi cập nhật profile";
@@ -66,17 +80,34 @@ export const profileService = {
         profileData,
       });
 
-      const response = await apiClient.post(
-        "https://sep490-g19-zxph.onrender.com/api/UpdateProfile/update-profile",
-        {
+      // Format dateOfBirth to string if it's a Date object
+      let formattedDateOfBirth = profileData.dateOfBirth || "";
+      if (formattedDateOfBirth && formattedDateOfBirth instanceof Date) {
+        formattedDateOfBirth = formattedDateOfBirth.toISOString().split('T')[0];
+      } else if (formattedDateOfBirth && typeof formattedDateOfBirth === 'string') {
+        // Ensure date is in YYYY-MM-DD format
+        const date = new Date(formattedDateOfBirth);
+        if (!isNaN(date.getTime())) {
+          formattedDateOfBirth = date.toISOString().split('T')[0];
+        }
+      }
+
+      const requestPayload = {
         userId: userId,
-        dateOfBirth: profileData.dateOfBirth || "",
+        dateOfBirth: formattedDateOfBirth,
         gender: profileData.gender || "",
         address: profileData.address || "",
         preferredPositions: profileData.preferredPositions || "",
         skillLevel: profileData.skillLevel || "",
         bio: profileData.bio || "",
-      });
+      };
+
+      console.log("Update Profile request payload:", requestPayload);
+
+      const response = await apiClient.post(
+        "https://sep490-g19-zxph.onrender.com/api/UpdateProfile/update-profile",
+        requestPayload
+      );
 
       console.log("Update Profile response:", response.data);
 

@@ -11,7 +11,7 @@ import {
      FilterIcon,
      Loader2
 } from "lucide-react";
-import { Button, Card, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../../../shared/components/ui";
+import { Button, Card, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Table, TableHeader, TableHead, TableRow, TableBody, TableCell, Pagination, usePagination } from "../../../shared/components/ui";
 import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import { DemoRestrictedModal } from "../../../shared";
@@ -373,6 +373,16 @@ const PricingManagement = ({ isDemo = false }) => {
           return matchesField && matchesKeyword;
      });
 
+     // Pagination for pricing (10 per page)
+     const {
+          currentPage,
+          totalPages,
+          currentItems: paginatedPricing,
+          handlePageChange,
+          totalItems,
+          itemsPerPage,
+     } = usePagination(filteredPricing, 10);
+
      const formatCurrency = (amount) => {
           return new Intl.NumberFormat('vi-VN', {
                style: 'currency',
@@ -487,7 +497,7 @@ const PricingManagement = ({ isDemo = false }) => {
                                    </TableRow>
                               </TableHeader>
                               <TableBody>
-                                   {filteredPricing.map((price) => (
+                                   {paginatedPricing.map((price) => (
                                         <TableRow key={price.priceId} className="hover:bg-slate-50">
                                              <TableCell className="text-sm font-medium text-gray-900">{getFieldName(price.fieldId)}</TableCell>
                                              <TableCell className="text-sm text-gray-900">{getSlotName(price.slotId)}</TableCell>
@@ -506,11 +516,21 @@ const PricingManagement = ({ isDemo = false }) => {
                                    ))}
                               </TableBody>
                          </Table>
-                         {filteredPricing.length === 0 && (
+                         {filteredPricing.length === 0 ? (
                               <div className="text-center py-12">
                                    <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                                    <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có giá nào</h3>
                                    <p className="text-gray-500">Hãy thêm giá cho các khung giờ của sân.</p>
+                              </div>
+                         ) : (
+                              <div className="p-4 border-t">
+                                   <Pagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        onPageChange={handlePageChange}
+                                        itemsPerPage={itemsPerPage}
+                                        totalItems={totalItems}
+                                   />
                               </div>
                          )}
                     </Card>

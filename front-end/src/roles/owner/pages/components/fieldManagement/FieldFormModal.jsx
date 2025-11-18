@@ -4,12 +4,9 @@ import {
   CheckCircle,
   DollarSign,
   FileText,
-  Image,
   Leaf,
-  Loader2,
   Plus,
   Ruler,
-  X,
 } from "lucide-react";
 import {
   Button,
@@ -22,6 +19,7 @@ import {
   SelectValue,
   Textarea,
 } from "../../../../../shared/components/ui";
+import ImageUploadSection from "../../../../../shared/components/ImageUploadSection";
 
 const FieldFormModal = ({
   isOpen,
@@ -36,18 +34,13 @@ const FieldFormModal = ({
   onInputChange,
   onSelectType,
   onSelectStatus,
-  onImageUpload,
+  onMainImageChange,
+  onImageFilesChange,
   onAddComplex,
   onBankAccountChange,
   onNavigateBankAccounts,
-  isUploadingImage,
-  imageInputRef,
-  onTriggerImagePicker,
-  onUploadAreaKeyDown,
-  onRemoveImage,
   maxImages = 4,
 }) => {
-  const imageCount = formData.images?.length || 0;
 
   return (
     <Modal
@@ -222,78 +215,13 @@ const FieldFormModal = ({
           </div>
         </div>
 
-        <div>
-          <div className="flex items-center justify-between text-sm font-medium text-gray-700">
-            <div className="flex items-center gap-1">
-              <Image className="w-4 h-4 text-blue-600" />
-              <span>Hình ảnh</span>
-              <span className="text-red-500">*</span>
-            </div>
-            <span className="text-xs text-gray-400">
-              {imageCount}/{maxImages} ảnh
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-            {formData.images?.map((url, index) => (
-              <div
-                key={`${url}-${index}`}
-                className="relative group h-28 sm:h-32 rounded-xl overflow-hidden border border-gray-200 bg-gray-100"
-              >
-                <img
-                  src={url}
-                  alt={`Ảnh sân ${index + 1}`}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.target.src =
-                      'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ddd" width="400" height="300"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="20" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3EKhông thể tải ảnh%3C/text%3E%3C/svg%3E';
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => onRemoveImage(index)}
-                  className="absolute top-2 right-2 bg-white/80 hover:bg-red-500 hover:text-white text-red-500 rounded-full p-1 shadow transition-colors"
-                  aria-label="Xóa ảnh"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
-            {imageCount < maxImages && (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={onTriggerImagePicker}
-                onKeyDown={onUploadAreaKeyDown}
-                className="flex h-28 sm:h-32 items-center justify-center border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:bg-white transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400"
-              >
-                {isUploadingImage ? (
-                  <div className="flex flex-col items-center text-gray-500">
-                    <Loader2 className="w-5 h-5 animate-spin text-blue-500 mb-2" />
-                    <span>Đang tải ảnh...</span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center">
-                    <Plus className="w-5 h-5 text-blue-500 mb-1" />
-                    <span>Thêm ảnh</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <input
-            ref={imageInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={onImageUpload}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Tối đa {maxImages} ảnh, mỗi ảnh không vượt quá 5MB (JPG/PNG).
-          </p>
-        </div>
+        <ImageUploadSection
+          mainImage={formData.mainImage}
+          imageFiles={formData.imageFiles}
+          onMainImageChange={onMainImageChange}
+          onImageFilesChange={onImageFilesChange}
+          maxGalleryImages={maxImages}
+        />
 
         <div>
           <label className="items-center flex text-sm font-medium text-gray-700">

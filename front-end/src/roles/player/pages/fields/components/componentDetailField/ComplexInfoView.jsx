@@ -1,7 +1,5 @@
 import { Info, MapPin, Star, Clock, User, DollarSign, Tag, BadgeInfo } from "lucide-react";
 import { FadeIn } from "../../../../../../shared/components/ui";
-import CancellationPolicyDisplay from "../../../../../../shared/components/CancellationPolicyDisplay";
-import PromotionsDisplay from "../../../../../../shared/components/PromotionsDisplay";
 import FieldCardDetail from "./FieldCardDetail";
 
 export default function ComplexInfoView({
@@ -10,9 +8,6 @@ export default function ComplexInfoView({
      availableCount,
      cheapestSlot,
      priciestSlot,
-     bigComposeCount,
-     cancellationPolicy,
-     promotions,
      selectedSlotId,
      onFieldSelect,
      onQuickBookField
@@ -65,7 +60,7 @@ export default function ComplexInfoView({
                                         <Tag className="w-4 h-4 text-emerald-600" />Slot rẻ nhất:
                                    </span>
                                    <span className="text-orange-600 font-bold text-sm">
-                                        {(cheapestSlot?.price ? (cheapestSlot.price * bigComposeCount) : 0).toLocaleString("vi-VN")}₫ <p className="inline-block text-xs text-gray-500">/ trận{cheapestSlot?.name ? ` • ${cheapestSlot.name}` : ""}</p>
+                                        {(cheapestSlot?.price || 0).toLocaleString("vi-VN")}₫ <p className="inline-block text-xs text-gray-500">/ trận{cheapestSlot?.name ? ` • ${cheapestSlot.name}` : ""}</p>
                                    </span>
                               </div>
                               {priciestSlot && (
@@ -74,7 +69,7 @@ export default function ComplexInfoView({
                                              <Tag className="w-4 h-4 text-red-600" />Slot đắt nhất:
                                         </span>
                                         <span className="text-orange-600 font-bold text-sm">
-                                             {(priciestSlot.price * bigComposeCount).toLocaleString("vi-VN")}₫ <p className="inline-block text-xs text-gray-500">/ trận • {priciestSlot.name}</p>
+                                             {(priciestSlot.price || 0).toLocaleString("vi-VN")}₫ <p className="inline-block text-xs text-gray-500">/ trận • {priciestSlot.name}</p>
                                         </span>
                                    </div>
                               )}
@@ -89,12 +84,6 @@ export default function ComplexInfoView({
                     <div className="h-1 w-32 bg-gradient-to-r from-teal-400 via-emerald-400 to-teal-400 rounded-full mx-auto mb-3" />
                     <div className="text-gray-700 leading-relaxed">{complex?.description || "Chưa có mô tả chi tiết về khu sân."}</div>
                </div>
-
-               {/* Chính sách hủy */}
-               <CancellationPolicyDisplay policy={cancellationPolicy} />
-
-               {/* Khuyến mãi */}
-               <PromotionsDisplay promotions={promotions} />
 
                {/* Danh sách Sân nhỏ */}
                <div className="space-y-4">

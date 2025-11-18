@@ -16,7 +16,11 @@ export function useComplexDetail(complexId, options = {}, enabled = true) {
           enabled: enabled && !!complexId,
           staleTime: 2 * 60 * 1000, // Cache for 2 minutes
           cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-          retry: 1,
+          retry: 2, // Retry 2 times on failure
+          retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000), // Exponential backoff
           refetchOnWindowFocus: false,
+          onError: (error) => {
+               console.error('Error in useComplexDetail:', error);
+          }
      });
 }

@@ -1,6 +1,6 @@
 import { MapPin, User, EyeIcon } from "lucide-react";
 import { Card, CardContent, Button } from "../../../../../../shared/components/ui";
-import { LocalOffer, LocalOfferOutlined, StadiumOutlined } from "@mui/icons-material";
+import { LocalOfferOutlined, StadiumOutlined } from "@mui/icons-material";
 
 export default function FieldCardDetail({ field, selectedSlotId, onViewDetail, onQuickBook }) {
      return (

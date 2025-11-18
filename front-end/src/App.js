@@ -52,16 +52,11 @@ const NotificationsManagement = lazy(() =>
 const TimeSlotManagement = lazy(() =>
   import("./roles/owner/pages/TimeSlotManagement")
 );
+const FieldTypeManagement = lazy(() =>
+  import("./roles/owner/pages/FieldTypeManagement")
+);
 const BankAccountManagement = lazy(() =>
   import("./roles/owner/pages/BankAccountManagement")
-);
-
-// Test components
-const TestFieldSchedules = lazy(() =>
-  import("./test/TestFieldSchedules")
-);
-const TestTimeSlots = lazy(() =>
-  import("./test/TestTimeSlots")
 );
 
 // Lazy load other player pages
@@ -310,6 +305,22 @@ function AppContent() {
               user.roleName === "Owner" ? (
                 <Suspense fallback={<LoadingFallback />}>
                   <FieldManagement />
+                </Suspense>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <Navigate to="/auth" replace />
+            )
+          }
+        />
+        <Route
+          path="/owner/field-types"
+          element={
+            user ? (
+              user.roleName === "Owner" ? (
+                <Suspense fallback={<LoadingFallback />}>
+                  <FieldTypeManagement />
                 </Suspense>
               ) : (
                 <Navigate to="/dashboard" replace />
@@ -652,24 +663,6 @@ function AppContent() {
             ) : (
               <Navigate to="/auth" replace />
             )
-          }
-        />
-
-        {/* Test Routes */}
-        <Route
-          path="/test/schedules"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <TestFieldSchedules />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/test/timeslots"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <TestTimeSlots />
-            </Suspense>
           }
         />
 

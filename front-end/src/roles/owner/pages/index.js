@@ -12,3 +12,4 @@ export { default as PromotionsManagement } from "./PromotionsManagement";
 export { default as PaymentTracking } from "./PaymentTracking";
 export { default as NotificationsManagement } from "./NotificationsManagement";
 export { default as TimeSlotManagement } from "./TimeSlotManagement";
+export { default as FieldTypeManagement } from "./FieldTypeManagement";

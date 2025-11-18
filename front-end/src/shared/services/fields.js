@@ -3,8 +3,7 @@ import axios from "axios";
 
 const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
 // Always use full URL to avoid proxy issues
-const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
 // Create axios instance with base configuration
 const apiClient = axios.create({
@@ -69,7 +68,10 @@ const handleApiError = (error) => {
         "Lỗi CORS: Backend chưa cấu hình cho phép truy cập từ domain này.";
       details =
         "Vui lòng kiểm tra cấu hình CORS trên backend hoặc liên hệ admin.";
-    } else if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
+    } else if (
+      error.code === "ECONNABORTED" ||
+      error.message?.includes("timeout")
+    ) {
       errorMessage = "Kết nối timeout. Vui lòng thử lại sau.";
       details = "Server có thể đang quá tải hoặc kết nối mạng chậm.";
     } else {
@@ -189,15 +191,18 @@ export async function fetchFieldComplexes() {
 
     // Use the correct endpoint from Swagger: GET /api/FieldComplex
     const response = await apiClient.get(endpoint);
-    
+
     console.log("FieldComplexes response status:", response.status);
     console.log("FieldComplexes response data:", response.data);
     console.log("FieldComplexes response data type:", typeof response.data);
-    console.log("FieldComplexes response data isArray:", Array.isArray(response.data));
+    console.log(
+      "FieldComplexes response data isArray:",
+      Array.isArray(response.data)
+    );
 
     // Handle response - can be array or object
     let data = response.data;
-    
+
     // If response.data is null or undefined
     if (!data) {
       console.warn("Response data is null or undefined, returning empty array");
@@ -207,9 +212,9 @@ export async function fetchFieldComplexes() {
     // If it's already an array, use it
     if (Array.isArray(data)) {
       console.log(`Found ${data.length} complexes in array`);
-    } 
+    }
     // If it's an object, check for common property names
-    else if (data && typeof data === 'object') {
+    else if (data && typeof data === "object") {
       // Check for 'value' property (common in OData/ASP.NET Core APIs)
       if (Array.isArray(data.value)) {
         console.log(`Found ${data.value.length} complexes in data.value`);
@@ -219,19 +224,20 @@ export async function fetchFieldComplexes() {
       else if (Array.isArray(data.data)) {
         console.log(`Found ${data.data.length} complexes in data.data`);
         data = data.data;
-      } 
+      }
       // Check for nested data.data
       else if (data.data && Array.isArray(data.data)) {
         console.log(`Found ${data.data.length} complexes in nested data.data`);
         data = data.data;
-      } 
+      }
       // Check for 'results' property
       else if (Array.isArray(data.results)) {
         console.log(`Found ${data.results.length} complexes in data.results`);
         data = data.results;
-      }
-      else {
-        console.warn("Response is an object but no array found, returning empty array");
+      } else {
+        console.warn(
+          "Response is an object but no array found, returning empty array"
+        );
         console.warn("Response structure:", Object.keys(data));
         data = [];
       }
@@ -271,9 +277,9 @@ export async function fetchFieldComplexes() {
         url: error.config?.url,
         method: error.config?.method,
         baseURL: error.config?.baseURL,
-      }
+      },
     });
-    
+
     // Throw error instead of returning empty array
     handleApiError(error);
   }
@@ -422,7 +428,9 @@ export async function fetchFieldsByComplex(complexId) {
     return data.map((field) => {
       const rawFieldId = field.fieldId ?? field.FieldID;
       const normalizedFieldId = Number(rawFieldId);
-      const fieldId = Number.isNaN(normalizedFieldId) ? rawFieldId : normalizedFieldId;
+      const fieldId = Number.isNaN(normalizedFieldId)
+        ? rawFieldId
+        : normalizedFieldId;
 
       const rawComplexId = field.complexId ?? field.ComplexID ?? complexIdNum;
       const normalizedComplexId = Number(rawComplexId);
@@ -447,6 +455,17 @@ export async function fetchFieldsByComplex(complexId) {
         createdAt: field.createdAt || field.CreatedAt,
         complexName: field.complexName || field.ComplexName || "",
         typeName: field.typeName || field.TypeName || "",
+        // Add priceForSelectedSlot if available
+        priceForSelectedSlot:
+          field.priceForSelectedSlot ||
+          field.pricePerHour ||
+          field.PricePerHour ||
+          0,
+        // Add isAvailableForSelectedSlot if available
+        isAvailableForSelectedSlot:
+          field.isAvailableForSelectedSlot !== undefined
+            ? field.isAvailableForSelectedSlot
+            : field.status === "Available" || field.Status === "Available",
       };
     });
   } catch (error) {
@@ -454,6 +473,14 @@ export async function fetchFieldsByComplex(complexId) {
       console.warn(`No fields found for complex ${complexId}: 404 returned`);
       return [];
     }
+    // Log error details for debugging
+    console.error(`Error fetching fields for complex ${complexId}:`, {
+      message: error?.message,
+      code: error?.code,
+      status: error?.response?.status,
+      statusText: error?.response?.statusText,
+      data: error?.response?.data,
+    });
     handleApiError(error);
   }
 }
@@ -575,9 +602,9 @@ export async function fetchComplexes(params = {}) {
 
   try {
     const complexes = await fetchFieldComplexes();
-    
+
     console.log(`Fetched ${complexes.length} complexes from API`);
-    
+
     // Fetch fields for each complex to get counts
     const complexesWithFields = await Promise.all(
       complexes.map(async (complex) => {
@@ -591,10 +618,15 @@ export async function fetchComplexes(params = {}) {
             lat: complex.lat,
             lng: complex.lng,
             totalFields: fields.length,
-            availableFields: fields.filter((f) => f.status === "Available").length,
+            availableFields: fields.filter((f) => f.status === "Available")
+              .length,
             minPriceForSelectedSlot:
               fields.length > 0
-                ? Math.min(...fields.map((f) => f.pricePerHour || 0).filter((p) => p > 0))
+                ? Math.min(
+                    ...fields
+                      .map((f) => f.pricePerHour || 0)
+                      .filter((p) => p > 0)
+                  )
                 : 0,
             rating: 0, // API might not return rating
           };
@@ -624,11 +656,14 @@ export async function fetchComplexes(params = {}) {
         item.name.toLowerCase().includes(query.toLowerCase()) ||
         item.address.toLowerCase().includes(query.toLowerCase())
     );
-    
+
     console.log(`Returning ${filtered.length} filtered complexes from API`);
     return filtered;
   } catch (error) {
-    console.error("Error fetching complexes from API:", error?.message || error);
+    console.error(
+      "Error fetching complexes from API:",
+      error?.message || error
+    );
     throw error;
   }
 }
@@ -639,7 +674,7 @@ export async function fetchFields(params = {}) {
   try {
     let allFields = [];
     let complexes = [];
-    
+
     if (complexId) {
       // Fetch fields for a specific complex
       const fields = await fetchFieldsByComplex(complexId);
@@ -732,9 +767,18 @@ export async function fetchFieldAvailability(fieldId, date) {
 
 export async function fetchComplexDetail(complexId, { date, slotId } = {}) {
   try {
-    const complex = await fetchFieldComplex(complexId);
-    const fields = await fetchFields({ complexId, date, slotId });
-    
+    // Fetch complex and fields in parallel for better performance
+    const [complex, fields] = await Promise.all([
+      fetchFieldComplex(complexId).catch((err) => {
+        console.warn("Error fetching complex:", err);
+        return null;
+      }),
+      fetchFields({ complexId, date, slotId }).catch((err) => {
+        console.warn("Error fetching fields:", err);
+        return [];
+      }),
+    ]);
+
     return {
       complex: complex
         ? {
@@ -746,11 +790,11 @@ export async function fetchComplexDetail(complexId, { date, slotId } = {}) {
             rating: 0, // Should come from API
           }
         : null,
-      fields: fields,
+      fields: fields || [],
     };
   } catch (error) {
     console.error("Error fetching complex detail:", error);
-    throw error;
+    throw new Error("Không thể tải thông tin khu sân. Vui lòng thử lại sau.");
   }
 }
 
@@ -758,9 +802,9 @@ export async function fetchFieldMeta(fieldId) {
   try {
     const field = await fetchField(fieldId);
     if (!field) return { field: null, complex: null };
-    
+
     const complex = await fetchFieldComplex(field.complexId);
-    
+
     return {
       field: {
         fieldId: field.fieldId,
@@ -785,9 +829,9 @@ export async function fetchFieldDetail(fieldId) {
   try {
     const field = await fetchField(fieldId);
     if (!field) return null;
-    
+
     const complex = await fetchFieldComplex(field.complexId);
-    
+
     return {
       fieldId: field.fieldId,
       complexId: field.complexId,

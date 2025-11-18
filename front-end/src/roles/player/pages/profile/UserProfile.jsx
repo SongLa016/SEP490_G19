@@ -65,17 +65,30 @@ export default function UserProfile({ user }) {
                setIsLoading(true);
                const result = await profileService.getProfile(user.userID);
                if (result.ok && result.profile) {
+                    const profile = result.profile;
+                    // Map profile data with proper field names
+                    const mappedProfile = {
+                         dateOfBirth: profile.dateOfBirth || profile.DateOfBirth || "",
+                         gender: profile.gender || profile.Gender || "",
+                         address: profile.address || profile.Address || "",
+                         preferredPositions: profile.preferredPositions || profile.PreferredPositions || "",
+                         skillLevel: profile.skillLevel || profile.SkillLevel || "",
+                         bio: profile.bio || profile.Bio || "",
+                    };
+                    
                     setProfileData(prev => ({
                          ...prev,
-                         ...result.profile
+                         ...mappedProfile
                     }));
                     setFormData(prev => ({
                          ...prev,
-                         ...result.profile
+                         ...mappedProfile
                     }));
                }
           } catch (error) {
                console.error('Error loading profile:', error);
+          } finally {
+               setIsLoading(false);
           }
      };
 
@@ -114,7 +127,17 @@ export default function UserProfile({ user }) {
           setInfo('');
 
           try {
-               const result = await profileService.updateProfile(user.userID, formData);
+               // Only send updatable fields to API
+               const updateData = {
+                    dateOfBirth: formData.dateOfBirth || "",
+                    gender: formData.gender || "",
+                    address: formData.address || "",
+                    preferredPositions: formData.preferredPositions || "",
+                    skillLevel: formData.skillLevel || "",
+                    bio: formData.bio || "",
+               };
+
+               const result = await profileService.updateProfile(user.userID, updateData);
 
                if (!result.ok) {
                     setError(result.reason || 'Cập nhật profile thất bại');
@@ -122,13 +145,16 @@ export default function UserProfile({ user }) {
                     return;
                }
 
-               // Update local state
-               setProfileData({ ...formData });
+               // Update local state - only update the fields that were sent
+               setProfileData(prev => ({
+                    ...prev,
+                    ...updateData
+               }));
                setInfo(result.message || 'Cập nhật profile thành công');
                setIsEditing(false);
 
-               // Update user in localStorage
-               const updatedUser = { ...user, ...formData };
+               // Update user in localStorage - only update the fields that were sent
+               const updatedUser = { ...user, ...updateData };
                localStorage.setItem('user', JSON.stringify(updatedUser));
 
           } catch (error) {
@@ -338,18 +364,9 @@ export default function UserProfile({ user }) {
                                                                            <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Họ và tên
                                                                            </p>
-                                                                           {isEditing ? (
-                                                                                <Input
-                                                                                     value={formData.fullName}
-                                                                                     onChange={(e) => handleInputChange('fullName', e.target.value)}
-                                                                                     placeholder="Nhập họ và tên"
-                                                                                     className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
-                                                                                />
-                                                                           ) : (
-                                                                                <p className="text-lg font-semibold text-teal-900 leading-tight">
-                                                                                     {formData.fullName || "Chưa cập nhật"}
-                                                                                </p>
-                                                                           )}
+                                                                           <p className="text-lg font-semibold text-teal-900 leading-tight">
+                                                                                {formData.fullName || "Chưa cập nhật"}
+                                                                           </p>
                                                                       </div>
                                                                  </div>
                                                             </div>
@@ -404,18 +421,9 @@ export default function UserProfile({ user }) {
                                                                            <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Số điện thoại
                                                                            </p>
-                                                                           {isEditing ? (
-                                                                                <Input
-                                                                                     value={formData.phone}
-                                                                                     onChange={(e) => handleInputChange('phone', e.target.value)}
-                                                                                     placeholder="Nhập số điện thoại"
-                                                                                     className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
-                                                                                />
-                                                                           ) : (
-                                                                                <p className="text-base font-semibold text-teal-900">
-                                                                                     {formData.phone || "Chưa cập nhật"}
-                                                                                </p>
-                                                                           )}
+                                                                           <p className="text-base font-semibold text-teal-900">
+                                                                                {formData.phone || "Chưa cập nhật"}
+                                                                           </p>
                                                                       </div>
                                                                  </div>
                                                             </div>

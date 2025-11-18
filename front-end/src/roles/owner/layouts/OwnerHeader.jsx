@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
-     Search,
+
      User,
      Menu,
      X,
@@ -18,6 +18,7 @@ import {
      CreditCard,
      Bell,
      TrendingUp,
+     Tag,
 } from "lucide-react";
 import logo from "@/components/assets/logo.png";
 import { Button } from "@/components/ui";
@@ -31,6 +32,7 @@ export default function OwnerHeader({ user, onLoggedOut }) {
      const ownerMenuItems = [
           { id: "dashboard", label: "Dashboard", icon: BarChart3, path: "/owner/dashboard" },
           { id: "fields", label: "Quản lý sân", icon: MapPin, path: "/owner/fields" },
+          { id: "field-types", label: "Loại sân", icon: Tag, path: "/owner/field-types" },
           { id: "bookings", label: "Quản lý booking", icon: Calendar, path: "/owner/bookings" },
           { id: "pricing", label: "Quản lý giá", icon: DollarSign, path: "/owner/pricing" },
           { id: "schedule", label: "Quản lý lịch", icon: Clock, path: "/owner/schedule" },

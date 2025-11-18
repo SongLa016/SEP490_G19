@@ -6,3 +6,4 @@ export { useComplexDetail } from './useComplexDetail';
 export { useTimeSlots, useTimeSlotsByField } from './useTimeSlots';
 export { useFieldComplexes, useFieldsByComplex } from './useFieldComplexes';
 export { useOwnerBankAccounts } from './useOwnerBankAccounts';
+export { useFieldTypes, useFieldTypeById } from './useFieldTypes';

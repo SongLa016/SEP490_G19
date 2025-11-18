@@ -33,7 +33,8 @@ export default function TimeSlotModal({
                isOpen={isOpen}
                onClose={onClose}
                title={editingSlot ? 'Chỉnh sửa Time Slot' : 'Thêm Time Slot mới'}
-               size="lg"
+               size="md"
+               className="max-h-[90vh] overflow-y-hidden"
           >
                <form onSubmit={onSubmit} className="space-y-4">
                     {/* Field Selection */}
@@ -89,6 +90,38 @@ export default function TimeSlotModal({
                               <p className="text-xs text-red-600 mt-1">{slotFormErrors.fieldId}</p>
                          )}
                     </div>
+
+                    {/* Price Input - Show when field is selected */}
+                    {!editingSlot && slotFormData.fieldId && (
+                         <div >
+                              <label className="block text-sm font-bold text-gray-900 mb-2">
+                                   💰 Giá cho slot(s) (VNĐ) <span className="text-red-500">*</span>
+                              </label>
+                              <Input
+                                   type="number"
+                                   value={slotFormData.price || ''}
+                                   onChange={(e) => setSlotFormData({ ...slotFormData, price: e.target.value })}
+                                   placeholder="Ví dụ: 500000"
+                                   min="0"
+                                   step="10000"
+                                   className={`text-base font-semibold ${slotFormErrors.price ? 'border-red-500' : 'border-amber-400'}`}
+                              />
+                              {slotFormErrors.price && (
+                                   <p className="text-xs text-red-600 mt-1 font-medium">{slotFormErrors.price}</p>
+                              )}
+                              {slotFormData.price && Number(slotFormData.price) > 0 && (
+                                   <p className="text-sm text-teal-700 mt-2 font-medium">
+                                        ✓ Giá: {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(slotFormData.price))}
+                                   </p>
+                              )}
+                              <p className="text-xs text-gray-600 mt-2">
+                                   {selectedQuickSlots.length > 0
+                                        ? `Giá này sẽ được áp dụng cho ${selectedQuickSlots.length} slot(s) bạn chọn bên dưới`
+                                        : 'Giá này sẽ được áp dụng cho slot bạn tạo'
+                                   }
+                              </p>
+                         </div>
+                    )}
 
                     {/* Quick Slots - Only show when creating new and field is selected */}
                     {!editingSlot && slotFormData.fieldId && (
@@ -183,6 +216,27 @@ export default function TimeSlotModal({
                                         )}
                                    </div>
                               </div>
+
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Giá (VNĐ) <span className="text-red-500">*</span>
+                                   </label>
+                                   <Input
+                                        type="number"
+                                        value={slotFormData.price || ''}
+                                        onChange={(e) => setSlotFormData({ ...slotFormData, price: e.target.value })}
+                                        placeholder="Ví dụ: 500000"
+                                        min="0"
+                                        step="1000"
+                                        className={slotFormErrors.price ? 'border-red-500' : ''}
+                                   />
+                                   {slotFormErrors.price && (
+                                        <p className="text-xs text-red-600 mt-1">{slotFormErrors.price}</p>
+                                   )}
+                                   <p className="text-xs text-gray-500 mt-1">
+                                        Giá sẽ được áp dụng cho slot này
+                                   </p>
+                              </div>
                          </>
                     )}
 
@@ -214,6 +268,6 @@ export default function TimeSlotModal({
                          </Button>
                     </div>
                </form>
-          </Modal>
+          </Modal >
      );
 }

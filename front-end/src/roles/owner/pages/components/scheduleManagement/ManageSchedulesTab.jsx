@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Button, Badge, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker } from "../../../../../shared/components/ui";
+import { Card, Button, Badge, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Pagination, usePagination } from "../../../../../shared/components/ui";
 import { Plus, Calendar, Loader2, Trash2, Loader } from "lucide-react";
 
 export default function ManageSchedulesTab({
@@ -37,6 +37,44 @@ export default function ManageSchedulesTab({
           }
           return '00:00';
      };
+
+     // Filter schedules based on filters
+     const filteredSchedules = fieldSchedules.filter((schedule) => {
+          const fieldId = schedule.fieldId || schedule.FieldID;
+          const status = schedule.status || schedule.Status || '';
+          const scheduleDate = schedule.scheduleDate || schedule.ScheduleDate;
+
+          // Filter by field
+          if (scheduleFilterField !== 'all' && fieldId.toString() !== scheduleFilterField) {
+               return false;
+          }
+
+          // Filter by status
+          if (scheduleFilterStatus !== 'all' && status.toLowerCase() !== scheduleFilterStatus.toLowerCase()) {
+               return false;
+          }
+
+          // Filter by date
+          if (scheduleFilterDate) {
+               const filterDateStr = scheduleFilterDate.toISOString().split('T')[0];
+               const scheduleDateStr = scheduleDate ? new Date(scheduleDate).toISOString().split('T')[0] : '';
+               if (scheduleDateStr !== filterDateStr) {
+                    return false;
+               }
+          }
+
+          return true;
+     });
+
+     // Pagination for schedules (10 per page)
+     const {
+          currentPage,
+          totalPages,
+          currentItems: paginatedSchedules,
+          handlePageChange,
+          totalItems,
+          itemsPerPage,
+     } = usePagination(filteredSchedules, 10);
 
      return (
           <>
@@ -143,104 +181,82 @@ export default function ManageSchedulesTab({
                                         </tr>
                                    </thead>
                                    <tbody>
-                                        {fieldSchedules
-                                             .filter(schedule => {
-                                                  // Filter by field
-                                                  if (scheduleFilterField !== 'all') {
-                                                       const fieldId = schedule.fieldId || schedule.FieldID;
-                                                       if (Number(fieldId) !== Number(scheduleFilterField)) return false;
-                                                  }
+                                        {paginatedSchedules.map((schedule) => {
+                                             const scheduleId = schedule.scheduleId || schedule.ScheduleID;
+                                             const fieldName = schedule.fieldName || schedule.FieldName || 'N/A';
+                                             const slotName = schedule.slotName || schedule.SlotName || 'N/A';
+                                             const status = schedule.status || schedule.Status || 'Available';
 
-                                                  // Filter by status
-                                                  if (scheduleFilterStatus !== 'all') {
-                                                       const status = schedule.status || schedule.Status;
-                                                       if (status !== scheduleFilterStatus) return false;
-                                                  }
+                                             // Format date
+                                             let dateStr = 'N/A';
+                                             const scheduleDate = schedule.date;
+                                             if (typeof scheduleDate === 'string') {
+                                                  const date = new Date(scheduleDate);
+                                                  dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+                                             } else if (scheduleDate && scheduleDate.year) {
+                                                  dateStr = `${scheduleDate.day}/${scheduleDate.month}/${scheduleDate.year}`;
+                                             }
 
-                                                  // Filter by date
-                                                  if (scheduleFilterDate) {
-                                                       const scheduleDate = schedule.date;
-                                                       let dateStr = '';
-                                                       if (typeof scheduleDate === 'string') {
-                                                            dateStr = scheduleDate.split('T')[0];
-                                                       } else if (scheduleDate && scheduleDate.year) {
-                                                            dateStr = `${scheduleDate.year}-${String(scheduleDate.month).padStart(2, '0')}-${String(scheduleDate.day).padStart(2, '0')}`;
-                                                       }
-                                                       if (dateStr !== scheduleFilterDate) return false;
-                                                  }
+                                             // Format time
+                                             let timeStr = 'N/A';
+                                             const startTime = schedule.startTime || schedule.StartTime;
+                                             const endTime = schedule.endTime || schedule.EndTime;
+                                             if (startTime && endTime) {
+                                                  timeStr = `${formatTimeObj(startTime)} - ${formatTimeObj(endTime)}`;
+                                             }
 
-                                                  return true;
-                                             })
-                                             .map((schedule) => {
-                                                  const scheduleId = schedule.scheduleId || schedule.ScheduleID;
-                                                  const fieldName = schedule.fieldName || schedule.FieldName || 'N/A';
-                                                  const slotName = schedule.slotName || schedule.SlotName || 'N/A';
-                                                  const status = schedule.status || schedule.Status || 'Available';
-
-                                                  // Format date
-                                                  let dateStr = 'N/A';
-                                                  const scheduleDate = schedule.date;
-                                                  if (typeof scheduleDate === 'string') {
-                                                       const date = new Date(scheduleDate);
-                                                       dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
-                                                  } else if (scheduleDate && scheduleDate.year) {
-                                                       dateStr = `${scheduleDate.day}/${scheduleDate.month}/${scheduleDate.year}`;
-                                                  }
-
-                                                  // Format time
-                                                  let timeStr = 'N/A';
-                                                  const startTime = schedule.startTime || schedule.StartTime;
-                                                  const endTime = schedule.endTime || schedule.EndTime;
-                                                  if (startTime && endTime) {
-                                                       timeStr = `${formatTimeObj(startTime)} - ${formatTimeObj(endTime)}`;
-                                                  }
-
-                                                  return (
-                                                       <tr key={scheduleId} className="border border-gray-200  hover:bg-gray-50 transition-colors text-center">
-                                                            <td className="p-2  text-gray-700 font-mono text-sm border-r border-gray-200">#{scheduleId}</td>
-                                                            <td className="p-4 text-gray-900 font-medium border-r border-gray-200">{fieldName}</td>
-                                                            <td className="p-2 text-gray-700 border-r border-gray-200">{slotName}</td>
-                                                            <td className="p-2 text-gray-700 border-r border-gray-200">{dateStr}</td>
-                                                            <td className="p-2 text-gray-700 font-mono text-sm border-r border-gray-200">{timeStr}</td>
-                                                            <td className="p-2 text-center border-r border-gray-200">{getStatusBadge(status)}</td>
-                                                            <td className="p-2 text-center">
-                                                                 <div className="flex items-center justify-center gap-2">
-                                                                      <Select
-                                                                           value={status}
-                                                                           onValueChange={(newStatus) => onUpdateStatus(scheduleId, newStatus)}
-                                                                      >
-                                                                           <SelectTrigger className="w-[140px] h-8 text-xs">
-                                                                                <SelectValue />
-                                                                           </SelectTrigger>
-                                                                           <SelectContent>
-                                                                                <SelectItem value="Available">Available</SelectItem>
-                                                                                <SelectItem value="Booked">Booked</SelectItem>
-                                                                                <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                                                           </SelectContent>
-                                                                      </Select>
-                                                                      <Button
-                                                                           onClick={() => onDeleteSchedule(scheduleId, `${fieldName} - ${slotName} - ${dateStr}`)}
-                                                                           variant="outline"
-                                                                           size="sm"
-                                                                           className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                                                                      >
-                                                                           <Trash2 className="w-4 h-4" />
-                                                                      </Button>
-                                                                 </div>
-                                                            </td>
-                                                       </tr>
-                                                  );
-                                             })}
+                                             return (
+                                                  <tr key={scheduleId} className="border border-gray-200  hover:bg-gray-50 transition-colors text-center">
+                                                       <td className="p-2  text-gray-700 font-mono text-sm border-r border-gray-200">#{scheduleId}</td>
+                                                       <td className="p-4 text-gray-900 font-medium border-r border-gray-200">{fieldName}</td>
+                                                       <td className="p-2 text-gray-700 border-r border-gray-200">{slotName}</td>
+                                                       <td className="p-2 text-gray-700 border-r border-gray-200">{dateStr}</td>
+                                                       <td className="p-2 text-gray-700 font-mono text-sm border-r border-gray-200">{timeStr}</td>
+                                                       <td className="p-2 text-center border-r border-gray-200">{getStatusBadge(status)}</td>
+                                                       <td className="p-2 text-center">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                 <Select
+                                                                      value={status}
+                                                                      onValueChange={(newStatus) => onUpdateStatus(scheduleId, newStatus)}
+                                                                 >
+                                                                      <SelectTrigger className="w-[140px] h-8 text-xs">
+                                                                           <SelectValue />
+                                                                      </SelectTrigger>
+                                                                      <SelectContent>
+                                                                           <SelectItem value="Available">Available</SelectItem>
+                                                                           <SelectItem value="Booked">Booked</SelectItem>
+                                                                           <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                                                      </SelectContent>
+                                                                 </Select>
+                                                                 <Button
+                                                                      onClick={() => onDeleteSchedule(scheduleId, `${fieldName} - ${slotName} - ${dateStr}`)}
+                                                                      variant="outline"
+                                                                      size="sm"
+                                                                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                                                 >
+                                                                      <Trash2 className="w-4 h-4" />
+                                                                 </Button>
+                                                            </div>
+                                                       </td>
+                                                  </tr>
+                                             );
+                                        })}
                                    </tbody>
                               </table>
                          </div>
 
-                         {/* Summary */}
-                         <div className="p-4 bg-gray-50 border-t border-gray-200">
-                              <p className="text-sm text-gray-600">
-                                   Tổng cộng: <strong>{fieldSchedules.length}</strong> lịch trình
-                              </p>
-                         </div>
+                         {/* Pagination */}
+                         {filteredSchedules.length > 0 && (
+                              <div className="p-4 border-t border-gray-200">
+                                   <Pagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        onPageChange={handlePageChange}
+                                        itemsPerPage={itemsPerPage}
+                                        totalItems={totalItems}
+                                   />
+                              </div>
+                         )}
                     </Card>
                )}
           </>

@@ -1,5 +1,7 @@
 import { ArrowLeft, User, CheckCircle, XCircle, Tag, Ruler, Leaf, MapPin, Heart } from "lucide-react";
 import { Button } from "../../../../../../shared/components/ui";
+import CancellationPolicyDisplay from "../../../../../../shared/components/CancellationPolicyDisplay";
+import PromotionsDisplay from "../../../../../../shared/components/PromotionsDisplay";
 
 export default function FieldDetailView({
      selectedField,
@@ -7,11 +9,32 @@ export default function FieldDetailView({
      selectedSlotId,
      selectedFieldCheapestSlot,
      selectedFieldPriciestSlot,
+     cancellationPolicy,
+     promotions,
      onBack,
      onQuickBook,
      onToggleFavoriteField
 }) {
-     if (!selectedField) return null;
+     if (!selectedField) {
+          return (
+               <div className="space-y-4">
+                    <div>
+                         <Button
+                              type="button"
+                              variant="outline"
+                              className="border-teal-400/50 text-teal-700 hover:text-teal-800 rounded-2xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 hover:border-teal-400 shadow-sm transition-all"
+                              onClick={onBack}
+                         >
+                              <ArrowLeft className="w-4 h-4 mr-1" />
+                              <p className="text-xs hover:underline">Quay lại thông tin khu sân</p>
+                         </Button>
+                    </div>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                         <p className="text-yellow-800">Không tìm thấy thông tin sân. Vui lòng thử lại sau.</p>
+                    </div>
+               </div>
+          );
+     }
 
      return (
           <div className="space-y-4">
@@ -151,6 +174,12 @@ export default function FieldDetailView({
                          )}
                     </div>
                </div>
+               
+               {/* Chính sách hủy */}
+               <CancellationPolicyDisplay policy={cancellationPolicy} />
+               
+               {/* Khuyến mãi */}
+               <PromotionsDisplay promotions={promotions} />
           </div>
      );
 }

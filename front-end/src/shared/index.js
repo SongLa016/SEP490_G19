@@ -12,6 +12,8 @@ export { default as ForgotPasswordModal } from "./components/ForgotPasswordModal
 export { default as NotificationsDisplay } from "./components/NotificationsDisplay";
 export { default as PromotionCodeSection } from "./components/PromotionCodeSection";
 export { default as PromotionsDisplay } from "./components/PromotionsDisplay";
+export { default as QuickAddFieldType } from "./components/QuickAddFieldType";
+export { default as FieldTypeCombobox } from "./components/FieldTypeCombobox";
 export { default as RatingModal } from "./components/RatingModal";
 export { default as RecurringOpponentModal } from "./components/RecurringOpponentModal";
 export { default as RecurringOpponentSelection } from "./components/RecurringOpponentSelection";
@@ -46,6 +48,7 @@ export * from "./services/passwordResetService";
 export * from "./services/profileService";
 export * from "./services/promotions";
 export * from "./services/timeSlots";
+export * from "./services/fieldTypes";
 // Shared utils exports
 export * from "./utils/authStore";
 export * from "./utils/bookingStore";

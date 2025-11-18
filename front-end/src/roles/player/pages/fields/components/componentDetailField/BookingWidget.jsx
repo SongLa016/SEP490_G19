@@ -6,7 +6,7 @@ export default function BookingWidget({
      selectedField,
      selectedDate,
      selectedSlotId,
-     timeSlots,
+     fieldTimeSlots = [],
      isRecurring,
      repeatDays,
      rangeStart,
@@ -15,10 +15,8 @@ export default function BookingWidget({
      currentWeeks,
      minRecurringWeeks,
      recurringSummary,
-     selectedSlotPriceBig,
-     minPriceBig,
-     availableBundles,
-     totalBundles,
+     selectedSlotPrice = 0,
+     minPrice = 0,
      calculateTotalSessions,
      onDateChange,
      onSlotChange,
@@ -112,17 +110,49 @@ export default function BookingWidget({
                                                             ? `${startTime} - ${endTime}`
                                                             : "";
 
+                                                       // Check if slot is in the past
+                                                       const isPastSlot = (() => {
+                                                            if (!selectedDate || !startTime) return false;
+
+                                                            const now = new Date();
+                                                            const scheduleDate = new Date(selectedDate);
+
+                                                            // If schedule date is in the past, it's a past slot
+                                                            if (scheduleDate.toDateString() < now.toDateString()) {
+                                                                 return true;
+                                                            }
+
+                                                            // If schedule date is today, check the time
+                                                            if (scheduleDate.toDateString() === now.toDateString()) {
+                                                                 const [hours, minutes] = startTime.split(':').map(Number);
+                                                                 const slotTime = new Date(now);
+                                                                 slotTime.setHours(hours, minutes, 0, 0);
+
+                                                                 return slotTime < now;
+                                                            }
+
+                                                            return false;
+                                                       })();
+
+                                                       const isDisabled = schedule.status !== "Available" || isPastSlot;
+
                                                        return (
                                                             <Button
                                                                  key={scheduleId || scheduleSlotId}
                                                                  type="button"
-                                                                 onClick={() => onSlotChange(isSelected ? "" : scheduleSlotId)}
-                                                                 disabled={schedule.status !== "Available"}
-                                                                 className={`p-2 text-xs rounded-lg border transition-all ${isSelected ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white border-teal-600 shadow-md" : schedule.status === "Available" ? "bg-white text-teal-800 border-teal-200/50 hover:text-teal-900 hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 hover:border-teal-300 hover:shadow-sm" : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"}`}
+                                                                 onClick={() => !isDisabled && onSlotChange(isSelected ? "" : scheduleSlotId)}
+                                                                 disabled={isDisabled}
+                                                                 className={`p-2 text-xs rounded-lg border transition-all ${isSelected
+                                                                      ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white border-teal-600 shadow-md"
+                                                                      : isDisabled
+                                                                           ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                                                           : "bg-white text-teal-800 border-teal-200/50 hover:text-teal-900 hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 hover:border-teal-300 hover:shadow-sm"
+                                                                      }`}
                                                             >
                                                                  <div className="flex flex-col items-start w-full">
                                                                       <span className="font-medium">{slotName}</span>
                                                                       {timeRange && <span className="text-xs opacity-75 mt-0.5">{timeRange}</span>}
+                                                                      {isPastSlot && <span className="text-xs text-red-400 mt-0.5">(Đã qua giờ)</span>}
                                                                  </div>
                                                             </Button>
                                                        );
@@ -136,19 +166,16 @@ export default function BookingWidget({
                               </div>
                               <div className="grid grid-cols-2 gap-2 text-sm">
                                    <div className="bg-gradient-to-br from-orange-50/50 to-amber-50/50 border border-orange-200/50 rounded-xl p-3 shadow-sm">
-                                        <div className="text-gray-600 text-xs mb-1">{selectedField ? (selectedSlotId ? "Giá slot (sân nhỏ)" : "Giá từ (sân nhỏ)") : (selectedSlotId ? "Giá slot (sân lớn)" : "Giá từ (sân lớn)")}</div>
+                                        <div className="text-gray-600 text-xs mb-1">{selectedSlotId ? "Giá slot (sân nhỏ)" : "Giá từ (sân nhỏ)"}</div>
                                         <div className="text-orange-600 font-bold text-sm">{
-                                             (selectedField ?
-                                                  (selectedField.priceForSelectedSlot || 0)
-                                                  : (selectedSlotId ? selectedSlotPriceBig : minPriceBig)
-                                             )
-                                                  ? ((selectedField ? (selectedField.priceForSelectedSlot || 0) : (selectedSlotId ? selectedSlotPriceBig : minPriceBig)).toLocaleString("vi-VN") + "₫")
+                                             (selectedSlotId ? selectedSlotPrice : minPrice) > 0
+                                                  ? (selectedSlotId ? selectedSlotPrice : minPrice).toLocaleString("vi-VN") + "₫"
                                                   : "—"
                                         }</div>
                                    </div>
                                    <div className="bg-gradient-to-br from-teal-50/50 to-emerald-50/50 border border-teal-200/50 rounded-xl p-3 shadow-sm">
-                                        <div className="text-gray-600 text-xs mb-1">{selectedField ? "Sân nhỏ còn trống" : "Sân lớn còn trống"}</div>
-                                        <div className="text-teal-700 font-bold text-sm">{selectedField ? (selectedSlotId ? (selectedField.isAvailableForSelectedSlot ? 1 : 0) : 1) : (selectedSlotId ? availableBundles : totalBundles)}/{selectedField ? 1 : totalBundles}</div>
+                                        <div className="text-gray-600 text-xs mb-1">Sân nhỏ còn trống</div>
+                                        <div className="text-teal-700 font-bold text-sm">{selectedSlotId ? (selectedField?.isAvailableForSelectedSlot ? 1 : 0) : 1}/1</div>
                                    </div>
                               </div>
                               <div className="p-4 border rounded-xl bg-gradient-to-br from-teal-50/70 via-emerald-50/50 to-teal-50/70 border-teal-200/50 shadow-sm">

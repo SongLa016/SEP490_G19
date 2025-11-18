@@ -4,7 +4,9 @@ import { useAuth } from "../../../contexts/AuthContext";
 import {
      Card,
      Alert,
-     AlertDescription
+     AlertDescription,
+     Pagination,
+     usePagination
 } from "../../../shared/components/ui";
 import {
      Clock,
@@ -18,8 +20,6 @@ import { fetchAllComplexesWithFields } from "../../../shared/services/fields";
 import { fetchTimeSlots, fetchTimeSlotsByField, createTimeSlot, updateTimeSlot, deleteTimeSlot } from "../../../shared/services/timeSlots";
 import { createFieldSchedule, fetchFieldSchedulesByField, fetchFieldSchedules, updateFieldScheduleStatus, deleteFieldSchedule } from "../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
-// Import test utility for debugging (can be removed in production)
-import "../../../shared/services/testTimeSlotAPI";
 import { DateSelector, MonthlyCalendar, FieldList, ComplexAndFieldSelector, ScheduleGrid, ScheduleModal, TimeSlotModal, TimeSlotsTab, ManageSchedulesTab, StatisticsCards } from "./components/scheduleManagement";
 
 
@@ -39,11 +39,13 @@ export default function ScheduleManagement({ isDemo = false }) {
           fieldId: '',
           slotName: '',
           startTime: '',
-          endTime: ''
+          endTime: '',
+          price: ''
      });
      const [slotFormErrors, setSlotFormErrors] = useState({});
      const [isSubmittingSlot, setIsSubmittingSlot] = useState(false);
      const [selectedQuickSlots, setSelectedQuickSlots] = useState([]);
+     const [modalTimeSlots, setModalTimeSlots] = useState([]); // Separate state for modal
      const [selectedFieldFilter, setSelectedFieldFilter] = useState('all'); // Filter for timeslots tab
      const [selectedFieldForSchedule, setSelectedFieldForSchedule] = useState('all'); // Filter for schedule tab
      const [fieldSchedules, setFieldSchedules] = useState([]); // Danh sách FieldSchedules
@@ -84,12 +86,12 @@ export default function ScheduleManagement({ isDemo = false }) {
      // Get current user ID
      const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
 
-     // Check if a time slot already exists for a field
+     // Check if a time slot already exists for a field (using modal's separate state)
      const isSlotExistsForField = useCallback((fieldId, startTime, endTime) => {
           if (!fieldId) return false;
 
-          // Filter timeSlots by fieldId first, then check time overlap
-          return timeSlots.some(slot => {
+          // Filter modalTimeSlots by fieldId first, then check time overlap
+          return modalTimeSlots.some(slot => {
                // Check if this slot belongs to the specified field
                const slotFieldId = slot.fieldId ?? slot.FieldId;
                if (!slotFieldId || Number(slotFieldId) !== Number(fieldId)) {
@@ -101,25 +103,25 @@ export default function ScheduleManagement({ isDemo = false }) {
                const slotEnd = slot.endTime?.substring(0, 5) || '';
                return startTime < slotEnd && endTime > slotStart;
           });
-     }, [timeSlots]);
+     }, [modalTimeSlots]);
 
-     // Load timeslots for a specific field
+     // Load timeslots for a specific field (for modal only)
      const loadTimeSlotsForField = useCallback(async (fieldId) => {
           if (!fieldId) {
-               setTimeSlots([]);
+               setModalTimeSlots([]);
                return;
           }
 
           try {
-               const slotsResponse = await fetchTimeSlots(fieldId);
+               const slotsResponse = await fetchTimeSlotsByField(fieldId);
                if (slotsResponse.success) {
-                    setTimeSlots(slotsResponse.data || []);
+                    setModalTimeSlots(slotsResponse.data || []);
                } else {
-                    setTimeSlots([]);
+                    setModalTimeSlots([]);
                }
           } catch (error) {
                console.error('Error loading timeslots for field:', error);
-               setTimeSlots([]);
+               setModalTimeSlots([]);
           }
      }, []);
 
@@ -132,7 +134,8 @@ export default function ScheduleManagement({ isDemo = false }) {
                     fieldId: fieldIdValue ? fieldIdValue.toString() : '',
                     slotName: slot.name || '',
                     startTime: slot.startTime?.substring(0, 5) || '',
-                    endTime: slot.endTime?.substring(0, 5) || ''
+                    endTime: slot.endTime?.substring(0, 5) || '',
+                    price: slot.price || slot.Price || ''
                });
                // Load timeslots for this field
                if (fieldIdValue) {
@@ -181,10 +184,12 @@ export default function ScheduleManagement({ isDemo = false }) {
                fieldId: '',
                slotName: '',
                startTime: '',
-               endTime: ''
+               endTime: '',
+               price: ''
           });
           setSlotFormErrors({});
           setSelectedQuickSlots([]);
+          setModalTimeSlots([]); // Clear modal slots
      };
 
      const validateSlotForm = () => {
@@ -194,6 +199,9 @@ export default function ScheduleManagement({ isDemo = false }) {
           if (selectedQuickSlots.length > 0) {
                if (!slotFormData.fieldId) {
                     errors.fieldId = 'Vui lòng chọn sân';
+               }
+               if (!slotFormData.price || Number(slotFormData.price) <= 0) {
+                    errors.price = 'Vui lòng nhập giá hợp lệ';
                }
                setSlotFormErrors(errors);
                return Object.keys(errors).length === 0;
@@ -219,6 +227,10 @@ export default function ScheduleManagement({ isDemo = false }) {
                if (slotFormData.startTime >= slotFormData.endTime) {
                     errors.endTime = 'Giờ kết thúc phải lớn hơn giờ bắt đầu';
                }
+          }
+
+          if (!slotFormData.price || Number(slotFormData.price) <= 0) {
+               errors.price = 'Vui lòng nhập giá hợp lệ';
           }
 
           setSlotFormErrors(errors);
@@ -274,7 +286,8 @@ export default function ScheduleManagement({ isDemo = false }) {
                                    fieldId: fieldId,
                                    slotName: uniqueSlotName,
                                    startTime: quickSlot.start,
-                                   endTime: quickSlot.end
+                                   endTime: quickSlot.end,
+                                   price: Number(slotFormData.price)
                               });
 
                               if (result.success) {
@@ -349,14 +362,16 @@ export default function ScheduleManagement({ isDemo = false }) {
                          fieldId: fieldId,
                          slotName: slotFormData.slotName,
                          startTime: slotFormData.startTime,
-                         endTime: slotFormData.endTime
+                         endTime: slotFormData.endTime,
+                         price: Number(slotFormData.price)
                     });
                } else {
                     result = await createTimeSlot({
                          fieldId: fieldId,
                          slotName: slotFormData.slotName,
                          startTime: slotFormData.startTime,
-                         endTime: slotFormData.endTime
+                         endTime: slotFormData.endTime,
+                         price: Number(slotFormData.price)
                     });
                }
 
@@ -437,7 +452,8 @@ export default function ScheduleManagement({ isDemo = false }) {
           return `${hours || '00'}:${minutes || '00'}`;
      };
 
-     // Check if schedule is in the past
+     // Check if schedule is in the past (currently unused but kept for future use)
+     // eslint-disable-next-line no-unused-vars
      const isSchedulePast = (date, endTime) => {
           const now = new Date();
           const scheduleDate = new Date(date);
@@ -496,32 +512,52 @@ export default function ScheduleManagement({ isDemo = false }) {
                // If specific field is selected, fetch only that field's time slots
                if (selectedFieldForSchedule !== 'all') {
                     const fieldId = Number(selectedFieldForSchedule);
+                    console.log(`Loading time slots for field ${fieldId}`);
                     const slotsResponse = await fetchTimeSlotsByField(fieldId);
+                    console.log(`Received ${slotsResponse.data?.length || 0} slots for field ${fieldId}:`, slotsResponse.data);
                     if (slotsResponse.success && slotsResponse.data) {
                          setTimeSlots(slotsResponse.data || []);
                     } else {
                          setTimeSlots([]);
                     }
                } else {
-                    // If "all" is selected, fetch time slots for the first field (or all fields)
-                    // For simplicity, use first field's slots, or fetch all if needed
-                    if (fields.length > 0) {
-                         const firstFieldId = fields[0].fieldId;
-                         const slotsResponse = await fetchTimeSlotsByField(firstFieldId);
-                         if (slotsResponse.success && slotsResponse.data) {
-                              setTimeSlots(slotsResponse.data || []);
-                         } else {
-                              // Fallback: try to fetch all time slots
-                              const allSlotsResponse = await fetchTimeSlots();
-                              if (allSlotsResponse.success) {
-                                   setTimeSlots(allSlotsResponse.data || []);
-                              } else {
-                                   setTimeSlots([]);
-                              }
+                    // If "all" is selected, fetch time slots for ALL fields in the complex
+                    console.log(`Loading time slots for all fields:`, fields.map(f => f.fieldId));
+                    const allSlots = [];
+                    const fetchPromises = fields.map(field =>
+                         fetchTimeSlotsByField(field.fieldId)
+                    );
+
+                    const results = await Promise.all(fetchPromises);
+                    results.forEach((result, index) => {
+                         const fieldId = fields[index].fieldId;
+                         console.log(`Field ${fieldId}: received ${result.data?.length || 0} slots`, result.data);
+                         if (result.success && result.data && Array.isArray(result.data)) {
+                              allSlots.push(...result.data);
                          }
-                    } else {
-                         setTimeSlots([]);
-                    }
+                    });
+
+                    console.log(`Total slots before deduplication: ${allSlots.length}`);
+
+                    // Deduplicate slots by time range (startTime-endTime)
+                    // Keep one slot per unique time range for display
+                    const uniqueSlotsByTime = new Map();
+                    allSlots.forEach(slot => {
+                         const timeKey = `${slot.startTime || slot.StartTime}-${slot.endTime || slot.EndTime}`;
+                         if (!uniqueSlotsByTime.has(timeKey)) {
+                              uniqueSlotsByTime.set(timeKey, slot);
+                         }
+                    });
+
+                    // Convert back to array and sort by start time
+                    const uniqueSlots = Array.from(uniqueSlotsByTime.values()).sort((a, b) => {
+                         const timeA = a.startTime || a.StartTime || '00:00';
+                         const timeB = b.startTime || b.StartTime || '00:00';
+                         return timeA.localeCompare(timeB);
+                    });
+
+                    console.log(`Total unique slots after deduplication: ${uniqueSlots.length}`, uniqueSlots);
+                    setTimeSlots(uniqueSlots);
                }
           } catch (error) {
                console.error('Error loading time slots for table:', error);
@@ -555,25 +591,31 @@ export default function ScheduleManagement({ isDemo = false }) {
                // If specific field is selected, fetch only that field's schedules
                if (selectedFieldForSchedule !== 'all') {
                     const fieldId = Number(selectedFieldForSchedule);
+                    console.log(`Loading schedules for field ${fieldId}`);
                     const result = await fetchFieldSchedulesByField(fieldId);
+                    console.log(`Received ${result.data?.length || 0} schedules for field ${fieldId}:`, result.data);
                     if (result.success && result.data) {
                          allSchedules = result.data;
                     }
                } else {
                     // If "all" is selected, fetch schedules for all fields in the complex
                     const fieldIds = fields.map(f => f.fieldId);
+                    console.log(`Loading schedules for all fields:`, fieldIds);
                     const fetchPromises = fieldIds.map(fieldId =>
                          fetchFieldSchedulesByField(fieldId)
                     );
 
                     const results = await Promise.all(fetchPromises);
-                    results.forEach(result => {
+                    results.forEach((result, index) => {
+                         const fieldId = fieldIds[index];
+                         console.log(`Field ${fieldId}: received ${result.data?.length || 0} schedules`, result.data);
                          if (result.success && result.data && Array.isArray(result.data)) {
                               allSchedules = [...allSchedules, ...result.data];
                          }
                     });
                }
 
+               console.log(`Total schedules loaded: ${allSchedules.length}`, allSchedules);
                setFieldSchedules(allSchedules);
           } catch (error) {
                console.error('Error loading schedules for table:', error);
@@ -636,6 +678,37 @@ export default function ScheduleManagement({ isDemo = false }) {
                loadFieldSchedules();
           }
      }, [activeTab, loadFieldSchedules, scheduleFilterField]);
+
+     // Load all time slots when entering timeslots tab
+     useEffect(() => {
+          if (activeTab === 'timeslots' && selectedComplex && fields.length > 0) {
+               // Load all slots for all fields
+               const loadAllSlots = async () => {
+                    try {
+                         console.log('Loading all slots for timeslots tab');
+                         const allSlots = [];
+                         const fetchPromises = fields.map(field =>
+                              fetchTimeSlotsByField(field.fieldId)
+                         );
+
+                         const results = await Promise.all(fetchPromises);
+                         results.forEach((result, index) => {
+                              const fieldId = fields[index].fieldId;
+                              console.log(`Field ${fieldId}: received ${result.data?.length || 0} slots for timeslots tab`);
+                              if (result.success && result.data && Array.isArray(result.data)) {
+                                   allSlots.push(...result.data);
+                              }
+                         });
+
+                         console.log(`Total slots for timeslots tab: ${allSlots.length}`);
+                         setTimeSlots(allSlots);
+                    } catch (error) {
+                         console.error('Error loading slots for timeslots tab:', error);
+                    }
+               };
+               loadAllSlots();
+          }
+     }, [activeTab, selectedComplex, fields]);
 
      // Handle update schedule status
      const handleUpdateScheduleStatus = async (scheduleId, newStatus) => {
@@ -864,7 +937,7 @@ export default function ScheduleManagement({ isDemo = false }) {
      // Get schedules for a specific time slot and date (all fields)
      const getSchedulesForTimeSlot = (slotId, date) => {
           const dateStr = date.toISOString().split('T')[0];
-          return fieldSchedules.filter(schedule => {
+          const matchingSchedules = fieldSchedules.filter(schedule => {
                const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
                let scheduleDateStr = '';
                if (typeof schedule.date === 'string') {
@@ -872,8 +945,14 @@ export default function ScheduleManagement({ isDemo = false }) {
                } else if (schedule.date && schedule.date.year) {
                     scheduleDateStr = `${schedule.date.year}-${String(schedule.date.month).padStart(2, '0')}-${String(schedule.date.day).padStart(2, '0')}`;
                }
-               return Number(scheduleSlotId) === Number(slotId) && scheduleDateStr === dateStr;
+               const matches = Number(scheduleSlotId) === Number(slotId) && scheduleDateStr === dateStr;
+               if (matches) {
+                    console.log(`Found schedule for slot ${slotId} on ${dateStr}:`, schedule);
+               }
+               return matches;
           });
+          console.log(`getSchedulesForTimeSlot(${slotId}, ${dateStr}): found ${matchingSchedules.length} schedules`);
+          return matchingSchedules;
      };
 
 

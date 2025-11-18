@@ -1,5 +1,11 @@
 // Service layer for TimeSlot API
 import axios from "axios";
+import {
+  clearPersistedAuth,
+  decodeTokenPayload,
+  getStoredToken,
+  isTokenExpired,
+} from "../utils/tokenManager";
 
 const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
@@ -27,7 +33,8 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Helper function to handle API errors
+// Helper function to handle API errors (currently unused but kept for future use)
+// eslint-disable-next-line no-unused-vars
 const handleApiError = (error) => {
   let errorMessage = "Có lỗi xảy ra khi gọi API";
 
@@ -73,23 +80,23 @@ const handleApiError = (error) => {
 
 // Helper function to ensure time format is HH:MM:SS (with seconds) for SQL Server TIME type
 const formatTimeForAPI = (timeString) => {
-  if (!timeString) return "00:00:00";
-  
+  if (!timeString) return "00:00";
+
   const parts = timeString.split(":");
-  
+
   // If in HH:MM:SS format, return as is
   if (parts.length === 3) {
     return timeString;
   }
-  
+
   // If in HH:MM format, add seconds
   if (parts.length === 2) {
-    return `${timeString}:00`;
+    return `${timeString}`;
   }
-  
+
   // Invalid format, return default
   console.warn("⚠️ Invalid time format:", timeString);
-  return "00:00:00";
+  return "00:00";
 };
 
 // Normalize API response item to internal keys (lowercase for consistency)
@@ -108,6 +115,9 @@ const normalizeTimeSlot = (item) => {
     return null;
   }
 
+  // Get price
+  const price = item.Price ?? item.price ?? 0;
+
   // Return normalized object with both camelCase and PascalCase keys for compatibility
   return {
     slotId: Number(slotId) || slotId,
@@ -121,10 +131,68 @@ const normalizeTimeSlot = (item) => {
     EndTime: endTime || "00:00", // For backward compatibility
     fieldId: fieldId ? Number(fieldId) : null,
     FieldId: fieldId ? Number(fieldId) : null, // For backward compatibility
+    price: Number(price) || 0,
+    Price: Number(price) || 0, // For backward compatibility
   };
 };
 
-// Mock data for testing (hardcoded)
+const OWNER_ROLE_IDS = [2];
+const OWNER_ROLE_NAMES = ["owner", "fieldowner", "field_owner"];
+
+const ensureOwnerAuthorization = (actionLabel = "thao tác này") => {
+  const token = getStoredToken();
+  if (!token) {
+    return {
+      success: false,
+      error:
+        "Bạn cần đăng nhập bằng tài khoản Owner để thực hiện thao tác này.",
+    };
+  }
+
+  if (isTokenExpired(token)) {
+    clearPersistedAuth();
+    return {
+      success: false,
+      error:
+        "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại bằng tài khoản Owner.",
+    };
+  }
+
+  const payload = decodeTokenPayload(token);
+  if (!payload) {
+    return {
+      success: false,
+      error: "Token không hợp lệ. Vui lòng đăng nhập lại bằng tài khoản Owner.",
+    };
+  }
+
+  const roleName =
+    payload.Role || payload.role || payload.RoleName || payload.roleName || "";
+  const roleIdRaw =
+    payload.RoleID ||
+    payload.roleID ||
+    payload.RoleId ||
+    payload.roleId ||
+    null;
+  const roleId = roleIdRaw !== null ? Number(roleIdRaw) : null;
+  const normalizedRoleName = roleName.toString().toLowerCase();
+
+  const isOwner =
+    (roleId !== null && OWNER_ROLE_IDS.includes(roleId)) ||
+    OWNER_ROLE_NAMES.includes(normalizedRoleName);
+
+  if (!isOwner) {
+    return {
+      success: false,
+      error: `Chỉ tài khoản Owner mới có thể ${actionLabel}. Vui lòng đăng nhập bằng tài khoản chủ sân.`,
+    };
+  }
+
+  return { success: true, token, payload };
+};
+
+// Mock data for testing (hardcoded, currently unused but kept for future testing)
+// eslint-disable-next-line no-unused-vars
 const MOCK_TIME_SLOTS = [
   // Timeslots for fieldId = 32
   {
@@ -344,6 +412,14 @@ export async function fetchTimeSlotsByField(fieldId) {
 // Create a new time slot
 export async function createTimeSlot(timeSlotData) {
   try {
+    const authCheck = ensureOwnerAuthorization("tạo slot thời gian");
+    if (!authCheck.success) {
+      return {
+        success: false,
+        error: authCheck.error,
+      };
+    }
+
     // Validate required fields
     if (
       (!timeSlotData.SlotName && !timeSlotData.slotName) ||
@@ -375,6 +451,7 @@ export async function createTimeSlot(timeSlotData) {
       slotName: timeSlotData.SlotName ?? timeSlotData.slotName,
       startTime: formatTimeForAPI(startTime),
       endTime: formatTimeForAPI(endTime),
+      price: timeSlotData.price ? Number(timeSlotData.price) : 0,
     };
 
     console.log("Creating time slot with payload:", payload);
@@ -384,8 +461,10 @@ export async function createTimeSlot(timeSlotData) {
       payload: payload,
       headers: {
         "Content-Type": "application/json",
-        Authorization: localStorage.getItem("token") ? "Bearer [TOKEN]" : "None"
-      }
+        Authorization: localStorage.getItem("token")
+          ? "Bearer [TOKEN]"
+          : "None",
+      },
     });
 
     // Try different endpoint variations
@@ -405,7 +484,7 @@ export async function createTimeSlot(timeSlotData) {
           err.response?.status,
           err.response?.data
         );
-        
+
         // Detailed error logging for debugging
         console.error("Full error details:", {
           status: err.response?.status,
@@ -416,10 +495,10 @@ export async function createTimeSlot(timeSlotData) {
             url: err.config?.url,
             method: err.config?.method,
             data: err.config?.data,
-            headers: err.config?.headers
-          }
+            headers: err.config?.headers,
+          },
         });
-        
+
         // Special handling for 403 errors
         if (err.response?.status === 403) {
           console.error("⚠️ 403 Forbidden - Possible causes:");
@@ -428,7 +507,7 @@ export async function createTimeSlot(timeSlotData) {
           console.error("  3. Duplicate entry (check if slot already exists)");
           console.error("  4. Field ownership (check if user owns this field)");
         }
-        
+
         lastError = err;
         // If it's not a 404, stop trying other endpoints
         if (err.response?.status !== 404) {
@@ -440,7 +519,7 @@ export async function createTimeSlot(timeSlotData) {
     if (!response) {
       const errorDetail = lastError?.response?.data;
       let errorMessage = "Tất cả endpoint đều thất bại";
-      
+
       // Parse error message based on status code
       if (lastError?.response?.status === 403) {
         if (typeof errorDetail === "string") {
@@ -448,10 +527,11 @@ export async function createTimeSlot(timeSlotData) {
         } else if (errorDetail?.message) {
           errorMessage = errorDetail.message;
         } else {
-          errorMessage = "Không có quyền tạo slot thời gian. Vui lòng kiểm tra:\n" +
-                        "• Bạn có phải là chủ sân không?\n" +
-                        "• Slot này đã tồn tại chưa?\n" +
-                        "• Thời gian có hợp lệ không?";
+          errorMessage =
+            "Không có quyền tạo slot thời gian. Vui lòng kiểm tra:\n" +
+            "• Bạn có phải là chủ sân không?\n" +
+            "• Slot này đã tồn tại chưa?\n" +
+            "• Thời gian có hợp lệ không?";
         }
       } else {
         errorMessage =
@@ -525,6 +605,14 @@ export async function createTimeSlot(timeSlotData) {
 // Update an existing time slot
 export async function updateTimeSlot(slotId, timeSlotData) {
   try {
+    const authCheck = ensureOwnerAuthorization("cập nhật slot thời gian");
+    if (!authCheck.success) {
+      return {
+        success: false,
+        error: authCheck.error,
+      };
+    }
+
     // Validate required fields
     if (
       (!timeSlotData.SlotName && !timeSlotData.slotName) ||
@@ -556,6 +644,7 @@ export async function updateTimeSlot(slotId, timeSlotData) {
       slotName: timeSlotData.SlotName ?? timeSlotData.slotName,
       startTime: formatTimeForAPI(startTime),
       endTime: formatTimeForAPI(endTime),
+      price: timeSlotData.price ? Number(timeSlotData.price) : 0,
     };
 
     // Try different endpoint variations
@@ -639,6 +728,14 @@ export async function updateTimeSlot(slotId, timeSlotData) {
 // Delete a time slot
 export async function deleteTimeSlot(slotId) {
   try {
+    const authCheck = ensureOwnerAuthorization("xóa slot thời gian");
+    if (!authCheck.success) {
+      return {
+        success: false,
+        error: authCheck.error,
+      };
+    }
+
     // Try different endpoint variations
     const endpoints = [
       "https://sep490-g19-zxph.onrender.com/api/TimeSlot",

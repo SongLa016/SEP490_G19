@@ -32,6 +32,7 @@ export default function ComplexDetail({ user }) {
      const [complexData, setComplexData] = useState({ complex: null, fields: [] });
      const [cancellationPolicy, setCancellationPolicy] = useState(null);
      const [promotions, setPromotions] = useState([]);
+     const [fieldTimeSlots, setFieldTimeSlots] = useState([]); // TimeSlots for selected field with prices
      const [baseMinPrice, setBaseMinPrice] = useState(0); // lowest price across all slots (small field)
      const [cheapestSlot, setCheapestSlot] = useState(null); // { slotId, name, price }
      const [priciestSlot, setPriciestSlot] = useState(null); // { slotId, name, price }
@@ -134,7 +135,7 @@ export default function ComplexDetail({ user }) {
                     }
 
                     // Fetch complex data first to get field list
-                    const [complexData, complexDataNoSlot, policyData, promotionsData] = await Promise.all([
+                    const [complexData, complexDataNoSlot] = await Promise.all([
                          fetchComplexDetail(complexIdToUse, {
                               date: selectedDate,
                               slotId: selectedSlotId
@@ -143,10 +144,32 @@ export default function ComplexDetail({ user }) {
                          fetchComplexDetail(complexIdToUse, {
                               date: selectedDate,
                               slotId: ""
-                         }),
-                         fetchCancellationPolicyByComplex(complexIdToUse),
-                         fetchPromotionsByComplex(complexIdToUse)
+                         })
                     ]);
+                    
+                    // Only fetch cancellation policy and promotions when viewing a specific field
+                    // Do not fetch for complex view
+                    let policyData = null;
+                    let promotionsData = [];
+                    
+                    const fieldIdForPolicy = (fieldData?.fieldId ? Number(fieldData.fieldId) : null) || selectedFieldId;
+                    
+                    if (fieldIdForPolicy) {
+                         // Get field to find ownerId for fetching policies
+                         const fieldForPolicy = complexData?.fields?.find(f => Number(f.fieldId) === Number(fieldIdForPolicy));
+                         const ownerId = fieldForPolicy?.ownerId || complexData?.complex?.ownerId;
+                         
+                         // For now, use complex-based APIs (will need to update to field-based APIs when available)
+                         // Using complexId as fallback since field-based APIs may not exist yet
+                         try {
+                              [policyData, promotionsData] = await Promise.all([
+                                   fetchCancellationPolicyByComplex(complexIdToUse).catch(() => null),
+                                   fetchPromotionsByComplex(complexIdToUse).catch(() => [])
+                              ]);
+                         } catch (error) {
+                              console.warn("Error fetching policies/promotions:", error);
+                         }
+                    }
 
                     if (!ignore) {
                          // Determine which field to fetch timeslots for
@@ -159,38 +182,9 @@ export default function ComplexDetail({ user }) {
                          // If viewing a specific field (via route or selectedFieldId), BookingWidget will fetch schedules from public API
                          let slots = [];
 
-                         // Only fetch timeSlots if:
-                         // 1. Not a field route (not /field/:id)
-                         // 2. No specific field is selected (no selectedFieldId)
-                         // 3. This is for complex view (sân lớn), not individual field view
-                         const shouldFetchTimeSlots = !isFieldRoute && !selectedFieldId && !fieldData?.fieldId;
-
-                         if (shouldFetchTimeSlots && fieldIdToUse) {
-                              // Only fetch timeSlots for complex view (sân lớn)
-                              // For field view (sân nhỏ), use schedules from public API in BookingWidget
-                              try {
-                                   const cleanFieldId = Number(fieldIdToUse);
-                                   console.log('Fetching timeslots for fieldId (complex view):', cleanFieldId);
-
-                                   const slotsResponse = await fetchTimeSlots(cleanFieldId);
-                                   if (slotsResponse?.success && Array.isArray(slotsResponse.data)) {
-                                        slots = slotsResponse.data;
-                                        console.log('Loaded timeslots:', slots.length);
-                                   } else {
-                                        console.warn('Failed to load timeslots (may require auth):', slotsResponse?.error);
-                                        // Don't set error, just use empty array - BookingWidget will handle field schedules
-                                   }
-                              } catch (error) {
-                                   console.warn('Error fetching timeslots (may require auth, using schedules instead):', error);
-                                   // Don't set error, just use empty array - BookingWidget will handle field schedules
-                              }
-                         } else {
-                              // When viewing specific field (via route or selection), don't fetch timeSlots
-                              // BookingWidget will fetch schedules from public API instead
-                              if (isFieldRoute || selectedFieldId || fieldData?.fieldId) {
-                                   console.log('Field view detected - skipping timeSlots fetch, will use schedules from public API');
-                              }
-                         }
+                         // No longer fetch timeSlots for complex view - only fetch for selected field
+                         // BookingWidget will fetch schedules from public API
+                         console.log('Using schedules from public API in BookingWidget');
 
                          setTimeSlots(slots);
                          setComplexData(complexData);
@@ -220,81 +214,122 @@ export default function ComplexDetail({ user }) {
 
           loadData();
           return () => { ignore = true; };
-     }, [id, isFieldRoute, selectedDate, selectedSlotId, selectedFieldId]);
-
-     // Compute the absolute cheapest slot price across all slots once data is ready
+     }, [id, isFieldRoute, selectedDate, selectedSlotId]);
+     
+     // Separate effect to handle selectedFieldId changes - fetch TimeSlots for selected field
      useEffect(() => {
           let cancelled = false;
-          async function computeCheapest() {
+          
+          async function loadFieldTimeSlots() {
+               if (!selectedFieldId) {
+                    setFieldTimeSlots([]);
+                    return;
+               }
+               
                try {
-                    if (!resolvedComplexId || !Array.isArray(timeSlots) || !timeSlots.length) return;
-                    const results = await Promise.all(
-                         timeSlots.map(async (s) => {
-                              const data = await fetchComplexDetail(resolvedComplexId, { date: selectedDate, slotId: s.slotId });
-                              const fieldsForSlot = data?.fields || [];
-                              const minForSlot = fieldsForSlot.reduce((acc, f) => {
-                                   const p = Number(f.priceForSelectedSlot || 0);
-                                   if (p <= 0) return acc;
-                                   if (acc === 0) return p;
-                                   return Math.min(acc, p);
-                              }, 0);
-                              return { slotId: s.slotId, name: s.name, price: minForSlot || 0 };
-                         })
-                    );
+                    const slotsResult = await fetchTimeSlotsByField(selectedFieldId);
                     if (cancelled) return;
-                    const cheapest = results.reduce((best, cur) => {
-                         if (!best || (cur.price > 0 && cur.price < best.price)) return cur;
-                         return best;
-                    }, null);
-                    setCheapestSlot(cheapest);
-                    const priciest = results.reduce((best, cur) => {
-                         if (!best) return cur;
-                         if (cur.price > best.price) return cur;
-                         return best;
-                    }, null);
-                    setPriciestSlot(priciest);
-               } catch { /* ignore */ }
-          }
-          computeCheapest();
-          return () => { cancelled = true; };
-     }, [resolvedComplexId, timeSlots, selectedDate]);
-
-     // Compute cheapest/priciest slot for the currently selected small field
-     useEffect(() => {
-          let cancelled = false;
-          async function computeSelectedFieldExtremes() {
-               try {
-                    if (!resolvedComplexId || !Array.isArray(timeSlots) || !timeSlots.length || !selectedFieldId) {
-                         setSelectedFieldCheapestSlot(null);
-                         setSelectedFieldPriciestSlot(null);
-                         return;
+                    
+                    if (slotsResult?.success && Array.isArray(slotsResult.data)) {
+                         setFieldTimeSlots(slotsResult.data);
+                         console.log(`Loaded ${slotsResult.data.length} time slots for field ${selectedFieldId}`);
+                    } else {
+                         setFieldTimeSlots([]);
+                         console.warn('Failed to load time slots for field:', slotsResult?.error);
                     }
-                    const results = await Promise.all(
-                         timeSlots.map(async (s) => {
-                              const data = await fetchComplexDetail(resolvedComplexId, { date: selectedDate, slotId: s.slotId });
-                              const fieldsForSlot = data?.fields || [];
-                              const fieldForSlot = fieldsForSlot.find(f => Number(f.fieldId) === Number(selectedFieldId));
-                              const price = Number(fieldForSlot?.priceForSelectedSlot || 0);
-                              return { slotId: s.slotId, name: s.name, price };
-                         })
-                    );
+               } catch (error) {
                     if (cancelled) return;
-                    const cheapest = results.reduce((best, cur) => {
-                         if (!best || (cur.price > 0 && cur.price < best.price)) return cur;
-                         return best;
-                    }, null);
-                    const priciest = results.reduce((best, cur) => {
-                         if (!best) return cur;
-                         if (cur.price > best.price) return cur;
-                         return best;
-                    }, null);
-                    setSelectedFieldCheapestSlot(cheapest);
-                    setSelectedFieldPriciestSlot(priciest);
-               } catch { /* ignore */ }
+                    console.error('Error fetching time slots for field:', error);
+                    setFieldTimeSlots([]);
+               }
           }
-          computeSelectedFieldExtremes();
+          
+          loadFieldTimeSlots();
           return () => { cancelled = true; };
-     }, [resolvedComplexId, timeSlots, selectedDate, selectedFieldId]);
+     }, [selectedFieldId]);
+     
+     // Separate effect to handle selectedFieldId changes without refetching all data
+     // Only refetch if the selected field is not in the current fields array
+     useEffect(() => {
+          if (!selectedFieldId || !complexData.fields || complexData.fields.length === 0) {
+               return;
+          }
+          
+          // Check if selectedFieldId exists in current fields
+          const fieldExists = complexData.fields.some(f => Number(f.fieldId) === Number(selectedFieldId));
+          
+          if (!fieldExists) {
+               // Field not found in current data, might need to refetch
+               // But don't refetch immediately - wait a bit to avoid too many requests
+               console.warn(`Selected field ${selectedFieldId} not found in current fields. Available fields:`, complexData.fields.map(f => f.fieldId));
+          }
+     }, [selectedFieldId, complexData.fields]);
+
+     // Compute cheapest/priciest slot price from TimeSlots for selected field
+     useEffect(() => {
+          if (!selectedFieldId || !Array.isArray(fieldTimeSlots) || fieldTimeSlots.length === 0) {
+               setCheapestSlot(null);
+               setPriciestSlot(null);
+               return;
+          }
+          
+          const slotsWithPrices = fieldTimeSlots
+               .filter(s => s.price && s.price > 0)
+               .map(s => ({ slotId: s.slotId, name: s.name || s.slotName, price: Number(s.price) || 0 }));
+          
+          if (slotsWithPrices.length === 0) {
+               setCheapestSlot(null);
+               setPriciestSlot(null);
+               return;
+          }
+          
+          const cheapest = slotsWithPrices.reduce((best, cur) => {
+               if (!best || (cur.price > 0 && cur.price < best.price)) return cur;
+               return best;
+          }, null);
+          
+          const priciest = slotsWithPrices.reduce((best, cur) => {
+               if (!best) return cur;
+               if (cur.price > best.price) return cur;
+               return best;
+          }, null);
+          
+          setCheapestSlot(cheapest);
+          setPriciestSlot(priciest);
+     }, [selectedFieldId, fieldTimeSlots]);
+
+     // Compute cheapest/priciest slot for the currently selected small field from TimeSlots
+     useEffect(() => {
+          if (!selectedFieldId || !Array.isArray(fieldTimeSlots) || fieldTimeSlots.length === 0) {
+               setSelectedFieldCheapestSlot(null);
+               setSelectedFieldPriciestSlot(null);
+               return;
+          }
+          
+          const slotsWithPrices = fieldTimeSlots
+               .filter(s => s.price && s.price > 0)
+               .map(s => ({ slotId: s.slotId, name: s.name || s.slotName, price: Number(s.price) || 0 }));
+          
+          if (slotsWithPrices.length === 0) {
+               setSelectedFieldCheapestSlot(null);
+               setSelectedFieldPriciestSlot(null);
+               return;
+          }
+          
+          const cheapest = slotsWithPrices.reduce((best, cur) => {
+               if (!best || (cur.price > 0 && cur.price < best.price)) return cur;
+               return best;
+          }, null);
+          
+          const priciest = slotsWithPrices.reduce((best, cur) => {
+               if (!best) return cur;
+               if (cur.price > best.price) return cur;
+               return best;
+          }, null);
+          
+          setSelectedFieldCheapestSlot(cheapest);
+          setSelectedFieldPriciestSlot(priciest);
+     }, [selectedFieldId, fieldTimeSlots]);
 
      useEffect(() => {
           const next = new URLSearchParams(searchParams);
@@ -360,63 +395,6 @@ export default function ComplexDetail({ user }) {
      };
 
 
-     const handleBookComplex = () => {
-          if (!user) {
-               showToastMessage("Bạn cần đăng nhập để đặt sân.", 'warning');
-               return;
-          }
-          if (!selectedDate || !selectedSlotId) {
-               showToastMessage("Vui lòng chọn ngày và giờ.", 'warning');
-               return;
-          }
-          if (isRecurring) {
-               if (currentWeeks < minRecurringWeeks) {
-                    showToastMessage(`Đặt định kỳ yêu cầu tối thiểu ${minRecurringWeeks} tuần.`, 'warning');
-                    return;
-               }
-               if (!rangeStart || !rangeEnd || repeatDays.length === 0) {
-                    showToastMessage("Vui lòng chọn khoảng ngày và các ngày trong tuần.", 'warning');
-                    return;
-               }
-               // Cho phép mở modal đặt định kỳ ngay cả khi slot hiện tại hết chỗ (xung đột sẽ xử lý sau)
-          } else {
-               // Kiểm tra sân còn trống cho đặt 1 buổi
-               if (availableBundles === 0) {
-                    showToastMessage("Không còn sân trống cho slot đã chọn. Vui lòng chọn slot khác.", 'warning');
-                    return;
-               }
-          }
-
-          // Open booking modal for complex
-          const selectedSlot = timeSlots.find(s => s.slotId === selectedSlotId);
-          // Map recurring options to modal preset
-          const weeksCount = isRecurring ? Math.max(1, Math.ceil((new Date(rangeEnd) - new Date(rangeStart)) / (7 * 24 * 60 * 60 * 1000))) : 0;
-          const mappedDays = isRecurring ? repeatDays.slice() : [];
-
-          const bookingData = {
-               fieldId: `complex-${id}`,
-               fieldName: complex?.name || "Khu sân",
-               fieldAddress: complex?.address || "",
-               date: selectedDate,
-               slotId: selectedSlotId,
-               slotName: selectedSlot?.name || "",
-               duration: 1,
-               price: selectedSlotPriceBig || minPriceBig || 0,
-               totalPrice: selectedSlotPriceBig || minPriceBig || 0,
-               availableFields: availableCount,
-               totalFields: fields.length,
-               fieldType: "Complex",
-               complexId: id,
-               ownerId: complex?.ownerId || complex?.ownerID, // Thêm ownerId để lấy bank account
-               isRecurringPreset: isRecurring,
-               recurringWeeksPreset: weeksCount,
-               selectedDaysPreset: mappedDays
-          };
-
-          setBookingModalData(bookingData);
-          setBookingType("complex");
-          openBookingModal();
-     };
 
      const handleQuickBookField = async (fieldId) => {
           if (!user) {
@@ -450,34 +428,27 @@ export default function ComplexDetail({ user }) {
                console.error("Lỗi khi lấy lịch trình sân:", error);
           }
 
-          // Lấy thông tin slot - ưu tiên từ timeSlots, nếu không có thì fetch từ API hoặc lấy từ schedules
-          let selectedSlot = timeSlots.find(s => s.slotId === selectedSlotId);
-          if (!selectedSlot) {
-               // Nếu không tìm thấy trong timeSlots, thử fetch từ API public
-               try {
-                    const slotsResult = await fetchTimeSlotsByField(fieldId);
-                    if (slotsResult.success && Array.isArray(slotsResult.data)) {
-                         selectedSlot = slotsResult.data.find(s => s.slotId === selectedSlotId || s.SlotID === selectedSlotId);
-                    }
-               } catch (error) {
-                    console.error("Lỗi khi lấy time slots:", error);
-               }
-
-               // Nếu vẫn không tìm thấy, lấy từ schedules
-               if (!selectedSlot && fieldSchedules.length > 0) {
-                    const scheduleForSlot = fieldSchedules.find(s =>
-                         String(s.slotId || s.SlotId) === String(selectedSlotId)
-                    );
-                    if (scheduleForSlot) {
-                         selectedSlot = {
-                              slotId: scheduleForSlot.slotId || scheduleForSlot.SlotId,
-                              name: scheduleForSlot.slotName || scheduleForSlot.SlotName || `Slot ${selectedSlotId}`,
-                              startTime: scheduleForSlot.startTime || scheduleForSlot.StartTime,
-                              endTime: scheduleForSlot.endTime || scheduleForSlot.EndTime
-                         };
-                    }
+          // Lấy thông tin slot từ fieldTimeSlots (đã được fetch trong effect)
+          let selectedSlot = fieldTimeSlots.find(s => s.slotId === selectedSlotId || s.SlotID === selectedSlotId);
+          
+          // Nếu không tìm thấy trong fieldTimeSlots, thử lấy từ schedules
+          if (!selectedSlot && fieldSchedules.length > 0) {
+               const scheduleForSlot = fieldSchedules.find(s =>
+                    String(s.slotId || s.SlotId) === String(selectedSlotId)
+               );
+               if (scheduleForSlot) {
+                    selectedSlot = {
+                         slotId: scheduleForSlot.slotId || scheduleForSlot.SlotId,
+                         name: scheduleForSlot.slotName || scheduleForSlot.SlotName || `Slot ${selectedSlotId}`,
+                         startTime: scheduleForSlot.startTime || scheduleForSlot.StartTime,
+                         endTime: scheduleForSlot.endTime || scheduleForSlot.EndTime,
+                         price: 0 // Default price if not found
+                    };
                }
           }
+          
+          // Get price from TimeSlot, fallback to 0
+          const slotPrice = selectedSlot?.price || selectedSlot?.Price || 0;
 
           // Helper function để so sánh date
           const compareDate = (scheduleDate, targetDate) => {
@@ -546,11 +517,11 @@ export default function ComplexDetail({ user }) {
                fieldAddress: field.address,
                date: selectedDate,
                slotId: selectedSlotId,
-               slotName: selectedSlot?.name || "",
+               slotName: selectedSlot?.name || selectedSlot?.slotName || "",
                scheduleId: scheduleId, // Thêm scheduleId vào booking data
                duration: 1,
-               price: field.priceForSelectedSlot || 0,
-               totalPrice: field.priceForSelectedSlot || 0,
+               price: slotPrice, // Use price from TimeSlot
+               totalPrice: slotPrice, // Use price from TimeSlot
                fieldType: field.typeName,
                fieldSize: field.size || "Không xác định",
                complexId: id,
@@ -563,7 +534,7 @@ export default function ComplexDetail({ user }) {
           };
 
           setBookingModalData(bookingData);
-          setBookingType(isRecurring ? "complex" : "quick");
+          setBookingType(isRecurring ? "field" : "quick"); // Changed from "complex" to "field"
           openBookingModal();
      };
 
@@ -575,6 +546,13 @@ export default function ComplexDetail({ user }) {
      const complex = complexData.complex;
      const fields = complexData.fields || [];
      const selectedField = selectedFieldId ? fields.find(f => Number(f.fieldId) === Number(selectedFieldId)) : null;
+     
+     // Log warning if selectedField is not found
+     useEffect(() => {
+          if (selectedFieldId && !selectedField && fields.length > 0) {
+               console.warn(`Selected field ${selectedFieldId} not found in fields array. Available fieldIds:`, fields.map(f => f.fieldId));
+          }
+     }, [selectedFieldId, selectedField, fields]);
 
      const complexReviews = useMemo(() => complex?.reviews || [], [complex?.reviews]);
      const reviewStats = useMemo(() => {
@@ -614,37 +592,19 @@ export default function ComplexDetail({ user }) {
           fields.filter(f => f.isAvailableForSelectedSlot).length :
           fields.length;
 
-     // Sân lớn gồm 4-6 sân nhỏ ghép lại => hệ số ghép
-     const bigComposeCount = (() => {
-          if (fields.length >= 6) return 6;
-          if (fields.length >= 4) return 4;
-          return Math.max(1, fields.length);
-     })();
+     // Get price from TimeSlot for selected field
+     const selectedSlotPrice = selectedSlotId && selectedField ? (() => {
+          const slot = fieldTimeSlots.find(s => s.slotId === selectedSlotId || s.SlotID === selectedSlotId);
+          return slot?.price || slot?.Price || 0;
+     })() : 0;
 
-     // Tính giá tối thiểu (sân nhỏ)
-     const minPrice = fields.reduce((acc, f) => {
-          const p = Number(f.priceForSelectedSlot || 0);
-          return acc === 0 ? p : (p > 0 ? Math.min(acc, p) : acc);
-     }, 0);
-
-     // Giá tối thiểu cho sân lớn
-     const minPriceBig = (minPrice || 0) * bigComposeCount;
-
-     // Tính giá cho slot đã chọn (sân nhỏ)
-     const selectedSlotPrice = selectedSlotId ? (() => {
-          const availableFields = fields.filter(f => f.isAvailableForSelectedSlot);
-          if (availableFields.length === 0) return minPrice; // Fallback to minPrice if no available fields
-          return Math.min(...availableFields.map(f => Number(f.priceForSelectedSlot || 0)));
-     })() : minPrice;
-
-     // Giá slot cho sân lớn = giá sân nhỏ x hệ số ghép
-     const selectedSlotPriceBig = (selectedSlotPrice || 0) * bigComposeCount;
-
-     // Số lượng gói sân lớn còn trống theo slot
-     const availableBundles = selectedSlotId ?
-          Math.floor((fields.filter(f => f.isAvailableForSelectedSlot).length) / bigComposeCount) :
-          Math.floor(fields.length / bigComposeCount);
-     const totalBundles = Math.max(1, Math.floor(fields.length / bigComposeCount));
+     // Get minimum price from TimeSlots
+     const minPrice = fieldTimeSlots.length > 0 ? (() => {
+          const prices = fieldTimeSlots
+               .map(s => s.price || s.Price || 0)
+               .filter(p => p > 0);
+          return prices.length > 0 ? Math.min(...prices) : 0;
+     })() : 0;
 
      // Tính tổng số buổi cho đặt định kỳ
      const calculateTotalSessions = () => {
@@ -673,13 +633,13 @@ export default function ComplexDetail({ user }) {
           return 0;                            // <4 buổi: không giảm
      };
 
-     // Tính tóm tắt giá cho đặt cố định (sân lớn)
+     // Tính tóm tắt giá cho đặt cố định (sân nhỏ)
      const recurringSummary = (() => {
-          if (!isRecurring) return null;
+          if (!isRecurring || !selectedField) return null;
           const totalSessions = calculateTotalSessions();
           if (!totalSessions) return { totalSessions: 0, unitPrice: 0, discountPercent: 0, subtotal: 0, discountedTotal: 0, discountAmount: 0 };
-          // Khi không xem sân nhỏ cụ thể, coi như đặt Sân lớn => dùng giá sân lớn
-          const unitPrice = Number(selectedField ? (selectedSlotPrice || minPrice || 0) : (selectedSlotId ? selectedSlotPriceBig : minPriceBig));
+          // Use price from TimeSlot
+          const unitPrice = Number(selectedSlotPrice || minPrice || 0);
           const subtotal = unitPrice * totalSessions;
           const discountPercent = getRecurringDiscountPercent(totalSessions);
           const discountAmount = Math.round(subtotal * (discountPercent / 100));
@@ -739,7 +699,6 @@ export default function ComplexDetail({ user }) {
                                         availableCount={availableCount}
                                         cheapestSlot={cheapestSlot}
                                         priciestSlot={priciestSlot}
-                                        bigComposeCount={bigComposeCount}
                                         cancellationPolicy={cancellationPolicy}
                                         promotions={promotions}
                                         selectedFieldCheapestSlot={selectedFieldCheapestSlot}
@@ -786,7 +745,7 @@ export default function ComplexDetail({ user }) {
                                    selectedField={selectedField}
                                    selectedDate={selectedDate}
                                    selectedSlotId={selectedSlotId}
-                                   timeSlots={timeSlots}
+                                   fieldTimeSlots={fieldTimeSlots}
                                    isRecurring={isRecurring}
                                    repeatDays={repeatDays}
                                    rangeStart={rangeStart}
@@ -795,10 +754,8 @@ export default function ComplexDetail({ user }) {
                                    currentWeeks={currentWeeks}
                                    minRecurringWeeks={minRecurringWeeks}
                                    recurringSummary={recurringSummary}
-                                   selectedSlotPriceBig={selectedSlotPriceBig}
-                                   minPriceBig={minPriceBig}
-                                   availableBundles={availableBundles}
-                                   totalBundles={totalBundles}
+                                   selectedSlotPrice={selectedSlotPrice}
+                                   minPrice={minPrice}
                                    calculateTotalSessions={calculateTotalSessions}
                                    onDateChange={setSelectedDate}
                                    onSlotChange={setSelectedSlotId}
@@ -806,7 +763,7 @@ export default function ComplexDetail({ user }) {
                                    onRangeStartChange={setRangeStart}
                                    onRangeEndChange={setRangeEnd}
                                    onToggleDay={toggleDay}
-                                   onBook={() => selectedField ? handleQuickBookField(selectedFieldId) : handleBookComplex()}
+                                   onBook={() => selectedField ? handleQuickBookField(selectedFieldId) : null}
                               />
                          </div>
                     </div>
