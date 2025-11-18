@@ -1,9 +1,10 @@
 import { Repeat, Tag, Clock } from "lucide-react";
 import { Card, CardContent, Button, DatePicker } from "../../../../../../shared/components/ui";
-import { useFieldSchedules } from "../../../../../../shared/hooks";
+import { useFieldSchedules, useMultipleFieldSchedules } from "../../../../../../shared/hooks";
 
 export default function BookingWidget({
      selectedField,
+     fields = [], // Array of all fields for "all courts" view
      selectedDate,
      selectedSlotId,
      fieldTimeSlots = [],
@@ -26,12 +27,27 @@ export default function BookingWidget({
      onToggleDay,
      onBook
 }) {
+     // Get field IDs for all fields when no specific field is selected
+     const allFieldIds = fields.map(f => f.fieldId || f.fieldID).filter(Boolean);
+
      // Use React Query hook for field schedules with caching
-     const { data: fieldSchedules = [], isLoading: isLoadingSchedules } = useFieldSchedules(
+     // If selectedField exists, fetch for that field only
+     // If no selectedField, fetch for all fields
+     const { data: singleFieldSchedules = [], isLoading: isLoadingSingleSchedules } = useFieldSchedules(
           selectedField?.fieldId,
           selectedDate,
           !!selectedField?.fieldId // Only fetch when fieldId exists
      );
+
+     const { data: allFieldSchedules = [], isLoading: isLoadingAllSchedules } = useMultipleFieldSchedules(
+          allFieldIds,
+          selectedDate,
+          !selectedField && allFieldIds.length > 0 // Only fetch when no field is selected and we have field IDs
+     );
+
+     // Use the appropriate schedules based on whether a field is selected
+     const fieldSchedules = selectedField ? singleFieldSchedules : allFieldSchedules;
+     const isLoadingSchedules = selectedField ? isLoadingSingleSchedules : isLoadingAllSchedules;
      return (
           <Card className="bg-gradient-to-br from-white via-teal-50/30 to-white border border-teal-200/50 shadow-xl rounded-2xl lg:sticky lg:top-24">
                <CardContent className="p-6">
@@ -42,40 +58,8 @@ export default function BookingWidget({
                          {selectedField ? "Chọn ngày/giờ hoặc bật đặt cố định" : "Chọn sân nhỏ để bắt đầu đặt lịch"}
                     </p>
 
-                    {/* Show message when no small field is selected */}
+                    {/* Show schedules for all fields or selected field */}
                     {!selectedField ? (
-                         <div className="space-y-4">
-                              <div className="bg-gradient-to-br from-blue-50 via-indigo-50/50 to-blue-50 border border-blue-200 rounded-xl p-6 text-center">
-                                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-lg">
-                                        <Tag className="w-8 h-8 text-white" />
-                                   </div>
-                                   <h4 className="text-lg font-bold text-teal-800 mb-2">Chọn sân nhỏ để đặt lịch</h4>
-                                   <p className="text-sm text-gray-600 mb-4">
-                                        Vui lòng chọn một sân nhỏ từ danh sách bên dưới để xem lịch trình và thực hiện đặt sân
-                                   </p>
-                                   <div className="bg-white/60 border border-teal-200 rounded-lg p-4 text-left space-y-2">
-                                        <div className="flex items-start gap-2">
-                                             <div className="w-5 h-5 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                  <span className="text-teal-700 text-xs font-bold">1</span>
-                                             </div>
-                                             <p className="text-sm text-gray-700">Chọn sân nhỏ từ danh sách</p>
-                                        </div>
-                                        <div className="flex items-start gap-2">
-                                             <div className="w-5 h-5 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                  <span className="text-teal-700 text-xs font-bold">2</span>
-                                             </div>
-                                             <p className="text-sm text-gray-700">Chọn ngày và giờ chơi</p>
-                                        </div>
-                                        <div className="flex items-start gap-2">
-                                             <div className="w-5 h-5 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                                  <span className="text-teal-700 text-xs font-bold">3</span>
-                                             </div>
-                                             <p className="text-sm text-gray-700">Hoàn tất đặt sân</p>
-                                        </div>
-                                   </div>
-                              </div>
-                         </div>
-                    ) : (
                          <div className="grid grid-cols-1 gap-3">
                               <div>
                                    <div className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
@@ -87,11 +71,11 @@ export default function BookingWidget({
                               <div>
                                    <div className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
                                         <Clock className="w-4 h-4 text-teal-600" />
-                                        Giờ
+                                        Giờ (Tất cả sân)
                                    </div>
-                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-lg border-teal-200/50 p-2 bg-white shadow-inner">
+                                   <div className={`grid grid-cols-1 gap-2 max-h-96 overflow-y-auto border rounded-lg border-teal-200/50 p-2 bg-white shadow-inner`}>
                                         {isLoadingSchedules ? (
-                                             <div className="col-span-2 text-center text-gray-500 text-sm py-4">
+                                             <div className="text-center text-gray-500 text-sm py-4">
                                                   Đang tải lịch trình...
                                              </div>
                                         ) : Array.isArray(fieldSchedules) && fieldSchedules.length > 0 ? (
@@ -100,8 +84,14 @@ export default function BookingWidget({
                                                   .map((schedule) => {
                                                        const scheduleSlotId = schedule.slotId || schedule.SlotId;
                                                        const scheduleId = schedule.scheduleId || schedule.ScheduleId;
+                                                       const scheduleFieldId = schedule.fieldId || schedule.FieldId;
                                                        const isSelected = String(selectedSlotId) === String(scheduleSlotId);
                                                        const slotName = schedule.slotName || schedule.SlotName || `Slot ${scheduleSlotId}`;
+
+                                                       // Get field name when viewing all fields
+                                                       const fieldName = !selectedField && scheduleFieldId
+                                                            ? (fields.find(f => String(f.fieldId || f.fieldID) === String(scheduleFieldId))?.name || `Sân ${scheduleFieldId}`)
+                                                            : null;
 
                                                        // Time is already string from API (e.g., "06:00", "07:30")
                                                        const startTime = schedule.startTime || schedule.StartTime || "";
@@ -138,7 +128,7 @@ export default function BookingWidget({
 
                                                        return (
                                                             <Button
-                                                                 key={scheduleId || scheduleSlotId}
+                                                                 key={`${scheduleId || scheduleSlotId}-${scheduleFieldId || 'unknown'}`}
                                                                  type="button"
                                                                  onClick={() => !isDisabled && onSlotChange(isSelected ? "" : scheduleSlotId)}
                                                                  disabled={isDisabled}
@@ -150,6 +140,113 @@ export default function BookingWidget({
                                                                       }`}
                                                             >
                                                                  <div className="flex flex-col items-start w-full">
+                                                                      {fieldName && (
+                                                                           <span className="text-xs font-semibold text-teal-700 mb-0.5">{fieldName}</span>
+                                                                      )}
+                                                                      <span className="font-medium">{slotName}</span>
+                                                                      {timeRange && <span className="text-xs opacity-75 mt-0.5">{timeRange}</span>}
+                                                                      {isPastSlot && <span className="text-xs text-red-400 mt-0.5">(Đã qua giờ)</span>}
+                                                                 </div>
+                                                            </Button>
+                                                       );
+                                                  })
+                                        ) : (
+                                             <div className="text-center text-gray-500 text-sm py-4">
+                                                  Không có lịch trình khả dụng cho ngày này
+                                             </div>
+                                        )}
+                                   </div>
+                              </div>
+                              <div className="bg-gradient-to-br from-blue-50 via-indigo-50/50 to-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                                   <p className="text-sm text-gray-600">
+                                        Đang hiển thị lịch trình của tất cả sân. Chọn một sân nhỏ từ danh sách bên dưới để đặt sân.
+                                   </p>
+                              </div>
+                         </div>
+                    ) : (
+                         <div className="grid grid-cols-1 gap-3">
+                              <div>
+                                   <div className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                                        <Tag className="w-4 h-4 text-teal-600" />
+                                        Ngày
+                                   </div>
+                                   <DatePicker value={selectedDate} onChange={onDateChange} min={new Date().toISOString().split('T')[0]} />
+                              </div>
+                              <div>
+                                   <div className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                                        <Clock className="w-4 h-4 text-teal-600" />
+                                        Giờ
+                                   </div>
+                                   <div className={`grid ${selectedField ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'} gap-2 ${selectedField ? 'max-h-40' : 'max-h-96'} overflow-y-auto border rounded-lg border-teal-200/50 p-2 bg-white shadow-inner`}>
+                                        {isLoadingSchedules ? (
+                                             <div className="col-span-2 text-center text-gray-500 text-sm py-4">
+                                                  Đang tải lịch trình...
+                                             </div>
+                                        ) : Array.isArray(fieldSchedules) && fieldSchedules.length > 0 ? (
+                                             fieldSchedules
+                                                  .filter(schedule => schedule.status === "Available")
+                                                  .map((schedule) => {
+                                                       const scheduleSlotId = schedule.slotId || schedule.SlotId;
+                                                       const scheduleId = schedule.scheduleId || schedule.ScheduleId;
+                                                       const scheduleFieldId = schedule.fieldId || schedule.FieldId;
+                                                       const isSelected = String(selectedSlotId) === String(scheduleSlotId);
+                                                       const slotName = schedule.slotName || schedule.SlotName || `Slot ${scheduleSlotId}`;
+
+                                                       // Get field name when viewing all fields
+                                                       const fieldName = !selectedField && scheduleFieldId
+                                                            ? (fields.find(f => String(f.fieldId || f.fieldID) === String(scheduleFieldId))?.name || `Sân ${scheduleFieldId}`)
+                                                            : null;
+
+                                                       // Time is already string from API (e.g., "06:00", "07:30")
+                                                       const startTime = schedule.startTime || schedule.StartTime || "";
+                                                       const endTime = schedule.endTime || schedule.EndTime || "";
+                                                       const timeRange = startTime && endTime
+                                                            ? `${startTime} - ${endTime}`
+                                                            : "";
+
+                                                       // Check if slot is in the past
+                                                       const isPastSlot = (() => {
+                                                            if (!selectedDate || !startTime) return false;
+
+                                                            const now = new Date();
+                                                            const scheduleDate = new Date(selectedDate);
+
+                                                            // If schedule date is in the past, it's a past slot
+                                                            if (scheduleDate.toDateString() < now.toDateString()) {
+                                                                 return true;
+                                                            }
+
+                                                            // If schedule date is today, check the time
+                                                            if (scheduleDate.toDateString() === now.toDateString()) {
+                                                                 const [hours, minutes] = startTime.split(':').map(Number);
+                                                                 const slotTime = new Date(now);
+                                                                 slotTime.setHours(hours, minutes, 0, 0);
+
+                                                                 return slotTime < now;
+                                                            }
+
+                                                            return false;
+                                                       })();
+
+                                                       const isDisabled = schedule.status !== "Available" || isPastSlot;
+
+                                                       return (
+                                                            <Button
+                                                                 key={`${scheduleId || scheduleSlotId}-${scheduleFieldId || 'unknown'}`}
+                                                                 type="button"
+                                                                 onClick={() => !isDisabled && onSlotChange(isSelected ? "" : scheduleSlotId)}
+                                                                 disabled={isDisabled}
+                                                                 className={`p-2 text-xs rounded-lg border transition-all ${isSelected
+                                                                      ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white border-teal-600 shadow-md"
+                                                                      : isDisabled
+                                                                           ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                                                           : "bg-white text-teal-800 border-teal-200/50 hover:text-teal-900 hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 hover:border-teal-300 hover:shadow-sm"
+                                                                      }`}
+                                                            >
+                                                                 <div className="flex flex-col items-start w-full">
+                                                                      {fieldName && (
+                                                                           <span className="text-xs font-semibold text-teal-700 mb-0.5">{fieldName}</span>
+                                                                      )}
                                                                       <span className="font-medium">{slotName}</span>
                                                                       {timeRange && <span className="text-xs opacity-75 mt-0.5">{timeRange}</span>}
                                                                       {isPastSlot && <span className="text-xs text-red-400 mt-0.5">(Đã qua giờ)</span>}

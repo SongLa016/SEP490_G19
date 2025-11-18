@@ -232,12 +232,19 @@ export default function ScheduleGrid({
                                                   return slotFieldId && Number(slotFieldId) === Number(selectedFieldForSchedule);
                                              })
                                              .map((slot, slotIndex) => {
-                                                  const slotId = slot.slotId || slot.SlotID;
+                                                  const slotKey = slot.timeKey || slot.slotId || slot.SlotID || `${slot.startTime || slot.StartTime}-${slot.endTime || slot.EndTime}-${slotIndex}`;
                                                   const isPastSlot = isSlotTimePassed(selectedDate, slot);
-                                                  const schedules = getSchedulesForTimeSlot(slotId, selectedDate);
+                                                  const schedulesCache = new Map();
+                                                  const getCachedSchedules = (slotId) => {
+                                                       if (!slotId) return [];
+                                                       if (!schedulesCache.has(slotId)) {
+                                                            schedulesCache.set(slotId, getSchedulesForTimeSlot(slotId, selectedDate));
+                                                       }
+                                                       return schedulesCache.get(slotId);
+                                                  };
 
                                                   return (
-                                                       <TableRow key={slotId} className={`group transition-colors ${slotIndex % 2 === 0 ? 'bg-gray-50/30' : 'bg-white'} hover:bg-teal-50/50 border-none`}>
+                                                       <TableRow key={slotKey} className={`group transition-colors ${slotIndex % 2 === 0 ? 'bg-gray-50/30' : 'bg-white'} hover:bg-teal-50/50 border-none`}>
                                                             <TableCell className="sticky left-0 z-10 border-2 border-gray-300 p-3 text-sm bg-white shadow-lg backdrop-blur-sm font-medium text-gray-700">
                                                                  <div className="flex items-center gap-3">
                                                                       <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-teal-500 via-teal-600 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md">
@@ -250,8 +257,23 @@ export default function ScheduleGrid({
                                                                  </div>
                                                             </TableCell>
                                                             {displayFields.map((field) => {
+                                                                 const slotIdForField = slot.slotIdsByField
+                                                                      ? slot.slotIdsByField[field.fieldId]
+                                                                      : (slot.slotId || slot.SlotID);
+
+                                                                 if (!slotIdForField) {
+                                                                      return (
+                                                                           <TableCell
+                                                                                key={`${field.fieldId}-no-slot`}
+                                                                                className={`border-2 p-4 text-center text-xs italic text-gray-400 relative min-h-[120px] ${isToday(selectedDate) ? 'bg-teal-50/20' : 'bg-white'}`}
+                                                                           >
+                                                                                Không có khung giờ
+                                                                           </TableCell>
+                                                                      );
+                                                                 }
+
                                                                  // Get schedule for this specific field and slot
-                                                                 const fieldSchedule = schedules.find(s => {
+                                                                 const fieldSchedule = getCachedSchedules(slotIdForField).find(s => {
                                                                       const scheduleFieldId = s.fieldId ?? s.FieldId ?? s.fieldID ?? s.FieldID;
                                                                       return Number(scheduleFieldId) === Number(field.fieldId);
                                                                  });
@@ -284,7 +306,7 @@ export default function ScheduleGrid({
                                                                                 } ${isPastSlot ? 'opacity-60' : ''}`}
                                                                            onClick={() => {
                                                                                 if (isPastSlot || fieldSchedule) return;
-                                                                                handleAddSchedule(slotId, field.fieldId, selectedDate);
+                                                                                handleAddSchedule(slotIdForField, field.fieldId, selectedDate);
                                                                            }}
                                                                       >
                                                                            {!fieldSchedule ? (

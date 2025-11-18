@@ -1,5 +1,6 @@
 // Player hooks
 export { useFieldSchedules } from './useFieldSchedules';
+export { useMultipleFieldSchedules } from './useMultipleFieldSchedules';
 export { useComplexDetail } from './useComplexDetail';
 
 // Owner hooks

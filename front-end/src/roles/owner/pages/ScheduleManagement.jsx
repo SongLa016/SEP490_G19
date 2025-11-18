@@ -516,7 +516,13 @@ export default function ScheduleManagement({ isDemo = false }) {
                     const slotsResponse = await fetchTimeSlotsByField(fieldId);
                     console.log(`Received ${slotsResponse.data?.length || 0} slots for field ${fieldId}:`, slotsResponse.data);
                     if (slotsResponse.success && slotsResponse.data) {
-                         setTimeSlots(slotsResponse.data || []);
+                         const enrichedSlots = (slotsResponse.data || []).map(slot => ({
+                              ...slot,
+                              slotIdsByField: {
+                                   [fieldId]: slot.slotId || slot.SlotID
+                              }
+                         }));
+                         setTimeSlots(enrichedSlots);
                     } else {
                          setTimeSlots([]);
                     }
@@ -533,7 +539,11 @@ export default function ScheduleManagement({ isDemo = false }) {
                          const fieldId = fields[index].fieldId;
                          console.log(`Field ${fieldId}: received ${result.data?.length || 0} slots`, result.data);
                          if (result.success && result.data && Array.isArray(result.data)) {
-                              allSlots.push(...result.data);
+                              const slotsWithField = result.data.map(slot => ({
+                                   ...slot,
+                                   fieldId: slot.fieldId || slot.FieldId || fieldId
+                              }));
+                              allSlots.push(...slotsWithField);
                          }
                     });
 
@@ -542,10 +552,22 @@ export default function ScheduleManagement({ isDemo = false }) {
                     // Deduplicate slots by time range (startTime-endTime)
                     // Keep one slot per unique time range for display
                     const uniqueSlotsByTime = new Map();
-                    allSlots.forEach(slot => {
-                         const timeKey = `${slot.startTime || slot.StartTime}-${slot.endTime || slot.EndTime}`;
+                    allSlots.forEach((slot) => {
+                         const startTime = slot.startTime || slot.StartTime || '';
+                         const endTime = slot.endTime || slot.EndTime || '';
+                         const timeKey = `${startTime}-${endTime}`;
+                         const slotId = slot.slotId || slot.SlotID;
+                         const fieldId = slot.fieldId || slot.FieldId || slot.FieldID;
+
                          if (!uniqueSlotsByTime.has(timeKey)) {
-                              uniqueSlotsByTime.set(timeKey, slot);
+                              uniqueSlotsByTime.set(timeKey, {
+                                   ...slot,
+                                   slotIdsByField: fieldId ? { [fieldId]: slotId } : {},
+                                   timeKey
+                              });
+                         } else if (fieldId) {
+                              const existing = uniqueSlotsByTime.get(timeKey);
+                              existing.slotIdsByField[fieldId] = slotId;
                          }
                     });
 

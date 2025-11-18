@@ -743,6 +743,7 @@ export default function ComplexDetail({ user }) {
                          <div className="lg:col-span-1">
                               <BookingWidget
                                    selectedField={selectedField}
+                                   fields={fields}
                                    selectedDate={selectedDate}
                                    selectedSlotId={selectedSlotId}
                                    fieldTimeSlots={fieldTimeSlots}
