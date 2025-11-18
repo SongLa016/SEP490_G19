@@ -57,7 +57,7 @@ namespace BallSport.API.Controllers
         //UPDATE FIELD - chỉ Owner
         [Authorize(Roles = "Owner")]
         [HttpPut("{fieldId}")]
-        public async Task<IActionResult> UpdateField(int fieldId, [FromBody] FieldDTO dto)
+        public async Task<IActionResult> UpdateField(int fieldId, [FromForm] FieldDTO dto)
         {
             if (dto == null || fieldId != dto.FieldId)
                 return BadRequest("Invalid data.");
