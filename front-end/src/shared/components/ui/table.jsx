@@ -22,7 +22,7 @@ export function TableRow({ children, className = "" }) {
 
 export function TableHead({ children, className = "" }) {
      return (
-          <th className={`px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 ${className}`}>
+          <th className={`px-3 py-2 text-left font-semibold tracking-wide text-slate-500 ${className}`}>
                {children}
           </th>
      );
@@ -33,7 +33,7 @@ export function TableBody({ children }) {
 }
 
 export function TableCell({ children, className = "" }) {
-     return <td className={`px-6 py-4 align-middle ${className}`}>{children}</td>;
+     return <td className={`px-3 py-1 align-middle ${className}`}>{children}</td>;
 }
 
 export function TableFooter({ children }) {

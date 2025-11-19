@@ -414,11 +414,26 @@ export async function confirmPaymentAPI(bookingId) {
  * @param {number|string} bookingId - Booking ID
  * @returns {Promise<Object>} QR code data
  */
-export async function generateQRCode(bookingId) {
+export async function generateQRCode(bookingId, options = {}) {
   try {
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${bookingId}`;
+    const params = new URLSearchParams();
+    if (options.paymentType) {
+      params.set("paymentType", options.paymentType);
+    } else if (options.amountType) {
+      params.set("paymentType", options.amountType);
+    }
+    if (options.amount) {
+      params.set("amount", Number(options.amount));
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${bookingId}${
+      params.toString() ? `?${params.toString()}` : ""
+    }`;
 
     console.log(`Generating QR code for booking: ${bookingId}`);
+    if (params.toString()) {
+      console.log("QR options:", params.toString());
+    }
 
     const response = await apiClient.get(endpoint);
 
@@ -458,6 +473,40 @@ export async function confirmByOwner(bookingId) {
     };
   } catch (error) {
     console.error("Error confirming booking by owner:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+/**
+ * Fetch bookings created by a specific player
+ * @param {number|string} playerId
+ * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
+ */
+export async function fetchBookingsByPlayer(playerId) {
+  try {
+    if (playerId === undefined || playerId === null || playerId === "") {
+      return {
+        success: false,
+        error: "Thiếu thông tin người chơi. Không thể tải lịch sử đặt sân.",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/player/${playerId}`;
+    console.log("📥 [BOOKING HISTORY - API] Endpoint:", endpoint);
+
+    const response = await apiClient.get(endpoint);
+
+    return {
+      success: true,
+      data: Array.isArray(response.data) ? response.data : [],
+    };
+  } catch (error) {
+    console.error("Error fetching bookings by player:", error);
     const errorMessage = handleApiError(error);
     return {
       success: false,

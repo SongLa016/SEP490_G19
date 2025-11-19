@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { AlertCircle } from "lucide-react";
 import { Button, Modal } from "./ui";
-import { validateBookingData, checkFieldAvailability, confirmPaymentAPI, generateQRCode } from "../services/bookings";
-import { createBooking, createBookingAPI, fetchOwnerBankAccounts } from "../index";
+import { validateBookingData, checkFieldAvailability, generateQRCode } from "../services/bookings";
+import { createBooking, createBookingAPI, fetchOwnerBankAccounts, fetchBankAccount } from "../index";
 import { createMatchRequest, createCommunityPost } from "../index";
 import EmailVerificationModal from "./EmailVerificationModal";
 import RecurringOpponentSelection from "./RecurringOpponentSelection";
@@ -27,9 +27,10 @@ export default function BookingModal({
      const [step, setStep] = useState("details"); // details | payment | confirmation
      const [isProcessing, setIsProcessing] = useState(false);
      const [errors, setErrors] = useState({});
-     const [paymentMethod, setPaymentMethod] = useState("");
      const [bookingInfo, setBookingInfo] = useState(null); // Lưu thông tin booking từ API
      const [ownerBankAccount, setOwnerBankAccount] = useState(null); // Thông tin ngân hàng owner
+     const [paymentAmountType, setPaymentAmountType] = useState(""); // deposit | full
+     const [isQrGenerating, setIsQrGenerating] = useState(false);
      const [createdMatchRequest, setCreatedMatchRequest] = useState(null);
      const [createdCommunityPost, setCreatedCommunityPost] = useState(null);
      // Opponent flow: always assume user may find opponent after booking via BookingHistory
@@ -74,6 +75,12 @@ export default function BookingModal({
           fieldId: fieldData?.fieldId || null,
           fieldName: fieldData?.fieldName || "",
           fieldAddress: fieldData?.fieldAddress || "",
+          ownerName: fieldData?.ownerName || "",
+          bankAccountId: fieldData?.bankAccountId || fieldData?.BankAccountId || null,
+          bankName: fieldData?.bankName || "",
+          bankShortCode: fieldData?.bankShortCode || "",
+          accountNumber: fieldData?.accountNumber || "",
+          accountHolder: fieldData?.accountHolder || "",
           date: fieldData?.date || new Date().toISOString().split('T')[0],
           slotId: fieldData?.slotId || null,
           slotName: fieldData?.slotName || "",
@@ -158,6 +165,12 @@ export default function BookingModal({
                     fieldId: fieldData.fieldId || prev.fieldId,
                     fieldName: fieldData.fieldName || prev.fieldName,
                     fieldAddress: fieldData.fieldAddress || prev.fieldAddress,
+                    ownerName: fieldData.ownerName || prev.ownerName,
+                    bankAccountId: fieldData.bankAccountId || fieldData.BankAccountId || prev.bankAccountId,
+                    bankName: fieldData.bankName || prev.bankName,
+                    bankShortCode: fieldData.bankShortCode || prev.bankShortCode,
+                    accountNumber: fieldData.accountNumber || prev.accountNumber,
+                    accountHolder: fieldData.accountHolder || prev.accountHolder,
                     date: fieldData.date || prev.date,
                     slotId: fieldData.slotId || prev.slotId,
                     slotName: fieldData.slotName || prev.slotName,
@@ -187,9 +200,10 @@ export default function BookingModal({
                openBookingModal();
                setStep("details");
                setErrors({});
-               setPaymentMethod("");
                setBookingInfo(null);
                setOwnerBankAccount(null);
+               setPaymentAmountType("");
+               setIsQrGenerating(false);
                if (fieldData?.isRecurringPreset) {
                     setIsRecurring(true);
                     if (typeof fieldData.recurringWeeksPreset === 'number' && fieldData.recurringWeeksPreset > 0) {
@@ -212,30 +226,141 @@ export default function BookingModal({
           }
      }, [isOpen, fieldData, openBookingModal, closeBookingModal]);
 
-     // Lấy thông tin ngân hàng owner khi modal mở
+     const buildFallbackAccount = (data) => {
+          if (!data) return null;
+          const shortCode = data.bankShortCode || "";
+          const baseName = data.bankName || "";
+          const composedName = baseName
+               ? (shortCode ? `${shortCode} - ${baseName}` : baseName)
+               : shortCode;
+          const accountNumber = data.accountNumber || "";
+          const accountHolder = data.accountHolder || data.ownerName || "";
+          if (!composedName && !accountNumber && !accountHolder) return null;
+          return {
+               bankAccountId: data.bankAccountId || data.BankAccountId || null,
+               ownerId: data.ownerId || data.ownerID || null,
+               bankName: composedName,
+               bankShortCode: shortCode,
+               accountNumber,
+               accountHolder
+          };
+     };
+
+     // Lấy thông tin ngân hàng dựa vào BankAccountID (ưu tiên) hoặc owner
      useEffect(() => {
           if (!isOpen || !fieldData) return;
+          let ignore = false;
 
-          const fetchOwnerBank = async () => {
+          const fetchBankInfo = async () => {
                try {
-                    // Lấy ownerId từ fieldData
-                    const ownerId = fieldData.ownerId || fieldData.ownerID;
+                    if (fieldData.bankAccountId || fieldData.BankAccountId) {
+                         const account = await fetchBankAccount(fieldData.bankAccountId || fieldData.BankAccountId);
+                         if (!ignore && account) {
+                              setOwnerBankAccount(account);
+                              return;
+                         }
+                    }
 
+                    const fallback = buildFallbackAccount(fieldData);
+                    if (fallback) {
+                         if (!ignore) setOwnerBankAccount(fallback);
+                         return;
+                    }
+
+                    const ownerId = fieldData.ownerId || fieldData.ownerID;
                     if (ownerId) {
                          const accounts = await fetchOwnerBankAccounts(ownerId);
-                         if (accounts && accounts.length > 0) {
-                              // Lấy tài khoản mặc định hoặc tài khoản đầu tiên
+                         if (!ignore && accounts && accounts.length > 0) {
                               const defaultAccount = accounts.find(acc => acc.isDefault) || accounts[0];
                               setOwnerBankAccount(defaultAccount);
+                              return;
                          }
                     }
                } catch (error) {
                     console.error("Error fetching owner bank account:", error);
+                    const fallback = buildFallbackAccount(fieldData);
+                    if (!ignore && fallback) {
+                         setOwnerBankAccount(fallback);
+                    }
                }
           };
 
-          fetchOwnerBank();
+          fetchBankInfo();
+          return () => { ignore = true; };
      }, [isOpen, fieldData]);
+
+     useEffect(() => {
+          if (paymentAmountType === "deposit" && (bookingData.depositAmount || 0) <= 0) {
+               setPaymentAmountType("");
+          }
+     }, [paymentAmountType, bookingData.depositAmount]);
+
+     const buildLocalQrUrl = (amount) => {
+          if (!ownerBankAccount?.accountNumber || !ownerBankAccount?.bankShortCode) return null;
+          const normalizedCode = String(ownerBankAccount.bankShortCode).replace(/\s+/g, "").toUpperCase();
+          const accountNumber = String(ownerBankAccount.accountNumber).replace(/\s+/g, "");
+          if (!normalizedCode || !accountNumber) return null;
+
+          const base = `https://img.vietqr.io/image/${normalizedCode}-${accountNumber}-compact2.png`;
+          const params = new URLSearchParams({
+               amount: Math.round(Number(amount) || 0),
+               addInfo: `BOOKING-${bookingInfo?.bookingId || ""}`
+          });
+          if (ownerBankAccount.accountHolder) {
+               params.set("accountName", ownerBankAccount.accountHolder);
+          }
+          return `${base}?${params.toString()}`;
+     };
+
+     const handlePaymentAmountChange = async (type) => {
+          if (type === paymentAmountType || !bookingInfo?.bookingId) {
+               setPaymentAmountType(type);
+               return;
+          }
+
+          const targetAmount = type === "full"
+               ? (bookingData.totalPrice || 0)
+               : (bookingData.depositAmount || 0);
+
+          if (!targetAmount || targetAmount <= 0) {
+               setErrors(prev => ({ ...prev, payment: "Số tiền không hợp lệ để tạo QR." }));
+               return;
+          }
+
+          setPaymentAmountType(type);
+          setErrors(prev => ({ ...prev, payment: "" }));
+          setIsQrGenerating(true);
+          try {
+               const localUrl = buildLocalQrUrl(targetAmount);
+               if (localUrl) {
+                    setBookingInfo(prev => ({
+                         ...prev,
+                         qrCodeUrl: localUrl,
+                         qrExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString()
+                    }));
+               } else {
+                    const qrResult = await generateQRCode(bookingInfo.bookingId, {
+                         paymentType: type,
+                         amount: targetAmount
+                    });
+
+                    if (qrResult?.success && qrResult.qrCodeUrl) {
+                         setBookingInfo(prev => ({
+                              ...prev,
+                              qrCodeUrl: qrResult.qrCodeUrl,
+                              qrExpiresAt: qrResult.data?.qrExpiresAt || new Date(Date.now() + 7 * 60 * 1000).toISOString()
+                         }));
+                    } else {
+                         setErrors(prev => ({ ...prev, payment: "Không thể tạo QR. Vui lòng thử lại." }));
+                    }
+               }
+          } catch (error) {
+               console.error("Failed to regenerate QR code:", error);
+               setErrors(prev => ({ ...prev, payment: "Không thể tạo QR. Vui lòng thử lại." }));
+          } finally {
+               setIsQrGenerating(false);
+          }
+     };
 
      const formatPrice = (price) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 
@@ -457,18 +582,14 @@ export default function BookingModal({
                     return;
                }
 
-               // Lấy QR code từ API
-               const qrResult = await generateQRCode(bookingId);
-               const qrCodeUrl = qrResult.success ? qrResult.qrCodeUrl : null;
-
-               // Lưu thông tin booking
+               // Lưu thông tin booking (QR sẽ được tạo sau khi người dùng chọn số tiền)
                setBookingInfo({
                     bookingId: bookingId,
                     scheduleId: apiResult.data?.scheduleID || apiResult.data?.scheduleId,
                     bookingStatus: apiResult.data?.bookingStatus || "Pending",
                     paymentStatus: apiResult.data?.paymentStatus || "Pending",
-                    qrCodeUrl: qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=BOOKING-${bookingId}`,
-                    qrExpiresAt: apiResult.data?.qrExpiresAt || new Date(Date.now() + 7 * 60 * 1000).toISOString(),
+                    qrCodeUrl: null,
+                    qrExpiresAt: null,
                     totalPrice: totalPrice,
                     depositAmount: depositAmount
                });
@@ -489,75 +610,44 @@ export default function BookingModal({
      };
 
      const handleConfirmPayment = async () => {
-          if (!paymentMethod) {
-               setErrors({ payment: "Vui lòng chọn phương thức thanh toán" });
-               return;
-          }
-
           if (!bookingInfo?.bookingId) {
                setErrors({ general: "Không tìm thấy thông tin booking." });
                return;
           }
 
+          if (!paymentAmountType) {
+               setErrors(prev => ({ ...prev, payment: "Vui lòng chọn số tiền thanh toán và tạo QR trước khi hoàn tất." }));
+               return;
+          }
+
           setIsProcessing(true);
           try {
-               // Prepare payload for payment confirmation
-               const paymentPayload = {
-                    bookingId: bookingInfo.bookingId,
-                    paymentMethod: paymentMethod
-               };
-
-               console.log("💳 [THANH TOÁN] Payload:", JSON.stringify(paymentPayload, null, 2));
-               console.log("💳 [THANH TOÁN] Payload (Object):", paymentPayload);
-               console.log("💳 [THANH TOÁN] Booking ID:", bookingInfo.bookingId);
-               console.log("💳 [THANH TOÁN] Payment Method:", paymentMethod);
-
-               // Gọi API xác nhận thanh toán
-               const apiResult = await confirmPaymentAPI(bookingInfo.bookingId);
-
-               console.log("✅ [THANH TOÁN] API Result:", apiResult);
-               console.log("✅ [THANH TOÁN] API Result (JSON):", JSON.stringify(apiResult, null, 2));
-
-               if (!apiResult.success) {
-                    console.error("❌ [THANH TOÁN] Error:", apiResult.error);
-                    setErrors({ general: apiResult.error || "Không thể xác nhận thanh toán. Vui lòng thử lại." });
-                    setIsProcessing(false);
-                    return;
-               }
-
-               // Cập nhật thông tin booking
-               setBookingInfo(prev => ({
-                    ...prev,
-                    bookingStatus: apiResult.data?.bookingStatus || "Confirmed",
-                    paymentStatus: apiResult.data?.paymentStatus || "Paid"
-               }));
-
-               // Save to local storage
+               // Lưu lịch sử booking vào local storage để người chơi theo dõi
                createBooking({
                     userId: user?.id || user?.userId || "guest",
                     data: {
                          ...bookingData,
                          bookingId: bookingInfo.bookingId,
-                         status: "confirmed",
-                         paymentMethod,
+                         status: "pending",
+                         paymentMethod: paymentAmountType,
                          createdAt: new Date().toISOString()
                     }
                });
 
-               // Handle opponent finding for recurring bookings
+               setBookingInfo(prev => ({
+                    ...prev,
+                    bookingStatus: prev?.bookingStatus || "Pending",
+                    paymentStatus: prev?.paymentStatus || "Pending"
+               }));
+
                if (isRecurring && generateRecurringSessions().length > 0) {
                     setShowOpponentSelection(true);
                } else {
-                    // For single bookings, proceed to confirmation
                     setStep("confirmation");
                }
           } catch (error) {
-               console.error("Payment error:", error);
-               const code = error?.code;
-               let msg = "Có lỗi xảy ra khi thanh toán. Vui lòng thử lại.";
-               if (code === "EXPIRED") msg = "Mã QR đã hết hạn. Vui lòng giữ chỗ lại.";
-               if (code === "HOLD_NOT_FOUND") msg = "Phiên thanh toán không hợp lệ hoặc đã hết hạn.";
-               setErrors({ general: msg });
+               console.error("Payment confirmation error:", error);
+               setErrors({ general: "Có lỗi xảy ra khi xử lý xác nhận. Vui lòng thử lại." });
           } finally {
                setIsProcessing(false);
           }
@@ -698,15 +788,16 @@ export default function BookingModal({
                          <PaymentStepSection
                               bookingInfo={bookingInfo}
                               ownerBankAccount={ownerBankAccount}
-                              paymentMethod={paymentMethod}
-                              setPaymentMethod={setPaymentMethod}
                               bookingData={bookingData}
                               isRecurring={isRecurring}
                               recurringWeeks={recurringWeeks}
                               selectedDays={selectedDays}
-                              errors={errors}
                               isProcessing={isProcessing}
                               formatPrice={formatPrice}
+                              paymentAmountType={paymentAmountType}
+                              isQrGenerating={isQrGenerating}
+                              errors={errors}
+                              onPaymentAmountChange={handlePaymentAmountChange}
                               onConfirmPayment={handleConfirmPayment}
                          />
                     )}

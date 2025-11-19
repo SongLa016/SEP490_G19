@@ -151,14 +151,14 @@ export default function ScheduleGrid({
                          });
                     }}
                >
-                    <div className="flex items-center gap-2 justify-center">
-                         <Clock className="w-4 h-4 opacity-90" />
-                         <div className="font-bold text-sm">{field.name}</div>
+                    <div className="flex items-center justify-center">
+                         <Clock className="w-4 h-4 mr-1 opacity-90" />
+                         <div className="font-bold text-sm line-clamp-1 truncate">{field.name}</div>
                     </div>
-                    <div className="text-xs opacity-90 flex items-center gap-1.5 justify-center mt-1">
-                         {booked && <span>✓ Đã đặt</span>}
+                    <div className="text-xs opacity-90 flex items-center gap-1 justify-center mt-1">
+                         {booked && <span>✅ Đã đặt</span>}
                          {maintenance && <span>🔧 Bảo trì</span>}
-                         {available && <span>○ Trống</span>}
+                         {available && <span>⭕ Trống</span>}
                     </div>
                </div>
           );
@@ -171,16 +171,16 @@ export default function ScheduleGrid({
                          <Table className="w-full border-collapse">
                               <TableHeader>
                                    <TableRow className="border-none">
-                                        <TableHead className="sticky left-0 z-20 border-2 border-gray-300 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 p-4 text-left font-bold text-gray-800 min-w-[100px] shadow-lg backdrop-blur-sm">
+                                        <TableHead className="sticky left-0 z-20 bg-gradient-to-br from-gray-100 via-gray-50 to-gray-100 p-3 text-left font-bold text-gray-800 min-w-[100px] shadow-lg backdrop-blur-sm">
                                              <div className="flex items-center text-teal-600 gap-2">
                                                   <Clock className="w-5 h-5" />
-                                                  <span className="text-base">Khung giờ</span>
+                                                  <span className="text-sm">Khung giờ</span>
                                              </div>
                                         </TableHead>
                                         {displayFields.map((field) => (
                                              <TableHead
                                                   key={field.fieldId}
-                                                  className={`p-4 text-center font-bold min-w-[200px] transition-all duration-200 ${isToday(selectedDate)
+                                                  className={`px-3 text-center font-semibold min-w-[180px] transition-all duration-200 ${isToday(selectedDate)
                                                        ? 'bg-gradient-to-br from-teal-500 via-teal-600 to-teal-700 text-white shadow-xl'
                                                        : selectedDate.getDay() === 0 || selectedDate.getDay() === 6
                                                             ? 'bg-gradient-to-br from-orange-100 to-amber-100 text-gray-800 border-orange-300'
@@ -188,19 +188,19 @@ export default function ScheduleGrid({
                                                        }`}
                                              >
                                                   <div className="flex flex-col items-center gap-1">
-                                                       <div className="flex items-center gap-2">
-                                                            <div className={`w-3 h-3 rounded ${getFieldColor(field.fieldId)}`}></div>
-                                                            <div className={`text-base font-bold ${isToday(selectedDate) ? 'text-white' : 'text-gray-900'}`}>
-                                                                 {field.name}
+                                                       <div className="flex items-center gap-1">
+                                                            <div className={`w-4 h-4 border border-gray-300 rounded ${getFieldColor(field.fieldId)}`}></div>
+                                                            <div className={`text-sm font-bold line-clamp-1 ${isToday(selectedDate) ? 'text-white' : 'text-gray-900'}`}>
+                                                                 <span className="truncate">{field.name}</span>
                                                             </div>
                                                        </div>
-                                                       <div className={`text-sm font-semibold ${isToday(selectedDate) ? 'text-teal-100' : 'text-gray-600'}`}>
+                                                       <div className={`text-xs font-semibold ${isToday(selectedDate) ? 'text-teal-100' : 'text-gray-600'}`}>
                                                             {getDayName(selectedDate)} - {selectedDate.toLocaleDateString('vi-VN', { day: 'numeric', month: 'long' })}
                                                        </div>
                                                        {isToday(selectedDate) && (
-                                                            <p className="bg-teal-50 text-teal-600 text-[10px] border font-semibold py-0.5 px-2 rounded-full">
+                                                            <span className="bg-teal-50 text-teal-600 text-[9px] border px-2 py-0.5s font-semibold  rounded-full">
                                                                  Hôm nay
-                                                            </p>
+                                                            </span>
                                                        )}
                                                   </div>
                                              </TableHead>
@@ -211,12 +211,12 @@ export default function ScheduleGrid({
                                    {timeSlots.length === 0 ? (
                                         <TableRow>
                                              <TableCell colSpan={displayFields.length + 1} className="border-2 border-gray-300 p-16 text-center">
-                                                  <div className="flex flex-col items-center gap-4">
+                                                  <div className="flex flex-col items-center gap-2">
                                                        <div className="p-4 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full">
-                                                            <Clock className="w-16 h-16 text-gray-400" />
+                                                            <Clock className="w-10 h-10 text-gray-400" />
                                                        </div>
                                                        <div>
-                                                            <p className="text-xl font-bold text-gray-700 mb-1">Chưa có khung giờ</p>
+                                                            <p className="text-lg font-bold text-gray-700 mb-1">Chưa có khung giờ</p>
                                                             <p className="text-sm text-gray-500">Vui lòng thêm khung giờ để quản lý lịch trình</p>
                                                        </div>
                                                   </div>
@@ -246,7 +246,7 @@ export default function ScheduleGrid({
                                                   return (
                                                        <TableRow key={slotKey} className={`group transition-colors ${slotIndex % 2 === 0 ? 'bg-gray-50/30' : 'bg-white'} hover:bg-teal-50/50 border-none`}>
                                                             <TableCell className="sticky left-0 z-10 border-2 border-gray-300 p-3 text-sm bg-white shadow-lg backdrop-blur-sm font-medium text-gray-700">
-                                                                 <div className="flex items-center gap-3">
+                                                                 <div className="flex items-center gap-1">
                                                                       <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-teal-500 via-teal-600 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md">
                                                                            {(slot.SlotName || slot.slotName || slot.name || '').replace('Slot ', '')}
                                                                       </div>
@@ -265,7 +265,7 @@ export default function ScheduleGrid({
                                                                       return (
                                                                            <TableCell
                                                                                 key={`${field.fieldId}-no-slot`}
-                                                                                className={`border-2 p-4 text-center text-xs italic text-gray-400 relative min-h-[120px] ${isToday(selectedDate) ? 'bg-teal-50/20' : 'bg-white'}`}
+                                                                                className={`border-2 p-3 text-center text-xs italic text-gray-400 relative min-h-[120px] ${isToday(selectedDate) ? 'bg-teal-50/20' : 'bg-white'}`}
                                                                            >
                                                                                 Không có khung giờ
                                                                            </TableCell>
@@ -292,7 +292,7 @@ export default function ScheduleGrid({
                                                                       return (
                                                                            <TableCell
                                                                                 key={field.fieldId}
-                                                                                className={`border-2 p-4 text-center text-sm relative min-h-[120px] ${isToday(selectedDate) ? 'bg-teal-50/20' : 'bg-white'}`}
+                                                                                className={`border-2 p-3 text-center text-sm relative min-h-[120px] ${isToday(selectedDate) ? 'bg-teal-50/20' : 'bg-white'}`}
                                                                            >
                                                                                 <span className="text-gray-400 text-xs">Đã lọc</span>
                                                                            </TableCell>
@@ -302,7 +302,7 @@ export default function ScheduleGrid({
                                                                  return (
                                                                       <TableCell
                                                                            key={field.fieldId}
-                                                                           className={`border-2 p-4 text-center text-sm relative min-h-[120px] ${isToday(selectedDate) ? 'bg-teal-50/20' : selectedDate.getDay() === 0 || selectedDate.getDay() === 6 ? 'bg-orange-50/20' : 'bg-white'
+                                                                           className={`border-2 p-3 text-center text-sm relative min-h-[120px] ${isToday(selectedDate) ? 'bg-teal-50/20' : selectedDate.getDay() === 0 || selectedDate.getDay() === 6 ? 'bg-orange-50/20' : 'bg-white'
                                                                                 } ${isPastSlot ? 'opacity-60' : ''}`}
                                                                            onClick={() => {
                                                                                 if (isPastSlot || fieldSchedule) return;

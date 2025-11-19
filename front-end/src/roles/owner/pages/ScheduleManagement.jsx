@@ -80,7 +80,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           { name: 'Slot 9', start: '18:00', end: '19:30' },
           { name: 'Slot 10', start: '19:30', end: '21:00' },
           { name: 'Slot 11', start: '21:00', end: '22:30' },
-          { name: 'Slot 12', start: '22:30', end: '00:00' },
+          { name: 'Slot 12', start: '22:30', end: '23:59' },
      ];
 
      // Get current user ID
@@ -120,7 +120,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                     setModalTimeSlots([]);
                }
           } catch (error) {
-               console.error('Error loading timeslots for field:', error);
+
                setModalTimeSlots([]);
           }
      }, []);
@@ -937,20 +937,16 @@ export default function ScheduleManagement({ isDemo = false }) {
           // Get slot end time
           const endTimeStr = slot.EndTime || slot.endTime || '23:59:59';
           const [hours, minutes] = endTimeStr.split(':').map(Number);
-
-          // Set slot end time to the date
           slotDate.setHours(hours || 23, minutes || 59, 59, 999);
-
-          // Compare with current time
           return slotDate < now;
      };
 
      // Get color for field
      const getFieldColor = (fieldId) => {
           const colors = [
-               'bg-blue-500', 'bg-teal-500', 'bg-green-500', 'bg-yellow-500',
-               'bg-orange-500', 'bg-red-500', 'bg-pink-500', 'bg-purple-500',
-               'bg-indigo-500', 'bg-cyan-500', 'bg-emerald-500', 'bg-lime-500'
+               'border-blue-500 border-l-4 text-blue-500', 'border-teal-500 border-l-4 text-teal-500', 'border-green-500 border-l-4 text-green-500', 'border-yellow-500 border-l-4 text-yellow-500',
+               'border-orange-500 border-l-4 text-orange-500', 'border-red-500 border-l-4 text-red-500', 'border-pink-500 border-l-4 text-pink-500', 'border-purple-500 border-l-4 text-purple-500',
+               'border-indigo-500 border-l-4 text-indigo-500', 'border-cyan-500 border-l-4 text-cyan-500', 'border-emerald-500 border-l-4 text-emerald-500', 'border-lime-500 border-l-4 text-lime-500 '
           ];
           const index = Number(fieldId) % colors.length;
           return colors[index];
@@ -1041,8 +1037,6 @@ export default function ScheduleManagement({ isDemo = false }) {
      const getBookingInfo = (fieldId, date, slotId) => {
           const schedule = getScheduleForSlot(fieldId, date, slotId);
           if (!schedule) return null;
-
-          // TODO: Lấy thông tin booking thực tế từ API
           return {
                customerName: 'Khách hàng',
                customerPhone: '0912345678',

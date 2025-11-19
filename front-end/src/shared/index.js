@@ -36,6 +36,7 @@ export {
   confirmPaymentAPI,
   generateQRCode,
   confirmByOwner,
+  fetchBookingsByPlayer,
 } from "./services/bookings";
 export * from "./services/cancellationPolicies";
 export * from "./services/depositPolicies";

@@ -1,14 +1,90 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Calendar, MapPin, Receipt, Search, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ArrowUpDown, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon } from "lucide-react";
-import { Section, Container, Card, CardContent, Input, Button, Badge, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, DatePicker, LoadingList, LoadingSkeleton, FadeIn, SlideIn, StaggerContainer } from "../../../../shared/components/ui";
+import { Section, Container, Card, CardContent, Input, Button, Badge, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, DatePicker, LoadingList, FadeIn, SlideIn, StaggerContainer } from "../../../../shared/components/ui";
 import { useNavigate } from "react-router-dom";
-import { listBookingsByUser, updateBooking } from "../../../../shared/index";
+import { listBookingsByUser, updateBooking, fetchBookingsByPlayer } from "../../../../shared/index";
 import { listMatchRequests, listMatchJoinsByRequest, acceptMatchJoin, rejectMatchJoin, expireMatchRequestsNow, listPlayerHistoriesByUser } from "../../../../shared/index";
 import FindOpponentModal from "../../../../shared/components/FindOpponentModal";
 import RecurringOpponentModal from "../../../../shared/components/RecurringOpponentModal";
 import RatingModal from "../../../../shared/components/RatingModal";
 import RescheduleModal from "../../../../shared/components/RescheduleModal";
 import Swal from 'sweetalert2';
+
+const parseDateValue = (value) => {
+     if (!value) return null;
+     const date = new Date(value);
+     return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatTimeLabel = (dateObj) => {
+     if (!dateObj) return "";
+     return dateObj.toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit"
+     });
+};
+
+const deriveStatusFromApi = (statusInput) => {
+     const raw = (statusInput ?? "").toString().toLowerCase();
+     if (!raw) return "confirmed";
+     if (raw.includes("cancel") || raw.includes("reject") || raw === "0") return "cancelled";
+     if (raw.includes("complete") || raw.includes("done")) return "completed";
+     if (raw.includes("pending") || raw.includes("wait")) return "pending";
+     if (raw.includes("confirm")) return "confirmed";
+     return raw;
+};
+
+const normalizeApiBookings = (items = []) =>
+     items.map((item, index) => {
+          const start = parseDateValue(item.startTime);
+          const end = parseDateValue(item.endTime);
+          const timeLabel = start && end ? `${formatTimeLabel(start)} - ${formatTimeLabel(end)}` : (item.slotName || item.time || "");
+          const durationMinutes = start && end ? Math.max(15, Math.round((end - start) / 60000)) : item.duration;
+          return {
+               id: String(item.bookingId ?? item.id ?? `API-${index}`),
+               bookingId: item.bookingId ?? item.id ?? `API-${index}`,
+               fieldName: item.fieldName || "Chưa rõ sân",
+               address: item.complexName || item.fieldAddress || item.address || "",
+               date: start ? start.toLocaleDateString("vi-VN") : item.date || "",
+               time: timeLabel,
+               slotName: item.slotName,
+               startTime: item.startTime,
+               endTime: item.endTime,
+               duration: durationMinutes,
+               price: Number(item.totalPrice ?? item.price ?? 0),
+               paymentMethod: item.paymentMethod,
+               status: deriveStatusFromApi(item.status || item.bookingStatus),
+               createdAt: item.createdAt || item.startTime,
+               isRecurring: Boolean(item.isRecurring),
+               recurringGroupId: item.recurringGroupId,
+               weekNumber: item.weekNumber,
+               totalWeeks: item.totalWeeks || item.recurringWeeks || item.totalSessions || 0,
+               apiSource: item
+          };
+     });
+
+const buildRecurringGroups = (bookingList = []) => {
+     const grouped = {};
+     bookingList.forEach((booking) => {
+          if (booking.isRecurring && booking.recurringGroupId) {
+               if (!grouped[booking.recurringGroupId]) {
+                    grouped[booking.recurringGroupId] = {
+                         groupId: booking.recurringGroupId,
+                         fieldName: booking.fieldName,
+                         address: booking.address,
+                         time: booking.time,
+                         duration: booking.duration,
+                         price: booking.price,
+                         paymentMethod: booking.paymentMethod,
+                         totalWeeks: booking.totalWeeks || 0,
+                         bookings: []
+                    };
+               }
+               grouped[booking.recurringGroupId].bookings.push(booking);
+          }
+     });
+     return grouped;
+};
 
 export default function BookingHistory({ user }) {
      const navigate = useNavigate();
@@ -31,6 +107,9 @@ export default function BookingHistory({ user }) {
      const [showRescheduleModal, setShowRescheduleModal] = useState(false);
      const [selectedBooking, setSelectedBooking] = useState(null);
      const [opponentData, setOpponentData] = useState(null);
+     const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+     const [bookingError, setBookingError] = useState("");
+     const playerId = user?.userID || user?.UserID || user?.id || user?.Id || user?.userId;
 
      // Scroll to top when filters or sorting change
      useEffect(() => {
@@ -42,31 +121,51 @@ export default function BookingHistory({ user }) {
      }, [statusFilter, sortBy, dateFrom, dateTo, currentPage]);
 
      useEffect(() => {
-          const userBookings = listBookingsByUser(user?.id || "");
-          setBookings(userBookings);
+          let isMounted = true;
 
-          // Group recurring bookings
-          const grouped = {};
-          userBookings.forEach(booking => {
-               if (booking.isRecurring && booking.recurringGroupId) {
-                    if (!grouped[booking.recurringGroupId]) {
-                         grouped[booking.recurringGroupId] = {
-                              groupId: booking.recurringGroupId,
-                              fieldName: booking.fieldName,
-                              address: booking.address,
-                              time: booking.time,
-                              duration: booking.duration,
-                              price: booking.price,
-                              paymentMethod: booking.paymentMethod,
-                              totalWeeks: booking.totalWeeks,
-                              bookings: []
-                         };
-                    }
-                    grouped[booking.recurringGroupId].bookings.push(booking);
+          const loadBookings = async () => {
+               if (!playerId) {
+                    setBookings([]);
+                    setGroupedBookings({});
+                    return;
                }
-          });
-          setGroupedBookings(grouped);
-     }, [user]);
+
+               setIsLoadingBookings(true);
+               setBookingError("");
+               try {
+                    const apiResult = await fetchBookingsByPlayer(playerId);
+                    let bookingList = [];
+                    if (apiResult.success) {
+                         bookingList = normalizeApiBookings(apiResult.data);
+                    } else {
+                         bookingList = listBookingsByUser(String(playerId));
+                         setBookingError(apiResult.error || "Không thể tải dữ liệu đặt sân từ API. Đang hiển thị dữ liệu cục bộ (nếu có).");
+                    }
+
+                    if (!isMounted) return;
+                    setBookings(bookingList);
+                    setGroupedBookings(buildRecurringGroups(bookingList));
+               } catch (error) {
+                    console.error("Error loading booking history:", error);
+                    const fallback = listBookingsByUser(String(playerId));
+                    if (isMounted) {
+                         setBookingError(error.message || "Không thể tải lịch sử đặt sân.");
+                         setBookings(fallback);
+                         setGroupedBookings(buildRecurringGroups(fallback));
+                    }
+               } finally {
+                    if (isMounted) {
+                         setIsLoadingBookings(false);
+                    }
+               }
+          };
+
+          loadBookings();
+
+          return () => {
+               isMounted = false;
+          };
+     }, [playerId]);
 
      // Load match requests mapping to bookings
      useEffect(() => {
@@ -403,6 +502,18 @@ export default function BookingHistory({ user }) {
                                    </Select>
                               </div>
                          </div>
+
+                         {bookingError && (
+                              <div className="mb-4 p-3 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
+                                   {bookingError}
+                              </div>
+                         )}
+
+                         {isLoadingBookings && (
+                              <div className="mb-4">
+                                   <LoadingList count={3} />
+                              </div>
+                         )}
 
                          {/* Results Summary */}
                          <div className="mb-4 p-3 bg-teal-50 border border-teal-200 rounded-xl">
