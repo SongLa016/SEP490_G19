@@ -1,4 +1,5 @@
 using BallSport.Application.DTOs;
+using BallSport.Application.DTOs.MatchFinding;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
 using Banking.Application.Services;
@@ -167,6 +168,32 @@ namespace BallSport.Application.Services
 
             return true;
         }
+
+
+        public async Task<List<BookingUsDTO>> GetBookingsByUserIdAsync(int userId)
+        {
+            
+            var bookings = await _bookingRepo.GetBookingsByUserIdAsync(userId);
+
+            
+            var result = bookings.Select(b => new BookingUsDTO
+            {
+                BookingId = b.BookingId,
+                FieldName = b.Schedule.Field.Name,
+                ComplexName = b.Schedule.Field.Complex.Name,
+                StartTime = DateTime.Today.Add(b.Schedule.Slot.StartTime.ToTimeSpan()),
+                EndTime = DateTime.Today.Add(b.Schedule.Slot.EndTime.ToTimeSpan()),
+                SlotName = b.Schedule.Slot.SlotName ?? $"{b.Schedule.Slot.StartTime:HH:mm}-{b.Schedule.Slot.EndTime:HH:mm}"
+            }).ToList();
+
+
+
+
+            return result;
+        }
+
+
+
 
 
 

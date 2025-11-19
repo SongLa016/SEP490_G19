@@ -206,5 +206,29 @@ namespace BallSport.Application.Services
 
             return await _fieldRepository.DeleteFieldAsync(fieldId);
         }
+
+
+        public async Task<List<FieldResponseDTO>> GetFieldsByOwnerIdAsync(int ownerId)
+        {
+            var fields = await _fieldRepository.GetFieldsByOwnerIdAsync(ownerId);
+
+            return fields.Select(f => new FieldResponseDTO
+            {
+                FieldId = f.FieldId,
+                ComplexId = f.ComplexId,
+                TypeId = f.TypeId,
+                Name = f.Name,
+                Size = f.Size,
+                GrassType = f.GrassType,
+                Description = f.Description,
+                PricePerHour = f.PricePerHour,
+                Status = f.Status,
+                CreatedAt = f.CreatedAt,
+                BankAccountId = f.BankAccountId,
+                MainImageBase64 = f.Image != null ? Convert.ToBase64String(f.Image) : null,
+                ImageFilesBase64 = f.FieldImages?.Select(img => Convert.ToBase64String(img.Image)).ToList()
+            }).ToList();
+        }
+
     }
 }

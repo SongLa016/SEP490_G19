@@ -43,6 +43,7 @@ namespace BallSport.API.Controllers
             });
         }
 
+        //Sinh mã VietQR để khách hàng thanh toán phần tiền còn lại của booking
         [HttpPut("confirm-payment/{bookingId}")]
         public async Task<IActionResult> ConfirmPayment([FromRoute] int bookingId, [FromBody] ConfirmPaymentDto dto)
         {
@@ -103,6 +104,12 @@ namespace BallSport.API.Controllers
         }
 
 
+        [HttpGet("player/{userId}")]
+        public async Task<IActionResult> GetBookingsForPlayer(int userId)
+        {
+            var data = await _bookingService.GetBookingsByUserIdAsync(userId);
+            return Ok(data);
+        }
 
     }
 }

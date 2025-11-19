@@ -79,5 +79,23 @@ namespace BallSport.API.Controllers
 
             return NoContent(); // 204
         }
+
+        [Authorize]
+        [HttpGet("owner")]
+        public async Task<IActionResult> GetFieldsForOwner()
+        {
+            var ownerIdClaim = User.FindFirst("UserID");
+            if (ownerIdClaim == null) return Unauthorized("Không tìm thấy OwnerId trong token.");
+
+            int ownerId = int.Parse(ownerIdClaim.Value);
+
+            var fields = await _fieldService.GetFieldsByOwnerIdAsync(ownerId);
+
+            if (fields == null || !fields.Any())
+                return NotFound("No fields found for this owner.");
+
+            return Ok(fields);
+        }
+
     }
 }
