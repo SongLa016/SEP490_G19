@@ -140,5 +140,22 @@ namespace BallSport.Infrastructure.Repositories
 
 
 
+        public async Task<List<Booking>> GetBookingsByUserIdAsync(int userId)
+        {
+            return await _context.Bookings
+                .Include(b => b.Schedule)
+                    .ThenInclude(s => s.Field)
+                        .ThenInclude(f => f.Complex)
+                .Include(b => b.Schedule)
+                    .ThenInclude(s => s.Slot)
+                .Include(b => b.User)
+                .Where(b => b.UserId == userId)
+                .OrderByDescending(b => b.CreatedAt)
+                .ToListAsync();
+        }
+
+
+
+
     }
 }
