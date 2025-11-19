@@ -149,44 +149,42 @@ export default function FieldSearch({ user }) {
           let ignore = false;
           const hasNoData = complexes.length === 0 && fields.length === 0;
 
-          const loadData = async () => {
-               try {
-                    // Only show loading if we don't have any data yet
-                    if (hasNoData) {
-                         setIsLoading(true);
+          const debounceTimer = setTimeout(() => {
+               const loadData = async () => {
+                    try {
+                         // Only show loading if we don't have any data yet
+                         if (hasNoData) {
+                              setIsLoading(true);
+                         }
+                         // Start fetching immediately for better perceived performance
+                         const [cList, fList] = await Promise.all([
+                              fetchComplexes({ query: searchQuery, date, slotId, useApi: true }),
+                              fetchFields({ query: searchQuery, date, slotId, sortBy, useApi: true })
+                         ]);
+                         if (!ignore) {
+                              setComplexes(cList);
+                              setFields(fList);
+                         }
+                    } catch (error) {
+                         console.error("Error loading data:", error);
+                         if (!ignore) {
+                              setComplexes([]);
+                              setFields([]);
+                         }
+                    } finally {
+                         if (!ignore) {
+                              setIsLoading(false);
+                         }
                     }
-                    // Start fetching immediately for better perceived performance
-                    const [cList, fList] = await Promise.all([
-                         fetchComplexes({ query: searchQuery, date, slotId, useApi: true }),
-                         fetchFields({ query: searchQuery, date, slotId, sortBy, useApi: true })
-                    ]);
-                    if (!ignore) {
-                         setComplexes(cList);
-                         setFields(fList);
-                    }
-               } catch (error) {
-                    console.error("Error loading data:", error);
-                    if (!ignore) {
-                         setComplexes([]);
-                         setFields([]);
-                    }
-               } finally {
-                    if (!ignore) {
-                         setIsLoading(false);
-                    }
-               }
-          };
+               };
+               loadData();
+          }, 500); // ⏱️ Debounce 500ms
 
           // Use requestAnimationFrame to ensure smooth navigation before starting fetch
-          const rafId = requestAnimationFrame(() => {
-               loadData();
-          });
-
           return () => {
-               cancelAnimationFrame(rafId);
                ignore = true;
+               clearTimeout(debounceTimer);
           };
-          // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [searchQuery, date, slotId, sortBy]);
 
      useEffect(() => {

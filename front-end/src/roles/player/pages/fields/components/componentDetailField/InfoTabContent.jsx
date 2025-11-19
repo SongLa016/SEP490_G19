@@ -15,6 +15,7 @@ export default function InfoTabContent({
      promotions,
      selectedFieldCheapestSlot,
      selectedFieldPriciestSlot,
+     fieldTypeMap = {},
      onBack,
      onFieldSelect,
      onQuickBookField,
@@ -39,6 +40,7 @@ export default function InfoTabContent({
                               selectedFieldPriciestSlot={selectedFieldPriciestSlot}
                               cancellationPolicy={cancellationPolicy}
                               promotions={promotions}
+                             fieldTypeMap={fieldTypeMap}
                               onBack={onBack}
                               onQuickBook={() => onQuickBookField(selectedField.fieldId)}
                               onToggleFavoriteField={onToggleFavoriteField}

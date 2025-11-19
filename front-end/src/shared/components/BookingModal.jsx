@@ -430,8 +430,7 @@ export default function BookingModal({
                     scheduleId: scheduleId, // Sử dụng scheduleId đã tìm được hoặc 0
                     totalPrice: totalPrice,
                     depositAmount: depositAmount,
-                    hasOpponent: booking.hasOpponent || false,
-                    matchRequestId: booking.matchRequestId || null // Use null instead of 0
+                    hasOpponent: Boolean(booking.hasOpponent)
                };
 
                console.log("📤 [GỬI GIỮ CHỖ] Payload:", JSON.stringify(bookingPayload, null, 2));

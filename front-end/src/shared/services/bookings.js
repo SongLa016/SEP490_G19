@@ -329,14 +329,11 @@ export async function createBooking(bookingData) {
 
     // Prepare payload according to API specification
     const payload = {
-      userId: Number(bookingData.userId),
-      scheduleId: Number(bookingData.scheduleId),
+      userId: Number(bookingData.userId) || 0,
+      scheduleId: Number(bookingData.scheduleId) || 0,
       totalPrice: Number(bookingData.totalPrice) || 0,
       depositAmount: Number(bookingData.depositAmount) || 0,
       hasOpponent: Boolean(bookingData.hasOpponent ?? false),
-      matchRequestId: bookingData.matchRequestId
-        ? Number(bookingData.matchRequestId)
-        : null, // Use null instead of 0 when not provided
     };
 
     console.log("📤 [GỬI GIỮ CHỖ - API] Endpoint:", endpoint);

@@ -1,13 +1,13 @@
 import { Repeat, Tag, Clock } from "lucide-react";
 import { Card, CardContent, Button, DatePicker } from "../../../../../../shared/components/ui";
-import { useFieldSchedules, useMultipleFieldSchedules } from "../../../../../../shared/hooks";
 
 export default function BookingWidget({
      selectedField,
      fields = [], // Array of all fields for "all courts" view
      selectedDate,
      selectedSlotId,
-     fieldTimeSlots = [],
+     fieldSchedules = [],
+     isLoadingSchedules = false,
      isRecurring,
      repeatDays,
      rangeStart,
@@ -27,27 +27,39 @@ export default function BookingWidget({
      onToggleDay,
      onBook
 }) {
-     // Get field IDs for all fields when no specific field is selected
-     const allFieldIds = fields.map(f => f.fieldId || f.fieldID).filter(Boolean);
 
-     // Use React Query hook for field schedules with caching
-     // If selectedField exists, fetch for that field only
-     // If no selectedField, fetch for all fields
-     const { data: singleFieldSchedules = [], isLoading: isLoadingSingleSchedules } = useFieldSchedules(
-          selectedField?.fieldId,
-          selectedDate,
-          !!selectedField?.fieldId // Only fetch when fieldId exists
-     );
+     // Helper: check if a slot is in the past compared to the current time
+     const isSlotInPast = (startTimeValue) => {
+          if (!selectedDate || !startTimeValue) return false;
 
-     const { data: allFieldSchedules = [], isLoading: isLoadingAllSchedules } = useMultipleFieldSchedules(
-          allFieldIds,
-          selectedDate,
-          !selectedField && allFieldIds.length > 0 // Only fetch when no field is selected and we have field IDs
-     );
+          const scheduleDate = new Date(selectedDate);
+          if (Number.isNaN(scheduleDate.getTime())) return false;
 
-     // Use the appropriate schedules based on whether a field is selected
-     const fieldSchedules = selectedField ? singleFieldSchedules : allFieldSchedules;
-     const isLoadingSchedules = selectedField ? isLoadingSingleSchedules : isLoadingAllSchedules;
+          const today = new Date();
+          const startOfScheduleDay = new Date(scheduleDate);
+          startOfScheduleDay.setHours(0, 0, 0, 0);
+
+          const startOfToday = new Date(today);
+          startOfToday.setHours(0, 0, 0, 0);
+
+          if (startOfScheduleDay.getTime() < startOfToday.getTime()) {
+               return true;
+          }
+
+          if (startOfScheduleDay.getTime() > startOfToday.getTime()) {
+               return false;
+          }
+
+          const [hours = 0, minutes = 0] = startTimeValue.split(':').map(Number);
+          const slotDateTime = new Date(scheduleDate);
+          slotDateTime.setHours(hours || 0, minutes || 0, 0, 0);
+
+          return slotDateTime.getTime() < today.getTime();
+     };
+
+     // Use the provided schedules only when a field is selected
+     const displaySchedules = selectedField ? fieldSchedules : [];
+     const displaySchedulesLoading = selectedField ? isLoadingSchedules : false;
      return (
           <Card className="bg-gradient-to-br from-white via-teal-50/30 to-white border border-teal-200/50 shadow-xl rounded-2xl lg:sticky lg:top-24">
                <CardContent className="p-6">
@@ -58,7 +70,7 @@ export default function BookingWidget({
                          {selectedField ? "Chọn ngày/giờ hoặc bật đặt cố định" : "Chọn sân nhỏ để bắt đầu đặt lịch"}
                     </p>
 
-                    {/* Show schedules for all fields or selected field */}
+                    {/* Show friendly notice when no field is selected */}
                     {!selectedField ? (
                          <div className="grid grid-cols-1 gap-3">
                               <div>
@@ -71,95 +83,20 @@ export default function BookingWidget({
                               <div>
                                    <div className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
                                         <Clock className="w-4 h-4 text-teal-600" />
-                                        Giờ (Tất cả sân)
+                                        Giờ
                                    </div>
-                                   <div className={`grid grid-cols-1 gap-2 max-h-96 overflow-y-auto border rounded-lg border-teal-200/50 p-2 bg-white shadow-inner`}>
-                                        {isLoadingSchedules ? (
-                                             <div className="text-center text-gray-500 text-sm py-4">
-                                                  Đang tải lịch trình...
-                                             </div>
-                                        ) : Array.isArray(fieldSchedules) && fieldSchedules.length > 0 ? (
-                                             fieldSchedules
-                                                  .filter(schedule => schedule.status === "Available")
-                                                  .map((schedule) => {
-                                                       const scheduleSlotId = schedule.slotId || schedule.SlotId;
-                                                       const scheduleId = schedule.scheduleId || schedule.ScheduleId;
-                                                       const scheduleFieldId = schedule.fieldId || schedule.FieldId;
-                                                       const isSelected = String(selectedSlotId) === String(scheduleSlotId);
-                                                       const slotName = schedule.slotName || schedule.SlotName || `Slot ${scheduleSlotId}`;
-
-                                                       // Get field name when viewing all fields
-                                                       const fieldName = !selectedField && scheduleFieldId
-                                                            ? (fields.find(f => String(f.fieldId || f.fieldID) === String(scheduleFieldId))?.name || `Sân ${scheduleFieldId}`)
-                                                            : null;
-
-                                                       // Time is already string from API (e.g., "06:00", "07:30")
-                                                       const startTime = schedule.startTime || schedule.StartTime || "";
-                                                       const endTime = schedule.endTime || schedule.EndTime || "";
-                                                       const timeRange = startTime && endTime
-                                                            ? `${startTime} - ${endTime}`
-                                                            : "";
-
-                                                       // Check if slot is in the past
-                                                       const isPastSlot = (() => {
-                                                            if (!selectedDate || !startTime) return false;
-
-                                                            const now = new Date();
-                                                            const scheduleDate = new Date(selectedDate);
-
-                                                            // If schedule date is in the past, it's a past slot
-                                                            if (scheduleDate.toDateString() < now.toDateString()) {
-                                                                 return true;
-                                                            }
-
-                                                            // If schedule date is today, check the time
-                                                            if (scheduleDate.toDateString() === now.toDateString()) {
-                                                                 const [hours, minutes] = startTime.split(':').map(Number);
-                                                                 const slotTime = new Date(now);
-                                                                 slotTime.setHours(hours, minutes, 0, 0);
-
-                                                                 return slotTime < now;
-                                                            }
-
-                                                            return false;
-                                                       })();
-
-                                                       const isDisabled = schedule.status !== "Available" || isPastSlot;
-
-                                                       return (
-                                                            <Button
-                                                                 key={`${scheduleId || scheduleSlotId}-${scheduleFieldId || 'unknown'}`}
-                                                                 type="button"
-                                                                 onClick={() => !isDisabled && onSlotChange(isSelected ? "" : scheduleSlotId)}
-                                                                 disabled={isDisabled}
-                                                                 className={`p-2 text-xs rounded-lg border transition-all ${isSelected
-                                                                      ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white border-teal-600 shadow-md"
-                                                                      : isDisabled
-                                                                           ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                                                           : "bg-white text-teal-800 border-teal-200/50 hover:text-teal-900 hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 hover:border-teal-300 hover:shadow-sm"
-                                                                      }`}
-                                                            >
-                                                                 <div className="flex flex-col items-start w-full">
-                                                                      {fieldName && (
-                                                                           <span className="text-xs font-semibold text-teal-700 mb-0.5">{fieldName}</span>
-                                                                      )}
-                                                                      <span className="font-medium">{slotName}</span>
-                                                                      {timeRange && <span className="text-xs opacity-75 mt-0.5">{timeRange}</span>}
-                                                                      {isPastSlot && <span className="text-xs text-red-400 mt-0.5">(Đã qua giờ)</span>}
-                                                                 </div>
-                                                            </Button>
-                                                       );
-                                                  })
-                                        ) : (
-                                             <div className="text-center text-gray-500 text-sm py-4">
-                                                  Không có lịch trình khả dụng cho ngày này
-                                             </div>
-                                        )}
+                                   <div className="border border-dashed border-teal-200 rounded-xl bg-white/80 p-4 text-center">
+                                        <p className="text-sm text-gray-600 mb-2">
+                                             Bạn đang xem thông tin <span className="font-semibold text-teal-700">khu sân tổng</span>.
+                                        </p>
+                                        <p className="text-sm text-gray-600">
+                                             Hãy chọn một <span className="font-semibold text-teal-700">sân nhỏ</span> trong danh sách để xem lịch và đặt sân.
+                                        </p>
                                    </div>
                               </div>
                               <div className="bg-gradient-to-br from-blue-50 via-indigo-50/50 to-blue-50 border border-blue-200 rounded-xl p-4 text-center">
                                    <p className="text-sm text-gray-600">
-                                        Đang hiển thị lịch trình của tất cả sân. Chọn một sân nhỏ từ danh sách bên dưới để đặt sân.
+                                        Đang hiển thị tổng quan khu sân. Chọn một sân nhỏ từ danh sách bên dưới để bắt đầu đặt lịch.
                                    </p>
                               </div>
                          </div>
@@ -178,12 +115,12 @@ export default function BookingWidget({
                                         Giờ
                                    </div>
                                    <div className={`grid ${selectedField ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'} gap-2 ${selectedField ? 'max-h-40' : 'max-h-96'} overflow-y-auto border rounded-lg border-teal-200/50 p-2 bg-white shadow-inner`}>
-                                        {isLoadingSchedules ? (
+                                        {displaySchedulesLoading ? (
                                              <div className="col-span-2 text-center text-gray-500 text-sm py-4">
                                                   Đang tải lịch trình...
                                              </div>
-                                        ) : Array.isArray(fieldSchedules) && fieldSchedules.length > 0 ? (
-                                             fieldSchedules
+                                        ) : Array.isArray(displaySchedules) && displaySchedules.length > 0 ? (
+                                             displaySchedules
                                                   .filter(schedule => schedule.status === "Available")
                                                   .map((schedule) => {
                                                        const scheduleSlotId = schedule.slotId || schedule.SlotId;
@@ -204,29 +141,7 @@ export default function BookingWidget({
                                                             ? `${startTime} - ${endTime}`
                                                             : "";
 
-                                                       // Check if slot is in the past
-                                                       const isPastSlot = (() => {
-                                                            if (!selectedDate || !startTime) return false;
-
-                                                            const now = new Date();
-                                                            const scheduleDate = new Date(selectedDate);
-
-                                                            // If schedule date is in the past, it's a past slot
-                                                            if (scheduleDate.toDateString() < now.toDateString()) {
-                                                                 return true;
-                                                            }
-
-                                                            // If schedule date is today, check the time
-                                                            if (scheduleDate.toDateString() === now.toDateString()) {
-                                                                 const [hours, minutes] = startTime.split(':').map(Number);
-                                                                 const slotTime = new Date(now);
-                                                                 slotTime.setHours(hours, minutes, 0, 0);
-
-                                                                 return slotTime < now;
-                                                            }
-
-                                                            return false;
-                                                       })();
+                                                       const isPastSlot = isSlotInPast(startTime);
 
                                                        const isDisabled = schedule.status !== "Available" || isPastSlot;
 

@@ -144,7 +144,6 @@ CREATE TABLE Bookings (
     ScheduleID INT NOT NULL FOREIGN KEY REFERENCES FieldSchedules(ScheduleID),       -- Slot sân
     TotalPrice DECIMAL(10,2) NOT NULL,             -- Tổng tiền
     DepositAmount DECIMAL(10,2) NOT NULL,          -- Số tiền cọc
-    RemainingAmount DECIMAL(10,2) NULL,            -- Phần còn lại trả tại sân
     BookingStatus NVARCHAR(20) DEFAULT 'Pending',  -- Pending, Confirmed, Cancelled, Completed, Expired, Reactive
     PaymentStatus NVARCHAR(20) DEFAULT 'Pending',  -- Pending, Paid, Refunded
     HasOpponent BIT DEFAULT 0,                     -- 0 = chưa có đối, 1 = đã có đối

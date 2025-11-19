@@ -11,6 +11,7 @@ export default function FieldDetailView({
      selectedFieldPriciestSlot,
      cancellationPolicy,
      promotions,
+     fieldTypeMap = {},
      onBack,
      onQuickBook,
      onToggleFavoriteField
@@ -35,6 +36,14 @@ export default function FieldDetailView({
                </div>
           );
      }
+
+     const resolvedTypeName = (() => {
+          if (!selectedField) return "";
+          if (selectedField.typeName) return selectedField.typeName;
+          const typeId = selectedField.typeId ?? selectedField.typeID ?? selectedField.TypeID ?? null;
+          if (!typeId) return "";
+          return fieldTypeMap[String(typeId)] || "";
+     })();
 
      return (
           <div className="space-y-4">
@@ -63,7 +72,7 @@ export default function FieldDetailView({
                               <div className="mt-2 flex flex-wrap gap-2">
                                    {selectedField.typeName && (
                                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-teal-50 to-emerald-50 text-teal-700 border border-teal-200/50 shadow-sm">
-                                             <User className="w-3 h-3" /> Loại: {selectedField.typeName}
+                                             <User className="w-3 h-3" /> Loại: {resolvedTypeName || "—"}
                                         </span>
                                    )}
 
@@ -124,7 +133,7 @@ export default function FieldDetailView({
                                    </div>
                                    Loại sân
                               </span>
-                              <b className="text-teal-700 font-bold">{selectedField.typeName || "—"}</b>
+                              <b className="text-teal-700 font-bold">{resolvedTypeName || "—"}</b>
                          </div>
                          <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-white/80 via-blue-50/40 to-white/80 hover:bg-gradient-to-r hover:from-blue-50/60 hover:via-indigo-50/40 hover:to-blue-50/60 transition-all border border-blue-200/30 hover:border-blue-300/50 shadow-sm">
                               <span className="inline-flex items-center gap-2 text-gray-700 font-medium">
