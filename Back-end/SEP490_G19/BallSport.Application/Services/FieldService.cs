@@ -175,10 +175,11 @@ namespace BallSport.Application.Services
         }
 
         // 🧾 Lấy tất cả sân theo ComplexId
-        public async Task<List<FieldDTO>> GetFieldsByComplexIdAsync(int complexId)
+        public async Task<List<FieldResponseDTO>> GetFieldsByComplexIdAsync(int complexId)
         {
             var fields = await _fieldRepository.GetFieldsByComplexIdAsync(complexId);
-            return fields.Select(f => new FieldDTO
+
+            return fields.Select(f => new FieldResponseDTO
             {
                 FieldId = f.FieldId,
                 ComplexId = f.ComplexId,
@@ -189,9 +190,20 @@ namespace BallSport.Application.Services
                 Description = f.Description,
                 PricePerHour = f.PricePerHour,
                 Status = f.Status,
-                CreatedAt = f.CreatedAt
+                CreatedAt = f.CreatedAt,
+
+                // ảnh chính
+                MainImageBase64 = f.Image != null
+                    ? Convert.ToBase64String(f.Image)
+                    : null,
+
+                // ảnh phụ
+                ImageFilesBase64 = f.FieldImages != null
+                    ? f.FieldImages.Select(img => Convert.ToBase64String(img.Image)).ToList()
+                    : new List<string>()
             }).ToList();
         }
+
 
         // 🔍 Lấy chi tiết 1 sân
         public async Task<FieldResponseDTO?> GetFieldByIdAsync(int fieldId)
