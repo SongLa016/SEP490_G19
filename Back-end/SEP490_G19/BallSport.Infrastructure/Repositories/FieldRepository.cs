@@ -104,19 +104,5 @@ namespace BallSport.Infrastructure.Repositories
             await _context.SaveChangesAsync();
             return true;
         }
-
-
-        public async Task<List<Field>> GetFieldsByOwnerIdAsync(int ownerId)
-        {
-            return await _context.Fields
-                .Include(f => f.Type)
-                .Include(f => f.Complex)
-                .Include(f => f.FieldImages)
-                .Where(f => f.Complex.OwnerId == ownerId) 
-                .ToListAsync();
-        }
-
-
-
     }
 }
