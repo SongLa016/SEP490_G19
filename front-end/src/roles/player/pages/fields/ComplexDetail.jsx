@@ -16,6 +16,15 @@ import GalleryTabContent from "./components/componentDetailField/GalleryTabConte
 import BookingWidget from "./components/componentDetailField/BookingWidget";
 import LightboxModal from "./components/componentDetailField/LightboxModal";
 
+const normalizeFieldStatus = (status) =>
+     (typeof status === "string" ? status.trim().toLowerCase() : "");
+const ALLOWED_COMPLEX_FIELD_STATUSES = new Set(["available", "active"]);
+const shouldDisplayField = (field) => {
+     const normalizedStatus = normalizeFieldStatus(field?.status ?? field?.Status ?? "");
+     if (!normalizedStatus) return true;
+     return ALLOWED_COMPLEX_FIELD_STATUSES.has(normalizedStatus);
+};
+
 export default function ComplexDetail({ user }) {
      const navigate = useNavigate();
      const { id } = useParams();
@@ -113,7 +122,10 @@ export default function ComplexDetail({ user }) {
           return () => { ignore = true; };
      }, []);
 
-     const rawFields = useMemo(() => complexData.fields || [], [complexData.fields]);
+    const rawFields = useMemo(() => {
+         const source = Array.isArray(complexData.fields) ? complexData.fields : [];
+         return source.filter(shouldDisplayField);
+    }, [complexData.fields]);
 
      const toggleFavoriteField = (fieldId) => {
           setComplexData(prev => ({

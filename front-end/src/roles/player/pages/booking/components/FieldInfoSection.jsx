@@ -8,9 +8,93 @@ export default function FieldInfoSection({
      generateRecurringSessions
 }) {
      const dayNames = { 0: "CN", 1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7" };
+     const parseTimeToMinutes = (value) => {
+          if (value == null) return null;
+          if (typeof value === "number" && !Number.isNaN(value)) return value;
+          if (typeof value === "string") {
+               const trimmed = value.trim();
+               if (!trimmed) return null;
+
+               const timePattern = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/;
+               const timeMatch = trimmed.match(timePattern);
+               if (timeMatch) {
+                    const hours = Number(timeMatch[1]);
+                    const minutes = Number(timeMatch[2]);
+                    if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
+                         return hours * 60 + minutes;
+                    }
+               }
+
+               const timestamp = Date.parse(trimmed);
+               if (!Number.isNaN(timestamp)) {
+                    const date = new Date(timestamp);
+                    return date.getHours() * 60 + date.getMinutes();
+               }
+
+               const numericValue = Number(trimmed);
+               if (!Number.isNaN(numericValue)) {
+                    return numericValue * 60;
+               }
+          }
+          if (typeof value === "object") {
+               if (value instanceof Date && !Number.isNaN(value.getTime())) {
+                    return value.getHours() * 60 + value.getMinutes();
+               }
+               if (
+                    typeof value.hours === "number" &&
+                    typeof value.minutes === "number" &&
+                    !Number.isNaN(value.hours) &&
+                    !Number.isNaN(value.minutes)
+               ) {
+                    return value.hours * 60 + value.minutes;
+               }
+          }
+          if (value instanceof Date) {
+               return value.getHours() * 60 + value.getMinutes();
+          }
+          return null;
+     };
+
+     const getDurationMinutes = () => {
+          const durationValue = bookingData?.duration;
+          if (durationValue != null && durationValue !== "") {
+               const normalized = Number(durationValue);
+               if (!Number.isNaN(normalized) && normalized > 0) {
+                    return Math.round(normalized * 60);
+               }
+          }
+
+          const start = parseTimeToMinutes(bookingData?.startTime);
+          const end = parseTimeToMinutes(bookingData?.endTime);
+          if (start != null && end != null) {
+               let diff = end - start;
+               if (diff < 0) {
+                    diff += 24 * 60;
+               }
+               return diff;
+          }
+          return null;
+     };
+
+     const formatDurationLabel = (totalMinutes) => {
+          if (totalMinutes == null || Number.isNaN(totalMinutes)) {
+               return "—";
+          }
+          const hours = Math.floor(totalMinutes / 60);
+          const minutes = totalMinutes % 60;
+          if (hours > 0 && minutes > 0) {
+               return `${hours}h${String(minutes).padStart(2, "0")} phút`;
+          }
+          if (hours > 0) {
+               return `${hours}h`;
+          }
+          return `${minutes} phút`;
+     };
+
+     const durationLabel = formatDurationLabel(getDurationMinutes());
 
      return (
-          <div className="bg-teal-50 rounded-lg p-4">
+          <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4">
                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                     <MapPin className="w-5 h-5 mr-2 text-teal-600" />
                     Thông tin đặt sân
@@ -51,7 +135,7 @@ export default function FieldInfoSection({
                                    <span className="mr-2">⏱️</span>
                                    Thời lượng
                               </span>
-                              <span className="font-medium">{bookingData.duration} giờ</span>
+                              <span className="font-medium">{durationLabel}</span>
                          </div>
                          {isRecurring && (
                               <div className="mt-3 p-3 bg-teal-100 rounded-lg">

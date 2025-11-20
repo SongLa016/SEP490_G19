@@ -191,16 +191,12 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
                                                             <div className="flex items-center justify-between gap-2">
                                                                  <span className="font-semibold">{item.label}</span>
                                                                  {item.id === "deposit-policies" && (
-                                                                      <span className="px-2 py-0.5 text-xs bg-teal-100 text-teal-700 rounded-full font-semibold min-w-[32px] text-center">
+                                                                      <span className=" py-0.5 text-xs bg-teal-100 text-teal-700 rounded-full font-semibold min-w-[32px] text-center">
                                                                            {depositPoliciesInfo.count}
                                                                       </span>
                                                                  )}
                                                             </div>
-                                                            {item.id === "deposit-policies" && depositPoliciesInfo.fieldNames.length > 0 && (
-                                                                 <span className="text-[11px] text-slate-500 truncate">
-                                                                      {formatFieldNamesPreview(depositPoliciesInfo.fieldNames)}
-                                                                 </span>
-                                                            )}
+
                                                        </div>
                                                   )}
                                              </Button>

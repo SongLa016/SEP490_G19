@@ -22,6 +22,14 @@ import ComplexCard from "./components/ComplexCard";
 import ComplexListItem from "./components/ComplexListItem";
 import GroupedViewSection from "./components/GroupedViewSection";
 
+const normalizeStatus = (status) => (typeof status === "string" ? status.trim().toLowerCase() : "");
+const ALLOWED_FIELD_STATUSES = new Set(["available", "active"]);
+const isFieldDisplayable = (field) => {
+     const normalizedStatus = normalizeStatus(field?.status ?? field?.Status ?? "");
+     if (!normalizedStatus) return true;
+     return ALLOWED_FIELD_STATUSES.has(normalizedStatus);
+};
+
 export default function FieldSearch({ user }) {
      const navigate = useNavigate();
      const [entityTab, setEntityTab] = useState("fields"); // complexes | fields
@@ -46,6 +54,7 @@ export default function FieldSearch({ user }) {
      const [slotId, setSlotId] = useState("");
      const [timeSlots, setTimeSlots] = useState([]);
      const heroRef = useRef(null);
+     const hasExistingDataRef = useRef(false);
 
      // Helper functions to convert between "all" and empty string
      const handleLocationChange = (value) => {
@@ -80,6 +89,10 @@ export default function FieldSearch({ user }) {
      const [complexes, setComplexes] = useState([]);
      const [filteredFields, setFilteredFields] = useState([]);
      const [isLoading, setIsLoading] = useState(false);
+
+     useEffect(() => {
+          hasExistingDataRef.current = (fields.length > 0) || (complexes.length > 0);
+     }, [fields.length, complexes.length]);
 
      const didInitRef = useRef(false);
      useEffect(() => {
@@ -147,7 +160,7 @@ export default function FieldSearch({ user }) {
      // Load data whenever key filters change (fetch both complexes and fields to support grouped view)
      useEffect(() => {
           let ignore = false;
-          const hasNoData = complexes.length === 0 && fields.length === 0;
+          const hasNoData = !hasExistingDataRef.current;
 
           const debounceTimer = setTimeout(() => {
                const loadData = async () => {
@@ -163,7 +176,10 @@ export default function FieldSearch({ user }) {
                          ]);
                          if (!ignore) {
                               setComplexes(cList);
-                              setFields(fList);
+                              const sanitizedFields = Array.isArray(fList)
+                                   ? fList.filter(isFieldDisplayable)
+                                   : [];
+                              setFields(sanitizedFields);
                          }
                     } catch (error) {
                          console.error("Error loading data:", error);

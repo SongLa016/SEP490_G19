@@ -91,18 +91,13 @@ export const fetchFieldTypeById = async (typeId) => {
  */
 export const createFieldType = async (fieldTypeData) => {
   try {
-    console.log("Creating field type:", fieldTypeData);
     const response = await api.post("/api/FieldType", fieldTypeData);
-
-    console.log("Create field type response:", response.data);
-
     return {
       success: true,
       data: response.data,
       message: "Loại sân đã được thêm",
     };
   } catch (error) {
-    console.error("Error creating field type:", error);
     return {
       success: false,
       error:
@@ -114,18 +109,9 @@ export const createFieldType = async (fieldTypeData) => {
   }
 };
 
-/**
- * Update field type
- * PUT /api/FieldType/{id}
- * @param {number} typeId - Field type ID
- * @param {Object} fieldTypeData - { typeName: string }
- */
 export const updateFieldType = async (typeId, fieldTypeData) => {
   try {
-    console.log("Updating field type:", typeId, fieldTypeData);
     const response = await api.put(`/api/FieldType/${typeId}`, fieldTypeData);
-
-    console.log("Update field type response:", response.data);
 
     return {
       success: true,
@@ -133,7 +119,6 @@ export const updateFieldType = async (typeId, fieldTypeData) => {
       message: "Loại sân đã được thêm",
     };
   } catch (error) {
-    console.error("Error updating field type:", error);
     return {
       success: false,
       error:
@@ -145,24 +130,15 @@ export const updateFieldType = async (typeId, fieldTypeData) => {
   }
 };
 
-/**
- * Delete field type
- * DELETE /api/FieldType/{id}
- * @param {number} typeId - Field type ID
- */
 export const deleteFieldType = async (typeId) => {
   try {
-    console.log("Deleting field type:", typeId);
     const response = await api.delete(`/api/FieldType/${typeId}`);
-
-    console.log("Delete field type response:", response.data);
 
     return {
       success: true,
       message: "Field type deleted successfully",
     };
   } catch (error) {
-    console.error("Error deleting field type:", error);
     return {
       success: false,
       error:
@@ -173,10 +149,6 @@ export const deleteFieldType = async (typeId) => {
   }
 };
 
-/**
- * Helper function to normalize field type data from API
- * Handles different property name formats (TypeID vs typeId, TypeName vs typeName)
- */
 export const normalizeFieldType = (fieldType) => {
   if (!fieldType) return null;
 

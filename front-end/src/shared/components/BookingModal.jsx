@@ -459,11 +459,11 @@ export default function BookingModal({
           // Check if user is a player
           const userRole = user?.role || user?.Role || user?.roleName || user?.RoleName;
           const roleId = user?.roleId || user?.roleID || user?.RoleId || user?.RoleID;
-          const isPlayer = roleId === 3 || 
-                          userRole?.toLowerCase() === 'player' || 
-                          userRole?.toLowerCase() === 'người chơi' ||
-                          userRole === 'Player';
-          
+          const isPlayer = roleId === 3 ||
+               userRole?.toLowerCase() === 'player' ||
+               userRole?.toLowerCase() === 'người chơi' ||
+               userRole === 'Player';
+
           if (!isPlayer) {
                console.warn("⚠️ [GỬI GIỮ CHỖ] User is not a player:", { userRole, roleId, user });
                setErrors({ general: "Chỉ người chơi (Player) mới có thể tạo booking. Vui lòng đăng nhập bằng tài khoản người chơi." });
@@ -511,7 +511,7 @@ export default function BookingModal({
 
                // Tìm scheduleId từ fieldSchedules dựa trên slotId và date
                let scheduleId = booking.scheduleId || 0;
-               
+
                if (!scheduleId && booking.fieldSchedules && Array.isArray(booking.fieldSchedules)) {
                     // Helper function để so sánh date
                     const compareDate = (scheduleDate, targetDate) => {
@@ -530,13 +530,13 @@ export default function BookingModal({
                     const matchingSchedule = booking.fieldSchedules.find(s => {
                          const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
                          const scheduleDate = s.date || s.Date;
-                         return String(scheduleSlotId) === String(booking.slotId) && 
-                                compareDate(scheduleDate, booking.date);
+                         return String(scheduleSlotId) === String(booking.slotId) &&
+                              compareDate(scheduleDate, booking.date);
                     });
 
                     if (matchingSchedule) {
-                         scheduleId = matchingSchedule.scheduleId || matchingSchedule.ScheduleId || 
-                                     matchingSchedule.scheduleID || matchingSchedule.ScheduleID || 0;
+                         scheduleId = matchingSchedule.scheduleId || matchingSchedule.ScheduleId ||
+                              matchingSchedule.scheduleID || matchingSchedule.ScheduleID || 0;
                          console.log("✅ [GỬI GIỮ CHỖ] Tìm thấy scheduleId từ fieldSchedules:", scheduleId);
                          console.log("✅ [GỬI GIỮ CHỖ] Matching schedule:", matchingSchedule);
                     } else {
@@ -723,101 +723,106 @@ export default function BookingModal({
                title={bookingType === "complex" ? "Đặt Sân Lớn" : bookingType === "quick" ? "Đặt Nhanh" : "Đặt Sân"}
                className="max-w-6xl z-[100] w-full mx-4 max-h-[90vh] overflow-y-auto rounded-xl"
           >
-               <div className="p-2">
+               <div className="p-2 bg-cover bg-center bg-no-repeat bg-[url('https://mixivivu.com/section-background.png')]">
                     {errors.general && (
                          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
                               <AlertCircle className="w-5 h-5 text-red-500" />
                               <span className="text-red-700">{errors.general}</span>
                          </div>
                     )}
+                    {
+                         step === "details" && (
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                   {/* Left Column - Field Info + Contact Form */}
+                                   <div className="space-y-6">
+                                        <FieldInfoSection
+                                             bookingData={bookingData}
+                                             isRecurring={isRecurring}
+                                             recurringWeeks={recurringWeeks}
+                                             selectedDays={selectedDays}
+                                             generateRecurringSessions={generateRecurringSessions}
+                                        />
+                                        <ContactFormSection
+                                             bookingData={bookingData}
+                                             errors={errors}
+                                             onInputChange={handleInputChange}
+                                        />
+                                   </div>
 
-                    {step === "details" && (
-                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                              {/* Left Column - Field Info + Contact Form */}
-                              <div className="space-y-6">
-                                   <FieldInfoSection
-                                        bookingData={bookingData}
-                                        isRecurring={isRecurring}
-                                        recurringWeeks={recurringWeeks}
-                                        selectedDays={selectedDays}
-                                        generateRecurringSessions={generateRecurringSessions}
-                                   />
-                                   <ContactFormSection
-                                        bookingData={bookingData}
-                                        errors={errors}
-                                        onInputChange={handleInputChange}
-                                   />
+                                   {/* Right Column - Recurring Options + Price Summary + Button */}
+                                   <div className="space-y-6">
+                                        <RecurringBookingSection
+                                             isRecurring={isRecurring}
+                                             setIsRecurring={setIsRecurring}
+                                             recurringWeeks={recurringWeeks}
+                                             setRecurringWeeks={setRecurringWeeks}
+                                             selectedDays={selectedDays}
+                                             handleDayToggle={handleDayToggle}
+                                             suggestedDays={suggestedDays}
+                                             isSuggesting={isSuggesting}
+                                             generateRecurringSessions={generateRecurringSessions}
+                                             onBookingDataChange={handleInputChange}
+                                        />
+                                        <PriceSummarySection
+                                             bookingData={bookingData}
+                                             isRecurring={isRecurring}
+                                             recurringWeeks={recurringWeeks}
+                                             selectedDays={selectedDays}
+                                             formatPrice={formatPrice}
+                                        />
+                                        <Button
+                                             onClick={handlePayment}
+                                             disabled={isProcessing || (isRecurring && (!bookingData.date || selectedDays.length === 0))}
+                                             className={`w-full py-3 rounded-lg text-white font-semibold ${isProcessing || (isRecurring && (!bookingData.date || selectedDays.length === 0)) ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
+                                        >
+                                             {isProcessing ? "Đang xử lý..." :
+                                                  isRecurring ? `Giữ chỗ ${recurringWeeks} tuần & tiếp tục thanh toán` :
+                                                       "Giữ chỗ & tiếp tục thanh toán"
+                                             }
+                                        </Button>
+                                   </div>
                               </div>
+                         )
+                    }
 
-                              {/* Right Column - Recurring Options + Price Summary + Button */}
-                              <div className="space-y-6">
-                                   <RecurringBookingSection
-                                        isRecurring={isRecurring}
-                                        setIsRecurring={setIsRecurring}
-                                        recurringWeeks={recurringWeeks}
-                                        setRecurringWeeks={setRecurringWeeks}
-                                        selectedDays={selectedDays}
-                                        handleDayToggle={handleDayToggle}
-                                        suggestedDays={suggestedDays}
-                                        isSuggesting={isSuggesting}
-                                        generateRecurringSessions={generateRecurringSessions}
-                                        onBookingDataChange={handleInputChange}
-                                   />
-                                   <PriceSummarySection
-                                        bookingData={bookingData}
-                                        isRecurring={isRecurring}
-                                        recurringWeeks={recurringWeeks}
-                                        selectedDays={selectedDays}
-                                        formatPrice={formatPrice}
-                                   />
-                                   <Button
-                                        onClick={handlePayment}
-                                        disabled={isProcessing || (isRecurring && (!bookingData.date || selectedDays.length === 0))}
-                                        className={`w-full py-3 rounded-lg text-white font-semibold ${isProcessing || (isRecurring && (!bookingData.date || selectedDays.length === 0)) ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
-                                   >
-                                        {isProcessing ? "Đang xử lý..." :
-                                             isRecurring ? `Giữ chỗ ${recurringWeeks} tuần & tiếp tục thanh toán` :
-                                                  "Giữ chỗ & tiếp tục thanh toán"
-                                        }
-                                   </Button>
-                              </div>
-                         </div>
-                    )}
+                    {
+                         step === "payment" && (
+                              <PaymentStepSection
+                                   bookingInfo={bookingInfo}
+                                   ownerBankAccount={ownerBankAccount}
+                                   bookingData={bookingData}
+                                   isRecurring={isRecurring}
+                                   recurringWeeks={recurringWeeks}
+                                   selectedDays={selectedDays}
+                                   isProcessing={isProcessing}
+                                   formatPrice={formatPrice}
+                                   paymentAmountType={paymentAmountType}
+                                   isQrGenerating={isQrGenerating}
+                                   errors={errors}
+                                   onPaymentAmountChange={handlePaymentAmountChange}
+                                   onConfirmPayment={handleConfirmPayment}
+                              />
+                         )
+                    }
 
-                    {step === "payment" && (
-                         <PaymentStepSection
-                              bookingInfo={bookingInfo}
-                              ownerBankAccount={ownerBankAccount}
-                              bookingData={bookingData}
-                              isRecurring={isRecurring}
-                              recurringWeeks={recurringWeeks}
-                              selectedDays={selectedDays}
-                              isProcessing={isProcessing}
-                              formatPrice={formatPrice}
-                              paymentAmountType={paymentAmountType}
-                              isQrGenerating={isQrGenerating}
-                              errors={errors}
-                              onPaymentAmountChange={handlePaymentAmountChange}
-                              onConfirmPayment={handleConfirmPayment}
-                         />
-                    )}
-
-                    {step === "confirmation" && (
-                         <ConfirmationStepSection
-                              isRecurring={isRecurring}
-                              recurringWeeks={recurringWeeks}
-                              hasOpponent={hasOpponent}
-                              createdMatchRequest={createdMatchRequest}
-                              createdCommunityPost={createdCommunityPost}
-                              onClose={onClose}
-                              onSuccess={onSuccess}
-                              navigate={navigate}
-                         />
-                    )}
-               </div>
+                    {
+                         step === "confirmation" && (
+                              <ConfirmationStepSection
+                                   isRecurring={isRecurring}
+                                   recurringWeeks={recurringWeeks}
+                                   hasOpponent={hasOpponent}
+                                   createdMatchRequest={createdMatchRequest}
+                                   createdCommunityPost={createdCommunityPost}
+                                   onClose={onClose}
+                                   onSuccess={onSuccess}
+                                   navigate={navigate}
+                              />
+                         )
+                    }
+               </div >
 
                {/* Email Verification Modal */}
-               <EmailVerificationModal
+               < EmailVerificationModal
                     isOpen={showEmailVerification}
                     onClose={() => setShowEmailVerification(false)}
                     user={user}
@@ -826,14 +831,16 @@ export default function BookingModal({
                />
 
                {/* Recurring Opponent Selection Modal */}
-               {showOpponentSelection && (
-                    <RecurringOpponentSelection
-                         isRecurring={isRecurring}
-                         recurringSessions={generateRecurringSessions()}
-                         onOpponentSelection={handleOpponentSelection}
-                         onClose={() => setShowOpponentSelection(false)}
-                    />
-               )}
-          </Modal>
+               {
+                    showOpponentSelection && (
+                         <RecurringOpponentSelection
+                              isRecurring={isRecurring}
+                              recurringSessions={generateRecurringSessions()}
+                              onOpponentSelection={handleOpponentSelection}
+                              onClose={() => setShowOpponentSelection(false)}
+                         />
+                    )
+               }
+          </Modal >
      );
 }

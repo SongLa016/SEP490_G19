@@ -104,14 +104,14 @@ export default function ScheduleGrid({
                          });
                     }}
                >
-                    <div className="flex items-center justify-center">
+                    <div className={`flex items-center justify-center text-gray-600`}>
                          <Clock className="w-4 h-4 mr-1 opacity-90" />
                          <div className="font-bold text-sm line-clamp-1 truncate">{field.name}</div>
                     </div>
-                    <div className="text-xs opacity-90 flex items-center gap-1 justify-center mt-1">
-                         {booked && <span>✅ Đã đặt</span>}
+                    <div className={`text-xs opacity-90 flex items-center gap-1 justify-center mt-1`}>
+                         {booked && <span className={`text-green-500`}>✅ Đã đặt</span>}
                          {maintenance && <span>🔧 Bảo trì</span>}
-                         {available && <span>⭕ Trống</span>}
+                         {available && <span className={`text-red-600`}>⭕ Trống</span>}
                     </div>
                </div>
           );
@@ -146,7 +146,7 @@ export default function ScheduleGrid({
                                                             <div className="flex items-center gap-1">
                                                                  <div className={`w-4 h-4 border border-gray-300 rounded ${getFieldColor(field.fieldId)}`}></div>
                                                                  <div className={`text-sm font-bold line-clamp-1 ${isToday(selectedDate) ? 'text-white' : 'text-gray-900'}`}>
-                                                                      <span className="truncate">{field.name}</span>
+                                                                      <span className="truncate ">{field.name}</span>
                                                                  </div>
                                                             </div>
                                                             <div className={`text-xs font-semibold ${isToday(selectedDate) ? 'text-teal-100' : 'text-gray-600'}`}>
