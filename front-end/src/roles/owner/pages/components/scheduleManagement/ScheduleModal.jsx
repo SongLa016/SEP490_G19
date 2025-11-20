@@ -13,6 +13,9 @@ export default function ScheduleModal({
      isSubmitting,
      onSubmit
 }) {
+     const isFieldLocked = (field) => (field.status || field.Status || '').toLowerCase() === 'maintenance';
+     const selectableFields = fields.filter(field => !isFieldLocked(field));
+     const creationLocked = selectableFields.length === 0;
      return (
           <Modal
                isOpen={isOpen}
@@ -21,6 +24,13 @@ export default function ScheduleModal({
                size="lg"
           >
                <form onSubmit={onSubmit} className="space-y-4">
+                    {creationLocked && (
+                         <Alert className="border-orange-200 bg-orange-50">
+                              <AlertDescription className="text-orange-900 text-sm">
+                                   Tất cả các sân đang ở trạng thái <strong>Bảo trì</strong>. Không thể tạo lịch trình mới cho đến khi có ít nhất một sân Active.
+                              </AlertDescription>
+                         </Alert>
+                    )}
                     {/* Field Selection */}
                     <div>
                          <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -36,15 +46,27 @@ export default function ScheduleModal({
                                    <SelectValue placeholder="-- Chọn sân --" />
                               </SelectTrigger>
                               <SelectContent>
-                                   {fields.map((field) => (
-                                        <SelectItem key={field.fieldId} value={field.fieldId.toString()}>
-                                             {field.name} ({field.complexName})
-                                        </SelectItem>
-                                   ))}
+                                   {fields.map((field) => {
+                                        const locked = isFieldLocked(field);
+                                        return (
+                                             <SelectItem
+                                                  key={field.fieldId}
+                                                  value={field.fieldId.toString()}
+                                                  disabled={locked}
+                                             >
+                                                  {field.name} ({field.complexName}) {locked ? '— Bảo trì' : ''}
+                                             </SelectItem>
+                                        );
+                                   })}
                               </SelectContent>
                          </Select>
                          {scheduleFormErrors.fieldId && (
                               <p className="text-xs text-red-600 mt-1">{scheduleFormErrors.fieldId}</p>
+                         )}
+                         {!creationLocked && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                   Các sân đang ở trạng thái <strong>Bảo trì</strong> sẽ bị vô hiệu hóa.
+                              </p>
                          )}
                     </div>
 
@@ -161,7 +183,7 @@ export default function ScheduleModal({
                          <Button
                               type="submit"
                               className="bg-teal-600 hover:bg-teal-700 text-white"
-                              disabled={isSubmitting}
+                              disabled={isSubmitting || creationLocked}
                          >
                               {isSubmitting ? (
                                    <>

@@ -8,7 +8,9 @@ import {
      SelectContent,
      SelectItem,
      SelectTrigger,
-     SelectValue
+     SelectValue,
+     Alert,
+     AlertDescription
 } from "../../../../../shared/components/ui";
 import { Loader2, Save, X } from "lucide-react";
 
@@ -28,6 +30,9 @@ export default function TimeSlotModal({
      onSubmit,
      loadTimeSlotsForField
 }) {
+     const isFieldLocked = (field) => (field.status || field.Status || '').toLowerCase() === 'maintenance';
+     const selectableFields = fields.filter(field => !isFieldLocked(field));
+     const creationLocked = !editingSlot && selectableFields.length === 0;
      return (
           <Modal
                isOpen={isOpen}
@@ -37,6 +42,13 @@ export default function TimeSlotModal({
                className="max-h-[90vh] overflow-y-hidden"
           >
                <form onSubmit={onSubmit} className="space-y-4">
+                    {!editingSlot && creationLocked && (
+                         <Alert className="border-orange-200 bg-orange-50">
+                              <AlertDescription className="text-orange-800 text-sm">
+                                   Tất cả các sân đang ở trạng thái <strong>Bảo trì</strong>. Vui lòng đổi trạng thái sân thành "Available" trong Quản lý sân trước khi thêm Time Slot mới.
+                              </AlertDescription>
+                         </Alert>
+                    )}
                     {/* Field Selection */}
                     <div>
                          <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -78,16 +90,28 @@ export default function TimeSlotModal({
                                         <SelectValue placeholder="-- Chọn sân --" />
                                    </SelectTrigger>
                                    <SelectContent>
-                                        {fields.map((field) => (
-                                             <SelectItem key={field.fieldId} value={field.fieldId.toString()}>
-                                                  {field.name} ({field.complexName})
-                                             </SelectItem>
-                                        ))}
+                                        {fields.map((field) => {
+                                             const locked = isFieldLocked(field);
+                                             return (
+                                                  <SelectItem
+                                                       key={field.fieldId}
+                                                       value={field.fieldId.toString()}
+                                                       disabled={!editingSlot && locked}
+                                                  >
+                                                       {field.name} ({field.complexName}) {locked && !editingSlot ? '— Bảo trì' : ''}
+                                                  </SelectItem>
+                                             );
+                                        })}
                                    </SelectContent>
                               </Select>
                          )}
                          {slotFormErrors.fieldId && (
                               <p className="text-xs text-red-600 mt-1">{slotFormErrors.fieldId}</p>
+                         )}
+                         {!editingSlot && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                   Các sân đang ở trạng thái <strong>Bảo trì</strong> sẽ bị vô hiệu hóa.
+                              </p>
                          )}
                     </div>
 
@@ -251,7 +275,7 @@ export default function TimeSlotModal({
                          </Button>
                          <Button
                               type="submit"
-                              disabled={isSubmittingSlot}
+                              disabled={isSubmittingSlot || creationLocked}
                               className="bg-teal-600 hover:bg-teal-700"
                          >
                               {isSubmittingSlot ? (

@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Calendar, MapPin, Receipt, Search, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ArrowUpDown, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon } from "lucide-react";
 import { Section, Container, Card, CardContent, Input, Button, Badge, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, DatePicker, LoadingList, FadeIn, SlideIn, StaggerContainer } from "../../../../shared/components/ui";
-import { useNavigate } from "react-router-dom";
 import { listBookingsByUser, updateBooking, fetchBookingsByPlayer } from "../../../../shared/index";
 import { listMatchRequests, listMatchJoinsByRequest, acceptMatchJoin, rejectMatchJoin, expireMatchRequestsNow, listPlayerHistoriesByUser } from "../../../../shared/index";
 import FindOpponentModal from "../../../../shared/components/FindOpponentModal";
 import RecurringOpponentModal from "../../../../shared/components/RecurringOpponentModal";
 import RatingModal from "../../../../shared/components/RatingModal";
 import RescheduleModal from "../../../../shared/components/RescheduleModal";
+import InvoiceModal from "../../../../shared/components/InvoiceModal";
 import Swal from 'sweetalert2';
 
 const parseDateValue = (value) => {
@@ -41,8 +41,25 @@ const normalizeApiBookings = (items = []) =>
           const timeLabel = start && end ? `${formatTimeLabel(start)} - ${formatTimeLabel(end)}` : (item.slotName || item.time || "");
           const durationMinutes = start && end ? Math.max(15, Math.round((end - start) / 60000)) : item.duration;
           return {
-               id: String(item.bookingId ?? item.id ?? `API-${index}`),
-               bookingId: item.bookingId ?? item.id ?? `API-${index}`,
+               id: String(item.bookingId ?? item.bookingID ?? item.id ?? `API-${index}`),
+               bookingId: item.bookingId ?? item.bookingID ?? item.id ?? `API-${index}`,
+               // Database fields
+               userId: item.userId ?? item.userID ?? item.UserID,
+               scheduleId: item.scheduleId ?? item.scheduleID ?? item.ScheduleID,
+               totalPrice: Number(item.totalPrice ?? item.TotalPrice ?? item.price ?? 0),
+               depositAmount: Number(item.depositAmount ?? item.DepositAmount ?? 0),
+               bookingStatus: item.bookingStatus ?? item.BookingStatus ?? item.status,
+               paymentStatus: item.paymentStatus ?? item.PaymentStatus ?? "Pending",
+               hasOpponent: Boolean(item.hasOpponent ?? item.HasOpponent ?? false),
+               matchRequestId: item.matchRequestId ?? item.matchRequestID ?? item.MatchRequestID ?? null,
+               qrCode: item.qrCode ?? item.QRCode ?? null,
+               qrExpiresAt: item.qrExpiresAt ?? item.QRExpiresAt ?? null,
+               createdAt: item.createdAt ?? item.CreatedAt ?? item.startTime,
+               confirmedAt: item.confirmedAt ?? item.ConfirmedAt ?? null,
+               cancelledAt: item.cancelledAt ?? item.CancelledAt ?? null,
+               cancelledBy: item.cancelledBy ?? item.CancelledBy ?? null,
+               cancelReason: item.cancelReason ?? item.CancelReason ?? null,
+               // Display fields
                fieldName: item.fieldName || "Chưa rõ sân",
                address: item.complexName || item.fieldAddress || item.address || "",
                date: start ? start.toLocaleDateString("vi-VN") : item.date || "",
@@ -51,10 +68,9 @@ const normalizeApiBookings = (items = []) =>
                startTime: item.startTime,
                endTime: item.endTime,
                duration: durationMinutes,
-               price: Number(item.totalPrice ?? item.price ?? 0),
+               price: Number(item.totalPrice ?? item.TotalPrice ?? item.price ?? 0),
                paymentMethod: item.paymentMethod,
-               status: deriveStatusFromApi(item.status || item.bookingStatus),
-               createdAt: item.createdAt || item.startTime,
+               status: deriveStatusFromApi(item.status || item.bookingStatus || item.BookingStatus),
                isRecurring: Boolean(item.isRecurring),
                recurringGroupId: item.recurringGroupId,
                weekNumber: item.weekNumber,
@@ -87,7 +103,6 @@ const buildRecurringGroups = (bookingList = []) => {
 };
 
 export default function BookingHistory({ user }) {
-     const navigate = useNavigate();
      const [query, setQuery] = useState("");
      const [bookings, setBookings] = useState([]);
      const [groupedBookings, setGroupedBookings] = useState({});
@@ -105,7 +120,9 @@ export default function BookingHistory({ user }) {
      const [showRecurringOpponentModal, setShowRecurringOpponentModal] = useState(false);
      const [showRatingModal, setShowRatingModal] = useState(false);
      const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
      const [selectedBooking, setSelectedBooking] = useState(null);
+     const [invoiceBooking, setInvoiceBooking] = useState(null);
      const [opponentData, setOpponentData] = useState(null);
      const [isLoadingBookings, setIsLoadingBookings] = useState(false);
      const [bookingError, setBookingError] = useState("");
@@ -180,7 +197,7 @@ export default function BookingHistory({ user }) {
           all.forEach(r => { joinsMap[r.requestId] = listMatchJoinsByRequest(r.requestId); });
           setRequestJoins(joinsMap);
           if (user?.id) setPlayerHistories(listPlayerHistoriesByUser(user.id));
-     }, [bookings]);
+     }, [bookings, user?.id]);
 
      const formatPrice = (price) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price);
 
@@ -237,6 +254,12 @@ export default function BookingHistory({ user }) {
           Swal.fire('Thành công!', `Đã đổi giờ từ ${result.oldDate} sang ${result.newDate}`, 'success');
      };
 
+     const handleViewInvoice = (bookingPayload) => {
+          if (!bookingPayload) return;
+          setInvoiceBooking(bookingPayload);
+          setShowInvoiceModal(true);
+     };
+
      const statusBadge = (status) => {
           switch (status) {
                case "confirmed":
@@ -245,8 +268,27 @@ export default function BookingHistory({ user }) {
                     return <Badge variant="secondary" className="bg-teal-500 text-white border border-teal-200 hover:bg-teal-600 hover:text-white">Hoàn tất</Badge>;
                case "cancelled":
                     return <Badge variant="destructive" className="bg-red-500 text-white border border-red-200 hover:bg-red-600 hover:text-white">Đã hủy</Badge>;
+               case "pending":
+                    return <Badge variant="outline" className="bg-yellow-500 text-white border border-yellow-200 hover:bg-yellow-600 hover:text-white">Chờ xác nhận</Badge>;
+               case "expired":
+                    return <Badge variant="outline" className="bg-gray-500 text-white border border-gray-200 hover:bg-gray-600 hover:text-white">Hết hạn</Badge>;
+               case "reactive":
+                    return <Badge variant="outline" className="bg-blue-500 text-white border border-blue-200 hover:bg-blue-600 hover:text-white">Kích hoạt lại</Badge>;
                default:
                     return <Badge variant="outline" className="bg-gray-500 text-white border border-gray-200 hover:bg-gray-600 hover:text-white">Không rõ</Badge>;
+          }
+     };
+
+     const paymentStatusBadge = (paymentStatus) => {
+          const status = (paymentStatus ?? "").toString().toLowerCase();
+          switch (status) {
+               case "paid":
+                    return <Badge variant="default" className="bg-green-500 text-white border border-green-200 hover:bg-green-600 hover:text-white">Đã thanh toán</Badge>;
+               case "refunded":
+                    return <Badge variant="secondary" className="bg-blue-500 text-white border border-blue-200 hover:bg-blue-600 hover:text-white">Đã hoàn tiền</Badge>;
+               case "pending":
+               default:
+                    return <Badge variant="outline" className="bg-yellow-500 text-white border border-yellow-200 hover:bg-yellow-600 hover:text-white">Chờ thanh toán</Badge>;
           }
      };
 
@@ -516,7 +558,7 @@ export default function BookingHistory({ user }) {
                          )}
 
                          {/* Results Summary */}
-                         <div className="mb-4 p-3 bg-teal-50 border border-teal-200 rounded-xl">
+                         <div className=" p-2 px-3 bg-teal-50 border border-teal-200 rounded-3xl">
                               <div className="flex items-center justify-between">
                                    <div className="flex items-center gap-4 text-sm">
                                         <span className="text-red-700 font-semibold flex items-center gap-1">
@@ -555,134 +597,135 @@ export default function BookingHistory({ user }) {
                                              <FadeIn key={group.groupId} delay={index * 50}>
                                                   <div key={group.groupId} className="p-5 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 to-emerald-50 hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
                                                        <div className="flex justify-between items-start mb-4">
-                                             <div className="flex items-center gap-3 flex-wrap">
-                                                  <div className="flex items-center gap-2">
-                                                       <Repeat className="w-6 h-6 text-teal-600" />
-                                                       <h3 className="text-xl font-bold text-teal-900">{group.fieldName}</h3>
-                                                  </div>
-                                                  <div className="flex items-center gap-2 flex-wrap">
-                                                       <Badge variant="outline" className="text-teal-700 border-teal-400 bg-teal-100 font-semibold px-3 py-1 flex items-center gap-1">
-                                                            <Repeat className="w-3 h-3" />
-                                                            Lịch định kỳ
-                                                       </Badge>
-                                                       {status === "active" && (
-                                                            <Badge variant="default" className="bg-green-500 text-white font-semibold flex items-center gap-1">
-                                                                 <CheckCircle className="w-3 h-3" />
-                                                                 Đang hoạt động
-                                                            </Badge>
-                                                       )}
-                                                       {status === "partial" && (
-                                                            <Badge variant="secondary" className="bg-yellow-500 text-white font-semibold flex items-center gap-1">
-                                                                 <AlertTriangle className="w-3 h-3" />
-                                                                 Một phần
-                                                            </Badge>
-                                                       )}
-                                                       {status === "completed" && (
-                                                            <Badge variant="secondary" className="bg-blue-500 text-white font-semibold flex items-center gap-1">
-                                                                 <CheckCircle className="w-3 h-3" />
-                                                                 Hoàn tất
-                                                            </Badge>
-                                                       )}
-                                                       {status === "cancelled" && (
-                                                            <Badge variant="destructive" className="bg-red-500 text-white font-semibold flex items-center gap-1">
-                                                                 <XCircle className="w-3 h-3" />
-                                                                 Đã hủy
-                                                            </Badge>
-                                                       )}
-                                                  </div>
-                                             </div>
-                                             <Button
-                                                  variant="outline"
-                                                  onClick={() => toggleRecurringDetails(group.groupId)}
-                                                  className=" text-sm border border-teal-200 text-teal-700 rounded-full"
-                                             >
-                                                  {showRecurringDetails[group.groupId] ? <ChevronUp className="w-5 h-5 mr-1" /> : <ChevronDown className="w-5 h-5 mr-1" />} {showRecurringDetails[group.groupId] ? "Ẩn chi tiết" : "Xem chi tiết"}
-                                             </Button>
-                                        </div>
-
-                                        <div className="text-sm text-gray-600 mb-4">
-                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                  <div className="space-y-2">
-                                                       <div className="flex border w-fit border-teal-200 rounded-full px-3 py-2 items-center bg-white/80">
-                                                            <MapPin className="w-4 h-4 mr-2 text-teal-600" />
-                                                            <span className="text-teal-700 font-semibold">{group.address}</span>
-                                                       </div>
-                                                       <div className="flex px-3 py-2 items-center bg-white/80 rounded-full border border-teal-200">
-                                                            <Calendar className="w-4 h-4 mr-2 text-teal-600" />
-                                                            <span className="text-teal-700 font-semibold">
-                                                                 {firstBooking && lastBooking ? `Từ ${firstBooking.date} đến ${lastBooking.date}` : "Chưa có ngày"} • {group.time}
-                                                            </span>
-                                                       </div>
-                                                  </div>
-                                                  <div className="space-y-2">
-                                                       <div className="flex px-3 py-2 items-center bg-white/80 rounded-full border border-teal-200">
-                                                            <CalendarDays className="w-4 h-4 mr-2 text-teal-600" />
-                                                            <span className="text-teal-700 font-semibold">{group.totalWeeks} tuần • {sortedBookings.length} buổi</span>
-                                                       </div>
-                                                       <div className="flex px-3 py-2 items-center bg-white/80 rounded-full border border-teal-200">
-                                                            <Receipt className="w-4 h-4 mr-2 text-teal-600" />
-                                                            <span className="text-teal-700 font-semibold">Giá: {formatPrice(group.price)}/buổi</span>
-                                                       </div>
-                                                  </div>
-                                             </div>
-                                        </div>
-
-                                        <div className="flex justify-between items-center bg-white/60 rounded-xl p-4 border border-teal-200">
-                                             <div className="flex items-center gap-4">
-                                                  <div className="text-center">
-                                                       <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-500">
-                                                            {formatPrice(group.price * group.totalWeeks)}
-                                                       </div>
-                                                       <div className="text-xs text-teal-600 font-medium">Tổng thanh toán</div>
-                                                  </div>
-                                                  <div className="text-center">
-                                                       <div className="text-lg font-bold text-teal-700">
-                                                            {sortedBookings.length}/{group.totalWeeks}
-                                                       </div>
-                                                       <div className="text-xs text-teal-600 font-medium">Buổi đã đặt</div>
-                                                  </div>
-                                             </div>
-                                             <div className="flex gap-2">
-                                                  <Button variant="secondary" onClick={() => navigate("/invoice")} className="px-4 py-2 border border-teal-200 rounded-full text-sm font-semibold">
-                                                       <Receipt className="w-4 h-4 mr-2" /> Xem hóa đơn
-                                                  </Button>
-                                                  {status !== "cancelled" && (
-                                                       <Button variant="destructive" onClick={() => handleCancelRecurring(group.groupId)} className="px-4 py-2 border border-red-200 rounded-full text-sm font-semibold">
-                                                            <Trash2 className="w-4 h-4 mr-2" /> Hủy lịch
-                                                       </Button>
-                                                  )}
-                                             </div>
-                                        </div>
-
-                                        {showRecurringDetails[group.groupId] && (
-                                             <div className="mt-4 pt-4 border-t border-teal-200">
-                                                  <h4 className="font-medium text-gray-900 mb-3">Chi tiết các buổi đặt sân:</h4>
-                                                  <div className="space-y-2">
-                                                       {sortedBookings.map((booking) => (
-                                                            <div key={booking.id} className="flex justify-between items-center p-3 bg-white/80 backdrop-blur rounded-xl border border-teal-100">
-                                                                 <div className="flex items-center gap-3 flex-wrap">
-                                                                      <span className="px-2 py-0.5 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Tuần {booking.weekNumber}</span>
-                                                                      <span className="inline-flex items-center gap-1 text-sm text-gray-700 bg-gray-50 border border-gray-200 font-semibold px-2 py-1 rounded-full"><Calendar className="w-3.5 h-3.5" /> {booking.date}</span>
-                                                                      {statusBadge(booking.status)}
+                                                            <div className="flex items-center gap-3 flex-wrap">
+                                                                 <div className="flex items-center gap-2">
+                                                                      <Repeat className="w-6 h-6 text-teal-600" />
+                                                                      <h3 className="text-xl font-bold text-teal-900">{group.fieldName}</h3>
                                                                  </div>
-                                                                 <div className="flex gap-2">
-                                                                      {booking.status !== "cancelled" && (
-                                                                           <Button variant="outline" onClick={() => handleCancelSingleRecurring(booking.id)} className="px-2 !py-0.5 text-xs rounded-xl border border-red-200 text-red-700 hover:text-red-700 hover:bg-red-50">
-                                                                                Hủy
-                                                                           </Button>
+                                                                 <div className="flex items-center gap-2 flex-wrap">
+                                                                      <Badge variant="outline" className="text-teal-700 border-teal-400 bg-teal-100 font-semibold px-3 py-1 flex items-center gap-1">
+                                                                           <Repeat className="w-3 h-3" />
+                                                                           Lịch định kỳ
+                                                                      </Badge>
+                                                                      {status === "active" && (
+                                                                           <Badge variant="default" className="bg-green-500 text-white font-semibold flex items-center gap-1">
+                                                                                <CheckCircle className="w-3 h-3" />
+                                                                                Đang hoạt động
+                                                                           </Badge>
                                                                       )}
-                                                                      <Button
-                                                                           onClick={() => handleRating(booking)}
-                                                                           className="px-2 py-1 text-xs rounded-3xl bg-yellow-50 text-yellow-700 border hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 transition-colors"
-                                                                      >
-                                                                           <Star className="w-3 h-3 mr-1" /> Đánh giá
-                                                                      </Button>
+                                                                      {status === "partial" && (
+                                                                           <Badge variant="secondary" className="bg-yellow-500 text-white font-semibold flex items-center gap-1">
+                                                                                <AlertTriangle className="w-3 h-3" />
+                                                                                Một phần
+                                                                           </Badge>
+                                                                      )}
+                                                                      {status === "completed" && (
+                                                                           <Badge variant="secondary" className="bg-blue-500 text-white font-semibold flex items-center gap-1">
+                                                                                <CheckCircle className="w-3 h-3" />
+                                                                                Hoàn tất
+                                                                           </Badge>
+                                                                      )}
+                                                                      {status === "cancelled" && (
+                                                                           <Badge variant="destructive" className="bg-red-500 text-white font-semibold flex items-center gap-1">
+                                                                                <XCircle className="w-3 h-3" />
+                                                                                Đã hủy
+                                                                           </Badge>
+                                                                      )}
                                                                  </div>
                                                             </div>
-                                                       ))}
-                                                  </div>
-                                             </div>
-                                        )}
+                                                            <Button
+                                                                 variant="outline"
+                                                                 onClick={() => toggleRecurringDetails(group.groupId)}
+                                                                 className=" text-sm border border-teal-200 text-teal-700 rounded-full"
+                                                            >
+                                                                 {showRecurringDetails[group.groupId] ? <ChevronUp className="w-5 h-5 mr-1" /> : <ChevronDown className="w-5 h-5 mr-1" />} {showRecurringDetails[group.groupId] ? "Ẩn chi tiết" : "Xem chi tiết"}
+                                                            </Button>
+                                                       </div>
+
+                                                       <div className="text-sm text-gray-600 mb-4">
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                 <div className="space-y-2">
+                                                                      <div className="flex border w-fit border-teal-200 rounded-full px-3 py-2 items-center bg-white/80">
+                                                                           <MapPin className="w-4 h-4 mr-2 text-teal-600" />
+                                                                           <span className="text-teal-700 font-semibold">{group.address}</span>
+                                                                      </div>
+                                                                      <div className="flex px-3 py-2 items-center bg-white/80 rounded-full border border-teal-200">
+                                                                           <Calendar className="w-4 h-4 mr-2 text-teal-600" />
+                                                                           <span className="text-teal-700 font-semibold">
+                                                                                {firstBooking && lastBooking ? `Từ ${firstBooking.date} đến ${lastBooking.date}` : "Chưa có ngày"} • {group.time}
+                                                                           </span>
+                                                                      </div>
+                                                                 </div>
+                                                                 <div className="space-y-2">
+                                                                      <div className="flex px-3 py-2 items-center bg-white/80 rounded-full border border-teal-200">
+                                                                           <CalendarDays className="w-4 h-4 mr-2 text-teal-600" />
+                                                                           <span className="text-teal-700 font-semibold">{group.totalWeeks} tuần • {sortedBookings.length} buổi</span>
+                                                                      </div>
+                                                                      <div className="flex px-3 py-2 items-center bg-white/80 rounded-full border border-teal-200">
+                                                                           <Receipt className="w-4 h-4 mr-2 text-teal-600" />
+                                                                           <span className="text-teal-700 font-semibold">Giá: {formatPrice(group.price)}/buổi</span>
+                                                                      </div>
+                                                                 </div>
+                                                            </div>
+                                                       </div>
+
+                                                       <div className="flex justify-between items-center bg-white/60 rounded-xl p-4 border border-teal-200">
+                                                            <div className="flex items-center gap-4">
+                                                                 <div className="text-center">
+                                                                      <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-500">
+                                                                           {formatPrice(group.price * group.totalWeeks)}
+                                                                      </div>
+                                                                      <div className="text-xs text-teal-600 font-medium">Tổng thanh toán</div>
+                                                                 </div>
+                                                                 <div className="text-center">
+                                                                      <div className="text-lg font-bold text-teal-700">
+                                                                           {sortedBookings.length}/{group.totalWeeks}
+                                                                      </div>
+                                                                      <div className="text-xs text-teal-600 font-medium">Buổi đã đặt</div>
+                                                                 </div>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                 <Button variant="secondary" onClick={() => handleViewInvoice(firstBooking || group.bookings?.[0])} className="px-4 py-2 border border-teal-200 rounded-full text-sm font-semibold">
+                                                                      <Receipt className="w-4 h-4 mr-2" /> Xem hóa đơn
+                                                                 </Button>
+                                                                 {status !== "cancelled" && (
+                                                                      <Button variant="destructive" onClick={() => handleCancelRecurring(group.groupId)} className="px-4 py-2 border border-red-200 rounded-full text-sm font-semibold">
+                                                                           <Trash2 className="w-4 h-4 mr-2" /> Hủy lịch
+                                                                      </Button>
+                                                                 )}
+                                                            </div>
+                                                       </div>
+
+                                                       {showRecurringDetails[group.groupId] && (
+                                                            <div className="mt-4 pt-4 border-t border-teal-200">
+                                                                 <h4 className="font-medium text-gray-900 mb-3">Chi tiết các buổi đặt sân:</h4>
+                                                                 <div className="space-y-2">
+                                                                      {sortedBookings.map((booking) => (
+                                                                           <div key={booking.id} className="flex justify-between items-center p-3 bg-white/80 backdrop-blur rounded-xl border border-teal-100">
+                                                                                <div className="flex items-center gap-3 flex-wrap">
+                                                                                     <span className="px-2 py-0.5 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Tuần {booking.weekNumber}</span>
+                                                                                     <span className="inline-flex items-center gap-1 text-sm text-gray-700 bg-gray-50 border border-gray-200 font-semibold px-2 py-1 rounded-full"><Calendar className="w-3.5 h-3.5" /> {booking.date}</span>
+                                                                                     {statusBadge(booking.status)}
+                                                                                     {paymentStatusBadge(booking.paymentStatus)}
+                                                                                </div>
+                                                                                <div className="flex gap-2">
+                                                                                     {booking.status !== "cancelled" && (
+                                                                                          <Button variant="outline" onClick={() => handleCancelSingleRecurring(booking.id)} className="px-2 !py-0.5 text-xs rounded-xl border border-red-200 text-red-700 hover:text-red-700 hover:bg-red-50">
+                                                                                               Hủy
+                                                                                          </Button>
+                                                                                     )}
+                                                                                     <Button
+                                                                                          onClick={() => handleRating(booking)}
+                                                                                          className="px-2 py-1 text-xs rounded-3xl bg-yellow-50 text-yellow-700 border hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 transition-colors"
+                                                                                     >
+                                                                                          <Star className="w-3 h-3 mr-1" /> Đánh giá
+                                                                                     </Button>
+                                                                                </div>
+                                                                           </div>
+                                                                      ))}
+                                                                 </div>
+                                                            </div>
+                                                       )}
                                                   </div>
                                              </FadeIn>
                                         );
@@ -692,157 +735,199 @@ export default function BookingHistory({ user }) {
 
                          {/* Single Bookings */}
                          {paginatedSingles.length > 0 && (
-                              <StaggerContainer staggerDelay={50}>
+                              <StaggerContainer staggerDelay={50} className="space-y-4">
                                    {paginatedSingles.map((b, index) => (
                                         <FadeIn key={b.id} delay={index * 50}>
-                                             <div key={b.id} className="p-5 rounded-2xl border border-teal-100 bg-white/80 backdrop-blur hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
-                                   <div className="flex justify-between items-start gap-4">
-                                        <div className="min-w-0 flex-1">
-                                             <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                                  <h3 className="text-lg font-semibold text-teal-900 truncate">{b.fieldName}</h3>
-                                                  {statusBadge(b.status)}
-                                                  <span className="px-2 py-0.5 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200 font-medium">#{b.id}</span>
-                                             </div>
-                                             <div className="space-y-2">
-                                                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                                                       <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-100 text-teal-700 px-2 py-1 rounded-full">
-                                                            <MapPin className="w-4 h-4" />
-                                                            <span className="font-medium">{b.address}</span>
-                                                       </span>
-                                                       <span className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 text-gray-700 px-2 py-1 rounded-full">
-                                                            <Calendar className="w-4 h-4" />
-                                                            <span className="font-medium">{b.date} • {b.time}</span>
-                                                       </span>
-                                                  </div>
-                                                  {b.paymentMethod && (
-                                                       <div className="text-xs text-gray-600 flex items-center gap-1">
-                                                            <CreditCard className="w-3 h-3" />
-                                                            Phương thức: <span className="font-medium text-teal-700">{b.paymentMethod}</span>
-                                                       </div>
-                                                  )}
-                                                  {b.duration && (
-                                                       <div className="text-xs text-gray-600 flex items-center gap-1">
-                                                            <Clock className="w-3 h-3" />
-                                                            Thời lượng: <span className="font-medium text-teal-700">{b.duration} phút</span>
-                                                       </div>
-                                                  )}
-                                             </div>
-                                        </div>
-                                        <div className="text-right shrink-0">
-                                             <div className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-500 mb-1">
-                                                  {formatPrice(b.price)}
-                                             </div>
-                                             <div className="text-xs text-gray-500">
-                                                  {b.createdAt && new Date(b.createdAt).toLocaleDateString('vi-VN')}
-                                             </div>
-                                        </div>
-                                   </div>
-                                   <div className="mt-4 pt-3 border-t border-teal-100 flex flex-wrap gap-2">
-                                        <Button variant="secondary" onClick={() => navigate("/invoice")} className="px-3 py-2 text-sm rounded-3xl">
-                                             <Receipt className="w-4 h-4 mr-2" /> Xem hóa đơn
-                                        </Button>
-                                        {user && (
-                                             <>
-                                                  <Button
-                                                       variant="outline"
-                                                       onClick={() => handleReschedule(b)}
-                                                       className="px-3 py-2 text-sm bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 transition-colors rounded-3xl"
-                                                  >
-                                                       <Calendar className="w-4 h-4 mr-2" />
-                                                       Đổi giờ
-                                                  </Button>
-                                                  {b.status !== "cancelled" && (
-                                                       <Button variant="destructive" onClick={() => handleCancel(b.id)} className="px-3 rounded-3xl py-2 text-sm">
-                                                            <Trash2 className="w-4 h-4 mr-2" />
-                                                            Hủy đặt
-                                                       </Button>
-                                                  )}
-                                                  <Button
-                                                       onClick={() => handleRating(b)}
-                                                       className="px-3 py-2 text-sm bg-yellow-50 text-yellow-700 border-yellow-400 hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-600 transition-colors rounded-3xl"
-                                                  >
-                                                       <Star className="w-4 h-4 mr-2" />
-                                                       Đánh giá
-                                                  </Button>
-                                                  {/* MatchRequest actions */}
-                                                  {(() => {
-                                                       const req = bookingIdToRequest[b.id];
-                                                       if (!req) {
-                                                            return (
-                                                                 <Button
-                                                                      variant="secondary"
-                                                                      onClick={() => handleFindOpponent(b)}
-                                                                      className="px-3 !rounded-full py-2 text-sm"
-                                                                 >
-                                                                      <UserSearchIcon className="w-4 h-4 mr-2" />
-                                                                      Tìm đối thủ
-                                                                 </Button>
-                                                            );
-                                                       }
-                                                       return (
-                                                            <div className="flex items-center gap-2">
-                                                                 <Badge variant="outline" className="text-xs">Đã yêu cầu • {req.status}</Badge>
-                                                                 <Button
-                                                                      variant="outline"
-                                                                      className="px-3 !rounded-full py-2 text-sm"
-                                                                      onClick={() => {
-                                                                           // refresh joins for this request
-                                                                           setRequestJoins(prev => ({ ...prev, [req.requestId]: listMatchJoinsByRequest(req.requestId) }));
-                                                                           Swal.fire({
-                                                                                toast: true,
-                                                                                position: 'top-end',
-                                                                                icon: 'success',
-                                                                                title: 'Đã tải danh sách đội tham gia',
-                                                                                showConfirmButton: false,
-                                                                                timer: 2200,
-                                                                                timerProgressBar: true
-                                                                           });
-                                                                      }}
-                                                                 >
-                                                                      Tải đội tham gia
-                                                                 </Button>
+                                             <div key={b.id} className="p-4 rounded-2xl border border-teal-200 bg-white/80 backdrop-blur hover:shadow-lg shadow-sm transition-all duration-300 hover:scale-[1.01]">
+                                                  <div className="flex justify-between items-start gap-4">
+                                                       <div className="min-w-0 flex-1">
+                                                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                                                 <h3 className="text-lg font-semibold text-teal-900 truncate">{b.fieldName}</h3>
+                                                                 {statusBadge(b.status)}
+                                                                 {paymentStatusBadge(b.paymentStatus)}
+                                                                 <span className="px-2 py-0.5 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200 font-medium">#{b.id}</span>
                                                             </div>
-                                                       );
-                                                  })()}
-                                             </>
-                                        )}
-                                   </div>
-                                   {/* Joins list for this booking's request (owner view) */}
-                                   {bookingIdToRequest[b.id] && Array.isArray(requestJoins[bookingIdToRequest[b.id].requestId]) && requestJoins[bookingIdToRequest[b.id].requestId].length > 0 && (
-                                        <div className="mt-3 p-3 rounded-xl border border-teal-100 bg-white/70">
-                                             <div className="font-semibold text-teal-800 mb-2">Đội tham gia</div>
-                                             <div className="space-y-2">
-                                                  {requestJoins[bookingIdToRequest[b.id].requestId].map(j => (
-                                                       <div key={j.joinId} className="flex items-center justify-between text-sm">
-                                                            <div className="flex items-center gap-2">
-                                                                 <Badge variant="outline" className="text-xs">{j.level || "any"}</Badge>
-                                                                 <span className="text-gray-700">User: {j.userId}</span>
-                                                                 <span className="text-gray-500">• {j.status}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                 {j.status === "Pending" && (
-                                                                      <>
-                                                                           <Button className="px-2 py-1 text-xs" onClick={() => {
-                                                                                acceptMatchJoin({ joinId: j.joinId });
-                                                                                setRequestJoins(prev => ({ ...prev, [bookingIdToRequest[b.id].requestId]: listMatchJoinsByRequest(bookingIdToRequest[b.id].requestId) }));
-                                                                                const all = listMatchRequests({ status: "" });
-                                                                                const map = {};
-                                                                                all.forEach(r => { map[r.bookingId] = r; });
-                                                                                setBookingIdToRequest(map);
-                                                                           }}>Chấp nhận</Button>
-                                                                           <Button variant="outline" className="px-2 py-1 text-xs" onClick={() => {
-                                                                                rejectMatchJoin({ joinId: j.joinId });
-                                                                                setRequestJoins(prev => ({ ...prev, [bookingIdToRequest[b.id].requestId]: listMatchJoinsByRequest(bookingIdToRequest[b.id].requestId) }));
-                                                                           }}>Từ chối</Button>
-                                                                      </>
+                                                            <div className="space-y-2">
+                                                                 <div className="flex flex-wrap items-center gap-2 text-sm">
+                                                                      <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-100 text-teal-700 px-2 py-1 rounded-full">
+                                                                           <MapPin className="w-4 h-4" />
+                                                                           <span className="font-medium">{b.address}</span>
+                                                                      </span>
+                                                                      <span className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 text-gray-700 px-2 py-1 rounded-full">
+                                                                           <Calendar className="w-4 h-4" />
+                                                                           <span className="font-medium">{b.date} • {b.time}</span>
+                                                                      </span>
+                                                                 </div>
+
+                                                                 {b.duration && (
+                                                                      <div className="text-xs text-gray-600 flex items-center gap-1">
+                                                                           <Clock className="w-3 h-3" />
+                                                                           Thời lượng: <span className="font-medium text-teal-700">{b.duration} phút</span>
+                                                                      </div>
+                                                                 )}
+
+                                                                 {/* Additional booking information */}
+                                                                 <div className="flex flex-wrap items-center gap-2 text-xs">
+                                                                      {b.depositAmount > 0 && (
+                                                                           <span className="inline-flex items-center gap-1 bg-blue-50 border border-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                                                                <CreditCard className="w-3 h-3" />
+                                                                                Cọc: <span className="font-medium">{formatPrice(b.depositAmount)}</span>
+                                                                           </span>
+                                                                      )}
+                                                                      {b.hasOpponent && (
+                                                                           <span className="inline-flex items-center gap-1 bg-green-50 border border-green-100 text-green-700 px-2 py-1 rounded-full">
+                                                                                <UserSearch className="w-3 h-3" />
+                                                                                Đã có đối
+                                                                           </span>
+                                                                      )}
+                                                                      {b.qrCode && (
+                                                                           <span className="inline-flex items-center gap-1 bg-purple-50 border border-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                                                                                Mã QR: <span className="font-medium">{b.qrCode}</span>
+                                                                           </span>
+                                                                      )}
+                                                                      {b.cancelledBy && (
+                                                                           <span className="inline-flex items-center gap-1 bg-red-50 border border-red-100 text-red-700 px-2 py-1 rounded-full">
+                                                                                Hủy bởi: <span className="font-medium">{b.cancelledBy}</span>
+                                                                           </span>
+                                                                      )}
+                                                                 </div>
+                                                                 {b.cancelReason && (
+                                                                      <div className="text-xs text-red-600 italic">
+                                                                           Lý do hủy: {b.cancelReason}
+                                                                      </div>
                                                                  )}
                                                             </div>
                                                        </div>
-                                                  ))}
+                                                       <div className="text-right shrink-0">
+                                                            <div className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-500 mb-1">
+                                                                 {formatPrice(b.totalPrice || b.price)}
+                                                            </div>
+                                                            {b.depositAmount > 0 && b.totalPrice > b.depositAmount && (
+                                                                 <div className="text-xs text-gray-500 mb-1">
+                                                                      (Còn lại: {formatPrice(b.totalPrice - b.depositAmount)})
+                                                                 </div>
+                                                            )}
+                                                            <div className="text-xs text-gray-500">
+                                                                 {b.createdAt && new Date(b.createdAt).toLocaleDateString('vi-VN')}
+                                                            </div>
+                                                            {b.confirmedAt && (
+                                                                 <div className="text-xs text-green-600">
+                                                                      Xác nhận: {new Date(b.confirmedAt).toLocaleDateString('vi-VN')}
+                                                                 </div>
+                                                            )}
+                                                            {b.cancelledAt && (
+                                                                 <div className="text-xs text-red-600">
+                                                                      Hủy: {new Date(b.cancelledAt).toLocaleDateString('vi-VN')}
+                                                                 </div>
+                                                            )}
+                                                       </div>
+                                                  </div>
+                                                  <div className="mt-4 pt-3 border-t border-teal-100 flex flex-wrap gap-2">
+                                                       <Button variant="secondary" onClick={() => handleViewInvoice(b)} className="px-2 !py-1 text-sm rounded-3xl">
+                                                            <Receipt className="w-4 h-4 mr-2" /> Xem hóa đơn
+                                                       </Button>
+                                                       {user && (
+                                                            <>
+                                                                 <Button
+                                                                      variant="outline"
+                                                                      onClick={() => handleReschedule(b)}
+                                                                      className="px-3 py-2 text-sm bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 transition-colors rounded-3xl"
+                                                                 >
+                                                                      <Calendar className="w-4 h-4 mr-2" />
+                                                                      Đổi giờ
+                                                                 </Button>
+                                                                 {b.status !== "cancelled" && (
+                                                                      <Button variant="destructive" onClick={() => handleCancel(b.id)} className="px-3 rounded-3xl py-2 text-sm">
+                                                                           <Trash2 className="w-4 h-4 mr-2" />
+                                                                           Hủy đặt
+                                                                      </Button>
+                                                                 )}
+                                                                 <Button
+                                                                      onClick={() => handleRating(b)}
+                                                                      className="px-3 py-2 text-sm bg-yellow-50 text-yellow-700 border-yellow-400 hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-600 transition-colors rounded-3xl"
+                                                                 >
+                                                                      <Star className="w-4 h-4 mr-2" />
+                                                                      Đánh giá
+                                                                 </Button>
+                                                                 {/* MatchRequest actions */}
+                                                                 {(() => {
+                                                                      const req = bookingIdToRequest[b.id];
+                                                                      if (!req) {
+                                                                           return (
+                                                                                <Button
+                                                                                     variant="secondary"
+                                                                                     onClick={() => handleFindOpponent(b)}
+                                                                                     className="px-3 !rounded-full py-2 text-sm"
+                                                                                >
+                                                                                     <UserSearchIcon className="w-4 h-4 mr-2" />
+                                                                                     Tìm đối thủ
+                                                                                </Button>
+                                                                           );
+                                                                      }
+                                                                      return (
+                                                                           <div className="flex items-center gap-2">
+                                                                                <Badge variant="outline" className="text-xs">Đã yêu cầu • {req.status}</Badge>
+                                                                                <Button
+                                                                                     variant="outline"
+                                                                                     className="px-3 !rounded-full py-2 text-sm"
+                                                                                     onClick={() => {
+                                                                                          // refresh joins for this request
+                                                                                          setRequestJoins(prev => ({ ...prev, [req.requestId]: listMatchJoinsByRequest(req.requestId) }));
+                                                                                          Swal.fire({
+                                                                                               toast: true,
+                                                                                               position: 'top-end',
+                                                                                               icon: 'success',
+                                                                                               title: 'Đã tải danh sách đội tham gia',
+                                                                                               showConfirmButton: false,
+                                                                                               timer: 2200,
+                                                                                               timerProgressBar: true
+                                                                                          });
+                                                                                     }}
+                                                                                >
+                                                                                     Tải đội tham gia
+                                                                                </Button>
+                                                                           </div>
+                                                                      );
+                                                                 })()}
+                                                            </>
+                                                       )}
+                                                  </div>
+                                                  {/* Joins list for this booking's request (owner view) */}
+                                                  {bookingIdToRequest[b.id] && Array.isArray(requestJoins[bookingIdToRequest[b.id].requestId]) && requestJoins[bookingIdToRequest[b.id].requestId].length > 0 && (
+                                                       <div className="mt-3 p-3 rounded-xl border border-teal-100 bg-white/70">
+                                                            <div className="font-semibold text-teal-800 mb-2">Đội tham gia</div>
+                                                            <div className="space-y-2">
+                                                                 {requestJoins[bookingIdToRequest[b.id].requestId].map(j => (
+                                                                      <div key={j.joinId} className="flex items-center justify-between text-sm">
+                                                                           <div className="flex items-center gap-2">
+                                                                                <Badge variant="outline" className="text-xs">{j.level || "any"}</Badge>
+                                                                                <span className="text-gray-700">User: {j.userId}</span>
+                                                                                <span className="text-gray-500">• {j.status}</span>
+                                                                           </div>
+                                                                           <div className="flex items-center gap-2">
+                                                                                {j.status === "Pending" && (
+                                                                                     <>
+                                                                                          <Button className="px-2 py-1 text-xs" onClick={() => {
+                                                                                               acceptMatchJoin({ joinId: j.joinId });
+                                                                                               setRequestJoins(prev => ({ ...prev, [bookingIdToRequest[b.id].requestId]: listMatchJoinsByRequest(bookingIdToRequest[b.id].requestId) }));
+                                                                                               const all = listMatchRequests({ status: "" });
+                                                                                               const map = {};
+                                                                                               all.forEach(r => { map[r.bookingId] = r; });
+                                                                                               setBookingIdToRequest(map);
+                                                                                          }}>Chấp nhận</Button>
+                                                                                          <Button variant="outline" className="px-2 py-1 text-xs" onClick={() => {
+                                                                                               rejectMatchJoin({ joinId: j.joinId });
+                                                                                               setRequestJoins(prev => ({ ...prev, [bookingIdToRequest[b.id].requestId]: listMatchJoinsByRequest(bookingIdToRequest[b.id].requestId) }));
+                                                                                          }}>Từ chối</Button>
+                                                                                     </>
+                                                                                )}
+                                                                           </div>
+                                                                      </div>
+                                                                 ))}
+                                                            </div>
+                                                       </div>
+                                                  )}
                                              </div>
-                                        </div>
-                                   )}
-                              </div>
                                         </FadeIn>
                                    ))}
                               </StaggerContainer>
@@ -967,6 +1052,15 @@ export default function BookingHistory({ user }) {
                     }}
                     booking={selectedBooking}
                     onSuccess={handleRescheduleSuccess}
+               />
+
+               <InvoiceModal
+                    isOpen={showInvoiceModal}
+                    booking={invoiceBooking}
+                    onClose={() => {
+                         setShowInvoiceModal(false);
+                         setInvoiceBooking(null);
+                    }}
                />
           </Section>
      );

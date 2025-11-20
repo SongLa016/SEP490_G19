@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, Button, Badge, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Alert, AlertDescription } from "../../../../../shared/components/ui";
-import { Timer, Clock, Plus, Edit, Trash2, Info } from "lucide-react";
+import { Timer, Clock, Plus, Edit, Trash2, Info, Wrench } from "lucide-react";
 
 export default function TimeSlotsTab({
      fields,
@@ -12,6 +12,7 @@ export default function TimeSlotsTab({
      onEditSlot,
      onDeleteSlot
 }) {
+     const hasAvailableFields = fields.some(field => (field.status || field.Status || '').toLowerCase() !== 'maintenance');
      return (
           <>
                <div className="flex items-center justify-between flex-wrap gap-4">
@@ -21,6 +22,8 @@ export default function TimeSlotsTab({
                     </div>
                     <Button
                          onClick={onAddSlot}
+                         disabled={!hasAvailableFields}
+                         title={!hasAvailableFields ? 'Tất cả các sân đang ở trạng thái bảo trì' : undefined}
                          className="bg-teal-600 hover:bg-teal-700 text-white rounded-2xl"
                     >
                          <Plus className="w-4 h-4 mr-1" />
@@ -54,6 +57,14 @@ export default function TimeSlotsTab({
                          Mỗi sân có thể có các khung giờ hoạt động riêng. Giá sẽ được thiết lập ngay khi tạo slot.
                     </AlertDescription>
                </Alert>
+               {fields.length > 0 && !hasAvailableFields && (
+                    <Alert className="border-orange-200 bg-orange-50 rounded-2xl">
+                         <Wrench className="h-4 w-4 text-orange-600" />
+                         <AlertDescription className="text-orange-800 text-sm">
+                              Tất cả các sân đang ở trạng thái <strong>Bảo trì</strong>. Bạn sẽ không thể thêm Time Slot mới cho đến khi đổi trạng thái sân.
+                         </AlertDescription>
+                    </Alert>
+               )}
 
                {/* Display fields with their time slots */}
                {fields.length === 0 ? (
@@ -80,6 +91,8 @@ export default function TimeSlotsTab({
                                              ...slot,
                                              fieldId: slot.fieldId || slot.FieldId || field.fieldId
                                         }));
+                                   const fieldStatus = (field.status || field.Status || 'Available').toString();
+                                   const isMaintenance = fieldStatus.toLowerCase() === 'maintenance';
 
                                    return (
                                         <Card key={field.fieldId} className="p-4 rounded-3xl border-2 border-teal-400">
@@ -95,11 +108,16 @@ export default function TimeSlotsTab({
                                                        </div>
                                                   </div>
                                                   <div className="flex items-center gap-2">
-                                                       <Badge className="bg-teal-100 text-teal-800">
+                                                       <Badge className="bg-gray-100 text-gray-800">
                                                             {fieldSlots.length} slots
+                                                       </Badge>
+                                                       <Badge className={isMaintenance ? 'bg-orange-100 text-orange-700' : 'bg-teal-100 text-teal-800'}>
+                                                            {isMaintenance ? 'Bảo trì' : 'Hoạt động'}
                                                        </Badge>
                                                        <Button
                                                             onClick={() => onAddSlot(field.fieldId)}
+                                                            disabled={isMaintenance}
+                                                            title={isMaintenance ? 'Sân đang bảo trì, không thể thêm Time Slot' : undefined}
                                                             variant="outline"
                                                             size="sm"
                                                             className="text-teal-600 hover:text-teal-700 rounded-2xl hover:bg-teal-50 border-teal-200"
@@ -109,6 +127,12 @@ export default function TimeSlotsTab({
                                                        </Button>
                                                   </div>
                                              </div>
+                                             {isMaintenance && (
+                                                  <div className="mb-4 flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-medium text-orange-700">
+                                                       <Wrench className="w-4 h-4" />
+                                                       <span>Sân đang bảo trì. Toàn bộ Time Slots sẽ bị khóa cho tới khi bạn đổi trạng thái.</span>
+                                                  </div>
+                                             )}
 
                                              {/* Time Slots List */}
                                              {fieldSlots.length === 0 ? (
@@ -136,7 +160,7 @@ export default function TimeSlotsTab({
                                                             return (
                                                                  <div
                                                                       key={slot.SlotID}
-                                                                      className="bg-gradient-to-br from-teal-50 to-blue-50 p-4 rounded-lg border border-teal-200 hover:shadow-md transition-shadow"
+                                                                           className={`bg-gradient-to-br from-teal-50 to-blue-50 p-4 rounded-lg border border-teal-200 hover:shadow-md transition-shadow ${isMaintenance ? 'opacity-60 pointer-events-none' : ''}`}
                                                                  >
                                                                       <div className="flex items-start justify-between mb-2">
                                                                            <div className="flex-1">

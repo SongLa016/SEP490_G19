@@ -4,9 +4,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import {
      Card,
      Alert,
-     AlertDescription,
-     Pagination,
-     usePagination
+     AlertDescription
 } from "../../../shared/components/ui";
 import {
      Clock,
@@ -64,6 +62,43 @@ export default function ScheduleManagement({ isDemo = false }) {
      });
      const [scheduleFormErrors, setScheduleFormErrors] = useState({});
      const [isSubmittingSchedule, setIsSubmittingSchedule] = useState(false);
+     const maintenanceFields = useMemo(
+          () => fields.filter(field => (field.status || field.Status || '').toLowerCase() === 'maintenance'),
+          [fields]
+     );
+     const maintenanceFieldIds = useMemo(() => {
+          const ids = new Set();
+          maintenanceFields.forEach(field => {
+               const numericId = Number(field.fieldId);
+               if (!Number.isNaN(numericId)) {
+                    ids.add(numericId);
+               }
+          });
+          return ids;
+     }, [maintenanceFields]);
+     const isFieldMaintenance = useCallback(
+          (fieldId) => {
+               if (fieldId === null || fieldId === undefined) return false;
+               const numericId = Number(fieldId);
+               if (Number.isNaN(numericId)) return false;
+               return maintenanceFieldIds.has(numericId);
+          },
+          [maintenanceFieldIds]
+     );
+     const hasActiveFields = useMemo(
+          () => fields.some(field => (field.status || field.Status || '').toLowerCase() !== 'maintenance'),
+          [fields]
+     );
+     const maintenanceNoticeText = useMemo(() => {
+          if (!maintenanceFields.length) return '';
+          const names = maintenanceFields
+               .map(field => field.name)
+               .filter(Boolean);
+          if (names.length <= 3) {
+               return names.join(', ');
+          }
+          return `${names.slice(0, 3).join(', ')} và ${names.length - 3} sân khác`;
+     }, [maintenanceFields]);
      // TODO: Add bookings state when API is ready
      // const [bookings, setBookings] = useState([]);
 
@@ -254,6 +289,16 @@ export default function ScheduleManagement({ isDemo = false }) {
                     title: 'Lỗi',
                     text: 'Sân này không thuộc quyền quản lý của bạn',
                     confirmButtonColor: '#ef4444'
+               });
+               return;
+          }
+
+          if (!editingSlot && isFieldMaintenance(fieldId)) {
+               await Swal.fire({
+                    icon: 'info',
+                    title: 'Sân đang bảo trì',
+                    text: 'Vui lòng đổi trạng thái sân sang "Available" trước khi thêm Time Slot mới.',
+                    confirmButtonColor: '#f97316'
                });
                return;
           }
@@ -764,16 +809,47 @@ export default function ScheduleManagement({ isDemo = false }) {
      };
 
      // Handle open schedule modal
-     const handleOpenScheduleModal = () => {
+     const openScheduleModal = useCallback((defaults = {}) => {
           setScheduleFormData({
-               fieldId: scheduleFilterField !== 'all' ? scheduleFilterField : '',
+               fieldId: '',
+               slotId: '',
+               date: '',
+               status: 'Available',
+               ...defaults
+          });
+          setScheduleFormErrors({});
+          setShowScheduleModal(true);
+     }, []);
+
+     const handleOpenScheduleModal = useCallback(() => {
+          const defaultFieldId = scheduleFilterField !== 'all' && !isFieldMaintenance(Number(scheduleFilterField))
+               ? scheduleFilterField
+               : '';
+          openScheduleModal({
+               fieldId: defaultFieldId,
                slotId: '',
                date: '',
                status: 'Available'
           });
-          setScheduleFormErrors({});
-          setShowScheduleModal(true);
-     };
+     }, [scheduleFilterField, isFieldMaintenance, openScheduleModal]);
+
+     const handleQuickScheduleRequest = useCallback((fieldId, slotId, date) => {
+          if (isFieldMaintenance(fieldId)) {
+               Swal.fire({
+                    icon: 'info',
+                    title: 'Sân đang bảo trì',
+                    text: 'Không thể tạo lịch trình cho sân đang bảo trì. Vui lòng đổi trạng thái sân trước khi tiếp tục.',
+                    confirmButtonColor: '#f97316'
+               });
+               return;
+          }
+
+          openScheduleModal({
+               fieldId: fieldId?.toString() || '',
+               slotId: slotId?.toString() || '',
+               date: date || ''
+          });
+     }, [isFieldMaintenance, openScheduleModal]);
 
      // Handle close schedule modal
      const handleCloseScheduleModal = () => {
@@ -802,25 +878,35 @@ export default function ScheduleManagement({ isDemo = false }) {
                return;
           }
 
+          // Tìm field và slot để lấy thông tin
+          const field = fields.find(f => f.fieldId.toString() === scheduleFormData.fieldId);
+          const slot = timeSlots.find(s => {
+               const slotId = s.slotId || s.SlotID;
+               return slotId.toString() === scheduleFormData.slotId;
+          });
+
+          if (!field || !slot) {
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Không tìm thấy thông tin sân hoặc slot',
+                    confirmButtonColor: '#ef4444'
+               });
+               return;
+          }
+
+          if (isFieldMaintenance(field.fieldId)) {
+               await Swal.fire({
+                    icon: 'info',
+                    title: 'Sân đang bảo trì',
+                    text: 'Không thể tạo lịch trình mới cho sân đang ở trạng thái bảo trì. Vui lòng đổi trạng thái trước khi tiếp tục.',
+                    confirmButtonColor: '#f97316'
+               });
+               return;
+          }
+
           setIsSubmittingSchedule(true);
           try {
-               // Tìm field và slot để lấy thông tin
-               const field = fields.find(f => f.fieldId.toString() === scheduleFormData.fieldId);
-               const slot = timeSlots.find(s => {
-                    const slotId = s.slotId || s.SlotID;
-                    return slotId.toString() === scheduleFormData.slotId;
-               });
-
-               if (!field || !slot) {
-                    await Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: 'Không tìm thấy thông tin sân hoặc slot',
-                         confirmButtonColor: '#ef4444'
-                    });
-                    return;
-               }
-
                // Lấy thông tin time từ slot
                const slotStartTime = slot.startTime || slot.StartTime || '00:00';
                const slotEndTime = slot.endTime || slot.EndTime || '00:00';
@@ -1180,6 +1266,15 @@ export default function ScheduleManagement({ isDemo = false }) {
                                         </AlertDescription>
                                    </Alert>
                               )}
+                              {maintenanceFields.length > 0 && (
+                                   <Alert className="border-orange-200 bg-orange-50">
+                                        <Info className="h-4 w-4 text-orange-600" />
+                                        <AlertDescription className="text-orange-900">
+                                             Có {maintenanceFields.length} sân đang ở trạng thái <strong>Bảo trì</strong>
+                                             {maintenanceNoticeText ? `: ${maintenanceNoticeText}` : ''}. Các Time Slot và lịch trình mới sẽ bị khóa cho đến khi bạn đổi trạng thái sân sang "Available".
+                                        </AlertDescription>
+                                   </Alert>
+                              )}
 
                               {/* Statistics Cards */}
                               <StatisticsCards statistics={statistics} />
@@ -1232,7 +1327,8 @@ export default function ScheduleManagement({ isDemo = false }) {
                                              getFieldColor={getFieldColor}
                                              formatTime={formatTime}
                                              getBookingInfo={getBookingInfo}
-                                             onScheduleAdded={loadSchedulesForTable}
+                                             isFieldMaintenance={isFieldMaintenance}
+                                             onRequestAddSchedule={handleQuickScheduleRequest}
                                         />
                                    </div>
 
@@ -1279,6 +1375,24 @@ export default function ScheduleManagement({ isDemo = false }) {
                               timeSlots={timeSlots}
                               formatTime={formatTime}
                               onAddSlot={(fieldId) => {
+                                   if (!fieldId && !hasActiveFields) {
+                                        Swal.fire({
+                                             icon: 'info',
+                                             title: 'Không có sân khả dụng',
+                                             text: 'Tất cả các sân hiện đang ở trạng thái bảo trì. Vui lòng kích hoạt lại sân trước khi thêm Time Slot mới.',
+                                             confirmButtonColor: '#f97316'
+                                        });
+                                        return;
+                                   }
+                                   if (fieldId && isFieldMaintenance(fieldId)) {
+                                        Swal.fire({
+                                             icon: 'info',
+                                             title: 'Sân đang bảo trì',
+                                             text: 'Không thể thêm Time Slot mới cho sân đang bảo trì.',
+                                             confirmButtonColor: '#f97316'
+                                        });
+                                        return;
+                                   }
                                    if (fieldId) {
                                         setSlotFormData({ ...slotFormData, fieldId: fieldId.toString() });
                                    }

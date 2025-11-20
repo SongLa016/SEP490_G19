@@ -1,8 +1,7 @@
 import React from "react";
 import { Card, Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../../../../../shared/components/ui";
-import { Clock, Plus } from "lucide-react";
+import { Clock, Plus, Wrench } from "lucide-react";
 import Swal from "sweetalert2";
-import { createFieldSchedule } from "../../../../../shared/services/fieldSchedules";
 
 export default function ScheduleGrid({
      timeSlots,
@@ -16,7 +15,8 @@ export default function ScheduleGrid({
      getFieldColor,
      formatTime,
      getBookingInfo,
-     onScheduleAdded
+     isFieldMaintenance,
+     onRequestAddSchedule
 }) {
      const isToday = (date) => {
           const today = new Date();
@@ -35,68 +35,21 @@ export default function ScheduleGrid({
           ? fields
           : fields.filter(f => f.fieldId.toString() === selectedFieldForSchedule);
 
-     const handleAddSchedule = async (slotId, fieldId, date) => {
-          try {
-               // Find the slot to get time information
-               const slot = timeSlots.find(s => (s.slotId || s.SlotID) === Number(slotId));
-               const field = fields.find(f => f.fieldId === Number(fieldId));
-
-               const schedulePayload = {
-                    fieldId: Number(fieldId),
-                    fieldName: field?.name || '',
-                    slotId: Number(slotId),
-                    slotName: slot?.slotName || slot?.SlotName || slot?.name || '',
-                    date: date.toISOString().split('T')[0],
-                    startTime: slot?.startTime || slot?.StartTime || '00:00',
-                    endTime: slot?.endTime || slot?.EndTime || '00:00',
-                    status: 'Available'
-               };
-
-               console.log('Creating schedule with payload:', schedulePayload);
-               const result = await createFieldSchedule(schedulePayload);
-
-               if (result.success) {
-                    console.log('Schedule created successfully:', result);
-                    Swal.fire({
-                         icon: 'success',
-                         title: 'Thành công',
-                         text: 'Đã thêm lịch trình thành công!',
-                         confirmButtonColor: '#0d9488',
-                         timer: 1500
-                    });
-                    // Add small delay before reloading to ensure API has updated
-                    setTimeout(() => {
-                         console.log('Reloading schedules after creating new schedule');
-                         onScheduleAdded();
-                    }, 300);
-               } else {
-                    Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: result.error || 'Không thể thêm lịch trình',
-                         confirmButtonColor: '#ef4444'
-                    });
-               }
-          } catch (error) {
-               Swal.fire({
-                    icon: 'error',
-                    title: 'Lỗi',
-                    text: error.message || 'Có lỗi xảy ra',
-                    confirmButtonColor: '#ef4444'
-               });
-          }
-     };
-
-     const renderScheduleCell = (schedule, field, slot) => {
+     const renderScheduleCell = (schedule, field, slot, fieldMaintenance = false) => {
           const status = schedule.status || schedule.Status || 'Available';
-          const booked = status === 'Booked' || status === 'booked';
-          const available = status === 'Available' || status === 'available';
-          const maintenance = status === 'Maintenance' || status === 'maintenance';
+          const normalizedStatus = fieldMaintenance ? 'Maintenance' : status;
+          const statusLower = normalizedStatus.toLowerCase();
+          const booked = statusLower === 'booked';
+          const available = statusLower === 'available';
+          const maintenance = statusLower === 'maintenance';
           const fieldColor = getFieldColor(field.fieldId);
+          const baseColorClasses = maintenance
+               ? 'bg-gradient-to-br from-orange-100 via-amber-100 to-orange-100 text-orange-900 border border-orange-200'
+               : `${fieldColor} text-white`;
 
           return (
                <div
-                    className={`${fieldColor} text-white p-3 rounded-xl w-full text-sm font-medium cursor-pointer hover:opacity-90 hover:shadow-lg transition-all shadow-md`}
+                    className={`${baseColorClasses} p-3 rounded-xl w-full text-sm font-medium cursor-pointer hover:opacity-90 hover:shadow-lg transition-all shadow-md`}
                     onClick={(e) => {
                          e.stopPropagation();
                          const bookingInfo = getBookingInfo(Number(field.fieldId), selectedDate, slot.slotId || slot.SlotID);
@@ -177,34 +130,42 @@ export default function ScheduleGrid({
                                                   <span className="text-sm">Khung giờ</span>
                                              </div>
                                         </TableHead>
-                                        {displayFields.map((field) => (
-                                             <TableHead
-                                                  key={field.fieldId}
-                                                  className={`px-3 text-center font-semibold min-w-[180px] transition-all duration-200 ${isToday(selectedDate)
-                                                       ? 'bg-gradient-to-br from-teal-500 via-teal-600 to-teal-700 text-white shadow-xl'
-                                                       : selectedDate.getDay() === 0 || selectedDate.getDay() === 6
-                                                            ? 'bg-gradient-to-br from-orange-100 to-amber-100 text-gray-800 border-orange-300'
-                                                            : 'bg-gradient-to-br from-blue-50 to-indigo-50 text-gray-800 border-blue-200'
-                                                       }`}
-                                             >
-                                                  <div className="flex flex-col items-center gap-1">
-                                                       <div className="flex items-center gap-1">
-                                                            <div className={`w-4 h-4 border border-gray-300 rounded ${getFieldColor(field.fieldId)}`}></div>
-                                                            <div className={`text-sm font-bold line-clamp-1 ${isToday(selectedDate) ? 'text-white' : 'text-gray-900'}`}>
-                                                                 <span className="truncate">{field.name}</span>
+                                        {displayFields.map((field) => {
+                                             const fieldMaintenance = isFieldMaintenance?.(field.fieldId);
+                                             return (
+                                                  <TableHead
+                                                       key={field.fieldId}
+                                                       className={`px-3 text-center font-semibold min-w-[180px] transition-all duration-200 ${isToday(selectedDate)
+                                                            ? 'bg-gradient-to-br from-teal-500 via-teal-600 to-teal-700 text-white shadow-xl'
+                                                            : selectedDate.getDay() === 0 || selectedDate.getDay() === 6
+                                                                 ? 'bg-gradient-to-br from-orange-100 to-amber-100 text-gray-800 border-orange-300'
+                                                                 : 'bg-gradient-to-br from-blue-50 to-indigo-50 text-gray-800 border-blue-200'
+                                                            }`}
+                                                  >
+                                                       <div className="flex flex-col items-center gap-1">
+                                                            <div className="flex items-center gap-1">
+                                                                 <div className={`w-4 h-4 border border-gray-300 rounded ${getFieldColor(field.fieldId)}`}></div>
+                                                                 <div className={`text-sm font-bold line-clamp-1 ${isToday(selectedDate) ? 'text-white' : 'text-gray-900'}`}>
+                                                                      <span className="truncate">{field.name}</span>
+                                                                 </div>
                                                             </div>
+                                                            <div className={`text-xs font-semibold ${isToday(selectedDate) ? 'text-teal-100' : 'text-gray-600'}`}>
+                                                                 {getDayName(selectedDate)} - {selectedDate.toLocaleDateString('vi-VN', { day: 'numeric', month: 'long' })}
+                                                            </div>
+                                                            {fieldMaintenance && (
+                                                                 <span className="bg-orange-100 text-orange-700 text-[10px] border border-orange-200 px-2 py-0.5 font-semibold rounded-full">
+                                                                      Bảo trì
+                                                                 </span>
+                                                            )}
+                                                            {isToday(selectedDate) && (
+                                                                 <span className="bg-teal-50 text-teal-600 text-[9px] border px-2 py-0.5s font-semibold  rounded-full">
+                                                                      Hôm nay
+                                                                 </span>
+                                                            )}
                                                        </div>
-                                                       <div className={`text-xs font-semibold ${isToday(selectedDate) ? 'text-teal-100' : 'text-gray-600'}`}>
-                                                            {getDayName(selectedDate)} - {selectedDate.toLocaleDateString('vi-VN', { day: 'numeric', month: 'long' })}
-                                                       </div>
-                                                       {isToday(selectedDate) && (
-                                                            <span className="bg-teal-50 text-teal-600 text-[9px] border px-2 py-0.5s font-semibold  rounded-full">
-                                                                 Hôm nay
-                                                            </span>
-                                                       )}
-                                                  </div>
-                                             </TableHead>
-                                        ))}
+                                                  </TableHead>
+                                             );
+                                        })}
                                    </TableRow>
                               </TableHeader>
                               <TableBody>
@@ -257,6 +218,7 @@ export default function ScheduleGrid({
                                                                  </div>
                                                             </TableCell>
                                                             {displayFields.map((field) => {
+                                                                 const fieldMaintenance = isFieldMaintenance?.(field.fieldId);
                                                                  const slotIdForField = slot.slotIdsByField
                                                                       ? slot.slotIdsByField[field.fieldId]
                                                                       : (slot.slotId || slot.SlotID);
@@ -279,10 +241,12 @@ export default function ScheduleGrid({
                                                                  });
 
                                                                  // Apply status filter
-                                                                 const shouldShow = !fieldSchedule || (() => {
+                                                                 const shouldShow = fieldMaintenance || !fieldSchedule || (() => {
                                                                       const status = fieldSchedule.status || fieldSchedule.Status || 'Available';
-                                                                      const booked = status === 'Booked' || status === 'booked';
-                                                                      const available = status === 'Available' || status === 'available';
+                                                                      const normalizedStatus = fieldMaintenance ? 'Maintenance' : status;
+                                                                      const statusLower = normalizedStatus.toLowerCase();
+                                                                      const booked = statusLower === 'booked';
+                                                                      const available = statusLower === 'available';
                                                                       return filterStatus === 'all' ||
                                                                            (filterStatus === 'booked' && booked) ||
                                                                            (filterStatus === 'available' && available);
@@ -302,26 +266,39 @@ export default function ScheduleGrid({
                                                                  return (
                                                                       <TableCell
                                                                            key={field.fieldId}
-                                                                           className={`border-2 p-3 text-center text-sm relative min-h-[120px] ${isToday(selectedDate) ? 'bg-teal-50/20' : selectedDate.getDay() === 0 || selectedDate.getDay() === 6 ? 'bg-orange-50/20' : 'bg-white'
+                                                                           className={`border-2 p-3 text-center text-sm relative min-h-[120px] ${fieldMaintenance
+                                                                                ? 'bg-orange-50/70 border-orange-200'
+                                                                                : isToday(selectedDate)
+                                                                                     ? 'bg-teal-50/20'
+                                                                                     : selectedDate.getDay() === 0 || selectedDate.getDay() === 6
+                                                                                          ? 'bg-orange-50/20'
+                                                                                          : 'bg-white'
                                                                                 } ${isPastSlot ? 'opacity-60' : ''}`}
                                                                            onClick={() => {
-                                                                                if (isPastSlot || fieldSchedule) return;
-                                                                                handleAddSchedule(slotIdForField, field.fieldId, selectedDate);
+                                                                                if (isPastSlot || fieldSchedule || fieldMaintenance) return;
+                                                                                onRequestAddSchedule?.(field.fieldId, slotIdForField, selectedDate);
                                                                            }}
                                                                       >
                                                                            {!fieldSchedule ? (
-                                                                                !isPastSlot && (
-                                                                                     <div className="flex items-center justify-center h-full min-h-[100px] text-gray-400 text-sm cursor-pointer hover:text-teal-600 transition-colors group">
-                                                                                          <div className="flex flex-col items-center gap-2">
-                                                                                               <div className="w-14 h-14 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center group-hover:border-teal-400 group-hover:bg-teal-50 transition-all">
-                                                                                                    <Plus className="w-7 h-7" />
-                                                                                               </div>
-                                                                                               <span className="text-xs font-medium">Thêm lịch trình</span>
-                                                                                          </div>
+                                                                                fieldMaintenance ? (
+                                                                                     <div className="flex flex-col items-center justify-center h-full min-h-[100px] text-orange-600 text-sm font-semibold">
+                                                                                          <Wrench className="w-6 h-6 mb-1" />
+                                                                                          <span>Đang bảo trì</span>
                                                                                      </div>
+                                                                                ) : (
+                                                                                     !isPastSlot && (
+                                                                                          <div className="flex items-center justify-center h-full min-h-[100px] text-gray-400 text-sm cursor-pointer hover:text-teal-600 transition-colors group">
+                                                                                               <div className="flex flex-col items-center gap-2">
+                                                                                                    <div className="w-14 h-14 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center group-hover:border-teal-400 group-hover:bg-teal-50 transition-all">
+                                                                                                         <Plus className="w-7 h-7" />
+                                                                                                    </div>
+                                                                                                    <span className="text-xs font-medium">Thêm lịch trình</span>
+                                                                                               </div>
+                                                                                          </div>
+                                                                                     )
                                                                                 )
                                                                            ) : (
-                                                                                renderScheduleCell(fieldSchedule, field, slot)
+                                                                                renderScheduleCell(fieldSchedule, field, slot, fieldMaintenance)
                                                                            )}
                                                                       </TableCell>
                                                                  );

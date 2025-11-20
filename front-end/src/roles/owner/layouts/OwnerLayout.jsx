@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
      Home,
      Building2,
-     DollarSign,
      ClipboardList,
      FileText,
      Shield,
@@ -23,10 +22,15 @@ import { Button } from "../../../shared/components/ui";
 import logo from "../../../shared/components/assets/logo.png";
 import DemoAccountPromotionManager from "../../../shared/components/DemoAccountPromotionManager";
 import ScrollProgressBar from "../../../shared/components/ScrollProgressBar";
+import { fetchDepositPolicies } from "../../../shared/services/depositPolicies";
 
 export default function OwnerLayout({ user, onLoggedOut, children, isDemo = false }) {
      const [sidebarOpen, setSidebarOpen] = useState(false);
      const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+     const [depositPoliciesInfo, setDepositPoliciesInfo] = useState({
+          count: 0,
+          fieldNames: []
+     });
      const location = useLocation();
      const navigate = useNavigate();
 
@@ -39,12 +43,46 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
 
      const currentUser = isDemo ? demoUser : user;
 
+     useEffect(() => {
+          if (isDemo) return;
+
+          let isMounted = true;
+
+          const loadDepositPolicies = async () => {
+               try {
+                    const policies = await fetchDepositPolicies();
+                    if (!isMounted || !policies) return;
+                    const fieldNames = policies
+                         .map((policy) => policy.fieldName || `Field #${policy.fieldId}`)
+                         .filter(Boolean);
+
+                    setDepositPoliciesInfo({
+                         count: policies.length,
+                         fieldNames
+                    });
+               } catch (error) {
+                    console.error("Failed to fetch deposit policies for layout:", error);
+               }
+          };
+
+          loadDepositPolicies();
+
+          return () => {
+               isMounted = false;
+          };
+     }, [isDemo]);
+
+     const formatFieldNamesPreview = (names = []) => {
+          if (names.length === 0) return "";
+          if (names.length <= 2) return names.join(", ");
+          return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
+     };
+
      const navigationItems = [
           { id: "owner", label: "Tổng quan", icon: Home, path: "/owner" },
           { id: "fields", label: "Quản lý sân", icon: Building2, path: "/owner/fields" },
           { id: "field-types", label: "Loại sân", icon: Tag, path: "/owner/field-types" },
           { id: "schedule", label: "Lịch trình & Slots", icon: CalendarCog, path: "/owner/schedule" },
-          { id: "pricing", label: "Giá theo slot", icon: DollarSign, path: "/owner/pricing" },
           { id: "bookings", label: "Quản lý booking", icon: ClipboardList, path: "/owner/bookings" },
           { id: "reports", label: "Báo cáo doanh thu", icon: FileText, path: "/owner/reports" },
           { id: "policies", label: "Chính sách hủy", icon: Shield, path: "/owner/policies" },
@@ -149,7 +187,21 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
                                                   <Icon className={`w-5 h-5 transition-all duration-300 ${isActive ? 'text-teal-700' : 'text-slate-600 group-hover:text-slate-800'
                                                        } ${sidebarCollapsed ? '' : 'mr-3'}`} />
                                                   {!sidebarCollapsed && (
-                                                       <span className="font-semibold">{item.label}</span>
+                                                       <div className="flex flex-col flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                 <span className="font-semibold">{item.label}</span>
+                                                                 {item.id === "deposit-policies" && (
+                                                                      <span className="px-2 py-0.5 text-xs bg-teal-100 text-teal-700 rounded-full font-semibold min-w-[32px] text-center">
+                                                                           {depositPoliciesInfo.count}
+                                                                      </span>
+                                                                 )}
+                                                            </div>
+                                                            {item.id === "deposit-policies" && depositPoliciesInfo.fieldNames.length > 0 && (
+                                                                 <span className="text-[11px] text-slate-500 truncate">
+                                                                      {formatFieldNamesPreview(depositPoliciesInfo.fieldNames)}
+                                                                 </span>
+                                                            )}
+                                                       </div>
                                                   )}
                                              </Button>
                                         );
