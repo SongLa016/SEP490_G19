@@ -2,6 +2,7 @@
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Http;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace BallSport.Application.Services
 {
@@ -38,7 +39,6 @@ namespace BallSport.Application.Services
                 await _bankAccountRepository.AddOwnerBankAccountAsync(bankAccount);
                 bankAccountId = bankAccount.BankAccountId;
             }
-
             // 2️⃣ Tạo Field
             var field = new Field
             {
@@ -97,10 +97,9 @@ namespace BallSport.Application.Services
                 PricePerHour = created.PricePerHour,
                 Status = created.Status,
                 CreatedAt = created.CreatedAt,
-                BankName = dto.BankName,
-                BankShortCode = dto.BankShortCode,
-                AccountNumber = dto.AccountNumber,
-                AccountHolder = dto.AccountHolder,
+
+                BankAccountId = created.BankAccountId, // chỉ trả BankAccountId
+
                 MainImageBase64 = created.Image != null ? Convert.ToBase64String(created.Image) : null,
                 ImageFilesBase64 = created.FieldImages?.Select(f => Convert.ToBase64String(f.Image)).ToList()
             };
@@ -165,10 +164,9 @@ namespace BallSport.Application.Services
                 PricePerHour = updated.PricePerHour,
                 Status = updated.Status,
                 CreatedAt = updated.CreatedAt,
-                BankName = dto.BankName,
-                BankShortCode = dto.BankShortCode,
-                AccountNumber = dto.AccountNumber,
-                AccountHolder = dto.AccountHolder,
+
+                BankAccountId = updated.BankAccountId, // chỉ trả BankAccountId
+
                 MainImageBase64 = updated.Image != null ? Convert.ToBase64String(updated.Image) : null,
                 ImageFilesBase64 = updated.FieldImages?.Select(f => Convert.ToBase64String(f.Image)).ToList()
             };
@@ -191,7 +189,7 @@ namespace BallSport.Application.Services
                 PricePerHour = f.PricePerHour,
                 Status = f.Status,
                 CreatedAt = f.CreatedAt,
-
+                BankAccountId = f.BankAccountId,
                 // ảnh chính
                 MainImageBase64 = f.Image != null
                     ? Convert.ToBase64String(f.Image)
@@ -223,6 +221,7 @@ namespace BallSport.Application.Services
                 PricePerHour = f.PricePerHour,
                 Status = f.Status,
                 CreatedAt = f.CreatedAt,
+                BankAccountId = f.BankAccountId,
 
                 // ảnh chính
                 MainImageBase64 = f.Image != null ? Convert.ToBase64String(f.Image) : null,
