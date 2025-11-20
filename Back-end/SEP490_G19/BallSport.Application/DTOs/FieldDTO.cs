@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using System;
 
 namespace BallSport.Application.DTOs
@@ -28,8 +28,11 @@ namespace BallSport.Application.DTOs
         public DateTime? CreatedAt { get; set; }
 
         // 🏦 Thông tin tài khoản ngân hàng (user nhập)
+        public string? BankName { get; set; }
 
-        public int? BankAccountId { get; set; }
+        public string? BankShortCode { get; set; }
+        public string? AccountNumber { get; set; }
+        public string? AccountHolder { get; set; }
 
 
     }
