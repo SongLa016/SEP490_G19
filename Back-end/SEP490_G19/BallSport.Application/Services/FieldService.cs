@@ -1,4 +1,4 @@
-﻿using BallSport.Application.DTOs;
+using BallSport.Application.DTOs;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Http;
@@ -20,8 +20,7 @@ namespace BallSport.Application.Services
         // 🏟️ CREATE sân + tài khoản ngân hàng
         public async Task<FieldResponseDTO> AddFieldAsync(FieldDTO dto, int ownerId)
         {
-            int? bankAccountId = dto.BankAccountId;
-
+            int? bankAccountId = null;
 
             // 1️⃣ Tạo tài khoản ngân hàng nếu có
             if (!string.IsNullOrEmpty(dto.BankName) &&
@@ -41,7 +40,6 @@ namespace BallSport.Application.Services
                 bankAccountId = bankAccount.BankAccountId;
             }
             // 2️⃣ Tạo Field
-
             var field = new Field
             {
                 ComplexId = dto.ComplexId,
@@ -100,9 +98,6 @@ namespace BallSport.Application.Services
                 Status = created.Status,
                 CreatedAt = created.CreatedAt,
 
-                BankAccountId = created.BankAccountId,
-
-
                 BankAccountId = created.BankAccountId, // chỉ trả BankAccountId
 
                 MainImageBase64 = created.Image != null ? Convert.ToBase64String(created.Image) : null,
@@ -124,7 +119,7 @@ namespace BallSport.Application.Services
             existingField.TypeId = dto.TypeId;
             existingField.PricePerHour = dto.PricePerHour;
             existingField.Status = dto.Status;
-            existingField.BankAccountId = dto.BankAccountId;
+
             // 1️⃣ Cập nhật ảnh chính nếu có
             if (dto.MainImage != null && dto.MainImage.Length > 0)
             {
@@ -169,9 +164,6 @@ namespace BallSport.Application.Services
                 PricePerHour = updated.PricePerHour,
                 Status = updated.Status,
                 CreatedAt = updated.CreatedAt,
-
-                BankAccountId = updated.BankAccountId,
-
 
                 BankAccountId = updated.BankAccountId, // chỉ trả BankAccountId
 
@@ -250,29 +242,5 @@ namespace BallSport.Application.Services
 
             return await _fieldRepository.DeleteFieldAsync(fieldId);
         }
-
-
-        public async Task<List<FieldResponseDTO>> GetFieldsByOwnerIdAsync(int ownerId)
-        {
-            var fields = await _fieldRepository.GetFieldsByOwnerIdAsync(ownerId);
-
-            return fields.Select(f => new FieldResponseDTO
-            {
-                FieldId = f.FieldId,
-                ComplexId = f.ComplexId,
-                TypeId = f.TypeId,
-                Name = f.Name,
-                Size = f.Size,
-                GrassType = f.GrassType,
-                Description = f.Description,
-                PricePerHour = f.PricePerHour,
-                Status = f.Status,
-                CreatedAt = f.CreatedAt,
-                BankAccountId = f.BankAccountId,
-                MainImageBase64 = f.Image != null ? Convert.ToBase64String(f.Image) : null,
-                ImageFilesBase64 = f.FieldImages?.Select(img => Convert.ToBase64String(img.Image)).ToList()
-            }).ToList();
-        }
-
     }
 }
