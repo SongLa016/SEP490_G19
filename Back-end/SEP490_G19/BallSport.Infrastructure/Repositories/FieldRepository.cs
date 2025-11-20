@@ -61,6 +61,14 @@ namespace BallSport.Infrastructure.Repositories
                 .Include(f => f.FieldImages)
                 .FirstOrDefaultAsync(f => f.FieldId == fieldId);
         }
+        // lấy sân theo ownerID
+        public async Task<List<Field>> GetFieldsByOwnerIdAsync(int ownerId)
+        {
+            return await _context.Fields
+                .Where(f => f.BankAccount != null && f.BankAccount.OwnerId == ownerId)
+                .Include(f => f.FieldImages) // nếu muốn load ảnh
+                .ToListAsync();
+        }
 
         // 🔹 UPDATE Field + main image
         public async Task<Field> UpdateFieldAsync(Field field)
