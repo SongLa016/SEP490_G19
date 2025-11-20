@@ -54,11 +54,11 @@ namespace BallSport.Application.Services
         }
 
         // 🟢 Lấy tất cả khu sân
-        public async Task<List<FieldComplexDTO>> GetAllComplexesAsync()
+        public async Task<List<FieldComplexResponseDTO>> GetAllComplexesAsync()
         {
             var complexes = await _complexRepository.GetAllComplexesAsync();
 
-            return complexes.Select(c => new FieldComplexDTO
+            return complexes.Select(c => new FieldComplexResponseDTO
             {
                 ComplexId = c.ComplexId,
                 OwnerId = c.OwnerId,
@@ -66,17 +66,21 @@ namespace BallSport.Application.Services
                 Address = c.Address,
                 Description = c.Description,
                 Status = c.Status,
-                CreatedAt = c.CreatedAt
+                CreatedAt = c.CreatedAt,
+
+                ImageBase64 = c.Image != null
+             ? Convert.ToBase64String(c.Image)
+             : null
             }).ToList();
         }
 
         // 🟢 Lấy chi tiết 1 khu sân
-        public async Task<FieldComplexDTO?> GetComplexByIdAsync(int complexId)
+        public async Task<FieldComplexResponseDTO?> GetComplexByIdAsync(int complexId)
         {
             var c = await _complexRepository.GetComplexByIdAsync(complexId);
             if (c == null) return null;
 
-            return new FieldComplexDTO
+            return new FieldComplexResponseDTO
             {
                 ComplexId = c.ComplexId,
                 OwnerId = c.OwnerId,
@@ -84,12 +88,17 @@ namespace BallSport.Application.Services
                 Address = c.Address,
                 Description = c.Description,
                 Status = c.Status,
-                CreatedAt = c.CreatedAt
+                CreatedAt = c.CreatedAt,
+
+                ImageBase64 = c.Image != null
+                    ? Convert.ToBase64String(c.Image)
+                    : null
             };
         }
 
+
         // 🟢 Cập nhật khu sân
-        public async Task<FieldComplexDTO?> UpdateComplexAsync(FieldComplexDTO dto)
+        public async Task<FieldComplexResponseDTO?> UpdateComplexAsync(FieldComplexDTO dto)
         {
             var existing = await _complexRepository.GetComplexByIdAsync(dto.ComplexId);
             if (existing == null) return null;
@@ -100,6 +109,7 @@ namespace BallSport.Application.Services
             existing.OwnerId = dto.OwnerId;
             existing.Status = dto.Status;
 
+            // 🔥 Update ảnh nếu có
             if (dto.ImageFile != null && dto.ImageFile.Length > 0)
             {
                 using (var ms = new MemoryStream())
@@ -111,7 +121,7 @@ namespace BallSport.Application.Services
 
             var updated = await _complexRepository.UpdateComplexAsync(existing);
 
-            return new FieldComplexDTO
+            return new FieldComplexResponseDTO
             {
                 ComplexId = updated.ComplexId,
                 OwnerId = updated.OwnerId,
@@ -119,9 +129,14 @@ namespace BallSport.Application.Services
                 Address = updated.Address,
                 Description = updated.Description,
                 Status = updated.Status,
-                CreatedAt = updated.CreatedAt
+                CreatedAt = updated.CreatedAt,
+
+                ImageBase64 = updated.Image != null
+                    ? Convert.ToBase64String(updated.Image)
+                    : null
             };
         }
+
 
         // 🟢 Xóa khu sân
         public async Task<bool> DeleteComplexAsync(int complexId)
