@@ -207,6 +207,42 @@ namespace BallSport.Application.Services
             return result;
         }
 
+        public async Task<List<BookingUsDTO>> GetBookingsByOwnerUserIdAsync(int userId)
+        {
+            var bookings = await _bookingRepo.GetBookingsByOwnerUserIdAsync(userId);
+
+            var result = bookings.Select(b => new BookingUsDTO
+            {
+                BookingId = b.BookingId,
+                UserId = b.UserId,
+                ScheduleId = b.ScheduleId,
+
+                TotalPrice = b.TotalPrice,
+                DepositAmount = b.DepositAmount,
+                RemainingAmount = b.RemainingAmount,
+
+                BookingStatus = b.BookingStatus,
+                PaymentStatus = b.PaymentStatus,
+                HasOpponent = b.HasOpponent,
+
+                CreatedAt = b.CreatedAt,
+                ConfirmedAt = b.ConfirmedAt,
+                CancelledAt = b.CancelledAt,
+                CancelledBy = b.CancelledBy,
+                CancelReason = b.CancelReason,
+
+                // Thông tin sân
+                FieldName = b.Schedule.Field.Name,
+                ComplexName = b.Schedule.Field.Complex.Name,
+                SlotName = b.Schedule.Slot.SlotName
+                            ?? $"{b.Schedule.Slot.StartTime:HH:mm}-{b.Schedule.Slot.EndTime:HH:mm}",
+
+                StartTime = DateTime.Today.Add(b.Schedule.Slot.StartTime.ToTimeSpan()),
+                EndTime = DateTime.Today.Add(b.Schedule.Slot.EndTime.ToTimeSpan())
+            }).ToList();
+
+            return result;
+        }
 
 
 

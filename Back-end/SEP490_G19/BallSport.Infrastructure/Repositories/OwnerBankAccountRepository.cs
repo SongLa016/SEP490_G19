@@ -61,5 +61,16 @@ namespace BallSport.Infrastructure.Repositories
 
             await _context.SaveChangesAsync();
         }
+
+        public async Task<bool> DeleteOwnerBankAccountAsync(int bankAccountId)
+        {
+            var existing = await _context.OwnerBankAccounts.FindAsync(bankAccountId);
+            if (existing == null) return false;
+
+            _context.OwnerBankAccounts.Remove(existing);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
     }
 }
