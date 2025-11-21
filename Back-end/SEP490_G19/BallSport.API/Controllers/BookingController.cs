@@ -111,5 +111,21 @@ namespace BallSport.API.Controllers
             return Ok(data);
         }
 
+        [HttpGet("owner/{userId}")]
+        public async Task<IActionResult> GetBookingsForOwner(int userId)
+        {
+            if (userId <= 0) return BadRequest("Invalid owner user ID");
+
+            try
+            {
+                var data = await _bookingService.GetBookingsByOwnerUserIdAsync(userId);
+                return Ok(data);
+            }
+            catch (System.Exception ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
     }
 }

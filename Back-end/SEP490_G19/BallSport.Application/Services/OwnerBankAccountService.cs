@@ -32,5 +32,11 @@ namespace BallSport.Application.Services
         {
             await _ownerBankAccountRepository.UpdateOwnerBankAccountAsync(account);
         }
+
+        public async Task<bool> DeleteOwnerBankAccountAsync(int bankAccountId)
+        {
+            return await _ownerBankAccountRepository.DeleteOwnerBankAccountAsync(bankAccountId);
+        }
+
     }
 }

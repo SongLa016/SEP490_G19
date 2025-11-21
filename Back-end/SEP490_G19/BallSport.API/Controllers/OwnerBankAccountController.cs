@@ -61,6 +61,16 @@ namespace BallSport.API.Controllers
             return Ok(new { message = "Bank account updated successfully", data = account });
         }
 
+        [HttpDelete("{bankAccountId}")]
+        public async Task<IActionResult> Delete(int bankAccountId)
+        {
+            var success = await ownerBankAccountService.DeleteOwnerBankAccountAsync(bankAccountId);
+            if (!success) return NotFound(new { message = "Bank account not found" });
+
+            return Ok(new { message = "Bank account deleted successfully" });
+        }
+
+
     }
 
 }
