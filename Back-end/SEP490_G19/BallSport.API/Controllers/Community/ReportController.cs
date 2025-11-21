@@ -18,9 +18,9 @@ namespace BallSport.API.Controllers.Community
             _reportService = reportService;
         }
 
-        // GET: api/Report?pageNumber=1&pageSize=20&status=Pending&targetType=Post
+        // GET: api/Report (Admin only)
         [HttpGet]
-        [Authorize(Roles = "Admin")] // Chỉ Admin mới xem được tất cả báo cáo
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllReports(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 20,
@@ -29,12 +29,7 @@ namespace BallSport.API.Controllers.Community
         {
             try
             {
-                var (reports, totalCount) = await _reportService.GetAllReportsAsync(
-                    pageNumber,
-                    pageSize,
-                    status,
-                    targetType
-                );
+                var (reports, totalCount) = await _reportService.GetAllReportsAsync(pageNumber, pageSize, status, targetType);
 
                 return Ok(new
                 {
@@ -43,8 +38,8 @@ namespace BallSport.API.Controllers.Community
                     pagination = new
                     {
                         currentPage = pageNumber,
-                        pageSize = pageSize,
-                        totalCount = totalCount,
+                        pageSize,
+                        totalCount,
                         totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
                     }
                 });
@@ -55,7 +50,7 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Report/5
+        // GET: api/Report/{id} (Admin only)
         [HttpGet("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetReportById(int id)
@@ -63,7 +58,6 @@ namespace BallSport.API.Controllers.Community
             try
             {
                 var report = await _reportService.GetReportByIdAsync(id);
-
                 if (report == null)
                     return NotFound(new { success = false, message = "Không tìm thấy báo cáo" });
 
@@ -82,11 +76,10 @@ namespace BallSport.API.Controllers.Community
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var reports = await _reportService.GetReportsByReporterIdAsync(userId.Value);
-
                 return Ok(new { success = true, data = reports });
             }
             catch (Exception ex)
@@ -95,22 +88,17 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Report/target?targetType=Post&targetId=5
+        // GET: api/Report/target (Admin only)
         [HttpGet("target")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetReportsByTarget(
-            [FromQuery] string targetType,
-            [FromQuery] int targetId)
+        public async Task<IActionResult> GetReportsByTarget([FromQuery] string targetType, [FromQuery] int targetId)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(targetType) || (targetType != "Post" && targetType != "Comment"))
-                {
                     return BadRequest(new { success = false, message = "TargetType phải là Post hoặc Comment" });
-                }
 
                 var reports = await _reportService.GetReportsByTargetAsync(targetType, targetId);
-
                 return Ok(new { success = true, data = reports });
             }
             catch (Exception ex)
@@ -119,7 +107,7 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Report/pending?topCount=50
+        // GET: api/Report/pending (Admin only)
         [HttpGet("pending")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetPendingReports([FromQuery] int topCount = 50)
@@ -127,7 +115,6 @@ namespace BallSport.API.Controllers.Community
             try
             {
                 var reports = await _reportService.GetPendingReportsAsync(topCount);
-
                 return Ok(new { success = true, data = reports });
             }
             catch (Exception ex)
@@ -136,17 +123,14 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Report/statistics?fromDate=2024-01-01&toDate=2024-12-31
+        // GET: api/Report/statistics (Admin only)
         [HttpGet("statistics")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetStatistics(
-            [FromQuery] DateTime? fromDate = null,
-            [FromQuery] DateTime? toDate = null)
+        public async Task<IActionResult> GetStatistics([FromQuery] DateTime? fromDate = null, [FromQuery] DateTime? toDate = null)
         {
             try
             {
                 var stats = await _reportService.GetReportStatisticsAsync(fromDate, toDate);
-
                 return Ok(new { success = true, data = stats });
             }
             catch (Exception ex)
@@ -155,7 +139,7 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Report/count?status=Pending
+        // GET: api/Report/count (Admin only)
         [HttpGet("count")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CountReportsByStatus([FromQuery] string status)
@@ -163,12 +147,9 @@ namespace BallSport.API.Controllers.Community
             try
             {
                 if (string.IsNullOrWhiteSpace(status))
-                {
                     return BadRequest(new { success = false, message = "Status là bắt buộc" });
-                }
 
                 var count = await _reportService.CountReportsByStatusAsync(status);
-
                 return Ok(new { success = true, data = new { status, count } });
             }
             catch (Exception ex)
@@ -177,21 +158,16 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Report/target-count?targetType=Post&targetId=5
+        // GET: api/Report/target-count (Public - để frontend kiểm tra có nên ẩn post/comment không)
         [HttpGet("target-count")]
-        public async Task<IActionResult> CountReportsByTarget(
-            [FromQuery] string targetType,
-            [FromQuery] int targetId)
+        public async Task<IActionResult> CountReportsByTarget([FromQuery] string targetType, [FromQuery] int targetId)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(targetType) || (targetType != "Post" && targetType != "Comment"))
-                {
                     return BadRequest(new { success = false, message = "TargetType phải là Post hoặc Comment" });
-                }
 
                 var count = await _reportService.CountReportsByTargetAsync(targetType, targetId);
-
                 return Ok(new { success = true, data = new { targetType, targetId, count } });
             }
             catch (Exception ex)
@@ -210,59 +186,19 @@ namespace BallSport.API.Controllers.Community
                     return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
 
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
-                // Kiểm tra đã báo cáo chưa
-                var hasReported = await _reportService.HasUserReportedAsync(
-                    userId.Value,
-                    createReportDto.TargetType,
-                    createReportDto.TargetId
-                );
-
+                var hasReported = await _reportService.HasUserReportedAsync(userId.Value, createReportDto.TargetType, createReportDto.TargetId);
                 if (hasReported)
-                {
                     return BadRequest(new { success = false, message = "Bạn đã báo cáo nội dung này rồi" });
-                }
 
                 var report = await _reportService.CreateReportAsync(createReportDto, userId.Value);
 
                 return CreatedAtAction(nameof(GetReportById), new { id = report.ReportId }, new
                 {
                     success = true,
-                    message = "Gửi báo cáo thành công. Chúng tôi sẽ xem xét và xử lý",
-                    data = report
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-        }
-
-        // PUT: api/Report/5/handle
-        [HttpPut("{id}/handle")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> HandleReport(int id, [FromBody] HandleReportDTO handleReportDto)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
-
-                var adminId = GetCurrentUserId();
-                if (adminId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
-
-                var report = await _reportService.HandleReportAsync(id, handleReportDto, adminId.Value);
-
-                if (report == null)
-                    return NotFound(new { success = false, message = "Không tìm thấy báo cáo" });
-
-                return Ok(new
-                {
-                    success = true,
-                    message = $"Đã xử lý báo cáo: {handleReportDto.Status}",
+                    message = "Gửi báo cáo thành công. Chúng tôi sẽ xem xét và xử lý sớm nhất!",
                     data = report
                 });
             }
@@ -272,7 +208,36 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // DELETE: api/Report/5
+        // PUT: api/Report/{id}/handle (Admin only)
+        [HttpPut("{id}/handle")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> HandleReport(int id, [FromBody] HandleReportDTO handleReportDto)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+
+                var adminId = GetCurrentUserId()!.Value;
+                var report = await _reportService.HandleReportAsync(id, handleReportDto, adminId);
+
+                if (report == null)
+                    return NotFound(new { success = false, message = "Không tìm thấy báo cáo" });
+
+                return Ok(new
+                {
+                    success = true,
+                    message = $"Đã xử lý báo cáo thành công: {handleReportDto.Status}",
+                    data = report
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
+            }
+        }
+
+        // DELETE: api/Report/{id} (Admin only)
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteReport(int id)
@@ -280,7 +245,6 @@ namespace BallSport.API.Controllers.Community
             try
             {
                 var success = await _reportService.DeleteReportAsync(id);
-
                 if (!success)
                     return NotFound(new { success = false, message = "Không tìm thấy báo cáo" });
 
@@ -292,15 +256,11 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // Helper method
+        // SIÊU QUAN TRỌNG: ĐỌC ĐÚNG CLAIM "UserID" TRONG TOKEN
         private int? GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out int userId))
-            {
-                return userId;
-            }
-            return null;
+            var claim = User.FindFirst("UserID") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+            return int.TryParse(claim?.Value, out int userId) ? userId : null;
         }
     }
 }

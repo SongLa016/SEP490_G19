@@ -1,1205 +1,827 @@
 {
-    "Version": 1,
-    "WorkspaceRootPath": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\",
-    "Documents": [{
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\PayOsCallbackDto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.Application\\DTOs\\PayOsCallbackDto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-        },
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\community\\reportcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\community\\reportcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\community\\notificationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\community\\notificationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\community\\commentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\community\\commentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\community\\postcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\community\\postcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\dateonlyjsonconverter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\dateonlyjsonconverter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\depositpolicycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\depositpolicycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\extensions\\repositoryserviceextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\extensions\\repositoryserviceextensions.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\data\\sep490g19v1context.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\data\\sep490g19v1context.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\handlereportdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\handlereportdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\ballsport.api.http||{5703B403-55E7-4C63-8C88-A8F52C7A45C5}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\ballsport.api.http||{5703B403-55E7-4C63-8C88-A8F52C7A45C5}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\createpostdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\createpostdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\ballsport.api.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\ballsport.api.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\services\\community\\icommentservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\services\\community\\icommentservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\ballsport.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\ballsport.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\models\\role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\models\\role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\models\\report.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\models\\report.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\models\\post.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\models\\post.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\models\\postlike.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\models\\postlike.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\models\\fieldcomplex.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\models\\fieldcomplex.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\settings\\reportsettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\settings\\reportsettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\settings\\notificationsettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\settings\\notificationsettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\settings\\communitysettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\settings\\communitysettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\repositories\\community\\postlikerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\repositories\\community\\postlikerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\repositories\\community\\ireportrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\repositories\\community\\ireportrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\repositories\\community\\ipostlikerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\repositories\\community\\ipostlikerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\repositories\\community\\icommentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\repositories\\community\\icommentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\repositories\\community\\commentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\repositories\\community\\commentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\repositories\\community\\notificationrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\repositories\\community\\notificationrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\repositories\\community\\ipostrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\repositories\\community\\ipostrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\repositories\\fieldcomplexrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\repositories\\fieldcomplexrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\ballsport.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\ballsport.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\updatepostdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\updatepostdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\updatecommentdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\updatecommentdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\reportstatsdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\reportstatsdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\reportdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\reportdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\postfilterdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\postfilterdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\postfeeddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\postfeeddto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\postdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\postdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\notificationdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\notificationdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\postdetaildto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\postdetaildto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\createreportdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\createreportdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\createnotificationdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\createnotificationdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\dtos\\community\\commentdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\dtos\\community\\commentdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.infrastructure\\ballsport.infrastructure.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\ballsport.infrastructure.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.api\\controllers\\resertpasscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\controllers\\resertpasscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|d:\\new folder\\sep490_g19\\back-end\\sep490_g19\\ballsport.application\\services\\community\\ireportservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\services\\community\\ireportservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
         {
-            "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\ballsport.api\\ballsport.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-            "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\ballsport.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\ballsport.api\\ballsport.api.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|",
-            "RelativeMoniker": "D:0:0:{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}|BallSport.API\\BallSport.API.csproj|solutionrelative:ballsport.api\\ballsport.api.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\ballsport.application\\ballsport.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-            "RelativeMoniker": "D:0:0:{F3F26FEB-F7C9-4D2A-92BE-87FD2357FC73}|BallSport.Application\\BallSport.Application.csproj|solutionrelative:ballsport.application\\ballsport.application.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\ballsport.infrastructure\\ballsport.infrastructure.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-            "RelativeMoniker": "D:0:0:{1432C997-E9E4-4DF4-BAFD-8C61CC295329}|BallSport.Infrastructure\\BallSport.Infrastructure.csproj|solutionrelative:ballsport.infrastructure\\ballsport.infrastructure.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.Infrastructure\\Models\\Role.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Report.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.Infrastructure\\Models\\Report.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Post.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.Infrastructure\\Models\\Post.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\PostLike.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.Infrastructure\\Models\\PostLike.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\FieldComplex.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.Infrastructure\\Models\\FieldComplex.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\FieldComplexRepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.Infrastructure\\Repositories\\FieldComplexRepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Properties\\launchSettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.API\\Properties\\launchSettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.API\\Program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\DepositPolicyController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.API\\Controllers\\DepositPolicyController.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.http||{5703B403-55E7-4C63-8C88-A8F52C7A45C5}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.API\\BallSport.API.http||{5703B403-55E7-4C63-8C88-A8F52C7A45C5}"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.Development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.API\\appsettings.Development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-        },
-        {
-            "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-            "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:BallSport.API\\appsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
-        }
-    ],
-    "DocumentGroupContainers": [{
-        "Orientation": 0,
-        "VerticalTabListWidth": 256,
-        "DocumentGroups": [{
-                "DockedWidth": 200,
-                "SelectedChildIndex": 193,
-                "Children": [{
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{b1e99781-ab81-11d0-b683-00aa00a3ee26}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:20:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{004be353-6879-467c-9d1e-9ac23cdf6d49}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:27:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:129:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:128:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:1:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:1:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:132:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:128:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:130:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:131:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:2:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{873151d0-cf2e-48cc-b4bf-ad0394f6a3c3}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:1377497384:0:{83107a3e-496a-485e-b455-16ddb978e55e}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:15:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:16:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:17:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:14:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:13:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:12:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:11:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:10:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:9:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:8:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:7:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:6:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:5:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:4:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:3:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:129:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:130:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:131:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:132:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:8:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{e1b7d1f8-9b3c-49b1-8f4f-bfc63a88835d}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:12:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{588470cc-84f8-4a57-9ac4-86bca0625ff4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:1928210406:0:{bf84ea66-d821-4dba-b1b1-2777d8574775}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:350743133:0:{bf84ea66-d821-4dba-b1b1-2777d8574775}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:132:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:2:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:5:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:23:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:29:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:12:0:{2456bd12-ecf7-4988-a4a6-67d49173f565}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:13:0:{2456bd12-ecf7-4988-a4a6-67d49173f565}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:7:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:9:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:3:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:6:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:18:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:14:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:4:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:14:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:20:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:19:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:1:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{c9c0ae26-aa77-11d2-b3f0-0000f87570ee}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:34:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:133:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:134:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:133:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:134:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:1:0:{e8b06f53-6d01-11d2-aa7d-00c04f990343}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:134:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:135:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:136:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:137:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:138:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{e506b91c-c606-466a-90a9-123d1d1e12b3}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{fbcae063-e2c0-4ab1-a516-996ea3dafb72}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{74946827-37a0-11d2-a273-00c04f8ef4ff}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{f5cd1b51-c771-5648-966f-646d419b1e7c}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:133:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:41:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:30:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:129:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:147:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:148:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:143:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:144:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:145:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:146:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:142:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:139:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:140:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:141:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:136:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:138:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:130:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:135:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:139:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:137:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:138:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:38:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:69:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:70:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:71:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:69:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:73:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:72:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:54:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:1:0:{004be353-6879-467c-9d1e-9ac23cdf6d49}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:93:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:37:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:49:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:68:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:67:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:17:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:33:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:45:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:45:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:1196186238:0:{83107a3e-496a-485e-b455-16ddb978e55e}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:18:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:14:0:{2456bd12-ecf7-4988-a4a6-67d49173f565}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:18:0:{2456bd12-ecf7-4988-a4a6-67d49173f565}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:10:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:21:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:29:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:46:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:47:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:63:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:64:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:65:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:32:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:31:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:34:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:37:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:36:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:39:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:40:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:43:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:42:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:41:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:129:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:132:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:1:0:{fabf9319-47eb-497e-b8f6-d9f73fba5f55}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{99a11807-c5db-4877-ad35-09b56a044012}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{131369f2-062d-44a2-8671-91ff31efb4f4}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{9a7cebbb-dc5c-4986-bc49-962da46aa506}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:128:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{26341fe2-71dd-46fd-bb1b-2e51a92a0d64}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{80c411e8-fd5e-4b16-914b-0d9d84172cc1}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{c93a910a-0fa6-4307-93a4-f2bd61ec7828}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:130:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:134:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:134:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:135:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:133:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:129:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:131:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:48:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:11:0:{2456bd12-ecf7-4988-a4a6-67d49173f565}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:141:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:143:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:144:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:145:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:146:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:147:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:131:0:{13b12e3e-c1b4-4539-9371-4fe9a0d523fc}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:145:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:146:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:142:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:147:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:146:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:147:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:129:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{605322a2-17ae-43f4-b60f-766556e46c87}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{0174dea2-fdbe-4ef1-8f99-c0beae78880f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:131:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{1c64b9c2-e352-428e-a56d-0ace190b99a6}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:16:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:44:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:63:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:74:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:26:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:19:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:11:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:25:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:15:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{eefa5220-e298-11d0-8f78-00a0c9110057}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:13:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:16:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:15:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:28:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:66:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 0,
-                        "Title": "PayOsCallbackDto.cs",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\PayOsCallbackDto.cs",
-                        "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\PayOsCallbackDto.cs",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\PayOsCallbackDto.cs",
-                        "RelativeToolTip": "BallSport.Application\\DTOs\\PayOsCallbackDto.cs",
-                        "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-                        "WhenOpened": "2025-11-14T16:23:09.466Z",
-                        "EditorCaption": ""
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 5,
-                        "Title": "Sep490G19v1Context.cs",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs",
-                        "RelativeDocumentMoniker": "BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs",
-                        "RelativeToolTip": "BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs",
-                        "ViewState": "AgIAAGABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-                        "WhenOpened": "2025-10-29T09:01:53.49Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 2,
-                        "Title": "BallSport.API",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.csproj",
-                        "RelativeDocumentMoniker": "BallSport.API\\BallSport.API.csproj",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.csproj",
-                        "RelativeToolTip": "BallSport.API\\BallSport.API.csproj",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-                        "WhenOpened": "2025-10-28T14:43:36.552Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 12,
-                        "Title": "launchSettings.json",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Properties\\launchSettings.json",
-                        "RelativeDocumentMoniker": "BallSport.API\\Properties\\launchSettings.json",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Properties\\launchSettings.json",
-                        "RelativeToolTip": "BallSport.API\\Properties\\launchSettings.json",
-                        "ViewState": "AgIAAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-                        "WhenOpened": "2025-10-28T14:38:59.555Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 13,
-                        "Title": "Program.cs",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Program.cs",
-                        "RelativeDocumentMoniker": "BallSport.API\\Program.cs",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Program.cs",
-                        "RelativeToolTip": "BallSport.API\\Program.cs",
-                        "ViewState": "AgIAALEAAAAAAAAAAAAAADcAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-                        "WhenOpened": "2025-10-27T06:23:39.229Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 6,
-                        "Title": "Role.cs",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Role.cs",
-                        "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\Role.cs",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Role.cs",
-                        "RelativeToolTip": "BallSport.Infrastructure\\Models\\Role.cs",
-                        "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-                        "WhenOpened": "2025-10-25T05:51:00.512Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 7,
-                        "Title": "Report.cs",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Report.cs",
-                        "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\Report.cs",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Report.cs",
-                        "RelativeToolTip": "BallSport.Infrastructure\\Models\\Report.cs",
-                        "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-                        "WhenOpened": "2025-10-25T05:50:59.863Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 1,
-                        "Title": "BallSport.API.csproj",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.csproj",
-                        "RelativeDocumentMoniker": "BallSport.API\\BallSport.API.csproj",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.csproj",
-                        "RelativeToolTip": "BallSport.API\\BallSport.API.csproj",
-                        "ViewState": "AgIAAAAAAAAAAAAAAAAAABcAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-                        "WhenOpened": "2025-10-25T05:43:18.184Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 14,
-                        "Title": "DepositPolicyController.cs",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\DepositPolicyController.cs",
-                        "RelativeDocumentMoniker": "BallSport.API\\Controllers\\DepositPolicyController.cs",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\DepositPolicyController.cs",
-                        "RelativeToolTip": "BallSport.API\\Controllers\\DepositPolicyController.cs",
-                        "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-                        "WhenOpened": "2025-11-02T07:21:40.01Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 8,
-                        "Title": "Post.cs",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Post.cs",
-                        "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\Post.cs",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Post.cs",
-                        "RelativeToolTip": "BallSport.Infrastructure\\Models\\Post.cs",
-                        "ViewState": "AgIAABIAAAAAAAAAAAAmwAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-                        "WhenOpened": "2025-10-25T05:50:56.584Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 9,
-                        "Title": "PostLike.cs",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\PostLike.cs",
-                        "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\PostLike.cs",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\PostLike.cs",
-                        "RelativeToolTip": "BallSport.Infrastructure\\Models\\PostLike.cs",
-                        "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-                        "WhenOpened": "2025-10-25T05:50:51.908Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 10,
-                        "Title": "FieldComplex.cs",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\FieldComplex.cs",
-                        "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\FieldComplex.cs",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\FieldComplex.cs",
-                        "RelativeToolTip": "BallSport.Infrastructure\\Models\\FieldComplex.cs",
-                        "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-                        "WhenOpened": "2025-10-25T05:50:50.464Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 11,
-                        "Title": "FieldComplexRepository.cs",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\FieldComplexRepository.cs",
-                        "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\FieldComplexRepository.cs",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\FieldComplexRepository.cs",
-                        "RelativeToolTip": "BallSport.Infrastructure\\Repositories\\FieldComplexRepository.cs",
-                        "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-                        "WhenOpened": "2025-10-25T05:48:43.966Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 15,
-                        "Title": "BallSport.API.http",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.http",
-                        "RelativeDocumentMoniker": "BallSport.API\\BallSport.API.http",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.http",
-                        "RelativeToolTip": "BallSport.API\\BallSport.API.http",
-                        "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003502|",
-                        "WhenOpened": "2025-10-25T05:39:02.035Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 4,
-                        "Title": "BallSport.Infrastructure.csproj",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
-                        "RelativeDocumentMoniker": "BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
-                        "RelativeToolTip": "BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
-                        "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-                        "WhenOpened": "2025-10-25T05:21:29.422Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 16,
-                        "Title": "appsettings.Development.json",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.Development.json",
-                        "RelativeDocumentMoniker": "BallSport.API\\appsettings.Development.json",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.Development.json",
-                        "RelativeToolTip": "BallSport.API\\appsettings.Development.json",
-                        "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-                        "WhenOpened": "2025-10-25T04:48:47.477Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 17,
-                        "Title": "appsettings.json",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.json",
-                        "RelativeDocumentMoniker": "BallSport.API\\appsettings.json",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.json",
-                        "RelativeToolTip": "BallSport.API\\appsettings.json",
-                        "ViewState": "AgIAAAwAAAAAAAAAAAAAAB4AAAAEAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-                        "WhenOpened": "2025-10-25T04:48:44.611Z"
-                    },
-                    {
-                        "$type": "Document",
-                        "DocumentIndex": 3,
-                        "Title": "BallSport.Application.csproj",
-                        "DocumentMoniker": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\BallSport.Application.csproj",
-                        "RelativeDocumentMoniker": "BallSport.Application\\BallSport.Application.csproj",
-                        "ToolTip": "C:\\La\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\BallSport.Application.csproj",
-                        "RelativeToolTip": "BallSport.Application\\BallSport.Application.csproj",
-                        "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-                        "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-                        "WhenOpened": "2025-10-25T01:01:55.835Z"
-                    }
-                ]
+          "DockedWidth": 200,
+          "SelectedChildIndex": 47,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "DateOnlyJsonConverter.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\DateOnlyJsonConverter.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\DateOnlyJsonConverter.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\DateOnlyJsonConverter.cs",
+              "RelativeToolTip": "BallSport.API\\DateOnlyJsonConverter.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-21T11:03:35.951Z",
+              "EditorCaption": ""
             },
             {
-                "DockedWidth": 48,
-                "SelectedChildIndex": -1,
-                "Children": [{
-                        "$type": "Bookmark",
-                        "Name": "ST:31:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:32:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:132:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{5b6781c0-e99d-11d0-9954-00a0c91bc8e5}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:12:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:25:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:26:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:33:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:35:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:36:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:38:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:39:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:40:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:42:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:24:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:17:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:13:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    }
-                ]
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "DepositPolicyController.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\DepositPolicyController.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Controllers\\DepositPolicyController.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\DepositPolicyController.cs",
+              "RelativeToolTip": "BallSport.API\\Controllers\\DepositPolicyController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-11-02T07:21:40.01Z"
             },
             {
-                "DockedWidth": 144,
-                "SelectedChildIndex": -1,
-                "Children": [{
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{a80febb4-e7e0-4147-b476-21aaf2453969}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:133:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:43:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:22:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:23:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:24:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:27:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:30:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:28:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:35:0:{d212f56b-c48a-434c-a121-1c5d80b59b9f}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:0:0:{260978c3-582c-487d-ab12-c1fdde07c578}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:21:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    },
-                    {
-                        "$type": "Bookmark",
-                        "Name": "ST:22:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
-                    }
-                ]
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "RepositoryServiceExtensions.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Extensions\\RepositoryServiceExtensions.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Extensions\\RepositoryServiceExtensions.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Extensions\\RepositoryServiceExtensions.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Extensions\\RepositoryServiceExtensions.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-29T09:01:58.59Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "Sep490G19v1Context.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Data\\Sep490G19v1Context.cs",
+              "ViewState": "AgIAAGABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-29T09:01:53.49Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "BallSport.API",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.csproj",
+              "RelativeDocumentMoniker": "BallSport.API\\BallSport.API.csproj",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.csproj",
+              "RelativeToolTip": "BallSport.API\\BallSport.API.csproj",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-10-28T14:43:36.552Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "ICommentService.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\Community\\ICommentService.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\Services\\Community\\ICommentService.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\Community\\ICommentService.cs",
+              "RelativeToolTip": "BallSport.Application\\Services\\Community\\ICommentService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-28T14:42:42.609Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "launchSettings.json",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Properties\\launchSettings.json",
+              "RelativeDocumentMoniker": "BallSport.API\\Properties\\launchSettings.json",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Properties\\launchSettings.json",
+              "RelativeToolTip": "BallSport.API\\Properties\\launchSettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABwAAAAqAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-10-28T14:38:59.555Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Program.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Program.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Program.cs",
+              "RelativeToolTip": "BallSport.API\\Program.cs",
+              "ViewState": "AgIAAKQAAAAAAAAAAAAowLcAAAAeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-27T06:23:39.229Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "Role.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Role.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\Role.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Role.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Models\\Role.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:51:00.512Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "Report.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Report.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\Report.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Report.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Models\\Report.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:50:59.863Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "Post.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Post.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\Post.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\Post.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Models\\Post.cs",
+              "ViewState": "AgIAABIAAAAAAAAAAAAmwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:50:56.584Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "PostLike.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\PostLike.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\PostLike.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\PostLike.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Models\\PostLike.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:50:51.908Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
+              "Title": "FieldComplex.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\FieldComplex.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Models\\FieldComplex.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Models\\FieldComplex.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Models\\FieldComplex.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:50:50.464Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 27,
+              "Title": "IReportRepository.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\IReportRepository.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\IReportRepository.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\IReportRepository.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Repositories\\Community\\IReportRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:50:00.145Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 29,
+              "Title": "ICommentRepository.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\ICommentRepository.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\ICommentRepository.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\ICommentRepository.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Repositories\\Community\\ICommentRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:49:58.896Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 30,
+              "Title": "CommentRepository.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\CommentRepository.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\CommentRepository.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\CommentRepository.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Repositories\\Community\\CommentRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:49:58.284Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 26,
+              "Title": "PostLikeRepository.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\PostLikeRepository.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\PostLikeRepository.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\PostLikeRepository.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Repositories\\Community\\PostLikeRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:48:47.261Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 31,
+              "Title": "NotificationRepository.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\NotificationRepository.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\NotificationRepository.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\NotificationRepository.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Repositories\\Community\\NotificationRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:48:46.816Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 32,
+              "Title": "IPostRepository.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\IPostRepository.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\IPostRepository.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\IPostRepository.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Repositories\\Community\\IPostRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:48:46.336Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 28,
+              "Title": "IPostLikeRepository.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\IPostLikeRepository.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\Community\\IPostLikeRepository.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\Community\\IPostLikeRepository.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Repositories\\Community\\IPostLikeRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:48:45.726Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 33,
+              "Title": "FieldComplexRepository.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\FieldComplexRepository.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Repositories\\FieldComplexRepository.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Repositories\\FieldComplexRepository.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Repositories\\FieldComplexRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:48:43.966Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 34,
+              "Title": "BallSport.API.csproj",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.csproj",
+              "RelativeDocumentMoniker": "BallSport.API\\BallSport.API.csproj",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.csproj",
+              "RelativeToolTip": "BallSport.API\\BallSport.API.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-10-25T05:43:18.184Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "BallSport.API.http",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.http",
+              "RelativeDocumentMoniker": "BallSport.API\\BallSport.API.http",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\BallSport.API.http",
+              "RelativeToolTip": "BallSport.API\\BallSport.API.http",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003502|",
+              "WhenOpened": "2025-10-25T05:39:02.035Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 38,
+              "Title": "ReportDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\ReportDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\ReportDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\ReportDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\ReportDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:26:14.808Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 39,
+              "Title": "PostFilterDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\PostFilterDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\PostFilterDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\PostFilterDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\PostFilterDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:26:14.248Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 40,
+              "Title": "PostFeedDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\PostFeedDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\PostFeedDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\PostFeedDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\PostFeedDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:26:13.449Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 42,
+              "Title": "NotificationDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\NotificationDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\NotificationDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\NotificationDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\NotificationDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:26:11.81Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "HandleReportDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\HandleReportDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\HandleReportDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\HandleReportDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\HandleReportDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:26:10.218Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 44,
+              "Title": "CreateReportDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\CreateReportDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\CreateReportDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\CreateReportDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\CreateReportDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:26:09.668Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "CreatePostDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\CreatePostDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\CreatePostDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\CreatePostDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\CreatePostDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:26:09.077Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 45,
+              "Title": "CreateNotificationDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\CreateNotificationDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\CreateNotificationDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\CreateNotificationDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\CreateNotificationDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:26:07.798Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 46,
+              "Title": "CommentDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\CommentDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\CommentDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\CommentDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\CommentDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:26:07.16Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "ReportSettings.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Settings\\ReportSettings.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Settings\\ReportSettings.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Settings\\ReportSettings.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Settings\\ReportSettings.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:25:43.912Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "NotificationSettings.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Settings\\NotificationSettings.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Settings\\NotificationSettings.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Settings\\NotificationSettings.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Settings\\NotificationSettings.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:25:21.579Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "CommunitySettings.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Settings\\CommunitySettings.cs",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\Settings\\CommunitySettings.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\Settings\\CommunitySettings.cs",
+              "RelativeToolTip": "BallSport.Infrastructure\\Settings\\CommunitySettings.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T05:24:55.53Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 47,
+              "Title": "BallSport.Infrastructure.csproj",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
+              "RelativeDocumentMoniker": "BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
+              "RelativeToolTip": "BallSport.Infrastructure\\BallSport.Infrastructure.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-10-25T05:21:29.422Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "appsettings.Development.json",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.Development.json",
+              "RelativeDocumentMoniker": "BallSport.API\\appsettings.Development.json",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.Development.json",
+              "RelativeToolTip": "BallSport.API\\appsettings.Development.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-10-25T04:48:47.477Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.json",
+              "RelativeDocumentMoniker": "BallSport.API\\appsettings.json",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\appsettings.json",
+              "RelativeToolTip": "BallSport.API\\appsettings.json",
+              "ViewState": "AgIAACoAAAAAAAAAAAAAACsAAAAdAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-10-25T04:48:44.611Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "BallSport.Application.csproj",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\BallSport.Application.csproj",
+              "RelativeDocumentMoniker": "BallSport.Application\\BallSport.Application.csproj",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\BallSport.Application.csproj",
+              "RelativeToolTip": "BallSport.Application\\BallSport.Application.csproj",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-10-25T01:01:55.835Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 35,
+              "Title": "UpdatePostDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\UpdatePostDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\UpdatePostDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\UpdatePostDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\UpdatePostDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T01:01:53Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 36,
+              "Title": "UpdateCommentDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\UpdateCommentDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\UpdateCommentDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\UpdateCommentDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\UpdateCommentDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T01:01:52.411Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 37,
+              "Title": "ReportStatsDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\ReportStatsDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\ReportStatsDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\ReportStatsDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\ReportStatsDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T01:01:51.631Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 43,
+              "Title": "PostDetailDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\PostDetailDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\PostDetailDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\PostDetailDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\PostDetailDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T01:01:50.222Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 41,
+              "Title": "PostDTO.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\PostDTO.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\DTOs\\Community\\PostDTO.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\DTOs\\Community\\PostDTO.cs",
+              "RelativeToolTip": "BallSport.Application\\DTOs\\Community\\PostDTO.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T01:01:49.33Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "CommentController.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\CommentController.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Controllers\\Community\\CommentController.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\CommentController.cs",
+              "RelativeToolTip": "BallSport.API\\Controllers\\Community\\CommentController.cs",
+              "ViewState": "AgIAAK8AAAAAAAAAAAAmwMAAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T01:01:42.4Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "PostController.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\PostController.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Controllers\\Community\\PostController.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\PostController.cs",
+              "RelativeToolTip": "BallSport.API\\Controllers\\Community\\PostController.cs",
+              "ViewState": "AgIAAD0BAAAAAAAAAAAmwEsBAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T01:01:41.261Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "NotificationController.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\NotificationController.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Controllers\\Community\\NotificationController.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\NotificationController.cs",
+              "RelativeToolTip": "BallSport.API\\Controllers\\Community\\NotificationController.cs",
+              "ViewState": "AgIAAOsAAAAAAAAAAAAmwPwAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T01:01:40.141Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "ReportController.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\ReportController.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Controllers\\Community\\ReportController.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\Community\\ReportController.cs",
+              "RelativeToolTip": "BallSport.API\\Controllers\\Community\\ReportController.cs",
+              "ViewState": "AgIAAOUAAAAAAAAAAAAwwAkBAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T01:01:38.692Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 48,
+              "Title": "ResertPassController.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\ResertPassController.cs",
+              "RelativeDocumentMoniker": "BallSport.API\\Controllers\\ResertPassController.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.API\\Controllers\\ResertPassController.cs",
+              "RelativeToolTip": "BallSport.API\\Controllers\\ResertPassController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T01:01:36.73Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 49,
+              "Title": "IReportService.cs",
+              "DocumentMoniker": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\Community\\IReportService.cs",
+              "RelativeDocumentMoniker": "BallSport.Application\\Services\\Community\\IReportService.cs",
+              "ToolTip": "D:\\New folder\\SEP490_G19\\Back-end\\SEP490_G19\\BallSport.Application\\Services\\Community\\IReportService.cs",
+              "RelativeToolTip": "BallSport.Application\\Services\\Community\\IReportService.cs",
+              "ViewState": "AgIAABkAAAAAAAAAAAAcwAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T01:00:22.371Z"
             }
-        ]
-    }]
+          ]
+        }
+      ]
+    }
+  ]
 }

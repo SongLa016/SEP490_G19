@@ -8,7 +8,7 @@ namespace BallSport.API.Controllers.Community
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Yêu cầu đăng nhập cho tất cả endpoints
+    [Authorize] // Tất cả endpoint đều yêu cầu đăng nhập (trừ có [AllowAnonymous])
     public class PostController : ControllerBase
     {
         private readonly IPostService _postService;
@@ -18,9 +18,9 @@ namespace BallSport.API.Controllers.Community
             _postService = postService;
         }
 
-        // GET: api/Post?pageNumber=1&pageSize=10&status=Active&fieldId=5
+        // GET: api/Post
         [HttpGet]
-        [AllowAnonymous] // Cho phép xem bài viết không cần đăng nhập
+        [AllowAnonymous]
         public async Task<IActionResult> GetPosts(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
@@ -58,7 +58,7 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Post/5
+        // GET: api/Post/{id}
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetPostById(int id)
@@ -79,7 +79,7 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Post/trending?topCount=10
+        // GET: api/Post/trending
         [HttpGet("trending")]
         [AllowAnonymous]
         public async Task<IActionResult> GetTrendingPosts([FromQuery] int topCount = 10)
@@ -95,16 +95,14 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Post/newsfeed?pageNumber=1&pageSize=10
+        // GET: api/Post/newsfeed
         [HttpGet("newsfeed")]
-        public async Task<IActionResult> GetNewsFeed(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetNewsFeed([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var (posts, totalCount) = await _postService.GetNewsFeedAsync(userId.Value, pageNumber, pageSize);
@@ -128,13 +126,10 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Post/search?keyword=bóng đá&pageNumber=1&pageSize=10
+        // GET: api/Post/search
         [HttpGet("search")]
         [AllowAnonymous]
-        public async Task<IActionResult> SearchPosts(
-            [FromQuery] string keyword,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> SearchPosts([FromQuery] string keyword, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             try
             {
@@ -162,36 +157,22 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Post/user/5
+        // GET: api/Post/user/{userId}
         [HttpGet("user/{userId}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetPostsByUser(int userId)
         {
-            try
-            {
-                var posts = await _postService.GetPostsByUserIdAsync(userId);
-                return Ok(new { success = true, data = posts });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            var posts = await _postService.GetPostsByUserIdAsync(userId);
+            return Ok(new { success = true, data = posts });
         }
 
-        // GET: api/Post/field/5
+        // GET: api/Post/field/{fieldId}
         [HttpGet("field/{fieldId}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetPostsByField(int fieldId)
         {
-            try
-            {
-                var posts = await _postService.GetPostsByFieldIdAsync(fieldId);
-                return Ok(new { success = true, data = posts });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            var posts = await _postService.GetPostsByFieldIdAsync(fieldId);
+            return Ok(new { success = true, data = posts });
         }
 
         // POST: api/Post
@@ -204,7 +185,7 @@ namespace BallSport.API.Controllers.Community
                     return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
 
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var post = await _postService.CreatePostAsync(createPostDto, userId.Value);
@@ -222,7 +203,7 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // PUT: api/Post/5
+        // PUT: api/Post/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdatePost(int id, [FromBody] UpdatePostDTO updatePostDto)
         {
@@ -232,11 +213,10 @@ namespace BallSport.API.Controllers.Community
                     return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
 
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var post = await _postService.UpdatePostAsync(id, updatePostDto, userId.Value);
-
                 if (post == null)
                     return NotFound(new { success = false, message = "Không tìm thấy bài viết hoặc bạn không có quyền chỉnh sửa" });
 
@@ -248,19 +228,17 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // DELETE: api/Post/5
+        // DELETE: api/Post/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeletePost(int id)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
-                // Kiểm tra xem user có role Admin không
                 var isAdmin = User.IsInRole("Admin");
-
                 var success = await _postService.DeletePostAsync(id, userId.Value, isAdmin);
 
                 if (!success)
@@ -274,18 +252,17 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // POST: api/Post/5/like
+        // POST: api/Post/{id}/like
         [HttpPost("{id}/like")]
         public async Task<IActionResult> LikePost(int id)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var success = await _postService.LikePostAsync(id, userId.Value);
-
                 if (!success)
                     return BadRequest(new { success = false, message = "Bạn đã thích bài viết này rồi" });
 
@@ -297,18 +274,17 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // DELETE: api/Post/5/unlike
+        // DELETE: api/Post/{id}/unlike
         [HttpDelete("{id}/unlike")]
         public async Task<IActionResult> UnlikePost(int id)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var success = await _postService.UnlikePostAsync(id, userId.Value);
-
                 if (!success)
                     return BadRequest(new { success = false, message = "Bạn chưa thích bài viết này" });
 
@@ -320,21 +296,20 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // PUT: api/Post/5/toggle-visibility
+        // PUT: api/Post/{id}/toggle-visibility (Admin only)
         [HttpPut("{id}/toggle-visibility")]
-        [Authorize(Roles = "Admin")] // Chỉ Admin mới có quyền
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> TogglePostVisibility(int id, [FromBody] string status)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(status) ||
-                    (status != "Active" && status != "Hidden" && status != "Deleted"))
+                    !new[] { "Active", "Hidden", "Deleted" }.Contains(status))
                 {
                     return BadRequest(new { success = false, message = "Status phải là Active, Hidden hoặc Deleted" });
                 }
 
                 var success = await _postService.TogglePostVisibilityAsync(id, status);
-
                 if (!success)
                     return NotFound(new { success = false, message = "Không tìm thấy bài viết" });
 
@@ -346,15 +321,12 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // Helper method để lấy UserID từ JWT token
+        // QUAN TRỌNG NHẤT: LẤY USERID TỪ TOKEN ĐÚNG CÁCH
         private int? GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out int userId))
-            {
-                return userId;
-            }
-            return null;
+            // Token của bạn có claim "UserID" (chữ hoa), không phải NameIdentifier
+            var claim = User.FindFirst("UserID") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+            return int.TryParse(claim?.Value, out int userId) ? userId : null;
         }
     }
 }

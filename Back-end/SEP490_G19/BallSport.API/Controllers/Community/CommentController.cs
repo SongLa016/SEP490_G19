@@ -8,7 +8,7 @@ namespace BallSport.API.Controllers.Community
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    [Authorize] // Tất cả endpoint đều yêu cầu đăng nhập (trừ có [AllowAnonymous])
     public class CommentController : ControllerBase
     {
         private readonly ICommentService _commentService;
@@ -18,7 +18,7 @@ namespace BallSport.API.Controllers.Community
             _commentService = commentService;
         }
 
-        // GET: api/Comment/post/5
+        // GET: api/Comment/post/{postId}
         [HttpGet("post/{postId}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetCommentsByPost(int postId)
@@ -34,7 +34,7 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Comment/5
+        // GET: api/Comment/{id}
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetCommentById(int id)
@@ -42,7 +42,6 @@ namespace BallSport.API.Controllers.Community
             try
             {
                 var comment = await _commentService.GetCommentByIdAsync(id);
-
                 if (comment == null)
                     return NotFound(new { success = false, message = "Không tìm thấy bình luận" });
 
@@ -54,7 +53,7 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Comment/5/replies
+        // GET: api/Comment/{commentId}/replies
         [HttpGet("{commentId}/replies")]
         [AllowAnonymous]
         public async Task<IActionResult> GetReplies(int commentId)
@@ -70,7 +69,7 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Comment/user/5
+        // GET: api/Comment/user/{userId}
         [HttpGet("user/{userId}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetCommentsByUser(int userId)
@@ -86,7 +85,7 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Comment/post/5/count
+        // GET: api/Comment/post/{postId}/count
         [HttpGet("post/{postId}/count")]
         [AllowAnonymous]
         public async Task<IActionResult> CountCommentsByPost(int postId)
@@ -112,25 +111,29 @@ namespace BallSport.API.Controllers.Community
                     return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
 
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var comment = await _commentService.CreateCommentAsync(createCommentDto, userId.Value);
 
+                var message = createCommentDto.ParentCommentId.HasValue
+                    ? "Trả lời bình luận thành công"
+                    : "Bình luận thành công";
+
                 return CreatedAtAction(nameof(GetCommentById), new { id = comment.CommentId }, new
                 {
                     success = true,
-                    message = createCommentDto.ParentCommentId.HasValue ? "Trả lời bình luận thành công" : "Bình luận thành công",
+                    message,
                     data = comment
                 });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
             }
         }
 
-        // PUT: api/Comment/5
+        // PUT: api/Comment/{id}
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateComment(int id, [FromBody] UpdateCommentDTO updateCommentDto)
         {
@@ -140,11 +143,10 @@ namespace BallSport.API.Controllers.Community
                     return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
 
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var comment = await _commentService.UpdateCommentAsync(id, updateCommentDto, userId.Value);
-
                 if (comment == null)
                     return NotFound(new { success = false, message = "Không tìm thấy bình luận hoặc bạn không có quyền chỉnh sửa" });
 
@@ -156,18 +158,17 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // DELETE: api/Comment/5
+        // DELETE: api/Comment/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteComment(int id)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var isAdmin = User.IsInRole("Admin");
-
                 var success = await _commentService.DeleteCommentAsync(id, userId.Value, isAdmin);
 
                 if (!success)
@@ -181,15 +182,12 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // Helper method
+        // QUAN TRỌNG NHẤT: SỬA HÀM NÀY ĐỂ ĐỌC ĐÚNG CLAIM "UserID" TRONG TOKEN
         private int? GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out int userId))
-            {
-                return userId;
-            }
-            return null;
+            // Token của bạn dùng claim tên là "UserID" (chữ hoa), không phải NameIdentifier
+            var claim = User.FindFirst("UserID") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+            return int.TryParse(claim?.Value, out int userId) ? userId : null;
         }
     }
 }
