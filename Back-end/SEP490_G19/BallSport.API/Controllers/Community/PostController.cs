@@ -188,6 +188,20 @@ namespace BallSport.API.Controllers.Community
                 if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
+                // KIỂM TRA FIELDID TỒN TẠI (nếu có gửi lên)
+                if (createPostDto.FieldId.HasValue)
+                {
+                    var fieldExists = await _postService.FieldExistsAsync(createPostDto.FieldId.Value);
+                    if (!fieldExists)
+                    {
+                        return BadRequest(new
+                        {
+                            success = false,
+                            message = $"Sân bóng với ID = {createPostDto.FieldId.Value} không tồn tại. Vui lòng chọn sân hợp lệ."
+                        });
+                    }
+                }
+
                 var post = await _postService.CreatePostAsync(createPostDto, userId.Value);
 
                 return CreatedAtAction(nameof(GetPostById), new { id = post.PostId }, new
@@ -199,7 +213,8 @@ namespace BallSport.API.Controllers.Community
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
+                // Chỉ trả 500 nếu lỗi thật sự nghiêm trọng
+                return StatusCode(500, new { success = false, message = "Lỗi server không xác định", error = ex.Message });
             }
         }
 

@@ -15,6 +15,6 @@ namespace BallSport.Application.DTOs.Community
         [Url(ErrorMessage = "URL không hợp lệ")]
         public string? MediaUrl { get; set; }
 
-        public int? FieldId { get; set; }
+        public int? FieldId { get; set; } // HOÀN HẢO – CHO PHÉP NULL, KHÔNG CẦN THÊM GÌ NỮA!
     }
 }
