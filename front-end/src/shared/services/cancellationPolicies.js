@@ -1,227 +1,251 @@
 // Service for managing cancellation policies
-// Mock data for cancellation policies
+import axios from "axios";
 
-const CANCELLATION_POLICIES = [
-  {
-    PolicyID: 1,
-    OwnerID: 1,
-    ComplexID: 101,
-    Name: "Chính sách hủy tiêu chuẩn",
-    Description: "Hủy trước 24h miễn phí, sau đó tính phí 50%",
-    FreeCancellationHours: 24,
-    CancellationFeePercentage: 50,
-    IsActive: true,
-    CreatedAt: "2024-01-01T00:00:00Z",
-    UpdatedAt: "2024-01-01T00:00:00Z",
+// Create axios instance with base configuration
+const apiClient = axios.create({
+  timeout: 30000,
+  headers: {
+    "Content-Type": "application/json",
   },
-  {
-    PolicyID: 2,
-    OwnerID: 2,
-    ComplexID: 102,
-    Name: "Chính sách hủy linh hoạt",
-    Description: "Hủy trước 12h miễn phí, sau đó tính phí 30%",
-    FreeCancellationHours: 12,
-    CancellationFeePercentage: 30,
-    IsActive: true,
-    CreatedAt: "2024-01-02T00:00:00Z",
-    UpdatedAt: "2024-01-02T00:00:00Z",
-  },
-  {
-    PolicyID: 3,
-    OwnerID: 2,
-    ComplexID: 103,
-    Name: "Chính sách hủy nghiêm ngặt",
-    Description: "Hủy trước 48h miễn phí, sau đó tính phí 70%",
-    FreeCancellationHours: 48,
-    CancellationFeePercentage: 70,
-    IsActive: true,
-    CreatedAt: "2024-01-03T00:00:00Z",
-    UpdatedAt: "2024-01-03T00:00:00Z",
-  },
-  {
-    PolicyID: 4,
-    OwnerID: 2,
-    ComplexID: 104,
-    Name: "Chính sách hủy thân thiện",
-    Description: "Hủy trước 6h miễn phí, sau đó tính phí 20%",
-    FreeCancellationHours: 6,
-    CancellationFeePercentage: 20,
-    IsActive: true,
-    CreatedAt: "2024-01-04T00:00:00Z",
-    UpdatedAt: "2024-01-04T00:00:00Z",
-  },
-  {
-    PolicyID: 5,
-    OwnerID: 2,
-    ComplexID: 105,
-    Name: "Chính sách hủy cân bằng",
-    Description: "Hủy trước 18h miễn phí, sau đó tính phí 40%",
-    FreeCancellationHours: 18,
-    CancellationFeePercentage: 40,
-    IsActive: true,
-    CreatedAt: "2024-01-05T00:00:00Z",
-    UpdatedAt: "2024-01-05T00:00:00Z",
-  },
-];
+});
 
-// Helper functions
-function findPolicy(policyId) {
-  return CANCELLATION_POLICIES.find((p) => p.PolicyID === Number(policyId));
-}
+// Add request interceptor to include auth token if available
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
-function findPoliciesByOwner(ownerId) {
-  return CANCELLATION_POLICIES.filter((p) => p.OwnerID === Number(ownerId));
-}
+// Helper function to handle API errors
+const handleApiError = (error) => {
+  let errorMessage = "Có lỗi xảy ra khi gọi API";
 
-function findPolicyByComplex(complexId) {
-  return CANCELLATION_POLICIES.find(
-    (p) => p.ComplexID === Number(complexId) && p.IsActive
-  );
-}
+  if (error.response) {
+    const { status, statusText, data } = error.response;
+    if (status === 404) {
+      errorMessage = "API endpoint không tồn tại.";
+    } else if (status === 500) {
+      errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau.";
+    } else if (data && data.message) {
+      errorMessage = data.message;
+    } else {
+      errorMessage = `Lỗi ${status}: ${statusText}`;
+    }
+  } else if (error.request) {
+    errorMessage = "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
+  } else {
+    errorMessage = error.message || "Đã xảy ra lỗi không xác định.";
+  }
+
+  console.error("API Error:", error);
+  throw new Error(errorMessage);
+};
+
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://sep490-g19-zxph.onrender.com";
 
 // API functions
 export async function fetchCancellationPolicies(ownerId) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  try {
+    console.log(`Fetching cancellation policies for ownerId: ${ownerId}`);
+    const url = ownerId
+      ? `${API_BASE_URL}/api/CancellationPolicy/owner/${ownerId}`
+      : `${API_BASE_URL}/api/CancellationPolicy`;
+    const response = await apiClient.get(url);
+    console.log("Cancellation policies response:", response.data);
 
-  const policies = findPoliciesByOwner(ownerId);
-  return policies.map((policy) => ({
-    policyId: policy.PolicyID,
-    complexId: policy.ComplexID,
-    name: policy.Name,
-    description: policy.Description,
-    freeCancellationHours: policy.FreeCancellationHours,
-    cancellationFeePercentage: policy.CancellationFeePercentage,
-    isActive: policy.IsActive,
-    createdAt: policy.CreatedAt,
-    updatedAt: policy.UpdatedAt,
-  }));
+    // Handle both array and single object responses
+    const policies = Array.isArray(response.data)
+      ? response.data
+      : response.data
+      ? [response.data]
+      : [];
+
+    return policies.map((policy) => ({
+      policyId: policy.policyId || policy.PolicyID || policy.policyID,
+      ownerId: policy.ownerId || policy.OwnerID || policy.ownerID,
+      complexId: policy.complexId || policy.ComplexID || policy.complexID,
+      name: policy.name || policy.Name || "",
+      description: policy.description || policy.Description || "",
+      freeCancellationHours: policy.freeCancellationHours || policy.FreeCancellationHours || 0,
+      cancellationFeePercentage: policy.cancellationFeePercentage || policy.CancellationFeePercentage || 0,
+      isActive: policy.isActive !== undefined ? policy.isActive : (policy.IsActive !== undefined ? policy.IsActive : true),
+      createdAt: policy.createdAt || policy.CreatedAt,
+      updatedAt: policy.updatedAt || policy.UpdatedAt,
+    }));
+  } catch (error) {
+    console.error("Error fetching cancellation policies:", error);
+    handleApiError(error);
+  }
 }
 
 export async function fetchCancellationPolicy(policyId) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  try {
+    console.log(`Fetching cancellation policy ${policyId}`);
+    const response = await apiClient.get(
+      `${API_BASE_URL}/api/CancellationPolicy/${policyId}`
+    );
+    console.log("Cancellation policy response:", response.data);
+    const policy = response.data;
+    
+    if (!policy) return null;
 
-  const policy = findPolicy(policyId);
-  if (!policy) return null;
-
-  return {
-    policyId: policy.PolicyID,
-    ownerId: policy.OwnerID,
-    complexId: policy.ComplexID,
-    name: policy.Name,
-    description: policy.Description,
-    freeCancellationHours: policy.FreeCancellationHours,
-    cancellationFeePercentage: policy.CancellationFeePercentage,
-    isActive: policy.IsActive,
-    createdAt: policy.CreatedAt,
-    updatedAt: policy.UpdatedAt,
-  };
+    return {
+      policyId: policy.policyId || policy.PolicyID || policy.policyID,
+      ownerId: policy.ownerId || policy.OwnerID || policy.ownerID,
+      complexId: policy.complexId || policy.ComplexID || policy.complexID,
+      name: policy.name || policy.Name || "",
+      description: policy.description || policy.Description || "",
+      freeCancellationHours: policy.freeCancellationHours || policy.FreeCancellationHours || 0,
+      cancellationFeePercentage: policy.cancellationFeePercentage || policy.CancellationFeePercentage || 0,
+      isActive: policy.isActive !== undefined ? policy.isActive : (policy.IsActive !== undefined ? policy.IsActive : true),
+      createdAt: policy.createdAt || policy.CreatedAt,
+      updatedAt: policy.updatedAt || policy.UpdatedAt,
+    };
+  } catch (error) {
+    console.error("Error fetching cancellation policy:", error);
+    // Return null if not found (404), otherwise throw error
+    if (error.response?.status === 404) {
+      return null;
+    }
+    handleApiError(error);
+  }
 }
 
 export async function fetchCancellationPolicyByComplex(complexId) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  try {
+    const complexIdNum = Number(complexId);
+    console.log(`Fetching cancellation policy for complexId: ${complexIdNum}`);
 
-  const policy = findPolicyByComplex(complexId);
-  if (!policy) return null;
+    // Use the specific endpoint for complex-based query
+    const response = await apiClient.get(
+      `${API_BASE_URL}/api/CancellationPolicy/complex/${complexIdNum}`
+    );
+    console.log("Cancellation policy response:", response.data);
 
-  return {
-    policyId: policy.PolicyID,
-    complexId: policy.ComplexID,
-    name: policy.Name,
-    description: policy.Description,
-    freeCancellationHours: policy.FreeCancellationHours,
-    cancellationFeePercentage: policy.CancellationFeePercentage,
-    isActive: policy.IsActive,
-  };
+    // Handle both array and single object responses
+    const policy = Array.isArray(response.data)
+      ? response.data[0]
+      : response.data;
+
+    if (!policy) {
+      return null;
+    }
+
+    return {
+      policyId: policy.policyId || policy.PolicyID || policy.policyID,
+      complexId: policy.complexId || policy.ComplexID || policy.complexID,
+      ownerId: policy.ownerId || policy.OwnerID || policy.ownerID,
+      name: policy.name || policy.Name || "",
+      description: policy.description || policy.Description || "",
+      freeCancellationHours: policy.freeCancellationHours || policy.FreeCancellationHours || 0,
+      cancellationFeePercentage: policy.cancellationFeePercentage || policy.CancellationFeePercentage || 0,
+      isActive: policy.isActive !== undefined ? policy.isActive : (policy.IsActive !== undefined ? policy.IsActive : true),
+      createdAt: policy.createdAt || policy.CreatedAt,
+      updatedAt: policy.updatedAt || policy.UpdatedAt,
+    };
+  } catch (error) {
+    console.error("Error fetching cancellation policy by complex:", error);
+    // Return null if not found (404), otherwise throw error
+    if (error.response?.status === 404) {
+      return null;
+    }
+    handleApiError(error);
+  }
 }
 
 export async function createCancellationPolicy(policyData) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  const newPolicy = {
-    PolicyID: CANCELLATION_POLICIES.length + 1,
-    OwnerID: policyData.ownerId,
-    ComplexID: policyData.complexId,
-    Name: policyData.name,
-    Description: policyData.description,
-    FreeCancellationHours: policyData.freeCancellationHours,
-    CancellationFeePercentage: policyData.cancellationFeePercentage,
-    IsActive: true,
-    CreatedAt: new Date().toISOString(),
-    UpdatedAt: new Date().toISOString(),
-  };
-
-  CANCELLATION_POLICIES.push(newPolicy);
-
-  return {
-    policyId: newPolicy.PolicyID,
-    complexId: newPolicy.ComplexID,
-    name: newPolicy.Name,
-    description: newPolicy.Description,
-    freeCancellationHours: newPolicy.FreeCancellationHours,
-    cancellationFeePercentage: newPolicy.CancellationFeePercentage,
-    isActive: newPolicy.IsActive,
-    createdAt: newPolicy.CreatedAt,
-    updatedAt: newPolicy.UpdatedAt,
-  };
+  try {
+    console.log("Creating cancellation policy with data:", policyData);
+    const payload = {
+      ownerId: policyData.ownerId,
+      complexId: policyData.complexId,
+      name: policyData.name,
+      description: policyData.description,
+      freeCancellationHours: policyData.freeCancellationHours,
+      cancellationFeePercentage: policyData.cancellationFeePercentage,
+      isActive: policyData.isActive !== undefined ? policyData.isActive : true,
+    };
+    console.log("Sending payload:", payload);
+    const response = await apiClient.post(
+      `${API_BASE_URL}/api/CancellationPolicy`,
+      payload
+    );
+    console.log("Create cancellation policy response:", response.data);
+    const policy = response.data;
+    return {
+      policyId: policy.policyId || policy.PolicyID || policy.policyID,
+      complexId: policy.complexId || policy.ComplexID || policy.complexID,
+      ownerId: policy.ownerId || policy.OwnerID || policy.ownerID,
+      name: policy.name || policy.Name || "",
+      description: policy.description || policy.Description || "",
+      freeCancellationHours: policy.freeCancellationHours || policy.FreeCancellationHours || 0,
+      cancellationFeePercentage: policy.cancellationFeePercentage || policy.CancellationFeePercentage || 0,
+      isActive: policy.isActive !== undefined ? policy.isActive : (policy.IsActive !== undefined ? policy.IsActive : true),
+      createdAt: policy.createdAt || policy.CreatedAt,
+      updatedAt: policy.updatedAt || policy.UpdatedAt,
+    };
+  } catch (error) {
+    console.error("Error creating cancellation policy:", error);
+    handleApiError(error);
+  }
 }
 
 export async function updateCancellationPolicy(policyId, policyData) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  const policyIndex = CANCELLATION_POLICIES.findIndex(
-    (p) => p.PolicyID === Number(policyId)
-  );
-  if (policyIndex === -1) {
-    throw new Error("Policy not found");
+  try {
+    console.log(`Updating cancellation policy ${policyId} with data:`, policyData);
+    const payload = {
+      ownerId: policyData.ownerId,
+      complexId: policyData.complexId,
+      name: policyData.name,
+      description: policyData.description,
+      freeCancellationHours: policyData.freeCancellationHours,
+      cancellationFeePercentage: policyData.cancellationFeePercentage,
+      isActive: policyData.isActive !== undefined ? policyData.isActive : true,
+    };
+    console.log("Sending payload:", payload);
+    const response = await apiClient.put(
+      `${API_BASE_URL}/api/CancellationPolicy/${policyId}`,
+      payload
+    );
+    console.log("Update cancellation policy response:", response.data);
+    const policy = response.data;
+    return {
+      policyId: policy.policyId || policy.PolicyID || policy.policyID,
+      complexId: policy.complexId || policy.ComplexID || policy.complexID,
+      ownerId: policy.ownerId || policy.OwnerID || policy.ownerID,
+      name: policy.name || policy.Name || "",
+      description: policy.description || policy.Description || "",
+      freeCancellationHours: policy.freeCancellationHours || policy.FreeCancellationHours || 0,
+      cancellationFeePercentage: policy.cancellationFeePercentage || policy.CancellationFeePercentage || 0,
+      isActive: policy.isActive !== undefined ? policy.isActive : (policy.IsActive !== undefined ? policy.IsActive : true),
+      createdAt: policy.createdAt || policy.CreatedAt,
+      updatedAt: policy.updatedAt || policy.UpdatedAt,
+    };
+  } catch (error) {
+    console.error("Error updating cancellation policy:", error);
+    handleApiError(error);
   }
-
-  const updatedPolicy = {
-    ...CANCELLATION_POLICIES[policyIndex],
-    Name: policyData.name,
-    Description: policyData.description,
-    FreeCancellationHours: policyData.freeCancellationHours,
-    CancellationFeePercentage: policyData.cancellationFeePercentage,
-    IsActive:
-      policyData.isActive !== undefined
-        ? policyData.isActive
-        : CANCELLATION_POLICIES[policyIndex].IsActive,
-    UpdatedAt: new Date().toISOString(),
-  };
-
-  CANCELLATION_POLICIES[policyIndex] = updatedPolicy;
-
-  return {
-    policyId: updatedPolicy.PolicyID,
-    complexId: updatedPolicy.ComplexID,
-    name: updatedPolicy.Name,
-    description: updatedPolicy.Description,
-    freeCancellationHours: updatedPolicy.FreeCancellationHours,
-    cancellationFeePercentage: updatedPolicy.CancellationFeePercentage,
-    isActive: updatedPolicy.IsActive,
-    createdAt: updatedPolicy.CreatedAt,
-    updatedAt: updatedPolicy.UpdatedAt,
-  };
 }
 
 export async function deleteCancellationPolicy(policyId) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 300));
-
-  const policyIndex = CANCELLATION_POLICIES.findIndex(
-    (p) => p.PolicyID === Number(policyId)
-  );
-  if (policyIndex === -1) {
-    throw new Error("Policy not found");
+  try {
+    console.log(`Deleting cancellation policy ${policyId}`);
+    const response = await apiClient.delete(
+      `${API_BASE_URL}/api/CancellationPolicy/${policyId}`
+    );
+    console.log("Delete cancellation policy response:", response.data);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error("Error deleting cancellation policy:", error);
+    handleApiError(error);
   }
-
-  CANCELLATION_POLICIES.splice(policyIndex, 1);
-
-  return { success: true };
 }
 
 // Calculate cancellation fee based on policy and booking details

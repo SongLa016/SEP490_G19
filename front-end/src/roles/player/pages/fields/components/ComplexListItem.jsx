@@ -15,7 +15,7 @@ const getImageSrc = (imageBase64) => {
      return `data:image/jpeg;base64,${imageBase64}`;
 };
 
-export default function ComplexListItem({ complex, index, navigate, formatPrice }) {
+export default function ComplexListItem({ complex, index, navigate }) {
      return (
           <FadeIn key={complex.complexId} delay={index * 50}>
                <Link

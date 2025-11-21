@@ -515,3 +515,185 @@ export async function fetchBookingsByPlayer(playerId) {
     };
   }
 }
+/**
+
+ * Cancel a booking and create a cancellation request
+ * @param {number} bookingId - The booking ID to cancel
+ * @param {string} reason - Reason for cancellation
+ * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+ */
+export async function cancelBooking(bookingId, reason) {
+  try {
+    if (!bookingId) {
+      return {
+        success: false,
+        error: "Booking ID is required",
+      };
+    }
+
+    if (!reason || !reason.trim()) {
+      return {
+        success: false,
+        error: "Lý do hủy là bắt buộc",
+      };
+    }
+
+    const endpoint = "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe";
+    
+    const payload = {
+      bookingId: Number(bookingId),
+      reason: String(reason).trim(),
+    };
+
+    console.log("Cancelling booking with payload:", payload);
+
+    const response = await axios.post(endpoint, payload, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    console.log("Booking cancellation response:", response.data);
+
+    return {
+      success: true,
+      data: response.data,
+      message: "Đã gửi yêu cầu hủy booking thành công",
+    };
+  } catch (error) {
+    console.error("Error cancelling booking:", error);
+    
+    if (error.response) {
+      return {
+        success: false,
+        error: error.response.data?.message || error.response.data || "Không thể hủy booking",
+      };
+    }
+
+    return {
+      success: false,
+      error: error.message || "Có lỗi xảy ra khi hủy booking",
+    };
+  }
+}
+
+/**
+ * Fetch all booking cancellation requests
+ * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
+ */
+export async function fetchCancellationRequests() {
+  try {
+    const endpoint = "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe";
+    
+    console.log("Fetching cancellation requests from:", endpoint);
+
+    const response = await axios.get(endpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    console.log("Cancellation requests response:", response.data);
+
+    return {
+      success: true,
+      data: Array.isArray(response.data) ? response.data : response.data?.data || [],
+    };
+  } catch (error) {
+    console.error("Error fetching cancellation requests:", error);
+    
+    if (error.response) {
+      return {
+        success: false,
+        error: error.response.data?.message || "Không thể tải danh sách yêu cầu hủy",
+      };
+    }
+
+    return {
+      success: false,
+      error: error.message || "Có lỗi xảy ra khi tải danh sách yêu cầu hủy",
+    };
+  }
+}
+
+/**
+ * Confirm a cancellation request
+ * @param {number} cancellationId - The cancellation request ID
+ * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+ */
+export async function confirmCancellation(cancellationId) {
+  try {
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/confirm/${cancellationId}`;
+    
+    console.log("Confirming cancellation:", cancellationId);
+
+    const response = await axios.put(endpoint, {}, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    console.log("Confirm cancellation response:", response.data);
+
+    return {
+      success: true,
+      data: response.data,
+      message: "Đã xác nhận hủy booking",
+    };
+  } catch (error) {
+    console.error("Error confirming cancellation:", error);
+    
+    if (error.response) {
+      return {
+        success: false,
+        error: error.response.data?.message || "Không thể xác nhận hủy",
+      };
+    }
+
+    return {
+      success: false,
+      error: error.message || "Có lỗi xảy ra khi xác nhận hủy",
+    };
+  }
+}
+
+/**
+ * Delete a cancellation request
+ * @param {number} cancellationId - The cancellation request ID
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function deleteCancellationRequest(cancellationId) {
+  try {
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
+    
+    console.log("Deleting cancellation request:", cancellationId);
+
+    await axios.delete(endpoint, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    return {
+      success: true,
+      message: "Đã xóa yêu cầu hủy",
+    };
+  } catch (error) {
+    console.error("Error deleting cancellation request:", error);
+    
+    if (error.response) {
+      return {
+        success: false,
+        error: error.response.data?.message || "Không thể xóa yêu cầu hủy",
+      };
+    }
+
+    return {
+      success: false,
+      error: error.message || "Có lỗi xảy ra khi xóa yêu cầu hủy",
+    };
+  }
+}

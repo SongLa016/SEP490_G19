@@ -105,12 +105,21 @@ export async function fetchDepositPolicy(policyId) {
 export async function fetchDepositPolicyByField(fieldId) {
   try {
     const fieldIdNum = Number(fieldId);
+    if (!fieldIdNum || isNaN(fieldIdNum)) {
+      console.warn(`Invalid fieldId: ${fieldId}`);
+      return null;
+    }
+
     console.log(`Fetching deposit policy for fieldId: ${fieldIdNum}`);
 
     // Use the specific endpoint for field-based query
-    const response = await apiClient.get(
-      `https://sep490-g19-zxph.onrender.com/api/DepositPolicy/field/${fieldIdNum}`
-    );
+    const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+    const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
+    const endpoint = `${API_BASE_URL}/api/DepositPolicy/field/${fieldIdNum}`;
+
+    console.log(`Calling deposit policy endpoint: ${endpoint}`);
+    
+    const response = await apiClient.get(endpoint);
     console.log("Deposit policy response:", response.data);
 
     // Handle both array and single object responses
@@ -119,25 +128,32 @@ export async function fetchDepositPolicyByField(fieldId) {
       : response.data;
 
     if (!policy) {
+      console.log(`No deposit policy found for fieldId: ${fieldIdNum}`);
       return null;
     }
 
-    return {
-      depositPolicyId: policy.depositPolicyId,
-      fieldId: policy.fieldId,
-      fieldName: policy.fieldName || "",
-      depositPercent: policy.depositPercent,
-      minDeposit: policy.minDeposit,
-      maxDeposit: policy.maxDeposit,
-      createdAt: policy.createdAt,
+    const normalizedPolicy = {
+      depositPolicyId: policy.depositPolicyId || policy.depositPolicyID,
+      fieldId: policy.fieldId || policy.fieldID,
+      fieldName: policy.fieldName || policy.FieldName || "",
+      depositPercent: policy.depositPercent || policy.depositPercent || 0,
+      minDeposit: policy.minDeposit || policy.minDeposit || 0,
+      maxDeposit: policy.maxDeposit || policy.maxDeposit || 0,
+      createdAt: policy.createdAt || policy.CreatedAt,
     };
+
+    console.log(`Successfully fetched deposit policy for fieldId ${fieldIdNum}:`, normalizedPolicy);
+    return normalizedPolicy;
   } catch (error) {
     console.error("Error fetching deposit policy by field:", error);
-    // Return null if not found (404), otherwise throw error
+    // Return null if not found (404), otherwise log and return null
     if (error.response?.status === 404) {
+      console.log(`Deposit policy not found for fieldId: ${fieldId} (404)`);
       return null;
     }
-    handleApiError(error);
+    // For other errors, log but don't throw - return null to allow page to continue
+    console.warn(`Failed to fetch deposit policy for fieldId ${fieldId}:`, error.message);
+    return null;
   }
 }
 

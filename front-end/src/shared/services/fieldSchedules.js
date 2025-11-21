@@ -316,6 +316,87 @@ export async function fetchPublicFieldSchedulesByField(fieldId) {
 }
 
 /**
+ * Fetch public field schedules by date
+ * @param {string} date - Date in format "YYYY-MM-DD"
+ * @returns {Promise<Object>} List of field schedules for the date
+ */
+export async function fetchPublicFieldSchedulesByDate(date) {
+  try {
+    // Try different endpoint variations
+    const endpoints = [
+      `/FieldSchedule/public/date/${date}`,
+      `/FieldSchedule/public?date=${date}`,
+      `/FieldSchedule/public/date?date=${date}`,
+    ];
+
+    const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+    const API_BASE_URL =
+      process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
+
+    const publicApiClient = axios.create({
+      baseURL: `${API_BASE_URL}/api`,
+      timeout: 30000,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    // Ensure no auth token is sent for public endpoint
+    publicApiClient.interceptors.request.use((config) => {
+      delete config.headers.Authorization;
+      return config;
+    });
+
+    let lastError = null;
+    let schedulesArray = [];
+
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`Trying to fetch schedules by date from: ${API_BASE_URL}/api${endpoint}`);
+        const response = await publicApiClient.get(endpoint);
+        let data = response.data;
+
+        if (Array.isArray(data)) {
+          schedulesArray = data;
+        } else if (data && Array.isArray(data.data)) {
+          schedulesArray = data.data;
+        }
+
+        if (schedulesArray.length > 0) {
+          console.log(`Success - received ${schedulesArray.length} schedules for date ${date}`);
+          return {
+            success: true,
+            data: schedulesArray
+              .map(normalizeFieldSchedule)
+              .filter((s) => s !== null),
+          };
+        }
+      } catch (err) {
+        console.log(`Failed with endpoint: ${endpoint}`, err.response?.status);
+        lastError = err;
+        if (err.response?.status !== 404) {
+          break;
+        }
+      }
+    }
+
+    // If all endpoints failed, return empty array
+    console.log(`No schedules found for date ${date} or endpoint not available`);
+    return {
+      success: true,
+      data: [],
+    };
+  } catch (error) {
+    console.error("Error fetching public field schedules by date:", error);
+    return {
+      success: false,
+      error: handleApiError(error),
+      data: [],
+    };
+  }
+}
+
+/**
  * Create a new field schedule
  * @param {Object} scheduleData - Schedule data
  * @param {number} scheduleData.fieldId - Field ID
@@ -510,6 +591,64 @@ export async function deleteFieldSchedule(scheduleId) {
     return {
       success: false,
       error: handleApiError(error),
+    };
+  }
+}
+
+/**
+ * Fetch available schedules for a specific field and date
+ * @param {number} fieldId - Field ID
+ * @param {string} date - Date in YYYY-MM-DD format
+ * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
+ */
+export async function fetchAvailableSchedulesByFieldAndDate(fieldId, date) {
+  try {
+    if (!fieldId || !date) {
+      return {
+        success: false,
+        error: "Field ID and date are required",
+      };
+    }
+
+    console.log(`Fetching available schedules for field ${fieldId} on ${date}`);
+
+    // Fetch all schedules for the field
+    const result = await fetchFieldSchedulesByField(fieldId);
+    
+    if (!result.success) {
+      return result;
+    }
+
+    // Filter by date and status = Available
+    const schedules = result.data || [];
+    const availableSchedules = schedules.filter(schedule => {
+      // Parse schedule date
+      let scheduleDateStr = '';
+      if (typeof schedule.date === 'string') {
+        scheduleDateStr = schedule.date.split('T')[0];
+      } else if (schedule.date && schedule.date.year) {
+        scheduleDateStr = `${schedule.date.year}-${String(schedule.date.month).padStart(2, '0')}-${String(schedule.date.day).padStart(2, '0')}`;
+      }
+
+      // Check if date matches and status is Available
+      const status = schedule.status || schedule.Status || '';
+      const isAvailable = status.toLowerCase() === 'available';
+      const dateMatches = scheduleDateStr === date;
+
+      return dateMatches && isAvailable;
+    });
+
+    console.log(`Found ${availableSchedules.length} available schedules for ${date}`);
+
+    return {
+      success: true,
+      data: availableSchedules,
+    };
+  } catch (error) {
+    console.error('Error fetching available schedules:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to fetch available schedules',
     };
   }
 }

@@ -71,6 +71,24 @@ export default function BookingModal({
           }
      }, [isOpen]);
 
+     // Calculate duration from slot times if available
+     const calculateDuration = (startTime, endTime) => {
+          if (!startTime || !endTime) return 1;
+          try {
+               const start = new Date(`2000-01-01T${startTime}`);
+               const end = new Date(`2000-01-01T${endTime}`);
+               const hours = (end - start) / (1000 * 60 * 60);
+               return hours > 0 ? hours : 1;
+          } catch {
+               return 1;
+          }
+     };
+
+     const initialDuration = fieldData?.duration ||
+          (fieldData?.startTime && fieldData?.endTime
+               ? calculateDuration(fieldData.startTime, fieldData.endTime)
+               : 1);
+
      const [bookingData, setBookingData] = useState({
           fieldId: fieldData?.fieldId || null,
           fieldName: fieldData?.fieldName || "",
@@ -84,7 +102,7 @@ export default function BookingModal({
           date: fieldData?.date || new Date().toISOString().split('T')[0],
           slotId: fieldData?.slotId || null,
           slotName: fieldData?.slotName || "",
-          duration: fieldData?.duration || 1,
+          duration: initialDuration,
           price: fieldData?.price || 0,
           totalPrice: fieldData?.price || 0,
           depositPercent: 0.3,
@@ -175,7 +193,10 @@ export default function BookingModal({
                     slotId: fieldData.slotId || prev.slotId,
                     slotName: fieldData.slotName || prev.slotName,
                     scheduleId: fieldData.scheduleId || prev.scheduleId || 0, // Thêm scheduleId
-                    duration: fieldData.duration || prev.duration,
+                    duration: fieldData.duration ||
+                         (fieldData.startTime && fieldData.endTime
+                              ? calculateDuration(fieldData.startTime, fieldData.endTime)
+                              : prev.duration),
                     price: fieldData.price || prev.price,
                     totalPrice: fieldData.totalPrice || fieldData.price || prev.price,
                     fieldSchedules: fieldData.fieldSchedules || prev.fieldSchedules // Thêm fieldSchedules

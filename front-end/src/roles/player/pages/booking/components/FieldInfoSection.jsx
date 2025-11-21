@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { MapPin } from "lucide-react";
+import { fetchFieldTypes, normalizeFieldType } from "../../../../../shared/services/fieldTypes";
 
 export default function FieldInfoSection({
      bookingData,
@@ -8,90 +10,112 @@ export default function FieldInfoSection({
      generateRecurringSessions
 }) {
      const dayNames = { 0: "CN", 1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7" };
-     const parseTimeToMinutes = (value) => {
-          if (value == null) return null;
-          if (typeof value === "number" && !Number.isNaN(value)) return value;
-          if (typeof value === "string") {
-               const trimmed = value.trim();
-               if (!trimmed) return null;
+     const [fieldTypeMap, setFieldTypeMap] = useState({});
 
-               const timePattern = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/;
-               const timeMatch = trimmed.match(timePattern);
-               if (timeMatch) {
-                    const hours = Number(timeMatch[1]);
-                    const minutes = Number(timeMatch[2]);
-                    if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
-                         return hours * 60 + minutes;
+     // Load field types để map typeId -> typeName
+     useEffect(() => {
+          let ignore = false;
+          async function loadFieldTypes() {
+               try {
+                    const result = await fetchFieldTypes();
+                    if (ignore) return;
+                    const rawList = (() => {
+                         if (!result || !result.success) return [];
+                         if (Array.isArray(result.data)) return result.data;
+                         if (result.data && Array.isArray(result.data.data)) return result.data.data;
+                         if (result.data && Array.isArray(result.data.value)) return result.data.value;
+                         return [];
+                    })();
+                    if (rawList.length > 0) {
+                         const map = rawList.reduce((acc, raw) => {
+                              const normalized = normalizeFieldType(raw);
+                              if (normalized?.typeId) {
+                                   acc[String(normalized.typeId)] = normalized.typeName || "";
+                              }
+                              return acc;
+                         }, {});
+                         setFieldTypeMap(map);
                     }
-               }
-
-               const timestamp = Date.parse(trimmed);
-               if (!Number.isNaN(timestamp)) {
-                    const date = new Date(timestamp);
-                    return date.getHours() * 60 + date.getMinutes();
-               }
-
-               const numericValue = Number(trimmed);
-               if (!Number.isNaN(numericValue)) {
-                    return numericValue * 60;
+               } catch (err) {
+                    console.warn("Unable to load field types:", err);
                }
           }
-          if (typeof value === "object") {
-               if (value instanceof Date && !Number.isNaN(value.getTime())) {
-                    return value.getHours() * 60 + value.getMinutes();
-               }
-               if (
-                    typeof value.hours === "number" &&
-                    typeof value.minutes === "number" &&
-                    !Number.isNaN(value.hours) &&
-                    !Number.isNaN(value.minutes)
-               ) {
-                    return value.hours * 60 + value.minutes;
-               }
+          loadFieldTypes();
+          return () => { ignore = true; };
+     }, []);
+
+     // Lấy tên loại sân từ typeId hoặc sử dụng fieldType có sẵn
+     const getFieldTypeName = () => {
+          // Nếu đã có fieldType (tên), ưu tiên sử dụng
+          if (bookingData?.fieldType) {
+               return bookingData.fieldType;
           }
-          if (value instanceof Date) {
-               return value.getHours() * 60 + value.getMinutes();
+          // Nếu có typeId, map từ fieldTypeMap
+          const typeId = bookingData?.typeId || bookingData?.TypeID || bookingData?.typeID;
+          if (typeId && fieldTypeMap[String(typeId)]) {
+               return fieldTypeMap[String(typeId)];
           }
           return null;
      };
 
-     const getDurationMinutes = () => {
+     const fieldTypeName = getFieldTypeName();
+
+     // Tính thời lượng theo cách TimeSlotsTab.jsx
+     const calculateDuration = () => {
+          // Nếu có duration trực tiếp, sử dụng nó
           const durationValue = bookingData?.duration;
           if (durationValue != null && durationValue !== "") {
                const normalized = Number(durationValue);
                if (!Number.isNaN(normalized) && normalized > 0) {
-                    return Math.round(normalized * 60);
+                    return normalized; // duration đã là số giờ
                }
           }
 
-          const start = parseTimeToMinutes(bookingData?.startTime);
-          const end = parseTimeToMinutes(bookingData?.endTime);
-          if (start != null && end != null) {
-               let diff = end - start;
-               if (diff < 0) {
-                    diff += 24 * 60;
+          // Tính từ startTime và endTime giống TimeSlotsTab.jsx
+          const startTimeStr = bookingData?.startTime || bookingData?.StartTime || '00:00:00';
+          const endTimeStr = bookingData?.endTime || bookingData?.EndTime || '00:00:00';
+
+          try {
+               // Tạo Date objects với ngày giả định, giống TimeSlotsTab
+               const start = new Date(`2000-01-01T${startTimeStr}`);
+               const end = new Date(`2000-01-01T${endTimeStr}`);
+
+               // Tính duration bằng giờ (giống TimeSlotsTab: (end - start) / (1000 * 60 * 60))
+               const durationHours = (end - start) / (1000 * 60 * 60);
+
+               if (!Number.isNaN(durationHours) && durationHours > 0) {
+                    return durationHours;
                }
-               return diff;
+          } catch (error) {
+               console.warn("Error calculating duration from startTime/endTime:", error);
           }
+
           return null;
      };
 
-     const formatDurationLabel = (totalMinutes) => {
-          if (totalMinutes == null || Number.isNaN(totalMinutes)) {
+     // Format duration để hiển thị (ví dụ: 1.5h -> "1h30 phút", 2h -> "2h")
+     const formatDuration = (hours) => {
+          if (hours == null || Number.isNaN(hours)) {
                return "—";
           }
-          const hours = Math.floor(totalMinutes / 60);
-          const minutes = totalMinutes % 60;
-          if (hours > 0 && minutes > 0) {
-               return `${hours}h${String(minutes).padStart(2, "0")} phút`;
+
+          const totalHours = Math.floor(hours);
+          const minutes = Math.round((hours - totalHours) * 60);
+
+          if (totalHours > 0 && minutes > 0) {
+               return `${totalHours}h${String(minutes).padStart(2, "0")} phút`;
           }
-          if (hours > 0) {
-               return `${hours}h`;
+          if (totalHours > 0) {
+               return `${totalHours}h`;
           }
-          return `${minutes} phút`;
+          if (minutes > 0) {
+               return `${minutes} phút`;
+          }
+          return "—";
      };
 
-     const durationLabel = formatDurationLabel(getDurationMinutes());
+     const durationHours = calculateDuration();
+     const durationLabel = formatDuration(durationHours);
 
      return (
           <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4">
@@ -106,9 +130,9 @@ export default function FieldInfoSection({
                               <MapPin className="w-4 h-4 mr-2 text-teal-600" />
                               <span className="text-sm font-medium">{bookingData.fieldAddress}</span>
                          </div>
-                         {bookingData.fieldType && (
+                         {fieldTypeName && (
                               <div className="text-sm text-gray-500 font-medium">
-                                   <span className="font-medium">Loại:</span> {bookingData.fieldType}
+                                   <span className="font-medium">Loại:</span> {fieldTypeName}
                                    {bookingData.fieldSize && ` - ${bookingData.fieldSize}`}
                               </div>
                          )}

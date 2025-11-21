@@ -349,6 +349,15 @@ export async function fetchFieldsByComplex(complexId) {
     // Use the correct endpoint from Swagger: GET /api/Field/complex/{complexId}
     const response = await apiClient.get(`/api/Field/complex/${complexIdNum}`);
     console.log(`Fields for complex ${complexIdNum} response:`, response.data);
+    
+    // Debug: Log raw field data to check typeId
+    if (Array.isArray(response.data)) {
+      response.data.forEach(field => {
+        if (field.fieldId === 32 || field.FieldID === 32) {
+          console.log("🔍 [fetchFieldsByComplex] Raw field 32 from API:", field);
+        }
+      });
+    }
 
     // Handle response - can be array or object
     let data = response.data;
@@ -375,19 +384,39 @@ export async function fetchFieldsByComplex(complexId) {
         ? rawComplexId
         : normalizedComplexId;
 
-      const rawTypeId = field.typeId ?? field.TypeID;
-      const normalizedTypeId = Number(rawTypeId);
+      // Try multiple variations of typeId field name (typeId is the correct one from API)
+      const rawTypeId = field.typeId ?? field.TypeID ?? field.typeID ?? field.TypeId ?? field.fieldTypeId ?? field.FieldTypeID;
+      
+      // Normalize typeId - ensure it's a number if it exists
+      let finalTypeId = null;
+      if (rawTypeId != null && rawTypeId !== undefined && rawTypeId !== "") {
+        const numTypeId = Number(rawTypeId);
+        finalTypeId = !Number.isNaN(numTypeId) ? numTypeId : rawTypeId;
+      }
+      
+      // Debug log for fieldId 32
+      if (fieldId === 32) {
+        console.log("🔍 [fetchFieldsByComplex] Field 32 normalization:", {
+          rawField: field,
+          rawTypeId: rawTypeId,
+          finalTypeId: finalTypeId,
+          fieldTypeId: field.typeId,
+          fieldTypeID: field.TypeID,
+          fieldTypeName: field.typeName,
+          fieldTypeName: field.TypeName
+        });
+      }
 
-      return {
+      const normalizedField = {
         fieldId,
         complexId: complexIdValue,
-        typeId: Number.isNaN(normalizedTypeId) ? rawTypeId : normalizedTypeId,
-        name: field.name || field.Name,
+        typeId: finalTypeId,
+        name: field.name || field.Name || "",
         size: field.size || field.Size || "",
         grassType: field.grassType || field.GrassType || "",
         description: field.description || field.Description || "",
         imageBase64: field.imageBase64 || field.ImageBase64 || "",
-        pricePerHour: field.pricePerHour || field.PricePerHour,
+        pricePerHour: field.pricePerHour || field.PricePerHour || 0,
         status: field.status || field.Status || "Available",
         createdAt: field.createdAt || field.CreatedAt,
         complexName: field.complexName || field.ComplexName || "",
@@ -404,6 +433,13 @@ export async function fetchFieldsByComplex(complexId) {
             ? field.isAvailableForSelectedSlot
             : field.status === "Available" || field.Status === "Available",
       };
+      
+      // Debug: Log final normalized field for fieldId 32
+      if (fieldId === 32) {
+        console.log("✅ [fetchFieldsByComplex] Final normalized field 32:", normalizedField);
+      }
+      
+      return normalizedField;
     });
   } catch (error) {
     if (error?.response?.status === 404) {
@@ -416,7 +452,18 @@ export async function fetchFieldsByComplex(complexId) {
 export async function fetchField(fieldId) {
   try {
     const response = await apiClient.get(`/api/Field/${fieldId}`);
-    return response.data;
+    const field = response.data;
+    
+    // Normalize field data to ensure typeId is preserved
+    if (field) {
+      return {
+        ...field,
+        typeId: field.typeId ?? field.TypeID ?? field.typeID ?? field.TypeId ?? null,
+        typeName: field.typeName ?? field.TypeName ?? "",
+      };
+    }
+    
+    return field;
   } catch (error) {
     handleApiError(error);
   }
@@ -638,9 +685,10 @@ export async function fetchFields(params = {}) {
         return {
           fieldId: f.fieldId,
           complexId: f.complexId,
+          typeId: f.typeId ?? f.TypeID ?? f.typeID ?? f.TypeId ?? null, // Ensure typeId is preserved
           complexName: f.complexName || complex?.name || "",
           name: f.name,
-          typeName: f.typeName || "",
+          typeName: f.typeName || f.TypeName || "",
           size: f.size || "",
           grassType: f.grassType || "",
           description: f.description || "",
@@ -761,21 +809,25 @@ export async function fetchFieldDetail(fieldId) {
 
     const complex = await fetchFieldComplex(field.complexId);
 
+    // Normalize field type information - support multiple field name variations
+    const typeId = field.typeId || field.typeID || field.TypeID || field.TypeId || null;
+    const typeName = field.typeName || field.typeName || field.TypeName || "";
+
     return {
-      fieldId: field.fieldId,
-      complexId: field.complexId,
+      fieldId: field.fieldId || field.fieldID || field.FieldID,
+      complexId: field.complexId || field.complexID || field.ComplexID,
       complexName: complex?.name || "",
       address: complex?.address || "",
-      name: field.name,
-      typeId: field.typeId,
-      typeName: field.typeName || "",
-      size: field.size || "",
-      grassType: field.grassType || "",
-      description: field.description || "",
-      imageBase64: field.imageBase64,
-      images: [field.imageBase64],
-      pricePerHour: field.pricePerHour,
-      rating: 0, // Should come from API
+      name: field.name || field.Name || "",
+      typeId: typeId,
+      typeName: typeName,
+      size: field.size || field.Size || "",
+      grassType: field.grassType || field.grassType || field.GrassType || "",
+      description: field.description || field.Description || "",
+      imageBase64: field.imageBase64 || field.imageBase64 || field.ImageBase64,
+      images: field.imageBase64 ? [field.imageBase64] : [],
+      pricePerHour: field.pricePerHour || field.pricePerHour || field.PricePerHour || 0,
+      rating: field.rating || field.Rating || 0,
     };
   } catch (error) {
     console.error("Error fetching field detail:", error);

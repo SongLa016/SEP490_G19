@@ -497,8 +497,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           return `${hours || '00'}:${minutes || '00'}`;
      };
 
-     // Check if schedule is in the past (currently unused but kept for future use)
-     // eslint-disable-next-line no-unused-vars
+
      const isSchedulePast = (date, endTime) => {
           const now = new Date();
           const scheduleDate = new Date(date);

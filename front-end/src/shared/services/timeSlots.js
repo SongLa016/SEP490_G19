@@ -121,18 +121,18 @@ const normalizeTimeSlot = (item) => {
   // Return normalized object with both camelCase and PascalCase keys for compatibility
   return {
     slotId: Number(slotId) || slotId,
-    SlotID: Number(slotId) || slotId, // For backward compatibility
+    SlotID: Number(slotId) || slotId,
     name: String(name),
-    slotName: String(name), // For API response compatibility
-    SlotName: String(name), // For backward compatibility
+    slotName: String(name),
+    SlotName: String(name),
     startTime: startTime || "00:00",
-    StartTime: startTime || "00:00", // For backward compatibility
+    StartTime: startTime || "00:00",
     endTime: endTime || "00:00",
-    EndTime: endTime || "00:00", // For backward compatibility
+    EndTime: endTime || "00:00",
     fieldId: fieldId ? Number(fieldId) : null,
-    FieldId: fieldId ? Number(fieldId) : null, // For backward compatibility
+    FieldId: fieldId ? Number(fieldId) : null,
     price: Number(price) || 0,
-    Price: Number(price) || 0, // For backward compatibility
+    Price: Number(price) || 0,
   };
 };
 
@@ -191,130 +191,29 @@ const ensureOwnerAuthorization = (actionLabel = "thao tác này") => {
   return { success: true, token, payload };
 };
 
-// Mock data for testing (hardcoded, currently unused but kept for future testing)
-// eslint-disable-next-line no-unused-vars
-const MOCK_TIME_SLOTS = [
-  // Timeslots for fieldId = 32
-  {
-    SlotID: 1,
-    SlotName: "Slot 1",
-    FieldId: 32,
-    StartTime: "06:00",
-    EndTime: "07:30",
-  },
-  {
-    SlotID: 2,
-    SlotName: "Slot 2",
-    FieldId: 32,
-    StartTime: "07:30",
-    EndTime: "09:00",
-  },
-  {
-    SlotID: 3,
-    SlotName: "Slot 3",
-    FieldId: 32,
-    StartTime: "09:00",
-    EndTime: "10:30",
-  },
-  {
-    SlotID: 4,
-    SlotName: "Slot 4",
-    FieldId: 32,
-    StartTime: "10:30",
-    EndTime: "12:00",
-  },
-  {
-    SlotID: 5,
-    SlotName: "Slot 5",
-    FieldId: 32,
-    StartTime: "12:00",
-    EndTime: "13:30",
-  },
-  {
-    SlotID: 6,
-    SlotName: "Slot 6",
-    FieldId: 32,
-    StartTime: "13:30",
-    EndTime: "15:00",
-  },
-  {
-    SlotID: 7,
-    SlotName: "Slot 7",
-    FieldId: 32,
-    StartTime: "15:00",
-    EndTime: "16:30",
-  },
-  {
-    SlotID: 8,
-    SlotName: "Slot 8",
-    FieldId: 32,
-    StartTime: "16:30",
-    EndTime: "18:00",
-  },
-  {
-    SlotID: 9,
-    SlotName: "Slot 9",
-    FieldId: 32,
-    StartTime: "18:00",
-    EndTime: "19:30",
-  },
-  {
-    SlotID: 10,
-    SlotName: "Slot 10",
-    FieldId: 32,
-    StartTime: "19:30",
-    EndTime: "21:00",
-  },
-  {
-    SlotID: 11,
-    SlotName: "Slot 11",
-    FieldId: 32,
-    StartTime: "21:00",
-    EndTime: "22:30",
-  },
-  {
-    SlotID: 12,
-    SlotName: "Slot 12",
-    FieldId: 32,
-    StartTime: "22:30",
-    EndTime: "00:00",
-  },
-
-  // Timeslots for other fields (for testing)
-  {
-    SlotID: 13,
-    SlotName: "Slot 1",
-    FieldId: 48,
-    StartTime: "08:00",
-    EndTime: "09:30",
-  },
-  {
-    SlotID: 14,
-    SlotName: "Slot 2",
-    FieldId: 48,
-    StartTime: "09:30",
-    EndTime: "11:00",
-  },
-  {
-    SlotID: 15,
-    SlotName: "Slot 3",
-    FieldId: 48,
-    StartTime: "14:00",
-    EndTime: "15:30",
-  },
-];
-
-// Fetch all time slots (or by fieldId if provided)
-export async function fetchTimeSlots(fieldId = null) {
+// Fetch all time slots (or by fieldId if provided, or by date)
+export async function fetchTimeSlots(fieldId = null, date = null) {
   try {
     // If fieldId is provided, use the field-specific endpoint
     if (fieldId) {
       return await fetchTimeSlotsByField(fieldId);
     }
 
-    // Otherwise fetch all time slots
-    const endpoint = "https://sep490-g19-zxph.onrender.com/api/TimeSlot";
-    console.log(`Fetching all time slots from: ${endpoint}`);
+    // Build endpoint with optional date parameter
+    let endpoint = "https://sep490-g19-zxph.onrender.com/api/TimeSlot";
+    const params = {};
+    
+    // Add date parameter if provided
+    if (date) {
+      params.date = date;
+    }
+    
+    // Build query string if params exist
+    const queryString = Object.keys(params).length > 0
+      ? '?' + new URLSearchParams(params).toString()
+      : '';
+    
+    endpoint = endpoint + queryString;
     const response = await apiClient.get(endpoint);
 
     // Handle different response structures and normalize
@@ -454,19 +353,6 @@ export async function createTimeSlot(timeSlotData) {
       price: timeSlotData.price ? Number(timeSlotData.price) : 0,
     };
 
-    console.log("Creating time slot with payload:", payload);
-    console.log("Request details:", {
-      endpoint: "https://sep490-g19-zxph.onrender.com/api/TimeSlot",
-      method: "POST",
-      payload: payload,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: localStorage.getItem("token")
-          ? "Bearer [TOKEN]"
-          : "None",
-      },
-    });
-
     // Try different endpoint variations
     const endpoints = ["https://sep490-g19-zxph.onrender.com/api/TimeSlot"];
     let response = null;
@@ -474,42 +360,13 @@ export async function createTimeSlot(timeSlotData) {
 
     for (const endpoint of endpoints) {
       try {
-        console.log(`Trying POST endpoint: ${endpoint}`, payload);
         response = await apiClient.post(endpoint, payload);
-        console.log(`✓ Success with POST endpoint: ${endpoint}`, response.data);
         break;
       } catch (err) {
-        console.error(
-          `✗ Failed with POST endpoint: ${endpoint}`,
-          err.response?.status,
-          err.response?.data
-        );
-
-        // Detailed error logging for debugging
-        console.error("Full error details:", {
-          status: err.response?.status,
-          statusText: err.response?.statusText,
-          data: err.response?.data,
-          message: err.message,
-          config: {
-            url: err.config?.url,
-            method: err.config?.method,
-            data: err.config?.data,
-            headers: err.config?.headers,
-          },
-        });
-
-        // Special handling for 403 errors
         if (err.response?.status === 403) {
-          console.error("⚠️ 403 Forbidden - Possible causes:");
-          console.error("  1. Insufficient permissions (check user role)");
-          console.error("  2. Validation failed (check payload format)");
-          console.error("  3. Duplicate entry (check if slot already exists)");
-          console.error("  4. Field ownership (check if user owns this field)");
+          lastError = err;
         }
 
-        lastError = err;
-        // If it's not a 404, stop trying other endpoints
         if (err.response?.status !== 404) {
           break;
         }

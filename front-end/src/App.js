@@ -75,34 +75,22 @@ const ProfileIndex = lazy(() => import("./roles/player/pages/profile"));
 
 // Admin Pages
 const AdminDashboard = lazy(() =>
-  import("./roles/admin/pages/AdminDashboard").then((m) => ({
-    default: m.AdminDashboard,
-  }))
+  import("./roles/admin/pages/AdminDashboard")
 );
 const UserManagement = lazy(() =>
-  import("./roles/admin/pages/UserManagement").then((m) => ({
-    default: m.UserManagement,
-  }))
+  import("./roles/admin/pages/UserManagement")
 );
 const SystemNotificationsManagement = lazy(() =>
-  import("./roles/admin/pages/SystemNotificationsManagement").then((m) => ({
-    default: m.SystemNotificationsManagement,
-  }))
+  import("./roles/admin/pages/SystemNotificationsManagement")
 );
 const ViolationReportsManagement = lazy(() =>
-  import("./roles/admin/pages/ViolationReportsManagement").then((m) => ({
-    default: m.ViolationReportsManagement,
-  }))
+  import("./roles/admin/pages/ViolationReportsManagement")
 );
 const BlogManagement = lazy(() =>
-  import("./roles/admin/pages/BlogManagement").then((m) => ({
-    default: m.BlogManagement,
-  }))
+  import("./roles/admin/pages/BlogManagement")
 );
 const SystemSettings = lazy(() =>
-  import("./roles/admin/pages/SystemSettings").then((m) => ({
-    default: m.SystemSettings,
-  }))
+  import("./roles/admin/pages/SystemSettings")
 );
 const OwnerRegistrationApproval = lazy(() =>
   import("./roles/admin/pages/OwnerRegistrationApproval")

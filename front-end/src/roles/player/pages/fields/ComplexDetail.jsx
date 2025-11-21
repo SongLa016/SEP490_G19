@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { Container, Section, LoadingPage, LoadingSpinner } from "../../../../shared/components/ui";
-import { fetchComplexDetail, fetchTimeSlotsByField, fetchFieldDetail, fetchCancellationPolicyByComplex, fetchPromotionsByComplex, fetchPublicFieldSchedulesByField, fetchFieldTypes } from "../../../../shared/index";
+import { fetchComplexDetail, fetchTimeSlotsByField, fetchFieldDetail, fetchCancellationPolicyByComplex, fetchPromotionsByComplex, fetchPublicFieldSchedulesByField, fetchFieldTypes, fetchDepositPolicyByField } from "../../../../shared/index";
 import { normalizeFieldType } from "../../../../shared/services/fieldTypes";
 import { useFieldSchedules } from "../../../../shared/hooks";
 import BookingModal from "../../../../shared/components/BookingModal";
@@ -41,6 +41,7 @@ export default function ComplexDetail({ user }) {
      const [complexData, setComplexData] = useState({ complex: null, fields: [] });
      const [cancellationPolicy, setCancellationPolicy] = useState(null);
      const [promotions, setPromotions] = useState([]);
+     const [depositPolicy, setDepositPolicy] = useState(null);
      const [fieldTimeSlots, setFieldTimeSlots] = useState([]); // TimeSlots for selected field with prices
      const [cheapestSlot, setCheapestSlot] = useState(null); // { slotId, name, price }
      const [priciestSlot, setPriciestSlot] = useState(null); // { slotId, name, price }
@@ -112,6 +113,7 @@ export default function ComplexDetail({ user }) {
                               }
                               return acc;
                          }, {});
+                         console.log("✅ [ComplexDetail] Loaded fieldTypeMap:", map);
                          setFieldTypeMap(map);
                     }
                } catch (err) {
@@ -122,10 +124,10 @@ export default function ComplexDetail({ user }) {
           return () => { ignore = true; };
      }, []);
 
-    const rawFields = useMemo(() => {
-         const source = Array.isArray(complexData.fields) ? complexData.fields : [];
-         return source.filter(shouldDisplayField);
-    }, [complexData.fields]);
+     const rawFields = useMemo(() => {
+          const source = Array.isArray(complexData.fields) ? complexData.fields : [];
+          return source.filter(shouldDisplayField);
+     }, [complexData.fields]);
 
      const toggleFavoriteField = (fieldId) => {
           setComplexData(prev => ({
@@ -197,20 +199,48 @@ export default function ComplexDetail({ user }) {
                     const fieldIdForPolicy = (fieldData?.fieldId ? Number(fieldData.fieldId) : null) || selectedFieldId;
 
                     if (fieldIdForPolicy) {
-                         // For now, use complex-based APIs (will need to update to field-based APIs when available)
-                         // Using complexId as fallback since field-based APIs may not exist yet
+                         // Fetch field-specific policies and promotions
                          try {
-                              [policyData, promotionsData] = await Promise.all([
+                              const [policyDataResult, promotionsDataResult, depositPolicyResult] = await Promise.all([
                                    fetchCancellationPolicyByComplex(complexIdToUse).catch(() => null),
-                                   fetchPromotionsByComplex(complexIdToUse).catch(() => [])
+                                   fetchPromotionsByComplex(complexIdToUse).catch(() => []),
+                                   fetchDepositPolicyByField(fieldIdForPolicy).catch(() => null)
                               ]);
+                              policyData = policyDataResult;
+                              promotionsData = promotionsDataResult;
+                              if (!ignore) {
+                                   setDepositPolicy(depositPolicyResult);
+                              }
                          } catch (error) {
-                              console.warn("Error fetching policies/promotions:", error);
+                              console.warn("Error fetching policies/promotions/deposit:", error);
+                         }
+                    } else {
+                         // If no fieldId, clear deposit policy
+                         if (!ignore) {
+                              setDepositPolicy(null);
                          }
                     }
 
                     if (!ignore) {
-                         setComplexData(complexData);
+                         // If we have fieldData from fetchFieldDetail, merge typeId into fields
+                         let updatedComplexData = complexData;
+                         if (fieldData && fieldData.fieldId && Array.isArray(complexData.fields)) {
+                              updatedComplexData = {
+                                   ...complexData,
+                                   fields: complexData.fields.map(field => {
+                                        if (Number(field.fieldId) === Number(fieldData.fieldId)) {
+                                             return {
+                                                  ...field,
+                                                  typeId: fieldData.typeId ?? field.typeId,
+                                                  typeName: fieldData.typeName || field.typeName || ""
+                                             };
+                                        }
+                                        return field;
+                                   })
+                              };
+                         }
+
+                         setComplexData(updatedComplexData);
                          setCancellationPolicy(policyData);
                          setPromotions(Array.isArray(promotionsData) ? promotionsData : []);
                          setIsLoading(false);
@@ -234,35 +264,80 @@ export default function ComplexDetail({ user }) {
           return () => { ignore = true; clearTimeout(timer); };
      }, [id, selectedDate, selectedSlotId, selectedFieldId, isFieldRoute]);
 
-     // Separate effect to handle selectedFieldId changes - fetch TimeSlots for selected field
+     // Separate effect to handle selectedFieldId changes - fetch TimeSlots, DepositPolicy, and FieldDetail for selected field
      useEffect(() => {
           let cancelled = false;
-          async function loadFieldTimeSlots() {
+          async function loadFieldData() {
                if (!selectedFieldId) {
                     setFieldTimeSlots([]);
+                    setDepositPolicy(null);
                     return;
                }
                try {
-                    const slotsResult = await fetchTimeSlotsByField(selectedFieldId);
+                    // Check if selectedField has typeId, if not, fetch field detail
+                    const currentField = rawFields.find(f => Number(f.fieldId) === Number(selectedFieldId));
+                    const needsTypeId = !currentField?.typeId;
+                    const needsTypeName = !currentField?.typeName || currentField.typeName.trim() === "";
+
+                    const promises = [
+                         fetchTimeSlotsByField(selectedFieldId),
+                         fetchDepositPolicyByField(selectedFieldId)
+                    ];
+
+                    // If field doesn't have typeId, fetch field detail to get it
+                    if (needsTypeId || needsTypeName) {
+                         promises.push(fetchFieldDetail(selectedFieldId).catch(() => null));
+                    }
+
+                    const results = await Promise.all(promises);
                     if (cancelled) return;
+
+                    const [slotsResult, depositPolicyResult, fieldDetailResult] = results;
+
                     if (slotsResult?.success && Array.isArray(slotsResult.data)) {
                          setFieldTimeSlots(slotsResult.data);
-                         ;
                     } else {
                          setFieldTimeSlots([]);
+                    }
 
+                    if (depositPolicyResult) {
+                         setDepositPolicy(depositPolicyResult);
+                    } else {
+                         setDepositPolicy(null);
+                    }
+
+                    // If we fetched field detail and it has typeId, update the field in complexData
+                    if (fieldDetailResult && fieldDetailResult.typeId) {
+                         setComplexData(prev => {
+                              if (!prev.fields || !Array.isArray(prev.fields)) return prev;
+                              const updatedFields = prev.fields.map(field => {
+                                   if (Number(field.fieldId) === Number(selectedFieldId)) {
+                                        return {
+                                             ...field,
+                                             typeId: fieldDetailResult.typeId,
+                                             typeName: fieldDetailResult.typeName || field.typeName || ""
+                                        };
+                                   }
+                                   return field;
+                              });
+                              return {
+                                   ...prev,
+                                   fields: updatedFields
+                              };
+                         });
                     }
                } catch (error) {
                     if (cancelled) return;
                     setFieldTimeSlots([]);
+                    setDepositPolicy(null);
                }
           }
 
           const timer = setTimeout(() => {
-               loadFieldTimeSlots();
+               loadFieldData();
           }, 300);
           return () => { cancelled = true; clearTimeout(timer); };
-     }, [selectedFieldId]);
+     }, [selectedFieldId, rawFields]);
 
      // Separate effect to handle selectedFieldId changes without refetching all data
      // Only refetch if the selected field is not in the current fields array
@@ -575,7 +650,8 @@ export default function ComplexDetail({ user }) {
                isRecurringPreset: isRecurring,
                recurringWeeksPreset: weeksCount,
                selectedDaysPreset: mappedDays,
-               fieldSchedules: fieldSchedules // Thêm lịch trình vào booking data
+               fieldSchedules: fieldSchedules, // Thêm lịch trình vào booking data
+               depositPolicy: depositPolicy // Thêm chính sách đặt cọc vào booking data
           };
 
           setBookingModalData(bookingData);
@@ -591,27 +667,85 @@ export default function ComplexDetail({ user }) {
      const complex = complexData.complex;
      const fields = useMemo(() => {
           if (!rawFields.length) return rawFields;
-          if (!fieldTypeMap || Object.keys(fieldTypeMap).length === 0) return rawFields;
+          // Always try to map typeName from fieldTypeMap if available
           return rawFields.map(field => {
-               const currentTypeName = field.typeName || field.TypeName;
-               const typeId = field.typeId ?? field.TypeID ?? null;
-               if (!typeId) return field;
-               const mappedName = fieldTypeMap[String(typeId)];
-               if (!mappedName || currentTypeName === mappedName) return field;
-               return { ...field, typeName: mappedName };
+               const currentTypeName = field.typeName || field.TypeName || "";
+               const typeId = field.typeId ?? field.TypeID ?? field.typeID ?? null;
+
+               // If fieldTypeMap is available and we have typeId, try to get typeName from map
+               if (fieldTypeMap && Object.keys(fieldTypeMap).length > 0 && typeId != null) {
+                    // Try multiple key formats - fieldTypeMap uses String keys
+                    const typeIdKey = String(typeId);
+                    const mappedName = fieldTypeMap[typeIdKey];
+
+                    // Debug log for fieldId 32
+                    if (field.fieldId === 32) {
+                         console.log("🔍 [ComplexDetail] Mapping field 32:", {
+                              field: field,
+                              typeId: typeId,
+                              typeIdKey: typeIdKey,
+                              currentTypeName: currentTypeName,
+                              fieldTypeMap: fieldTypeMap,
+                              fieldTypeMapKeys: Object.keys(fieldTypeMap),
+                              mappedName: mappedName,
+                              hasMappedName: !!mappedName
+                         });
+                    }
+
+                    // If we have mappedName, use it (especially if currentTypeName is empty)
+                    if (mappedName && mappedName.trim() !== "") {
+                         console.log("✅ [ComplexDetail] Mapped typeName for field:", {
+                              fieldId: field.fieldId,
+                              typeId: typeId,
+                              mappedName: mappedName
+                         });
+                         return { ...field, typeName: mappedName, typeId: typeId };
+                    } else if (field.fieldId === 32) {
+                         console.warn("⚠️ [ComplexDetail] Could not map typeName for field 32:", {
+                              typeId: typeId,
+                              typeIdKey: typeIdKey,
+                              fieldTypeMap: fieldTypeMap,
+                              availableKeys: Object.keys(fieldTypeMap)
+                         });
+                    }
+               }
+
+               // If we have typeId but no typeName, ensure typeId is set
+               if (typeId != null && !currentTypeName) {
+                    return { ...field, typeId: typeId };
+               }
+
+               return field;
           });
      }, [rawFields, fieldTypeMap]);
      const selectedField = selectedFieldId ? fields.find(f => Number(f.fieldId) === Number(selectedFieldId)) : null;
      const selectedFieldForDisplay = useMemo(() => {
           if (!selectedField) return null;
+
+          // Ensure typeName is resolved from fieldTypeMap if not present
+          let resolvedTypeName = selectedField.typeName || "";
+          const typeId = selectedField.typeId;
+          if ((!resolvedTypeName || resolvedTypeName.trim() === "") && typeId != null && fieldTypeMap && Object.keys(fieldTypeMap).length > 0) {
+               const mappedName = fieldTypeMap[String(typeId)];
+               if (mappedName && mappedName.trim() !== "") {
+                    resolvedTypeName = mappedName;
+                    console.log("✅ [ComplexDetail] Resolved typeName in selectedFieldForDisplay:", {
+                         fieldId: selectedField.fieldId,
+                         typeId: typeId,
+                         resolvedTypeName: resolvedTypeName
+                    });
+               }
+          }
+
           const resolvedPrice = selectedSlotId
                ? (selectedSlotPriceFromSchedule || minPriceFromSchedule || selectedField.priceForSelectedSlot || 0)
                : (minPriceFromSchedule || selectedField.priceForSelectedSlot || 0);
           return {
                ...selectedField,
+               typeName: resolvedTypeName,
                priceForSelectedSlot: resolvedPrice
           };
-     }, [selectedField, selectedSlotId, selectedSlotPriceFromSchedule, minPriceFromSchedule]);
+     }, [selectedField, selectedSlotId, selectedSlotPriceFromSchedule, minPriceFromSchedule, fieldTypeMap]);
 
      // Log warning if selectedField is not found
      useEffect(() => {
@@ -763,6 +897,7 @@ export default function ComplexDetail({ user }) {
                                         priciestSlot={priciestSlot}
                                         cancellationPolicy={cancellationPolicy}
                                         promotions={promotions}
+                                        depositPolicy={depositPolicy}
                                         fieldTypeMap={fieldTypeMap}
                                         selectedFieldCheapestSlot={selectedFieldCheapestSlot}
                                         selectedFieldPriciestSlot={selectedFieldPriciestSlot}

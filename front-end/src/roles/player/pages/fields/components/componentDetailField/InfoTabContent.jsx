@@ -13,6 +13,7 @@ export default function InfoTabContent({
      bigComposeCount,
      cancellationPolicy,
      promotions,
+     depositPolicy,
      selectedFieldCheapestSlot,
      selectedFieldPriciestSlot,
      fieldTypeMap = {},
@@ -40,7 +41,8 @@ export default function InfoTabContent({
                               selectedFieldPriciestSlot={selectedFieldPriciestSlot}
                               cancellationPolicy={cancellationPolicy}
                               promotions={promotions}
-                             fieldTypeMap={fieldTypeMap}
+                              depositPolicy={depositPolicy}
+                              fieldTypeMap={fieldTypeMap}
                               onBack={onBack}
                               onQuickBook={() => onQuickBookField(selectedField.fieldId)}
                               onToggleFavoriteField={onToggleFavoriteField}

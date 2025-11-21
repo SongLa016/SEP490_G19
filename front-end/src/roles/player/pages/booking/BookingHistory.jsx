@@ -244,8 +244,33 @@ export default function BookingHistory({ user }) {
      };
 
      const handleReschedule = (booking) => {
-          setSelectedBooking(booking);
-          setShowRescheduleModal(true);
+          // Show "Coming Soon" message
+          Swal.fire({
+               icon: 'info',
+               title: '🚀 Chức năng đang phát triển',
+               html: `
+                    <div class="text-left space-y-3">
+                         <p class="text-gray-700">Chức năng <strong>Đổi giờ đặt sân</strong> đang được phát triển và sẽ sớm ra mắt!</p>
+                         <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                              <p class="text-sm text-blue-800 font-medium mb-2">✨ Tính năng sắp có:</p>
+                              <ul class="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                                   <li>Đổi ngày đặt sân linh hoạt</li>
+                                   <li>Chọn khung giờ mới</li>
+                                   <li>Tự động tính chênh lệch giá</li>
+                                   <li>Xác nhận nhanh chóng</li>
+                              </ul>
+                         </div>
+                         <p class="text-sm text-gray-600">Hiện tại, vui lòng liên hệ chủ sân để đổi giờ. Cảm ơn bạn đã thông cảm! 🙏</p>
+                    </div>
+               `,
+               confirmButtonText: 'Đã hiểu',
+               confirmButtonColor: '#0d9488',
+               width: '500px',
+          });
+
+          // Keep the old code commented for future use
+          // setSelectedBooking(booking);
+          // setShowRescheduleModal(true);
      };
 
      const handleRescheduleSuccess = (result) => {

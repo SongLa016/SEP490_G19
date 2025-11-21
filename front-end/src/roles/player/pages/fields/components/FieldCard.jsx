@@ -58,10 +58,21 @@ export default function FieldCard({ field, index, activeTab, slotId, formatPrice
                          <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center">
                                    {activeTab === "near" ? (
-                                        <>
-                                             <MapPin className="w-4 h-4 text-red-500 mr-1" />
-                                             <span className="text-sm font-bold text-red-600">{field.distanceKm ? `${Number(field.distanceKm).toFixed(1)} km` : ""}</span>
-                                        </>
+                                        field.distanceKm !== undefined && field.distanceKm !== null ? (
+                                             <>
+                                                  <MapPin className="w-4 h-4 text-red-500 mr-1" />
+                                                  <span className="text-sm font-bold text-red-600">
+                                                       {Number(field.distanceKm).toFixed(1)}km
+                                                  </span>
+                                             </>
+                                        ) : (
+                                             <>
+                                                  <MapPin className="w-4 h-4 text-gray-400 mr-1" />
+                                                  <span className="text-sm text-gray-500">
+                                                       Chưa có vị trí
+                                                  </span>
+                                             </>
+                                        )
                                    ) : activeTab === "best-price" ? (
                                         <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full">Giá tốt nhất</span>
                                    ) : activeTab === "top-rated" ? (

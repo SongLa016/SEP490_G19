@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Calendar, Clock, AlertCircle, CheckCircle, MapPin, DollarSign, CalendarDays } from "lucide-react";
 import { Button, Modal, DatePicker } from "../components/ui";
 import { updateBooking } from "../index";
+import { fetchAvailableSchedulesByFieldAndDate } from "../services/fieldSchedules";
 
 export default function RescheduleModal({
      isOpen,
@@ -26,27 +27,61 @@ export default function RescheduleModal({
           }
      }, [isOpen]);
 
-     // Mock function to get available slots - replace with actual API call
+     // Fetch available slots from API
      const fetchAvailableSlots = async (date) => {
           setIsLoadingSlots(true);
           try {
-               // Simulate API call delay
-               await new Promise(resolve => setTimeout(resolve, 1000));
+               if (!booking.fieldId) {
+                    console.error("No fieldId in booking:", booking);
+                    setErrors({ slots: "Không tìm thấy thông tin sân" });
+                    return;
+               }
 
-               // Mock data - replace with actual API call
-               const mockSlots = [
-                    { id: "slot1", name: "06:00 - 07:00", price: 200000, available: true },
-                    { id: "slot2", name: "07:00 - 08:00", price: 250000, available: true },
-                    { id: "slot3", name: "08:00 - 09:00", price: 300000, available: false },
-                    { id: "slot4", name: "17:00 - 18:00", price: 350000, available: true },
-                    { id: "slot5", name: "18:00 - 19:00", price: 400000, available: true },
-                    { id: "slot6", name: "19:00 - 20:00", price: 450000, available: true },
-               ];
+               console.log(`Fetching available slots for field ${booking.fieldId} on ${date}`);
 
-               setAvailableSlots(mockSlots.filter(slot => slot.available));
+               const result = await fetchAvailableSchedulesByFieldAndDate(booking.fieldId, date);
+
+               if (result.success) {
+                    // Transform schedules to slot format
+                    const slots = result.data.map(schedule => {
+                         const slotId = schedule.slotId || schedule.SlotId || schedule.SlotID;
+                         const slotName = schedule.slotName || schedule.SlotName || '';
+                         const startTime = schedule.startTime || schedule.StartTime || '';
+                         const endTime = schedule.endTime || schedule.EndTime || '';
+                         const price = schedule.price || schedule.Price || 0;
+
+                         // Format time display
+                         const timeDisplay = slotName || `${startTime} - ${endTime}`;
+
+                         return {
+                              id: slotId,
+                              scheduleId: schedule.scheduleId || schedule.ScheduleId,
+                              name: timeDisplay,
+                              price: price,
+                              available: true,
+                              startTime,
+                              endTime,
+                         };
+                    });
+
+                    // Sort by start time
+                    slots.sort((a, b) => {
+                         const timeA = a.startTime || '00:00';
+                         const timeB = b.startTime || '00:00';
+                         return timeA.localeCompare(timeB);
+                    });
+
+                    console.log(`Found ${slots.length} available slots:`, slots);
+                    setAvailableSlots(slots);
+               } else {
+                    console.error("Error fetching schedules:", result.error);
+                    setErrors({ slots: result.error || "Không thể tải danh sách khung giờ" });
+                    setAvailableSlots([]);
+               }
           } catch (error) {
                console.error("Error fetching slots:", error);
                setErrors({ slots: "Không thể tải danh sách khung giờ" });
+               setAvailableSlots([]);
           } finally {
                setIsLoadingSlots(false);
           }

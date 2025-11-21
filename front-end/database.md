@@ -197,8 +197,7 @@ CREATE TABLE BookingCancellationRequests (
     RequestStatus NVARCHAR(20) DEFAULT 'Pending', -- Pending, Processing, Completed, Reversed, Rejected, Failed
     ProcessedAt DATETIME2 NULL,
     RefundAmount DECIMAL(10,2) NULL,
-    PenaltyAmount DECIMAL(10,2) NULL,
-    -- thời gian cho phép rút lại hủy (undo window) trước khi final processing:
+    PenaltyAmount DECIMAL(10,2) NULL, -- thời gian cho phép rút lại hủy (undo window) trước khi final processing:
     UndoAllowedUntil DATETIME2 NULL,
     ReversedByUserID INT NULL FOREIGN KEY REFERENCES Users(UserID),
     ReversedAt DATETIME2 NULL,

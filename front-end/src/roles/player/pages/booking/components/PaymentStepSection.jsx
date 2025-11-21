@@ -227,7 +227,7 @@ export default function PaymentStepSection({
                     </div>
                     <div className="p-2 bg-amber-50 border border-amber-200 rounded-2xl flex gap-3">
                          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                         <div className="text-sm text-amber-800">
+                         <div className="text-xs text-amber-800">
                               <p className="font-semibold">Lưu ý</p>
                               <p>Việc thanh toán được thực hiện trực tiếp giữa bạn và chủ sân. BallSport chỉ giữ vai trò kết nối, hỗ trợ tìm và đặt sân cũng như nhắc lịch, hoàn toàn không nhận tiền hộ.</p>
                          </div>
@@ -238,7 +238,7 @@ export default function PaymentStepSection({
                               <ShieldCheck className="w-5 h-5 text-teal-600" />
                               Điều khoản & Chính sách
                          </div>
-                         <p className="text-sm text-gray-600 leading-relaxed">
+                         <p className="text-xs text-gray-600 leading-relaxed">
                               Việc đặt sân tuân theo điều khoản sử dụng của BallSport và chính sách hoàn tiền của chủ sân.
                               Vui lòng đọc kỹ <a href="/terms" className="text-teal-600 font-semibold underline" target="_blank" rel="noreferrer">Điều khoản đặt sân</a> và
                               <a href="/refund-policy" className="text-teal-600 font-semibold underline ml-1" target="_blank" rel="noreferrer">Chính sách hoàn tiền</a> để nắm rõ quyền lợi cũng như trách nhiệm của bạn trước khi thanh toán.
