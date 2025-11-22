@@ -13,10 +13,8 @@ namespace BallSport.Application.DTOs
         public string Name { get; set; } = null!;
         public string Address { get; set; } = null!;
         public string? Description { get; set; }
-
-        public string? ImageBase64 { get; set; } 
-
         public string? Status { get; set; }
         public DateTime? CreatedAt { get; set; }
+        public string? ImageUrl { get; set; }
     }
 }

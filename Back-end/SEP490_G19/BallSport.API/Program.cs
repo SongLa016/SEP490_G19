@@ -1,32 +1,38 @@
 using System.Text;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using BallSport.Application.CloudinarySettings;
 using BallSport.Application.Services;
 using BallSport.Application.Services.Community;
+using BallSport.Application.Services.MatchFinding;
 using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
 using BallSport.Infrastructure.Repositories.Community;
+using BallSport.Infrastructure.Repositories.MatchFinding;
 using BallSport.Infrastructure.Settings;
 using Banking.Application.Services;
+using CloudinaryDotNet;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using BallSport.Infrastructure.Repositories.MatchFinding;
-using BallSport.Application.Services.MatchFinding;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 var services = builder.Services;
 var config = builder.Configuration;
-
-    // ===================== CONTROLLERS + SWAGGER =====================
-    services.AddControllers()
+// ===================== CONFIGURE SETTINGS =====================
+builder.Services.Configure<CloudinarySettings>(
+    builder.Configuration.GetSection("CloudinarySettings")
+);
+// ===================== CONTROLLERS + SWAGGER =====================
+services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new TimeOnlyJsonConverter());
@@ -82,7 +88,7 @@ services.AddCors(options =>
 });
 
 // ===================== DATABASE =====================
-services.AddDbContext<Sep490G19v1Context >(options =>
+services.AddDbContext<Sep490G19v1Context>(options =>
     options.UseSqlServer(config.GetConnectionString("MyCnn")));
 
 // ===================== DEPENDENCY INJECTION =====================
@@ -156,6 +162,17 @@ builder.Services.Configure<ReportSettings>(config.GetSection("ReportSettings"));
 var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
 services.AddSingleton(smtpSettings);
 services.AddTransient<EmailService>();
+/// ===================== CLOUDINARY =====================
+builder.Services.AddSingleton<Cloudinary>(sp =>
+{
+    var settings = sp.GetRequiredService<IOptions<CloudinarySettings>>().Value;
+    var account = new Account(
+        settings.CloudName,
+        settings.ApiKey,
+        settings.ApiSecret
+    );
+    return new Cloudinary(account);
+});
 
 // ===================== AUTHENTICATION (JWT + Google + Cookie) =====================
 var googleSection = config.GetSection("Authentication:Google");
