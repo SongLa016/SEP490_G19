@@ -21,7 +21,7 @@ namespace BallSport.Application.DTOs
 
         public int? BankAccountId { get; set; }
 
-        public string? MainImageBase64 { get; set; }
-        public List<string>? ImageFilesBase64 { get; set; }
+        public string? MainImageUrl { get; set; }
+        public List<string>? ImageUrls { get; set; }
     }
 }

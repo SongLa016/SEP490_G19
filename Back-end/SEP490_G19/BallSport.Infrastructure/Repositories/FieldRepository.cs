@@ -13,35 +13,34 @@ namespace BallSport.Infrastructure.Repositories
             _context = context;
         }
 
-        // 🔹 CREATE Field + lưu main image
+        // CREATE
         public async Task<Field> AddFieldAsync(Field field)
         {
             _context.Fields.Add(field);
             await _context.SaveChangesAsync();
 
-            // Load lại Field kèm FieldImages để tránh Base64 null
             return await _context.Fields
                 .Include(f => f.FieldImages)
                 .FirstOrDefaultAsync(f => f.FieldId == field.FieldId)
                 ?? field;
         }
 
-        // 🔹 Thêm nhiều ảnh cho Field
-        public async Task AddFieldImagesAsync(int fieldId, List<byte[]> images)
+        // ADD FIELD IMAGES - URL BASED
+        public async Task AddFieldImagesAsync(int fieldId, List<string> imageUrls)
         {
-            if (images == null || images.Count == 0) return;
+            if (imageUrls == null || imageUrls.Count == 0) return;
 
-            var fieldImages = images.Select(img => new FieldImage
+            var fieldImages = imageUrls.Select(url => new FieldImage
             {
                 FieldId = fieldId,
-                Image = img
+                ImageUrl = url
             }).ToList();
 
             _context.FieldImages.AddRange(fieldImages);
             await _context.SaveChangesAsync();
         }
 
-        // 🔹 Lấy tất cả sân theo ComplexId (include ảnh, type, complex)
+        // GET FIELDS BY COMPLEX
         public async Task<List<Field>> GetFieldsByComplexIdAsync(int complexId)
         {
             return await _context.Fields
@@ -52,7 +51,7 @@ namespace BallSport.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        // 🔹 Lấy 1 sân theo ID (include ảnh, type, complex)
+        // GET FIELD BY ID
         public async Task<Field?> GetFieldByIdAsync(int fieldId)
         {
             return await _context.Fields
@@ -61,29 +60,29 @@ namespace BallSport.Infrastructure.Repositories
                 .Include(f => f.FieldImages)
                 .FirstOrDefaultAsync(f => f.FieldId == fieldId);
         }
-        // lấy sân theo ownerID
+
+        // GET FIELDS BY OWNER
         public async Task<List<Field>> GetFieldsByOwnerIdAsync(int ownerId)
         {
             return await _context.Fields
                 .Where(f => f.BankAccount != null && f.BankAccount.OwnerId == ownerId)
-                .Include(f => f.FieldImages) // nếu muốn load ảnh
+                .Include(f => f.FieldImages)
                 .ToListAsync();
         }
 
-        // 🔹 UPDATE Field + main image
+        // UPDATE
         public async Task<Field> UpdateFieldAsync(Field field)
         {
             _context.Fields.Update(field);
             await _context.SaveChangesAsync();
 
-            // Load lại để đảm bảo navigation properties
             return await _context.Fields
                 .Include(f => f.FieldImages)
                 .FirstOrDefaultAsync(f => f.FieldId == field.FieldId)
                 ?? field;
         }
 
-        // 🔹 DELETE Field (xóa ảnh phụ luôn)
+        // DELETE
         public async Task<bool> DeleteFieldAsync(int fieldId)
         {
             var field = await _context.Fields
@@ -92,13 +91,9 @@ namespace BallSport.Infrastructure.Repositories
 
             if (field == null) return false;
 
-            // Xóa ảnh phụ
             if (field.FieldImages.Any())
-            {
                 _context.FieldImages.RemoveRange(field.FieldImages);
-            }
 
-            // Xóa field
             _context.Fields.Remove(field);
 
             await _context.SaveChangesAsync();
