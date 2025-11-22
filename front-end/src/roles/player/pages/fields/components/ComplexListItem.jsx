@@ -3,16 +3,12 @@ import { MapPin, EyeIcon } from "lucide-react";
 import StadiumIcon from '@mui/icons-material/Stadium';
 import { Button, FadeIn } from "../../../../../shared/components/ui";
 
-const getImageSrc = (imageBase64) => {
-     if (!imageBase64) {
-          return "https://via.placeholder.com/384x208?text=No+Image";
-     }
-
-     if (imageBase64.startsWith("data:")) {
-          return imageBase64;
-     }
-
-     return `data:image/jpeg;base64,${imageBase64}`;
+// Helper to get image URL for complex (only from Cloudinary)
+const getComplexImageUrl = (complex) => {
+     // Only use imageUrl from Cloudinary
+     const imageUrl = complex.imageUrl || complex.ImageUrl || null;
+     
+     return imageUrl || "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg";
 };
 
 export default function ComplexListItem({ complex, index, navigate }) {
@@ -28,9 +24,7 @@ export default function ComplexListItem({ complex, index, navigate }) {
                          <div
                               className="w-96 h-52 flex-shrink-0 rounded-2xl overflow-hidden transform transition-transform duration-300 hover:scale-105"
                               style={{
-                                   backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.35)), url(${getImageSrc(
-                                        complex.imageBase64
-                                   )})`,
+                                   backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.35)), url(${getComplexImageUrl(complex)})`,
                                    backgroundSize: "cover",
                                    backgroundPosition: "center",
                               }}

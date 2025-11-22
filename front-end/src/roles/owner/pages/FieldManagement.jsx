@@ -58,8 +58,9 @@ const FieldManagement = ({ isDemo = false }) => {
           lat: null,
           lng: null,
           description: "",
-          image: "",
-          imageFile: null,
+          image: "", // Preview URL (ObjectURL for File or URL string from Cloudinary)
+          imageFile: null, // File object (new upload) or null
+          imageUrl: null, // URL string from Cloudinary (existing image)
      });
      const [formData, setFormData] = useState({
           complexId: "",
@@ -68,8 +69,8 @@ const FieldManagement = ({ isDemo = false }) => {
           size: "",
           grassType: "",
           description: "",
-          mainImage: null, // Base64 string for main image
-          imageFiles: [], // Array of base64 strings for gallery
+          mainImage: null, // File object (new upload) or URL string (from Cloudinary)
+          imageFiles: [], // Array of File objects (new uploads) or URL strings (from Cloudinary)
           pricePerHour: "",
           status: "Available",
           bankAccountId: "",
@@ -137,7 +138,9 @@ const FieldManagement = ({ isDemo = false }) => {
                               name: complex.name,
                               address: complex.address,
                               description: complex.description || null,
-                              image: complex.image || null,
+                              // Only use imageUrl from Cloudinary
+                              image: complex.imageUrl || null,
+                              imageUrl: complex.imageUrl || null,
                               status: complex.status,
                               createdAt: complex.createdAt,
                               ownerName: complex.ownerName || null,
@@ -164,9 +167,16 @@ const FieldManagement = ({ isDemo = false }) => {
                                    typeName: fieldType ? (fieldType.typeName || fieldType.TypeName) : null,
                               };
 
-                              // Ensure mainImage is available from various possible field names
-                              if (!normalizedField.mainImage && f.mainImageBase64) {
-                                   normalizedField.mainImage = f.mainImageBase64;
+                              // Ensure mainImage is available from URLs (Cloudinary only)
+                              if (!normalizedField.mainImage && f.mainImageUrl) {
+                                   normalizedField.mainImage = f.mainImageUrl;
+                              }
+                              
+                              // Ensure images array is available from URLs (Cloudinary only)
+                              if (!normalizedField.images || normalizedField.images.length === 0) {
+                                   if (Array.isArray(f.imageUrls) && f.imageUrls.length > 0) {
+                                        normalizedField.images = f.imageUrls;
+                                   }
                               }
 
                               return normalizedField;
@@ -207,19 +217,19 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
-     // Handle main image change (base64)
-     const handleMainImageChange = (base64) => {
+     // Handle main image change (File object or URL string)
+     const handleMainImageChange = (image) => {
           setFormData(prev => ({
                ...prev,
-               mainImage: base64
+               mainImage: image
           }));
      };
 
-     // Handle gallery images change (array of base64)
-     const handleImageFilesChange = (base64Array) => {
+     // Handle gallery images change (array of File objects or URL strings)
+     const handleImageFilesChange = (imagesArray) => {
           setFormData(prev => ({
                ...prev,
-               imageFiles: base64Array
+               imageFiles: imagesArray
           }));
      };
 
@@ -250,6 +260,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     return;
                }
 
+               // Cleanup old ObjectURL if exists
                if (complexFormData.image && complexFormData.image.startsWith('blob:')) {
                     URL.revokeObjectURL(complexFormData.image);
                }
@@ -257,11 +268,12 @@ const FieldManagement = ({ isDemo = false }) => {
                setComplexImageUploading(true);
                const objectUrl = URL.createObjectURL(file);
 
-               // Store file for upload
+               // Store File object for upload (not base64)
                setComplexFormData(prev => ({
                     ...prev,
-                    imageFile: file,
-                    image: objectUrl // For preview
+                    imageFile: file, // File object to send to backend
+                    imageUrl: null, // Clear existing URL when uploading new file
+                    image: objectUrl // ObjectURL for preview
                }));
 
                setTimeout(() => setComplexImageUploading(false), 300);
@@ -299,6 +311,7 @@ const FieldManagement = ({ isDemo = false }) => {
      };
 
      const removeComplexImage = () => {
+          // Cleanup ObjectURL if exists
           if (complexFormData.image && complexFormData.image.startsWith('blob:')) {
                URL.revokeObjectURL(complexFormData.image);
           }
@@ -306,6 +319,7 @@ const FieldManagement = ({ isDemo = false }) => {
                ...prev,
                image: "",
                imageFile: null,
+               imageUrl: null,
           }));
           if (complexImageInputRef.current) {
                complexImageInputRef.current.value = "";
@@ -397,13 +411,14 @@ const FieldManagement = ({ isDemo = false }) => {
                               updatePayload.append("Lng", String(complexFormData.lng));
                          }
                     } else {
+                         // No new file, update with existing imageUrl or empty
                          updatePayload = {
                               complexId: editingComplexId,
                               ownerId: Number(ownerId),
                               name: complexFormData.name,
                               address: complexFormData.address,
                               description: complexFormData.description || "",
-                              image: complexFormData.image || "",
+                              imageUrl: complexFormData.imageUrl || "", // Send existing URL
                               status: "Active",
                          };
 
@@ -456,6 +471,7 @@ const FieldManagement = ({ isDemo = false }) => {
 
                     newComplexResponse = await createFieldComplex(formDataToSend);
                } else {
+                    // No file, create without image (or with existing imageUrl if editing)
                     // OwnerID must reference Users(UserID) from database
                     const payload = {
                          complexId: 0, // Will be set by backend
@@ -463,7 +479,7 @@ const FieldManagement = ({ isDemo = false }) => {
                          name: complexFormData.name,
                          address: complexFormData.address,
                          description: complexFormData.description || "",
-                         image: complexFormData.image || "",
+                         imageUrl: complexFormData.imageUrl || "", // Send existing URL if any
                          status: "Active",
                     };
 
@@ -597,6 +613,17 @@ const FieldManagement = ({ isDemo = false }) => {
                     return;
                }
 
+               // Helper to check if a value is a File object
+               const isFile = (value) => {
+                    return value instanceof File;
+               };
+
+               // Helper to check if a value is a URL string
+               const isUrl = (value) => {
+                    if (!value || typeof value !== 'string') return false;
+                    return value.startsWith('http://') || value.startsWith('https://');
+               };
+
                // Validate bank account selection
                if (!formData.bankAccountId) {
                     await Swal.fire({
@@ -608,7 +635,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     return;
                }
 
-               // Create or update field with FormData for base64 images
+               // Create or update field with FormData for File objects
                const formDataToSend = new FormData();
                formDataToSend.append("ComplexId", formData.complexId);
                formDataToSend.append("TypeId", String(fieldTypeMap[formData.typeId] || parseInt(formData.typeId)));
@@ -626,19 +653,44 @@ const FieldManagement = ({ isDemo = false }) => {
                formDataToSend.append("AccountNumber", formData.accountNumber);
                formDataToSend.append("AccountHolder", formData.accountHolder);
 
-               // Add main image as base64 (required)
-               if (formData.mainImage) {
-                    formDataToSend.append("MainImage", formData.mainImage);
+               // Separate new uploads (File objects) from existing images (URLs)
+               const newMainImageFile = formData.mainImage && isFile(formData.mainImage) ? formData.mainImage : null;
+               const existingMainImageUrl = formData.mainImage && isUrl(formData.mainImage) ? formData.mainImage : null;
+               
+               const newGalleryFiles = formData.imageFiles?.filter(img => isFile(img)) || [];
+               const existingGalleryUrls = formData.imageFiles?.filter(img => isUrl(img)) || [];
+
+               // Add main image: send File object if it's a new upload
+               if (newMainImageFile) {
+                    formDataToSend.append("MainImage", newMainImageFile);
+               }
+               
+               // If editing and keeping existing main image URL, send it so backend knows to preserve it
+               if (isEditingField && existingMainImageUrl) {
+                    formDataToSend.append("MainImageUrl", existingMainImageUrl);
                }
 
-               // Add gallery images as base64 array
-               if (formData.imageFiles?.length > 0) {
-                    formData.imageFiles.forEach((base64String) => {
-                         formDataToSend.append("ImageFiles", base64String);
+               // Add new gallery images as File objects
+               if (newGalleryFiles.length > 0) {
+                    newGalleryFiles.forEach((file) => {
+                         formDataToSend.append("ImageFiles", file);
+                    });
+               }
+               
+               // If editing and keeping existing gallery URLs, send them so backend knows to preserve them
+               if (isEditingField && existingGalleryUrls.length > 0) {
+                    existingGalleryUrls.forEach((url) => {
+                         formDataToSend.append("ImageUrls", url);
                     });
                }
 
-               console.log("Submitting field with base64 images");
+               console.log("Submitting field with File objects:", {
+                    isEditing: isEditingField,
+                    hasNewMainImage: !!newMainImageFile,
+                    hasExistingMainImageUrl: !!existingMainImageUrl,
+                    newGalleryCount: newGalleryFiles.length,
+                    existingGalleryCount: existingGalleryUrls.length
+               });
 
                let createdField;
                if (isEditModalOpen && formData.fieldId) {
@@ -709,20 +761,20 @@ const FieldManagement = ({ isDemo = false }) => {
                acc.accountNumber === field.accountNumber
           );
 
-          // Extract main image and gallery images from field
+          // Extract main image and gallery images from field (only URLs from Cloudinary)
           let mainImage = null;
           let galleryImages = [];
 
-          if (field.mainImageBase64) {
-               mainImage = field.mainImageBase64;
-          } else if (field.mainImage) {
-               mainImage = field.mainImage;
+          // Only use URLs from Cloudinary
+          if (field.mainImageUrl) {
+               mainImage = field.mainImageUrl;
           }
 
-          if (Array.isArray(field.images) && field.images.length > 0) {
+          // Only use URLs from Cloudinary
+          if (Array.isArray(field.imageUrls) && field.imageUrls.length > 0) {
+               galleryImages = field.imageUrls.filter(Boolean).slice(0, MAX_FIELD_IMAGES);
+          } else if (Array.isArray(field.images) && field.images.length > 0) {
                galleryImages = field.images.filter(Boolean).slice(0, MAX_FIELD_IMAGES);
-          } else if (Array.isArray(field.imageFiles) && field.imageFiles.length > 0) {
-               galleryImages = field.imageFiles.filter(Boolean).slice(0, MAX_FIELD_IMAGES);
           }
 
           setFormData({
@@ -843,14 +895,19 @@ const FieldManagement = ({ isDemo = false }) => {
                URL.revokeObjectURL(complexFormData.image);
           }
 
+          // Load complex data with imageUrl from Cloudinary
+          const complexImageUrl = complex.imageUrl || complex.ImageUrl || null;
+          
           setComplexFormData({
                name: complex.name || "",
                address: complex.address || "",
                lat: complex.lat ?? complex.Lat ?? null,
                lng: complex.lng ?? complex.Lng ?? null,
                description: complex.description || complex.Description || "",
-               image: complex.image || complex.Image || "",
-               imageFile: null,
+               // Only use imageUrl from Cloudinary
+               image: complexImageUrl || "",
+               imageUrl: complexImageUrl, // Store URL for backend
+               imageFile: null, // No new file selected
           });
           setEditingComplexId(complex.complexId || complex.ComplexID);
           setComplexImageUploading(false);
@@ -981,6 +1038,7 @@ const FieldManagement = ({ isDemo = false }) => {
                description: "",
                image: "",
                imageFile: null,
+               imageUrl: null,
           });
           setComplexImageUploading(false);
           if (complexImageInputRef.current) {
@@ -1286,13 +1344,12 @@ const FieldManagement = ({ isDemo = false }) => {
                               <>
                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {paginatedFields.map((field) => {
-                                             // Priority: mainImageBase64 > mainImage > images[0] > image
+                                             // Only use mainImageUrl from Cloudinary
                                              const primaryImage =
-                                                  field.mainImageBase64 ||
-                                                  field.mainImage ||
+                                                  field.mainImageUrl ||
                                                   (Array.isArray(field.images) && field.images.length > 0
                                                        ? field.images[0]
-                                                       : field.image);
+                                                       : null);
                                              return (
                                                   <Card
                                                        key={field.fieldId}

@@ -1,0 +1,153 @@
+import { useRef } from "react";
+import { motion, useInView } from "framer-motion";
+import { Plus, Flag } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback, Badge, Button } from "../../../../../shared/components/ui";
+import FieldInfoCard from "./FieldInfoCard";
+import InteractionButtons from "./InteractionButtons";
+import CommentInput from "./CommentInput";
+import PostMenu from "./PostMenu";
+import { isCurrentUserPost } from "./utils";
+
+const PostCard = ({
+     post,
+     index,
+     user,
+     toggleLike,
+     toggleRepost,
+     toggleBookmark,
+     toggleCommentInput,
+     showCommentInput,
+     commentContent,
+     handleCommentChange,
+     handleCommentSubmit,
+     handleOpenReply,
+     formatTimeAgo,
+     togglePostMenu,
+     showPostMenu,
+     handleMenuAction
+}) => {
+     const cardRef = useRef(null);
+     const isInView = useInView(cardRef, { once: true, margin: "-50px" });
+
+     // Check if this post belongs to current user
+     const isOwnPost = isCurrentUserPost(post, user);
+
+     return (
+          <motion.div
+               ref={cardRef}
+               initial={{ opacity: 0, y: 30, scale: 0.95 }}
+               animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+               transition={{
+                    duration: 0.5,
+                    delay: index * 0.1,
+                    ease: "easeOut"
+               }}
+               whileHover={{
+                    scale: 1.01,
+                    boxShadow: "0 10px 25px rgba(0,0,0,0.05)"
+               }}
+               className="p-4 hover:bg-gray-50 transition-all duration-200"
+          >
+               <div className="flex gap-3">
+                    {/* Avatar với Animation */}
+                    <motion.div
+                         whileHover={{ scale: 1.1, rotate: 5 }}
+                         transition={{ duration: 0.2 }}
+                    >
+                         <Avatar className="w-10 h-10">
+                              <AvatarImage src={post.author?.Avatar || post.author?.avatar} />
+                              <AvatarFallback className="bg-gray-200 text-gray-700">
+                                   {(post.author?.FullName || post.author?.fullName || post.author?.name || "U").charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                         </Avatar>
+                    </motion.div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                         {/* User Info */}
+                         <div className="flex items-center gap-2 mb-1">
+                              <span className="font-semibold text-gray-900">{post.author?.Username || post.author?.username || post.author?.name || "Người dùng"}</span>
+                              <span className="text-gray-500 text-sm">@{post.author?.Username || post.author?.username || "user"}</span>
+                              {post.author?.Verified && (
+                                   <Badge variant="secondary" className="text-xs hover:bg-blue-600 hover:text-white bg-blue-500 text-white px-1.5 py-0.5 rounded-full">
+                                        ✓
+                                   </Badge>
+                              )}
+                              {isOwnPost && (
+                                   <Badge variant="secondary" className="text-xs hover:bg-green-600 hover:text-white bg-green-500 text-white px-2 py-0.5 rounded-full">
+                                        của bạn
+                                   </Badge>
+                              )}
+                              <span className="text-gray-500 text-sm">•</span>
+                              <span className="text-gray-500 text-sm">{formatTimeAgo(post.CreatedAt)}</span>
+                              {user && (
+                                   <Button variant="ghost" size="sm" className="ml-auto p-1 h-6 w-6 hover:bg-gray-100 rounded-full transition-colors">
+                                        <Plus className="w-4 h-4 text-gray-400" />
+                                   </Button>
+                              )}
+                         </div>
+
+                         {/* Post Title */}
+                         {post.Title && (
+                              <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.Title}</h3>
+                         )}
+
+                         {/* Post Content */}
+                         <div className="mb-3">
+                              <p className="text-gray-900 whitespace-pre-wrap">{post.Content}</p>
+                         </div>
+
+                         {/* Field Information */}
+                         <FieldInfoCard field={post.field} fieldId={post.FieldID} />
+
+                         {/* Media */}
+                         {post.MediaURL && (
+                              <div className="mb-3 rounded-xl overflow-hidden border border-gray-200">
+                                   <img
+                                        src={post.MediaURL}
+                                        alt="Post content"
+                                        className="w-full h-auto object-cover"
+                                   />
+                              </div>
+                         )}
+
+                         {/* Interaction Buttons */}
+                         <InteractionButtons
+                              post={post}
+                              user={user}
+                              onLike={() => toggleLike(post.PostID)}
+                              onComment={() => toggleCommentInput(post.PostID)}
+                              onRepost={() => toggleRepost(post.PostID)}
+                              onBookmark={() => toggleBookmark(post.PostID)}
+                         />
+
+                         {/* Comment Input Section */}
+                         {user && showCommentInput[post.PostID] && (
+                              <CommentInput
+                                   post={post}
+                                   user={user}
+                                   commentContent={commentContent[post.PostID]}
+                                   onCommentChange={(value) => handleCommentChange(post.PostID, value)}
+                                   onCommentSubmit={() => handleCommentSubmit(post.PostID)}
+                                   onOpenReply={handleOpenReply}
+                              />
+                         )}
+                    </div>
+
+                    {/* More Options */}
+                    {user && (
+                         <PostMenu
+                              post={post}
+                              isOwnPost={isOwnPost}
+                              showMenu={showPostMenu[post.PostID]}
+                              onToggleMenu={() => togglePostMenu(post.PostID)}
+                              onMenuAction={(action) => handleMenuAction(post.PostID, action)}
+                         />
+                    )}
+               </div>
+          </motion.div>
+     );
+};
+
+export default PostCard;
+

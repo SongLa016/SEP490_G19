@@ -762,15 +762,48 @@ export default function ComplexDetail({ user }) {
           const average = total === 0 ? 0 : (complexReviews.reduce((s, r) => s + (r.rating || 0), 0) / total);
           return { total, counts, average };
      }, [complexReviews]);
-     // Thư viện ảnh bao gồm ảnh sân lớn và tất cả ảnh sân nhỏ
-     const galleryImages = [
-          complex?.image,
-          ...fields.map(f => f.image)
-     ].filter(Boolean);
+     // Thư viện ảnh bao gồm ảnh khu sân (complex) và tất cả ảnh sân nhỏ (fields)
+     const galleryImages = [];
+     
+     // Thêm ảnh của complex (khu sân) - imageUrl từ Cloudinary
+     if (complex?.imageUrl) {
+          galleryImages.push({
+               url: complex.imageUrl,
+               type: 'complex',
+               label: 'Khu sân'
+          });
+     }
+     
+     // Thêm ảnh của các field (sân nhỏ) - mainImageUrl và imageUrls từ Cloudinary
+     fields.forEach(field => {
+          // Thêm mainImageUrl nếu có
+          if (field.mainImageUrl) {
+               galleryImages.push({
+                    url: field.mainImageUrl,
+                    type: 'field',
+                    label: field.name || 'Sân nhỏ'
+               });
+          }
+          // Thêm các ảnh trong imageUrls (gallery)
+          if (Array.isArray(field.imageUrls) && field.imageUrls.length > 0) {
+               field.imageUrls.forEach(imageUrl => {
+                    if (imageUrl) {
+                         galleryImages.push({
+                              url: imageUrl,
+                              type: 'field',
+                              label: field.name || 'Sân nhỏ'
+                         });
+                    }
+               });
+          }
+     });
+     
+     // Extract chỉ URLs để truyền vào component
+     const galleryImageUrls = galleryImages.map(img => img.url);
 
      const openLightbox = (index) => {
-          if (!galleryImages.length) return;
-          setLightboxIndex(Math.max(0, Math.min(index, galleryImages.length - 1)));
+          if (!galleryImageUrls.length) return;
+          setLightboxIndex(Math.max(0, Math.min(index, galleryImageUrls.length - 1)));
           setIsLightboxOpen(true);
      };
 
@@ -780,12 +813,12 @@ export default function ComplexDetail({ user }) {
           if (!isLightboxOpen) return;
           const onKeyDown = (e) => {
                if (e.key === "Escape") closeLightbox();
-               if (e.key === "ArrowRight") setLightboxIndex(i => (i + 1) % galleryImages.length);
-               if (e.key === "ArrowLeft") setLightboxIndex(i => (i - 1 + galleryImages.length) % galleryImages.length);
+               if (e.key === "ArrowRight") setLightboxIndex(i => (i + 1) % galleryImageUrls.length);
+               if (e.key === "ArrowLeft") setLightboxIndex(i => (i - 1 + galleryImageUrls.length) % galleryImageUrls.length);
           };
           window.addEventListener("keydown", onKeyDown);
           return () => window.removeEventListener("keydown", onKeyDown);
-     }, [isLightboxOpen, galleryImages.length]);
+     }, [isLightboxOpen, galleryImageUrls.length]);
 
      // Tính toán số sân còn trống (sân nhỏ)
      const availableCount = selectedSlotId ?
@@ -931,7 +964,8 @@ export default function ComplexDetail({ user }) {
 
                               {activeTab === "gallery" && (
                                    <GalleryTabContent
-                                        galleryImages={galleryImages}
+                                        galleryImages={galleryImageUrls}
+                                        galleryImagesWithMeta={galleryImages}
                                         onImageClick={openLightbox}
                                    />
                               )}
@@ -972,11 +1006,11 @@ export default function ComplexDetail({ user }) {
                {/* Lightbox Modal */}
                <LightboxModal
                     isOpen={isLightboxOpen}
-                    images={galleryImages}
+                    images={galleryImageUrls}
                     currentIndex={lightboxIndex}
                     onClose={closeLightbox}
-                    onPrevious={() => setLightboxIndex(i => (i - 1 + galleryImages.length) % galleryImages.length)}
-                    onNext={() => setLightboxIndex(i => (i + 1) % galleryImages.length)}
+                    onPrevious={() => setLightboxIndex(i => (i - 1 + galleryImageUrls.length) % galleryImageUrls.length)}
+                    onNext={() => setLightboxIndex(i => (i + 1) % galleryImageUrls.length)}
                />
 
                {/* Booking Modal */}

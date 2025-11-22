@@ -19,10 +19,6 @@ export { default as RatingModal } from "./components/RatingModal";
 export { default as RecurringOpponentModal } from "./components/RecurringOpponentModal";
 export { default as RecurringOpponentSelection } from "./components/RecurringOpponentSelection";
 export { default as RescheduleModal } from "./components/RescheduleModal";
-// Shared layouts exports
-// export { default as MainLayout } from "./layouts/MainLayout";
-// export { default as AuthLayout } from "./layouts/AuthLayout";
-// export { default as Auth } from "./layouts/auth/Auth";
 
 // Shared services exports
 export * from "./services/authService";
@@ -54,7 +50,7 @@ export * from "./services/profileService";
 export * from "./services/promotions";
 export * from "./services/timeSlots";
 export * from "./services/fieldTypes";
-// Shared utils exports
+export * from "./services/posts";
 export * from "./utils/authStore";
 export * from "./utils/bookingStore";
 export * from "./utils/cancellationCalculator";

@@ -7,6 +7,7 @@ import { LoginPromotionModal } from "../../../../shared/components/LoginPromotio
 import { useNavigate } from "react-router-dom";
 import MapSearch from "./components/MapSearch";
 import { fetchComplexes, fetchFields, fetchTimeSlots, fetchPublicFieldSchedulesByDate, fetchPublicFieldSchedulesByField } from "../../../../shared/index";
+import { fetchFieldTypes, normalizeFieldType } from "../../../../shared/services/fieldTypes";
 import Swal from 'sweetalert2';
 import SearchHeader from "./components/SearchHeader";
 import SearchFiltersBar from "./components/SearchFiltersBar";
@@ -91,10 +92,37 @@ export default function FieldSearch({ user }) {
      const [filteredFields, setFilteredFields] = useState([]);
      const [isLoading, setIsLoading] = useState(false);
      const [userLocation, setUserLocation] = useState(null); // { lat, lng }
+     const [fieldTypeMap, setFieldTypeMap] = useState({}); // Map typeId -> typeName
 
      useEffect(() => {
           hasExistingDataRef.current = (fields.length > 0) || (complexes.length > 0);
      }, [fields.length, complexes.length]);
+
+     // Load field types on mount
+     useEffect(() => {
+          let ignore = false;
+          async function loadFieldTypes() {
+               try {
+                    const result = await fetchFieldTypes();
+                    if (ignore) return;
+                    if (result.success && Array.isArray(result.data)) {
+                         const map = result.data.reduce((acc, raw) => {
+                              const normalized = normalizeFieldType(raw);
+                              if (normalized?.typeId) {
+                                   acc[String(normalized.typeId)] = normalized.typeName || "";
+                              }
+                              return acc;
+                         }, {});
+                         console.log("✅ [FieldSearch] Loaded fieldTypeMap:", map);
+                         setFieldTypeMap(map);
+                    }
+               } catch (error) {
+                    console.error("Error loading field types:", error);
+               }
+          }
+          loadFieldTypes();
+          return () => { ignore = true; };
+     }, []);
 
      const didInitRef = useRef(false);
      useEffect(() => {
@@ -311,7 +339,17 @@ export default function FieldSearch({ user }) {
                               setComplexes(cList);
                               complexesRef.current = cList;
                               const sanitizedFields = Array.isArray(fList)
-                                   ? fList.filter(isFieldDisplayable)
+                                   ? fList.filter(isFieldDisplayable).map(field => {
+                                        // Map typeId to typeName if not already present
+                                        const typeId = field.typeId ?? field.TypeID ?? field.typeID ?? null;
+                                        if (typeId != null && (!field.typeName || field.typeName.trim() === "")) {
+                                             const typeName = fieldTypeMap[String(typeId)];
+                                             if (typeName) {
+                                                  return { ...field, typeName, typeId };
+                                             }
+                                        }
+                                        return field;
+                                   })
                                    : [];
                               setFields(sanitizedFields);
                          }
@@ -335,7 +373,7 @@ export default function FieldSearch({ user }) {
                ignore = true;
                clearTimeout(debounceTimer);
           };
-     }, [searchQuery, date, slotId, sortBy]);
+     }, [searchQuery, date, slotId, sortBy, fieldTypeMap]);
 
      useEffect(() => {
           let filtered = Array.isArray(fields) ? [...fields] : [];
@@ -421,10 +459,21 @@ export default function FieldSearch({ user }) {
                     break;
           }
 
-          setFilteredFields(filtered);
+          // Map typeId to typeName for filtered fields if needed
+          const fieldsWithTypeName = filtered.map(field => {
+               const typeId = field.typeId ?? field.TypeID ?? field.typeID ?? null;
+               if (typeId != null && (!field.typeName || field.typeName.trim() === "")) {
+                    const typeName = fieldTypeMap[String(typeId)];
+                    if (typeName) {
+                         return { ...field, typeName, typeId };
+                    }
+               }
+               return field;
+          });
+          setFilteredFields(fieldsWithTypeName);
 
           // Reset trang chỉ khi thực sự là thay đổi filter, không reset khi chỉ chuyển trang
-     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields]);
+     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields, fieldTypeMap]);
 
      // Persist preferences
      useEffect(() => {

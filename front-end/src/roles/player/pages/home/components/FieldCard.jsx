@@ -135,6 +135,8 @@ const getFieldImages = (field) => {
      ];
      const offset = (field.id || 0) % common.length;
      const rotated = [...common.slice(offset), ...common.slice(0, offset)];
-     return [field.image, ...rotated];
+     // Only use mainImageUrl from Cloudinary
+     const mainImage = field.mainImageUrl;
+     return [mainImage, ...rotated].filter(Boolean);
 };
 

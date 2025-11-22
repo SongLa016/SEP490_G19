@@ -1,9 +1,10 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { Image as ImageIcon, Plus, X, Loader2, Star } from "lucide-react";
 
 /**
  * ImageUploadSection - Handle main image and gallery images
- * Converts images to base64 for API submission
+ * Supports both URLs (from Cloudinary) and File objects (for new uploads)
+ * Sends File objects directly to backend (no base64 conversion)
  */
 export default function ImageUploadSection({
      mainImage,
@@ -17,19 +18,39 @@ export default function ImageUploadSection({
      const [uploadingGallery, setUploadingGallery] = useState(false);
      const mainImageInputRef = useRef(null);
      const galleryInputRef = useRef(null);
-
-     // Convert file to base64
-     const fileToBase64 = (file) => {
-          return new Promise((resolve, reject) => {
-               const reader = new FileReader();
-               reader.readAsDataURL(file);
-               reader.onload = () => resolve(reader.result);
-               reader.onerror = (error) => reject(error);
-          });
+     const objectUrlsRef = useRef(new Set()); // Track ObjectURLs for cleanup
+     
+     // Helper to check if a value is a URL string (from Cloudinary)
+     const isUrl = (value) => {
+          if (!value || typeof value !== 'string') return false;
+          return value.startsWith('http://') || value.startsWith('https://');
      };
 
+     // Helper to check if a value is a File object
+     const isFile = (value) => {
+          return value instanceof File;
+     };
+
+     // Get preview URL for an image (File object or URL string)
+     const getPreviewUrl = (image) => {
+          if (isFile(image)) {
+               const objectUrl = URL.createObjectURL(image);
+               objectUrlsRef.current.add(objectUrl);
+               return objectUrl;
+          }
+          return image; // It's already a URL string
+     };
+
+     // Cleanup ObjectURLs on unmount
+     React.useEffect(() => {
+          return () => {
+               objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+               objectUrlsRef.current.clear();
+          };
+     }, []);
+
      // Handle main image upload
-     const handleMainImageUpload = async (e) => {
+     const handleMainImageUpload = (e) => {
           const file = e.target.files?.[0];
           if (!file) return;
 
@@ -45,25 +66,31 @@ export default function ImageUploadSection({
                return;
           }
 
-          setUploadingMain(true);
-          try {
-               const base64 = await fileToBase64(file);
-               onMainImageChange(base64);
-          } catch (error) {
-               console.error("Error converting main image:", error);
-               alert("Có lỗi khi tải ảnh lên");
-          } finally {
-               setUploadingMain(false);
+          // Revoke old ObjectURL if exists
+          if (mainImage && isFile(mainImage) && mainImage !== file) {
+               const oldUrl = getPreviewUrl(mainImage);
+               URL.revokeObjectURL(oldUrl);
+               objectUrlsRef.current.delete(oldUrl);
+          }
+
+          // Pass File object directly (no base64 conversion)
+          onMainImageChange(file);
+          
+          // Reset input to allow selecting the same file again
+          if (mainImageInputRef.current) {
+               mainImageInputRef.current.value = "";
           }
      };
 
      // Handle gallery images upload
-     const handleGalleryUpload = async (e) => {
+     const handleGalleryUpload = (e) => {
           const files = Array.from(e.target.files || []);
           if (files.length === 0) return;
 
-          // Check if adding these files would exceed max
-          const remainingSlots = maxGalleryImages - imageFiles.length;
+          // Count existing images (both URLs and File objects)
+          const existingCount = imageFiles.length;
+          const remainingSlots = maxGalleryImages - existingCount;
+          
           if (files.length > remainingSlots) {
                alert(`Chỉ có thể thêm tối đa ${remainingSlots} ảnh nữa`);
                return;
@@ -81,17 +108,13 @@ export default function ImageUploadSection({
                }
           }
 
-          setUploadingGallery(true);
-          try {
-               const base64Array = await Promise.all(
-                    files.map((file) => fileToBase64(file))
-               );
-               onImageFilesChange([...imageFiles, ...base64Array]);
-          } catch (error) {
-               console.error("Error converting gallery images:", error);
-               alert("Có lỗi khi tải ảnh lên");
-          } finally {
-               setUploadingGallery(false);
+          // Pass File objects directly (no base64 conversion)
+          // Keep existing images (URLs or File objects) and add new File objects
+          onImageFilesChange([...imageFiles, ...files]);
+          
+          // Reset input to allow selecting the same files again
+          if (galleryInputRef.current) {
+               galleryInputRef.current.value = "";
           }
      };
 
@@ -121,17 +144,30 @@ export default function ImageUploadSection({
                     {mainImage ? (
                          <div className="relative group h-48 rounded-xl overflow-hidden border-2 border-yellow-200 bg-gray-100">
                               <img
-                                   src={mainImage}
+                                   src={getPreviewUrl(mainImage)}
                                    alt="Ảnh chính"
                                    className="w-full h-full object-cover"
+                                   crossOrigin={isUrl(mainImage) ? "anonymous" : undefined}
                                    onError={(e) => {
                                         e.target.src =
                                              'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ddd" width="400" height="300"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="20" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3EKhông thể tải ảnh%3C/text%3E%3C/svg%3E';
                                    }}
                               />
-                              <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                                   <Star className="w-3 h-3 fill-white" />
-                                   Ảnh chính
+                              <div className="absolute top-2 left-2 flex flex-col gap-1">
+                                   {isUrl(mainImage) && (
+                                        <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                                             <span>✓ Cloudinary</span>
+                                        </div>
+                                   )}
+                                   {isFile(mainImage) && (
+                                        <div className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                                             <span>📤 Mới</span>
+                                        </div>
+                                   )}
+                                   <div className="bg-yellow-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                                        <Star className="w-3 h-3 fill-white" />
+                                        Ảnh chính
+                                   </div>
                               </div>
                               <button
                                    type="button"
@@ -159,7 +195,7 @@ export default function ImageUploadSection({
                               {uploadingMain ? (
                                    <div className="flex flex-col items-center text-gray-500">
                                         <Loader2 className="w-8 h-8 animate-spin text-yellow-500 mb-2" />
-                                        <span>Đang tải ảnh chính...</span>
+                                        <span>Đang xử lý...</span>
                                    </div>
                               ) : (
                                    <div className="flex flex-col items-center">
@@ -199,34 +235,57 @@ export default function ImageUploadSection({
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                         {imageFiles.map((base64, index) => (
-                              <div
-                                   key={`gallery-${index}`}
-                                   className="relative group h-28 sm:h-32 rounded-xl overflow-hidden border border-gray-200 bg-gray-100"
-                              >
-                                   <img
-                                        src={base64}
-                                        alt={`Ảnh ${index + 1}`}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                             e.target.src =
-                                                  'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ddd" width="400" height="300"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="20" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3EKhông thể tải ảnh%3C/text%3E%3C/svg%3E';
-                                        }}
-                                   />
-                                   <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
-                                        #{index + 1}
-                                   </div>
-                                   <button
-                                        type="button"
-                                        onClick={() => handleRemoveGalleryImage(index)}
-                                        disabled={disabled}
-                                        className="absolute top-2 right-2 bg-white/80 hover:bg-red-500 hover:text-white text-red-500 rounded-full p-1 shadow transition-colors opacity-0 group-hover:opacity-100"
-                                        aria-label="Xóa ảnh"
+                         {imageFiles.map((image, index) => {
+                              const isImageUrl = isUrl(image);
+                              const isImageFile = isFile(image);
+                              return (
+                                   <div
+                                        key={`gallery-${index}-${isImageFile ? image.name : image}`}
+                                        className="relative group h-28 sm:h-32 rounded-xl overflow-hidden border border-gray-200 bg-gray-100"
                                    >
-                                        <X className="w-3 h-3" />
-                                   </button>
-                              </div>
-                         ))}
+                                        <img
+                                             src={getPreviewUrl(image)}
+                                             alt={`Ảnh ${index + 1}`}
+                                             className="w-full h-full object-cover"
+                                             crossOrigin={isImageUrl ? "anonymous" : undefined}
+                                             onError={(e) => {
+                                                  e.target.src =
+                                                       'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ddd" width="400" height="300"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="20" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3EKhông thể tải ảnh%3C/text%3E%3C/svg%3E';
+                                             }}
+                                        />
+                                        <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
+                                             #{index + 1}
+                                        </div>
+                                        {isImageUrl && (
+                                             <div className="absolute bottom-2 right-2 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded">
+                                                  ✓
+                                             </div>
+                                        )}
+                                        {isImageFile && (
+                                             <div className="absolute bottom-2 right-2 bg-blue-500 text-white text-xs px-1.5 py-0.5 rounded">
+                                                  📤
+                                             </div>
+                                        )}
+                                        <button
+                                             type="button"
+                                             onClick={() => {
+                                                  // Cleanup ObjectURL if it's a File
+                                                  if (isFile(image)) {
+                                                       const url = getPreviewUrl(image);
+                                                       URL.revokeObjectURL(url);
+                                                       objectUrlsRef.current.delete(url);
+                                                  }
+                                                  handleRemoveGalleryImage(index);
+                                             }}
+                                             disabled={disabled}
+                                             className="absolute top-2 right-2 bg-white/80 hover:bg-red-500 hover:text-white text-red-500 rounded-full p-1 shadow transition-colors opacity-0 group-hover:opacity-100"
+                                             aria-label="Xóa ảnh"
+                                        >
+                                             <X className="w-3 h-3" />
+                                        </button>
+                                   </div>
+                              );
+                         })}
 
                          {imageFiles.length < maxGalleryImages && (
                               <div
@@ -244,7 +303,7 @@ export default function ImageUploadSection({
                                    {uploadingGallery ? (
                                         <div className="flex flex-col items-center text-gray-500">
                                              <Loader2 className="w-5 h-5 animate-spin text-blue-500 mb-2" />
-                                             <span>Đang tải...</span>
+                                             <span>Đang xử lý...</span>
                                         </div>
                                    ) : (
                                         <div className="flex flex-col items-center">

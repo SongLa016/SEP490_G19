@@ -135,9 +135,12 @@ export const QuickBookingSection = ({ user }) => {
                                                        onClick={() => navigate(`/fields/${field.id}`)}
                                                   >
                                                        <img
-                                                            src={field.image}
+                                                            src={field.mainImageUrl || 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg'}
                                                             alt={field.name}
                                                             className="w-16 h-16 rounded-lg object-cover"
+                                                            onError={(e) => {
+                                                                 e.target.src = 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg';
+                                                            }}
                                                        />
                                                        <div className="flex-1 min-w-0">
                                                             <h4 className="font-semibold text-gray-900 truncate">{field.name}</h4>
@@ -180,9 +183,12 @@ export const QuickBookingSection = ({ user }) => {
                                                        onClick={() => navigate(`/fields/${field.id}`)}
                                                   >
                                                        <img
-                                                            src={field.image}
+                                                            src={field.mainImageUrl || 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg'}
                                                             alt={field.name}
                                                             className="w-16 h-16 rounded-lg object-cover"
+                                                            onError={(e) => {
+                                                                 e.target.src = 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg';
+                                                            }}
                                                        />
                                                        <div className="flex-1 min-w-0">
                                                             <h4 className="font-semibold text-gray-900 truncate">{field.name}</h4>

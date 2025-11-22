@@ -121,13 +121,16 @@ export async function createFieldComplex(complexData) {
       }
     } else {
       // Prepare payload according to new backend structure
+      // Backend will handle File upload to Cloudinary
       const payload = {
         complexId: complexData.complexId || 0,
         ownerId: complexData.ownerId,
         name: complexData.name,
         address: complexData.address,
         description: complexData.description || "",
-        imageBase64: complexData.imageBase64 || "",
+        // Only include imageUrl if it's a URL string (existing image)
+        // File objects should be sent via FormData
+        imageUrl: complexData.imageUrl || "",
         status: complexData.status || "Active",
       };
 
@@ -199,14 +202,18 @@ export async function fetchFieldComplexes() {
     const mapped = data.map((complex) => {
       const rawId = complex.complexId ?? complex.ComplexID;
       const complexId = Number(rawId);
+      
+      // Only use imageUrl from Cloudinary
+      const imageUrl = complex.imageUrl || complex.ImageUrl || complex.imageURL || null;
+      
       return {
         complexId: Number.isNaN(complexId) ? rawId : complexId,
         ownerId: complex.ownerId || complex.OwnerID,
         name: complex.name || complex.Name,
         address: complex.address || complex.Address,
         description: complex.description || complex.Description || "",
-        imageBase64:
-          complex.imageBase64 || complex.ImageBase64 || complex.imageFile || "",
+        // Only use URL from Cloudinary
+        imageUrl: imageUrl,
         status: complex.status || complex.Status || "Active",
         createdAt: complex.createdAt || complex.CreatedAt,
         ownerName: complex.ownerName || complex.OwnerName || "",
@@ -225,7 +232,31 @@ export async function fetchFieldComplexes() {
 export async function fetchFieldComplex(id) {
   try {
     const response = await apiClient.get(`/api/FieldComplex/${id}`);
-    return response.data;
+    const complex = response.data;
+    
+    // Normalize complex data to include imageUrl
+    if (complex) {
+      // Only use imageUrl from Cloudinary
+      const imageUrl = complex.imageUrl || complex.ImageUrl || complex.imageURL || null;
+      
+      return {
+        ...complex,
+        complexId: complex.complexId || complex.ComplexID,
+        ownerId: complex.ownerId || complex.OwnerID,
+        name: complex.name || complex.Name,
+        address: complex.address || complex.Address,
+        description: complex.description || complex.Description || "",
+        // Only use URL from Cloudinary
+        imageUrl: imageUrl,
+        status: complex.status || complex.Status || "Active",
+        createdAt: complex.createdAt || complex.CreatedAt,
+        ownerName: complex.ownerName || complex.OwnerName || "",
+        lat: complex.lat || complex.Lat,
+        lng: complex.lng || complex.Lng,
+      };
+    }
+    
+    return complex;
   } catch (error) {
     handleApiError(error);
   }
@@ -275,7 +306,6 @@ export async function createField(fieldData) {
         size: fieldData.size || "",
         grassType: fieldData.grassType || "",
         description: fieldData.description || "",
-        imageBase64: fieldData.imageBase64 || "",
         pricePerHour: fieldData.pricePerHour || 0,
         status: fieldData.status || "Available",
         bankAccountId: fieldData.bankAccountId || null,
@@ -407,6 +437,10 @@ export async function fetchFieldsByComplex(complexId) {
         });
       }
 
+      // Only use URLs from Cloudinary
+      const mainImageUrl = field.mainImageUrl || field.MainImageUrl || null;
+      const imageUrls = field.imageUrls || field.ImageUrls || [];
+
       const normalizedField = {
         fieldId,
         complexId: complexIdValue,
@@ -415,12 +449,19 @@ export async function fetchFieldsByComplex(complexId) {
         size: field.size || field.Size || "",
         grassType: field.grassType || field.GrassType || "",
         description: field.description || field.Description || "",
-        imageBase64: field.imageBase64 || field.ImageBase64 || "",
+        // Only use URLs from Cloudinary
+        mainImageUrl: mainImageUrl,
+        imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
         pricePerHour: field.pricePerHour || field.PricePerHour || 0,
         status: field.status || field.Status || "Available",
         createdAt: field.createdAt || field.CreatedAt,
         complexName: field.complexName || field.ComplexName || "",
         typeName: field.typeName || field.TypeName || "",
+        bankAccountId: field.bankAccountId || field.BankAccountId || null,
+        bankName: field.bankName || field.BankName || "",
+        bankShortCode: field.bankShortCode || field.BankShortCode || "",
+        accountNumber: field.accountNumber || field.AccountNumber || "",
+        accountHolder: field.accountHolder || field.AccountHolder || "",
         // Add priceForSelectedSlot if available
         priceForSelectedSlot:
           field.priceForSelectedSlot ||
@@ -454,12 +495,13 @@ export async function fetchField(fieldId) {
     const response = await apiClient.get(`/api/Field/${fieldId}`);
     const field = response.data;
     
-    // Normalize field data to ensure typeId is preserved
+    // Normalize field data to ensure typeId and complexId are preserved
     if (field) {
       return {
         ...field,
         typeId: field.typeId ?? field.TypeID ?? field.typeID ?? field.TypeId ?? null,
         typeName: field.typeName ?? field.TypeName ?? "",
+        complexId: field.complexId ?? field.complexID ?? field.ComplexID ?? field.complex_id ?? null,
       };
     }
     
@@ -589,7 +631,8 @@ export async function fetchComplexes(params = {}) {
             complexId: complex.complexId,
             name: complex.name,
             address: complex.address,
-            imageBase64: complex.imageBase64,
+        // Only use URL from Cloudinary
+        imageUrl: complex.imageUrl,
             lat: complex.lat,
             lng: complex.lng,
             totalFields: fields.length,
@@ -614,7 +657,8 @@ export async function fetchComplexes(params = {}) {
             complexId: complex.complexId,
             name: complex.name,
             address: complex.address,
-            imageBase64: complex.imageBase64,
+        // Only use URL from Cloudinary
+        imageUrl: complex.imageUrl,
             lat: complex.lat,
             lng: complex.lng,
             totalFields: 0,
@@ -682,6 +726,11 @@ export async function fetchFields(params = {}) {
       .map((f) => {
         const complex = complexMap.get(String(f.complexId));
         const status = f.status || "Available";
+        
+        // Only use URLs from Cloudinary
+        const mainImageUrl = f.mainImageUrl || f.MainImageUrl || null;
+        const imageUrls = f.imageUrls || f.ImageUrls || [];
+        
         return {
           fieldId: f.fieldId,
           complexId: f.complexId,
@@ -693,7 +742,9 @@ export async function fetchFields(params = {}) {
           grassType: f.grassType || "",
           description: f.description || "",
           address: complex?.address || "",
-          imageBase64: f.imageBase64,
+          // Only use URLs from Cloudinary
+          mainImageUrl: mainImageUrl,
+          imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
           priceForSelectedSlot: f.pricePerHour,
           rating: 0,
           reviewCount: 0,
@@ -762,7 +813,8 @@ export async function fetchComplexDetail(complexId, { date, slotId } = {}) {
             name: complex.name,
             address: complex.address,
             description: complex.description,
-            imageBase64: complex.imageBase64,
+        // Only use URL from Cloudinary
+        imageUrl: complex.imageUrl,
             rating: 0, // Should come from API
           }
         : null,
@@ -792,7 +844,7 @@ export async function fetchFieldMeta(fieldId) {
             complexId: complex.complexId,
             name: complex.name,
             address: complex.address,
-            imageBase64: complex.imageBase64,
+            imageUrl: complex.imageUrl,
           }
         : null,
     };
@@ -813,6 +865,10 @@ export async function fetchFieldDetail(fieldId) {
     const typeId = field.typeId || field.typeID || field.TypeID || field.TypeId || null;
     const typeName = field.typeName || field.typeName || field.TypeName || "";
 
+    // Only use URLs from Cloudinary
+    const mainImageUrl = field.mainImageUrl || field.MainImageUrl || null;
+    const imageUrls = field.imageUrls || field.ImageUrls || [];
+
     return {
       fieldId: field.fieldId || field.fieldID || field.FieldID,
       complexId: field.complexId || field.complexID || field.ComplexID,
@@ -824,8 +880,9 @@ export async function fetchFieldDetail(fieldId) {
       size: field.size || field.Size || "",
       grassType: field.grassType || field.grassType || field.GrassType || "",
       description: field.description || field.Description || "",
-      imageBase64: field.imageBase64 || field.imageBase64 || field.ImageBase64,
-      images: field.imageBase64 ? [field.imageBase64] : [],
+      // Only use URLs from Cloudinary
+      mainImageUrl: mainImageUrl,
+      imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
       pricePerHour: field.pricePerHour || field.pricePerHour || field.PricePerHour || 0,
       rating: field.rating || field.Rating || 0,
     };

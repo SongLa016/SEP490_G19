@@ -23,10 +23,13 @@ export default function FieldListItem({ field, index, slotId, formatPrice, handl
                     <div className="flex flex-col md:flex-row gap-3">
                          <div className="w-full md:w-80 lg:w-96 h-48 md:h-52 flex-shrink-0">
                               <img
-                                   src={field.image}
+                                   src={field.mainImageUrl || 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg'}
                                    alt={field.name}
                                    className="w-full h-full rounded-2xl object-cover transition-transform duration-300 hover:scale-105"
                                    draggable={false}
+                                   onError={(e) => {
+                                        e.target.src = 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg';
+                                   }}
                               />
                          </div>
                          <div className="flex-1 md:px-4 py-3">

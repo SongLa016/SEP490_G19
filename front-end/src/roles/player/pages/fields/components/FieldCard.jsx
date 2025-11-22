@@ -20,7 +20,10 @@ export default function FieldCard({ field, index, activeTab, slotId, formatPrice
                >
                     <div className="relative overflow-hidden">
                          <img
-                              {...getImageProps(field.image, field.name)}
+                              {...getImageProps(
+                                   field.mainImageUrl || '', 
+                                   field.name
+                              )}
                               className="w-full h-40 md:h-44 object-cover transition-transform duration-300 ease-out group-hover:scale-110"
                               draggable={false}
                          />

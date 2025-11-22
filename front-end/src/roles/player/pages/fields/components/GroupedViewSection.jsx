@@ -62,11 +62,27 @@ export default function GroupedViewSection({
                                         }}
                                    >
                                         <div className="relative overflow-hidden">
-                                             <img
-                                                  {...getImageProps(item.image, item.name)}
-                                                  className="w-full h-48 object-cover rounded-xl transition-transform duration-300 group-hover:scale-110"
-                                                  draggable={false}
-                                             />
+                                             {type === 'complex' ? (
+                                                  // Complex: use imageUrl as background
+                                                  <div
+                                                       className="w-full h-48 rounded-xl transition-transform duration-300 group-hover:scale-110 bg-cover bg-center"
+                                                       style={{
+                                                            backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.3)), url(${item.imageUrl || 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg'})`,
+                                                            backgroundSize: 'cover',
+                                                            backgroundPosition: 'center',
+                                                       }}
+                                                  />
+                                             ) : (
+                                                  // Field: use mainImageUrl
+                                                  <img
+                                                       {...getImageProps(
+                                                            item.mainImageUrl || '',
+                                                            item.name
+                                                       )}
+                                                       className="w-full h-48 object-cover rounded-xl transition-transform duration-300 group-hover:scale-110"
+                                                       draggable={false}
+                                                  />
+                                             )}
                                              <div className={`absolute top-3 ${type === 'field' && (title === 'Giá tốt' || title === 'Đánh giá cao') ? 'left-3' : 'right-3'} flex items-center gap-2`}>
                                                   <Button
                                                        type="button"
