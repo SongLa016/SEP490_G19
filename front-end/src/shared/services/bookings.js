@@ -189,10 +189,6 @@ export function validateBookingData(bookingData) {
   };
 }
 
-// ============================================
-// Real API endpoints for Booking
-// ============================================
-
 // Create axios instance with base configuration
 const apiClient = axios.create({
   timeout: 30000,
@@ -224,9 +220,57 @@ const handleApiError = (error) => {
     if (status === 404) {
       errorMessage = "API endpoint không tồn tại.";
     } else if (status === 500) {
-      errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau.";
+      // Try to extract more detailed error message from 500 errors
+      if (data) {
+        if (data.message) {
+          errorMessage = data.message;
+          // Check for inner exception details
+          if (data.innerException) {
+            errorMessage += ` (${data.innerException})`;
+          } else if (data.error && typeof data.error === "string") {
+            errorMessage = data.error;
+          } else if (typeof data === "string") {
+            errorMessage = data;
+          }
+        } else if (data.error) {
+          errorMessage =
+            typeof data.error === "string"
+              ? data.error
+              : JSON.stringify(data.error);
+        } else if (typeof data === "string") {
+          errorMessage = data;
+        } else {
+          errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau.";
+        }
+      } else {
+        errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau.";
+      }
+    } else if (status === 400) {
+      // Bad Request - try to get detailed error message
+      if (data) {
+        if (data.message) {
+          errorMessage = data.message;
+          if (data.innerException) {
+            errorMessage += ` (${data.innerException})`;
+          }
+        } else if (data.error) {
+          errorMessage =
+            typeof data.error === "string"
+              ? data.error
+              : JSON.stringify(data.error);
+        } else if (typeof data === "string") {
+          errorMessage = data;
+        } else {
+          errorMessage = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.";
+        }
+      } else {
+        errorMessage = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.";
+      }
     } else if (data && data.message) {
       errorMessage = data.message;
+      if (data.innerException) {
+        errorMessage += ` (${data.innerException})`;
+      }
     } else if (data && typeof data === "string") {
       errorMessage = data;
     } else {
@@ -251,6 +295,7 @@ const handleApiError = (error) => {
   console.error("API Error:", {
     message: error.message,
     code: error.code,
+    status: error.response?.status,
     response: error.response?.data,
     request: error.request,
     config: error.config?.url,
@@ -289,24 +334,42 @@ export async function createBooking(bookingData) {
 
     // Check if user is a player (role check)
     // Backend might use: Role, RoleID, RoleName, role, roleId, roleName
-    const userRole = tokenPayload.Role || tokenPayload.role || tokenPayload.RoleName || tokenPayload.roleName;
-    const roleId = tokenPayload.RoleID || tokenPayload.roleID || tokenPayload.RoleId || tokenPayload.roleId;
-    
+    const userRole =
+      tokenPayload.Role ||
+      tokenPayload.role ||
+      tokenPayload.RoleName ||
+      tokenPayload.roleName;
+    const roleId =
+      tokenPayload.RoleID ||
+      tokenPayload.roleID ||
+      tokenPayload.RoleId ||
+      tokenPayload.roleId;
+
     // RoleID 3 typically means Player in many systems, or check role name
-    const isPlayer = roleId === 3 || 
-                     userRole?.toLowerCase() === 'player' || 
-                     userRole?.toLowerCase() === 'người chơi' ||
-                     userRole === 'Player';
-    
+    const isPlayer =
+      roleId === 3 ||
+      userRole?.toLowerCase() === "player" ||
+      userRole?.toLowerCase() === "người chơi" ||
+      userRole === "Player";
+
     if (!isPlayer) {
-      console.warn("⚠️ [GỬI GIỮ CHỖ - API] User role check failed:", { userRole, roleId, tokenPayload });
+      console.warn("⚠️ [GỬI GIỮ CHỖ - API] User role check failed:", {
+        userRole,
+        roleId,
+        tokenPayload,
+      });
       return {
         success: false,
-        error: "Chỉ người chơi (Player) mới có thể tạo booking. Vui lòng đăng nhập bằng tài khoản người chơi.",
+        error:
+          "Chỉ người chơi (Player) mới có thể tạo booking. Vui lòng đăng nhập bằng tài khoản người chơi.",
       };
     }
 
-    console.log("✅ [GỬI GIỮ CHỖ - API] Token validated - User is a player:", { userRole, roleId, userId: tokenPayload.UserID || tokenPayload.userID });
+    console.log("✅ [GỬI GIỮ CHỖ - API] Token validated - User is a player:", {
+      userRole,
+      roleId,
+      userId: tokenPayload.UserID || tokenPayload.userID,
+    });
 
     // Validate required fields
     if (!bookingData.userId) {
@@ -318,7 +381,10 @@ export async function createBooking(bookingData) {
 
     // scheduleId can be 0 if backend will create it from fieldId, slotId, date
     // But we still validate it's a number
-    if (bookingData.scheduleId === undefined || bookingData.scheduleId === null) {
+    if (
+      bookingData.scheduleId === undefined ||
+      bookingData.scheduleId === null
+    ) {
       return {
         success: false,
         error: "Thiếu thông tin lịch trình (scheduleId).",
@@ -337,13 +403,19 @@ export async function createBooking(bookingData) {
     };
 
     console.log("📤 [GỬI GIỮ CHỖ - API] Endpoint:", endpoint);
-    console.log("📤 [GỬI GIỮ CHỖ - API] Payload (JSON):", JSON.stringify(payload, null, 2));
+    console.log(
+      "📤 [GỬI GIỮ CHỖ - API] Payload (JSON):",
+      JSON.stringify(payload, null, 2)
+    );
     console.log("📤 [GỬI GIỮ CHỖ - API] Payload (Object):", payload);
 
     const response = await apiClient.post(endpoint, payload);
 
     console.log("✅ [GỬI GIỮ CHỖ - API] Response:", response.data);
-    console.log("✅ [GỬI GIỮ CHỖ - API] Response (JSON):", JSON.stringify(response.data, null, 2));
+    console.log(
+      "✅ [GỬI GIỮ CHỖ - API] Response (JSON):",
+      JSON.stringify(response.data, null, 2)
+    );
 
     return {
       success: true,
@@ -352,7 +424,7 @@ export async function createBooking(bookingData) {
     };
   } catch (error) {
     console.error("Error creating booking:", error);
-    
+
     // Handle 401 Unauthorized (token expired or invalid)
     if (error.response?.status === 401) {
       return {
@@ -370,28 +442,29 @@ export async function createBooking(bookingData) {
   }
 }
 
-/**
- * Confirm payment for a booking
- * @param {number|string} bookingId - Booking ID
- * @returns {Promise<Object>} Confirmation result
- */
 export async function confirmPaymentAPI(bookingId) {
   try {
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-payment/${bookingId}`;
 
     const payload = {
-      bookingId: Number(bookingId)
+      bookingId: Number(bookingId),
     };
 
     console.log("💳 [THANH TOÁN - API] Endpoint:", endpoint);
-    console.log("💳 [THANH TOÁN - API] Payload (JSON):", JSON.stringify(payload, null, 2));
+    console.log(
+      "💳 [THANH TOÁN - API] Payload (JSON):",
+      JSON.stringify(payload, null, 2)
+    );
     console.log("💳 [THANH TOÁN - API] Payload (Object):", payload);
     console.log("💳 [THANH TOÁN - API] Booking ID:", bookingId);
 
     const response = await apiClient.put(endpoint);
 
     console.log("✅ [THANH TOÁN - API] Response:", response.data);
-    console.log("✅ [THANH TOÁN - API] Response (JSON):", JSON.stringify(response.data, null, 2));
+    console.log(
+      "✅ [THANH TOÁN - API] Response (JSON):",
+      JSON.stringify(response.data, null, 2)
+    );
 
     return {
       success: true,
@@ -409,11 +482,6 @@ export async function confirmPaymentAPI(bookingId) {
   }
 }
 
-/**
- * Generate QR code for a booking
- * @param {number|string} bookingId - Booking ID
- * @returns {Promise<Object>} QR code data
- */
 export async function generateQRCode(bookingId, options = {}) {
   try {
     const params = new URLSearchParams();
@@ -453,18 +521,25 @@ export async function generateQRCode(bookingId, options = {}) {
   }
 }
 
-/**
- * Confirm booking by owner
- * @param {number|string} bookingId - Booking ID
- * @returns {Promise<Object>} Confirmation result
- */
 export async function confirmByOwner(bookingId) {
   try {
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-by-owner/${bookingId}`;
+    // Ensure bookingId is a number and valid
+    const numericBookingId = Number(bookingId);
+    if (isNaN(numericBookingId) || numericBookingId <= 0) {
+      return {
+        success: false,
+        error: "Booking ID không hợp lệ",
+      };
+    }
 
-    console.log(`Owner confirming booking: ${bookingId}`);
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-by-owner/${numericBookingId}`;
+
+    console.log(`Owner confirming booking: ${numericBookingId}`);
+    console.log(`Endpoint: ${endpoint}`);
 
     const response = await apiClient.put(endpoint);
+
+    console.log("✅ Confirm booking response:", response.data);
 
     return {
       success: true,
@@ -472,8 +547,32 @@ export async function confirmByOwner(bookingId) {
       message: "Xác nhận booking thành công",
     };
   } catch (error) {
-    console.error("Error confirming booking by owner:", error);
+    console.error("❌ Error confirming booking by owner:", error);
+    console.error("Error details:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+
     const errorMessage = handleApiError(error);
+
+    // Provide more specific error messages
+    if (error.response?.status === 400) {
+      return {
+        success: false,
+        error:
+          errorMessage ||
+          "Không thể xác nhận booking. Booking có thể đã được xác nhận hoặc không tồn tại.",
+      };
+    }
+
+    if (error.response?.status === 404) {
+      return {
+        success: false,
+        error: "Không tìm thấy booking. Booking có thể đã bị xóa.",
+      };
+    }
+
     return {
       success: false,
       error:
@@ -482,11 +581,6 @@ export async function confirmByOwner(bookingId) {
   }
 }
 
-/**
- * Fetch bookings created by a specific player
- * @param {number|string} playerId
- * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
- */
 export async function fetchBookingsByPlayer(playerId) {
   try {
     if (playerId === undefined || playerId === null || playerId === "") {
@@ -515,13 +609,36 @@ export async function fetchBookingsByPlayer(playerId) {
     };
   }
 }
-/**
 
- * Cancel a booking and create a cancellation request
- * @param {number} bookingId - The booking ID to cancel
- * @param {string} reason - Reason for cancellation
- * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
- */
+export async function fetchBookingsByOwner(ownerId) {
+  try {
+    if (ownerId === undefined || ownerId === null || ownerId === "") {
+      return {
+        success: false,
+        error: "Thiếu thông tin chủ sân. Không thể tải danh sách booking.",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/owner/${ownerId}`;
+    console.log("📥 [BOOKING MANAGEMENT - API] Endpoint:", endpoint);
+
+    const response = await apiClient.get(endpoint);
+
+    return {
+      success: true,
+      data: Array.isArray(response.data) ? response.data : [],
+    };
+  } catch (error) {
+    console.error("Error fetching bookings by owner:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
 export async function cancelBooking(bookingId, reason) {
   try {
     if (!bookingId) {
@@ -538,55 +655,106 @@ export async function cancelBooking(bookingId, reason) {
       };
     }
 
-    const endpoint = "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe";
-    
+    const endpoint =
+      "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe";
+
     const payload = {
       bookingId: Number(bookingId),
       reason: String(reason).trim(),
     };
 
-    console.log("Cancelling booking with payload:", payload);
+    console.log("📤 [CANCEL BOOKING - API] Endpoint:", endpoint);
+    console.log("📤 [CANCEL BOOKING - API] Payload:", payload);
+    console.log(
+      "📤 [CANCEL BOOKING - API] Backend will check token to determine if Player or Owner is cancelling"
+    );
 
-    const response = await axios.post(endpoint, payload, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
+    // Use apiClient instead of axios to ensure token is automatically included
+    const response = await apiClient.post(endpoint, payload);
 
-    console.log("Booking cancellation response:", response.data);
+    console.log("✅ [CANCEL BOOKING - API] Response:", response.data);
 
     return {
       success: true,
       data: response.data,
-      message: "Đã gửi yêu cầu hủy booking thành công",
+      message:
+        response.data?.message || "Đã gửi yêu cầu hủy booking thành công",
+      cancelReason: response.data?.cancelReason,
+      refundAmount: response.data?.refundAmount,
+      penaltyAmount: response.data?.penaltyAmount,
+      finalRefundAmount: response.data?.finalRefundAmount,
+      refundQR: response.data?.refundQR,
     };
   } catch (error) {
-    console.error("Error cancelling booking:", error);
-    
-    if (error.response) {
-      return {
-        success: false,
-        error: error.response.data?.message || error.response.data || "Không thể hủy booking",
-      };
-    }
+    console.error("❌ [CANCEL BOOKING - API] Error:", error);
 
+    const errorMessage = handleApiError(error);
     return {
       success: false,
-      error: error.message || "Có lỗi xảy ra khi hủy booking",
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
     };
   }
 }
 
 /**
  * Fetch all booking cancellation requests
+ * Backend will return cancellation requests based on token (Owner sees requests for their fields, Player sees their own requests)
  * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
  */
 export async function fetchCancellationRequests() {
   try {
-    const endpoint = "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe";
-    
-    console.log("Fetching cancellation requests from:", endpoint);
+    const endpoint =
+      "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe";
+
+    console.log("📥 [FETCH CANCELLATION REQUESTS - API] Endpoint:", endpoint);
+    console.log(
+      "📥 [FETCH CANCELLATION REQUESTS - API] Backend will filter by token (Owner/Player)"
+    );
+
+    // Use apiClient instead of axios to ensure token is automatically included
+    const response = await apiClient.get(endpoint);
+
+    console.log(
+      "✅ [FETCH CANCELLATION REQUESTS - API] Response:",
+      response.data
+    );
+
+    return {
+      success: true,
+      data: Array.isArray(response.data)
+        ? response.data
+        : response.data?.data || [],
+    };
+  } catch (error) {
+    console.error("❌ [FETCH CANCELLATION REQUESTS - API] Error:", error);
+
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+/**
+ * Fetch a specific cancellation request by ID
+ * @param {number|string} cancellationId - The cancellation request ID
+ * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+ */
+export async function fetchCancellationRequestById(cancellationId) {
+  try {
+    if (!cancellationId) {
+      return {
+        success: false,
+        error: "Cancellation ID is required",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
+
+    console.log("Fetching cancellation request from:", endpoint);
 
     const response = await axios.get(endpoint, {
       headers: {
@@ -595,25 +763,26 @@ export async function fetchCancellationRequests() {
       },
     });
 
-    console.log("Cancellation requests response:", response.data);
+    console.log("Cancellation request response:", response.data);
 
     return {
       success: true,
-      data: Array.isArray(response.data) ? response.data : response.data?.data || [],
+      data: response.data,
     };
   } catch (error) {
-    console.error("Error fetching cancellation requests:", error);
-    
+    console.error("Error fetching cancellation request:", error);
+
     if (error.response) {
       return {
         success: false,
-        error: error.response.data?.message || "Không thể tải danh sách yêu cầu hủy",
+        error:
+          error.response.data?.message || "Không thể tải chi tiết yêu cầu hủy",
       };
     }
 
     return {
       success: false,
-      error: error.message || "Có lỗi xảy ra khi tải danh sách yêu cầu hủy",
+      error: error.message || "Có lỗi xảy ra khi tải chi tiết yêu cầu hủy",
     };
   }
 }
@@ -626,15 +795,19 @@ export async function fetchCancellationRequests() {
 export async function confirmCancellation(cancellationId) {
   try {
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/confirm/${cancellationId}`;
-    
+
     console.log("Confirming cancellation:", cancellationId);
 
-    const response = await axios.put(endpoint, {}, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
+    const response = await axios.put(
+      endpoint,
+      {},
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
 
     console.log("Confirm cancellation response:", response.data);
 
@@ -645,7 +818,7 @@ export async function confirmCancellation(cancellationId) {
     };
   } catch (error) {
     console.error("Error confirming cancellation:", error);
-    
+
     if (error.response) {
       return {
         success: false,
@@ -668,7 +841,7 @@ export async function confirmCancellation(cancellationId) {
 export async function deleteCancellationRequest(cancellationId) {
   try {
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
-    
+
     console.log("Deleting cancellation request:", cancellationId);
 
     await axios.delete(endpoint, {
@@ -683,7 +856,7 @@ export async function deleteCancellationRequest(cancellationId) {
     };
   } catch (error) {
     console.error("Error deleting cancellation request:", error);
-    
+
     if (error.response) {
       return {
         success: false,

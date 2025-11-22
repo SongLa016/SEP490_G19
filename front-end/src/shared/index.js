@@ -3,6 +3,7 @@ export * from "./components/ui";
 export { default as AddressPicker } from "./components/AddressPicker";
 export { default as BookingModal } from "./components/BookingModal";
 export { default as CancellationPolicyDisplay } from "./components/CancellationPolicyDisplay";
+export { default as CancelBookingModal } from "./components/CancelBookingModal";
 export { default as DemoAccountPromotionManager } from "./components/DemoAccountPromotionManager";
 export { default as DemoRestrictedModal } from "./components/DemoRestrictedModal";
 export { default as EmailVerificationModal } from "./components/EmailVerificationModal";
@@ -37,6 +38,9 @@ export {
   generateQRCode,
   confirmByOwner,
   fetchBookingsByPlayer,
+  fetchBookingsByOwner,
+  fetchCancellationRequestById,
+  cancelBooking,
 } from "./services/bookings";
 export * from "./services/cancellationPolicies";
 export * from "./services/depositPolicies";
@@ -53,6 +57,7 @@ export * from "./services/fieldTypes";
 // Shared utils exports
 export * from "./utils/authStore";
 export * from "./utils/bookingStore";
+export * from "./utils/cancellationCalculator";
 export * from "./utils/communityStore";
 export * from "./utils/demoData";
 export * from "./utils/roleMapping";
