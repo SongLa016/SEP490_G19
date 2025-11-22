@@ -19,8 +19,6 @@ public partial class Field
 
     public string? Description { get; set; }
 
-    public byte[]? Image { get; set; }
-
     public decimal? PricePerHour { get; set; }
 
     public string? Status { get; set; }
@@ -28,6 +26,8 @@ public partial class Field
     public DateTime? CreatedAt { get; set; }
 
     public int? BankAccountId { get; set; }
+
+    public string? ImageUrl { get; set; }
 
     public virtual OwnerBankAccount? BankAccount { get; set; }
 
@@ -37,12 +37,15 @@ public partial class Field
 
     public virtual ICollection<DepositPolicy> DepositPolicies { get; set; } = new List<DepositPolicy>();
 
+    public virtual ICollection<FieldImage> FieldImages { get; set; } = new List<FieldImage>();
+
     public virtual ICollection<FieldPrice> FieldPrices { get; set; } = new List<FieldPrice>();
 
     public virtual ICollection<FieldSchedule> FieldSchedules { get; set; } = new List<FieldSchedule>();
 
     public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
-    public virtual ICollection<FieldImage> FieldImages { get; set; } = new List<FieldImage>();
+
     public virtual ICollection<TimeSlot> TimeSlots { get; set; } = new List<TimeSlot>();
+
     public virtual FieldType? Type { get; set; }
 }
