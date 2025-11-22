@@ -1,26 +1,32 @@
-﻿# 1. Build stage
+# =========================
+# 1. Build stage
+# =========================
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy toàn bộ project
+# Copy toàn bộ project vào container
 COPY BallSport.API ./BallSport.API
 COPY BallSport.Application ./BallSport.Application
 COPY BallSport.Infrastructure ./BallSport.Infrastructure
 
-# Restore
+# Restore tất cả project (từ BallSport.API.csproj, sẽ tự restore các project reference)
 WORKDIR /src/BallSport.API
 RUN dotnet restore
 
-# Publish
-RUN dotnet publish -c Release -o /app
+# Build & Publish project API
+RUN dotnet publish -c Release -o /app --no-restore
 
+# =========================
 # 2. Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# =========================
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-COPY --from=build /app .
 
-# ⚡ Khai báo PORT cho Render (rất quan trọng)
+# Copy từ build stage
+COPY --from=build /app ./
+
+# Khai báo PORT cho Render hoặc bất kỳ cloud hosting nào
 ENV ASPNETCORE_URLS=http://+:8080
 
-# ⚡ Chạy API
+# Chạy API
 ENTRYPOINT ["dotnet", "BallSport.API.dll"]
