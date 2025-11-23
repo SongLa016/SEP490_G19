@@ -1,4 +1,5 @@
-﻿using BallSport.Application.DTOs.Community;
+﻿// File: BallSport.API/Controllers/Community/CommentController.cs
+using BallSport.Application.DTOs.Community;
 using BallSport.Application.Services.Community;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ namespace BallSport.API.Controllers.Community
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Tất cả endpoint đều yêu cầu đăng nhập (trừ có [AllowAnonymous])
+    [Authorize]
     public class CommentController : ControllerBase
     {
         private readonly ICommentService _commentService;
@@ -18,174 +19,109 @@ namespace BallSport.API.Controllers.Community
             _commentService = commentService;
         }
 
-        // GET: api/Comment/post/{postId}
+        private int? CurrentUserId => GetCurrentUserId();
+
+        // ==================== GET ====================
+
         [HttpGet("post/{postId}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetCommentsByPost(int postId)
-        {
-            try
-            {
-                var comments = await _commentService.GetCommentsByPostIdAsync(postId);
-                return Ok(new { success = true, data = comments });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
-        }
+            => Ok(new { success = true, data = await _commentService.GetCommentsByPostIdAsync(postId) });
 
-        // GET: api/Comment/{id}
         [HttpGet("{id}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetCommentById(int id)
         {
-            try
-            {
-                var comment = await _commentService.GetCommentByIdAsync(id);
-                if (comment == null)
-                    return NotFound(new { success = false, message = "Không tìm thấy bình luận" });
-
-                return Ok(new { success = true, data = comment });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            var comment = await _commentService.GetCommentByIdAsync(id);
+            return comment is null
+                ? NotFound(new { success = false, message = "Không tìm thấy bình luận" })
+                : Ok(new { success = true, data = comment });
         }
 
-        // GET: api/Comment/{commentId}/replies
         [HttpGet("{commentId}/replies")]
         [AllowAnonymous]
         public async Task<IActionResult> GetReplies(int commentId)
-        {
-            try
-            {
-                var replies = await _commentService.GetRepliesByCommentIdAsync(commentId);
-                return Ok(new { success = true, data = replies });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
-        }
+            => Ok(new { success = true, data = await _commentService.GetRepliesByCommentIdAsync(commentId) });
 
-        // GET: api/Comment/user/{userId}
         [HttpGet("user/{userId}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetCommentsByUser(int userId)
-        {
-            try
-            {
-                var comments = await _commentService.GetCommentsByUserIdAsync(userId);
-                return Ok(new { success = true, data = comments });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
-        }
+            => Ok(new { success = true, data = await _commentService.GetCommentsByUserIdAsync(userId) });
 
-        // GET: api/Comment/post/{postId}/count
         [HttpGet("post/{postId}/count")]
         [AllowAnonymous]
         public async Task<IActionResult> CountCommentsByPost(int postId)
-        {
-            try
-            {
-                var count = await _commentService.CountCommentsByPostIdAsync(postId);
-                return Ok(new { success = true, data = new { postId, commentCount = count } });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
-        }
+            => Ok(new { success = true, data = new { postId, commentCount = await _commentService.CountCommentsByPostIdAsync(postId) } });
 
-        // POST: api/Comment
+        // ==================== POST ====================
+
         [HttpPost]
-        public async Task<IActionResult> CreateComment([FromBody] CreateCommentDTO createCommentDto)
+        public async Task<IActionResult> CreateComment([FromBody] CreateCommentDTO dto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+
+            if (!CurrentUserId.HasValue)
+                return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
+
             try
             {
-                if (!ModelState.IsValid)
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+                var comment = await _commentService.CreateCommentAsync(dto, CurrentUserId.Value);
 
-                var userId = GetCurrentUserId();
-                if (!userId.HasValue)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
+                var message = dto.ParentCommentId.HasValue
+                    ? "Trả lời bình luận thành công!"
+                    : "Bình luận thành công!";
 
-                var comment = await _commentService.CreateCommentAsync(createCommentDto, userId.Value);
-
-                var message = createCommentDto.ParentCommentId.HasValue
-                    ? "Trả lời bình luận thành công"
-                    : "Bình luận thành công";
-
-                return CreatedAtAction(nameof(GetCommentById), new { id = comment.CommentId }, new
-                {
-                    success = true,
-                    message,
-                    data = comment
-                });
+                return CreatedAtAction(
+                    nameof(GetCommentById),
+                    new { id = comment.CommentId },
+                    new { success = true, message, data = comment }
+                );
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex.Message.Contains("không tồn tại"))
             {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
+                return BadRequest(new { success = false, message = ex.Message });
             }
         }
 
-        // PUT: api/Comment/{id}
+        // ==================== PUT ====================
+
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateComment(int id, [FromBody] UpdateCommentDTO updateCommentDto)
+        public async Task<IActionResult> UpdateComment(int id, [FromBody] UpdateCommentDTO dto)
         {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+            if (!ModelState.IsValid)
+                return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
 
-                var userId = GetCurrentUserId();
-                if (!userId.HasValue)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
+            if (!CurrentUserId.HasValue)
+                return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
-                var comment = await _commentService.UpdateCommentAsync(id, updateCommentDto, userId.Value);
-                if (comment == null)
-                    return NotFound(new { success = false, message = "Không tìm thấy bình luận hoặc bạn không có quyền chỉnh sửa" });
+            var comment = await _commentService.UpdateCommentAsync(id, dto, CurrentUserId.Value);
 
-                return Ok(new { success = true, message = "Cập nhật bình luận thành công", data = comment });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            return comment is null
+                ? NotFound(new { success = false, message = "Không tìm thấy bình luận hoặc bạn không có quyền chỉnh sửa" })
+                : Ok(new { success = true, message = "Cập nhật bình luận thành công!", data = comment });
         }
 
-        // DELETE: api/Comment/{id}
+        // ==================== DELETE ====================
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteComment(int id)
         {
-            try
-            {
-                var userId = GetCurrentUserId();
-                if (!userId.HasValue)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
+            if (!CurrentUserId.HasValue)
+                return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
-                var isAdmin = User.IsInRole("Admin");
-                var success = await _commentService.DeleteCommentAsync(id, userId.Value, isAdmin);
+            var isAdmin = User.IsInRole("Admin");
+            var success = await _commentService.DeleteCommentAsync(id, CurrentUserId.Value, isAdmin);
 
-                if (!success)
-                    return NotFound(new { success = false, message = "Không tìm thấy bình luận hoặc bạn không có quyền xóa" });
-
-                return Ok(new { success = true, message = "Xóa bình luận thành công" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            return success
+                ? Ok(new { success = true, message = "Xóa bình luận thành công!" })
+                : NotFound(new { success = false, message = "Không tìm thấy bình luận hoặc bạn không có quyền xóa" });
         }
 
-        // QUAN TRỌNG NHẤT: SỬA HÀM NÀY ĐỂ ĐỌC ĐÚNG CLAIM "UserID" TRONG TOKEN
+        // ==================== HELPER ====================
+
         private int? GetCurrentUserId()
         {
-            // Token của bạn dùng claim tên là "UserID" (chữ hoa), không phải NameIdentifier
             var claim = User.FindFirst("UserID") ?? User.FindFirst(ClaimTypes.NameIdentifier);
             return int.TryParse(claim?.Value, out int userId) ? userId : null;
         }

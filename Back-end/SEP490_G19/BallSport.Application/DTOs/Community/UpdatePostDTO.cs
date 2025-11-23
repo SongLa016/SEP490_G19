@@ -1,18 +1,18 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿// File: BallSport.Application.DTOs/Community/UpdatePostDTO.cs
+using Microsoft.AspNetCore.Http;
 
 namespace BallSport.Application.DTOs.Community
 {
     public class UpdatePostDTO
     {
-        [MaxLength(255)]
         public string? Title { get; set; }
-
-        [MinLength(10, ErrorMessage = "Nội dung phải có ít nhất 10 ký tự")]
         public string? Content { get; set; }
 
-        [MaxLength(500)]
-        [Url(ErrorMessage = "URL không hợp lệ")]
-        public string? MediaUrl { get; set; }
+        // XÓA DÒNG NÀY (không ai dùng link cả!)
+        // public string? MediaUrl { get; set; }
+
+        // THAY BẰNG: CHO PHÉP UP ẢNH MỚI
+        public List<IFormFile>? ImageFiles { get; set; }
 
         public int? FieldId { get; set; }
     }

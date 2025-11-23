@@ -1,7 +1,3 @@
-using System.Text;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using BallSport.Application.CloudinarySettings;
 using BallSport.Application.Services;
 using BallSport.Application.Services.Community;
@@ -18,10 +14,15 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Text;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -135,6 +136,11 @@ builder.Services.AddScoped<IFieldPriceService, FieldPriceService>();
 builder.Services.AddScoped<IFieldScheduleRepository, FieldScheduleRepository>();
 builder.Services.AddScoped<IFieldScheduleService, FieldScheduleService>();
 services.AddScoped<TimeSlotService>();
+// 1. Tăng giới hạn upload (100MB)
+builder.Services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = 100_000_000);
+builder.Services.Configure<IISServerOptions>(options => options.MaxRequestBodySize = 100_000_000);
+
+
 
 // --- Community module ---
 services.AddScoped<IPostRepository, PostRepository>();

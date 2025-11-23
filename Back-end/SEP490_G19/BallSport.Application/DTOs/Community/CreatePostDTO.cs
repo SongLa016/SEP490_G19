@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using Microsoft.AspNetCore.Http;
+using System.ComponentModel.DataAnnotations;
 
 namespace BallSport.Application.DTOs.Community
 {
@@ -8,13 +9,13 @@ namespace BallSport.Application.DTOs.Community
         public string? Title { get; set; }
 
         [Required(ErrorMessage = "Nội dung bài viết là bắt buộc")]
-        [MinLength(10, ErrorMessage = "Nội dung phải có ít nhất 10 ký tự")]
+       
         public string Content { get; set; } = string.Empty;
 
-        [MaxLength(500)]
-        [Url(ErrorMessage = "URL không hợp lệ")]
-        public string? MediaUrl { get; set; }
+        // UPLOAD NHIỀU ẢNH TỪ MÁY
+        [Display(Name = "Hình ảnh")]
+        public List<IFormFile>? ImageFiles { get; set; }
 
-        public int? FieldId { get; set; } // HOÀN HẢO – CHO PHÉP NULL, KHÔNG CẦN THÊM GÌ NỮA!
+        public int? FieldId { get; set; }
     }
 }
