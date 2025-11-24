@@ -17,7 +17,7 @@ namespace BallSport.API.Controllers
 
         // Thêm khu sân mới
         [HttpPost]
-        public async Task<IActionResult> AddComplex([FromBody] FieldComplexDTO dto)
+        public async Task<IActionResult> AddComplex([FromForm] FieldComplexDTO dto) 
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -47,7 +47,7 @@ namespace BallSport.API.Controllers
 
         // UPDATE 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateComplex(int id, [FromBody] FieldComplexDTO dto)
+        public async Task<IActionResult> UpdateComplex(int id, [FromForm] FieldComplexDTO dto) 
         {
             if (!ModelState.IsValid || id != dto.ComplexId)
                 return BadRequest("Dữ liệu không hợp lệ");
@@ -67,7 +67,7 @@ namespace BallSport.API.Controllers
             if (!deleted)
                 return NotFound($"Không tìm thấy khu sân có ID = {id}");
 
-            return NoContent(); // 204
+            return NoContent(); 
         }
     }
 }

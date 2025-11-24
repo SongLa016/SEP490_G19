@@ -3,6 +3,7 @@ export { Container, Section, Row, Col } from "./layout";
 
 // Form components
 export { Input } from "./input";
+export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "./input-otp";
 export {
   Select,
   SelectContent,
@@ -17,8 +18,9 @@ export {
 } from "./select";
 export { Button } from "./button";
 export { Textarea } from "./textarea";
-export { Calendar as UiCalendar } from "./calendar";
+export { Calendar } from "./calendar";
 export { DatePicker } from "./datepicker";
+export { Popover, PopoverTrigger, PopoverContent } from "./popover";
 
 // Display components
 export {
@@ -33,6 +35,15 @@ export { Badge } from "./badge";
 export { Avatar, AvatarImage, AvatarFallback } from "./avatar";
 export { Alert, AlertDescription } from "./alert";
 export { Modal } from "./modal";
+export {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  BreadcrumbEllipsis,
+} from "./breadcrumb";
 export {
   Table,
   TableHeader,

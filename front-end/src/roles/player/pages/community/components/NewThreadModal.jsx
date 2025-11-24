@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ImageIcon, Video, Smile, Pin, List, X, Building2, MapPin } from "lucide-react";
 import { Modal, Button, Avatar, AvatarImage, AvatarFallback, Textarea } from "../../../../../shared/components/ui";
 import FieldSelectionModal from "../../fields/components/FieldSelectionModal";
@@ -39,7 +40,13 @@ const NewThreadModal = ({
                     title="Thêm chủ đề"
                     className="max-w-2xl px-2 bg-white rounded-2xl"
                >
-                    <div className="space-y-1">
+                    <motion.div
+                         className="space-y-1"
+                         initial={{ opacity: 0, y: 20 }}
+                         animate={{ opacity: 1, y: 0 }}
+                         exit={{ opacity: 0, y: -20 }}
+                         transition={{ duration: 0.3 }}
+                    >
                          <div className="flex gap-3">
                               <div className="items-center ">
                                    <Avatar className="w-10 h-10">
@@ -154,9 +161,7 @@ const NewThreadModal = ({
                                    </Button>
                               </div>
                          </div>
-
-
-                    </div>
+                    </motion.div>
                </Modal>
 
                {/* Field Selection Modal */}

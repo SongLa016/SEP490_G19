@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { motion, useInView } from "framer-motion";
 import {
      Users,
      Phone,
@@ -25,6 +26,131 @@ import { useAuth } from "../../../../../contexts/AuthContext";
 import { listTeams, listTeamJoinRequestsByUser } from "../../../../../shared/index";
 import Swal from "sweetalert2";
 import TeamJoinModal from "./TeamJoinModal";
+
+// TeamCard Component
+function TeamCard({ team, index, user, userJoinStatus, getStatusBadge, getSkillLevelBadge, handleJoinTeam }) {
+     const cardRef = useRef(null);
+     const isInView = useInView(cardRef, { once: true, margin: "-50px" });
+     const isOwner = user?.id === team.createdBy;
+     const canJoin = !isOwner && team.status === "Open" && !userJoinStatus;
+
+     return (
+          <motion.div
+               ref={cardRef}
+               initial={{ opacity: 0, y: 30, scale: 0.95 }}
+               animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+               transition={{ 
+                    duration: 0.5, 
+                    delay: index * 0.1,
+                    ease: "easeOut"
+               }}
+               whileHover={{ 
+                    scale: 1.02,
+                    boxShadow: "0 10px 25px rgba(0,0,0,0.08)"
+               }}
+          >
+               <Card className="border m-2 rounded-3xl transition-all duration-200 border-teal-100 hover:shadow-lg">
+                    <CardContent className="p-4">
+                         <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                   <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 border border-teal-200">
+                                             <Users className="w-5 h-5" />
+                                        </div>
+                                        <div className="flex-1">
+                                             <div className="font-semibold text-teal-800 text-lg">{team.teamName}</div>
+                                             <div className="text-sm text-gray-600">
+                                                  Tạo bởi: {team.createdByName}
+                                             </div>
+                                        </div>
+                                   </div>
+
+                                   {/* Team Info */}
+                                   <div className="group h-7 hover:h-auto transition-all duration-300">
+                                        <div className="text-xs mx-auto text-center text-gray-400 italic group-hover:hidden">
+                                             Chạm vào để xem thêm chi tiết
+                                        </div>
+
+                                        <div className="opacity-0 group-hover:opacity-100 transition-transform duration-300 translate-y-2 group-hover:translate-y-0 text-sm text-gray-600 mb-2 space-y-1">
+                                             <div className="text-sm text-gray-600 mb-2 space-y-1">
+                                                  <div className="flex items-center gap-2">
+                                                       <Phone className="w-4 h-4 text-gray-500" />
+                                                       <span className="font-medium">Liên hệ:</span>
+                                                       <span>{team.contactPhone}</span>
+                                                  </div>
+
+                                                  <div className="flex items-center gap-2">
+                                                       <Users className="w-4 h-4 text-gray-500" />
+                                                       <span className="font-medium">Thành viên:</span>
+                                                       <span>{team.currentMembers}/{team.maxMembers}</span>
+                                                  </div>
+
+                                                  {team.preferredPositions && (
+                                                       <div className="flex items-center gap-2">
+                                                            <Target className="w-4 h-4 text-gray-500" />
+                                                            <span className="font-medium">Vị trí cần:</span>
+                                                            <span>{team.preferredPositions}</span>
+                                                       </div>
+                                                  )}
+                                             </div>
+
+                                             {/* Description */}
+                                             {team.description && (
+                                                  <div className="text-sm text-gray-700 bg-gray-50 p-2 rounded-lg border flex items-start gap-2">
+                                                       <MessageSquare className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                                                       <div>
+                                                            <strong>Mô tả:</strong> {team.description}
+                                                       </div>
+                                                  </div>
+                                             )}
+                                        </div>
+                                   </div>
+
+                                   {/* Badges */}
+                                   <div className="flex items-center gap-2 flex-wrap mb-3">
+                                        {getStatusBadge(team)}
+                                        {getSkillLevelBadge(team.preferredSkillLevel)}
+                                        {userJoinStatus}
+                                   </div>
+
+                                   <div className="text-xs text-gray-500 flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        Tạo lúc: {new Date(team.createdAt).toLocaleString('vi-VN')}
+                                   </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 ml-4">
+                                   {isOwner ? (
+                                        <Button disabled className="bg-gray-200 !rounded-full py-2 text-sm text-gray-500 cursor-not-allowed flex items-center gap-2">
+                                             <Users className="w-4 h-4" />
+                                             Đội của bạn
+                                        </Button>
+                                   ) : canJoin ? (
+                                        <motion.div
+                                             whileHover={{ scale: 1.05 }}
+                                             whileTap={{ scale: 0.95 }}
+                                        >
+                                             <Button
+                                                  onClick={() => handleJoinTeam(team)}
+                                                  className="bg-teal-500 hover:bg-teal-600 text-white flex items-center gap-2"
+                                             >
+                                                  <UserPlus className="w-4 h-4" />
+                                                  Tham gia
+                                             </Button>
+                                        </motion.div>
+                                   ) : (
+                                        <Button disabled className="bg-gray-200 !rounded-full py-2 text-sm text-gray-500 cursor-not-allowed flex items-center gap-2">
+                                             <AlertCircle className="w-4 h-4" />
+                                             Không thể tham gia
+                                        </Button>
+                                   )}
+                              </div>
+                         </div>
+                    </CardContent>
+               </Card>
+          </motion.div>
+     );
+}
 
 export default function TeamList({ onOpenTeamCreation }) {
      const { user } = useAuth();
@@ -180,7 +306,12 @@ export default function TeamList({ onOpenTeamCreation }) {
      return (
           <div className="border border-b-0 overflow-y-auto scrollbar-hide rounded-t-3xl bg-white border-gray-400 flex flex-col" style={{ height: 'calc(108.5vh - 120px)' }}>
                {/* Filter */}
-               <div className="grid sticky top-0 z-10 grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-gray-50 border-b border-gray-200">
+               <motion.div
+                    className="grid sticky top-0 z-10 grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-gray-50 border-b border-gray-200"
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+               >
                     <div className="md:col-span-1">
                          <div className="relative">
                               <UserCheck className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -203,6 +334,10 @@ export default function TeamList({ onOpenTeamCreation }) {
                               <Users className="w-4 h-4 text-teal-500" />
                               {teams.length} đội
                          </span>
+                         <motion.div
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                         >
                          <Button
                               onClick={() => onOpenTeamCreation?.()}
                               className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-xl flex items-center gap-2"
@@ -210,116 +345,25 @@ export default function TeamList({ onOpenTeamCreation }) {
                               <Users className="w-4 h-4" />
                               Tạo đội
                          </Button>
+                         </motion.div>
                     </div>
-               </div>
+               </motion.div>
 
                {/* Teams Feed */}
                <div className="divide-y divide-gray-200">
-                    {visibleTeams.map((team) => {
+                    {visibleTeams.map((team, index) => {
                          const userJoinStatus = getUserJoinStatus(team.teamId);
-                         const isOwner = user?.id === team.createdBy;
-                         const canJoin = !isOwner && team.status === "Open" && !userJoinStatus;
-
                          return (
-                              <Card
+                              <TeamCard
                                    key={team.teamId}
-                                   className="border m-2 rounded-3xl transition-all duration-200 border-teal-100 hover:shadow-lg"
-                              >
-                                   <CardContent className="p-4">
-                                        <div className="flex items-start justify-between">
-                                             <div className="flex-1">
-                                                  <div className="flex items-center gap-3 mb-3">
-                                                       <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 border border-teal-200">
-                                                            <Users className="w-5 h-5" />
-                                                       </div>
-                                                       <div className="flex-1">
-                                                            <div className="font-semibold text-teal-800 text-lg">{team.teamName}</div>
-                                                            <div className="text-sm text-gray-600">
-                                                                 Tạo bởi: {team.createdByName}
-                                                            </div>
-                                                       </div>
-                                                  </div>
-
-                                                  {/* Team Info */}
-                                                  <div className="group h-7 hover:h-auto transition-all duration-300">
-                                                       {/* Thông tin cơ bản - luôn hiển thị */}
-                                                       <div className="text-xs mx-auto text-center text-gray-400 italic group-hover:hidden">
-                                                            Chạm vào để xem thêm chi tiết
-                                                       </div>
-
-                                                       {/* Thông tin chi tiết - chỉ hiển thị khi hover */}
-                                                       <div className="opacity-0 group-hover:opacity-100 transition-transform duration-300 translate-y-2 group-hover:translate-y-0 text-sm text-gray-600 mb-2 space-y-1">
-                                                            <div className="text-sm text-gray-600 mb-2 space-y-1">
-                                                                 <div className="flex items-center gap-2">
-                                                                      <Phone className="w-4 h-4 text-gray-500" />
-                                                                      <span className="font-medium">Liên hệ:</span>
-                                                                      <span>{team.contactPhone}</span>
-                                                                 </div>
-
-                                                                 <div className="flex items-center gap-2">
-                                                                      <Users className="w-4 h-4 text-gray-500" />
-                                                                      <span className="font-medium">Thành viên:</span>
-                                                                      <span>{team.currentMembers}/{team.maxMembers}</span>
-                                                                 </div>
-
-                                                                 {team.preferredPositions && (
-                                                                      <div className="flex items-center gap-2">
-                                                                           <Target className="w-4 h-4 text-gray-500" />
-                                                                           <span className="font-medium">Vị trí cần:</span>
-                                                                           <span>{team.preferredPositions}</span>
-                                                                      </div>
-                                                                 )}
-                                                            </div>
-
-                                                            {/* Description */}
-                                                            {team.description && (
-                                                                 <div className="text-sm text-gray-700 bg-gray-50 p-2 rounded-lg border flex items-start gap-2">
-                                                                      <MessageSquare className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
-                                                                      <div>
-                                                                           <strong>Mô tả:</strong> {team.description}
-                                                                      </div>
-                                                                 </div>
-                                                            )}
-                                                       </div>
-                                                  </div>
-
-                                                  {/* Badges */}
-                                                  <div className="flex items-center gap-2 flex-wrap mb-3">
-                                                       {getStatusBadge(team)}
-                                                       {getSkillLevelBadge(team.preferredSkillLevel)}
-                                                       {userJoinStatus}
-                                                  </div>
-
-                                                  <div className="text-xs text-gray-500 flex items-center gap-1">
-                                                       <Clock className="w-3 h-3" />
-                                                       Tạo lúc: {new Date(team.createdAt).toLocaleString('vi-VN')}
-                                                  </div>
-                                             </div>
-
-                                             <div className="flex items-center gap-2 ml-4">
-                                                  {isOwner ? (
-                                                       <Button disabled className="bg-gray-200 !rounded-full py-2 text-sm text-gray-500 cursor-not-allowed flex items-center gap-2">
-                                                            <Users className="w-4 h-4" />
-                                                            Đội của bạn
-                                                       </Button>
-                                                  ) : canJoin ? (
-                                                       <Button
-                                                            onClick={() => handleJoinTeam(team)}
-                                                            className="bg-teal-500 hover:bg-teal-600 text-white flex items-center gap-2"
-                                                       >
-                                                            <UserPlus className="w-4 h-4" />
-                                                            Tham gia
-                                                       </Button>
-                                                  ) : (
-                                                       <Button disabled className="bg-gray-200 !rounded-full py-2 text-sm text-gray-500 cursor-not-allowed flex items-center gap-2">
-                                                            <AlertCircle className="w-4 h-4" />
-                                                            Không thể tham gia
-                                                       </Button>
-                                                  )}
-                                             </div>
-                                        </div>
-                                   </CardContent>
-                              </Card>
+                                   team={team}
+                                   index={index}
+                                   user={user}
+                                   userJoinStatus={userJoinStatus}
+                                   getStatusBadge={getStatusBadge}
+                                   getSkillLevelBadge={getSkillLevelBadge}
+                                   handleJoinTeam={handleJoinTeam}
+                              />
                          );
                     })}
                     <div ref={teamEndRef} className="h-6" />

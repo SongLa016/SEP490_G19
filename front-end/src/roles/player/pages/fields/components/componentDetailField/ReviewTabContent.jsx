@@ -94,13 +94,13 @@ export default function ReviewTabContent({
                                    </>
                               ) : (
                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-                                        <p className="text-sm text-yellow-800 mb-2">Vui lòng đăng nhập để viết đánh giá.</p>
+                                        <p className="text-sm text-yellow-800 mb-3">Vui lòng đăng nhập để viết đánh giá.</p>
                                         <Button
                                              type="button"
                                              onClick={onLoginPrompt}
-                                             className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm px-4 py-2 rounded-lg"
+                                             className="bg-teal-600 hover:bg-teal-700 text-white text-sm px-4 py-2 rounded-lg font-semibold"
                                         >
-                                             Đăng nhập
+                                             Đăng nhập ngay
                                         </Button>
                                    </div>
                               )}

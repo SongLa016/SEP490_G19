@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Calendar, Clock, CheckCircle, X } from "lucide-react";
+import { Users, Calendar, Clock, CheckCircle } from "lucide-react";
 import { Button, Modal } from "../components/ui";
 
 export default function RecurringOpponentSelection({

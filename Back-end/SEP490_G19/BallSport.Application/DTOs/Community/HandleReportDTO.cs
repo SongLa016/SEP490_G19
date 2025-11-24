@@ -1,19 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿// File: HandleReportDTO.cs → DÙNG LẠI BẢN CŨ ĐỂ KHÔNG LỖI
+using System.ComponentModel.DataAnnotations;
 
-namespace BallSport.Application.DTOs.Community
+public class HandleReportDTO
 {
-    public class HandleReportDTO
-    {
-        [Required(ErrorMessage = "Status là bắt buộc")]
-        [RegularExpression("^(Reviewed|Resolved|Rejected)$",
-            ErrorMessage = "Status phải là: Reviewed, Resolved, hoặc Rejected")]
-        public string Status { get; set; } = "Reviewed";
+    [Required]
+    public string Status { get; set; } = "Reviewed"; // hoặc "Rejected"
 
-        [RegularExpression("^(Hide|Delete|None)$",
-            ErrorMessage = "Action phải là: Hide, Delete, hoặc None")]
-        public string? Action { get; set; }  // Hide: ẩn nội dung, Delete: xóa nội dung, None: không làm gì
+    public string? Action { get; set; } // "Delete" hoặc "None"
 
-        [MaxLength(500, ErrorMessage = "Ghi chú không được vượt quá 500 ký tự")]
-        public string? AdminNote { get; set; }
-    }
+    [MaxLength(500)]
+    public string? AdminNote { get; set; }
 }

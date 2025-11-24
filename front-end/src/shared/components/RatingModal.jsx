@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Star, MessageSquare, X, CheckCircle, AlertCircle, MapPin, Calendar, Clock } from "lucide-react";
-import { Button, Card, CardContent, Textarea, Modal } from "./ui/index";
+import { Star, MessageSquare, CheckCircle, AlertCircle, MapPin, Calendar, Clock } from "lucide-react";
+import { Button, Textarea, Modal } from "./ui/index";
 import { updateBooking } from "../utils/bookingStore";
 
 export default function RatingModal({

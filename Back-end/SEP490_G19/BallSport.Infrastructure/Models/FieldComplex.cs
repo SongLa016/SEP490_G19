@@ -15,11 +15,11 @@ public partial class FieldComplex
 
     public string? Description { get; set; }
 
-    public byte[]? Image { get; set; }
-
     public string? Status { get; set; }
 
     public DateTime? CreatedAt { get; set; }
+
+    public string? ImageUrl { get; set; }
 
     public virtual ICollection<Field> Fields { get; set; } = new List<Field>();
 

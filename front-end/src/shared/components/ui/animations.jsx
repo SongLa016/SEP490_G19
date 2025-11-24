@@ -4,7 +4,7 @@ import React from 'react';
 export function FadeIn({ children, delay = 0, duration = 0.5, className = "" }) {
   return (
     <div
-      className={`animate-in fade-in duration-500 ${className}`}
+      className={`animate-fade-in-up ${className}`}
       style={{
         animationDelay: `${delay}ms`,
         animationDuration: `${duration}s`,
@@ -18,15 +18,15 @@ export function FadeIn({ children, delay = 0, duration = 0.5, className = "" }) 
 // Slide In Animation
 export function SlideIn({ children, direction = "up", delay = 0, duration = 0.5, className = "" }) {
   const directionClasses = {
-    up: "slide-in-from-bottom-4",
-    down: "slide-in-from-top-4",
-    left: "slide-in-from-right-4",
-    right: "slide-in-from-left-4",
+    up: 'animate-fade-in-up',
+    down: 'animate-fade-in-down',
+    left: 'animate-slide-fade-in',
+    right: 'animate-slide-fade-in',
   };
 
   return (
     <div
-      className={`animate-in ${directionClasses[direction]} fade-in duration-500 ${className}`}
+      className={`${directionClasses[direction] || directionClasses.up} ${className}`}
       style={{
         animationDelay: `${delay}ms`,
         animationDuration: `${duration}s`,
@@ -41,7 +41,7 @@ export function SlideIn({ children, direction = "up", delay = 0, duration = 0.5,
 export function ScaleIn({ children, delay = 0, duration = 0.3, className = "" }) {
   return (
     <div
-      className={`animate-in zoom-in-95 fade-in duration-300 ${className}`}
+      className={`animate-scale-in ${className}`}
       style={{
         animationDelay: `${delay}ms`,
         animationDuration: `${duration}s`,

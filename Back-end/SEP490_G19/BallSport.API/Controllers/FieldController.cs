@@ -1,6 +1,8 @@
 ﻿using BallSport.Application.DTOs;
 using BallSport.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace BallSport.API.Controllers
 {
@@ -16,15 +18,20 @@ namespace BallSport.API.Controllers
         }
 
         // CREATE
+        [Authorize]
         [HttpPost]
-        public async Task<IActionResult> AddField([FromBody] FieldDTO dto)
+        public async Task<IActionResult> AddField([FromForm] FieldDTO dto)
         {
-            if (dto == null)
-                return BadRequest("Invalid data.");
+            // 🔹 Lấy OwnerId từ claim "UserID"
+            var ownerIdClaim = User.FindFirst("UserID");
+            if (ownerIdClaim == null) return Unauthorized("Không tìm thấy OwnerId trong token.");
 
-            var result = await _fieldService.AddFieldAsync(dto);
+            int ownerId = int.Parse(ownerIdClaim.Value);
+
+            var result = await _fieldService.AddFieldAsync(dto, ownerId);
             return CreatedAtAction(nameof(GetFieldById), new { fieldId = result.FieldId }, result);
         }
+
 
         // READ ALL BY COMPLEX
         [HttpGet("complex/{complexId}")]
@@ -47,10 +54,10 @@ namespace BallSport.API.Controllers
 
             return Ok(field);
         }
-
-        // UPDATE
+        //UPDATE FIELD - chỉ Owner
+        [Authorize(Roles = "Owner")]
         [HttpPut("{fieldId}")]
-        public async Task<IActionResult> UpdateField(int fieldId, [FromBody] FieldDTO dto)
+        public async Task<IActionResult> UpdateField(int fieldId, [FromForm] FieldDTO dto)
         {
             if (dto == null || fieldId != dto.FieldId)
                 return BadRequest("Invalid data.");
@@ -61,8 +68,8 @@ namespace BallSport.API.Controllers
 
             return Ok(updatedField);
         }
-
-        // DELETE
+        // DELETE FIELD - chỉ Owner
+        [Authorize(Roles = "Owner")]
         [HttpDelete("{fieldId}")]
         public async Task<IActionResult> DeleteField(int fieldId)
         {
@@ -72,5 +79,23 @@ namespace BallSport.API.Controllers
 
             return NoContent(); // 204
         }
+
+        [Authorize]
+        [HttpGet("owner")]
+        public async Task<IActionResult> GetFieldsForOwner()
+        {
+            var ownerIdClaim = User.FindFirst("UserID");
+            if (ownerIdClaim == null) return Unauthorized("Không tìm thấy OwnerId trong token.");
+
+            int ownerId = int.Parse(ownerIdClaim.Value);
+
+            var fields = await _fieldService.GetFieldsByOwnerIdAsync(ownerId);
+
+            if (fields == null || !fields.Any())
+                return NotFound("No fields found for this owner.");
+
+            return Ok(fields);
+        }
+
     }
 }

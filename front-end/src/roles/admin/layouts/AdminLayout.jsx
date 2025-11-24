@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "../../../shared/components/ui";
 import logo from "../../../shared/components/assets/logo.png";
+import ScrollProgressBar from "../../../shared/components/ScrollProgressBar";
 
 export default function AdminLayout({ user, onLoggedOut, children }) {
      const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -40,6 +41,7 @@ export default function AdminLayout({ user, onLoggedOut, children }) {
 
      return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex flex-col">
+               <ScrollProgressBar />
                <div className="flex flex-1">
                     {/* Sidebar */}
                     <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} ${sidebarCollapsed ? 'w-16' : 'w-64'} fixed inset-y-0 left-0 z-50 bg-white/95 backdrop-blur-lg shadow-2xl transform transition-all duration-500 ease-in-out lg:translate-x-0 lg:inset-0 lg:sticky lg:top-0 lg:h-screen border-r border-slate-200/50 flex flex-col`}>

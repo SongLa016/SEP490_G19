@@ -1,5 +1,7 @@
-﻿using BallSport.Infrastructure.Data;
+﻿using BallSport.Infrastructure;
+using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +18,11 @@ namespace BallSport.Infrastructure.Repositories
         public UserRepositories(Sep490G19v1Context context)
         {
             _context = context;
+        }
+
+        public async Task<User?> GetByIdAsync(int userId)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
         }
 
         public User? GetUserByPhone(string phone)
@@ -123,6 +130,14 @@ namespace BallSport.Infrastructure.Repositories
                 .Where(ur => ur.UserId == userId)
                 .Select(ur => ur.Role.RoleName)
                 .ToList();
+        }
+
+        public async Task<string?> GetUserRoleAsync(int userId)
+        {
+            return await _context.UserRoles
+                .Where(ur => ur.UserId == userId)
+                .Select(ur => ur.Role.RoleName)
+                .FirstOrDefaultAsync();
         }
 
 

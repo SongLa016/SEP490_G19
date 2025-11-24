@@ -1,11 +1,14 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Modal } from "./ui/index";
 import { Database, UserPlus, ArrowRight } from "lucide-react";
 import { Button } from "./ui/button";
 
 export default function DemoRestrictedModal({ isOpen, onClose, featureName }) {
+     const navigate = useNavigate();
+     
      const handleCreateAccount = () => {
-          window.location.href = "/register";
+          navigate("/register");
      };
 
      return (

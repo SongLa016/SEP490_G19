@@ -1,88 +1,93 @@
 ﻿using BallSport.Application.DTOs;
+using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
-using BallSport.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
 
-namespace BallSport.Application.Services
+public interface IFieldPriceService
 {
-    public class FieldPriceService
+    Task<List<FieldPrice>> GetAllAsync(int ownerId);
+    Task<FieldPrice?> GetByIdAsync(int ownerId, int priceId);
+
+    // Thay đổi return type từ Task → Task<FieldPrice>
+    Task<FieldPrice> AddAsync(int ownerId, FieldPriceDTO dto);
+
+    Task UpdateAsync(int ownerId, int priceId, FieldPriceDTO dto);
+    Task DeleteAsync(int ownerId, int priceId);
+}
+
+public class FieldPriceService : IFieldPriceService
+{
+    private readonly IFieldPriceRepository _repository;
+    private readonly Sep490G19v1Context _context;
+
+    public FieldPriceService(IFieldPriceRepository repository, Sep490G19v1Context context)
     {
-        private readonly FieldPriceRepository _repo;
+        _repository = repository;
+        _context = context;
+    }
 
-        public FieldPriceService(FieldPriceRepository repo)
+    public async Task<List<FieldPrice>> GetAllAsync(int ownerId)
+    {
+        var all = await _repository.GetAllAsync();
+        return all.Where(fp => fp.Field?.Complex?.OwnerId == ownerId).ToList();
+    }
+
+    public async Task<FieldPrice?> GetByIdAsync(int ownerId, int priceId)
+    {
+        var fp = await _repository.GetByIdAsync(priceId);
+        if (fp == null || fp.Field?.Complex?.OwnerId != ownerId)
+            return null;
+        return fp;
+    }
+
+    public async Task<FieldPrice> AddAsync(int ownerId, FieldPriceDTO dto)
+    {
+        var field = await _context.Fields
+            .Include(f => f.Complex)
+            .FirstOrDefaultAsync(f => f.FieldId == dto.FieldId);
+
+        if (field == null)
+            throw new Exception("Field not found");
+        if (field.Complex?.OwnerId != ownerId)
+            throw new UnauthorizedAccessException("Bạn không có quyền trên Field này");
+
+        var entity = new FieldPrice
         {
-            _repo = repo;
-        }
+            FieldId = dto.FieldId,
+            SlotId = dto.SlotId,
+            Price = dto.Price
+        };
 
-        //  Lấy tất cả giá sân
-        public async Task<List<FieldPriceDTO>> GetAllAsync()
-        {
-            var list = await _repo.GetAllAsync();
-            return list.Select(fp => new FieldPriceDTO
-            {
-                PriceId = fp.PriceId,
-                FieldId = fp.FieldId,
-                FieldName = fp.Field?.Name,
-                SlotId = fp.SlotId,
-                SlotName = fp.Slot?.SlotName,
-                Price = fp.Price
-            }).ToList();
-        }
+        await _repository.AddAsync(entity);
+        return entity;
+    }
 
-        //  Lấy theo ID
-        public async Task<FieldPriceDTO?> GetByIdAsync(int id)
-        {
-            var fp = await _repo.GetByIdAsync(id);
-            if (fp == null) return null;
 
-            return new FieldPriceDTO
-            {
-                PriceId = fp.PriceId,
-                FieldId = fp.FieldId,
-                FieldName = fp.Field?.Name,
-                SlotId = fp.SlotId,
-                SlotName = fp.Slot?.SlotName,
-                Price = fp.Price
-            };
-        }
+    public async Task UpdateAsync(int ownerId, int priceId, FieldPriceDTO dto)
+    {
+        var entity = await _repository.GetByIdAsync(priceId);
+        if (entity == null)
+            throw new Exception("FieldPrice not found");
 
-        //  Thêm mới
-        public async Task<FieldPriceDTO> AddAsync(FieldPriceDTO dto)
-        {
-            var entity = new FieldPrice
-            {
-                FieldId = dto.FieldId,
-                SlotId = dto.SlotId,
-                Price = dto.Price
-            };
+        if (entity.Field?.Complex?.OwnerId != ownerId)
+            throw new UnauthorizedAccessException("Bạn không có quyền trên Field này");
 
-            var added = await _repo.AddAsync(entity);
-            return new FieldPriceDTO
-            {
-                PriceId = added.PriceId,
-                FieldId = added.FieldId,
-                SlotId = added.SlotId,
-                Price = added.Price
-            };
-        }
+        entity.FieldId = dto.FieldId;
+        entity.SlotId = dto.SlotId;
+        entity.Price = dto.Price;
 
-        //  Cập nhật
-        public async Task<bool> UpdateAsync(FieldPriceDTO dto)
-        {
-            var entity = new FieldPrice
-            {
-                PriceId = dto.PriceId,
-                FieldId = dto.FieldId,
-                SlotId = dto.SlotId,
-                Price = dto.Price
-            };
+        await _repository.UpdateAsync(entity);
+    }
 
-            return await _repo.UpdateAsync(entity);
-        }
+    public async Task DeleteAsync(int ownerId, int priceId)
+    {
+        var entity = await _repository.GetByIdAsync(priceId);
+        if (entity == null)
+            throw new Exception("FieldPrice not found");
 
-        //  Xóa
-        public async Task<bool> DeleteAsync(int id)
-        {
-            return await _repo.DeleteAsync(id);
-        }
+        if (entity.Field?.Complex?.OwnerId != ownerId)
+            throw new UnauthorizedAccessException("Bạn không có quyền trên Field này");
+
+        await _repository.DeleteAsync(entity);
     }
 }

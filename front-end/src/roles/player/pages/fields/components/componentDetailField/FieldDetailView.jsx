@@ -1,4 +1,4 @@
-import { ArrowLeft, User, CheckCircle, XCircle, Tag, Ruler, Leaf, MapPin } from "lucide-react";
+import { ArrowLeft, User, CheckCircle, XCircle, Tag, Ruler, Leaf, MapPin, Heart } from "lucide-react";
 import { Button } from "../../../../../../shared/components/ui";
 
 export default function FieldDetailView({
@@ -8,7 +8,8 @@ export default function FieldDetailView({
      selectedFieldCheapestSlot,
      selectedFieldPriciestSlot,
      onBack,
-     onQuickBook
+     onQuickBook,
+     onToggleFavoriteField
 }) {
      if (!selectedField) return null;
 
@@ -57,7 +58,18 @@ export default function FieldDetailView({
                                    </span>
                               </div>
                          </div>
-                         <div className="flex">
+                         <div className="flex items-start gap-2">
+                              <Button
+                                   type="button"
+                                   onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (onToggleFavoriteField) onToggleFavoriteField(selectedField.fieldId);
+                                   }}
+                                   className={`h-9 w-9 p-0 rounded-full shadow-sm transition-all duration-200 border hover:scale-110 hover:text-pink-600 ${selectedField.isFavorite ? "bg-teal-500 text-teal-50 border-teal-500" : "bg-white text-teal-700 border-teal-200 hover:bg-teal-50"}`}
+                              >
+                                   <Heart className="w-4 h-4" />
+                              </Button>
                               {selectedSlotId && (
                                    <div className="mt-2 text-sm text-gray-700 inline-flex items-center gap-1 bg-orange-50/50 px-3 py-1 rounded-lg border border-orange-200/50">
                                         <Tag className="w-4 h-4 text-orange-500" />

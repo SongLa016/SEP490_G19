@@ -1,4 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import {
+     clearPersistedAuth,
+     getStoredToken,
+     isTokenExpired,
+     storeToken
+} from '../shared/utils/tokenManager';
 
 const AuthContext = createContext();
 
@@ -17,14 +23,21 @@ export const AuthProvider = ({ children }) => {
      useEffect(() => {
           // Get current user from localStorage on app start
           const currentUser = getCurrentUser();
-          setUser(currentUser);
+          const token = getStoredToken();
+
+          if (token && isTokenExpired(token)) {
+               clearPersistedAuth();
+               setUser(null);
+          } else {
+               setUser(currentUser);
+          }
           setIsLoading(false);
      }, []);
 
      const login = (userData, token = null) => {
           setUser(userData);
           if (token) {
-               localStorage.setItem('token', token);
+               storeToken(token);
           }
 
           // Store user data in localStorage
@@ -61,6 +74,5 @@ function getCurrentUser() {
 }
 
 function logout() {
-     localStorage.removeItem('user');
-     localStorage.removeItem('token');
+     clearPersistedAuth();
 }

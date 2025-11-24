@@ -17,7 +17,8 @@ export default function InfoTabContent({
      selectedFieldPriciestSlot,
      onBack,
      onFieldSelect,
-     onQuickBookField
+     onQuickBookField,
+     onToggleFavoriteField
 }) {
      return (
           <FadeIn delay={100}>
@@ -38,6 +39,7 @@ export default function InfoTabContent({
                               selectedFieldPriciestSlot={selectedFieldPriciestSlot}
                               onBack={onBack}
                               onQuickBook={() => onQuickBookField(selectedField.fieldId)}
+                              onToggleFavoriteField={onToggleFavoriteField}
                          />
                     ) : (
                          <ComplexInfoView

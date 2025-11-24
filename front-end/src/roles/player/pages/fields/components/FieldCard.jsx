@@ -1,35 +1,43 @@
-import { Link } from "react-router-dom";
 import { MapPin, Star, Heart } from "lucide-react";
 import StadiumIcon from '@mui/icons-material/Stadium';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import { Button, FadeIn } from "../../../../../shared/components/ui";
+import { getImageProps } from "../../../../../shared/utils/imageUtils";
 
 export default function FieldCard({ field, index, activeTab, slotId, formatPrice, handleToggleFavorite, handleBook, navigate }) {
      return (
           <FadeIn key={field.fieldId} delay={index * 50}>
-               <Link
-                    key={field.fieldId}
-                    to={`/field/${field.fieldId}`}
-                    onClick={(e) => { e.preventDefault(); navigate(`/field/${field.fieldId}`); }}
-                    className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:-translate-y-1 hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer"
+               <div
+                    onClick={(e) => {
+                         // If any child marked to stop navigation is clicked, do nothing
+                         const blocker = (e.target instanceof Element) ? e.target.closest('[data-stop-propagation="true"]') : null;
+                         if (blocker || e.defaultPrevented) {
+                              return;
+                         }
+                         navigate(`/field/${field.fieldId}`);
+                    }} className="group bg-white rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:-translate-y-1 hover:ring-1 hover:ring-teal-100 h-full flex flex-col cursor-pointer"
                >
                     <div className="relative overflow-hidden">
                          <img
-                              src={field.image}
-                              alt={field.name}
-                              className="w-full h-40 object-cover transition-transform duration-300 ease-out group-hover:scale-110"
+                              {...getImageProps(field.image, field.name)}
+                              className="w-full h-40 md:h-44 object-cover transition-transform duration-300 ease-out group-hover:scale-110"
                               draggable={false}
                          />
                          <div className="absolute top-4 right-4 flex space-x-2">
                               <Button
                                    type="button"
+                                   data-stop-propagation="true"
+                                   onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                   }}
                                    onClick={(e) => {
                                         e.stopPropagation();
-                                        handleToggleFavorite(field.id);
+                                        handleToggleFavorite(field.fieldId);
                                    }}
                                    variant="outline"
-                                   className={`h-8 w-8 p-0 rounded-full shadow-sm transition-all duration-200 border hover:scale-110 ${field.isFavorite ? "bg-teal-500 text-white border-teal-500" : "bg-white text-teal-700 border-teal-200 hover:bg-teal-50"}`}
+                                   className={`h-8 w-8 p-0 rounded-full shadow-sm transition-all duration-200 border hover:scale-110 hover:text-pink-600 ${field.isFavorite ? "bg-teal-500 text-teal-50 border-teal-500" : "bg-white text-teal-700 border-teal-200 hover:bg-teal-50"}`}
                               >
                                    <Heart className="w-4 h-4" />
                               </Button>
@@ -70,7 +78,7 @@ export default function FieldCard({ field, index, activeTab, slotId, formatPrice
                                         </>
                                    )}
                               </div>
-                              <div className={`text-lg font-bold flex items-center ${activeTab === "best-price" ? "text-red-500" : "text-teal-600"}`}>
+                              <div className={`text-lg font-bold flex items-center text-orange-600`}>
                                    <AttachMoneyIcon className="w-4 h-4 mr-1" />
                                    {formatPrice(field.priceForSelectedSlot || 0)}/trận
                               </div>
@@ -88,6 +96,11 @@ export default function FieldCard({ field, index, activeTab, slotId, formatPrice
                          <div className="mt-auto">
                               <Button
                                    type="button"
+                                   data-stop-propagation="true"
+                                   onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                   }}
                                    onClick={(e) => {
                                         e.stopPropagation();
                                         handleBook(field.fieldId);
@@ -99,7 +112,7 @@ export default function FieldCard({ field, index, activeTab, slotId, formatPrice
                               </Button>
                          </div>
                     </div>
-               </Link>
+               </div>
           </FadeIn>
      );
 }
