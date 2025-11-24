@@ -1,6 +1,4 @@
-﻿// ==========================================
-// FILE: BallSport.API/Controllers/MatchFinding/MatchRequestController.cs
-// ==========================================
+﻿
 
 using BallSport.Application.DTOs.MatchFinding;
 using BallSport.Application.Services.MatchFinding;

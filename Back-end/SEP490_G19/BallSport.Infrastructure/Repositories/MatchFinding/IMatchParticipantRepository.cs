@@ -1,8 +1,4 @@
-﻿// ==========================================
-// FILE: BallSport.Infrastructure/Repositories/MatchFinding/IMatchParticipantRepository.cs
-// ==========================================
-
-using BallSport.Infrastructure.Models;
+﻿using BallSport.Infrastructure.Models;
 
 namespace BallSport.Infrastructure.Repositories.MatchFinding
 {
