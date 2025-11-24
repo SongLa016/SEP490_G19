@@ -155,7 +155,26 @@ const handleApiError = (error) => {
 
   if (error.response) {
     const { status, statusText, data } = error.response;
-    if (status === 401) {
+    console.error("[handleApiError] API Error Response:", {
+      status,
+      statusText,
+      data,
+      headers: error.response.headers,
+    });
+    
+    if (status === 400) {
+      // Bad request - show validation errors
+      if (data && data.errors) {
+        const errorMessages = Object.values(data.errors).flat().join(", ");
+        errorMessage = `Dữ liệu không hợp lệ: ${errorMessages}`;
+      } else if (data && data.message) {
+        errorMessage = data.message;
+      } else if (data && typeof data === 'string') {
+        errorMessage = data;
+      } else {
+        errorMessage = `Lỗi ${status}: ${statusText || 'Bad Request'}. Vui lòng kiểm tra lại dữ liệu.`;
+      }
+    } else if (status === 401) {
       errorMessage = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
     } else if (status === 403) {
       errorMessage = "Bạn không có quyền thực hiện thao tác này.";
@@ -243,7 +262,8 @@ export async function fetchPosts(params = {}) {
  * @param {Object} postData - Post data
  * @param {string} postData.title - Post title
  * @param {string} postData.content - Post content
- * @param {string} postData.mediaUrl - Media URL (optional)
+ * @param {File|File[]} postData.imageFiles - Image file(s) to upload (optional)
+ * @param {string[]} postData.imageUrls - Array of image URLs (if already uploaded, optional)
  * @param {number} postData.fieldId - Field ID (optional)
  * @returns {Promise<Object>} Created post
  */
@@ -259,15 +279,47 @@ export async function createPost(postData) {
       throw new Error("Không thể xác thực người dùng. Vui lòng đăng nhập lại.");
     }
 
-    const payload = {
-      title: postData.title || "",
-      content: postData.content,
-      mediaUrl: postData.mediaUrl || null,
-      fieldId: postData.fieldId || 0,
-    };
+    // Always use FormData for consistency and to ensure backend [FromForm] binding works
+    const formData = new FormData();
+    formData.append('Title', postData.title || "");
+    formData.append('Content', postData.content || "");
+    
+    // FieldId should be a number
+    const fieldId = Number(postData.fieldId) || 0;
+    formData.append('FieldId', fieldId.toString());
 
-    const response = await apiClient.post("/api/Post", payload);
-    return normalizePost(response.data);
+    // Handle ImageFiles (New Files)
+    if (postData.imageFiles) {
+      const files = Array.isArray(postData.imageFiles) ? postData.imageFiles : [postData.imageFiles];
+      files.forEach((file) => {
+        if (file instanceof File) {
+          formData.append('ImageFiles', file);
+        }
+      });
+      
+      console.log("[createPost] Added ImageFiles:", files.length);
+    }
+
+    // Handle existing URLs (if provided as imageUrls or mediaUrl)
+    // Some backends might use this to keep existing images
+    const imageUrls = postData.imageUrls || [];
+    if (imageUrls.length > 0) {
+       formData.append('MediaUrl', imageUrls[0]);
+    } else if (postData.mediaUrl) {
+       formData.append('MediaUrl', postData.mediaUrl);
+    }
+
+    console.log("[createPost] Sending FormData:", {
+      Title: postData.title,
+      Content: postData.content,
+      FieldId: fieldId
+    });
+
+    const response = await apiClient.post("/api/Post", formData);
+
+    // Handle response with data wrapper
+    const responsePostData = response.data?.data || response.data;
+    return normalizePost(responsePostData);
   } catch (error) {
     handleApiError(error);
   }
@@ -281,7 +333,9 @@ export async function createPost(postData) {
 export async function fetchPostById(id) {
   try {
     const response = await apiClient.get(`/api/Post/${id}`);
-    return normalizePost(response.data);
+    // Handle response with data wrapper (consistent with createPost/updatePost)
+    const postData = response.data?.data || response.data;
+    return normalizePost(postData);
   } catch (error) {
     handleApiError(error);
   }
@@ -291,6 +345,8 @@ export async function fetchPostById(id) {
  * PUT /api/Post/{id} - Update post
  * @param {number|string} id - Post ID
  * @param {Object} postData - Updated post data
+ * @param {File|File[]} postData.imageFiles - Image file(s) to upload (optional)
+ * @param {string[]} postData.imageUrls - Array of image URLs (if already uploaded, optional)
  * @returns {Promise<Object>} Updated post
  */
 export async function updatePost(id, postData) {
@@ -306,22 +362,55 @@ export async function updatePost(id, postData) {
       throw new Error("Bạn không có quyền chỉnh sửa bài viết này.");
     }
 
-    const payload = {
-      title: postData.title || "",
-      content: postData.content,
-      mediaUrl: postData.mediaUrl || null,
-      fieldId: postData.fieldId || 0,
-    };
+    // Always use FormData for consistency and to ensure backend [FromForm] binding works
+    const formData = new FormData();
+    formData.append('Title', postData.title || "");
+    formData.append('Content', postData.content || "");
+    
+    // FieldId should be a number
+    const fieldId = Number(postData.fieldId) || 0;
+    formData.append('FieldId', fieldId.toString());
 
-    const response = await apiClient.put(`/api/Post/${id}`, payload);
-    return normalizePost(response.data);
+    // Handle ImageFiles (New Files)
+    if (postData.imageFiles) {
+      const files = Array.isArray(postData.imageFiles) ? postData.imageFiles : [postData.imageFiles];
+      files.forEach((file) => {
+        if (file instanceof File) {
+          formData.append('ImageFiles', file);
+        }
+      });
+      console.log("[updatePost] Added ImageFiles:", files.length);
+    }
+
+    // Handle existing URLs (if provided as imageUrls or mediaUrl)
+    // This allows the backend to know we want to keep/set this URL if it supports it
+    const imageUrls = postData.imageUrls || [];
+    if (imageUrls.length > 0) {
+       formData.append('MediaUrl', imageUrls[0]);
+    } else if (postData.mediaUrl) {
+       formData.append('MediaUrl', postData.mediaUrl);
+    }
+
+    console.log("[updatePost] Sending FormData:", {
+      Title: postData.title,
+      Content: postData.content,
+      FieldId: fieldId
+    });
+
+    const response = await apiClient.put(`/api/Post/${id}`, formData);
+
+    // Handle response with data wrapper
+    const responsePostData = response.data?.data || response.data;
+    return normalizePost(responsePostData);
   } catch (error) {
     handleApiError(error);
   }
 }
 
+
+
 /**
- * DELETE /api/Post/{id} - Delete post
+ * DELETE /api/Post/{id}/mine - User delete their own post
  * @param {number|string} id - Post ID
  * @returns {Promise<void>}
  */
@@ -332,7 +421,32 @@ export async function deletePost(id) {
       throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
     }
 
-    // Backend will check ownership, so we don't need to check here
+    // User deletes their own post
+    await apiClient.delete(`/api/Post/${id}/mine`);
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+/**
+ * DELETE /api/Post/{id} - Admin delete any post
+ * @param {number|string} id - Post ID
+ * @returns {Promise<void>}
+ */
+export async function deletePostAsAdmin(id) {
+  try {
+    const token = getStoredToken();
+    if (!token || isTokenExpired(token)) {
+      throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+    }
+
+    // Check if user is admin
+    const currentUser = getCurrentUserFromToken();
+    if (!hasUserRole("Admin")) {
+      throw new Error("Bạn không có quyền xóa bài viết này. Chỉ Admin mới có quyền xóa bài viết bất kỳ.");
+    }
+
+    // Admin deletes any post
     await apiClient.delete(`/api/Post/${id}`);
   } catch (error) {
     handleApiError(error);
@@ -549,7 +663,7 @@ export async function likePost(id) {
 }
 
 /**
- * DELETE /api/Post/{id}/unlike - Unlike a post
+ * DELETE /api/Post/{id}/like - Unlike a post
  * @param {number|string} id - Post ID
  * @returns {Promise<Object>} Updated post or like status
  */
@@ -560,7 +674,7 @@ export async function unlikePost(id) {
       throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
     }
 
-    const response = await apiClient.delete(`/api/Post/${id}/unlike`);
+    const response = await apiClient.delete(`/api/Post/${id}/like`);
     return response.data;
   } catch (error) {
     handleApiError(error);
@@ -568,25 +682,73 @@ export async function unlikePost(id) {
 }
 
 /**
- * PUT /api/Post/{id}/toggle-visibility - Toggle post visibility
+ * PUT /api/Post/{id}/review - Admin review/approve a post
  * @param {number|string} id - Post ID
  * @returns {Promise<Object>} Updated post
  */
-export async function togglePostVisibility(id) {
+export async function reviewPost(id) {
   try {
     const token = getStoredToken();
     if (!token || isTokenExpired(token)) {
       throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
     }
 
-    // Fetch post first to check ownership
-    const post = await fetchPostById(id);
-    if (!isPostOwner(post)) {
-      throw new Error("Bạn không có quyền thay đổi trạng thái hiển thị của bài viết này.");
+    // Check if user is admin
+    if (!hasUserRole("Admin")) {
+      throw new Error("Bạn không có quyền duyệt bài viết. Chỉ Admin mới có quyền này.");
     }
 
-    const response = await apiClient.put(`/api/Post/${id}/toggle-visibility`);
-    return normalizePost(response.data);
+    const response = await apiClient.put(`/api/Post/${id}/review`);
+    // Handle response with data wrapper
+    const responsePostData = response.data?.data || response.data;
+    return normalizePost(responsePostData);
+  } catch (error) {
+    handleApiError(error);
+  }
+}
+
+/**
+ * GET /api/Post/pending - Get pending posts (Admin only)
+ * @param {Object} params - Query parameters (optional)
+ * @returns {Promise<Array>} Array of pending posts
+ */
+export async function fetchPendingPosts(params = {}) {
+  try {
+    const token = getStoredToken();
+    if (!token || isTokenExpired(token)) {
+      throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+    }
+
+    // Check if user is admin
+    if (!hasUserRole("Admin")) {
+      throw new Error("Bạn không có quyền xem danh sách bài viết chờ duyệt. Chỉ Admin mới có quyền này.");
+    }
+
+    const response = await apiClient.get("/api/Post/pending", { params });
+    let data = response.data;
+
+    // Handle different response formats
+    if (!data) {
+      return [];
+    }
+    if (Array.isArray(data)) {
+      return data.map(normalizePost);
+    }
+    if (data && typeof data === "object") {
+      if (Array.isArray(data.value)) {
+        data = data.value;
+      } else if (Array.isArray(data.data)) {
+        data = data.data;
+      } else if (Array.isArray(data.results)) {
+        data = data.results;
+      } else {
+        data = [];
+      }
+    } else {
+      data = [];
+    }
+
+    return data.map(normalizePost);
   } catch (error) {
     handleApiError(error);
   }
@@ -615,12 +777,12 @@ function normalizePost(post) {
       verified: post.author.verified || post.author.Verified || post.author.isVerified || false,
     };
   } else {
-    // Try to extract from post properties
+    // Try to extract from post properties (including userName from API response)
     author = {
       id: post.userId || post.userID || post.UserID,
       userId: post.userId || post.userID || post.UserID,
       username: post.authorUsername || post.username || post.userName || "",
-      name: post.authorName || post.authorFullName || post.fullName || post.FullName || post.userFullName || "",
+      name: post.authorName || post.authorFullName || post.fullName || post.FullName || post.userFullName || post.userName || "",
       avatar: post.authorAvatar || post.avatar || post.userAvatar || null,
       verified: post.authorVerified || post.isVerified || false,
     };
@@ -669,6 +831,31 @@ function normalizePost(post) {
     author: author
   });
 
+  // Normalize image files - handle imageUrls (from API response), imageFiles, and mediaUrl
+  let imageFiles = [];
+  let mediaUrl = null;
+  
+  // Priority: imageUrls (from API) > imageFiles > ImageFiles > mediaUrl/MediaURL
+  if (post.imageUrls && Array.isArray(post.imageUrls) && post.imageUrls.length > 0) {
+    // API returns imageUrls array (from response)
+    imageFiles = post.imageUrls;
+    mediaUrl = imageFiles[0];
+  } else if (post.imageFiles && Array.isArray(post.imageFiles) && post.imageFiles.length > 0) {
+    // If imageFiles array is provided, use it
+    imageFiles = post.imageFiles;
+    mediaUrl = imageFiles[0];
+  } else if (post.ImageFiles && Array.isArray(post.ImageFiles) && post.ImageFiles.length > 0) {
+    // Handle capitalized ImageFiles
+    imageFiles = post.ImageFiles;
+    mediaUrl = imageFiles[0];
+  } else {
+    // Fallback to mediaUrl/MediaURL for backward compatibility
+    mediaUrl = post.mediaUrl || post.mediaURL || post.MediaURL || null;
+    if (mediaUrl) {
+      imageFiles = [mediaUrl];
+    }
+  }
+
   const normalizedPost = {
     id: post.id || post.postId || post.PostID,
     postId: post.id || post.postId || post.PostID,
@@ -677,7 +864,8 @@ function normalizePost(post) {
     UserID: userId, // Also include UserID for compatibility
     title: post.title || post.Title || "",
     content: post.content || post.Content || "",
-    mediaUrl: post.mediaUrl || post.mediaURL || post.MediaURL || null,
+    mediaUrl: mediaUrl, // Single URL for backward compatibility
+    imageFiles: imageFiles, // Array of image URLs
     fieldId: post.fieldId || post.fieldID || post.FieldID || null,
     createdAt: post.createdAt || post.CreatedAt || post.created_at,
     updatedAt: post.updatedAt || post.UpdatedAt || post.updated_at,
@@ -685,8 +873,16 @@ function normalizePost(post) {
     visibility: post.visibility || post.Visibility || "Public",
     // Additional fields that might be returned
     likes: post.likes || post.likeCount || post.like_count || 0,
-    comments: post.comments || post.commentCount || post.comment_count || 0,
+    comments: typeof post.comments === 'number' ? post.comments : (post.commentCount || post.comment_count || 0),
     isLiked: post.isLiked || post.is_liked || false,
+    // Post status fields
+    isPending: post.isPending || post.is_pending || false,
+    isRejected: post.isRejected || post.is_rejected || false,
+    // Permission fields
+    isOwner: post.isOwner || post.is_owner || false,
+    canEdit: post.canEdit || post.can_edit || false,
+    canDelete: post.canDelete || post.can_delete || false,
+    showReviewButtons: post.showReviewButtons || post.show_review_buttons || false,
     // Author information (normalized)
     author: author,
     // Field information (normalized)

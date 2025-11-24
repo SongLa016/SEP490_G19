@@ -1,8 +1,5 @@
-import React from 'react';
 import { motion } from 'framer-motion';
-import { ImageIcon, Video, Smile, Pin, List } from "lucide-react";
-import { Modal } from '../../../../../shared/components/ui';
-import { Button, Avatar, AvatarImage, AvatarFallback, Textarea } from '../../../../../shared/components/ui';
+import { Modal, Button, Avatar, AvatarImage, AvatarFallback, Badge, Textarea } from '../../../../../shared/components/ui';
 
 const ReplyModal = ({
      isOpen,
@@ -21,6 +18,21 @@ const ReplyModal = ({
           }
      };
 
+     // Check if the original post belongs to current user
+     // Get current user ID from various possible fields
+     const currentUserId = user?.userID || user?.userId || user?.UserID || user?.id;
+     // Get post author ID from various possible fields
+     const postAuthorId = originalPost?.userId || originalPost?.authorId || originalPost?.postUserId;
+
+     // Compare as strings to handle type differences (string vs number)
+     const isOwnPost = originalPost && user && currentUserId && postAuthorId &&
+          String(currentUserId) === String(postAuthorId);
+
+     // Get username - check all possible fields
+     console.log('[ReplyModal] User object for username:', user);
+     const displayUsername = user?.userName || user?.username || user?.Username || user?.name || user?.fullName || user?.FullName || "User";
+     console.log('[ReplyModal] Display username:', displayUsername);
+
      return (
           <Modal
                isOpen={isOpen}
@@ -37,7 +49,7 @@ const ReplyModal = ({
                >
                     {/* Original Post */}
                     {originalPost && (
-                         <div className="">
+                         <div className="p-2">
                               <div className="flex gap-3">
                                    <Avatar className="w-8 h-8">
                                         <AvatarImage src={originalPost.avatar} />
@@ -49,10 +61,16 @@ const ReplyModal = ({
                                         <div className="flex items-center gap-2 mb-1">
                                              <span className="font-semibold text-sm">{originalPost.author}</span>
                                              {originalPost.verified && (
-                                                  <span className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                                                       <span className="text-white text-xs">✓</span>
-                                                  </span>
+                                                  <Badge variant="secondary" className="text-xs bg-blue-500 text-white px-1.5 py-0.5 rounded-full">
+                                                       ✓
+                                                  </Badge>
                                              )}
+                                             {isOwnPost && (
+                                                  <Badge variant="secondary" className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
+                                                       của bạn
+                                                  </Badge>
+                                             )}
+                                             <span className="text-xs text-gray-500">•</span>
                                              <span className="text-xs text-gray-500">{originalPost.timeAgo}</span>
                                         </div>
                                         <p className="text-sm text-gray-800">{originalPost.content}</p>
@@ -73,44 +91,29 @@ const ReplyModal = ({
                                         </AvatarFallback>
                                    </Avatar>
                                    <div className="flex pt-1 justify-center">
-                                        <div className="w-px h-16 bg-gray-300"></div>
+                                        <div className="w-px h-10 bg-gray-300"></div>
                                    </div>
                               </div>
 
                               <div className="flex-1">
                                    <div className="text-sm text-gray-500 mb-2">
-                                        <span className="font-semibold">{user?.name || "User"}</span>
+                                        <span className="font-semibold">
+                                             {displayUsername}
+                                        </span>
                                         <span className="mx-1">&gt;</span>
-                                        <span>Thêm chủ đề</span>
+                                        <span>Thêm bình luận</span>
                                    </div>
                                    <Textarea
                                         placeholder={`Trả lời ${originalPost?.author || 'post'}...`}
                                         value={replyContent}
                                         onChange={(e) => setReplyContent(e.target.value)}
-                                        className="min-h-[50px] resize-none  border-0 border-gray-300 focus:ring-0 text-lg placeholder:text-gray-500"
+                                        className="min-h-[50px] resize-none  border border-gray-300 focus:ring-0 text-lg placeholder:text-gray-500"
                                    />
-                                   <div className="flex items-center gap-1">
-                                        <Button variant="ghost" size="sm" className="p-2">
-                                             <ImageIcon className="w-5 h-5 text-gray-500" />
-                                        </Button>
-                                        <Button variant="ghost" size="sm" className="p-2">
-                                             <Video className="w-5 h-5 text-gray-500" />
-                                        </Button>
-                                        <Button variant="ghost" size="sm" className="p-2">
-                                             <Smile className="w-5 h-5 text-gray-500" />
-                                        </Button>
-                                        <Button variant="ghost" size="sm" className="p-2">
-                                             <List className="w-5 h-5 text-gray-500" />
-                                        </Button>
-                                        <Button variant="ghost" size="sm" className="p-2">
-                                             <Pin className="w-5 h-5 text-gray-500" />
-                                        </Button>
-                                   </div>
                               </div>
                          </div>
 
 
-                         <div className="flex justify-between items-center">
+                         <div className="flex justify-between items-center pb-2">
                               <div className="text-sm text-gray-500">
                                    Bất kỳ ai cũng có thể trả lời và trích dẫn
                               </div>

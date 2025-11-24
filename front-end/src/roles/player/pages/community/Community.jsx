@@ -45,23 +45,11 @@ export default function Community() {
           if (!user || !content.trim()) return;
 
           try {
-               let mediaUrl = null;
-               if (imageFile) {
-                    const reader = new FileReader();
-                    await new Promise((resolve) => {
-                         reader.onloadend = () => {
-                              mediaUrl = reader.result; // Base64 data URL
-                              resolve();
-                         };
-                         reader.readAsDataURL(imageFile);
-                    });
-               }
-
                await createPost({
                     title: title || "",
                     content: content,
                     fieldId: field?.fieldId || 0,
-                    mediaUrl: mediaUrl
+                    imageFiles: imageFile
                });
                // Trigger refresh in ThreadsFeed
                setRefreshTrigger(prev => prev + 1);

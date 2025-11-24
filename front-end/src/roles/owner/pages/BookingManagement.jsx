@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePick
 import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import { DemoRestrictedModal } from "../../../shared";
-import { cancelBooking, fetchCancellationRequests, confirmCancellation, deleteCancellationRequest, fetchBookingsByOwner, confirmByOwner, fetchCancellationRequestById } from "../../../shared/services/bookings";
+import { cancelBooking, fetchCancellationRequests, confirmCancellation, deleteCancellationRequest, fetchBookingsByOwner, confirmPaymentAPI, confirmByOwner, fetchCancellationRequestById } from "../../../shared/services/bookings";
 import Swal from "sweetalert2";
 
 
@@ -94,14 +94,12 @@ const BookingManagement = ({ isDemo = false }) => {
           // Find the booking to check its status
           const booking = bookings.find(b => (b.bookingId || b.id) === numericBookingId);
           if (booking) {
-               // Check if booking is already confirmed
-               if (booking.status === 'confirmed') {
+               // Check if booking is already completed
+               if (booking.status === 'completed') {
                     await Swal.fire({
                          icon: 'warning',
-                         title: 'Đã được xác nhận',
-                         text: booking.status === 'confirmed'
-                              ? 'Booking này đã hoàn thành rồi.'
-                              : 'Booking này đã được xác nhận rồi.',
+                         title: 'Đã hoàn thành',
+                         text: 'Booking này đã hoàn thành rồi.',
                          confirmButtonColor: '#10b981'
                     });
                     // Reload to get latest data
@@ -119,46 +117,29 @@ const BookingManagement = ({ isDemo = false }) => {
                     });
                     return;
                }
-
-               // Check payment status - must be paid before confirming
-               const paymentStatusLower = String(booking.paymentStatus || '').toLowerCase();
-               const isPaid = paymentStatusLower === 'paid';
-
-               console.log('[handleConfirmBooking] Payment status check:', {
-                    bookingId: numericBookingId,
-                    paymentStatus: booking.paymentStatus,
-                    paymentStatusLower: paymentStatusLower,
-                    isPaid: isPaid
-               });
-
-               if (!isPaid) {
-                    await Swal.fire({
-                         icon: 'warning',
-                         title: 'Chưa thanh toán',
-                         html: `
-                              <div class="text-left">
-                                   <p class="mb-2">Booking này chưa được thanh toán.</p>
-                                   <p class="text-sm text-gray-600">Vui lòng đợi khách hàng thanh toán trước khi xác nhận booking.</p>
-                                   <div class="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                        <p class="text-xs text-yellow-800">
-                                             <strong>Trạng thái thanh toán hiện tại:</strong> ${booking.paymentStatus === 'unpaid' ? 'Chờ Thanh Toán' : booking.paymentStatus}
-                                        </p>
-                                   </div>
-                              </div>
-                         `,
-                         confirmButtonText: 'Đã hiểu',
-                         confirmButtonColor: '#f59e0b',
-                         width: '500px'
-                    });
-                    return;
-               }
           }
 
+          // Determine action based on current status
+          const isConfirmed = booking?.status === 'confirmed';
+          const paymentStatusLower = String(booking?.paymentStatus || '').toLowerCase();
+          const isPaid = paymentStatusLower === 'paid';
+          const isConfirmedAndPaid = isConfirmed && isPaid;
+
+          // Determine dialog content based on booking status
+          const dialogTitle = isConfirmedAndPaid ? 'Hoàn thành booking' : 'Xác nhận thanh toán';
+          const dialogMessage = isConfirmedAndPaid
+               ? 'Bạn có chắc muốn hoàn thành booking này? Booking sẽ chuyển sang trạng thái "Hoàn thành".'
+               : 'Bạn có chắc muốn xác nhận thanh toán cho booking này?';
+          const confirmButtonText = isConfirmedAndPaid ? 'Hoàn thành' : 'Xác nhận thanh toán';
+          const infoMessage = isConfirmedAndPaid
+               ? '✅ <strong>Hoàn thành booking</strong> - Booking sẽ chuyển sang trạng thái "Hoàn thành"'
+               : '💳 <strong>Xác nhận thanh toán</strong> - Booking sẽ chuyển sang trạng thái "Đã xác nhận" và thanh toán "Đã thanh toán"';
+
           const result = await Swal.fire({
-               title: 'Xác nhận booking',
+               title: dialogTitle,
                html: `
                     <div class="text-left">
-                         <p class="mb-3">Bạn có chắc muốn xác nhận booking này?</p>
+                         <p class="mb-3">${dialogMessage}</p>
                          ${booking ? `
                               <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
                                    <p class="text-sm text-blue-800 font-semibold mb-1">📋 Thông tin booking:</p>
@@ -168,11 +149,13 @@ const BookingManagement = ({ isDemo = false }) => {
                                         <p><strong>Ngày:</strong> ${formatDate(booking.date)}</p>
                                         <p><strong>Giờ:</strong> ${booking.timeSlot}</p>
                                         <p><strong>Số tiền:</strong> <span class="font-bold text-green-600">${formatCurrency(booking.amount)}</span></p>
+                                        <p><strong>Trạng thái:</strong> ${getStatusText(booking.status)}</p>
+                                        <p><strong>Thanh toán:</strong> ${getPaymentStatusText(booking.paymentStatus)}</p>
                                    </div>
                               </div>
                               <div class="bg-green-50 border border-green-200 rounded-lg p-2">
                                    <p class="text-xs text-green-800">
-                                        ✅ <strong>Đã thanh toán</strong> - Booking sẽ chuyển sang trạng thái "Đã xác nhận"
+                                        ${infoMessage}
                                    </p>
                               </div>
                          ` : ''}
@@ -180,7 +163,7 @@ const BookingManagement = ({ isDemo = false }) => {
                `,
                icon: 'question',
                showCancelButton: true,
-               confirmButtonText: 'Xác nhận',
+               confirmButtonText: confirmButtonText,
                cancelButtonText: 'Hủy',
                confirmButtonColor: '#10b981',
                cancelButtonColor: '#6b7280',
@@ -189,30 +172,63 @@ const BookingManagement = ({ isDemo = false }) => {
 
           if (result.isConfirmed) {
                try {
-                    console.log(`[BookingManagement] Attempting to confirm booking ${numericBookingId}`, {
-                         bookingId: numericBookingId,
-                         currentStatus: booking?.status,
-                         currentPaymentStatus: booking?.paymentStatus
-                    });
+                    let confirmResult;
 
-                    const confirmResult = await confirmByOwner(numericBookingId);
+                    if (isConfirmedAndPaid) {
+                         // Booking đã confirmed và paid -> gọi confirm-by-owner để chuyển thành completed
+                         console.log(`[BookingManagement] Attempting to complete booking ${numericBookingId}`, {
+                              bookingId: numericBookingId,
+                              currentStatus: booking?.status,
+                              currentPaymentStatus: booking?.paymentStatus
+                         });
+
+                         confirmResult = await confirmByOwner(numericBookingId);
+
+                         if (confirmResult.success) {
+                              console.log('[BookingManagement] Complete booking response:', {
+                                   bookingId: numericBookingId,
+                                   responseData: confirmResult.data,
+                                   bookingStatus: confirmResult.data?.bookingStatus || confirmResult.data?.BookingStatus,
+                                   paymentStatus: confirmResult.data?.paymentStatus || confirmResult.data?.PaymentStatus
+                              });
+
+                              await Swal.fire({
+                                   icon: 'success',
+                                   title: 'Đã hoàn thành!',
+                                   text: confirmResult.message || 'Booking đã được hoàn thành thành công. Trạng thái đã chuyển sang "Hoàn thành".',
+                                   confirmButtonColor: '#10b981'
+                              });
+                         }
+                    } else {
+                         // Booking pending -> gọi confirm-payment để xác nhận thanh toán
+                         const amount = booking?.amount || 0;
+                         console.log(`[BookingManagement] Attempting to confirm payment for booking ${numericBookingId}`, {
+                              bookingId: numericBookingId,
+                              amount: amount,
+                              currentStatus: booking?.status,
+                              currentPaymentStatus: booking?.paymentStatus
+                         });
+
+                         confirmResult = await confirmPaymentAPI(numericBookingId, amount);
+
+                         if (confirmResult.success) {
+                              console.log('[BookingManagement] Confirm payment response:', {
+                                   bookingId: numericBookingId,
+                                   responseData: confirmResult.data,
+                                   bookingStatus: confirmResult.data?.bookingStatus || confirmResult.data?.BookingStatus,
+                                   paymentStatus: confirmResult.data?.paymentStatus || confirmResult.data?.PaymentStatus
+                              });
+
+                              await Swal.fire({
+                                   icon: 'success',
+                                   title: 'Đã xác nhận thanh toán!',
+                                   text: confirmResult.message || 'Booking đã được xác nhận thanh toán thành công. Trạng thái đã chuyển sang "Đã xác nhận".',
+                                   confirmButtonColor: '#10b981'
+                              });
+                         }
+                    }
 
                     if (confirmResult.success) {
-                         // Log response from backend to check actual status
-                         console.log('[BookingManagement] Confirm booking response:', {
-                              bookingId: numericBookingId,
-                              responseData: confirmResult.data,
-                              bookingStatus: confirmResult.data?.bookingStatus || confirmResult.data?.status,
-                              paymentStatus: confirmResult.data?.paymentStatus
-                         });
-
-                         await Swal.fire({
-                              icon: 'success',
-                              title: 'Đã xác nhận!',
-                              text: 'Booking đã được xác nhận thành công',
-                              confirmButtonColor: '#10b981'
-                         });
-
                          // Reload bookings to get updated status from backend
                          await loadBookings();
 
@@ -223,24 +239,63 @@ const BookingManagement = ({ isDemo = false }) => {
                                    console.log('[BookingManagement] Updated booking status after confirm:', {
                                         bookingId: numericBookingId,
                                         normalizedStatus: updatedBooking.status,
-                                        originalStatus: updatedBooking.bookingStatus
+                                        normalizedPaymentStatus: updatedBooking.paymentStatus,
+                                        originalStatus: updatedBooking.originalStatus
                                    });
                               }
                          }, 500);
                     } else {
-                         // Show detailed error message
-                         const errorMsg = confirmResult.error || 'Không thể xác nhận booking';
-                         console.error('[BookingManagement] Confirm booking failed:', errorMsg);
+                         // Kiểm tra nếu là lỗi CORS - có thể request đã thành công
+                         const isCorsError = confirmResult.isCorsError;
+                         const errorMsg = confirmResult.error || (isConfirmedAndPaid ? 'Không thể hoàn thành booking' : 'Không thể xác nhận thanh toán');
+                         console.error(`[BookingManagement] ${isConfirmedAndPaid ? 'Complete' : 'Confirm payment'} failed:`, errorMsg);
+                         console.log(`[BookingManagement] Is CORS error:`, isCorsError);
 
+                         // Nếu là lỗi CORS, reload dữ liệu để kiểm tra xem có thay đổi không
+                         if (isCorsError) {
+                              console.log('[BookingManagement] CORS error detected - reloading data to check if request succeeded...');
+                              await loadBookings();
+
+                              // Đợi một chút để dữ liệu được load
+                              await new Promise(resolve => setTimeout(resolve, 500));
+
+                              // Kiểm tra xem booking có thay đổi không
+                              const updatedBooking = bookings.find(b => (b.bookingId || b.id) === numericBookingId);
+                              const hasStatusChanged = updatedBooking && (
+                                   (isConfirmedAndPaid && updatedBooking.status === 'completed') ||
+                                   (!isConfirmedAndPaid && updatedBooking.status === 'confirmed' && updatedBooking.paymentStatus === 'paid')
+                              );
+
+                              if (hasStatusChanged) {
+                                   // Request đã thành công dù có lỗi CORS
+                                   await Swal.fire({
+                                        icon: 'success',
+                                        title: isConfirmedAndPaid ? 'Đã hoàn thành!' : 'Đã xác nhận thanh toán!',
+                                        html: `
+                                             <div class="text-left">
+                                                  <p class="mb-2">${isConfirmedAndPaid ? 'Booking đã được hoàn thành thành công.' : 'Booking đã được xác nhận thanh toán thành công.'}</p>
+                                                  <p class="text-sm text-yellow-600 mt-2">
+                                                       ⚠️ Lưu ý: Có lỗi CORS trong response nhưng request đã được xử lý thành công.
+                                                  </p>
+                                             </div>
+                                        `,
+                                        confirmButtonColor: '#10b981'
+                                   });
+                                   return; // Thoát sớm vì đã thành công
+                              }
+                         }
+
+                         // Nếu không phải CORS error hoặc không có thay đổi, hiển thị lỗi
                          await Swal.fire({
                               icon: 'error',
-                              title: 'Lỗi xác nhận booking',
+                              title: isConfirmedAndPaid ? 'Lỗi hoàn thành booking' : 'Lỗi xác nhận thanh toán',
                               html: `
                                    <div class="text-left">
                                         <p class="mb-2">${errorMsg}</p>
                                         <p class="text-sm text-gray-600 mt-2">
-                                             Có thể booking đã được xác nhận hoặc có vấn đề với dữ liệu.
+                                             Có thể booking đã được xử lý hoặc có vấn đề với dữ liệu.
                                         </p>
+                                        ${isCorsError ? '<p class="text-sm text-yellow-600 mt-2">⚠️ Lỗi CORS: Vui lòng kiểm tra lại sau hoặc thử refresh trang.</p>' : ''}
                                    </div>
                               `,
                               confirmButtonColor: '#ef4444'
@@ -249,11 +304,13 @@ const BookingManagement = ({ isDemo = false }) => {
                          loadBookings();
                     }
                } catch (error) {
-                    console.error('[BookingManagement] Error confirming booking:', error);
+                    console.error(`[BookingManagement] Error ${isConfirmedAndPaid ? 'completing' : 'confirming payment'} booking:`, error);
                     await Swal.fire({
                          icon: 'error',
                          title: 'Lỗi',
-                         text: 'Có lỗi xảy ra khi xác nhận booking. Vui lòng thử lại.',
+                         text: isConfirmedAndPaid
+                              ? 'Có lỗi xảy ra khi hoàn thành booking. Vui lòng thử lại.'
+                              : 'Có lỗi xảy ra khi xác nhận thanh toán. Vui lòng thử lại.',
                          confirmButtonColor: '#ef4444'
                     });
                     // Reload to get latest status
@@ -600,7 +657,6 @@ const BookingManagement = ({ isDemo = false }) => {
 
      // Normalize API booking data to match component format
      const normalizeBookingData = (apiBookings = []) => {
-          const now = new Date();
           return apiBookings.map((item, index) => {
                // Parse date and time
                const startTime = item.startTime ? new Date(item.startTime) : null;
@@ -612,57 +668,87 @@ const BookingManagement = ({ isDemo = false }) => {
 
                // Normalize status - IMPORTANT: Check for 'confirmed' BEFORE 'completed'
                // because 'completed' contains 'confirm' substring
-               const rawStatus = item.bookingStatus || item.status || 'pending';
+               // Handle both camelCase (bookingStatus) and PascalCase (BookingStatus) from backend
+               const rawStatus = item.bookingStatus || item.BookingStatus || item.status || item.Status || 'pending';
                const status = String(rawStatus).toLowerCase();
 
-               // Check if booking has passed (endTime is in the past)
-               // "Completed" should only show when booking time has passed
-               const hasPassed = endTime ? endTime < now : false;
+               // Log for debugging status mapping
+               if (index === 0 || item.bookingStatus || item.BookingStatus) {
+                    console.log(`[normalizeBookingData] Booking ${item.bookingId || item.id || index} status mapping:`, {
+                         bookingId: item.bookingId || item.id,
+                         bookingStatus: item.bookingStatus,
+                         BookingStatus: item.BookingStatus,
+                         status: item.status,
+                         Status: item.Status,
+                         rawStatus: rawStatus,
+                         normalizedStatus: status
+                    });
+               }
 
                // Normalize status: 
                // - If cancelled, always cancelled
-               // - If confirmed AND booking time has passed, show as completed
-               // - If confirmed AND booking time hasn't passed, show as confirmed
+               // - If confirmed, keep as confirmed (don't auto-convert to completed based on time)
+               // - If completed, keep as completed
+               // - If pending, keep as pending
                // - Otherwise, use the status from backend
                let normalizedStatus;
                if (status.includes('cancel')) {
                     normalizedStatus = 'cancelled';
-               } else if (status.includes('confirm') || status === 'confirmed') {
-                    // If booking is confirmed and time has passed, show as completed
-                    if (hasPassed) {
-                         normalizedStatus = 'completed';
-                    } else {
-                         normalizedStatus = 'confirmed';
-                    }
-               } else if (status === 'completed' || (status.includes('complete') && !status.includes('confirm'))) {
-                    // Backend says completed, but check if it's actually past the booking time
-                    normalizedStatus = hasPassed ? 'completed' : 'confirmed';
+               } else if (status === 'confirmed' || (status.includes('confirm') && !status.includes('complete'))) {
+                    // Keep confirmed as confirmed - don't auto-convert to completed
+                    normalizedStatus = 'confirmed';
+               } else if (status === 'completed' || status.includes('complete')) {
+                    // Backend says completed
+                    normalizedStatus = 'completed';
                } else if (status.includes('pending')) {
                     normalizedStatus = 'pending';
                } else {
                     normalizedStatus = status;
                }
 
-               // Normalize payment status - handle both "Paid"/"Unpaid" (capitalized) and "paid"/"unpaid" (lowercase)
+               // Normalize payment status - handle both camelCase (paymentStatus) and PascalCase (PaymentStatus) from backend
+               // Also handle both "Paid"/"Unpaid" (capitalized) and "paid"/"unpaid" (lowercase)
                const rawPaymentStatus = item.paymentStatus || item.PaymentStatus || 'pending';
                const paymentStatus = String(rawPaymentStatus).toLowerCase().trim();
 
-               // Log for debugging
-               if (rawPaymentStatus !== paymentStatus) {
-                    console.log(`[normalizeBookingData] Payment status normalized: "${rawPaymentStatus}" -> "${paymentStatus}"`);
+               // Log for debugging payment status mapping
+               if (index === 0 || item.paymentStatus || item.PaymentStatus) {
+                    console.log(`[normalizeBookingData] Booking ${item.bookingId || item.id || index} payment status mapping:`, {
+                         bookingId: item.bookingId || item.id,
+                         paymentStatus: item.paymentStatus,
+                         PaymentStatus: item.PaymentStatus,
+                         rawPaymentStatus: rawPaymentStatus,
+                         paymentStatusLowercase: paymentStatus
+                    });
                }
 
                let normalizedPaymentStatus;
-               if (paymentStatus === 'paid' || paymentStatus.includes('paid')) {
-                    normalizedPaymentStatus = 'paid';
-               } else if (paymentStatus === 'unpaid' || paymentStatus.includes('unpaid')) {
+               // IMPORTANT: Check exact matches first, then check includes
+               // Check 'unpaid' BEFORE 'paid' because 'unpaid' contains 'paid' substring
+               if (paymentStatus === 'unpaid') {
                     normalizedPaymentStatus = 'unpaid';
+               } else if (paymentStatus === 'paid') {
+                    normalizedPaymentStatus = 'paid';
+               } else if (paymentStatus.includes('unpaid')) {
+                    normalizedPaymentStatus = 'unpaid';
+               } else if (paymentStatus.includes('paid')) {
+                    normalizedPaymentStatus = 'paid';
                } else if (paymentStatus.includes('refund')) {
                     normalizedPaymentStatus = 'refunded';
                } else if (paymentStatus.includes('fail')) {
                     normalizedPaymentStatus = 'failed';
                } else {
                     normalizedPaymentStatus = 'pending';
+               }
+
+               // Log final normalized payment status for debugging
+               if (index === 0 || item.paymentStatus || item.PaymentStatus) {
+                    console.log(`[normalizeBookingData] Booking ${item.bookingId || item.id || index} final payment status:`, {
+                         bookingId: item.bookingId || item.id,
+                         rawPaymentStatus: rawPaymentStatus,
+                         paymentStatusLowercase: paymentStatus,
+                         normalizedPaymentStatus: normalizedPaymentStatus
+                    });
                }
 
                // Extract and normalize bookingId
@@ -1058,13 +1144,13 @@ const BookingManagement = ({ isDemo = false }) => {
                                                                            <Eye className="w-4 h-4" />
                                                                       </Button>
 
-                                                                      {booking.status === 'pending' && (
+                                                                      {(booking.status === 'pending' || (booking.status === 'confirmed' && booking.paymentStatus === 'paid')) && (
                                                                            <Button
                                                                                 variant="ghost"
                                                                                 size="sm"
                                                                                 onClick={() => handleConfirmBooking(booking.bookingId || booking.id)}
                                                                                 className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                                                title="Xác nhận booking"
+                                                                                title={booking.status === 'pending' ? "Xác nhận thanh toán" : "Hoàn thành booking"}
                                                                            >
                                                                                 <CheckCircle className="w-4 h-4" />
                                                                            </Button>
@@ -1224,7 +1310,7 @@ const BookingManagement = ({ isDemo = false }) => {
 
                                              {/* Actions */}
                                              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-                                                  {selectedBooking.status === 'pending' && (
+                                                  {(selectedBooking.status === 'pending' || (selectedBooking.status === 'confirmed' && selectedBooking.paymentStatus === 'paid')) && (
                                                        <>
                                                             <Button
                                                                  onClick={() => {
@@ -1234,7 +1320,7 @@ const BookingManagement = ({ isDemo = false }) => {
                                                                  className="rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold"
                                                             >
                                                                  <CheckCircle className="w-4 h-4 mr-2" />
-                                                                 Xác nhận
+                                                                 {selectedBooking.status === 'pending' ? 'Xác nhận thanh toán' : 'Hoàn thành'}
                                                             </Button>
                                                             <Button
                                                                  variant="outline"

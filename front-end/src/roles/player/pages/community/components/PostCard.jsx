@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { Plus, Flag } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback, Badge, Button } from "../../../../../shared/components/ui";
 import FieldInfoCard from "./FieldInfoCard";
 import InteractionButtons from "./InteractionButtons";
@@ -21,6 +21,7 @@ const PostCard = ({
      handleCommentChange,
      handleCommentSubmit,
      handleOpenReply,
+     handleOpenPostDetail,
      formatTimeAgo,
      togglePostMenu,
      showPostMenu,
@@ -31,6 +32,15 @@ const PostCard = ({
 
      // Check if this post belongs to current user
      const isOwnPost = isCurrentUserPost(post, user);
+
+     // Handle click on post content to open detail modal
+     const handleContentClick = (e) => {
+          // Don't open modal if clicking on buttons or interactive elements
+          if (e.target.closest('button') || e.target.closest('a')) {
+               return;
+          }
+          handleOpenPostDetail?.(post);
+     };
 
      return (
           <motion.div
@@ -67,7 +77,6 @@ const PostCard = ({
                          {/* User Info */}
                          <div className="flex items-center gap-2 mb-1">
                               <span className="font-semibold text-gray-900">{post.author?.Username || post.author?.username || post.author?.name || "Người dùng"}</span>
-                              <span className="text-gray-500 text-sm">@{post.author?.Username || post.author?.username || "user"}</span>
                               {post.author?.Verified && (
                                    <Badge variant="secondary" className="text-xs hover:bg-blue-600 hover:text-white bg-blue-500 text-white px-1.5 py-0.5 rounded-full">
                                         ✓
@@ -87,22 +96,29 @@ const PostCard = ({
                               )}
                          </div>
 
-                         {/* Post Title */}
+                         {/* Post Title - Clickable */}
                          {post.Title && (
-                              <h3 className="text-lg font-semibold text-gray-900 mb-2">{post.Title}</h3>
+                              <h3
+                                   className="text-lg font-semibold text-gray-900 mb-2 cursor-pointer hover:underline"
+                                   onClick={handleContentClick}
+                              >
+                                   {post.Title}
+                              </h3>
                          )}
 
-                         {/* Post Content */}
-                         <div className="mb-3">
+                         {/* Post Content - Clickable */}
+                         <div className="mb-3 cursor-pointer" onClick={handleContentClick}>
                               <p className="text-gray-900 whitespace-pre-wrap">{post.Content}</p>
                          </div>
 
-                         {/* Field Information */}
-                         <FieldInfoCard field={post.field} fieldId={post.FieldID} />
 
-                         {/* Media */}
+
+                         {/* Media - Clickable */}
                          {post.MediaURL && (
-                              <div className="mb-3 rounded-xl overflow-hidden border border-gray-200">
+                              <div
+                                   className="mb-3 rounded-xl overflow-hidden border border-gray-200 cursor-pointer hover:opacity-95 transition-opacity"
+                                   onClick={handleContentClick}
+                              >
                                    <img
                                         src={post.MediaURL}
                                         alt="Post content"
@@ -110,7 +126,8 @@ const PostCard = ({
                                    />
                               </div>
                          )}
-
+                         {/* Field Information */}
+                         <FieldInfoCard field={post.field} fieldId={post.FieldID} />
                          {/* Interaction Buttons */}
                          <InteractionButtons
                               post={post}

@@ -232,7 +232,10 @@ export async function fetchFieldComplexes() {
 export async function fetchFieldComplex(id) {
   try {
     const response = await apiClient.get(`/api/FieldComplex/${id}`);
-    const complex = response.data;
+    const data = response.data;
+    // Safely unwrap data. If data.data exists (even if null), use it. 
+    // Otherwise use data itself, but only if it doesn't look like a wrapper with 'success' property
+    const complex = (data && 'data' in data) ? data.data : data;
     
     // Normalize complex data to include imageUrl
     if (complex) {
@@ -272,7 +275,8 @@ export async function updateFieldComplex(id, complexData) {
       response = await apiClient.put(`/api/FieldComplex/${id}`, complexData);
     }
 
-    return response.data;
+    const data = response.data;
+    return (data && 'data' in data) ? data.data : data;
   } catch (error) {
     handleApiError(error);
   }
@@ -293,7 +297,8 @@ export async function createField(fieldData) {
     // If fieldData is FormData, send as multipart/form-data
     if (fieldData instanceof FormData) {
       const response = await apiClient.post("/api/Field", fieldData);
-      return response.data;
+      const data = response.data;
+      return (data && 'data' in data) ? data.data : data;
     }
 
     // Otherwise, send as JSON (for backward compatibility)
@@ -316,7 +321,8 @@ export async function createField(fieldData) {
       },
       { headers: buildMultipartHeaders() }
     );
-    return response.data;
+    const data = response.data;
+    return (data && 'data' in data) ? data.data : data;
   } catch (error) {
     handleApiError(error);
   }
@@ -391,11 +397,17 @@ export async function fetchFieldsByComplex(complexId) {
 
     // Handle response - can be array or object
     let data = response.data;
-    if (!Array.isArray(data)) {
-      if (data && Array.isArray(data.data)) {
+    
+    // Handle wrapper object
+    if (data && !Array.isArray(data)) {
+      if (Array.isArray(data.data)) {
         data = data.data;
-      } else if (data && data.data && Array.isArray(data.data)) {
-        data = data.data;
+      } else if (data.data && Array.isArray(data.data.data)) {
+        data = data.data.data;
+      } else if (Array.isArray(data.value)) {
+        data = data.value;
+      } else if (Array.isArray(data.results)) {
+        data = data.results;
       } else {
         data = [];
       }
@@ -493,7 +505,10 @@ export async function fetchFieldsByComplex(complexId) {
 export async function fetchField(fieldId) {
   try {
     const response = await apiClient.get(`/api/Field/${fieldId}`);
-    const field = response.data;
+    const data = response.data;
+    // Safely unwrap data. If data.data exists (even if null), use it. 
+    // Otherwise use data itself, but only if it doesn't look like a wrapper with 'success' property
+    const field = (data && 'data' in data) ? data.data : data;
     
     // Normalize field data to ensure typeId and complexId are preserved
     if (field) {

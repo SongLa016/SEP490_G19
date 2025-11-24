@@ -4,7 +4,7 @@ import { getCurrentUserFromToken } from "../../../../../../shared/services/posts
 import { createComment, getCommentCount } from "../../../../../../shared/services/comments";
 import Swal from 'sweetalert2';
 
-export function useComments(user, posts, setPosts) {
+export function useComments(user,posts, setPosts) {
      const [showCommentInput, setShowCommentInput] = useState({});
      const [commentContent, setCommentContent] = useState({});
 
@@ -41,8 +41,7 @@ export function useComments(user, posts, setPosts) {
           }));
      };
 
-     const handleCommentSubmit = async (postId) => {
-          const content = commentContent[postId];
+     const handleCreateComment = async (postId, content, parentCommentId = null) => {
           if (!content || !content.trim()) {
                return;
           }
@@ -108,29 +107,31 @@ export function useComments(user, posts, setPosts) {
                     throw new Error("Post ID không hợp lệ.");
                }
 
+               // Call API with optional parentCommentId
                await createComment({
                     postId: numericPostId,
-                    parentCommentId: 0,
-                    content: content.trim()
+                    content: content.trim(),
+                    parentCommentId: parentCommentId
                });
 
                const updatedCount = await getCommentCount(postId);
 
                setPosts(prevPosts =>
-                    prevPosts.map(post =>
-                         post.PostID === postId
-                              ? {
+                    prevPosts.map(post => {
+                         if (post.PostID === postId) {
+                              // Ensure updatedCount is a number, fallback to incrementing current count
+                              const commentCount = typeof updatedCount === 'number' && updatedCount > 0 
+                                   ? updatedCount 
+                                   : (post.comments || 0) + 1;
+                              
+                              return {
                                    ...post,
-                                   comments: updatedCount || (post.comments || 0) + 1
-                              }
-                              : post
-                    )
+                                   comments: commentCount
+                              };
+                         }
+                         return post;
+                    })
                );
-
-               setCommentContent(prev => ({
-                    ...prev,
-                    [postId]: ""
-               }));
 
                Swal.close();
                Swal.fire({
@@ -142,6 +143,8 @@ export function useComments(user, posts, setPosts) {
                     toast: true,
                     position: 'top-end'
                });
+               
+               return true; // Success
           } catch (error) {
                console.error("Error creating comment:", error);
                Swal.close();
@@ -151,6 +154,19 @@ export function useComments(user, posts, setPosts) {
                     text: error.message || 'Không thể đăng bình luận. Vui lòng thử lại.',
                     confirmButtonText: 'Đã hiểu'
                });
+               return false; // Failed
+          }
+     };
+
+     const handleCommentSubmit = async (postId) => {
+          const content = commentContent[postId];
+          const success = await handleCreateComment(postId, content);
+          
+          if (success) {
+               setCommentContent(prev => ({
+                    ...prev,
+                    [postId]: ""
+               }));
           }
      };
 
@@ -159,7 +175,8 @@ export function useComments(user, posts, setPosts) {
           commentContent,
           toggleCommentInput,
           handleCommentChange,
-          handleCommentSubmit
+          handleCommentSubmit,
+          handleCreateComment
      };
 }
 

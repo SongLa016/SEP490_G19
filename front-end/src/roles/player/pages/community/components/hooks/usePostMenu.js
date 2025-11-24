@@ -3,7 +3,7 @@ import { fetchField, fetchFieldComplex } from "../../../../../../shared/services
 import { isCurrentUserPost } from "../utils";
 import Swal from 'sweetalert2';
 
-export function usePostMenu(posts, setPosts, user, setEditingPost, setEditPostTitle, setEditPostContent, setEditSelectedField, setEditImagePreview, setEditSelectedImage, setShowNewThread, handleDeletePost, handleToggleVisibility, loadPosts) {
+export function usePostMenu(posts, setPosts, user, setEditingPost, setEditPostTitle, setEditPostContent, setEditSelectedField, setEditImagePreview, setEditSelectedImage, setShowNewThread, handleDeletePost, loadPosts) {
      const [showPostMenu, setShowPostMenu] = useState({});
 
      // Close menu when clicking outside
@@ -168,12 +168,14 @@ export function usePostMenu(posts, setPosts, user, setEditingPost, setEditPostTi
                          setEditSelectedField(null);
                     }
 
-                    setEditImagePreview(postToEdit.MediaURL || null);
+                    // Load existing image - check both MediaURL and imageFiles array
+                    let existingImageUrl = postToEdit.MediaURL || null;
+                    if (!existingImageUrl && postToEdit.imageFiles && Array.isArray(postToEdit.imageFiles) && postToEdit.imageFiles.length > 0) {
+                         existingImageUrl = postToEdit.imageFiles[0];
+                    }
+                    setEditImagePreview(existingImageUrl);
                     setEditSelectedImage(null);
                     setShowNewThread(true);
-                    break;
-               case 'toggle-visibility':
-                    await handleToggleVisibility(postId, loadPosts);
                     break;
                case 'delete':
                     await handleDeletePost(postId);

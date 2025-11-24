@@ -75,7 +75,28 @@ const NewThreadModal = ({
 
      const handleSubmit = () => {
           if (postContent.trim()) {
-               const imageToSubmit = editingPost ? editSelectedImage : null;
+               // For edit mode: 
+               // - If editSelectedImage exists (new image selected), pass it
+               // - If editImagePreview is null (image removed), pass null explicitly
+               // - Otherwise (keeping old image), pass undefined to indicate no change
+               // For new post: pass the image file if selected
+               let imageToSubmit;
+               if (editingPost) {
+                    if (editSelectedImage) {
+                         // New image selected
+                         imageToSubmit = editSelectedImage;
+                    } else if (editImagePreview === null) {
+                         // Image was removed
+                         imageToSubmit = null;
+                    } else {
+                         // Keeping old image - pass undefined to indicate no change
+                         imageToSubmit = undefined;
+                    }
+               } else {
+                    // New post - pass the file if exists
+                    imageToSubmit = localImagePreview ? fileInputRef.current?.files?.[0] : null;
+               }
+
                onSubmit?.(postTitle, postContent, selectedField, imageToSubmit);
                if (!editingPost) {
                     setPostContent("");
@@ -140,7 +161,7 @@ const NewThreadModal = ({
                                         placeholder="Có gì mới?"
                                         value={postContent}
                                         onChange={(e) => setPostContent(e.target.value)}
-                                        className="min-h-[100px] max-h-[300px] mt-2 resize-none border-0 focus:ring-0 focus:border-0 focus:outline-none text-lg placeholder:text-gray-500 overflow-y-auto bg-transparent"
+                                        className="min-h-[80px] max-h-[300px] mt-2 resize-none border border-gray-100 focus:ring-0 focus:border-0 focus:outline-none text-lg placeholder:text-gray-500 overflow-y-auto bg-transparent"
 
                                    />
                                    {/* Image Preview */}

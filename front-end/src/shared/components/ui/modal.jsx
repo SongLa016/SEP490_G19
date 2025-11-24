@@ -33,7 +33,7 @@ const Modal = ({
                >
                     {/* Header */}
                     {title && (
-                         <div className="flex-shrink-0 p-3 bg-white border-b border-gray-200 flex items-center justify-between">
+                         <div className="flex-shrink-0 py-2 px-3 bg-white border-b border-gray-200 flex items-center justify-between">
                               <h2 className="text-lg font-bold text-gray-900">{title}</h2>
                               {showCloseButton && (
                                    <Button
@@ -49,7 +49,7 @@ const Modal = ({
                     )}
 
                     {/* Content - Allow children to control their own scrolling */}
-                    <div className="flex-1 min-h-0 overflow-y-auto">
+                    <div className="flex-1 min-h-0 p-3 overflow-y-auto">
                          {children}
                     </div>
                </div>

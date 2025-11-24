@@ -1,4 +1,4 @@
-import { List, Building2, MapPin } from "lucide-react";
+import { List, Building2, MapPin, ExternalLink } from "lucide-react";
 
 const FieldInfoCard = ({ field, fieldId }) => {
      if (!field && (!fieldId || fieldId === 0)) {
@@ -17,42 +17,48 @@ const FieldInfoCard = ({ field, fieldId }) => {
           );
      }
 
+     // Extract field data - support both API formats (PascalCase from API, camelCase from FieldSelectionModal)
+     const fieldName = field?.name || field?.Name || field?.fieldName || field?.FieldName;
+     const complexName = field?.complexName || field?.ComplexName;
+     const address = field?.address || field?.Address;
+
      // No field data
-     if (!field || (!field.FieldName && !field.Location && !field.Address)) {
+     if (!fieldName && !complexName && !address) {
           return null;
      }
 
      return (
-          <div className="mt-3 mb-3 p-3 bg-teal-50 rounded-xl border border-teal-200 relative">
-               <div className="space-y-2 pr-6">
+          <div className="my-3 p-3 bg-teal-50 rounded-xl border border-teal-200 relative">
+               <div className="space-y-1">
                     {/* Field Name */}
-                    {field.FieldName && (
+                    {fieldName && (
                          <div className="flex items-center gap-2">
-                              <List className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                              <span className="text-teal-800 font-semibold text-sm">{field.FieldName}</span>
+                              <List className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                              <span className="text-teal-900 font-semibold">{fieldName}</span>
                          </div>
                     )}
 
                     {/* Complex Name */}
-                    {field.ComplexName && (
+                    {complexName && (
                          <div className="flex items-center gap-2">
                               <Building2 className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                              <span className="text-teal-700 text-sm">{field.ComplexName}</span>
+                              <p className="text-teal-600 text-sm">{complexName}</p>
                          </div>
                     )}
 
                     {/* Address with Google Maps link */}
-                    {(field.Location || field.Address) && (
+                    {address && (
                          <div className="flex items-center gap-2 flex-wrap">
                               <MapPin className="w-4 h-4 text-yellow-500 flex-shrink-0" />
-                              <span className="text-teal-700 text-sm">{field.Location || field.Address}</span>
+                              <p className="text-teal-600 text-sm">{address}</p>
                               <span
-                                   className="text-gray-500 text-xs hover:underline font-semibold hover:text-blue-600 cursor-pointer"
-                                   onClick={() => {
-                                        const address = encodeURIComponent(field.Location || field.Address);
-                                        window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+                                   className="text-xs flex items-center gap-1 text-gray-500 hover:underline font-semibold hover:text-blue-600 cursor-pointer"
+                                   onClick={(e) => {
+                                        e.stopPropagation();
+                                        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
                                    }}
                               >
+                                   <ExternalLink className="w-4 h-4 text-blue-500" />
                                    Xem trên Google Maps
                               </span>
                          </div>

@@ -114,94 +114,6 @@ const FieldSelectionModal = ({
                          />
                     </div>
 
-                    {/* Area Tabs */}
-                    <div className="flex flex-wrap gap-2">
-                         <Button
-                              onClick={() => setActiveFieldTab("all")}
-                              size="sm"
-                              className={`px-3 py-0.5  text-xs rounded-full transition-colors flex items-center gap-1 ${activeFieldTab === "all"
-                                   ? "bg-teal-500 text-white"
-                                   : "bg-gray-100 text-teal-600 hover:bg-gray-200 hover:text-teal-600"
-                                   }`}
-                         >
-                              Tất cả
-                              <span className={`px-1.5 py-0.5 text-[10px] rounded-full ${activeFieldTab === "all" ? "bg-teal-600" : "bg-gray-300"
-                                   }`}>
-                                   {getFieldCountByArea("all")}
-                              </span>
-                         </Button>
-                         <Button
-                              onClick={() => setActiveFieldTab("hoan-kiem")}
-                              size="sm"
-                              className={`px-3 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${activeFieldTab === "hoan-kiem"
-                                   ? "bg-teal-500 text-white"
-                                   : "bg-gray-100 text-teal-600 hover:bg-gray-200 hover:text-teal-600"
-                                   }`}
-                         >
-                              Hoàn Kiếm
-                              <span className={`px-1.5 py-0.5 text-[10px] rounded-full ${activeFieldTab === "hoan-kiem" ? "bg-teal-600" : "bg-gray-300"
-                                   }`}>
-                                   {getFieldCountByArea("hoan-kiem")}
-                              </span>
-                         </Button>
-                         <Button
-                              onClick={() => setActiveFieldTab("ba-dinh")}
-                              size="sm"
-                              className={`px-3 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${activeFieldTab === "ba-dinh"
-                                   ? "bg-teal-500 text-white"
-                                   : "bg-gray-100 text-teal-600 hover:bg-gray-200 hover:text-teal-600"
-                                   }`}
-                         >
-                              Ba Đình
-                              <span className={`px-1.5 py-0.5 text-[10px] rounded-full ${activeFieldTab === "ba-dinh" ? "bg-teal-600" : "bg-gray-300"
-                                   }`}>
-                                   {getFieldCountByArea("ba-dinh")}
-                              </span>
-                         </Button>
-                         <Button
-                              onClick={() => setActiveFieldTab("dong-da")}
-                              size="sm"
-                              className={`px-3 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${activeFieldTab === "dong-da"
-                                   ? "bg-teal-500 text-white"
-                                   : "bg-gray-100 text-teal-600 hover:bg-gray-200 hover:text-teal-600"
-                                   }`}
-                         >
-                              Đống Đa
-                              <span className={`px-1.5 py-0.5 text-[10px] rounded-full ${activeFieldTab === "dong-da" ? "bg-teal-600" : "bg-gray-300"
-                                   }`}>
-                                   {getFieldCountByArea("dong-da")}
-                              </span>
-                         </Button>
-                         <Button
-                              onClick={() => setActiveFieldTab("cau-giay")}
-                              size="sm"
-                              className={`px-3 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${activeFieldTab === "cau-giay"
-                                   ? "bg-teal-500 text-white"
-                                   : "bg-gray-100 text-teal-600 hover:bg-gray-200"
-                                   }`}
-                         >
-                              Cầu Giấy
-                              <span className={`px-1.5 py-0.5 text-[10px] rounded-full ${activeFieldTab === "cau-giay" ? "bg-teal-600" : "bg-gray-300"
-                                   }`}>
-                                   {getFieldCountByArea("cau-giay")}
-                              </span>
-                         </Button>
-                         <Button
-                              onClick={() => setActiveFieldTab("hai-ba-trung")}
-                              size="sm"
-                              className={`px-3 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${activeFieldTab === "hai-ba-trung"
-                                   ? "bg-teal-500 text-white"
-                                   : "bg-gray-100 text-teal-600 hover:bg-gray-200 hover:text-teal-600"
-                                   }`}
-                         >
-                              Hai Bà Trưng
-                              <span className={`px-1.5 py-0.5 text-[10px] rounded-full ${activeFieldTab === "hai-ba-trung" ? "bg-teal-600" : "bg-gray-300"
-                                   }`}>
-                                   {getFieldCountByArea("hai-ba-trung")}
-                              </span>
-                         </Button>
-                    </div>
-
                     {/* Field Type Tabs */}
                     <div className="flex flex-wrap gap-2">
                          <Button
@@ -279,7 +191,7 @@ const FieldSelectionModal = ({
                     </div>
 
                     {/* Fields List */}
-                    <div className="max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-teal-500 scrollbar-track-transparent space-y-2">
+                    <div className="max-h-96 overflow-y-auto scrollbar-hidden space-y-2">
                          {loading ? (
                               <div className="text-center py-8 text-gray-500">
                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500 mx-auto mb-2"></div>
@@ -290,7 +202,7 @@ const FieldSelectionModal = ({
                                    {filteredFields.map((field) => (
                                         <div
                                              key={field.fieldId}
-                                             className="p-3 border border-teal-200 rounded-lg hover:scale-95 hover:border-teal-300 hover:bg-teal-50 cursor-pointer transition-all duration-300"
+                                             className="p-3 border border-teal-200 rounded-2xl hover:scale-95 hover:border-teal-300 hover:bg-teal-50 cursor-pointer transition-all duration-300"
                                              onClick={() => handleFieldSelect(field)}
                                         >
                                              <div className="flex items-start justify-between">

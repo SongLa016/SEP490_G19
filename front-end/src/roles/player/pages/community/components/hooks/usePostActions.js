@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createPost, updatePost, deletePost, togglePostVisibility } from "../../../../../../shared/services/posts";
+import { createPost, updatePost, deletePost } from "../../../../../../shared/services/posts";
 import { fetchFieldInfoForPost } from "../utils/postTransformers";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "../../../../../../shared/services/cloudinary";
 import Swal from 'sweetalert2';
@@ -24,61 +24,54 @@ export function usePostActions(user, posts, setPosts) {
                     }
                });
 
-               // Upload image to Cloudinary if new image is selected
-               let mediaUrl = null;
+               // Prepare image data - send File directly to API (API will handle Cloudinary upload)
+               let imageFiles = null;
+               let imageUrls = null;
+               
                if (imageFile) {
-                    // Upload new image to Cloudinary
-                    try {
-                         Swal.fire({
-                              title: 'Đang upload ảnh...',
-                              allowOutsideClick: false,
-                              didOpen: () => {
-                                   Swal.showLoading();
-                              }
-                         });
-                         
-                         mediaUrl = await uploadImageToCloudinary(imageFile, 'posts');
-                         console.log("[handlePostSubmit] Image uploaded to Cloudinary:", mediaUrl);
-                    } catch (uploadError) {
-                         console.error("[handlePostSubmit] Image upload error:", uploadError);
-                         Swal.close();
-                         throw new Error(uploadError.message || "Không thể upload ảnh. Vui lòng thử lại.");
+                    // Send File directly to API (API will upload to Cloudinary)
+                    imageFiles = imageFile;
+                    console.log("[handlePostSubmit] Sending image file directly to API");
+               } else if (editingPost) {
+                    // When editing, handle different cases:
+                    // - imageFile === null: Image was explicitly removed
+                    // - imageFile === undefined: Keep existing image (no change)
+                    if (imageFile === null) {
+                         // Image was removed - send empty array
+                         imageUrls = [];
+                    } else if (imageFile === undefined) {
+                         // Keep existing image URL
+                         if (editingPost.MediaURL) {
+                              imageUrls = [editingPost.MediaURL];
+                         }
                     }
-               } else if (editingPost && editImagePreview && !imageFile) {
-                    // Keep existing image URL (from Cloudinary)
-                    mediaUrl = editingPost.MediaURL;
                }
 
                if (editingPost) {
-                    // If new image was uploaded, delete old image from Cloudinary
-                    if (imageFile && editingPost.MediaURL) {
-                         try {
-                              await deleteImageFromCloudinary(editingPost.MediaURL);
-                              console.log("[handlePostSubmit] Old image deleted from Cloudinary");
-                         } catch (deleteError) {
-                              console.warn("[handlePostSubmit] Failed to delete old image:", deleteError);
-                              // Don't throw error - continue with update even if delete fails
-                         }
-                    }
-
-                    // Update existing post
+                    // Update existing post (API will handle image upload/delete)
                     await updatePost(editingPost.PostID, {
                          title: title || "",
                          content: content,
                          fieldId: field?.fieldId || 0,
-                         mediaUrl: mediaUrl
+                         imageFiles: imageFiles, // File object if new image
+                         imageUrls: imageUrls // URLs if keeping existing or removed
                     });
 
                     // Fetch field information
                     const fieldInfo = await fetchFieldInfoForPost(field);
 
                     // Update post in list
+                    const updatedMediaURL = imageFiles 
+                         ? null // Will be updated from API response
+                         : (imageUrls && imageUrls.length > 0 ? imageUrls[0] : null);
+                    
                     setPosts(prevPosts => prevPosts.map(p =>
                          p.PostID === editingPost.PostID ? {
                               ...p,
                               Title: title || "",
                               Content: content,
-                              MediaURL: mediaUrl,
+                              MediaURL: updatedMediaURL,
+                              imageFiles: imageUrls || [], // Update imageFiles array
                               FieldID: field?.fieldId || 0,
                               field: fieldInfo,
                               UpdatedAt: new Date().toISOString()
@@ -103,24 +96,45 @@ export function usePostActions(user, posts, setPosts) {
                          position: 'top-end'
                     });
                } else {
-                    // Create new post
+                    // Create new post - send File directly to API
                     const newPost = await createPost({
                          title: title || "",
                          content: content,
                          fieldId: field?.fieldId || 0,
-                         mediaUrl: mediaUrl
+                         imageFiles: imageFiles // File object, API will handle upload
                     });
 
                     // Fetch field information
                     const fieldInfo = await fetchFieldInfoForPost(field);
 
                     // Transform and add to posts
+                    // Extract mediaUrl from imageFiles array (first image) or from mediaUrl field
+                    let mediaUrl = null;
+                    
+                    // Check if newPost has imageFiles (from API response)
+                    if (newPost.imageFiles && Array.isArray(newPost.imageFiles) && newPost.imageFiles.length > 0) {
+                         mediaUrl = newPost.imageFiles[0];
+                    } 
+                    // Check if newPost has mediaUrl (backward compatibility)
+                    else if (newPost.mediaUrl) {
+                         mediaUrl = newPost.mediaUrl;
+                    }
+                    // If no URL from API, and we uploaded a file, we can't show it immediately unless we use the local preview
+                    // But for now, let's rely on API response. If API didn't return URL, it might be processing.
+                    
+                    console.log("[usePostActions] New post created:", {
+                         id: newPost.id,
+                         title: newPost.title,
+                         mediaUrl: mediaUrl,
+                         imageFiles: newPost.imageFiles
+                    });
+                    
                     const transformedPost = {
                          PostID: newPost.id || newPost.postId,
                          UserID: newPost.userId,
                          Title: newPost.title,
                          Content: newPost.content,
-                         MediaURL: newPost.mediaUrl,
+                         MediaURL: mediaUrl,
                          FieldID: newPost.fieldId || field?.fieldId || null,
                          CreatedAt: newPost.createdAt,
                          UpdatedAt: newPost.updatedAt,
@@ -240,29 +254,6 @@ export function usePostActions(user, posts, setPosts) {
           }
      };
 
-     const handleToggleVisibility = async (postId, loadPosts) => {
-          try {
-               await togglePostVisibility(postId);
-               loadPosts();
-               Swal.fire({
-                    icon: 'success',
-                    title: 'Thành công',
-                    text: 'Đã thay đổi trạng thái hiển thị bài viết',
-                    timer: 2000,
-                    showConfirmButton: false,
-                    toast: true,
-                    position: 'top-end'
-               });
-          } catch (error) {
-               console.error('Error toggling visibility:', error);
-               Swal.fire({
-                    icon: 'error',
-                    title: 'Lỗi',
-                    text: error.message || 'Không thể thay đổi trạng thái hiển thị. Vui lòng thử lại.',
-                    confirmButtonText: 'Đã hiểu'
-               });
-          }
-     };
 
      return {
           editingPost,
@@ -278,8 +269,7 @@ export function usePostActions(user, posts, setPosts) {
           editImagePreview,
           setEditImagePreview,
           handlePostSubmit,
-          handleDeletePost,
-          handleToggleVisibility
+          handleDeletePost
      };
 }
 

@@ -4,6 +4,7 @@ import { Plus, X, User, LogIn } from "lucide-react";
 import { Button, Card, CardContent } from "../../../../../shared/components/ui";
 import NewThreadModal from "./NewThreadModal";
 import ReplyModal from "./ReplyModal";
+import PostDetailModal from "./PostDetailModal";
 import PostCard from "./PostCard";
 import { useAuth } from "../../../../../contexts/AuthContext";
 import { usePosts } from "./hooks/usePosts";
@@ -18,6 +19,7 @@ export default function ThreadsFeed({ refreshTrigger }) {
      const [selectedPost, setSelectedPost] = useState(null);
      const [showNewThread, setShowNewThread] = useState(false);
      const [showReplyModal, setShowReplyModal] = useState(false);
+     const [showPostDetailModal, setShowPostDetailModal] = useState(false);
      const [replyContent, setReplyContent] = useState("");
      const [selectedField, setSelectedField] = useState(null);
      const [newPostTitle, setNewPostTitle] = useState("");
@@ -48,8 +50,7 @@ export default function ThreadsFeed({ refreshTrigger }) {
           editImagePreview,
           setEditImagePreview,
           handlePostSubmit,
-          handleDeletePost,
-          handleToggleVisibility
+          handleDeletePost
      } = usePostActions(user, posts, setPosts);
 
      const {
@@ -57,7 +58,8 @@ export default function ThreadsFeed({ refreshTrigger }) {
           commentContent,
           toggleCommentInput,
           handleCommentChange,
-          handleCommentSubmit
+          handleCommentSubmit,
+          handleCreateComment
      } = useComments(user, posts, setPosts);
 
      const {
@@ -76,18 +78,35 @@ export default function ThreadsFeed({ refreshTrigger }) {
           setEditSelectedImage,
           setShowNewThread,
           handleDeletePost,
-          handleToggleVisibility,
           loadPosts
      );
 
      const handleOpenReply = (post) => {
+          console.log('[ThreadsFeed] Opening reply for post:', post);
+          console.log('[ThreadsFeed] Current user:', user);
           setSelectedPost(post);
           setShowReplyModal(true);
      };
 
-     const handleReplySubmit = (content) => {
+     const handleOpenPostDetail = (post) => {
+          setSelectedPost(post);
+          setShowPostDetailModal(true);
+     };
+
+     const handleReplySubmit = async (content) => {
           console.log("Replying to post:", selectedPost?.PostID, "Content:", content);
-          // Add your reply submission logic here
+          if (selectedPost && content) {
+               const success = await handleCreateComment(selectedPost.PostID, content);
+               if (success) {
+                    setShowReplyModal(false);
+                    setReplyContent("");
+               }
+          }
+     };
+
+     const handlePostDetailCommentSubmit = async (postId, content, parentCommentId = null) => {
+          const success = await handleCreateComment(postId, content, parentCommentId);
+          return success;
      };
 
      return (
@@ -120,6 +139,7 @@ export default function ThreadsFeed({ refreshTrigger }) {
                                         handleCommentChange={handleCommentChange}
                                         handleCommentSubmit={handleCommentSubmit}
                                         handleOpenReply={handleOpenReply}
+                                        handleOpenPostDetail={handleOpenPostDetail}
                                         formatTimeAgo={formatTimeAgo}
                                         togglePostMenu={togglePostMenu}
                                         showPostMenu={showPostMenu}
@@ -201,11 +221,29 @@ export default function ThreadsFeed({ refreshTrigger }) {
                          avatar: selectedPost.author?.Avatar || selectedPost.author?.avatar,
                          verified: selectedPost.author?.Verified || false,
                          timeAgo: formatTimeAgo(selectedPost.CreatedAt),
-                         content: selectedPost.Content
+                         content: selectedPost.Content,
+                         userId: selectedPost.author?.UserID || selectedPost.author?.userId || selectedPost.author?.id || selectedPost.UserID,
+                         authorId: selectedPost.author?.UserID || selectedPost.author?.userId || selectedPost.author?.id,
+                         postUserId: selectedPost.UserID,
+                         fullPost: selectedPost
                     } : null}
                     replyContent={replyContent}
                     setReplyContent={setReplyContent}
                     onSubmit={handleReplySubmit}
+               />
+
+               <PostDetailModal
+                    isOpen={showPostDetailModal}
+                    onClose={() => {
+                         setShowPostDetailModal(false);
+                         setSelectedPost(null);
+                    }}
+                    post={selectedPost}
+                    user={user}
+                    onLike={toggleLike}
+                    onRepost={toggleRepost}
+                    onBookmark={toggleBookmark}
+                    onCommentSubmit={handlePostDetailCommentSubmit}
                />
 
                {/* Login/Signup Modal for non-logged users */}

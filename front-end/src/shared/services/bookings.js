@@ -129,7 +129,6 @@ export async function confirmPayment(bookingId, method) {
 
 // Check field availability (synchronous vs pending holds + confirmed)
 export async function checkFieldAvailability(fieldId, date, slotId) {
-  // Simulate network
   await new Promise((resolve) => setTimeout(resolve, 200));
   const available = !hasConflict({ fieldId, date, slotId });
   return {
@@ -442,42 +441,92 @@ export async function createBooking(bookingData) {
   }
 }
 
-export async function confirmPaymentAPI(bookingId) {
+export async function confirmPaymentAPI(bookingId, amount) {
   try {
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-payment/${bookingId}`;
+    // Check if user is authenticated (has token)
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Bạn cần đăng nhập để xác nhận thanh toán",
+      };
+    }
+
+    // Ensure bookingId is a number and valid
+    const numericBookingId = Number(bookingId);
+    if (isNaN(numericBookingId) || numericBookingId <= 0) {
+      return {
+        success: false,
+        error: "Booking ID không hợp lệ",
+      };
+    }
+
+    // Ensure amount is a number
+    const numericAmount = Number(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      return {
+        success: false,
+        error: "Số tiền không hợp lệ",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-payment/${numericBookingId}`;
 
     const payload = {
-      bookingId: Number(bookingId),
+      Amount: numericAmount,
     };
 
-    console.log("💳 [THANH TOÁN - API] Endpoint:", endpoint);
+    console.log("💳 [XÁC NHẬN THANH TOÁN - API] Endpoint:", endpoint);
     console.log(
-      "💳 [THANH TOÁN - API] Payload (JSON):",
+      "💳 [XÁC NHẬN THANH TOÁN - API] Payload (JSON):",
       JSON.stringify(payload, null, 2)
     );
-    console.log("💳 [THANH TOÁN - API] Payload (Object):", payload);
-    console.log("💳 [THANH TOÁN - API] Booking ID:", bookingId);
-
-    const response = await apiClient.put(endpoint);
-
-    console.log("✅ [THANH TOÁN - API] Response:", response.data);
+    console.log("💳 [XÁC NHẬN THANH TOÁN - API] Booking ID:", numericBookingId);
+    console.log("💳 [XÁC NHẬN THANH TOÁN - API] Amount:", numericAmount);
     console.log(
-      "✅ [THANH TOÁN - API] Response (JSON):",
+      "💳 [XÁC NHẬN THANH TOÁN - API] Token:",
+      token ? "✅ Token có sẵn" : "❌ Không có token"
+    );
+    console.log(
+      "💳 [XÁC NHẬN THANH TOÁN - API] Token sẽ được tự động thêm vào header Authorization: Bearer <token>"
+    );
+
+    const response = await apiClient.put(endpoint, payload);
+
+    console.log("✅ [XÁC NHẬN THANH TOÁN - API] Response:", response.data);
+    console.log(
+      "✅ [XÁC NHẬN THANH TOÁN - API] Response (JSON):",
       JSON.stringify(response.data, null, 2)
     );
 
     return {
       success: true,
       data: response.data,
-      message: "Xác nhận thanh toán thành công",
+      message: response.data?.Message || "Xác nhận thanh toán thành công",
     };
   } catch (error) {
-    console.error("Error confirming payment:", error);
+    console.error("❌ [XÁC NHẬN THANH TOÁN - API] Error:", error);
+    console.error("Error details:", {
+      message: error.message,
+      code: error.code,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+
+    // Kiểm tra nếu là lỗi CORS - có thể request đã thành công nhưng response bị chặn
+    const isCorsError =
+      error.code === "ERR_NETWORK" ||
+      error.message?.includes("CORS") ||
+      error.message?.includes("Network Error") ||
+      (!error.response && error.request);
+
     const errorMessage = handleApiError(error);
+
     return {
       success: false,
       error:
         errorMessage instanceof Error ? errorMessage.message : errorMessage,
+      isCorsError: isCorsError, // Đánh dấu là lỗi CORS để frontend xử lý đặc biệt
     };
   }
 }
@@ -523,6 +572,15 @@ export async function generateQRCode(bookingId, options = {}) {
 
 export async function confirmByOwner(bookingId) {
   try {
+    // Check if user is authenticated (has token)
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Bạn cần đăng nhập để xác nhận booking",
+      };
+    }
+
     // Ensure bookingId is a number and valid
     const numericBookingId = Number(bookingId);
     if (isNaN(numericBookingId) || numericBookingId <= 0) {
@@ -534,8 +592,17 @@ export async function confirmByOwner(bookingId) {
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-by-owner/${numericBookingId}`;
 
-    console.log(`Owner confirming booking: ${numericBookingId}`);
-    console.log(`Endpoint: ${endpoint}`);
+    console.log(
+      `[XÁC NHẬN BOOKING - API] Owner confirming booking: ${numericBookingId}`
+    );
+    console.log(`[XÁC NHẬN BOOKING - API] Endpoint: ${endpoint}`);
+    console.log(
+      `[XÁC NHẬN BOOKING - API] Token:`,
+      token ? "✅ Token có sẵn" : "❌ Không có token"
+    );
+    console.log(
+      `[XÁC NHẬN BOOKING - API] Token sẽ được tự động thêm vào header Authorization: Bearer <token>`
+    );
 
     const response = await apiClient.put(endpoint);
 
@@ -550,9 +617,17 @@ export async function confirmByOwner(bookingId) {
     console.error("❌ Error confirming booking by owner:", error);
     console.error("Error details:", {
       message: error.message,
+      code: error.code,
       response: error.response?.data,
       status: error.response?.status,
     });
+
+    // Kiểm tra nếu là lỗi CORS - có thể request đã thành công nhưng response bị chặn
+    const isCorsError =
+      error.code === "ERR_NETWORK" ||
+      error.message?.includes("CORS") ||
+      error.message?.includes("Network Error") ||
+      (!error.response && error.request);
 
     const errorMessage = handleApiError(error);
 
@@ -563,6 +638,7 @@ export async function confirmByOwner(bookingId) {
         error:
           errorMessage ||
           "Không thể xác nhận booking. Booking có thể đã được xác nhận hoặc không tồn tại.",
+        isCorsError: isCorsError,
       };
     }
 
@@ -570,6 +646,7 @@ export async function confirmByOwner(bookingId) {
       return {
         success: false,
         error: "Không tìm thấy booking. Booking có thể đã bị xóa.",
+        isCorsError: isCorsError,
       };
     }
 
@@ -577,6 +654,7 @@ export async function confirmByOwner(bookingId) {
       success: false,
       error:
         errorMessage instanceof Error ? errorMessage.message : errorMessage,
+      isCorsError: isCorsError,
     };
   }
 }

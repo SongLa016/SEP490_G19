@@ -1,7 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { MapPin, Star, User, EyeIcon, Heart } from "lucide-react";
 import StadiumIcon from '@mui/icons-material/Stadium';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import { Button, SlideIn, StaggerContainer, FadeIn } from "../../../../../shared/components/ui";
 import { getImageProps } from "../../../../../shared/utils/imageUtils";
@@ -13,9 +12,7 @@ export default function GroupedViewSection({
      bgColor,
      borderColor,
      items,
-     type, // 'complex' or 'field'
-     navigate,
-     formatPrice,
+     type,
      handleBook,
      slotId,
      handleViewAll,
@@ -49,16 +46,11 @@ export default function GroupedViewSection({
                     <StaggerContainer staggerDelay={50} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
                          {items.map((item, index) => (
                               <FadeIn key={type === 'complex' ? item.complexId : item.fieldId} delay={index * 50}>
-                                   <Link
-                                        to={type === 'complex' ? `/complex/${item.complexId}` : `/field/${item.fieldId}`}
+                                   <div
                                         className="group pt-3 px-3 border border-teal-100 bg-white rounded-2xl shadow-lg overflow-hidden h-full flex flex-col cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:-translate-y-1"
-                                        onClick={(e) => {
-                                             // Prevent navigation if clicking on a button or its children
-                                             const clickedButton = e.target.closest('button');
-                                             if (clickedButton) {
-                                                  e.preventDefault();
-                                                  e.stopPropagation();
-                                             }
+                                        onClick={() => {
+                                             const targetUrl = type === 'complex' ? `/complex/${item.complexId}` : `/field/${item.fieldId}`;
+                                             nav(targetUrl);
                                         }}
                                    >
                                         <div className="relative overflow-hidden">
@@ -183,6 +175,7 @@ export default function GroupedViewSection({
                                              <div className="mt-auto flex items-center justify-between">
 
                                                   {type === 'field' && (
+
                                                        <Button
                                                             type="button"
                                                             onMouseDown={(e) => {
@@ -193,21 +186,24 @@ export default function GroupedViewSection({
                                                                  e.preventDefault();
                                                                  e.stopPropagation();
                                                                  handleBook(item.fieldId);
+                                                                 nav(`/field/${item.fieldId}`)
                                                             }}
+
                                                             className="w-fit hover:scale-105 duration-200 bg-teal-500 hover:bg-teal-600 text-white px-2 py-1 rounded-full font-semibold transition-all flex items-center gap-2"
                                                        >
                                                             <EventSeatIcon className="w-2 h-2" />
                                                             Đặt sân
                                                        </Button>
+
                                                   )}
                                              </div>
                                         </div>
-                                   </Link>
+                                   </div>
                               </FadeIn>
                          ))}
                     </StaggerContainer>
                </div>
-          </SlideIn>
+          </SlideIn >
      );
 }
 
