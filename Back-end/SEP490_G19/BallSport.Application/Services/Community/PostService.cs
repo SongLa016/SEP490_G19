@@ -1,4 +1,4 @@
-﻿// File: BallSport.Application.Services/Community/PostService.cs
+﻿using BallSport.Application.Common.Extensions; // THÊM DÒNG NÀY – QUAN TRỌNG NHẤT!
 using BallSport.Application.DTOs.Community;
 using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
@@ -35,7 +35,6 @@ namespace BallSport.Application.Services.Community
             _cloudinary = cloudinary;
         }
 
-        // CREATE POST – TỰ ĐỘNG PENDING
         public async Task<PostDTO> CreatePostAsync(CreatePostDTO dto, int userId)
         {
             if (dto.FieldId.HasValue && !await FieldExistsAsync(dto.FieldId.Value))
@@ -59,7 +58,8 @@ namespace BallSport.Application.Services.Community
                 Content = dto.Content,
                 MediaUrl = imageUrls.Any() ? string.Join(",", imageUrls) : null,
                 FieldId = dto.FieldId,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow,     // LƯU UTC TRONG DB – CHUẨN QUỐC TẾ
+                UpdatedAt = DateTime.UtcNow,
                 Status = "Pending"
             };
 
@@ -84,7 +84,7 @@ namespace BallSport.Application.Services.Community
         public async Task<bool> FieldExistsAsync(int fieldId)
             => await _context.Fields.AnyAsync(f => f.FieldId == fieldId);
 
-        // MAP DTO – DÙNG BOOL THAY STRING STATUS (SIÊU CHUẨN!)
+        // SIÊU CHUẨN: CHUYỂN UTC → GIỜ VIỆT NAM TẠI ĐÂY
         private async Task<PostDTO> MapToPostDTOAsync(Post post, int? currentUserId = null)
         {
             var likeCount = await _postLikeRepository.CountLikesByPostIdAsync(post.PostId);
@@ -107,16 +107,14 @@ namespace BallSport.Application.Services.Community
                 FieldName = post.Field?.Name,
                 LikeCount = likeCount,
                 CommentCount = commentCount,
-                CreatedAt = post.CreatedAt ?? DateTime.UtcNow,
-                UpdatedAt = post.UpdatedAt,
-
-                // DÙNG BOOL – FRONTEND CẢM ƠN BẠN MỖI NGÀY!
+                // ĐÚNG GIỜ VIỆT NAM – ĐẸP NHƯ ZALO
+                CreatedAt = post.CreatedAt.ToVietnamTimeOrNow(),
+                UpdatedAt = post.UpdatedAt?.ToVietnamTime(),
                 IsPending = post.Status == "Pending",
                 IsRejected = post.Status == "Rejected",
-
                 IsOwner = isOwner,
                 CanEdit = isOwner && (post.Status == "Active" || post.Status == "Pending"),
-                CanDelete = isOwner && post.Status != "Rejected", // Không cho xóa nếu bị từ chối
+                CanDelete = isOwner && post.Status != "Rejected",
                 ShowReviewButtons = post.Status == "Pending"
             };
         }
@@ -139,17 +137,15 @@ namespace BallSport.Application.Services.Community
                 LikeCount = baseDto.LikeCount,
                 CommentCount = baseDto.CommentCount,
                 IsLiked = isLiked,
-                CreatedAt = baseDto.CreatedAt,
+                CreatedAt = baseDto.CreatedAt,   // ĐÃ LÀ GIỜỜ VN
                 UpdatedAt = baseDto.UpdatedAt,
-
                 IsPending = baseDto.IsPending,
                 IsRejected = baseDto.IsRejected,
-
                 IsOwner = baseDto.IsOwner,
                 CanEdit = baseDto.CanEdit,
                 CanDelete = baseDto.CanDelete,
                 ShowReviewButtons = baseDto.ShowReviewButtons,
-                IsAdmin = false // Sẽ được set ở Controller nếu cần
+                IsAdmin = false
             };
         }
 
@@ -183,12 +179,10 @@ namespace BallSport.Application.Services.Community
             if (dto.FieldId.HasValue && !await FieldExistsAsync(dto.FieldId.Value))
                 throw new InvalidOperationException("Sân không tồn tại!");
 
-            // CẬP NHẬT NỘI DUNG
             post.Title = dto.Title ?? post.Title;
             post.Content = dto.Content ?? post.Content;
             post.FieldId = dto.FieldId ?? post.FieldId;
 
-            // XỬ LÝ ẢNH MỚI (nếu có)
             if (dto.ImageFiles != null && dto.ImageFiles.Count > 0)
             {
                 var newImageUrls = new List<string>();
@@ -200,29 +194,21 @@ namespace BallSport.Application.Services.Community
                 }
                 post.MediaUrl = string.Join(",", newImageUrls);
             }
-            // Nếu không có ảnh mới → giữ nguyên ảnh cũ
 
-            post.UpdatedAt = DateTime.UtcNow;
-
+            post.UpdatedAt = DateTime.UtcNow; // LƯU UTC TRONG DB
             await _postRepository.UpdatePostAsync(post);
             return await MapToPostDTOAsync(post, userId);
         }
 
-        // USER TỰ XÓA → XÓA THẬT
         public async Task<bool> DeleteMyPostAsync(int postId, int userId)
             => await _postRepository.DeleteMyPostAsync(postId, userId);
 
-        // ADMIN XÓA → XÓA THẬT (rõ ràng hơn)
         public async Task<bool> DeletePostByAdminAsync(int postId)
             => await _postRepository.HardDeletePostAsync(postId);
 
-        // ADMIN DUYỆT BÀI
         public async Task<bool> ReviewPostAsync(int postId, string status)
             => await _postRepository.ReviewPostAsync(postId, status);
 
-        // XÓA HOÀN TOÀN ModeratePostAsync → Vì bạn KHÔNG CẦN ẨN BÀI
-
-        // LẤY BÀI ĐANG CHỜ DUYỆT
         public async Task<(IEnumerable<PostDTO> Posts, int TotalCount)> GetPendingPostsAsync(int pageNumber = 1, int pageSize = 20)
         {
             var result = await _postRepository.GetPendingPostsAsync(pageNumber, pageSize);
@@ -259,6 +245,7 @@ namespace BallSport.Application.Services.Community
             return dtos;
         }
 
+        // NEWSFEED – GIỜ VIỆT NAM ĐÚNG 100%
         public async Task<(IEnumerable<PostFeedDTO> Posts, int TotalCount)> GetNewsFeedAsync(int userId, int pageNumber, int pageSize)
         {
             var result = await _postRepository.GetAllPostsAsync(pageNumber, pageSize, "Active");
@@ -283,10 +270,9 @@ namespace BallSport.Application.Services.Community
                     LikeCount = await _postLikeRepository.CountLikesByPostIdAsync(p.PostId),
                     CommentCount = await _commentRepository.CountCommentsByPostIdAsync(p.PostId),
                     IsLiked = await _postLikeRepository.IsPostLikedByUserAsync(p.PostId, userId),
-                    CreatedAt = p.CreatedAt ?? DateTime.UtcNow
+                    CreatedAt = p.CreatedAt.ToVietnamTimeOrNow() // ĐÚNG GIỜ VIỆT NAM
                 });
             }
-
             return (dtos, result.TotalCount);
         }
 

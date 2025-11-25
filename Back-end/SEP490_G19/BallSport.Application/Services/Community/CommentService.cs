@@ -1,4 +1,5 @@
 ﻿// File: BallSport.Application.Services/Community/CommentService.cs
+using BallSport.Application.Common.Extensions; // THÊM DÒNG NÀY – BẮT BUỘC!
 using BallSport.Application.DTOs.Community;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories.Community;
@@ -41,12 +42,9 @@ namespace BallSport.Application.Services.Community
 
         public async Task<CommentDTO> CreateCommentAsync(CreateCommentDTO dto, int userId)
         {
-            // Kiểm tra bài viết tồn tại
             if (!await PostExistsAsync(dto.PostId))
                 throw new Exception("Bài viết không tồn tại");
 
-            // Kiểm tra comment cha nếu là reply
-            // Chỉ kiểm tra nếu ParentCommentId > 0 (nghĩa là thật sự có reply)
             if (dto.ParentCommentId.HasValue && dto.ParentCommentId.Value > 0)
             {
                 if (!await CommentExistsAsync(dto.ParentCommentId.Value))
@@ -63,7 +61,7 @@ namespace BallSport.Application.Services.Community
 
             var createdComment = await _commentRepository.CreateCommentAsync(comment);
 
-            // === GỬI THÔNG BÁO CHUẨN NHƯ FACEBOOK ===
+            // Gửi thông báo
             if (dto.ParentCommentId.HasValue)
             {
                 var parentComment = await _commentRepository.GetCommentByIdAsync(dto.ParentCommentId.Value);
@@ -103,7 +101,6 @@ namespace BallSport.Application.Services.Community
                 return null;
 
             comment.Content = dto.Content.Trim();
-
             var updated = await _commentRepository.UpdateCommentAsync(comment);
             return updated == null ? null : MapToCommentDTO(updated);
         }
@@ -112,11 +109,8 @@ namespace BallSport.Application.Services.Community
         {
             var comment = await _commentRepository.GetCommentByIdAsync(commentId);
             if (comment == null) return false;
-
-            // Chỉ chủ comment hoặc admin được xóa
             if (!isAdmin && comment.UserId != userId) return false;
 
-            // DÙNG HARD DELETE → XÓA THẬT, SẠCH DB
             return await _commentRepository.HardDeleteCommentAsync(commentId);
         }
 
@@ -137,18 +131,13 @@ namespace BallSport.Application.Services.Community
             return comment != null && comment.UserId == userId;
         }
 
-        // === 2 METHOD BẮT BUỘC ĐỂ TRÁNH LỖI KHI TẠO COMMENT ===
         public async Task<bool> PostExistsAsync(int postId)
-        {
-            return await _postRepository.GetPostByIdAsync(postId) != null;
-        }
+            => await _postRepository.GetPostByIdAsync(postId) != null;
 
         public async Task<bool> CommentExistsAsync(int commentId)
-        {
-            return await _commentRepository.CommentExistsAsync(commentId);
-        }
+            => await _commentRepository.CommentExistsAsync(commentId);
 
-        // === MAPPING SIÊU SẠCH ===
+        // CHỈ SỬA 1 DÒNG DUY NHẤT Ở ĐÂY – GIỜ VIỆT NAM ĐÚNG MÃI MÃI!
         private CommentDTO MapToCommentDTO(Comment comment)
         {
             return new CommentDTO
@@ -159,14 +148,13 @@ namespace BallSport.Application.Services.Community
                 UserName = comment.User?.FullName ?? "Người dùng ẩn danh",
                 ParentCommentId = comment.ParentCommentId,
                 Content = comment.Content,
-                CreatedAt = comment.CreatedAt ?? DateTime.UtcNow,
+                // DÒNG THẦN THÁNH – FIX +07:00 HOÀN TOÀN!
+                CreatedAt = comment.CreatedAt?.ToVietnamTime() ?? DateTimeExtensions.VietnamNow,
                 Status = comment.Status ?? "Active"
             };
         }
 
         private IEnumerable<CommentDTO> MapToCommentDTOs(IEnumerable<Comment> comments)
-        {
-            return comments.Select(MapToCommentDTO);
-        }
+            => comments.Select(MapToCommentDTO);
     }
 }
