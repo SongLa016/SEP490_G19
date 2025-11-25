@@ -1,12 +1,18 @@
+using System.Text;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using BallSport.Application.CloudinarySettings;
 using BallSport.Application.Services;
 using BallSport.Application.Services.Community;
 using BallSport.Application.Services.MatchFinding;
+using BallSport.Application.Services.StatisticOwner;
 using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
 using BallSport.Infrastructure.Repositories.Community;
 using BallSport.Infrastructure.Repositories.MatchFinding;
+using BallSport.Infrastructure.Repositories.StatisticOwner;
 using BallSport.Infrastructure.Settings;
 using Banking.Application.Services;
 using CloudinaryDotNet;
@@ -19,10 +25,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Text;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -94,6 +96,17 @@ services.AddDbContext<Sep490G19v1Context>(options =>
 
 // ===================== DEPENDENCY INJECTION =====================
 services.AddMemoryCache();
+// --- Statistic Owner ---
+services.AddScoped<IOwnerRecentBookingRepository, OwnerRecentBookingRepository>();
+services.AddScoped<OwnerRecentBookingService>();
+services.AddScoped<IFieldPerformanceRepository, FieldPerformanceRepository>();
+services.AddScoped<OwnerFieldPerformanceService>();
+services.AddScoped<IDailyRevenueRepository, DailyRevenueRepository>();
+services.AddScoped<OwnerDailyRevenueService>();
+services.AddScoped<IOwnerSummaryRepository, OwnerSummaryRepository>();
+services.AddScoped<OwnerSummaryService>();
+services.AddScoped<IOwnerFillRateRepository, OwnerFillRateRepository>();
+services.AddScoped<OwnerFillRateService>();
 
 // --- Core user / auth ---
 services.AddScoped<UserRepositories>();
@@ -118,8 +131,8 @@ services.AddScoped<PlayerBankAccountService>();
 // --- Field-related ---
 services.AddScoped<FieldRepository>();
 services.AddScoped<FieldService>();
-builder.Services.AddScoped<IFieldTypeRepository, FieldTypeRepository>();
-builder.Services.AddScoped<IFieldTypeService, FieldTypeService>();
+services.AddScoped<IFieldTypeRepository, FieldTypeRepository>();
+services.AddScoped<IFieldTypeService, FieldTypeService>();
 services.AddScoped<FieldTypeService>();
 services.AddScoped<FieldComplexRepository>();
 services.AddScoped<FieldComplexService>();
@@ -127,18 +140,18 @@ services.AddScoped<DepositPolicyRepository>();
 services.AddScoped<DepositPolicyService>();
 services.AddScoped<FieldPriceRepository>();
 services.AddScoped<FieldPriceService>();
-builder.Services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
-builder.Services.AddScoped<ITimeSlotService, TimeSlotService>();
-builder.Services.AddScoped<IFieldPriceRepository, FieldPriceRepository>();
+services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
+services.AddScoped<ITimeSlotService, TimeSlotService>();
+services.AddScoped<IFieldPriceRepository, FieldPriceRepository>();
 
-builder.Services.AddScoped<IFieldPriceService, FieldPriceService>();
+services.AddScoped<IFieldPriceService, FieldPriceService>();
 
-builder.Services.AddScoped<IFieldScheduleRepository, FieldScheduleRepository>();
-builder.Services.AddScoped<IFieldScheduleService, FieldScheduleService>();
+services.AddScoped<IFieldScheduleRepository, FieldScheduleRepository>();
+services.AddScoped<IFieldScheduleService, FieldScheduleService>();
 services.AddScoped<TimeSlotService>();
 // 1. Tăng giới hạn upload (100MB)
-builder.Services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = 100_000_000);
-builder.Services.Configure<IISServerOptions>(options => options.MaxRequestBodySize = 100_000_000);
+services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = 100_000_000);
+services.Configure<IISServerOptions>(options => options.MaxRequestBodySize = 100_000_000);
 
 
 
@@ -160,9 +173,9 @@ services.AddScoped<IMatchParticipantRepository, MatchParticipantRepository>();
 services.AddScoped<IMatchRequestService, MatchRequestService>();
 
 // --- Settings ---
-builder.Services.Configure<CommunitySettings>(config.GetSection("CommunitySettings"));
-builder.Services.Configure<NotificationSettings>(config.GetSection("NotificationSettings"));
-builder.Services.Configure<ReportSettings>(config.GetSection("ReportSettings"));
+services.Configure<CommunitySettings>(config.GetSection("CommunitySettings"));
+services.Configure<NotificationSettings>(config.GetSection("NotificationSettings"));
+services.Configure<ReportSettings>(config.GetSection("ReportSettings"));
 
 // ===================== SMTP (Email) =====================
 var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
