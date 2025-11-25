@@ -1,4 +1,5 @@
 ﻿// File: BallSport.Application.Services/Community/ReportService.cs
+using BallSport.Application.Common.Extensions; // THÊM DÒNG NÀY – BẮT BUỘC!
 using BallSport.Application.DTOs.Community;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories.Community;
@@ -43,7 +44,6 @@ namespace BallSport.Application.Services.Community
             if (hasReported)
                 throw new InvalidOperationException("Bạn đã báo cáo nội dung này rồi.");
 
-            // Kiểm tra target tồn tại
             if (dto.TargetType == "Post")
             {
                 var post = await _postRepository.GetPostByIdAsync(dto.TargetId);
@@ -65,7 +65,7 @@ namespace BallSport.Application.Services.Community
                 TargetType = dto.TargetType,
                 TargetId = dto.TargetId,
                 Reason = dto.Reason.Trim(),
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow, // DB lưu UTC → đúng chuẩn
                 Status = "Pending"
             };
 
@@ -78,17 +78,14 @@ namespace BallSport.Application.Services.Community
             var report = await _reportRepository.GetReportByIdAsync(reportId);
             if (report == null) return null;
 
-            string newStatus = dto.Status; // "Resolved" hoặc "Rejected"
-            var updatedReport = await _reportRepository.UpdateReportStatusAsync(reportId, newStatus, adminId);
+            var updatedReport = await _reportRepository.UpdateReportStatusAsync(reportId, dto.Status, adminId);
             if (updatedReport == null) return null;
 
-            // CHỈ XÓA KHI: Status = Resolved + Action = Delete
             if (dto.Status == "Resolved" && dto.Action == "Delete")
             {
                 await DeleteReportedContent(report.TargetType, report.TargetId);
             }
 
-            // GỬI THÔNG BÁO RÕ RÀNG CHO NGƯỜI BÁO CÁO
             string message = dto.Status == "Resolved"
                 ? "Báo cáo của bạn đã được chấp nhận. Nội dung vi phạm đã bị xóa vĩnh viễn."
                 : "Báo cáo của bạn đã được xem xét. Nội dung này không vi phạm quy định.";
@@ -110,15 +107,9 @@ namespace BallSport.Application.Services.Community
         private async Task DeleteReportedContent(string targetType, int targetId)
         {
             if (targetType == "Post")
-            {
                 await _postRepository.HardDeletePostAsync(targetId);
-            }
             else if (targetType == "Comment")
-            {
-                // DÙNG HARD DELETE – CHẮC CHẮN XÓA SẠCH!
                 await _commentRepository.HardDeleteCommentAsync(targetId);
-                // Nếu chưa có HardDeleteCommentAsync → dùng DeleteCommentAsync cũng được
-            }
         }
 
         public async Task<IEnumerable<ReportDTO>> GetReportsByReporterIdAsync(int reporterId)
@@ -136,7 +127,6 @@ namespace BallSport.Application.Services.Community
         public async Task<bool> HasUserReportedAsync(int reporterId, string targetType, int targetId)
             => await _reportRepository.HasUserReportedTargetAsync(reporterId, targetType, targetId);
 
-        // SỬA CHỖ NÀY – ĐÃ ĐỔI TÊN TRONG ReportStatsDTO
         public async Task<ReportStatsDTO> GetReportStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null)
         {
             var stats = await _reportRepository.GetReportStatisticsAsync(fromDate, toDate);
@@ -144,8 +134,8 @@ namespace BallSport.Application.Services.Community
             {
                 TotalReports = stats.GetValueOrDefault("TotalReports", 0),
                 PendingReports = stats.GetValueOrDefault("PendingReports", 0),
-                ResolvedReports = stats.GetValueOrDefault("ResolvedReports", 0),   // ĐÃ XÓA
-                RejectedReports = stats.GetValueOrDefault("RejectedReports", 0),   // KHÔNG VI PHẠM
+                ResolvedReports = stats.GetValueOrDefault("ResolvedReports", 0),
+                RejectedReports = stats.GetValueOrDefault("RejectedReports", 0),
                 PostReports = stats.GetValueOrDefault("PostReports", 0),
                 CommentReports = stats.GetValueOrDefault("CommentReports", 0),
                 FromDate = fromDate,
@@ -159,7 +149,7 @@ namespace BallSport.Application.Services.Community
         public async Task<int> CountReportsByTargetAsync(string targetType, int targetId)
             => await _reportRepository.CountReportsByTargetAsync(targetType, targetId);
 
-        // MAP DTO – SIÊU SẠCH, KHÔNG LỖI
+        // CHỈ SỬA 1 DÒNG DUY NHẤT Ở ĐÂY – GIỜ VIỆT NAM ĐÚNG MÃI MÃI!
         private ReportDTO MapToReportDTO(Report report) => new()
         {
             ReportId = report.ReportId,
@@ -171,7 +161,8 @@ namespace BallSport.Application.Services.Community
             Status = report.Status ?? "Pending",
             HandledBy = report.HandledBy,
             HandledByName = report.HandledByNavigation?.FullName ?? "-",
-            CreatedAt = report.CreatedAt ?? DateTime.UtcNow
+            // DÒNG THẦN THÁNH – FIX +07:00 HOÀN TOÀN!
+            CreatedAt = report.CreatedAt?.ToVietnamTime() ?? DateTimeExtensions.VietnamNow
         };
 
         private IEnumerable<ReportDTO> MapToReportDTOs(IEnumerable<Report> reports)
