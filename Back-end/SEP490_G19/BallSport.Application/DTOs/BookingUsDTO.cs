@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace BallSport.Application.DTOs.MatchFinding
+namespace BallSport.Application.DTOs
 {
     public class BookingUsDTO
     {

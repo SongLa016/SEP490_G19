@@ -19,7 +19,11 @@ public partial class PlayerMatchHistory
 
     public DateTime? UpdatedAt { get; set; }
 
+    public int? OpponentUserId { get; set; }
+
     public virtual MatchRequest MatchRequest { get; set; } = null!;
+
+    public virtual User? OpponentUser { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

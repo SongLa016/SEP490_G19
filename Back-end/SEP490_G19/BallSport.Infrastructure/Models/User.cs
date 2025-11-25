@@ -29,6 +29,8 @@ public partial class User
 
     public virtual ICollection<BookingCancellation> BookingCancellations { get; set; } = new List<BookingCancellation>();
 
+    public virtual ICollection<BookingPackage> BookingPackages { get; set; } = new List<BookingPackage>();
+
     public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
@@ -37,15 +39,25 @@ public partial class User
 
     public virtual ICollection<MatchParticipant> MatchParticipants { get; set; } = new List<MatchParticipant>();
 
-    public virtual ICollection<MatchRequest> MatchRequests { get; set; } = new List<MatchRequest>();
+    public virtual ICollection<MatchRequest> MatchRequestCreatedByNavigations { get; set; } = new List<MatchRequest>();
+
+    public virtual ICollection<MatchRequest> MatchRequestOpponentUsers { get; set; } = new List<MatchRequest>();
+
+    public virtual ICollection<MonthlyPackagePayment> MonthlyPackagePayments { get; set; } = new List<MonthlyPackagePayment>();
 
     public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 
     public virtual ICollection<OwnerBankAccount> OwnerBankAccounts { get; set; } = new List<OwnerBankAccount>();
 
+    public virtual ICollection<PackageSession> PackageSessions { get; set; } = new List<PackageSession>();
+
+    public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
+
     public virtual ICollection<PlayerBankAccount> PlayerBankAccounts { get; set; } = new List<PlayerBankAccount>();
 
-    public virtual ICollection<PlayerMatchHistory> PlayerMatchHistories { get; set; } = new List<PlayerMatchHistory>();
+    public virtual ICollection<PlayerMatchHistory> PlayerMatchHistoryOpponentUsers { get; set; } = new List<PlayerMatchHistory>();
+
+    public virtual ICollection<PlayerMatchHistory> PlayerMatchHistoryUsers { get; set; } = new List<PlayerMatchHistory>();
 
     public virtual ICollection<PostLike> PostLikes { get; set; } = new List<PostLike>();
 

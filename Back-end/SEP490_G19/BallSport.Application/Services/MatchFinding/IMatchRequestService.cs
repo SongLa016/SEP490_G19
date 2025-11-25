@@ -1,50 +1,64 @@
-﻿// ==========================================
-// FILE: BallSport.Application/Services/MatchFinding/IMatchRequestService.cs
-// ==========================================
-
+﻿// File: BallSport.Application/Services/MatchFinding/IMatchFindingService.cs
 using BallSport.Application.DTOs.MatchFinding;
+using BallSport.Infrastructure.Models;
 
 namespace BallSport.Application.Services.MatchFinding
 {
-    public interface IMatchRequestService
+    public interface IMatchFindingService
     {
-        // Lấy danh sách yêu cầu tìm đối thủ (có phân trang)
-        Task<(IEnumerable<MatchRequestDTO> Requests, int TotalCount)> GetAllMatchRequestsAsync(
-            int pageNumber,
-            int pageSize,
-            MatchFilterDTO? filter = null);
+        /// <summary>
+        /// Lấy danh sách kèo đang mở (phân trang, mặc định loại bỏ kèo của chính mình)
+        /// </summary>
+        Task<PagedResponse<MatchRequestListItemDto>> GetActiveRequestsAsync(int page = 1, int size = 10, int? currentUserId = null);
 
-        // Lấy chi tiết yêu cầu
-        Task<MatchRequestDetailDTO?> GetMatchRequestDetailAsync(int matchRequestId);
+        /// <summary>
+        /// Lấy chi tiết 1 kèo tìm đối thủ (bao gồm danh sách người tham gia + trạng thái của mình)
+        /// </summary>
+        Task<MatchRequestDetailDto?> GetRequestDetailAsync(int requestId, int currentUserId);
 
-        // Tạo yêu cầu tìm đối thủ (Player A)
-        Task<MatchRequestDTO> CreateMatchRequestAsync(CreateMatchRequestDTO createDto, int userId);
+        /// <summary>
+        /// Tạo kèo tìm đối thủ (Player A - chủ sân)
+        /// </summary>
+        Task<int> CreateRequestAsync(CreateMatchRequestDto dto, int userId);
 
-        // Hủy yêu cầu tìm đối thủ (Player A)
-        Task<bool> CancelMatchRequestAsync(int matchRequestId, int userId);
+        /// <summary>
+        /// Tham gia kèo (Player B)
+        /// </summary>
+        Task JoinRequestAsync(int requestId, JoinMatchRequestDto dto, int userId);
 
-        // Join trận (Player B)
-        Task<ParticipantDTO> JoinMatchAsync(JoinMatchRequestDTO joinDto, int userId);
+        /// <summary>
+        /// Chủ sân chấp nhận 1 đội → GHÉP ĐỘI THÀNH CÔNG + tự động reject các đội khác
+        /// </summary>
+        Task<MatchSuccessResponseDto> AcceptParticipantAsync(int requestId, int participantId, int ownerUserId);
 
-        // Chấp nhận/Từ chối người tham gia (Player A)
-        Task<MatchRequestDTO?> RespondToJoinRequestAsync(
-            int matchRequestId,
-            RespondMatchRequestDTO respondDto,
-            int userId);
+        /// <summary>
+        /// Chủ sân từ chối hoặc người chơi rút lui
+        /// </summary>
+        Task RejectOrWithdrawAsync(int requestId, int participantId, int currentUserId);
 
-        // Lấy các trận của tôi (My Matches)
-        Task<IEnumerable<MyMatchDTO>> GetMyMatchesAsync(int userId);
+        /// <summary>
+        /// Chủ sân hủy kèo (chỉ trước khi ghép đội thành công)
+        /// </summary>
+        Task CancelRequestAsync(int requestId, int ownerUserId);
 
-        // Lấy lịch sử tìm đối của tôi
-        Task<IEnumerable<MatchRequestDTO>> GetMyMatchRequestsAsync(int userId);
+        /// <summary>
+        /// Lấy lịch sử ghép đội của người dùng (cả làm chủ lẫn làm khách)
+        /// </summary>
+        Task<PagedResponse<MatchHistoryDto>> GetMyHistoryAsync(int userId, int page = 1, int size = 10);
 
-        // Thống kê
-        Task<MatchStatsDTO> GetMatchStatisticsAsync(int? userId = null);
+        /// <summary>
+        /// Kiểm tra booking đã có kèo đang mở chưa (dùng để chặn tạo trùng)
+        /// </summary>
+        Task<bool> IsBookingAlreadyHasRequestAsync(int bookingId);
 
-        // Auto expire các yêu cầu quá hạn
-        Task<int> AutoExpireMatchRequestsAsync(int hoursToExpire = 1);
+        /// <summary>
+        /// Lấy MatchRequest theo BookingId (dùng trong CreateRequest để validate)
+        /// </summary>
+        Task<MatchRequest?> GetRequestByBookingIdAsync(int bookingId);
 
-        // Kiểm tra booking đã có yêu cầu chưa
-        Task<bool> BookingHasMatchRequestAsync(int bookingId);
+        /// <summary>
+        /// Dọn dẹp kèo quá hạn (có thể chạy bằng Hangfire/BackgroundService)
+        /// </summary>
+        Task<int> ExpireOldRequestsAsync();
     }
 }

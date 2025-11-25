@@ -1,5 +1,4 @@
-﻿
-
+﻿// File: BallSport.API/Controllers/MatchFinding/MatchRequestController.cs
 using BallSport.Application.DTOs.MatchFinding;
 using BallSport.Application.Services.MatchFinding;
 using Microsoft.AspNetCore.Authorization;
@@ -9,301 +8,238 @@ using System.Security.Claims;
 namespace BallSport.API.Controllers.MatchFinding
 {
     [ApiController]
-    [Route("api/[controller]")]
-    [Authorize]
+    [Route("api/match-requests")]
+    [Authorize] // Tất cả cần login, trừ những endpoint có [AllowAnonymous]
+    [Produces("application/json")]
     public class MatchRequestController : ControllerBase
     {
-        private readonly IMatchRequestService _matchRequestService;
+        private readonly IMatchFindingService _service;
 
-        public MatchRequestController(IMatchRequestService matchRequestService)
+        public MatchRequestController(IMatchFindingService service)
         {
-            _matchRequestService = matchRequestService;
+            _service = service;
         }
 
-        // GET: api/MatchRequest?pageNumber=1&pageSize=10&status=Open
+        private int CurrentUserId =>
+            int.TryParse(User.FindFirst("UserID")?.Value ??
+                        User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id)
+                ? id
+                : throw new UnauthorizedAccessException("Không tìm thấy UserID trong token");
+
+        // 1. LẤY DANH SÁCH KÈO ĐANG MỞ (Public + loại bỏ kèo của mình nếu đã login)
         [HttpGet]
         [AllowAnonymous]
-        public async Task<IActionResult> GetAllMatchRequests(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string? status = "Open",
-            [FromQuery] DateTime? fromDate = null,
-            [FromQuery] DateTime? toDate = null,
-            [FromQuery] int? fieldId = null)
+        public async Task<IActionResult> GetActiveRequests(
+            [FromQuery] int page = 1,
+            [FromQuery] int size = 10)
         {
+            var userId = User.Identity?.IsAuthenticated == true ? CurrentUserId : (int?)null;
+            var result = await _service.GetActiveRequestsAsync(page, size, userId);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Lấy danh sách kèo thành công",
+                data = result.Content,
+                pagination = new
+                {
+                    page = result.PageNumber,
+                    size = result.PageSize,
+                    total = result.TotalElements,
+                    totalPages = result.TotalPages,
+                    hasNext = result.HasNext,
+                    hasPrevious = result.HasPrevious
+                }
+            });
+        }
+
+        // 2. XEM CHI TIẾT KÈO (Public)
+        [HttpGet("{requestId:int}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetDetail(int requestId)
+        {
+            var userId = User.Identity?.IsAuthenticated == true ? CurrentUserId : 0;
+            var detail = await _service.GetRequestDetailAsync(requestId, userId);
+
+            return detail is null
+                ? NotFound(new { success = false, message = "Không tìm thấy kèo này" })
+                : Ok(new { success = true, message = "Lấy chi tiết kèo thành công", data = detail });
+        }
+
+        // 3. TẠO KÈO TÌM ĐỐI THỦ
+        [HttpPost]
+        public async Task<IActionResult> CreateRequest([FromBody] CreateMatchRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+
             try
             {
-                var filter = new MatchFilterDTO
+                var requestId = await _service.CreateRequestAsync(dto, CurrentUserId);
+                return Created($"/api/match-requests/{requestId}", new
                 {
-                    Status = status,
-                    FromDate = fromDate,
-                    ToDate = toDate,
-                    FieldId = fieldId
-                };
+                    success = true,
+                    message = "Tạo kèo thành công! Chờ đối thủ tham gia nào!",
+                    data = new { matchRequestId = requestId }
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { success = false, message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+        }
 
-                var (requests, totalCount) = await _matchRequestService.GetAllMatchRequestsAsync(
-                    pageNumber,
-                    pageSize,
-                    filter
-                );
+        // 4. THAM GIA KÈO
+        [HttpPost("{requestId:int}/join")]
+        public async Task<IActionResult> JoinRequest(int requestId, [FromBody] JoinMatchRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
 
+            try
+            {
+                await _service.JoinRequestAsync(requestId, dto, CurrentUserId);
                 return Ok(new
                 {
                     success = true,
-                    data = requests,
-                    pagination = new
-                    {
-                        currentPage = pageNumber,
-                        pageSize = pageSize,
-                        totalCount = totalCount,
-                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-                    }
+                    message = "Đã gửi yêu cầu tham gia! Vui lòng chờ chủ sân duyệt nhé!"
                 });
             }
-            catch (Exception ex)
+            catch (KeyNotFoundException)
             {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
+                return NotFound(new { success = false, message = "Không tìm thấy kèo này" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { success = false, message = ex.Message });
             }
         }
 
-        // GET: api/MatchRequest/5
-        [HttpGet("{id}")]
+        // 5. CHẤP NHẬN ĐỘI → GHÉP THÀNH CÔNG
+        [HttpPost("{requestId:int}/accept/{participantId:int}")]
+        public async Task<IActionResult> AcceptParticipant(int requestId, int participantId)
+        {
+            try
+            {
+                var result = await _service.AcceptParticipantAsync(requestId, participantId, CurrentUserId);
+                return Ok(new
+                {
+                    success = true,
+                    message = result.Message,
+                    data = result.Data
+                });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { success = false, message = "Không tìm thấy kèo hoặc đội tham gia" });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid("Chỉ chủ sân mới được chấp nhận đội");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { success = false, message = ex.Message });
+            }
+        }
+
+        // 6. TỪ CHỐI / RÚT LUI
+        [HttpPost("{requestId:int}/reject-or-withdraw/{participantId:int}")]
+        public async Task<IActionResult> RejectOrWithdraw(int requestId, int participantId)
+        {
+            try
+            {
+                await _service.RejectOrWithdrawAsync(requestId, participantId, CurrentUserId);
+                return Ok(new { success = true, message = "Đã xử lý yêu cầu thành công" });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { success = false, message = "Không tìm thấy kèo hoặc người chơi" });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid("Bạn không có quyền thực hiện hành động này");
+            }
+        }
+
+        // 7. HỦY KÈO
+        [HttpDelete("{requestId:int}")]
+        public async Task<IActionResult> CancelRequest(int requestId)
+        {
+            try
+            {
+                await _service.CancelRequestAsync(requestId, CurrentUserId);
+                return Ok(new { success = true, message = "Đã hủy kèo thành công" });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { success = false, message = "Không tìm thấy kèo" });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid("Chỉ chủ sân mới được hủy kèo");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { success = false, message = ex.Message });
+            }
+        }
+
+        // 8. LỊCH SỬ CỦA TÔI
+        [HttpGet("my-history")]
+        public async Task<IActionResult> GetMyHistory(
+            [FromQuery] int page = 1,
+            [FromQuery] int size = 10)
+        {
+            var result = await _service.GetMyHistoryAsync(CurrentUserId, page, size);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Lấy lịch sử ghép đội thành công",
+                data = result.Content,
+                pagination = new
+                {
+                    page = result.PageNumber,
+                    size = result.PageSize,
+                    total = result.TotalElements,
+                    totalPages = result.TotalPages,
+                    hasNext = result.HasNext,
+                    hasPrevious = result.HasPrevious
+                }
+            });
+        }
+
+        // 9. KIỂM TRA BOOKING ĐÃ CÓ KÈO CHƯA
+        [HttpGet("booking/{bookingId:int}/has-request")]
         [AllowAnonymous]
-        public async Task<IActionResult> GetMatchRequestDetail(int id)
-        {
-            try
-            {
-                var request = await _matchRequestService.GetMatchRequestDetailAsync(id);
-
-                if (request == null)
-                    return NotFound(new { success = false, message = "Không tìm thấy yêu cầu tìm đối thủ" });
-
-                return Ok(new { success = true, data = request });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
-        }
-
-        // GET: api/MatchRequest/my-matches
-        [HttpGet("my-matches")]
-        public async Task<IActionResult> GetMyMatches()
-        {
-            try
-            {
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
-
-                var matches = await _matchRequestService.GetMyMatchesAsync(userId.Value);
-
-                return Ok(new { success = true, data = matches });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
-        }
-
-        // GET: api/MatchRequest/my-requests
-        [HttpGet("my-requests")]
-        public async Task<IActionResult> GetMyMatchRequests()
-        {
-            try
-            {
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
-
-                var requests = await _matchRequestService.GetMyMatchRequestsAsync(userId.Value);
-
-                return Ok(new { success = true, data = requests });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
-        }
-
-        // GET: api/MatchRequest/statistics
-        [HttpGet("statistics")]
-        public async Task<IActionResult> GetStatistics()
-        {
-            try
-            {
-                var userId = GetCurrentUserId();
-                var stats = await _matchRequestService.GetMatchStatisticsAsync(userId);
-
-                return Ok(new { success = true, data = stats });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
-        }
-
-        // GET: api/MatchRequest/booking/5/has-request
-        [HttpGet("booking/{bookingId}/has-request")]
         public async Task<IActionResult> CheckBookingHasRequest(int bookingId)
         {
-            try
+            var hasRequest = await _service.IsBookingAlreadyHasRequestAsync(bookingId);
+            return Ok(new
             {
-                var hasRequest = await _matchRequestService.BookingHasMatchRequestAsync(bookingId);
-
-                return Ok(new { success = true, data = new { hasRequest } });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+                success = true,
+                message = hasRequest ? "Booking đã có kèo tìm đối thủ" : "Booking chưa có kèo",
+                data = new { bookingId, hasRequest }
+            });
         }
 
-        // POST: api/MatchRequest
-        [HttpPost]
-        public async Task<IActionResult> CreateMatchRequest([FromBody] CreateMatchRequestDTO createDto)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
-
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
-
-                var request = await _matchRequestService.CreateMatchRequestAsync(createDto, userId.Value);
-
-                return CreatedAtAction(nameof(GetMatchRequestDetail), new { id = request.MatchRequestId }, new
-                {
-                    success = true,
-                    message = "Tạo yêu cầu tìm đối thủ thành công",
-                    data = request
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-        }
-
-        // POST: api/MatchRequest/join
-        [HttpPost("join")]
-        public async Task<IActionResult> JoinMatch([FromBody] JoinMatchRequestDTO joinDto)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
-
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
-
-                var participant = await _matchRequestService.JoinMatchAsync(joinDto, userId.Value);
-
-                return Ok(new
-                {
-                    success = true,
-                    message = "Gửi yêu cầu tham gia thành công. Vui lòng chờ chủ sân xác nhận",
-                    data = participant
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-        }
-
-        // PUT: api/MatchRequest/5/respond
-        [HttpPut("{id}/respond")]
-        public async Task<IActionResult> RespondToJoinRequest(int id, [FromBody] RespondMatchRequestDTO respondDto)
-        {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
-
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
-
-                var request = await _matchRequestService.RespondToJoinRequestAsync(id, respondDto, userId.Value);
-
-                if (request == null)
-                    return NotFound(new { success = false, message = "Không tìm thấy yêu cầu" });
-
-                var message = respondDto.Action == "Accept"
-                    ? "Đã chấp nhận đội tham gia"
-                    : "Đã từ chối đội tham gia";
-
-                return Ok(new
-                {
-                    success = true,
-                    message = message,
-                    data = request
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-        }
-
-        // DELETE: api/MatchRequest/5/cancel
-        [HttpDelete("{id}/cancel")]
-        public async Task<IActionResult> CancelMatchRequest(int id)
-        {
-            try
-            {
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
-
-                var success = await _matchRequestService.CancelMatchRequestAsync(id, userId.Value);
-
-                if (!success)
-                    return NotFound(new { success = false, message = "Không tìm thấy yêu cầu hoặc bạn không có quyền hủy" });
-
-                return Ok(new { success = true, message = "Đã hủy yêu cầu tìm đối thủ" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
-        }
-
-        // POST: api/MatchRequest/auto-expire
-        [HttpPost("auto-expire")]
+        // 10. DỌN KÈO QUÁ HẠN (Admin hoặc Hangfire)
+        [HttpPost("expire-old")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> AutoExpireRequests([FromQuery] int hoursToExpire = 1)
+        public async Task<IActionResult> ExpireOldRequests()
         {
-            try
+            var count = await _service.ExpireOldRequestsAsync();
+            return Ok(new
             {
-                var expiredCount = await _matchRequestService.AutoExpireMatchRequestsAsync(hoursToExpire);
-
-                return Ok(new
-                {
-                    success = true,
-                    message = $"Đã expire {expiredCount} yêu cầu",
-                    data = new { expiredCount }
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
-        }
-
-        // Helper method
-        private int? GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out int userId))
-            {
-                return userId;
-            }
-            return null;
+                success = true,
+                message = $"Đã dọn thành công {count} kèo quá hạn",
+                data = new { expiredCount = count, executedAt = DateTime.UtcNow }
+            });
         }
     }
 }

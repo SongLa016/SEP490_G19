@@ -1,5 +1,4 @@
 using BallSport.Application.DTOs;
-using BallSport.Application.DTOs.MatchFinding;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
 using Banking.Application.Services;

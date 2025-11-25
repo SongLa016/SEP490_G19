@@ -31,6 +31,8 @@ public partial class Field
 
     public virtual OwnerBankAccount? BankAccount { get; set; }
 
+    public virtual ICollection<BookingPackage> BookingPackages { get; set; } = new List<BookingPackage>();
+
     public virtual ICollection<CancellationPolicy> CancellationPolicies { get; set; } = new List<CancellationPolicy>();
 
     public virtual FieldComplex? Complex { get; set; }
