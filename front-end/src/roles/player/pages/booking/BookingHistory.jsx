@@ -223,7 +223,7 @@ export default function BookingHistory({ user }) {
      const isReloadingRef = React.useRef(false);
      const lastReloadTimeRef = React.useRef(0);
 
-     // Check and update booking status for pending + unpaid bookings (5 minutes timeout)
+     // Check and update booking status for pending + unpaid bookings (2 hours timeout)
      useEffect(() => {
           if (!playerId) return;
 
@@ -235,7 +235,7 @@ export default function BookingHistory({ user }) {
                }
 
                const currentTime = new Date().getTime();
-               const FIVE_MINUTES = 5 * 60 * 1000; // 5 minutes in milliseconds
+               const TWO_HOURS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
 
                setBookings(prevBookings => {
                     let hasExpiredBookings = false;
@@ -250,9 +250,9 @@ export default function BookingHistory({ user }) {
                               const createdAt = new Date(booking.createdAt).getTime();
                               const timeElapsed = currentTime - createdAt;
 
-                              if (timeElapsed <= FIVE_MINUTES) {
+                              if (timeElapsed <= TWO_HOURS) {
                                    // Calculate time remaining
-                                   const remaining = FIVE_MINUTES - timeElapsed;
+                                   const remaining = TWO_HOURS - timeElapsed;
                                    updatedTimeRemaining[booking.id] = remaining;
                               } else {
                                    // Check if expired
@@ -412,8 +412,8 @@ export default function BookingHistory({ user }) {
           }
      };
 
-     // Helper function to check if booking is pending + unpaid and within 5 minutes
-     const isPendingUnpaidWithin5Minutes = (booking) => {
+     // Helper function to check if booking is pending + unpaid and within 2 hours
+     const isPendingUnpaidWithin2Hours = (booking) => {
           if (!booking) return false;
           const isPending = (booking.status === "pending" || booking.bookingStatus === "Pending" || booking.bookingStatus === "pending");
           const isUnpaid = (booking.paymentStatus === "Unpaid" || booking.paymentStatus === "unpaid" || booking.paymentStatus === "Pending");
@@ -422,18 +422,32 @@ export default function BookingHistory({ user }) {
 
           const now = new Date().getTime();
           const createdAt = new Date(booking.createdAt).getTime();
-          const FIVE_MINUTES = 5 * 60 * 1000;
+          const TWO_HOURS = 2 * 60 * 60 * 1000;
           const timeElapsed = now - createdAt;
 
-          return timeElapsed <= FIVE_MINUTES;
+          return timeElapsed <= TWO_HOURS;
      };
 
-     // Format time remaining
+     // Helper function to check if booking is older than 2 hours (to hide cancel button)
+     const isBookingOlderThan2Hours = (booking) => {
+          if (!booking || !booking.createdAt) return false;
+          const now = new Date().getTime();
+          const createdAt = new Date(booking.createdAt).getTime();
+          const TWO_HOURS = 2 * 60 * 60 * 1000;
+          const timeElapsed = now - createdAt;
+          return timeElapsed > TWO_HOURS;
+     };
+
+     // Format time remaining (supports hours and minutes)
      const formatTimeRemaining = (milliseconds) => {
           if (!milliseconds || milliseconds <= 0) return "0:00";
           const totalSeconds = Math.floor(milliseconds / 1000);
-          const minutes = Math.floor(totalSeconds / 60);
+          const hours = Math.floor(totalSeconds / 3600);
+          const minutes = Math.floor((totalSeconds % 3600) / 60);
           const seconds = totalSeconds % 60;
+          if (hours > 0) {
+               return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          }
           return `${minutes}:${seconds.toString().padStart(2, '0')}`;
      };
 
@@ -1181,8 +1195,8 @@ export default function BookingHistory({ user }) {
                                                                                      </div>
                                                                                 )}
 
-                                                                                {/* Thông báo và button thanh toán cho booking pending + unpaid trong 5 phút (recurring) */}
-                                                                                {isPendingUnpaidWithin5Minutes(booking) && (
+                                                                                {/* Thông báo và button thanh toán cho booking pending + unpaid trong 2 tiếng (recurring) */}
+                                                                                {isPendingUnpaidWithin2Hours(booking) && (
                                                                                      <div className="p-2 bg-orange-50 border border-orange-200 rounded-lg mb-2">
                                                                                           <div className="flex items-start gap-2">
                                                                                                <Clock className="w-3 h-3 text-orange-600 mt-0.5 flex-shrink-0" />
@@ -1215,17 +1229,19 @@ export default function BookingHistory({ user }) {
                                                                                 )}
 
                                                                                 <div className="flex justify-end gap-2">
-                                                                                     {booking.status !== "cancelled" && booking.status !== "expired" && (
+                                                                                     {booking.status !== "cancelled" && booking.status !== "expired" && !isBookingOlderThan2Hours(booking) && (
                                                                                           <Button variant="outline" onClick={() => handleCancelSingleRecurring(booking.id)} className="px-2 !py-0.5 text-xs rounded-xl border border-red-200 text-red-700 hover:text-red-700 hover:bg-red-50">
                                                                                                Hủy
                                                                                           </Button>
                                                                                      )}
-                                                                                     <Button
-                                                                                          onClick={() => handleRating(booking)}
-                                                                                          className="px-2 py-1 text-xs rounded-3xl bg-yellow-50 text-yellow-700 border hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 transition-colors"
-                                                                                     >
-                                                                                          <Star className="w-3 h-3 mr-1" /> Đánh giá
-                                                                                     </Button>
+                                                                                     {booking.status === "completed" && (
+                                                                                          <Button
+                                                                                               onClick={() => handleRating(booking)}
+                                                                                               className="px-2 py-1 text-xs rounded-3xl bg-yellow-50 text-yellow-700 border hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 transition-colors"
+                                                                                          >
+                                                                                               <Star className="w-3 h-3 mr-1" /> Đánh giá
+                                                                                          </Button>
+                                                                                     )}
                                                                                 </div>
                                                                            </div>
                                                                       ))}
@@ -1270,8 +1286,8 @@ export default function BookingHistory({ user }) {
                                                                  </div>
                                                             )}
 
-                                                            {/* Thông báo và button thanh toán cho booking pending + unpaid trong 5 phút */}
-                                                            {isPendingUnpaidWithin5Minutes(b) && (
+                                                            {/* Thông báo và button thanh toán cho booking pending + unpaid trong 2 tiếng */}
+                                                            {isPendingUnpaidWithin2Hours(b) && (
                                                                  <div className="mt-2 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                                                                       <div className="flex items-start gap-2">
                                                                            <Clock className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
@@ -1279,7 +1295,7 @@ export default function BookingHistory({ user }) {
                                                                                 <div className="text-sm text-orange-800">
                                                                                      <p className="font-medium mb-1">⏰ Cần thanh toán trong {formatTimeRemaining(timeRemaining[b.id] || 0)}</p>
                                                                                      <p className="text-xs text-orange-700 mb-2">
-                                                                                          Booking của bạn sẽ tự động hủy sau 5 phút nếu chưa thanh toán.
+                                                                                          Booking của bạn sẽ tự động hủy sau 2 tiếng nếu chưa thanh toán.
                                                                                           Vui lòng thanh toán ngay để giữ chỗ.
                                                                                      </p>
                                                                                 </div>
@@ -1303,7 +1319,7 @@ export default function BookingHistory({ user }) {
                                                                            <div className="text-sm text-gray-800">
                                                                                 <p className="font-medium mb-1">Đã hết hạn thanh toán</p>
                                                                                 <p className="text-xs text-gray-700">
-                                                                                     Booking đã bị hủy do quá thời gian thanh toán (5 phút).
+                                                                                     Booking đã bị hủy do quá thời gian thanh toán (2 tiếng).
                                                                                 </p>
                                                                            </div>
                                                                       </div>
@@ -1391,8 +1407,8 @@ export default function BookingHistory({ user }) {
                                                        </Button>
                                                        {user && (
                                                             <>
-                                                                 {/* Button tiếp tục thanh toán cho booking pending + unpaid trong 5 phút */}
-                                                                 {isPendingUnpaidWithin5Minutes(b) && (
+                                                                 {/* Button tiếp tục thanh toán cho booking pending + unpaid trong 2 tiếng */}
+                                                                 {isPendingUnpaidWithin2Hours(b) && (
                                                                       <Button
                                                                            onClick={() => handleContinuePayment(b)}
                                                                            className="px-3 py-2 text-sm bg-orange-600 hover:bg-orange-700 text-white rounded-3xl"
@@ -1409,19 +1425,21 @@ export default function BookingHistory({ user }) {
                                                                       <Calendar className="w-4 h-4 mr-2" />
                                                                       Đổi giờ
                                                                  </Button>
-                                                                 {b.status !== "cancelled" && b.status !== "expired" && (
+                                                                 {b.status !== "cancelled" && b.status !== "expired" && !isBookingOlderThan2Hours(b) && (
                                                                       <Button variant="destructive" onClick={() => handleCancel(b.id)} className="px-3 rounded-3xl py-2 text-sm">
                                                                            <Trash2 className="w-4 h-4 mr-2" />
                                                                            Hủy đặt
                                                                       </Button>
                                                                  )}
-                                                                 <Button
-                                                                      onClick={() => handleRating(b)}
-                                                                      className="px-3 py-2 text-sm bg-yellow-50 text-yellow-700 border-yellow-400 hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-600 transition-colors rounded-3xl"
-                                                                 >
-                                                                      <Star className="w-4 h-4 mr-2" />
-                                                                      Đánh giá
-                                                                 </Button>
+                                                                 {b.status === "completed" && (
+                                                                      <Button
+                                                                           onClick={() => handleRating(b)}
+                                                                           className="px-3 py-2 text-sm bg-yellow-50 text-yellow-700 border-yellow-400 hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-600 transition-colors rounded-3xl"
+                                                                      >
+                                                                           <Star className="w-4 h-4 mr-2" />
+                                                                           Đánh giá
+                                                                      </Button>
+                                                                 )}
                                                                  {/* MatchRequest actions */}
                                                                  {(() => {
                                                                       const req = bookingIdToRequest[b.id];

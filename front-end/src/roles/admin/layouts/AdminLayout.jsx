@@ -24,6 +24,13 @@ export default function AdminLayout({ user, onLoggedOut, children }) {
      const location = useLocation();
      const navigate = useNavigate();
 
+     const handleLogout = () => {
+          if (onLoggedOut) {
+               onLoggedOut();
+               navigate('/');
+          }
+     };
+
      const navigationItems = [
           { id: "admin", label: "Tổng quan", icon: Home, path: "/admin" },
           { id: "users", label: "Quản lý người dùng", icon: Users, path: "/admin/users" },
@@ -134,7 +141,7 @@ export default function AdminLayout({ user, onLoggedOut, children }) {
                                         </div>
                                    )}
                                    <Button
-                                        onClick={onLoggedOut}
+                                        onClick={handleLogout}
                                         variant="ghost"
                                         size="sm"
                                         className="rounded-full hover:bg-red-50 hover:text-red-600 transition-all duration-300 ml-auto"

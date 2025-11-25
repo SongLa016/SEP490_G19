@@ -34,8 +34,8 @@ export default function RecurringBookingSection({
      ];
 
      return (
-          <div className="bg-teal-50 rounded-lg p-4">
-               <div className="flex items-center justify-between mb-3">
+          <div className="bg-teal-50 rounded-2xl shadow-sm border border-teal-200 p-4">
+               <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                          <Repeat className="w-5 h-5 text-teal-600" />
                          <span className="font-medium text-teal-800">Đặt lịch cố định hàng tuần</span>
@@ -54,7 +54,7 @@ export default function RecurringBookingSection({
                     </label>
                </div>
                {isRecurring && (
-                    <div className="space-y-3">
+                    <div className="space-y-2 mt-2">
                          <div>
                               <label className="block text_sm font-medium text-gray-700 mb-2">
                                    Số tuần đặt lịch

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import { Card, Button, Input, Textarea, Modal } from "../../../shared/components/ui";
@@ -64,11 +64,7 @@ export default function NotificationsManagement({ isDemo = false }) {
           { value: 'booking_users', label: 'Người đã đặt sân' }
      ];
 
-     useEffect(() => {
-          loadData();
-     }, [user?.id]);
-
-     const loadData = async () => {
+     const loadData = useCallback(async () => {
           try {
                setLoading(true);
                const [notificationsData, complexesData, statsData] = await Promise.all([
@@ -90,13 +86,24 @@ export default function NotificationsManagement({ isDemo = false }) {
           } finally {
                setLoading(false);
           }
-     };
+     }, [user?.id]);
+
+     useEffect(() => {
+          loadData();
+     }, [loadData]);
 
      const handleCreateNotification = () => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
                return;
           }
+
+          // Kiểm tra role - chỉ Admin mới có thể tạo notification
+          if (user?.roleName !== "Admin") {
+               alert("Chỉ Admin mới có quyền tạo thông báo hệ thống. Vui lòng liên hệ Admin để được hỗ trợ.");
+               return;
+          }
+
           setEditingNotification(null);
           setFormData({
                complexId: '',
@@ -131,21 +138,44 @@ export default function NotificationsManagement({ isDemo = false }) {
      const handleSubmit = async (e) => {
           e.preventDefault();
           try {
+               // Format data according to new API format
                const notificationData = {
-                    ...formData,
-                    ownerId: user?.id || 1
+                    userId: 0, // 0 for system/owner notifications
+                    type: formData.type === 'cancellation' ? 'System' :
+                         formData.type === 'maintenance' ? 'System' :
+                              formData.type === 'update' ? 'System' :
+                                   formData.type === 'promotion' ? 'System' : 'System',
+                    targetId: formData.complexId ? parseInt(formData.complexId) : 0,
+                    message: `${formData.title}\n\n${formData.message}`
                };
 
+               console.log('📝 [NotificationsManagement] Submitting notification:', notificationData);
+
                if (editingNotification) {
-                    await updateNotification(editingNotification.notificationId, notificationData);
+                    console.log('📝 [NotificationsManagement] Updating notification:', editingNotification.notificationId);
+                    const result = await updateNotification(editingNotification.notificationId, notificationData);
+                    if (!result.ok) {
+                         console.error('❌ [NotificationsManagement] Error updating:', result.reason);
+                         alert('Không thể cập nhật thông báo: ' + result.reason);
+                         return;
+                    }
+                    console.log('✅ [NotificationsManagement] Updated successfully:', result);
                } else {
-                    await createNotification(notificationData);
+                    console.log('📝 [NotificationsManagement] Creating new notification');
+                    const result = await createNotification(notificationData);
+                    if (!result.ok) {
+                         console.error('❌ [NotificationsManagement] Error creating:', result.reason);
+                         alert('Không thể tạo thông báo: ' + result.reason);
+                         return;
+                    }
+                    console.log('✅ [NotificationsManagement] Created successfully:', result);
                }
 
                setShowModal(false);
                loadData();
           } catch (error) {
-               console.error('Error saving notification:', error);
+               console.error('❌ [NotificationsManagement] Error saving notification:', error);
+               alert('Có lỗi xảy ra: ' + error.message);
           }
      };
 
@@ -199,10 +229,12 @@ export default function NotificationsManagement({ isDemo = false }) {
                               <h1 className="text-3xl font-bold text-gray-900">Quản lý thông báo</h1>
                               <p className="text-gray-600 mt-1">Gửi thông báo cho người dùng khi có thay đổi về sân</p>
                          </div>
-                         <Button onClick={handleCreateNotification} className="flex items-center gap-2">
-                              <Plus className="w-4 h-4" />
-                              Gửi thông báo
-                         </Button>
+                         {user?.roleName === "Admin" && (
+                              <Button onClick={handleCreateNotification} className="flex items-center gap-2">
+                                   <Plus className="w-4 h-4" />
+                                   Gửi thông báo
+                              </Button>
+                         )}
                     </div>
 
                     {/* Statistics */}

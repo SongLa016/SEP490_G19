@@ -16,6 +16,7 @@ import GalleryTabContent from "./components/componentDetailField/GalleryTabConte
 import BookingWidget from "./components/componentDetailField/BookingWidget";
 import LightboxModal from "./components/componentDetailField/LightboxModal";
 
+const DEBUG_COMPLEX_DETAIL = false;
 const normalizeFieldStatus = (status) =>
      (typeof status === "string" ? status.trim().toLowerCase() : "");
 const ALLOWED_COMPLEX_FIELD_STATUSES = new Set(["available", "active"]);
@@ -23,6 +24,28 @@ const shouldDisplayField = (field) => {
      const normalizedStatus = normalizeFieldStatus(field?.status ?? field?.Status ?? "");
      if (!normalizedStatus) return true;
      return ALLOWED_COMPLEX_FIELD_STATUSES.has(normalizedStatus);
+};
+const normalizeTime = (timeStr = "") => {
+     if (!timeStr || typeof timeStr !== "string") return "";
+     const trimmed = timeStr.trim();
+     if (!trimmed) return "";
+     return trimmed.length === 5 ? `${trimmed}:00` : trimmed;
+};
+const calculateSlotDurationHours = (startTime, endTime) => {
+     if (!startTime || !endTime) return null;
+     try {
+          const normalizedStart = normalizeTime(startTime);
+          const normalizedEnd = normalizeTime(endTime);
+          const start = new Date(`2000-01-01T${normalizedStart}`);
+          const end = new Date(`2000-01-01T${normalizedEnd}`);
+          const diff = (end - start) / (1000 * 60 * 60);
+          if (!Number.isNaN(diff) && diff > 0) {
+               return diff;
+          }
+     } catch (error) {
+          console.warn("Unable to compute slot duration:", { startTime, endTime, error });
+     }
+     return null;
 };
 
 export default function ComplexDetail({ user }) {
@@ -113,7 +136,9 @@ export default function ComplexDetail({ user }) {
                               }
                               return acc;
                          }, {});
-                         console.log("✅ [ComplexDetail] Loaded fieldTypeMap:", map);
+                         if (DEBUG_COMPLEX_DETAIL) {
+                              console.log("✅ [ComplexDetail] Loaded fieldTypeMap:", map);
+                         }
                          setFieldTypeMap(map);
                     }
                } catch (err) {
@@ -542,7 +567,9 @@ export default function ComplexDetail({ user }) {
                const schedulesResult = await fetchPublicFieldSchedulesByField(fieldId);
                if (schedulesResult.success && Array.isArray(schedulesResult.data)) {
                     fieldSchedules = schedulesResult.data;
-                    console.log(`Đã lấy ${fieldSchedules.length} lịch trình cho sân ${fieldId}`);
+                    if (DEBUG_COMPLEX_DETAIL) {
+                         console.log(`Đã lấy ${fieldSchedules.length} lịch trình cho sân ${fieldId}`);
+                    }
                }
           } catch (error) {
                console.error("Lỗi khi lấy lịch trình sân:", error);
@@ -615,6 +642,7 @@ export default function ComplexDetail({ user }) {
 
           // Tìm scheduleId từ fieldSchedules dựa trên slotId và date
           let scheduleId = 0;
+          let matchedSchedule = null;
           if (fieldSchedules && Array.isArray(fieldSchedules) && fieldSchedules.length > 0) {
                const scheduleForSlot = fieldSchedules.find(s => {
                     const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
@@ -623,13 +651,22 @@ export default function ComplexDetail({ user }) {
                });
 
                if (scheduleForSlot) {
+                    matchedSchedule = scheduleForSlot;
                     scheduleId = scheduleForSlot.scheduleId || scheduleForSlot.ScheduleId ||
                          scheduleForSlot.scheduleID || scheduleForSlot.ScheduleID || 0;
-                    console.log("✅ [ComplexDetail] Tìm thấy scheduleId:", scheduleId, "từ schedule:", scheduleForSlot);
+                         if (DEBUG_COMPLEX_DETAIL) {
+                              console.log("✅ [ComplexDetail] Tìm thấy scheduleId:", scheduleId, "từ schedule:", scheduleForSlot);
+                         }
                } else {
                     console.warn("⚠️ [ComplexDetail] Không tìm thấy scheduleId từ fieldSchedules cho slotId:", selectedSlotId, "date:", selectedDate);
                }
           }
+
+          const slotStartTime = selectedSlot?.startTime || selectedSlot?.StartTime ||
+               matchedSchedule?.startTime || matchedSchedule?.StartTime || "";
+          const slotEndTime = selectedSlot?.endTime || selectedSlot?.EndTime ||
+               matchedSchedule?.endTime || matchedSchedule?.EndTime || "";
+          const computedDurationHours = calculateSlotDurationHours(slotStartTime, slotEndTime) ?? 1;
 
           const bookingData = {
                fieldId: fieldId,
@@ -639,7 +676,9 @@ export default function ComplexDetail({ user }) {
                slotId: selectedSlotId,
                slotName: selectedSlot?.name || selectedSlot?.slotName || "",
                scheduleId: scheduleId, // Thêm scheduleId vào booking data
-               duration: 1,
+               startTime: slotStartTime,
+               endTime: slotEndTime,
+               duration: computedDurationHours,
                price: slotPrice, // Use price from TimeSlot
                totalPrice: slotPrice, // Use price from TimeSlot
                fieldType: field.typeName,
@@ -680,6 +719,7 @@ export default function ComplexDetail({ user }) {
 
                     // Debug log for fieldId 32
                     if (field.fieldId === 32) {
+                    if (DEBUG_COMPLEX_DETAIL) {
                          console.log("🔍 [ComplexDetail] Mapping field 32:", {
                               field: field,
                               typeId: typeId,
@@ -691,14 +731,17 @@ export default function ComplexDetail({ user }) {
                               hasMappedName: !!mappedName
                          });
                     }
+                    }
 
                     // If we have mappedName, use it (especially if currentTypeName is empty)
                     if (mappedName && mappedName.trim() !== "") {
+                    if (DEBUG_COMPLEX_DETAIL) {
                          console.log("✅ [ComplexDetail] Mapped typeName for field:", {
                               fieldId: field.fieldId,
                               typeId: typeId,
                               mappedName: mappedName
                          });
+                    }
                          return { ...field, typeName: mappedName, typeId: typeId };
                     } else if (field.fieldId === 32) {
                          console.warn("⚠️ [ComplexDetail] Could not map typeName for field 32:", {
@@ -729,11 +772,13 @@ export default function ComplexDetail({ user }) {
                const mappedName = fieldTypeMap[String(typeId)];
                if (mappedName && mappedName.trim() !== "") {
                     resolvedTypeName = mappedName;
-                    console.log("✅ [ComplexDetail] Resolved typeName in selectedFieldForDisplay:", {
-                         fieldId: selectedField.fieldId,
-                         typeId: typeId,
-                         resolvedTypeName: resolvedTypeName
-                    });
+                    if (DEBUG_COMPLEX_DETAIL) {
+                         console.log("✅ [ComplexDetail] Resolved typeName in selectedFieldForDisplay:", {
+                              fieldId: selectedField.fieldId,
+                              typeId: typeId,
+                              resolvedTypeName: resolvedTypeName
+                         });
+                    }
                }
           }
 

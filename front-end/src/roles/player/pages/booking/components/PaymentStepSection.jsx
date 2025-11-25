@@ -14,7 +14,10 @@ export default function PaymentStepSection({
      isQrGenerating,
      errors = {},
      onPaymentAmountChange,
-     onConfirmPayment
+     onConfirmPayment,
+     onCancelBooking = () => { },
+     isPaymentLocked = false,
+     lockCountdownSeconds = 0
 }) {
      const fallbackAccount = ownerBankAccount || {
           bankName: bookingData.bankName,
@@ -25,17 +28,53 @@ export default function PaymentStepSection({
      const hasBankInfo = !!(fallbackAccount?.bankName || fallbackAccount?.accountNumber || fallbackAccount?.accountHolder);
      const depositAvailable = (bookingData.depositAmount || 0) > 0;
      const hasSelection = Boolean(paymentAmountType);
-     const transferAmount = hasSelection
-          ? (paymentAmountType === "full"
-               ? (bookingData.totalPrice || 0)
-               : (bookingData.depositAmount || 0))
-          : 0;
+     // Calculate transfer amount the same way as QR generation
+     const calculateTransferAmount = () => {
+          if (!paymentAmountType) return 0;
+
+          if (paymentAmountType === "full") {
+               return bookingData.totalPrice || 0;
+          } else {
+               return bookingData.depositAmount || 0;
+          }
+     };
+
+     const transferAmount = calculateTransferAmount();
+     const formatCountdown = (seconds) => {
+          const safeSeconds = Math.max(0, seconds || 0);
+          const minutes = Math.floor(safeSeconds / 60);
+          const secs = safeSeconds % 60;
+          return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+     };
+     const formatDurationLabel = (hours) => {
+          if (hours == null) return "—";
+          const numericHours = Number(hours);
+          if (Number.isNaN(numericHours) || numericHours <= 0) return "—";
+          const totalMinutes = Math.round(numericHours * 60);
+          const wholeHours = Math.floor(totalMinutes / 60);
+          const minutes = totalMinutes % 60;
+          if (wholeHours > 0 && minutes > 0) {
+               return `${wholeHours}h${String(minutes).padStart(2, "0")} phút`;
+          }
+          if (wholeHours > 0) return `${wholeHours}h`;
+          if (minutes > 0) return `${minutes} phút`;
+          return "—";
+     };
+     const totalSessions = bookingData.totalSessions || (isRecurring ? (recurringWeeks * selectedDays.length) : 1);
+     const slotPrice = bookingData.price || 0;
+     const subtotal = bookingData.subtotal || (slotPrice * (totalSessions || 1));
 
      return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-               <div className="space-y-3">
+               <div className="space-y-2">
                     <h3 className="text-lg font-semibold text-gray-900">Thanh toán</h3>
-                    <div className="p-4 border border-blue-400 rounded-2xl bg-white shadow-sm space-y-4">
+                    {isPaymentLocked && (
+                         <div className="p-3 border border-amber-200 bg-amber-50 rounded-2xl text-xs text-amber-800">
+                              <p className="font-semibold">QR thanh toán đang hoạt động</p>
+                              <p>Vui lòng giữ cửa sổ mở trong <span className="font-semibold text-blue-600">{formatCountdown(lockCountdownSeconds)}</span> hoặc sử dụng nút <span className="font-semibold text-red-600 underline">Hủy đặt sân</span> nếu muốn thoát.</p>
+                         </div>
+                    )}
+                    <div className="p-4 border border-blue-400 rounded-2xl bg-white shadow-sm space-y-2">
                          {bookingInfo?.bookingId && (
                               <div className="flex items-center justify-between text-base font-medium text-gray-600">
                                    <span>Mã đặt sân</span>
@@ -47,8 +86,8 @@ export default function PaymentStepSection({
                               <div className="text-gray-600 font-medium">Chọn hình thức thanh toán</div>
                               <div className="space-y-2">
                                    {depositAvailable && (
-                                        <label className={`flex items-center justify-between p-3 border rounded-lg ${depositAvailable ? "cursor-pointer hover:bg-gray-50" : "opacity-60 cursor-not-allowed"}`}>
-                                             <span className="text-sm text-gray-700">Thanh toán tiền cọc ({formatPrice(bookingData.depositAmount)})</span>
+                                        <label className={`flex items-center justify-between p-3 border rounded-2xl ${depositAvailable ? "cursor-pointer hover:bg-gray-50" : "opacity-60 cursor-not-allowed"}`}>
+                                             <span className="text-sm flex items-center gap-1 text-gray-700">Thanh toán tiền cọc ( <p className="font-semibold text-yellow-600">{formatPrice(bookingData.depositAmount)}</p>)</span>
                                              <input
                                                   type="radio"
                                                   name="paymentAmountType"
@@ -59,8 +98,8 @@ export default function PaymentStepSection({
                                              />
                                         </label>
                                    )}
-                                   <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                                        <span className="text-sm text-gray-700">Thanh toán toàn bộ ({formatPrice(bookingData.totalPrice)})</span>
+                                   <label className="flex items-center justify-between p-3 border rounded-2xl cursor-pointer hover:bg-gray-50">
+                                        <span className="text-sm flex items-center gap-1 text-gray-700">Thanh toán toàn bộ ( <p className="font-semibold text-red-600">{formatPrice(bookingData.totalPrice)}</p>)</span>
                                         <input
                                              type="radio"
                                              name="paymentAmountType"
@@ -87,6 +126,13 @@ export default function PaymentStepSection({
                                                   src={bookingInfo.qrCodeUrl}
                                                   alt="QR thanh toán"
                                                   className="w-80 h-[400px]"
+                                                  // ADD THIS TO FORCE BROWSER RELOAD
+                                                  key={`qr-${paymentAmountType}-${Date.now()}`}
+                                                  onError={(e) => {
+                                                       console.log('❌ QR image failed to load');
+                                                       // Force reload the image
+                                                       e.target.src = bookingInfo.qrCodeUrl + '&force=' + Date.now();
+                                                  }}
                                              />
                                         </div>
                                         {bookingInfo.qrExpiresAt && (
@@ -167,7 +213,7 @@ export default function PaymentStepSection({
                               )}
                               <div className="flex justify-between">
                                    <span className="text-gray-600">Thời lượng</span>
-                                   <span className="font-medium">{bookingData.duration} giờ</span>
+                                   <span className="font-medium">{formatDurationLabel(bookingData.duration)}</span>
                               </div>
                               {isRecurring && (
                                    <>
@@ -188,23 +234,35 @@ export default function PaymentStepSection({
                          <h4 className="font-semibold text-gray-900 mb-1">Chi phí</h4>
                          <div className="space-y-1 text-sm">
                               <div className="flex justify-between">
-                                   <span className="text-gray-600">Giá/giờ</span>
-                                   <span className="font-medium text-teal-600">{formatPrice(bookingData.price)}</span>
+                                   <span className="text-gray-600">Giá/trận (1h30')</span>
+                                   <span className="font-medium text-teal-600">{formatPrice(slotPrice)}</span>
                               </div>
                               {isRecurring && (
                                    <div className="flex justify-between">
                                         <span className="text-gray-600">Số buổi</span>
-                                        <span className="font-medium text-teal-600">{bookingData.totalSessions || (recurringWeeks * selectedDays.length)} buổi</span>
+                                        <span className="font-medium text-teal-600">{totalSessions} buổi</span>
+                                   </div>
+                              )}
+                              {isRecurring && (
+                                   <div className="flex justify-between">
+                                        <span className="text-gray-600">Giá mỗi trận</span>
+                                        <span className="font-medium text-teal-600">{formatPrice(slotPrice)}</span>
+                                   </div>
+                              )}
+                              {isRecurring && (
+                                   <div className="flex justify-between">
+                                        <span className="text-gray-600">Tổng giá ({totalSessions} buổi)</span>
+                                        <span className="font-medium text-teal-600">{formatPrice(subtotal)}</span>
                                    </div>
                               )}
                               <div className="flex justify-between">
-                                   <span className="text-gray-600">Giá mỗi buổi</span>
-                                   <span className="font-medium text-teal-600">{formatPrice((bookingData.price || 0) * (bookingData.duration || 1))}</span>
+                                   <span className="text-gray-600">Tạm tính</span>
+                                   <span className="font-medium text-teal-600">{formatPrice(subtotal)}</span>
                               </div>
-                              {isRecurring && (
-                                   <div className="flex justify-between">
-                                        <span className="text-gray-600">Tổng giá ({bookingData.totalSessions || (recurringWeeks * selectedDays.length)} buổi)</span>
-                                        <span className="font-medium text-teal-600">{formatPrice((bookingData.price || 0) * (bookingData.duration || 1) * (bookingData.totalSessions || recurringWeeks))}</span>
+                              {bookingData.discountPercent > 0 && (
+                                   <div className="flex text-emerald-600 justify-between">
+                                        <span className="font-medium">Giảm giá ({bookingData.discountPercent}%)</span>
+                                        <span className="font-medium">- {formatPrice(bookingData.discountAmount)}</span>
                                    </div>
                               )}
                               {bookingData.depositAmount > 0 && (
@@ -244,13 +302,24 @@ export default function PaymentStepSection({
                               <a href="/refund-policy" className="text-teal-600 font-semibold underline ml-1" target="_blank" rel="noreferrer">Chính sách hoàn tiền</a> để nắm rõ quyền lợi cũng như trách nhiệm của bạn trước khi thanh toán.
                          </p>
                     </div>
-                    <Button
-                         onClick={onConfirmPayment}
-                         disabled={isProcessing || !paymentAmountType || isQrGenerating}
-                         className={`w-full mt-4 py-3 rounded-2xl text-white font-semibold ${(isProcessing || !paymentAmountType || isQrGenerating) ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
-                    >
-                         {isProcessing ? "Đang xử lý..." : "Hoàn tất đặt sân"}
-                    </Button>
+                    <div className="flex flex-col lg:flex-row gap-3 mt-4">
+                         <Button
+                              onClick={onConfirmPayment}
+                              disabled={isProcessing || !paymentAmountType || isQrGenerating}
+                              className={`w-full py-3 rounded-2xl text-white font-semibold ${(isProcessing || !paymentAmountType || isQrGenerating) ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
+                         >
+                              {isProcessing ? "Đang xử lý..." : "Hoàn tất đặt sân"}
+                         </Button>
+                         <Button
+                              type="button"
+                              variant="destructive"
+                              disabled={isProcessing}
+                              onClick={onCancelBooking}
+                              className="w-full py-3 rounded-2xl font-semibold"
+                         >
+                              Hủy đặt sân
+                         </Button>
+                    </div>
                </div>
           </div>
      );

@@ -11,7 +11,6 @@ export default function FieldListItem({ field, index, slotId, formatPrice, handl
           <FadeIn key={field.fieldId} delay={index * 50}>
                <div
                     onClick={(e) => {
-                         // If any child marked to stop navigation is clicked, do nothing
                          const blocker = (e.target instanceof Element) ? e.target.closest('[data-stop-propagation="true"]') : null;
                          if (blocker || e.defaultPrevented) {
                               return;
@@ -101,6 +100,7 @@ export default function FieldListItem({ field, index, slotId, formatPrice, handl
                                                   e.preventDefault();
                                                   e.stopPropagation();
                                                   handleBook(field.fieldId);
+                                                  navigate(`/field/${field.fieldId}`);
                                              }}
                                              className="bg-teal-500 hover:bg-teal-600 text-white py-2 md:py-1 px-4 rounded-xl font-semibold transition-all duration-200 hover:scale-105 flex items-center gap-2 w-full md:w-auto justify-center"
                                         >

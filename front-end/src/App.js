@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from "react";
-import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
+import { Routes, Route, Navigate, BrowserRouter, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ModalProvider } from "./contexts/ModalContext";
 import MainLayout from "./shared/layouts/MainLayout";
@@ -11,6 +11,12 @@ const LoadingFallback = () => (
     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
   </div>
 );
+
+const RedirectToAuth = () => {
+  const location = useLocation();
+  const redirectPath = `${location.pathname}${location.search}${location.hash}`;
+  return <Navigate to="/auth" replace state={{ from: redirectPath }} />;
+};
 
 // Lazy load pages for better performance
 const LandingPage = lazy(() => import("./pages/LandingPage"));
@@ -99,7 +105,7 @@ const OwnerRegistrationApproval = lazy(() =>
 // Demo Pages
 
 function AppContent() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
 
   if (isLoading) {
     return (
@@ -161,7 +167,7 @@ function AppContent() {
                 </Suspense>
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -282,7 +288,7 @@ function AppContent() {
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -298,7 +304,7 @@ function AppContent() {
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -314,7 +320,7 @@ function AppContent() {
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -330,7 +336,7 @@ function AppContent() {
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -346,7 +352,7 @@ function AppContent() {
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -362,7 +368,7 @@ function AppContent() {
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -378,7 +384,7 @@ function AppContent() {
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -394,7 +400,7 @@ function AppContent() {
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -410,7 +416,7 @@ function AppContent() {
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -426,7 +432,7 @@ function AppContent() {
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -442,7 +448,7 @@ function AppContent() {
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -458,7 +464,7 @@ function AppContent() {
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -474,7 +480,7 @@ function AppContent() {
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -532,14 +538,14 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Admin" ? (
-                <AdminLayout user={user}>
+                <AdminLayout user={user} onLoggedOut={logout}>
                   <AdminDashboard />
                 </AdminLayout>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -548,14 +554,14 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Admin" ? (
-                <AdminLayout user={user}>
+                <AdminLayout user={user} onLoggedOut={logout}>
                   <UserManagement />
                 </AdminLayout>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -564,14 +570,14 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Admin" ? (
-                <AdminLayout user={user}>
+                <AdminLayout user={user} onLoggedOut={logout}>
                   <SystemNotificationsManagement />
                 </AdminLayout>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -580,14 +586,14 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Admin" ? (
-                <AdminLayout user={user}>
+                <AdminLayout user={user} onLoggedOut={logout}>
                   <ViolationReportsManagement />
                 </AdminLayout>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -596,14 +602,14 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Admin" ? (
-                <AdminLayout user={user}>
+                <AdminLayout user={user} onLoggedOut={logout}>
                   <BlogManagement />
                 </AdminLayout>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -612,14 +618,14 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Admin" ? (
-                <AdminLayout user={user}>
+                <AdminLayout user={user} onLoggedOut={logout}>
                   <SystemSettings />
                 </AdminLayout>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -628,14 +634,14 @@ function AppContent() {
           element={
             user ? (
               user.roleName === "Admin" ? (
-                <AdminLayout user={user}>
+                <AdminLayout user={user} onLoggedOut={logout}>
                   <OwnerRegistrationApproval />
                 </AdminLayout>
               ) : (
                 <Navigate to="/dashboard" replace />
               )
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />
@@ -649,7 +655,7 @@ function AppContent() {
                 <ProfileIndex user={user} />
               </MainLayout>
             ) : (
-              <Navigate to="/auth" replace />
+              <RedirectToAuth />
             )
           }
         />

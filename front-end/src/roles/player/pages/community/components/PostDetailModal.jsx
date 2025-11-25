@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Heart, MessageCircle, Bookmark, MoreHorizontal, Trash2, Edit, MapPin, Building2, Share, List, ExternalLink } from "lucide-react";
+import { X, Heart, MessageCircle, Bookmark, MoreHorizontal, Trash2, Edit, MapPin, Building2, Share, List, ExternalLink, Flag } from "lucide-react";
 import { Modal, Button, Avatar, AvatarImage, AvatarFallback, Badge, Textarea } from '../../../../../shared/components/ui';
 import { fetchCommentsByPost, deleteComment, updateComment } from '../../../../../shared/services/comments';
 import { fetchFields } from '../../../../../shared/index';
 import { formatTimeAgo } from './utils/formatTime';
+import { createReport } from '../../../../../shared/services/reports';
 import Swal from 'sweetalert2';
 
 const PostDetailModal = ({
@@ -248,6 +249,63 @@ const PostDetailModal = ({
                ...prev,
                [commentId]: content
           }));
+     };
+
+     const handleReportComment = async (commentId) => {
+          const reportPrompt = await Swal.fire({
+               title: 'Báo cáo bình luận',
+               input: 'textarea',
+               inputLabel: 'Mô tả lý do báo cáo (tối thiểu 10 ký tự)',
+               inputPlaceholder: 'Ví dụ: Bình luận chứa nội dung không phù hợp...',
+               inputAttributes: {
+                    'aria-label': 'Lý do báo cáo'
+               },
+               showCancelButton: true,
+               confirmButtonText: 'Gửi báo cáo',
+               cancelButtonText: 'Hủy',
+               preConfirm: (value) => {
+                    if (!value || value.trim().length < 10) {
+                         Swal.showValidationMessage('Vui lòng nhập lý do tối thiểu 10 ký tự.');
+                    }
+                    return value;
+               }
+          });
+
+          if (reportPrompt.isConfirmed) {
+               try {
+                    const payload = {
+                         targetType: "Comment",
+                         targetId: Number(commentId),
+                         reason: reportPrompt.value.trim()
+                    };
+                    const response = await createReport(payload);
+                    if (response?.ok) {
+                         Swal.fire({
+                              icon: 'success',
+                              title: 'Đã gửi báo cáo',
+                              text: response.message || 'Cảm ơn bạn, chúng tôi sẽ xem xét bình luận này.',
+                              timer: 2500,
+                              showConfirmButton: false
+                         });
+                    } else {
+                         Swal.fire({
+                              icon: 'error',
+                              title: 'Không thể gửi báo cáo',
+                              text: response?.reason || 'Vui lòng thử lại sau.',
+                              confirmButtonText: 'Đã hiểu'
+                         });
+                    }
+               } catch (error) {
+                    console.error('Failed to create report:', error);
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Có lỗi xảy ra',
+                         text: error.message || 'Không thể gửi báo cáo lúc này.',
+                         confirmButtonText: 'Đã hiểu'
+                    });
+               }
+          }
+          setShowCommentMenu({});
      };
 
      if (!post) return null;
@@ -585,8 +643,8 @@ const PostDetailModal = ({
                                                             )}
                                                        </div>
 
-                                                       {/* Comment Menu for own comments */}
-                                                       {isOwn && !isEditing && (
+                                                       {/* Comment Menu */}
+                                                       {!isEditing && (
                                                             <div className="relative">
                                                                  <Button
                                                                       variant="ghost"
@@ -599,25 +657,42 @@ const PostDetailModal = ({
 
                                                                  {showCommentMenu[commentId] && (
                                                                       <div className="absolute right-0 top-8 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10 min-w-[120px]">
-                                                                           <button
-                                                                                onClick={() => {
-                                                                                     handleEditComment(comment);
-                                                                                }}
-                                                                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-                                                                           >
-                                                                                <Edit className="w-4 h-4" />
-                                                                                Sửa
-                                                                           </button>
-                                                                           <button
-                                                                                onClick={() => {
-                                                                                     handleDeleteComment(commentId);
-                                                                                     setShowCommentMenu({});
-                                                                                }}
-                                                                                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 text-red-600 flex items-center gap-2"
-                                                                           >
-                                                                                <Trash2 className="w-4 h-4" />
-                                                                                Xóa
-                                                                           </button>
+                                                                           {/* Menu for own comments */}
+                                                                           {isOwn && (
+                                                                                <>
+                                                                                     <button
+                                                                                          onClick={() => {
+                                                                                               handleEditComment(comment);
+                                                                                          }}
+                                                                                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                                                                                     >
+                                                                                          <Edit className="w-4 h-4" />
+                                                                                          Sửa
+                                                                                     </button>
+                                                                                     <button
+                                                                                          onClick={() => {
+                                                                                               handleDeleteComment(commentId);
+                                                                                               setShowCommentMenu({});
+                                                                                          }}
+                                                                                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 text-red-600 flex items-center gap-2"
+                                                                                     >
+                                                                                          <Trash2 className="w-4 h-4" />
+                                                                                          Xóa
+                                                                                     </button>
+                                                                                </>
+                                                                           )}
+                                                                           {/* Menu for others' comments */}
+                                                                           {!isOwn && (
+                                                                                <button
+                                                                                     onClick={() => {
+                                                                                          handleReportComment(commentId);
+                                                                                     }}
+                                                                                     className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
+                                                                                >
+                                                                                     <Flag className="w-4 h-4" />
+                                                                                     Báo cáo
+                                                                                </button>
+                                                                           )}
                                                                       </div>
                                                                  )}
                                                             </div>
@@ -696,7 +771,7 @@ const PostDetailModal = ({
                                                                            </div>
 
                                                                            {/* Reply Menu */}
-                                                                           {isReplyOwn && !isReplyEditing && (
+                                                                           {!isReplyEditing && (
                                                                                 <div className="relative">
                                                                                      <Button
                                                                                           variant="ghost"
@@ -709,25 +784,42 @@ const PostDetailModal = ({
 
                                                                                      {showCommentMenu[replyId] && (
                                                                                           <div className="absolute right-0 top-8 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10 min-w-[120px]">
-                                                                                               <button
-                                                                                                    onClick={() => {
-                                                                                                         handleEditComment(reply);
-                                                                                                    }}
-                                                                                                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
-                                                                                               >
-                                                                                                    <Edit className="w-4 h-4" />
-                                                                                                    Sửa
-                                                                                               </button>
-                                                                                               <button
-                                                                                                    onClick={() => {
-                                                                                                         handleDeleteComment(replyId);
-                                                                                                         setShowCommentMenu({});
-                                                                                                    }}
-                                                                                                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 text-red-600 flex items-center gap-2"
-                                                                                               >
-                                                                                                    <Trash2 className="w-4 h-4" />
-                                                                                                    Xóa
-                                                                                               </button>
+                                                                                               {/* Menu for own replies */}
+                                                                                               {isReplyOwn && (
+                                                                                                    <>
+                                                                                                         <button
+                                                                                                              onClick={() => {
+                                                                                                                   handleEditComment(reply);
+                                                                                                              }}
+                                                                                                              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                                                                                                         >
+                                                                                                              <Edit className="w-4 h-4" />
+                                                                                                              Sửa
+                                                                                                         </button>
+                                                                                                         <button
+                                                                                                              onClick={() => {
+                                                                                                                   handleDeleteComment(replyId);
+                                                                                                                   setShowCommentMenu({});
+                                                                                                              }}
+                                                                                                              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 text-red-600 flex items-center gap-2"
+                                                                                                         >
+                                                                                                              <Trash2 className="w-4 h-4" />
+                                                                                                              Xóa
+                                                                                                         </button>
+                                                                                                    </>
+                                                                                               )}
+                                                                                               {/* Menu for others' replies */}
+                                                                                               {!isReplyOwn && (
+                                                                                                    <button
+                                                                                                         onClick={() => {
+                                                                                                              handleReportComment(replyId);
+                                                                                                         }}
+                                                                                                         className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
+                                                                                                    >
+                                                                                                         <Flag className="w-4 h-4" />
+                                                                                                         Báo cáo
+                                                                                                    </button>
+                                                                                               )}
                                                                                           </div>
                                                                                      )}
                                                                                 </div>

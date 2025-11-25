@@ -5,9 +5,13 @@ export default function PriceSummarySection({
      selectedDays,
      formatPrice
 }) {
+     const totalSessions = bookingData.totalSessions || (isRecurring ? (recurringWeeks * selectedDays.length) : 1);
+     const slotPrice = bookingData.price || 0;
+     const subtotal = bookingData.subtotal || (slotPrice * (totalSessions || 1));
+
      return (
-          <div className="bg-teal-50 rounded-lg p-4">
-               <h4 className="text-gray-900 mb-3 flex font-bold justify-center text-lg items-center">
+          <div className="bg-teal-50 rounded-2xl shadow-sm border border-teal-200 p-4">
+               <h4 className="text-gray-900 flex font-bold justify-center text-lg items-center">
                     <span className="text-lg mr-2">💰</span>
                     Chi phí
                </h4>
@@ -15,9 +19,9 @@ export default function PriceSummarySection({
                     <div className="flex justify-between">
                          <span className="text-gray-600 font-medium flex items-center">
                               <span className="mr-2">💵</span>
-                              Giá/giờ
+                              Giá/trận (1h30')
                          </span>
-                         <span className="font-medium">{formatPrice(bookingData.price)}</span>
+                         <span className="font-medium">{formatPrice(slotPrice)}</span>
                     </div>
                     {isRecurring && (
                          <div className="flex justify-between">
@@ -28,23 +32,32 @@ export default function PriceSummarySection({
                               <span className="font-medium">{bookingData.totalSessions || (recurringWeeks * selectedDays.length)} buổi</span>
                          </div>
                     )}
-                    <div className="flex justify-between items-center">
-                         <span className="text-gray-600 font-medium flex items-center">
-                              <span className="mr-2">💸</span>
-                              Giá mỗi buổi:
-                         </span>
-                         <span className="font-medium">{formatPrice((bookingData.price || 0) * (bookingData.duration || 1))}</span>
-                    </div>
                     {isRecurring && (
-                         <div className="flex justify-between items-center">
-                              <span className="text-gray-600 font-medium flex items-center">
-                                   <span className="mr-2">📊</span>
-                                   Tổng giá ({bookingData.totalSessions || (recurringWeeks * selectedDays.length)} buổi)
-                              </span>
-                              <span className="font-medium">{formatPrice(((bookingData.price || 0) * (bookingData.duration || 1)) * (bookingData.totalSessions || (recurringWeeks * selectedDays.length)))}</span>
-                         </div>
+                         <>
+                              <div className="flex justify-between items-center">
+                                   <span className="text-gray-600 font-medium flex items-center">
+                                        <span className="mr-2">💸</span>
+                                        Giá mỗi trận
+                                   </span>
+                                   <span className="font-medium">{formatPrice(slotPrice)}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                   <span className="text-gray-600 font-medium flex items-center">
+                                        <span className="mr-2">📊</span>
+                                        Tổng giá ({totalSessions} trận)
+                                   </span>
+                                   <span className="font-medium">{formatPrice(subtotal)}</span>
+                              </div>
+                         </>
                     )}
-                    {isRecurring && bookingData.discountPercent > 0 && (
+                    <div className="flex justify-between items-center">
+                         <span className="text-gray-700 font-medium flex items-center">
+                              <span className="mr-2">💼</span>
+                              Tạm tính
+                         </span>
+                         <span className="font-medium">{formatPrice(subtotal)}</span>
+                    </div>
+                    {bookingData.discountPercent > 0 && (
                          <div className="flex justify-between items-center">
                               <span className="text-emerald-700 font-medium flex items-center">
                                    <span className="mr-2">🎁</span>
@@ -57,7 +70,7 @@ export default function PriceSummarySection({
                          <div className="flex justify-between items-center">
                               <span className="text-yellow-600 font-medium flex items-center">
                                    <span className="mr-2">🏦</span>
-                                   Tiền cọc (30%):
+                                   Tiền cọc ({Math.round((bookingData.depositPercent || 0) * 100)}%):
                               </span>
                               <span className="font-medium text-yellow-600">{formatPrice(bookingData.depositAmount)}</span>
                          </div>

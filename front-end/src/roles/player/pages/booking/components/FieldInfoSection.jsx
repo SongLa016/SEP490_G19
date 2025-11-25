@@ -62,16 +62,14 @@ export default function FieldInfoSection({
 
      // Tính thời lượng theo cách TimeSlotsTab.jsx
      const calculateDuration = () => {
-          // Nếu có duration trực tiếp, sử dụng nó
           const durationValue = bookingData?.duration;
           if (durationValue != null && durationValue !== "") {
                const normalized = Number(durationValue);
                if (!Number.isNaN(normalized) && normalized > 0) {
-                    return normalized; // duration đã là số giờ
+                    return normalized;
                }
           }
 
-          // Tính từ startTime và endTime giống TimeSlotsTab.jsx
           const startTimeStr = bookingData?.startTime || bookingData?.StartTime || '00:00:00';
           const endTimeStr = bookingData?.endTime || bookingData?.EndTime || '00:00:00';
 

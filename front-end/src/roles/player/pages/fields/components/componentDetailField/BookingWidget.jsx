@@ -3,7 +3,7 @@ import { Card, CardContent, Button, DatePicker } from "../../../../../../shared/
 
 export default function BookingWidget({
      selectedField,
-     fields = [], // Array of all fields for "all courts" view
+     fields = [],
      selectedDate,
      selectedSlotId,
      fieldSchedules = [],
@@ -28,7 +28,6 @@ export default function BookingWidget({
      onBook
 }) {
 
-     // Helper: check if a slot is in the past compared to the current time
      const isSlotInPast = (startTimeValue) => {
           if (!selectedDate || !startTimeValue) return false;
 

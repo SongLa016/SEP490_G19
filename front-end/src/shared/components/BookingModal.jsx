@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AlertCircle } from "lucide-react";
+import Swal from 'sweetalert2';
 import { Button, Modal } from "./ui";
 import { validateBookingData, checkFieldAvailability, generateQRCode } from "../services/bookings";
 import { createBooking, createBookingAPI, fetchOwnerBankAccounts, fetchBankAccount } from "../index";
@@ -42,6 +43,11 @@ export default function BookingModal({
      const [selectedDays, setSelectedDays] = useState([]);
      const [suggestedDays, setSuggestedDays] = useState([]); // weekdays 0..6
      const [isSuggesting, setIsSuggesting] = useState(false);
+     const PAYMENT_LOCK_DURATION_MS = 5 * 60 * 1000;
+     const [paymentLockExpiresAt, setPaymentLockExpiresAt] = useState(null);
+     const [lockRemainingMs, setLockRemainingMs] = useState(0);
+     const lockCountdownSeconds = lockRemainingMs > 0 ? Math.ceil(lockRemainingMs / 1000) : 0;
+     const isPaymentLockActive = step === "payment" && paymentLockExpiresAt !== null;
 
      // Prevent layout shift when modal opens by locking body scroll and compensating scrollbar width
      useEffect(() => {
@@ -71,6 +77,8 @@ export default function BookingModal({
           }
      }, [isOpen]);
 
+     const DEFAULT_DEPOSIT_PERCENT = 0.3; // 30% fallback when policy missing
+
      // Calculate duration from slot times if available
      const calculateDuration = (startTime, endTime) => {
           if (!startTime || !endTime) return 1;
@@ -84,10 +92,60 @@ export default function BookingModal({
           }
      };
 
+     const normalizePercentValue = (value) => {
+          if (value === null || value === undefined || value === "") return null;
+          const numeric = Number(value);
+          if (Number.isNaN(numeric) || numeric < 0) return null;
+          return numeric > 1 ? numeric / 100 : numeric;
+     };
+
+     const normalizeMoneyValue = (value) => {
+          if (value === null || value === undefined || value === "") return 0;
+          const numeric = Number(value);
+          if (Number.isNaN(numeric) || numeric <= 0) return 0;
+          return Math.round(numeric);
+     };
+
+     const extractDepositConfig = (source) => {
+          if (!source) {
+               return { percent: null, min: 0, max: 0 };
+          }
+          const policy = source.depositPolicy || {};
+          const rawPercent = policy.depositPercent ?? source.depositPercent ?? null;
+          const rawMin = policy.minDeposit ?? source.minDeposit ?? null;
+          const rawMax = policy.maxDeposit ?? source.maxDeposit ?? null;
+          return {
+               percent: normalizePercentValue(rawPercent),
+               min: normalizeMoneyValue(rawMin),
+               max: normalizeMoneyValue(rawMax)
+          };
+     };
+
+     const computeDepositAmount = (baseAmount, percent, minDeposit = 0, maxDeposit = 0) => {
+          const normalizedBase = Number(baseAmount) || 0;
+          if (normalizedBase <= 0) return 0;
+          const normalizedPercent = typeof percent === "number" ? percent : DEFAULT_DEPOSIT_PERCENT;
+          let deposit = Math.round(normalizedBase * Math.max(0, normalizedPercent));
+          if (minDeposit && minDeposit > 0) {
+               deposit = Math.max(deposit, minDeposit);
+          }
+          if (maxDeposit && maxDeposit > 0) {
+               deposit = Math.min(deposit, maxDeposit);
+          }
+          return deposit;
+     };
+
      const initialDuration = fieldData?.duration ||
           (fieldData?.startTime && fieldData?.endTime
                ? calculateDuration(fieldData.startTime, fieldData.endTime)
                : 1);
+     const initialDepositConfig = extractDepositConfig(fieldData);
+     const initialDepositPercent = typeof initialDepositConfig.percent === "number"
+          ? initialDepositConfig.percent
+          : DEFAULT_DEPOSIT_PERCENT;
+     const resolvedUserName = user?.fullName || user?.FullName || user?.name || user?.Name || "";
+     const resolvedUserPhone = user?.phone || user?.Phone || user?.phoneNumber || user?.PhoneNumber || "";
+     const resolvedUserEmail = user?.email || user?.Email || user?.mail || user?.Mail || "";
 
      const [bookingData, setBookingData] = useState({
           fieldId: fieldData?.fieldId || null,
@@ -102,19 +160,23 @@ export default function BookingModal({
           date: fieldData?.date || new Date().toISOString().split('T')[0],
           slotId: fieldData?.slotId || null,
           slotName: fieldData?.slotName || "",
+          startTime: fieldData?.startTime || fieldData?.StartTime || "",
+          endTime: fieldData?.endTime || fieldData?.EndTime || "",
           duration: initialDuration,
           price: fieldData?.price || 0,
           totalPrice: fieldData?.price || 0,
-          depositPercent: 0.3,
+          depositPercent: initialDepositPercent,
           depositAmount: 0,
+          minDeposit: initialDepositConfig.min,
+          maxDeposit: initialDepositConfig.max,
           remainingAmount: 0,
           discountPercent: 0,
           discountAmount: 0,
-          customerName: user?.name || "",
-          customerPhone: user?.phone || "",
-          customerEmail: user?.email || "",
+          customerName: resolvedUserName,
+          customerPhone: resolvedUserPhone,
+          customerEmail: resolvedUserEmail,
           notes: "",
-          requiresEmail: !user?.email, // Require email if user doesn't have one
+          requiresEmail: !resolvedUserEmail, // Require email if user doesn't have one
           isRecurring: false,
           recurringWeeks: 4,
           recurringEndDate: null
@@ -156,16 +218,22 @@ export default function BookingModal({
           return 0;
      };
      useEffect(() => {
-          const basePrice = (bookingData.price || 0) * (bookingData.duration || 1);
+          const basePrice = bookingData.price || 0;
           const totalSessions = isRecurring ? (recurringWeeks * selectedDays.length) : 1;
           const subtotal = basePrice * totalSessions;
           const discountPercent = isRecurring ? getRecurringDiscountPercent(totalSessions) : 0;
           const discountAmount = Math.round(subtotal * (discountPercent / 100));
           const total = subtotal - discountAmount;
-          const deposit = Math.round(total * (bookingData.depositPercent || 0));
+          const deposit = computeDepositAmount(
+               total,
+               bookingData.depositPercent,
+               bookingData.minDeposit,
+               bookingData.maxDeposit
+          );
           const remaining = Math.max(0, total - deposit);
           setBookingData(prev => ({
                ...prev,
+               subtotal,
                totalPrice: total,
                depositAmount: deposit,
                remainingAmount: remaining,
@@ -173,11 +241,37 @@ export default function BookingModal({
                discountPercent,
                discountAmount
           }));
-     }, [bookingData.price, bookingData.duration, bookingData.depositPercent, isRecurring, recurringWeeks, selectedDays]);
+     }, [
+          bookingData.price,
+          bookingData.duration,
+          bookingData.depositPercent,
+          bookingData.minDeposit,
+          bookingData.maxDeposit,
+          isRecurring,
+          recurringWeeks,
+          selectedDays
+     ]);
 
      // Cập nhật bookingData khi fieldData thay đổi
      useEffect(() => {
           if (fieldData) {
+               const providedStartTime = fieldData.startTime || fieldData.StartTime || "";
+               const providedEndTime = fieldData.endTime || fieldData.EndTime || "";
+               let computedDuration = null;
+               if (fieldData.duration != null) {
+                    const numericDuration = Number(fieldData.duration);
+                    if (!Number.isNaN(numericDuration) && numericDuration > 0) {
+                         computedDuration = numericDuration;
+                    }
+               }
+               if (computedDuration == null && providedStartTime && providedEndTime) {
+                    computedDuration = calculateDuration(providedStartTime, providedEndTime);
+               }
+               const depositConfig = extractDepositConfig(fieldData);
+               const nextDepositPercent = typeof depositConfig.percent === "number"
+                    ? depositConfig.percent
+                    : DEFAULT_DEPOSIT_PERCENT;
+
                setBookingData(prev => ({
                     ...prev,
                     fieldId: fieldData.fieldId || prev.fieldId,
@@ -193,13 +287,15 @@ export default function BookingModal({
                     slotId: fieldData.slotId || prev.slotId,
                     slotName: fieldData.slotName || prev.slotName,
                     scheduleId: fieldData.scheduleId || prev.scheduleId || 0, // Thêm scheduleId
-                    duration: fieldData.duration ||
-                         (fieldData.startTime && fieldData.endTime
-                              ? calculateDuration(fieldData.startTime, fieldData.endTime)
-                              : prev.duration),
+                    startTime: providedStartTime || prev.startTime || "",
+                    endTime: providedEndTime || prev.endTime || "",
+                    duration: computedDuration ?? prev.duration,
                     price: fieldData.price || prev.price,
                     totalPrice: fieldData.totalPrice || fieldData.price || prev.price,
-                    fieldSchedules: fieldData.fieldSchedules || prev.fieldSchedules // Thêm fieldSchedules
+                    fieldSchedules: fieldData.fieldSchedules || prev.fieldSchedules, // Thêm fieldSchedules
+                    depositPercent: nextDepositPercent,
+                    minDeposit: depositConfig.min,
+                    maxDeposit: depositConfig.max
                }));
 
                // Initialize recurring presets from caller (right panel)
@@ -215,6 +311,22 @@ export default function BookingModal({
           }
      }, [fieldData]);
 
+     useEffect(() => {
+          const nextName = user?.fullName || user?.FullName || user?.name || user?.Name || "";
+          const nextPhone = user?.phone || user?.Phone || user?.phoneNumber || user?.PhoneNumber || "";
+          const nextEmail = user?.email || user?.Email || user?.mail || user?.Mail || "";
+          if (!nextName && !nextPhone && !nextEmail) {
+               return;
+          }
+          setBookingData(prev => ({
+               ...prev,
+               customerName: prev.customerName || nextName,
+               customerPhone: prev.customerPhone || nextPhone,
+               customerEmail: prev.customerEmail || nextEmail,
+               requiresEmail: !(prev.customerEmail || nextEmail)
+          }));
+     }, [user]);
+
      // Reset khi modal mở/đóng, nhưng giữ preset định kỳ nếu được truyền vào
      useEffect(() => {
           if (isOpen) {
@@ -225,6 +337,8 @@ export default function BookingModal({
                setOwnerBankAccount(null);
                setPaymentAmountType("");
                setIsQrGenerating(false);
+               setPaymentLockExpiresAt(null);
+               setLockRemainingMs(0);
                if (fieldData?.isRecurringPreset) {
                     setIsRecurring(true);
                     if (typeof fieldData.recurringWeeksPreset === 'number' && fieldData.recurringWeeksPreset > 0) {
@@ -246,6 +360,51 @@ export default function BookingModal({
                closeBookingModal();
           }
      }, [isOpen, fieldData, openBookingModal, closeBookingModal]);
+
+     useEffect(() => {
+          if (step !== "payment") {
+               setPaymentLockExpiresAt(null);
+               setLockRemainingMs(0);
+               return;
+          }
+     }, [step]);
+
+     useEffect(() => {
+          if (!paymentLockExpiresAt || step !== "payment") {
+               setLockRemainingMs(0);
+               return;
+          }
+
+          const updateRemaining = () => {
+               const remaining = paymentLockExpiresAt - Date.now();
+               if (remaining <= 0) {
+                    setPaymentLockExpiresAt(null);
+                    setLockRemainingMs(0);
+               } else {
+                    setLockRemainingMs(remaining);
+               }
+          };
+
+          updateRemaining();
+          const timer = setInterval(updateRemaining, 1000);
+          return () => clearInterval(timer);
+     }, [paymentLockExpiresAt, step]);
+
+     useEffect(() => {
+          if (typeof window === "undefined") return;
+          const handleBeforeUnload = (event) => {
+               if (isPaymentLockActive) {
+                    event.preventDefault();
+                    event.returnValue = "Bạn đang trong quá trình thanh toán. Hãy sử dụng nút Hủy đặt sân nếu muốn thoát.";
+                    return event.returnValue;
+               }
+               return undefined;
+          };
+          window.addEventListener("beforeunload", handleBeforeUnload);
+          return () => {
+               window.removeEventListener("beforeunload", handleBeforeUnload);
+          };
+     }, [isPaymentLockActive]);
 
      const buildFallbackAccount = (data) => {
           if (!data) return null;
@@ -316,7 +475,9 @@ export default function BookingModal({
           }
      }, [paymentAmountType, bookingData.depositAmount]);
 
-     const buildLocalQrUrl = (amount) => {
+     const buildLocalQrUrl = useCallback((amount) => {
+          console.log('🔍 buildLocalQrUrl received amount:', amount);
+
           if (!ownerBankAccount?.accountNumber || !ownerBankAccount?.bankShortCode) return null;
           const normalizedCode = String(ownerBankAccount.bankShortCode).replace(/\s+/g, "").toUpperCase();
           const accountNumber = String(ownerBankAccount.accountNumber).replace(/\s+/g, "");
@@ -325,64 +486,114 @@ export default function BookingModal({
           const base = `https://img.vietqr.io/image/${normalizedCode}-${accountNumber}-compact2.png`;
           const params = new URLSearchParams({
                amount: Math.round(Number(amount) || 0),
-               addInfo: `BOOKING-${bookingInfo?.bookingId || ""}`
+               addInfo: `BOOKING-${bookingInfo?.bookingId || ""}`,
+               t: `${paymentAmountType}_${Date.now()}`
           });
           if (ownerBankAccount.accountHolder) {
                params.set("accountName", ownerBankAccount.accountHolder);
           }
-          return `${base}?${params.toString()}`;
+
+          const finalUrl = `${base}?${params.toString()}`;
+          console.log('🔗 Final QR URL with cache buster:', finalUrl);
+          return finalUrl;
+     }, [ownerBankAccount, bookingInfo?.bookingId, paymentAmountType]);
+
+
+     const handlePaymentAmountChange = (type) => {
+          console.log('🔄 Changing payment type to:', type);
+
+          // Clear the current QR code first
+          setBookingInfo(prev => prev ? {
+               ...prev,
+               qrCodeUrl: null,
+               qrExpiresAt: null
+          } : prev);
+
+          setPaymentAmountType(type);
+          setErrors(prev => ({ ...prev, payment: "" }));
      };
 
-     const handlePaymentAmountChange = async (type) => {
-          if (type === paymentAmountType || !bookingInfo?.bookingId) {
-               setPaymentAmountType(type);
-               return;
-          }
+     useEffect(() => {
+          if (!bookingInfo?.bookingId || !paymentAmountType) return;
 
-          const targetAmount = type === "full"
-               ? (bookingData.totalPrice || 0)
-               : (bookingData.depositAmount || 0);
+          const fallbackTotal = Number(bookingInfo.totalPrice) || 0;
+          const fallbackDeposit = Number(bookingInfo.depositAmount) || 0;
+          const resolvedTotal = Number(bookingData.totalPrice) || fallbackTotal;
+          const resolvedDeposit = Number(bookingData.depositAmount) || fallbackDeposit;
+          const targetAmount = paymentAmountType === "full" ? resolvedTotal : resolvedDeposit;
 
           if (!targetAmount || targetAmount <= 0) {
                setErrors(prev => ({ ...prev, payment: "Số tiền không hợp lệ để tạo QR." }));
                return;
           }
 
-          setPaymentAmountType(type);
-          setErrors(prev => ({ ...prev, payment: "" }));
-          setIsQrGenerating(true);
-          try {
-               const localUrl = buildLocalQrUrl(targetAmount);
-               if (localUrl) {
-                    setBookingInfo(prev => ({
-                         ...prev,
-                         qrCodeUrl: localUrl,
-                         qrExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString()
-                    }));
-               } else {
+          let cancelled = false;
+          const regenerate = async () => {
+               setIsQrGenerating(true);
+               try {
+                    const localUrl = buildLocalQrUrl(targetAmount);
+
+                    // ADD THIS CHECK
+                    console.log('🔄 Regenerating QR code with amount:', targetAmount);
+                    console.log('📝 Current bookingInfo.qrCodeUrl:', bookingInfo?.qrCodeUrl);
+
+                    if (localUrl) {
+                         if (!cancelled) {
+                              setBookingInfo(prev => ({
+                                   ...prev,
+                                   qrCodeUrl: localUrl,
+                                   qrExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString()
+                              }));
+                              setIsQrGenerating(false);
+
+                              // VERIFY THE UPDATE
+                              console.log('✅ Updated bookingInfo with new QR URL');
+                         }
+                         return;
+                    }
+                    // ... rest of your code
+
                     const qrResult = await generateQRCode(bookingInfo.bookingId, {
-                         paymentType: type,
+                         paymentType: paymentAmountType,
                          amount: targetAmount
                     });
 
-                    if (qrResult?.success && qrResult.qrCodeUrl) {
-                         setBookingInfo(prev => ({
-                              ...prev,
-                              qrCodeUrl: qrResult.qrCodeUrl,
-                              qrExpiresAt: qrResult.data?.qrExpiresAt || new Date(Date.now() + 7 * 60 * 1000).toISOString()
-                         }));
-                    } else {
+                    if (!cancelled) {
+                         if (qrResult?.success && qrResult.qrCodeUrl) {
+                              setBookingInfo(prev => ({
+                                   ...prev,
+                                   qrCodeUrl: qrResult.qrCodeUrl,
+                                   qrExpiresAt: qrResult.data?.qrExpiresAt || new Date(Date.now() + 7 * 60 * 1000).toISOString()
+                              }));
+                         } else {
+                              setErrors(prev => ({ ...prev, payment: "Không thể tạo QR. Vui lòng thử lại." }));
+                         }
+                    }
+               } catch (error) {
+                    console.error("Failed to regenerate QR code:", error);
+                    if (!cancelled) {
                          setErrors(prev => ({ ...prev, payment: "Không thể tạo QR. Vui lòng thử lại." }));
                     }
+               } finally {
+                    if (!cancelled) {
+                         setIsQrGenerating(false);
+                    }
                }
-          } catch (error) {
-               console.error("Failed to regenerate QR code:", error);
-               setErrors(prev => ({ ...prev, payment: "Không thể tạo QR. Vui lòng thử lại." }));
-          } finally {
-               setIsQrGenerating(false);
-          }
-     };
+          };
 
+          regenerate();
+          return () => { cancelled = true; };
+     }, [
+          paymentAmountType,
+          bookingInfo?.bookingId,
+          bookingInfo?.qrCodeUrl,
+          bookingInfo?.totalPrice,
+          bookingInfo?.depositAmount,
+          bookingData.totalPrice,
+          bookingData.depositAmount,
+          ownerBankAccount,
+          buildLocalQrUrl
+     ]);
      const formatPrice = (price) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 
      const validateForm = () => {
@@ -470,14 +681,16 @@ export default function BookingModal({
 
      const handlePayment = async () => {
           if (!validateForm()) return;
-
-          // Check if user is logged in
           if (!user) {
-               setErrors({ general: "Bạn cần đăng nhập để tạo booking. Vui lòng đăng nhập trước." });
+               await Swal.fire({
+                    icon: 'warning',
+                    title: 'Cần đăng nhập',
+                    text: "Bạn cần đăng nhập để tạo booking. Vui lòng đăng nhập trước.",
+                    confirmButtonColor: '#10b981'
+               });
                return;
           }
 
-          // Check if user is a player
           const userRole = user?.role || user?.Role || user?.roleName || user?.RoleName;
           const roleId = user?.roleId || user?.roleID || user?.RoleId || user?.RoleID;
           const isPlayer = roleId === 3 ||
@@ -487,7 +700,12 @@ export default function BookingModal({
 
           if (!isPlayer) {
                console.warn("⚠️ [GỬI GIỮ CHỖ] User is not a player:", { userRole, roleId, user });
-               setErrors({ general: "Chỉ người chơi (Player) mới có thể tạo booking. Vui lòng đăng nhập bằng tài khoản người chơi." });
+               await Swal.fire({
+                    icon: 'warning',
+                    title: 'Không có quyền',
+                    text: "Chỉ người chơi (Player) mới có thể tạo booking. Vui lòng đăng nhập bằng tài khoản người chơi.",
+                    confirmButtonColor: '#10b981'
+               });
                return;
           }
 
@@ -512,23 +730,39 @@ export default function BookingModal({
                // Check availability
                const avail = await checkFieldAvailability(booking.fieldId, booking.date, booking.slotId);
                if (!avail?.available) {
-                    setErrors({ general: avail?.message || "Sân đã có người đặt trong khung giờ này." });
                     setIsProcessing(false);
+                    await Swal.fire({
+                         icon: 'warning',
+                         title: 'Sân không khả dụng',
+                         text: avail?.message || "Sân đã có người đặt trong khung giờ này.",
+                         confirmButtonColor: '#f59e0b'
+                    });
                     return;
                }
 
                // Gọi API tạo booking trực tiếp (không giữ tiền)
                const userId = user?.id || user?.userId || user?.userID;
                if (!userId) {
-                    setErrors({ general: "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại." });
                     setIsProcessing(false);
+                    await Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi xác thực',
+                         text: "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.",
+                         confirmButtonColor: '#ef4444'
+                    });
                     return;
                }
 
                // Tính toán depositAmount nếu chưa có
                const totalPrice = booking.totalPrice || booking.price || 0;
-               const depositPercent = booking.depositPercent || 0.3;
-               const depositAmount = booking.depositAmount || Math.round(totalPrice * depositPercent);
+               const depositAmount = typeof booking.depositAmount === "number"
+                    ? booking.depositAmount
+                    : computeDepositAmount(
+                         totalPrice,
+                         booking.depositPercent,
+                         booking.minDeposit,
+                         booking.maxDeposit
+                    );
 
                // Tìm scheduleId từ fieldSchedules dựa trên slotId và date
                let scheduleId = booking.scheduleId || 0;
@@ -589,8 +823,13 @@ export default function BookingModal({
 
                if (!apiResult.success) {
                     console.error("❌ [GỬI GIỮ CHỖ] Error:", apiResult.error);
-                    setErrors({ general: apiResult.error || "Không thể tạo booking. Vui lòng thử lại." });
                     setIsProcessing(false);
+                    await Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi đặt sân',
+                         text: apiResult.error || "Không thể tạo booking. Vui lòng thử lại.",
+                         confirmButtonColor: '#ef4444'
+                    });
                     return;
                }
 
@@ -598,8 +837,13 @@ export default function BookingModal({
                const bookingId = apiResult.data?.bookingID || apiResult.data?.bookingId || apiResult.data?.id;
                console.log("✅ [GỬI GIỮ CHỖ] Booking ID:", bookingId);
                if (!bookingId) {
-                    setErrors({ general: "Không nhận được booking ID từ server." });
                     setIsProcessing(false);
+                    await Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: "Không nhận được booking ID từ server.",
+                         confirmButtonColor: '#ef4444'
+                    });
                     return;
                }
 
@@ -615,8 +859,9 @@ export default function BookingModal({
                     depositAmount: depositAmount
                });
 
-               // Chuyển sang bước thanh toán
+               // Chuyển sang bước thanh toán và khóa thao tác trong 5 phút hoặc đến khi hủy
                setStep("payment");
+               setPaymentLockExpiresAt(Date.now() + PAYMENT_LOCK_DURATION_MS);
           } catch (error) {
                console.error("Booking error:", error);
                const code = error?.code;
@@ -624,15 +869,66 @@ export default function BookingModal({
                if (code === "DURATION_LIMIT") msg = "Thời lượng vượt giới hạn (tối đa 1 tiếng 30 phút).";
                if (code === "CONFLICT") msg = "Khung giờ đã có người khác giữ hoặc đặt. Chọn khung giờ khác.";
                if (code === "VALIDATION_ERROR") msg = error?.message || msg;
-               setErrors({ general: msg });
+               setIsProcessing(false);
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi đặt sân',
+                    text: msg,
+                    confirmButtonColor: '#ef4444'
+               });
           } finally {
                setIsProcessing(false);
           }
      };
+     const handleCancelBookingDuringPayment = async () => {
+          if (isProcessing) return;
+
+          const confirmResult = await Swal.fire({
+               title: 'Xác nhận hủy đặt sân',
+               text: 'Bạn có chắc muốn hủy đặt sân và đóng QR thanh toán không?',
+               icon: 'question',
+               showCancelButton: true,
+               confirmButtonText: 'Hủy đặt sân',
+               cancelButtonText: 'Không',
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280'
+          });
+
+          if (!confirmResult.isConfirmed) return;
+
+          setPaymentLockExpiresAt(null);
+          setLockRemainingMs(0);
+          setBookingInfo(null);
+          setPaymentAmountType("");
+          setIsQrGenerating(false);
+          setStep("details");
+          onClose?.();
+
+          // Hiển thị thông báo hủy thành công
+          Swal.fire({
+               toast: true,
+               position: 'top-end',
+               icon: 'success',
+               title: 'Hủy thành công',
+               showConfirmButton: false,
+               timer: 2000,
+               timerProgressBar: true
+          });
+     };
+
+     const handleModalClose = useCallback(() => {
+          if (isPaymentLockActive) return;
+          onClose();
+     }, [isPaymentLockActive, onClose]);
 
      const handleConfirmPayment = async () => {
           if (!bookingInfo?.bookingId) {
-               setErrors({ general: "Không tìm thấy thông tin booking." });
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: "Không tìm thấy thông tin booking.",
+                    confirmButtonColor: '#ef4444'
+               });
                return;
           }
 
@@ -668,7 +964,12 @@ export default function BookingModal({
                }
           } catch (error) {
                console.error("Payment confirmation error:", error);
-               setErrors({ general: "Có lỗi xảy ra khi xử lý xác nhận. Vui lòng thử lại." });
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi xác nhận',
+                    text: "Có lỗi xảy ra khi xử lý xác nhận. Vui lòng thử lại.",
+                    confirmButtonColor: '#ef4444'
+               });
           } finally {
                setIsProcessing(false);
           }
@@ -740,9 +1041,11 @@ export default function BookingModal({
      return (
           <Modal
                isOpen={isOpen}
-               onClose={onClose}
+               onClose={handleModalClose}
                title={bookingType === "complex" ? "Đặt Sân Lớn" : bookingType === "quick" ? "Đặt Nhanh" : "Đặt Sân"}
                className="max-w-6xl z-[100] w-full mx-4 max-h-[90vh] overflow-y-auto rounded-xl"
+               showCloseButton={!isPaymentLockActive}
+               closeOnOverlayClick={!isPaymentLockActive}
           >
                <div className="p-2 bg-cover bg-center bg-no-repeat bg-[url('https://mixivivu.com/section-background.png')]">
                     {errors.general && (
@@ -822,6 +1125,9 @@ export default function BookingModal({
                                    errors={errors}
                                    onPaymentAmountChange={handlePaymentAmountChange}
                                    onConfirmPayment={handleConfirmPayment}
+                                   isPaymentLocked={isPaymentLockActive}
+                                   lockCountdownSeconds={lockCountdownSeconds}
+                                   onCancelBooking={handleCancelBookingDuringPayment}
                               />
                          )
                     }

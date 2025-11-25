@@ -7,7 +7,7 @@ export default function ContactFormSection({
      onInputChange
 }) {
      return (
-          <div className="bg-teal-50 rounded-lg p-4">
+          <div className="bg-teal-50 rounded-2xl shadow-sm border border-teal-200 p-4">
                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                     <User className="w-5 h-5 mr-2 text-teal-600" />
                     Thông tin liên hệ

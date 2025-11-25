@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { fetchField, fetchFieldComplex } from "../../../../../../shared/services/fields";
+import { createReport } from "../../../../../../shared/services/reports";
 import { isCurrentUserPost } from "../utils";
 import Swal from 'sweetalert2';
 
@@ -45,25 +46,57 @@ export function usePostMenu(posts, setPosts, user, setEditingPost, setEditPostTi
                     });
                     break;
                case 'report':
-                    const reportResult = await Swal.fire({
+                    const reportPrompt = await Swal.fire({
                          title: 'Báo cáo bài viết',
-                         text: 'Bạn có chắc chắn muốn báo cáo bài viết này?',
-                         icon: 'warning',
+                         input: 'textarea',
+                         inputLabel: 'Mô tả lý do báo cáo (tối thiểu 10 ký tự)',
+                         inputPlaceholder: 'Ví dụ: Bài viết chứa nội dung không phù hợp...',
+                         inputAttributes: {
+                              'aria-label': 'Lý do báo cáo'
+                         },
                          showCancelButton: true,
-                         confirmButtonColor: '#d33',
-                         cancelButtonColor: '#3085d6',
-                         confirmButtonText: 'Báo cáo',
-                         cancelButtonText: 'Hủy'
+                         confirmButtonText: 'Gửi báo cáo',
+                         cancelButtonText: 'Hủy',
+                         preConfirm: (value) => {
+                              if (!value || value.trim().length < 10) {
+                                   Swal.showValidationMessage('Vui lòng nhập lý do tối thiểu 10 ký tự.');
+                              }
+                              return value;
+                         }
                     });
-                    if (reportResult.isConfirmed) {
-                         console.log('Reporting post:', postId);
-                         Swal.fire({
-                              icon: 'success',
-                              title: 'Đã báo cáo',
-                              text: 'Cảm ơn bạn đã báo cáo. Chúng tôi sẽ xem xét bài viết này.',
-                              timer: 2000,
-                              showConfirmButton: false
-                         });
+                    if (reportPrompt.isConfirmed) {
+                         try {
+                              const payload = {
+                                   targetType: "Post",
+                                   targetId: Number(postId),
+                                   reason: reportPrompt.value.trim()
+                              };
+                              const response = await createReport(payload);
+                              if (response?.ok) {
+                                   Swal.fire({
+                                        icon: 'success',
+                                        title: 'Đã gửi báo cáo',
+                                        text: response.message || 'Cảm ơn bạn, chúng tôi sẽ xem xét bài viết này.',
+                                        timer: 2500,
+                                        showConfirmButton: false
+                                   });
+                              } else {
+                                   Swal.fire({
+                                        icon: 'error',
+                                        title: 'Không thể gửi báo cáo',
+                                        text: response?.reason || 'Vui lòng thử lại sau.',
+                                        confirmButtonText: 'Đã hiểu'
+                                   });
+                              }
+                         } catch (error) {
+                              console.error('Failed to create report:', error);
+                              Swal.fire({
+                                   icon: 'error',
+                                   title: 'Có lỗi xảy ra',
+                                   text: error.message || 'Không thể gửi báo cáo lúc này.',
+                                   confirmButtonText: 'Đã hiểu'
+                              });
+                         }
                     }
                     break;
                case 'copy':

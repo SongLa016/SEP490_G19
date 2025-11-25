@@ -5,6 +5,7 @@ import { gsap } from 'gsap';
 import { Button } from '../shared/components/ui';
 import logo from '../shared/components/assets/logo.png';
 import TypewriterText from '../shared/components/TypewriterText';
+import { useAuth } from '../contexts/AuthContext';
 import {
      ArrowRight,
      CheckCircle,
@@ -26,6 +27,7 @@ import {
 
 const LandingPage = () => {
      const navigate = useNavigate();
+     const { user } = useAuth();
      const [selectedPersona, setSelectedPersona] = useState('customer');
      const containerRef = useRef(null);
      const gradientRef = useRef(null);
@@ -377,7 +379,18 @@ const LandingPage = () => {
                                              }}
                                         >
                                              <Button
-                                                  onClick={() => selectedPersona === 'business' ? navigate('/register') : navigate('/home')}
+                                                  onClick={() => {
+                                                       if (selectedPersona === 'business') {
+                                                            // Kiểm tra nếu user đã đăng nhập
+                                                            if (user) {
+                                                                 alert('Bạn đã đăng nhập rồi! Vui lòng đăng xuất để đăng ký tài khoản mới.');
+                                                                 return;
+                                                            }
+                                                            navigate('/register');
+                                                       } else {
+                                                            navigate('/home');
+                                                       }
+                                                  }}
                                                   size="lg"
                                                   className="px-8 py-4 text-lg font-semibold bg-teal-500 hover:bg-teal-600 text-white rounded-xl transition-all duration-[350ms] ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-95 hover:scale-105"
                                              >

@@ -25,6 +25,40 @@ import GroupedViewSection from "./components/GroupedViewSection";
 
 const normalizeStatus = (status) => (typeof status === "string" ? status.trim().toLowerCase() : "");
 const ALLOWED_FIELD_STATUSES = new Set(["available", "active"]);
+const FIELD_TYPE_ALIASES = {
+     "5vs5": ["5vs5", "5v5", "san5", "san5nguoi", "5nguoi"],
+     "7vs7": ["7vs7", "7v7", "san7", "san7nguoi", "7nguoi"],
+     "11vs11": ["11vs11", "11v11", "san11", "san11nguoi", "11nguoi"],
+};
+const normalizeTypeString = (value = "") => value
+     .toString()
+     .normalize("NFD")
+     .replace(/[\u0300-\u036f]/g, "")
+     .toLowerCase()
+     .replace(/[^a-z0-9]/g, "");
+const resolveFieldTypeName = (field, fieldTypeMap = {}) => {
+     if (!field) return "";
+     if (field.typeName && field.typeName.trim()) return field.typeName;
+     if (field.TypeName && field.TypeName.trim()) return field.TypeName;
+     const typeId = field.typeId ?? field.TypeID ?? field.typeID;
+     if (typeId != null) {
+          return fieldTypeMap[String(typeId)] || "";
+     }
+     return "";
+};
+const doesFieldMatchTypeTab = (field, desiredType, fieldTypeMap = {}) => {
+     if (desiredType === "all") return true;
+     const directName = resolveFieldTypeName(field, fieldTypeMap);
+     if (!directName) return false;
+     const normalizedName = normalizeTypeString(directName);
+     if (!normalizedName) return false;
+     const aliases = FIELD_TYPE_ALIASES[desiredType] || [];
+     if (aliases.length === 0) {
+          // fallback to exact match if we don't have aliases configured
+          return normalizedName === normalizeTypeString(desiredType);
+     }
+     return aliases.some(alias => normalizedName.includes(alias));
+};
 const isFieldDisplayable = (field) => {
      const normalizedStatus = normalizeStatus(field?.status ?? field?.Status ?? "");
      if (!normalizedStatus) return true;
@@ -393,7 +427,7 @@ export default function FieldSearch({ user }) {
 
           // Filter by field type via tabs
           if (typeTab !== "all") {
-               filtered = filtered.filter(field => (field.typeName || "").toLowerCase() === typeTab.toLowerCase());
+               filtered = filtered.filter(field => doesFieldMatchTypeTab(field, typeTab, fieldTypeMap));
           }
 
           // Filter by price
