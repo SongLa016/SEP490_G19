@@ -4,12 +4,14 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using BallSport.Application.CloudinarySettings;
 using BallSport.Application.Services;
+using BallSport.Application.Services.AdminStatistics;
 using BallSport.Application.Services.Community;
 using BallSport.Application.Services.MatchFinding;
 using BallSport.Application.Services.StatisticOwner;
 using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
+using BallSport.Infrastructure.Repositories.AdminStatistics;
 using BallSport.Infrastructure.Repositories.Community;
 using BallSport.Infrastructure.Repositories.MatchFinding;
 using BallSport.Infrastructure.Repositories.StatisticOwner;
@@ -107,6 +109,26 @@ services.AddScoped<IOwnerSummaryRepository, OwnerSummaryRepository>();
 services.AddScoped<OwnerSummaryService>();
 services.AddScoped<IOwnerFillRateRepository, OwnerFillRateRepository>();
 services.AddScoped<OwnerFillRateService>();
+services.AddScoped<IRecentActivityRepository, RecentActivityRepository>();
+services.AddScoped<AdminRecentActivityService>();
+
+// --- Statistic Admin ---
+services.AddScoped<IAdminUserStatisticRepository, AdminUserStatisticRepository>();
+services.AddScoped<AdminUserStatisticService>();
+services.AddScoped<IAdminOwnerStatisticRepository, AdminOwnerStatisticRepository>();
+services.AddScoped<AdminOwnerStatisticService>();
+services.AddScoped<IBookingStatisticRepository, BookingStatisticRepository>();
+services.AddScoped<BookingStatisticService>();
+services.AddScoped<IRevenueStatisticRepository, RevenueStatisticRepository>();
+services.AddScoped<RevenueStatisticService>();
+services.AddScoped<IFieldStatisticRepository, FieldStatisticRepository>();
+services.AddScoped<FieldStatisticService>();
+services.AddScoped<IReportStatisticRepository, ReportStatisticRepository>();
+services.AddScoped<ReportStatisticService>();
+services.AddScoped<IPostStatisticRepository, PostStatisticRepository>();
+services.AddScoped<IPostStatisticService, PostStatisticService>();
+services.AddScoped<IUserListRepository, UserListRepository>();
+services.AddScoped<IUserListService, UserListService>();
 
 // --- Core user / auth ---
 services.AddScoped<UserRepositories>();
