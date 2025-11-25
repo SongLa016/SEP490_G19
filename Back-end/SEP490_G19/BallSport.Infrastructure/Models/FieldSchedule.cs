@@ -19,5 +19,7 @@ public partial class FieldSchedule
 
     public virtual Field? Field { get; set; }
 
+    public virtual ICollection<PackageSession> PackageSessions { get; set; } = new List<PackageSession>();
+
     public virtual TimeSlot? Slot { get; set; }
 }

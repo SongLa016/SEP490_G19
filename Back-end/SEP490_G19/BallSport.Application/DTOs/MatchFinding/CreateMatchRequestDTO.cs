@@ -1,13 +1,13 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿// 3. CreateMatchRequestDto.cs
+using System.ComponentModel.DataAnnotations;
 
 namespace BallSport.Application.DTOs.MatchFinding
 {
-    public class CreateMatchRequestDTO
+    public class CreateMatchRequestDto
     {
-        [Required(ErrorMessage = "BookingID là bắt buộc")]
-        public int BookingId { get; set; }
-
-        [MaxLength(500, ErrorMessage = "Mô tả không được vượt quá 500 ký tự")]
-        public string? Description { get; set; }
+        [Required] public int BookingId { get; set; }
+        [StringLength(500)] public string? Description { get; set; }
+        [Required] public PlayerCountOption PlayerCount { get; set; } = PlayerCountOption.Seven;
+        public int? ExpiresInHours { get; set; } = 48;
     }
 }

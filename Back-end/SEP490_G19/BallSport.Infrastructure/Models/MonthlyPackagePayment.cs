@@ -3,25 +3,21 @@ using System.Collections.Generic;
 
 namespace BallSport.Infrastructure.Models;
 
-public partial class Payment
+public partial class MonthlyPackagePayment
 {
     public int PaymentId { get; set; }
 
-    public int BookingId { get; set; }
+    public int BookingPackageId { get; set; }
 
-    public int OwnerId { get; set; }
+    public int UserId { get; set; }
 
     public decimal Amount { get; set; }
+
+    public int TotalSlots { get; set; }
 
     public string? Method { get; set; }
 
     public string? TransactionCode { get; set; }
-
-    public string? OrderCode { get; set; }
-
-    public string? ResponseCode { get; set; }
-
-    public string? PayUrl { get; set; }
 
     public string? Status { get; set; }
 
@@ -31,11 +27,7 @@ public partial class Payment
 
     public DateTime? UpdatedAt { get; set; }
 
-    public string? PaymentType { get; set; }
+    public virtual BookingPackage BookingPackage { get; set; } = null!;
 
-    public string? PayOrderInfo { get; set; }
-
-    public virtual Booking Booking { get; set; } = null!;
-
-    public virtual User Owner { get; set; } = null!;
+    public virtual User User { get; set; } = null!;
 }
