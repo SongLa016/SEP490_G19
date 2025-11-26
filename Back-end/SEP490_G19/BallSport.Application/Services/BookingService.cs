@@ -65,6 +65,8 @@ namespace BallSport.Application.Services
             var payment = new Payment
             {
                 BookingId = bookingId,
+                OwnerId = booking.Schedule?.Field?.Complex?.OwnerId
+              ?? throw new Exception("Booking không có owner"),
                 Amount = amount,
                 Status = "Paid",
                 CreatedAt = DateTime.Now,
@@ -77,7 +79,7 @@ namespace BallSport.Application.Services
             };
 
 
-            if (booking?.User?.Email != null)
+            if (!string.IsNullOrWhiteSpace(booking?.User?.Email))
             {
                 string subject = "Xác nhận thanh toán cọc";
                 string message = $"Chào {booking.User.FullName},<br/><br/>" +
@@ -85,6 +87,10 @@ namespace BallSport.Application.Services
                                  $"Cảm ơn bạn đã lựa chọn FieldComplexes của chúng tôi.<br/><br/>" +
                                  $"Trân trọng,<br/>{booking.Schedule.Field.Complex.Name}";
                 await _emailRepo.SendEmailAsync(booking.User.Email, subject, message);
+            }
+            else
+            {
+                Console.WriteLine($"[EMAIL SKIPPED] BookingId={booking?.BookingId}, User={booking?.User?.FullName} has no email.");
             }
 
             await _paymentRepo.AddAsync(payment);
