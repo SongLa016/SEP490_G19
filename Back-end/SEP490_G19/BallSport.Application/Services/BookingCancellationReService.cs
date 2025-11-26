@@ -27,15 +27,42 @@ namespace BallSport.Application.Services
             _userRepository = userRepository;
         }
 
-        public async Task<List<BookingCancellationRequest>> GetAllAsync()
+        public async Task<List<BookingCancellationforGETDTO>> GetAllAsync()
         {
-            return await _requestRepository.GetAllAsync();
+            var requests = await _requestRepository.GetAllAsync();
+            return requests.Select(r => new BookingCancellationforGETDTO
+            {
+                RequestId = r.RequestId,
+                BookingId = r.BookingId,
+                RequestedByRole = r.RequestedByRole,
+                RequestStatus = r.RequestStatus,
+                RefundAmount = r.RefundAmount ?? 0,
+                PenaltyAmount = r.PenaltyAmount ?? 0,
+                FinalRefundAmount = r.FinalRefundAmount ?? 0,
+                RequestedAt = r.RequestedAt,
+                RequestReason = r.RequestReason
+            }).ToList();
         }
 
-        public async Task<BookingCancellationRequest?> GetByIdAsync(int id)
+        public async Task<BookingCancellationforGETDTO?> GetByIdAsync(int id)
         {
-            return await _requestRepository.GetByIdAsync(id);
+            var r = await _requestRepository.GetByIdAsync(id);
+            if (r == null) return null;
+
+            return new BookingCancellationforGETDTO
+            {
+                RequestId = r.RequestId,
+                BookingId = r.BookingId,
+                RequestedByRole = r.RequestedByRole,
+                RequestStatus = r.RequestStatus,
+                RefundAmount = r.RefundAmount ?? 0,
+                PenaltyAmount = r.PenaltyAmount ?? 0,
+                FinalRefundAmount = r.FinalRefundAmount ?? 0,
+                RequestedAt = r.RequestedAt,
+                RequestReason = r.RequestReason
+            };
         }
+
 
 
         public async Task<object> CreateAsync(int bookingId, int requestedByUserId, string? reason = null)

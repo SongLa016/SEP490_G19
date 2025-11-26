@@ -145,6 +145,12 @@ services.AddScoped<BookingCancellationRepository>();
 services.AddScoped<BookingCancellationReRepository>();
 services.AddScoped<BookingCancellationReService>();
 services.AddScoped<PaymentRepository>();
+services.AddScoped<BookingPackageRepository>();
+services.AddScoped<MonthlyPackagePaymentRepo>();
+services.AddScoped<PackageSessionRepository>();
+
+
+
 
 // --- Bank accounts ---
 services.AddScoped<PlayerBankAccountRepository>();
