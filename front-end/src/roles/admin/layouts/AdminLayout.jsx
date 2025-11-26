@@ -37,7 +37,7 @@ export default function AdminLayout({ user, onLoggedOut, children }) {
           { id: "owner-registration", label: "Duyệt đăng ký Owner", icon: UserCheck, path: "/admin/owner-registration" },
           { id: "notifications", label: "Thông báo hệ thống", icon: Bell, path: "/admin/notifications" },
           { id: "violations", label: "Báo cáo vi phạm", icon: AlertTriangle, path: "/admin/violations" },
-          { id: "blog", label: "Quản lý blog", icon: FileText, path: "/admin/blog" },
+          { id: "posts", label: "Quản lý bài viết", icon: FileText, path: "/admin/posts" },
           { id: "settings", label: "Cài đặt hệ thống", icon: Settings, path: "/admin/system-settings" },
      ];
 

@@ -19,6 +19,9 @@ import {
      deleteNotification,
      deleteAllNotifications
 } from "../services/notifications";
+import { deletePost } from "../services/posts";
+import { deleteComment } from "../services/comments";
+import Swal from "sweetalert2";
 
 const NOTIFICATION_TYPES = [
      { label: "Tất cả", value: "all" },
@@ -145,6 +148,59 @@ export default function NotificationsDisplay({ userId, className = "" }) {
           } catch (error) {
                console.error("Error deleting notification:", error);
                alert("Có lỗi xảy ra khi xóa thông báo");
+          } finally {
+               setIsDeleting(false);
+          }
+     };
+
+     // Xử lý xóa nội dung bị báo cáo (bài viết/comment) - cho component chính
+     const handleDeleteReportedContentMain = async (notification) => {
+          const targetId = notification.targetId || notification.targetID || notification.TargetId;
+          const message = notification.message || "";
+          const notificationId = notification.id || notification.notificationId || notification.userNotificationId;
+          
+          // Xác định targetType từ message
+          const isPost = message.toLowerCase().includes("bài viết");
+          const isComment = message.toLowerCase().includes("bình luận");
+          
+          if (!targetId) {
+               alert('Không tìm thấy ID nội dung cần xóa.');
+               return;
+          }
+
+          if (!window.confirm(
+               isPost 
+                    ? 'Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.'
+                    : 'Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác.'
+          )) {
+               return;
+          }
+
+          try {
+               setIsDeleting(true);
+               if (isPost) {
+                    await deletePost(targetId);
+               } else if (isComment) {
+                    await deleteComment(targetId);
+               } else {
+                    throw new Error('Không xác định được loại nội dung cần xóa');
+               }
+
+               // Sau khi xóa thành công, đánh dấu thông báo là đã đọc để phản ánh đã xử lý
+               if (notificationId) {
+                    try {
+                         await markNotificationAsRead(notificationId);
+                    } catch (notifError) {
+                         console.error('Error marking notification as read:', notifError);
+                         // Tiếp tục dù có lỗi khi đánh dấu đã đọc
+                    }
+               }
+
+               alert(isPost ? 'Bài viết đã được xóa thành công.' : 'Bình luận đã được xóa thành công.');
+               await Promise.all([loadNotifications(), fetchUnreadCount()]);
+          } catch (error) {
+               console.error('Error deleting content:', error);
+               alert(error.message || 'Không thể xóa nội dung. Vui lòng thử lại.');
           } finally {
                setIsDeleting(false);
           }
@@ -367,6 +423,22 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                                                                            Đã đọc
                                                                       </Button>
                                                                  )}
+                                                                 {/* Button xóa nội dung nếu là thông báo yêu cầu xóa */}
+                                                                 {notification.type === "ReportResult" && 
+                                                                  notification.message && 
+                                                                  notification.message.includes("yêu cầu xóa") && (
+                                                                      <Button
+                                                                           variant="outline"
+                                                                           size="sm"
+                                                                           onClick={() => handleDeleteReportedContentMain(notification)}
+                                                                           className="text-xs border-red-500 text-red-600 hover:bg-red-50 font-medium"
+                                                                           disabled={isDeleting}
+                                                                      >
+                                                                           <Trash2 className="w-3 h-3 mr-1" />
+                                                                           Xóa
+                                                                      </Button>
+                                                                 )}
+                                                                 {/* Button xóa thông báo */}
                                                                  <Button
                                                                       variant="ghost"
                                                                       size="sm"
@@ -375,7 +447,7 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                                                                       disabled={isDeleting}
                                                                  >
                                                                       <Trash2 className="w-3 h-3 mr-1" />
-                                                                      Xóa
+                                                                      Xóa TB
                                                                  </Button>
                                                             </div>
                                                        </div>
@@ -550,6 +622,90 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
           }
      };
 
+     // Xử lý xóa nội dung bị báo cáo (bài viết/comment)
+     const handleDeleteReportedContent = async (notification) => {
+          const targetId = notification.targetId || notification.targetID || notification.TargetId;
+          const message = notification.message || "";
+          const notificationId = notification.id || notification.notificationId || notification.userNotificationId;
+          
+          // Xác định targetType từ message
+          const isPost = message.toLowerCase().includes("bài viết");
+          const isComment = message.toLowerCase().includes("bình luận");
+          
+          if (!targetId) {
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Không tìm thấy ID nội dung cần xóa.',
+                    confirmButtonText: 'Đã hiểu'
+               });
+               return;
+          }
+
+          const result = await Swal.fire({
+               title: 'Xác nhận xóa?',
+               text: isPost 
+                    ? 'Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.'
+                    : 'Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác.',
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (result.isConfirmed) {
+               try {
+                    Swal.fire({
+                         title: 'Đang xóa...',
+                         allowOutsideClick: false,
+                         didOpen: () => {
+                              Swal.showLoading();
+                         }
+                    });
+
+                    if (isPost) {
+                         await deletePost(targetId);
+                    } else if (isComment) {
+                         await deleteComment(targetId);
+                    } else {
+                         throw new Error('Không xác định được loại nội dung cần xóa');
+                    }
+
+                    // Sau khi xóa thành công, đánh dấu thông báo là đã đọc để phản ánh đã xử lý
+                    if (notificationId) {
+                         try {
+                              await markNotificationAsRead(notificationId);
+                         } catch (notifError) {
+                              console.error('Error marking notification as read:', notifError);
+                              // Tiếp tục dù có lỗi khi đánh dấu đã đọc
+                         }
+                    }
+
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đã xóa!',
+                         text: isPost ? 'Bài viết đã được xóa thành công.' : 'Bình luận đã được xóa thành công.',
+                         timer: 2000,
+                         showConfirmButton: false
+                    });
+
+                    // Reload notifications
+                    await loadDropdownNotifications();
+                    await loadDropdownUnreadCount();
+               } catch (error) {
+                    console.error('Error deleting content:', error);
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: error.message || 'Không thể xóa nội dung. Vui lòng thử lại.',
+                         confirmButtonText: 'Đã hiểu'
+                    });
+               }
+          }
+     };
+
      const handleDeleteAllNotifications = async () => {
           if (!notifications.length) return;
           if (!window.confirm("Bạn có chắc muốn xóa toàn bộ thông báo?")) {
@@ -714,6 +870,21 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                                                                            Đọc
                                                                       </Button>
                                                                  )}
+                                                                 {/* Button xóa nội dung nếu là thông báo yêu cầu xóa */}
+                                                                 {notification.type === "ReportResult" && 
+                                                                  notification.message && 
+                                                                  notification.message.includes("yêu cầu xóa") && (
+                                                                      <Button
+                                                                           variant="outline"
+                                                                           size="sm"
+                                                                           onClick={() => handleDeleteReportedContent(notification)}
+                                                                           className="text-xs border-red-500 text-red-600 hover:bg-red-50 font-medium rounded-2xl"
+                                                                      >
+                                                                           <Trash2 className="w-3 h-3 mr-1" />
+                                                                           Xóa
+                                                                      </Button>
+                                                                 )}
+                                                                 {/* Button xóa thông báo */}
                                                                  <Button
                                                                       variant="ghost"
                                                                       size="sm"
@@ -722,7 +893,7 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                                                                       disabled={isDeleting}
                                                                  >
                                                                       <Trash2 className="w-3 h-3 mr-1" />
-                                                                      Xóa
+                                                                      Xóa TB
                                                                  </Button>
                                                             </div>
                                                        </div>

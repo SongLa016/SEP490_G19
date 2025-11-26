@@ -84,7 +84,6 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
           { id: "field-types", label: "Loại sân", icon: Tag, path: "/owner/field-types" },
           { id: "schedule", label: "Lịch trình & Slots", icon: CalendarCog, path: "/owner/schedule" },
           { id: "bookings", label: "Quản lý booking", icon: ClipboardList, path: "/owner/bookings" },
-          { id: "reports", label: "Báo cáo doanh thu", icon: FileText, path: "/owner/reports" },
           { id: "policies", label: "Chính sách hủy", icon: Shield, path: "/owner/policies" },
           { id: "deposit-policies", label: "Chính sách đặt cọc", icon: Wallet, path: "/owner/deposit-policies" },
           { id: "promotions", label: "Khuyến mãi", icon: CalendarCog, path: "/owner/promotions" },

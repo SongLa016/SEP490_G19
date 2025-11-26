@@ -1,6 +1,10 @@
 // Service layer for Post APIs
 import axios from "axios";
-import { decodeTokenPayload, getStoredToken, isTokenExpired } from "../utils/tokenManager";
+import {
+  decodeTokenPayload,
+  getStoredToken,
+  isTokenExpired,
+} from "../utils/tokenManager";
 
 const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
@@ -89,32 +93,34 @@ export function getCurrentUserFromToken() {
 export function isPostOwner(post) {
   const currentUser = getCurrentUserFromToken();
   if (!currentUser || !post) {
-    console.log("[isPostOwner] Missing user or post:", { 
-      hasUser: !!currentUser, 
+    console.log("[isPostOwner] Missing user or post:", {
+      hasUser: !!currentUser,
       hasPost: !!post,
-      currentUserId: currentUser?.userId 
+      currentUserId: currentUser?.userId,
     });
     return false;
   }
 
   // Get post user ID from multiple possible formats
-  const postUserId = post.userId || 
-                     post.userID || 
-                     post.UserID ||
-                     post.author?.id ||
-                     post.author?.userId ||
-                     post.author?.userID ||
-                     post.author?.UserID ||
-                     null;
+  const postUserId =
+    post.userId ||
+    post.userID ||
+    post.UserID ||
+    post.author?.id ||
+    post.author?.userId ||
+    post.author?.userID ||
+    post.author?.UserID ||
+    null;
 
   // Get current user ID
   const currentUserId = currentUser.userId;
 
   // Compare as both string and number to handle type mismatches
-  const isMatch = postUserId && currentUserId && (
-    String(postUserId) === String(currentUserId) || 
-    Number(postUserId) === Number(currentUserId)
-  );
+  const isMatch =
+    postUserId &&
+    currentUserId &&
+    (String(postUserId) === String(currentUserId) ||
+      Number(postUserId) === Number(currentUserId));
 
   console.log("[isPostOwner] Ownership check:", {
     currentUserId,
@@ -125,9 +131,9 @@ export function isPostOwner(post) {
       userId: post.userId,
       userID: post.userID,
       UserID: post.UserID,
-      author: post.author
+      author: post.author,
     },
-    isMatch
+    isMatch,
   });
 
   return isMatch;
@@ -161,7 +167,7 @@ const handleApiError = (error) => {
       data,
       headers: error.response.headers,
     });
-    
+
     if (status === 400) {
       // Bad request - show validation errors
       if (data && data.errors) {
@@ -169,10 +175,12 @@ const handleApiError = (error) => {
         errorMessage = `Dữ liệu không hợp lệ: ${errorMessages}`;
       } else if (data && data.message) {
         errorMessage = data.message;
-      } else if (data && typeof data === 'string') {
+      } else if (data && typeof data === "string") {
         errorMessage = data;
       } else {
-        errorMessage = `Lỗi ${status}: ${statusText || 'Bad Request'}. Vui lòng kiểm tra lại dữ liệu.`;
+        errorMessage = `Lỗi ${status}: ${
+          statusText || "Bad Request"
+        }. Vui lòng kiểm tra lại dữ liệu.`;
       }
     } else if (status === 401) {
       errorMessage = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
@@ -271,7 +279,9 @@ export async function createPost(postData) {
   try {
     const token = getStoredToken();
     if (!token || isTokenExpired(token)) {
-      throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+      throw new Error(
+        "Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại."
+      );
     }
 
     const currentUser = getCurrentUserFromToken();
@@ -281,22 +291,24 @@ export async function createPost(postData) {
 
     // Always use FormData for consistency and to ensure backend [FromForm] binding works
     const formData = new FormData();
-    formData.append('Title', postData.title || "");
-    formData.append('Content', postData.content || "");
-    
+    formData.append("Title", postData.title || "");
+    formData.append("Content", postData.content || "");
+
     // FieldId should be a number
     const fieldId = Number(postData.fieldId) || 0;
-    formData.append('FieldId', fieldId.toString());
+    formData.append("FieldId", fieldId.toString());
 
     // Handle ImageFiles (New Files)
     if (postData.imageFiles) {
-      const files = Array.isArray(postData.imageFiles) ? postData.imageFiles : [postData.imageFiles];
+      const files = Array.isArray(postData.imageFiles)
+        ? postData.imageFiles
+        : [postData.imageFiles];
       files.forEach((file) => {
         if (file instanceof File) {
-          formData.append('ImageFiles', file);
+          formData.append("ImageFiles", file);
         }
       });
-      
+
       console.log("[createPost] Added ImageFiles:", files.length);
     }
 
@@ -304,15 +316,15 @@ export async function createPost(postData) {
     // Some backends might use this to keep existing images
     const imageUrls = postData.imageUrls || [];
     if (imageUrls.length > 0) {
-       formData.append('MediaUrl', imageUrls[0]);
+      formData.append("MediaUrl", imageUrls[0]);
     } else if (postData.mediaUrl) {
-       formData.append('MediaUrl', postData.mediaUrl);
+      formData.append("MediaUrl", postData.mediaUrl);
     }
 
     console.log("[createPost] Sending FormData:", {
       Title: postData.title,
       Content: postData.content,
-      FieldId: fieldId
+      FieldId: fieldId,
     });
 
     const response = await apiClient.post("/api/Post", formData);
@@ -353,7 +365,9 @@ export async function updatePost(id, postData) {
   try {
     const token = getStoredToken();
     if (!token || isTokenExpired(token)) {
-      throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+      throw new Error(
+        "Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại."
+      );
     }
 
     // Fetch post first to check ownership
@@ -364,19 +378,21 @@ export async function updatePost(id, postData) {
 
     // Always use FormData for consistency and to ensure backend [FromForm] binding works
     const formData = new FormData();
-    formData.append('Title', postData.title || "");
-    formData.append('Content', postData.content || "");
-    
+    formData.append("Title", postData.title || "");
+    formData.append("Content", postData.content || "");
+
     // FieldId should be a number
     const fieldId = Number(postData.fieldId) || 0;
-    formData.append('FieldId', fieldId.toString());
+    formData.append("FieldId", fieldId.toString());
 
     // Handle ImageFiles (New Files)
     if (postData.imageFiles) {
-      const files = Array.isArray(postData.imageFiles) ? postData.imageFiles : [postData.imageFiles];
+      const files = Array.isArray(postData.imageFiles)
+        ? postData.imageFiles
+        : [postData.imageFiles];
       files.forEach((file) => {
         if (file instanceof File) {
-          formData.append('ImageFiles', file);
+          formData.append("ImageFiles", file);
         }
       });
       console.log("[updatePost] Added ImageFiles:", files.length);
@@ -386,15 +402,15 @@ export async function updatePost(id, postData) {
     // This allows the backend to know we want to keep/set this URL if it supports it
     const imageUrls = postData.imageUrls || [];
     if (imageUrls.length > 0) {
-       formData.append('MediaUrl', imageUrls[0]);
+      formData.append("MediaUrl", imageUrls[0]);
     } else if (postData.mediaUrl) {
-       formData.append('MediaUrl', postData.mediaUrl);
+      formData.append("MediaUrl", postData.mediaUrl);
     }
 
     console.log("[updatePost] Sending FormData:", {
       Title: postData.title,
       Content: postData.content,
-      FieldId: fieldId
+      FieldId: fieldId,
     });
 
     const response = await apiClient.put(`/api/Post/${id}`, formData);
@@ -407,8 +423,6 @@ export async function updatePost(id, postData) {
   }
 }
 
-
-
 /**
  * DELETE /api/Post/{id}/mine - User delete their own post
  * @param {number|string} id - Post ID
@@ -418,7 +432,9 @@ export async function deletePost(id) {
   try {
     const token = getStoredToken();
     if (!token || isTokenExpired(token)) {
-      throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+      throw new Error(
+        "Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại."
+      );
     }
 
     // User deletes their own post
@@ -437,13 +453,17 @@ export async function deletePostAsAdmin(id) {
   try {
     const token = getStoredToken();
     if (!token || isTokenExpired(token)) {
-      throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+      throw new Error(
+        "Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại."
+      );
     }
 
     // Check if user is admin
     const currentUser = getCurrentUserFromToken();
     if (!hasUserRole("Admin")) {
-      throw new Error("Bạn không có quyền xóa bài viết này. Chỉ Admin mới có quyền xóa bài viết bất kỳ.");
+      throw new Error(
+        "Bạn không có quyền xóa bài viết này. Chỉ Admin mới có quyền xóa bài viết bất kỳ."
+      );
     }
 
     // Admin deletes any post
@@ -498,7 +518,9 @@ export async function fetchNewsfeedPosts(params = {}) {
   try {
     const token = getStoredToken();
     if (!token || isTokenExpired(token)) {
-      throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+      throw new Error(
+        "Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại."
+      );
     }
 
     const response = await apiClient.get("/api/Post/newsfeed", { params });
@@ -577,7 +599,9 @@ export async function searchPosts(params = {}) {
  */
 export async function fetchPostsByUser(userId, params = {}) {
   try {
-    const response = await apiClient.get(`/api/Post/user/${userId}`, { params });
+    const response = await apiClient.get(`/api/Post/user/${userId}`, {
+      params,
+    });
     let data = response.data;
 
     if (!data) {
@@ -614,7 +638,9 @@ export async function fetchPostsByUser(userId, params = {}) {
  */
 export async function fetchPostsByField(fieldId, params = {}) {
   try {
-    const response = await apiClient.get(`/api/Post/field/${fieldId}`, { params });
+    const response = await apiClient.get(`/api/Post/field/${fieldId}`, {
+      params,
+    });
     let data = response.data;
 
     if (!data) {
@@ -652,7 +678,9 @@ export async function likePost(id) {
   try {
     const token = getStoredToken();
     if (!token || isTokenExpired(token)) {
-      throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+      throw new Error(
+        "Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại."
+      );
     }
 
     const response = await apiClient.post(`/api/Post/${id}/like`);
@@ -671,7 +699,9 @@ export async function unlikePost(id) {
   try {
     const token = getStoredToken();
     if (!token || isTokenExpired(token)) {
-      throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+      throw new Error(
+        "Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại."
+      );
     }
 
     const response = await apiClient.delete(`/api/Post/${id}/like`);
@@ -681,29 +711,87 @@ export async function unlikePost(id) {
   }
 }
 
-/**
- * PUT /api/Post/{id}/review - Admin review/approve a post
- * @param {number|string} id - Post ID
- * @returns {Promise<Object>} Updated post
- */
-export async function reviewPost(id) {
+export async function reviewPost(id, payload = {}) {
   try {
     const token = getStoredToken();
     if (!token || isTokenExpired(token)) {
-      throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+      throw new Error(
+        "Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại."
+      );
     }
 
     // Check if user is admin
     if (!hasUserRole("Admin")) {
-      throw new Error("Bạn không có quyền duyệt bài viết. Chỉ Admin mới có quyền này.");
+      throw new Error(
+        "Bạn không có quyền duyệt bài viết. Chỉ Admin mới có quyền này."
+      );
     }
 
-    const response = await apiClient.put(`/api/Post/${id}/review`);
-    // Handle response with data wrapper
-    const responsePostData = response.data?.data || response.data;
-    return normalizePost(responsePostData);
+    // Ensure id is a number
+    const postId = typeof id === "string" ? parseInt(id, 10) : id;
+    if (isNaN(postId)) {
+      throw new Error("ID bài viết không hợp lệ.");
+    }
+
+    // Default status is "Active" (approve), can be "Rejected" to reject
+    // If payload already has status, use it; otherwise default to "Active"
+    const reviewPayload = {
+      status: payload.status || "Active",
+    };
+
+    // Validate status
+    if (
+      reviewPayload.status !== "Active" &&
+      reviewPayload.status !== "Rejected"
+    ) {
+      throw new Error(
+        `Status không hợp lệ. Chỉ chấp nhận "Active" hoặc "Rejected", nhận được: "${reviewPayload.status}"`
+      );
+    }
+
+    // Add other payload fields if provided (e.g., note)
+    if (payload.note) {
+      reviewPayload.note = payload.note;
+    }
+
+    console.log(
+      `[reviewPost] Reviewing post ${postId} with payload:`,
+      reviewPayload
+    );
+
+    // Call API with status payload
+    const response = await apiClient.put(
+      `/api/Post/${postId}/review`,
+      reviewPayload
+    );
+
+    console.log(`[reviewPost] Response:`, response.data);
+
+    // Handle different response formats
+    let responsePostData = null;
+    if (response.data) {
+      // Try different possible response structures
+      responsePostData =
+        response.data?.data ||
+        response.data?.value ||
+        response.data?.result ||
+        response.data;
+    }
+
+    // If response contains post data, normalize it
+    if (responsePostData) {
+      return normalizePost(responsePostData);
+    }
+
+    // If no post data in response, return success message
+    return {
+      success: true,
+      message: response.data?.message || "Đã duyệt bài viết thành công.",
+    };
   } catch (error) {
+    console.error("[reviewPost] Error:", error);
     handleApiError(error);
+    throw error; // Re-throw to let caller handle it
   }
 }
 
@@ -716,12 +804,16 @@ export async function fetchPendingPosts(params = {}) {
   try {
     const token = getStoredToken();
     if (!token || isTokenExpired(token)) {
-      throw new Error("Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại.");
+      throw new Error(
+        "Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại."
+      );
     }
 
     // Check if user is admin
     if (!hasUserRole("Admin")) {
-      throw new Error("Bạn không có quyền xem danh sách bài viết chờ duyệt. Chỉ Admin mới có quyền này.");
+      throw new Error(
+        "Bạn không có quyền xem danh sách bài viết chờ duyệt. Chỉ Admin mới có quyền này."
+      );
     }
 
     const response = await apiClient.get("/api/Post/pending", { params });
@@ -769,12 +861,45 @@ function normalizePost(post) {
   if (post.author) {
     // If author is an object
     author = {
-      id: post.author.id || post.author.userId || post.author.userID || post.author.UserID || post.userId || post.userID || post.UserID,
-      userId: post.author.id || post.author.userId || post.author.userID || post.author.UserID || post.userId || post.userID || post.UserID,
-      username: post.author.username || post.author.Username || post.author.userName || "",
-      name: post.author.name || post.author.Name || post.author.fullName || post.author.FullName || post.author.full_name || "",
-      avatar: post.author.avatar || post.author.Avatar || post.author.avatarUrl || post.author.avatar_url || null,
-      verified: post.author.verified || post.author.Verified || post.author.isVerified || false,
+      id:
+        post.author.id ||
+        post.author.userId ||
+        post.author.userID ||
+        post.author.UserID ||
+        post.userId ||
+        post.userID ||
+        post.UserID,
+      userId:
+        post.author.id ||
+        post.author.userId ||
+        post.author.userID ||
+        post.author.UserID ||
+        post.userId ||
+        post.userID ||
+        post.UserID,
+      username:
+        post.author.username ||
+        post.author.Username ||
+        post.author.userName ||
+        "",
+      name:
+        post.author.name ||
+        post.author.Name ||
+        post.author.fullName ||
+        post.author.FullName ||
+        post.author.full_name ||
+        "",
+      avatar:
+        post.author.avatar ||
+        post.author.Avatar ||
+        post.author.avatarUrl ||
+        post.author.avatar_url ||
+        null,
+      verified:
+        post.author.verified ||
+        post.author.Verified ||
+        post.author.isVerified ||
+        false,
     };
   } else {
     // Try to extract from post properties (including userName from API response)
@@ -782,7 +907,14 @@ function normalizePost(post) {
       id: post.userId || post.userID || post.UserID,
       userId: post.userId || post.userID || post.UserID,
       username: post.authorUsername || post.username || post.userName || "",
-      name: post.authorName || post.authorFullName || post.fullName || post.FullName || post.userFullName || post.userName || "",
+      name:
+        post.authorName ||
+        post.authorFullName ||
+        post.fullName ||
+        post.FullName ||
+        post.userFullName ||
+        post.userName ||
+        "",
       avatar: post.authorAvatar || post.avatar || post.userAvatar || null,
       verified: post.authorVerified || post.isVerified || false,
     };
@@ -793,13 +925,53 @@ function normalizePost(post) {
   if (post.field) {
     // If field is an object
     field = {
-      id: post.field.id || post.field.fieldId || post.field.fieldID || post.field.FieldID || post.fieldId || post.fieldID || post.FieldID,
-      fieldId: post.field.id || post.field.fieldId || post.field.fieldID || post.field.FieldID || post.fieldId || post.fieldID || post.FieldID,
-      name: post.field.name || post.field.Name || post.field.fieldName || post.field.FieldName || "",
-      fieldName: post.field.name || post.field.Name || post.field.fieldName || post.field.FieldName || "",
-      location: post.field.location || post.field.Location || post.field.address || post.field.Address || post.field.fieldAddress || "",
-      address: post.field.location || post.field.Location || post.field.address || post.field.Address || post.field.fieldAddress || "",
-      complexName: post.field.complexName || post.field.ComplexName || post.field.complex_name || "",
+      id:
+        post.field.id ||
+        post.field.fieldId ||
+        post.field.fieldID ||
+        post.field.FieldID ||
+        post.fieldId ||
+        post.fieldID ||
+        post.FieldID,
+      fieldId:
+        post.field.id ||
+        post.field.fieldId ||
+        post.field.fieldID ||
+        post.field.FieldID ||
+        post.fieldId ||
+        post.fieldID ||
+        post.FieldID,
+      name:
+        post.field.name ||
+        post.field.Name ||
+        post.field.fieldName ||
+        post.field.FieldName ||
+        "",
+      fieldName:
+        post.field.name ||
+        post.field.Name ||
+        post.field.fieldName ||
+        post.field.FieldName ||
+        "",
+      location:
+        post.field.location ||
+        post.field.Location ||
+        post.field.address ||
+        post.field.Address ||
+        post.field.fieldAddress ||
+        "",
+      address:
+        post.field.location ||
+        post.field.Location ||
+        post.field.address ||
+        post.field.Address ||
+        post.field.fieldAddress ||
+        "",
+      complexName:
+        post.field.complexName ||
+        post.field.ComplexName ||
+        post.field.complex_name ||
+        "",
     };
   } else if (post.fieldId || post.fieldID || post.FieldID) {
     // If only fieldId is provided, create minimal field object
@@ -808,43 +980,67 @@ function normalizePost(post) {
       fieldId: post.fieldId || post.fieldID || post.FieldID,
       name: post.fieldName || post.FieldName || "",
       fieldName: post.fieldName || post.FieldName || "",
-      location: post.fieldLocation || post.FieldLocation || post.fieldAddress || post.FieldAddress || "",
-      address: post.fieldLocation || post.FieldLocation || post.fieldAddress || post.FieldAddress || "",
+      location:
+        post.fieldLocation ||
+        post.FieldLocation ||
+        post.fieldAddress ||
+        post.FieldAddress ||
+        "",
+      address:
+        post.fieldLocation ||
+        post.FieldLocation ||
+        post.fieldAddress ||
+        post.FieldAddress ||
+        "",
       complexName: post.complexName || post.ComplexName || "",
     };
   }
 
   // Get userId from multiple sources - prioritize direct post properties, then author
-  const userId = post.userId || 
-                 post.userID || 
-                 post.UserID ||
-                 author?.id ||
-                 author?.userId ||
-                 author?.userID ||
-                 author?.UserID ||
-                 null;
+  const userId =
+    post.userId ||
+    post.userID ||
+    post.UserID ||
+    author?.id ||
+    author?.userId ||
+    author?.userID ||
+    author?.UserID ||
+    null;
 
   console.log("[normalizePost] Normalized userId:", {
     userId,
     fromPost: post.userId || post.userID || post.UserID,
-    fromAuthor: author?.id || author?.userId || author?.userID || author?.UserID,
-    author: author
+    fromAuthor:
+      author?.id || author?.userId || author?.userID || author?.UserID,
+    author: author,
   });
 
   // Normalize image files - handle imageUrls (from API response), imageFiles, and mediaUrl
   let imageFiles = [];
   let mediaUrl = null;
-  
+
   // Priority: imageUrls (from API) > imageFiles > ImageFiles > mediaUrl/MediaURL
-  if (post.imageUrls && Array.isArray(post.imageUrls) && post.imageUrls.length > 0) {
+  if (
+    post.imageUrls &&
+    Array.isArray(post.imageUrls) &&
+    post.imageUrls.length > 0
+  ) {
     // API returns imageUrls array (from response)
     imageFiles = post.imageUrls;
     mediaUrl = imageFiles[0];
-  } else if (post.imageFiles && Array.isArray(post.imageFiles) && post.imageFiles.length > 0) {
+  } else if (
+    post.imageFiles &&
+    Array.isArray(post.imageFiles) &&
+    post.imageFiles.length > 0
+  ) {
     // If imageFiles array is provided, use it
     imageFiles = post.imageFiles;
     mediaUrl = imageFiles[0];
-  } else if (post.ImageFiles && Array.isArray(post.ImageFiles) && post.ImageFiles.length > 0) {
+  } else if (
+    post.ImageFiles &&
+    Array.isArray(post.ImageFiles) &&
+    post.ImageFiles.length > 0
+  ) {
     // Handle capitalized ImageFiles
     imageFiles = post.ImageFiles;
     mediaUrl = imageFiles[0];
@@ -873,7 +1069,10 @@ function normalizePost(post) {
     visibility: post.visibility || post.Visibility || "Public",
     // Additional fields that might be returned
     likes: post.likes || post.likeCount || post.like_count || 0,
-    comments: typeof post.comments === 'number' ? post.comments : (post.commentCount || post.comment_count || 0),
+    comments:
+      typeof post.comments === "number"
+        ? post.comments
+        : post.commentCount || post.comment_count || 0,
     isLiked: post.isLiked || post.is_liked || false,
     // Post status fields
     isPending: post.isPending || post.is_pending || false,
@@ -882,7 +1081,8 @@ function normalizePost(post) {
     isOwner: post.isOwner || post.is_owner || false,
     canEdit: post.canEdit || post.can_edit || false,
     canDelete: post.canDelete || post.can_delete || false,
-    showReviewButtons: post.showReviewButtons || post.show_review_buttons || false,
+    showReviewButtons:
+      post.showReviewButtons || post.show_review_buttons || false,
     // Author information (normalized)
     author: author,
     // Field information (normalized)
@@ -892,4 +1092,3 @@ function normalizePost(post) {
   console.log("[normalizePost] Final normalized post:", normalizedPost);
   return normalizedPost;
 }
-

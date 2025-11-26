@@ -264,24 +264,66 @@ export default function BankAccountManagement({ isDemo = false }) {
           });
 
           if (result.isConfirmed) {
+               // Show loading
+               Swal.fire({
+                    title: 'Đang xóa...',
+                    text: 'Vui lòng đợi trong giây lát',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                         Swal.showLoading();
+                    }
+               });
+
                try {
                     await deleteOwnerBankAccount(account.bankAccountId);
                     await Swal.fire({
                          icon: 'success',
                          title: 'Đã xóa!',
-                         text: 'Tài khoản ngân hàng đã được xóa.',
+                         text: 'Tài khoản ngân hàng đã được xóa thành công.',
                          confirmButtonColor: '#10b981',
                          timer: 2000
                     });
                     loadData();
                } catch (error) {
                     console.error('Error deleting bank account:', error);
-                    Swal.fire({
+                    
+                    // Determine error type for better user message
+                    let errorTitle = 'Không thể xóa tài khoản';
+                    let errorText = error.message || 'Không thể xóa tài khoản ngân hàng. Vui lòng thử lại sau.';
+                    let footer = '<small>Nếu vấn đề vẫn tiếp tục, vui lòng liên hệ hỗ trợ</small>';
+                    
+                    // Check if error is about account being used by fields
+                    if (error.message && (
+                         error.message.includes('đang được sử dụng') ||
+                         error.message.includes('sân') ||
+                         error.message.includes('gỡ liên kết')
+                    )) {
+                         errorTitle = 'Tài khoản đang được sử dụng';
+                         errorText = error.message;
+                         footer = '<small>Vui lòng vào Quản lý sân để gỡ liên kết tài khoản khỏi các sân trước khi xóa</small>';
+                    } else if (error.message && error.message.includes('401')) {
+                         errorTitle = 'Phiên đăng nhập hết hạn';
+                         errorText = 'Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.';
+                    } else if (error.message && error.message.includes('403')) {
+                         errorTitle = 'Không có quyền';
+                         errorText = 'Bạn không có quyền thực hiện thao tác này.';
+                    } else if (error.message && error.message.includes('404')) {
+                         errorTitle = 'Không tìm thấy';
+                         errorText = 'Tài khoản ngân hàng không tồn tại hoặc đã bị xóa.';
+                    } else {
+                         // For other errors (including 500), show the message from service
+                         errorTitle = 'Không thể xóa tài khoản';
+                         // errorText already contains the appropriate message from handleApiError
+                    }
+                    
+                    await Swal.fire({
                          icon: 'error',
-                         title: 'Lỗi',
-                         text: error.message || 'Không thể xóa tài khoản ngân hàng',
+                         title: errorTitle,
+                         text: errorText,
                          confirmButtonText: 'Đóng',
-                         confirmButtonColor: '#ef4444'
+                         confirmButtonColor: '#ef4444',
+                         footer: footer
                     });
                }
           }

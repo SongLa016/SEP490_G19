@@ -332,7 +332,27 @@ export async function fetchCommentsByPost(postId) {
 export async function fetchCommentById(id) {
   try {
     const response = await apiClient.get(`/api/Comment/${id}`);
-    return normalizeComment(response.data);
+    let rawData = response.data;
+    console.log("[fetchCommentById] Raw response data:", rawData);
+    
+    // Xử lý response có thể có cấu trúc {success: true, data: {...}} hoặc trực tiếp là comment object
+    let commentData = rawData;
+    if (rawData && rawData.data) {
+      commentData = rawData.data;
+    } else if (rawData && rawData.success && rawData.data) {
+      commentData = rawData.data;
+    }
+    
+    console.log("[fetchCommentById] Comment data to normalize:", commentData);
+    const normalized = normalizeComment(commentData);
+    console.log("[fetchCommentById] Normalized comment:", normalized);
+    
+    // Lưu raw data vào normalized để có thể truy cập sau
+    if (normalized) {
+      normalized.rawData = rawData;
+      normalized.rawCommentData = commentData; // Lưu cả comment data gốc
+    }
+    return normalized;
   } catch (error) {
     handleApiError(error);
   }

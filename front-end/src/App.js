@@ -92,8 +92,8 @@ const SystemNotificationsManagement = lazy(() =>
 const ViolationReportsManagement = lazy(() =>
   import("./roles/admin/pages/ViolationReportsManagement")
 );
-const BlogManagement = lazy(() =>
-  import("./roles/admin/pages/BlogManagement")
+const PostManagement = lazy(() =>
+  import("./roles/admin/pages/PostManagement")
 );
 const SystemSettings = lazy(() =>
   import("./roles/admin/pages/SystemSettings")
@@ -598,12 +598,12 @@ function AppContent() {
           }
         />
         <Route
-          path="/admin/blog"
+          path="/admin/posts"
           element={
             user ? (
               user.roleName === "Admin" ? (
                 <AdminLayout user={user} onLoggedOut={logout}>
-                  <BlogManagement />
+                  <PostManagement />
                 </AdminLayout>
               ) : (
                 <Navigate to="/dashboard" replace />

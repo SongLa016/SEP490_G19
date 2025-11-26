@@ -35,6 +35,9 @@ import {
      handleReport as handleReportApi,
      deleteReport as deleteReportApi
 } from "../../../shared/services/reports";
+import { createNotification } from "../../../shared/services/notifications";
+import { fetchPostById } from "../../../shared/services/posts";
+import { fetchCommentById } from "../../../shared/services/comments";
 import Swal from "sweetalert2";
 
 const STATUS_OPTIONS = [
@@ -174,6 +177,194 @@ export default function ViolationReportsManagement() {
           setShowActionModal(true);
      };
 
+     // Hàm gửi thông báo cho người báo cáo
+     const sendNotificationToReporter = async (report, status, action, adminNote) => {
+          const reporterId = getReporterId(report);
+          if (!reporterId) {
+               console.warn("[ViolationReportsManagement] Cannot send notification: Reporter ID not found");
+               return;
+          }
+
+          try {
+               const targetType = getTargetType(report);
+               const targetId = report?.targetId ?? report?.TargetId ?? 0;
+               const targetTypeLabel = targetType === "Post" ? "bài viết" : "bình luận";
+
+               let message = "";
+               switch (status) {
+                    case "Reviewed":
+                         message = `Báo cáo của bạn về ${targetTypeLabel} đã được xem xét. Ghi chú từ Admin: ${adminNote}`;
+                         break;
+                    case "Resolved":
+                         const actionLabel = action === "Hide" ? "đã bị ẩn" : action === "Delete" ? "đã bị xóa" : "đã được xử lý";
+                         message = `Báo cáo của bạn về ${targetTypeLabel} đã được giải quyết. Nội dung ${actionLabel}. Ghi chú từ Admin: ${adminNote}`;
+                         break;
+                    case "Rejected":
+                         message = `Báo cáo của bạn về ${targetTypeLabel} đã bị từ chối. Ghi chú từ Admin: ${adminNote}`;
+                         break;
+                    default:
+                         message = `Báo cáo của bạn về ${targetTypeLabel} đã được cập nhật. Ghi chú từ Admin: ${adminNote}`;
+               }
+
+               const notificationPayload = {
+                    userId: Number(reporterId),
+                    type: "ReportResult",
+                    targetId: Number(targetId),
+                    message: message
+               };
+
+               console.log("[ViolationReportsManagement] Sending notification to reporter:", notificationPayload);
+               const notifResult = await createNotification(notificationPayload);
+               if (!notifResult?.ok) {
+                    console.error("[ViolationReportsManagement] Failed to send notification to reporter:", notifResult?.reason);
+               }
+          } catch (error) {
+               console.error("[ViolationReportsManagement] Error sending notification to reporter:", error);
+          }
+     };
+
+     // Hàm gửi thông báo cho người bị báo cáo
+     const sendNotificationToReportedUser = async (report, action, adminNote, reportedUserId = null) => {
+          try {
+               const targetType = getTargetType(report);
+               const targetId = report?.targetId ?? report?.TargetId ?? 0;
+
+               console.log("[ViolationReportsManagement] sendNotificationToReportedUser - targetType:", targetType, "targetId:", targetId, "action:", action, "reportedUserId:", reportedUserId);
+
+               if (!targetId) {
+                    console.warn("[ViolationReportsManagement] Cannot send notification: Target ID not found");
+                    return;
+               }
+
+               // Nếu không có reportedUserId được truyền vào, thử fetch lại
+               if (!reportedUserId) {
+                    console.log("[ViolationReportsManagement] reportedUserId is null, fetching target to get userId...");
+                    if (targetType === "Post") {
+                         try {
+                              console.log("[ViolationReportsManagement] Fetching post with ID:", targetId);
+                              const post = await fetchPostById(targetId);
+                              console.log("[ViolationReportsManagement] Fetched post:", post);
+                              
+                              // Thử nhiều cách lấy userId
+                              reportedUserId = post?.userId ?? 
+                                             post?.userID ?? 
+                                             post?.UserID ??
+                                             post?.PostID ??
+                                             post?.postId ??
+                                             post?.author?.id ?? 
+                                             post?.author?.userId ?? 
+                                             post?.author?.userID ??
+                                             post?.author?.UserID ??
+                                             post?.author?.ID ??
+                                             null;
+                              
+                              console.log("[ViolationReportsManagement] Extracted userId from post:", reportedUserId, "Post keys:", Object.keys(post || {}));
+                         } catch (error) {
+                              console.error("[ViolationReportsManagement] Error fetching post:", error);
+                              // Nếu fetch thất bại, có thể post đã bị xóa, nhưng vẫn cần gửi thông báo
+                              // Nên không return ở đây
+                         }
+                    } else if (targetType === "Comment") {
+                         try {
+                              console.log("[ViolationReportsManagement] Fetching comment with ID:", targetId);
+                              const comment = await fetchCommentById(targetId);
+                              console.log("[ViolationReportsManagement] Fetched comment:", comment);
+                              console.log("[ViolationReportsManagement] Comment author:", comment?.author);
+                              
+                              // Thử nhiều cách lấy userId từ comment
+                              // Ưu tiên lấy từ rawCommentData (data gốc từ API)
+                              reportedUserId = comment?.rawCommentData?.userId ??
+                                             comment?.rawCommentData?.userID ??
+                                             comment?.rawCommentData?.UserID ??
+                                             comment?.rawCommentData?.UserId ??
+                                             // Sau đó từ rawData.data
+                                             comment?.rawData?.data?.userId ??
+                                             comment?.rawData?.data?.userID ??
+                                             comment?.rawData?.data?.UserID ??
+                                             comment?.rawData?.data?.UserId ??
+                                             // Từ author object
+                                             comment?.author?.id ?? 
+                                             comment?.author?.userId ?? 
+                                             comment?.author?.userID ??
+                                             comment?.author?.UserID ??
+                                             comment?.author?.Id ??
+                                             comment?.author?.ID ??
+                                             // Từ comment normalized
+                                             comment?.userId ?? 
+                                             comment?.userID ?? 
+                                             comment?.UserID ??
+                                             comment?.UserId ??
+                                             // Từ rawData trực tiếp
+                                             comment?.rawData?.userId ??
+                                             comment?.rawData?.userID ??
+                                             comment?.rawData?.UserID ??
+                                             comment?.rawData?.UserId ??
+                                             comment?.rawData?.author?.id ??
+                                             comment?.rawData?.author?.userId ??
+                                             comment?.rawData?.author?.userID ??
+                                             comment?.rawData?.author?.UserID ??
+                                             null;
+                              
+                              console.log("[ViolationReportsManagement] Extracted userId from comment:", reportedUserId);
+                              console.log("[ViolationReportsManagement] Comment keys:", Object.keys(comment || {}));
+                              if (comment?.author) {
+                                   console.log("[ViolationReportsManagement] Author object:", comment.author);
+                                   console.log("[ViolationReportsManagement] Author keys:", Object.keys(comment.author));
+                                   console.log("[ViolationReportsManagement] Author.id:", comment.author.id);
+                                   console.log("[ViolationReportsManagement] Author.userId:", comment.author.userId);
+                              }
+                              if (comment?.rawData) {
+                                   console.log("[ViolationReportsManagement] Raw data:", comment.rawData);
+                                   console.log("[ViolationReportsManagement] Raw data keys:", Object.keys(comment.rawData));
+                                   if (comment.rawData.author) {
+                                        console.log("[ViolationReportsManagement] Raw author:", comment.rawData.author);
+                                        console.log("[ViolationReportsManagement] Raw author keys:", Object.keys(comment.rawData.author));
+                                   }
+                              }
+                         } catch (error) {
+                              console.error("[ViolationReportsManagement] Error fetching comment:", error);
+                         }
+                    }
+               } else {
+                    console.log("[ViolationReportsManagement] Using pre-fetched reportedUserId:", reportedUserId);
+               }
+
+               if (!reportedUserId) {
+                    console.warn("[ViolationReportsManagement] Cannot send notification: Reported user ID not found. Report:", report);
+                    return;
+               }
+
+               const targetTypeLabel = targetType === "Post" ? "bài viết" : "bình luận";
+               let message = "";
+               if (action === "Hide") {
+                    message = `${targetTypeLabel.charAt(0).toUpperCase() + targetTypeLabel.slice(1)} của bạn đã bị ẩn do vi phạm quy định. Ghi chú từ Admin: ${adminNote}`;
+               } else if (action === "Delete") {
+                    // Yêu cầu người dùng tự xóa thay vì xóa ngay
+                    message = `${targetTypeLabel.charAt(0).toUpperCase() + targetTypeLabel.slice(1)} của bạn vi phạm quy định và yêu cầu xóa. Ghi chú từ Admin: ${adminNote}`;
+               } else {
+                    message = `${targetTypeLabel.charAt(0).toUpperCase() + targetTypeLabel.slice(1)} của bạn đã được xử lý. Ghi chú từ Admin: ${adminNote}`;
+               }
+
+               const notificationPayload = {
+                    userId: Number(reportedUserId),
+                    type: "ReportResult",
+                    targetId: Number(targetId),
+                    message: message
+               };
+
+               console.log("[ViolationReportsManagement] Sending notification to reported user:", notificationPayload);
+               const notifResult = await createNotification(notificationPayload);
+               console.log("[ViolationReportsManagement] Notification result:", notifResult);
+               if (!notifResult?.ok) {
+                    console.error("[ViolationReportsManagement] Failed to send notification to reported user:", notifResult?.reason);
+               } else {
+                    console.log("[ViolationReportsManagement] Successfully sent notification to reported user:", reportedUserId);
+               }
+          } catch (error) {
+               console.error("[ViolationReportsManagement] Error sending notification to reported user:", error);
+          }
+     };
+
      const handleSubmitAction = async () => {
           if (!selectedReport) {
                return;
@@ -188,9 +379,52 @@ export default function ViolationReportsManagement() {
                return;
           }
 
+          // Nếu trạng thái là "Resolved" và hành động là "Hide" hoặc "Delete", 
+          // cần lấy userId của người bị báo cáo TRƯỚC khi xử lý (vì sau khi xóa sẽ không fetch được)
+          let reportedUserId = null;
+          if (actionStatus === "Resolved" && (actionDecision === "Hide" || actionDecision === "Delete")) {
+               const targetType = getTargetType(selectedReport);
+               const targetId = selectedReport?.targetId ?? selectedReport?.TargetId ?? 0;
+               
+               if (targetId) {
+                    try {
+                         if (targetType === "Post") {
+                              console.log("[ViolationReportsManagement] Pre-fetching post before action:", targetId);
+                              const post = await fetchPostById(targetId);
+                              console.log("[ViolationReportsManagement] Pre-fetched post:", post);
+                              reportedUserId = post?.userId ?? 
+                                             post?.userID ?? 
+                                             post?.UserID ??
+                                             post?.author?.id ?? 
+                                             post?.author?.userId ?? 
+                                             post?.author?.userID ??
+                                             post?.author?.UserID ??
+                                             null;
+                         } else if (targetType === "Comment") {
+                              console.log("[ViolationReportsManagement] Pre-fetching comment before action:", targetId);
+                              const comment = await fetchCommentById(targetId);
+                              console.log("[ViolationReportsManagement] Pre-fetched comment:", comment);
+                              reportedUserId = comment?.userId ?? 
+                                             comment?.userID ?? 
+                                             comment?.UserID ??
+                                             comment?.author?.id ?? 
+                                             comment?.author?.userId ?? 
+                                             comment?.author?.userID ??
+                                             comment?.author?.UserID ??
+                                             null;
+                         }
+                         console.log("[ViolationReportsManagement] Pre-fetched reportedUserId:", reportedUserId);
+                    } catch (error) {
+                         console.error("[ViolationReportsManagement] Error pre-fetching target:", error);
+                    }
+               }
+          }
+
+          // Nếu action là "Delete", không xóa ngay mà chỉ gửi thông báo yêu cầu người dùng tự xóa
+          // Vì vậy action trong payload sẽ là "None" để không xóa ngay
           const payload = {
                status: actionStatus,
-               action: actionStatus === "Resolved" ? actionDecision : "None",
+               action: (actionStatus === "Resolved" && actionDecision === "Delete") ? "None" : (actionStatus === "Resolved" ? actionDecision : "None"),
                adminNote: actionNote.trim()
           };
 
@@ -207,6 +441,16 @@ export default function ViolationReportsManagement() {
           setIsSubmittingAction(false);
 
           if (result?.ok) {
+               // Gửi thông báo cho người báo cáo
+               await sendNotificationToReporter(selectedReport, actionStatus, actionDecision, actionNote.trim());
+
+               // Nếu trạng thái là "Resolved" và hành động là "Hide" hoặc "Delete", gửi thông báo cho người bị báo cáo
+               // Luôn gọi hàm này, để hàm tự xử lý việc fetch userId nếu cần
+               if (actionStatus === "Resolved" && (actionDecision === "Hide" || actionDecision === "Delete")) {
+                    console.log("[ViolationReportsManagement] Sending notification to reported user with reportedUserId:", reportedUserId);
+                    await sendNotificationToReportedUser(selectedReport, actionDecision, actionNote.trim(), reportedUserId);
+               }
+
                await loadReports(false);
                setShowActionModal(false);
                setShowDetailModal(false);

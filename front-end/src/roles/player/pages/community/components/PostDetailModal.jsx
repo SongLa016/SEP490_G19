@@ -527,13 +527,27 @@ const PostDetailModal = ({
                                                        <Avatar className="w-10 h-10">
                                                             <AvatarImage src={comment.author?.avatar} />
                                                             <AvatarFallback className="bg-gray-200 text-gray-700">
-                                                                 {(comment.userName || comment.fullName || comment.author?.name || "U").charAt(0).toUpperCase()}
+                                                                 {(comment.author?.name || 
+                                                                   comment.author?.fullName || 
+                                                                   comment.author?.FullName ||
+                                                                   comment.userName || 
+                                                                   comment.fullName || 
+                                                                   comment.FullName ||
+                                                                   "U").charAt(0).toUpperCase()}
                                                             </AvatarFallback>
                                                        </Avatar>
                                                        <div className="flex-1">
                                                             <div className="flex items-center gap-1 ">
                                                                  <span className="font-semibold text-sm">
-                                                                      {comment.userName || comment.fullName || comment.author?.username || comment.author?.name || "Người dùng"}
+                                                                      {comment.author?.name || 
+                                                                       comment.author?.fullName || 
+                                                                       comment.author?.FullName ||
+                                                                       comment.author?.username || 
+                                                                       comment.author?.Username ||
+                                                                       comment.userName || 
+                                                                       comment.fullName || 
+                                                                       comment.FullName ||
+                                                                       "Người dùng"}
                                                                  </span>
 
                                                                  {isOwn && (
@@ -718,13 +732,26 @@ const PostDetailModal = ({
                                                                            <Avatar className="w-8 h-8">
                                                                                 <AvatarImage src={reply.author?.avatar} />
                                                                                 <AvatarFallback className="bg-gray-200 text-gray-700">
-                                                                                     {(reply.userName || reply.author?.name || "U").charAt(0).toUpperCase()}
+                                                                                     {(reply.author?.name || 
+                                                                                       reply.author?.fullName || 
+                                                                                       reply.author?.FullName ||
+                                                                                       reply.userName || 
+                                                                                       reply.fullName || 
+                                                                                       "U").charAt(0).toUpperCase()}
                                                                                 </AvatarFallback>
                                                                            </Avatar>
                                                                            <div className="flex-1">
                                                                                 <div className="flex items-center gap-1 mb-1">
                                                                                      <span className="font-semibold text-sm">
-                                                                                          {reply.userName || reply.author?.username || reply.author?.name || reply.fullName || "Người dùng"}
+                                                                                          {reply.author?.name || 
+                                                                                           reply.author?.fullName || 
+                                                                                           reply.author?.FullName ||
+                                                                                           reply.author?.username || 
+                                                                                           reply.author?.Username ||
+                                                                                           reply.userName || 
+                                                                                           reply.fullName || 
+                                                                                           reply.FullName ||
+                                                                                           "Người dùng"}
                                                                                      </span>
 
                                                                                      {isReplyOwn && (
