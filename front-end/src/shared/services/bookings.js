@@ -441,7 +441,7 @@ export async function createBooking(bookingData) {
   }
 }
 
-export async function confirmPaymentAPI(bookingId, amount) {
+export async function confirmPaymentAPI(bookingId, depositAmount) {
   try {
     // Check if user is authenticated (has token)
     const token = localStorage.getItem("token");
@@ -461,51 +461,51 @@ export async function confirmPaymentAPI(bookingId, amount) {
       };
     }
 
-    // Ensure amount is a number
-    const numericAmount = Number(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
+    // Ensure depositAmount is a number
+    const numericDepositAmount = Number(depositAmount);
+    if (isNaN(numericDepositAmount) || numericDepositAmount <= 0) {
       return {
         success: false,
-        error: "Số tiền không hợp lệ",
+        error: "Số tiền cọc không hợp lệ",
       };
     }
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-payment/${numericBookingId}`;
 
     const payload = {
-      Amount: numericAmount,
+      Amount: numericDepositAmount,
     };
 
-    console.log("💳 [XÁC NHẬN THANH TOÁN - API] Endpoint:", endpoint);
+    console.log("💳 [XÁC NHẬN ĐẶT CỌC - API] Endpoint:", endpoint);
     console.log(
-      "💳 [XÁC NHẬN THANH TOÁN - API] Payload (JSON):",
+      "💳 [XÁC NHẬN ĐẶT CỌC - API] Payload (JSON):",
       JSON.stringify(payload, null, 2)
     );
-    console.log("💳 [XÁC NHẬN THANH TOÁN - API] Booking ID:", numericBookingId);
-    console.log("💳 [XÁC NHẬN THANH TOÁN - API] Amount:", numericAmount);
+    console.log("💳 [XÁC NHẬN ĐẶT CỌC - API] Booking ID:", numericBookingId);
+    console.log("💳 [XÁC NHẬN ĐẶT CỌC - API] Deposit Amount:", numericDepositAmount);
     console.log(
-      "💳 [XÁC NHẬN THANH TOÁN - API] Token:",
+      "💳 [XÁC NHẬN ĐẶT CỌC - API] Token:",
       token ? "✅ Token có sẵn" : "❌ Không có token"
     );
     console.log(
-      "💳 [XÁC NHẬN THANH TOÁN - API] Token sẽ được tự động thêm vào header Authorization: Bearer <token>"
+      "💳 [XÁC NHẬN ĐẶT CỌC - API] Token sẽ được tự động thêm vào header Authorization: Bearer <token>"
     );
 
     const response = await apiClient.put(endpoint, payload);
 
-    console.log("✅ [XÁC NHẬN THANH TOÁN - API] Response:", response.data);
+    console.log("✅ [XÁC NHẬN ĐẶT CỌC - API] Response:", response.data);
     console.log(
-      "✅ [XÁC NHẬN THANH TOÁN - API] Response (JSON):",
+      "✅ [XÁC NHẬN ĐẶT CỌC - API] Response (JSON):",
       JSON.stringify(response.data, null, 2)
     );
 
     return {
       success: true,
       data: response.data,
-      message: response.data?.Message || "Xác nhận thanh toán thành công",
+      message: response.data?.Message || "Xác nhận đặt cọc thành công",
     };
   } catch (error) {
-    console.error("❌ [XÁC NHẬN THANH TOÁN - API] Error:", error);
+    console.error("❌ [XÁC NHẬN ĐẶT CỌC - API] Error:", error);
     console.error("Error details:", {
       message: error.message,
       code: error.code,
@@ -561,6 +561,60 @@ export async function generateQRCode(bookingId, options = {}) {
     };
   } catch (error) {
     console.error("Error generating QR code:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+/**
+ * Generate QR code for remaining amount (after deposit is paid)
+ * @param {number|string} bookingId - The booking ID
+ * @returns {Promise<{success: boolean, data?: Object, qrCodeUrl?: string, error?: string}>}
+ */
+export async function generateQRCodeForRemaining(bookingId) {
+  try {
+    // Check if user is authenticated (has token)
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Bạn cần đăng nhập để tạo QR code",
+      };
+    }
+
+    // Ensure bookingId is a number and valid
+    const numericBookingId = Number(bookingId);
+    if (isNaN(numericBookingId) || numericBookingId <= 0) {
+      return {
+        success: false,
+        error: "Booking ID không hợp lệ",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${numericBookingId}`;
+
+    console.log("📱 [TẠO QR CÒN LẠI - API] Endpoint:", endpoint);
+    console.log("📱 [TẠO QR CÒN LẠI - API] Booking ID:", numericBookingId);
+    console.log(
+      "📱 [TẠO QR CÒN LẠI - API] Token:",
+      token ? "✅ Token có sẵn" : "❌ Không có token"
+    );
+
+    const response = await apiClient.get(endpoint);
+
+    console.log("✅ [TẠO QR CÒN LẠI - API] Response:", response.data);
+
+    return {
+      success: true,
+      data: response.data,
+      qrCodeUrl: response.data?.qrCodeUrl || response.data?.qrCode || response.data?.qrCodeUrl || null,
+    };
+  } catch (error) {
+    console.error("❌ [TẠO QR CÒN LẠI - API] Error:", error);
     const errorMessage = handleApiError(error);
     return {
       success: false,

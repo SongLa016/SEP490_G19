@@ -3,11 +3,18 @@ import { Calendar, MapPin, Receipt, Search, Repeat, CalendarDays, Trash2, Star, 
 import { Section, Container, Card, CardContent, Input, Button, Badge, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, DatePicker, LoadingList, FadeIn, SlideIn, StaggerContainer, Modal } from "../../../../shared/components/ui";
 import { listBookingsByUser, updateBooking, fetchBookingsByPlayer, generateQRCode, confirmPaymentAPI } from "../../../../shared/index";
 import { cancelBooking as cancelBookingAPI } from "../../../../shared/services/bookings";
-import { listMatchRequests, listMatchJoinsByRequest, acceptMatchJoin, rejectMatchJoin, expireMatchRequestsNow, listPlayerHistoriesByUser } from "../../../../shared/index";
+import {
+     fetchMatchRequestById,
+     fetchMatchRequests,
+     checkMatchRequestByBooking,
+     acceptMatchParticipant,
+     rejectOrWithdrawParticipant,
+     expireOldMatchRequests,
+     fetchMyMatchHistory
+} from "../../../../shared/services/matchRequests";
 import FindOpponentModal from "../../../../shared/components/FindOpponentModal";
 import RecurringOpponentModal from "../../../../shared/components/RecurringOpponentModal";
 import RatingModal from "../../../../shared/components/RatingModal";
-import RescheduleModal from "../../../../shared/components/RescheduleModal";
 import InvoiceModal from "../../../../shared/components/InvoiceModal";
 import CancelBookingModal from "../../../../shared/components/CancelBookingModal";
 import Swal from 'sweetalert2';
@@ -24,6 +31,36 @@ const formatTimeLabel = (dateObj) => {
           hour: "2-digit",
           minute: "2-digit"
      });
+};
+
+const stripRefundQrInfo = (text) => {
+     if (!text) return "";
+     const markerIndex = text.toLowerCase().indexOf("refundqr");
+     if (markerIndex === -1) return text;
+     const stripped = text.substring(0, markerIndex);
+     return stripped.replace(/\|\s*$/, "").trim();
+};
+
+const extractRequestId = (payload) => {
+     if (!payload) return null;
+     if (typeof payload === "number") return payload;
+     if (payload.requestId) return payload.requestId;
+     if (payload.matchRequestId) return payload.matchRequestId;
+     if (payload.id) return payload.id;
+     if (payload.data) return extractRequestId(payload.data);
+     if (payload.hasRequest && payload.request) return extractRequestId(payload.request);
+     if (payload.hasRequest && payload.id) return payload.id;
+     return null;
+};
+
+const extractParticipants = (detail) => {
+     if (!detail) return [];
+     return detail.participants || detail.participantsList || detail.joinRequests || [];
+};
+
+const getParticipantId = (participant) => {
+     if (!participant) return null;
+     return participant.participantId || participant.joinId || participant.id || null;
 };
 
 const deriveStatusFromApi = (statusInput) => {
@@ -121,7 +158,6 @@ export default function BookingHistory({ user }) {
      const [showFindOpponentModal, setShowFindOpponentModal] = useState(false);
      const [showRecurringOpponentModal, setShowRecurringOpponentModal] = useState(false);
      const [showRatingModal, setShowRatingModal] = useState(false);
-     const [showRescheduleModal, setShowRescheduleModal] = useState(false);
      const [showInvoiceModal, setShowInvoiceModal] = useState(false);
      const [showCancelModal, setShowCancelModal] = useState(false);
      const [cancelBooking, setCancelBooking] = useState(null);
@@ -195,29 +231,223 @@ export default function BookingHistory({ user }) {
           };
      }, [playerId]);
 
-     // Load match requests mapping to bookings
-     // Use useRef to track previous bookings length to avoid unnecessary reloads
-     const prevBookingsLengthRef = React.useRef(0);
-     useEffect(() => {
-          // Only reload if bookings array length changed (new booking added/removed)
-          // Not when bookings are just updated (like timeRemaining)
-          if (bookings.length === prevBookingsLengthRef.current) {
+     const loadMatchRequestsForBookings = React.useCallback(async () => {
+          if (!bookings || bookings.length === 0) {
+               setBookingIdToRequest({});
+               setRequestJoins({});
                return;
           }
-          prevBookingsLengthRef.current = bookings.length;
 
           try {
-               expireMatchRequestsNow();
-          } catch { }
-          const all = listMatchRequests({ status: "" });
+               await expireOldMatchRequests();
+          } catch (error) {
+               console.warn("Error expiring old match requests:", error);
+          }
+
           const map = {};
-          all.forEach(r => { map[r.bookingId] = r; });
-          setBookingIdToRequest(map);
           const joinsMap = {};
-          all.forEach(r => { joinsMap[r.requestId] = listMatchJoinsByRequest(r.requestId); });
+
+          try {
+               // Fetch all match requests from database
+               const matchRequestsResp = await fetchMatchRequests({ page: 1, size: 1000 });
+               
+               if (matchRequestsResp.success && Array.isArray(matchRequestsResp.data)) {
+                    // Create a map from bookingId to matchRequest (normalize to string for comparison)
+                    const bookingIdToMatchRequestMap = {};
+                    
+                    matchRequestsResp.data.forEach((matchRequest) => {
+                         const matchRequestBookingId = matchRequest.bookingId || matchRequest.bookingID || matchRequest.BookingID;
+                         if (matchRequestBookingId) {
+                              // Normalize to string for consistent comparison
+                              const normalizedId = String(matchRequestBookingId);
+                              bookingIdToMatchRequestMap[normalizedId] = matchRequest;
+                         }
+                    });
+
+                    // Map match requests to bookings
+                    bookings.forEach((booking) => {
+                         // Check both booking.bookingId and booking.id (normalized to string)
+                         const bookingId1 = booking.bookingId ? String(booking.bookingId) : null;
+                         const bookingId2 = booking.id ? String(booking.id) : null;
+                         
+                         // Try to find match request by either bookingId
+                         let matchRequest = null;
+                         if (bookingId1 && bookingIdToMatchRequestMap[bookingId1]) {
+                              matchRequest = bookingIdToMatchRequestMap[bookingId1];
+                         } else if (bookingId2 && bookingIdToMatchRequestMap[bookingId2]) {
+                              matchRequest = bookingIdToMatchRequestMap[bookingId2];
+                         }
+                         
+                         if (matchRequest) {
+                              const requestId = extractRequestId(matchRequest);
+                              if (requestId) {
+                                   // Use booking.id as key (for display)
+                                   map[booking.id] = matchRequest;
+                                   joinsMap[requestId] = extractParticipants(matchRequest);
+                              }
+                         }
+                    });
+                    
+                    console.log("Match requests loaded:", {
+                         totalMatchRequests: matchRequestsResp.data.length,
+                         mappedBookings: Object.keys(map).length,
+                         bookingIdMap: Object.keys(bookingIdToMatchRequestMap),
+                         bookings: bookings.map(b => ({ id: b.id, bookingId: b.bookingId }))
+                    });
+               }
+          } catch (error) {
+               console.warn("Error loading match requests:", error);
+               
+               // Fallback: try individual checks for each booking
+               await Promise.all(
+                    bookings.map(async (booking) => {
+                         const bookingId = booking.bookingId || booking.id;
+                         if (!bookingId) return;
+                         try {
+                              // First, check if booking already has matchRequestId in its data
+                              const existingRequestId = booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
+                              
+                              let requestId = null;
+                              
+                              if (existingRequestId) {
+                                   // Use the existing matchRequestId from booking data
+                                   requestId = existingRequestId;
+                              } else {
+                                   // Fallback: check via API
+                                   const hasRequestResp = await checkMatchRequestByBooking(bookingId);
+                                   if (!hasRequestResp?.success) return;
+                                   requestId = extractRequestId(hasRequestResp.data ?? hasRequestResp);
+                              }
+                              
+                              if (!requestId) return;
+                              
+                              // Fetch detail of the match request
+                              const detailResp = await fetchMatchRequestById(requestId);
+                              if (!detailResp?.success) return;
+                              map[booking.id] = detailResp.data;
+                              joinsMap[requestId] = extractParticipants(detailResp.data);
+                         } catch (error) {
+                              console.warn("Không thể tải kèo cho booking", bookingId, error);
+                         }
+                    })
+               );
+          }
+
+          setBookingIdToRequest(map);
           setRequestJoins(joinsMap);
-          if (user?.id) setPlayerHistories(listPlayerHistoriesByUser(user.id));
-     }, [bookings.length, user?.id]); // Only depend on length, not the entire bookings array
+     }, [bookings]);
+
+     useEffect(() => {
+          loadMatchRequestsForBookings();
+     }, [loadMatchRequestsForBookings]);
+
+     const refreshRequestForBooking = React.useCallback(async (bookingKey, requestId) => {
+          if (!bookingKey || !requestId) return;
+          try {
+               const detailResp = await fetchMatchRequestById(requestId);
+               if (!detailResp?.success) return;
+               setBookingIdToRequest(prev => ({ ...prev, [bookingKey]: detailResp.data }));
+               setRequestJoins(prev => ({ ...prev, [requestId]: extractParticipants(detailResp.data) }));
+          } catch (error) {
+               console.warn("Không thể làm mới kèo:", error);
+          }
+     }, []);
+
+     const handleAcceptParticipant = async (bookingKey, requestId, participant) => {
+          const participantId = getParticipantId(participant);
+          if (!requestId || !participantId) {
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Thiếu thông tin',
+                    text: 'Không thể xác định đội tham gia.',
+               });
+               return;
+          }
+
+          const confirm = await Swal.fire({
+               icon: 'question',
+               title: 'Chấp nhận đội tham gia?',
+               html: `
+                   <div class="text-left space-y-1">
+                        <p class="text-sm"><strong>Đội:</strong> ${participant.teamName || participantId}</p>
+                        <p class="text-sm"><strong>Trạng thái:</strong> ${participant.status}</p>
+                   </div>
+              `,
+               showCancelButton: true,
+               confirmButtonText: 'Chấp nhận',
+               cancelButtonText: 'Hủy',
+               confirmButtonColor: '#10b981'
+          });
+
+          if (!confirm.isConfirmed) return;
+
+          try {
+               const response = await acceptMatchParticipant(requestId, participantId);
+               if (!response.success) throw new Error(response.error || "Không thể chấp nhận đội này.");
+               await refreshRequestForBooking(bookingKey, requestId);
+               Swal.fire({ icon: 'success', title: 'Đã chấp nhận đội tham gia', timer: 1500, showConfirmButton: false });
+          } catch (error) {
+               Swal.fire({ icon: 'error', title: 'Lỗi', text: error.message || 'Không thể chấp nhận đội.' });
+          }
+     };
+
+     const handleRejectParticipant = async (bookingKey, requestId, participant) => {
+          const participantId = getParticipantId(participant);
+          if (!requestId || !participantId) {
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Thiếu thông tin',
+                    text: 'Không thể xác định đội tham gia.',
+               });
+               return;
+          }
+
+          const confirm = await Swal.fire({
+               icon: 'warning',
+               title: 'Từ chối đội tham gia?',
+               html: `
+                   <div class="text-left space-y-1">
+                        <p class="text-sm"><strong>Đội:</strong> ${participant.teamName || participantId}</p>
+                        <p class="text-sm">Hành động này không thể hoàn tác.</p>
+                   </div>
+              `,
+               showCancelButton: true,
+               confirmButtonText: 'Từ chối',
+               cancelButtonText: 'Hủy',
+               confirmButtonColor: '#ef4444'
+          });
+
+          if (!confirm.isConfirmed) return;
+
+          try {
+               const response = await rejectOrWithdrawParticipant(requestId, participantId);
+               if (!response.success) throw new Error(response.error || "Không thể từ chối đội này.");
+               await refreshRequestForBooking(bookingKey, requestId);
+               Swal.fire({ icon: 'success', title: 'Đã xử lý đội tham gia', timer: 1500, showConfirmButton: false });
+          } catch (error) {
+               Swal.fire({ icon: 'error', title: 'Lỗi', text: error.message || 'Không thể xử lý đội.' });
+          }
+     };
+
+     useEffect(() => {
+          const loadPlayerHistory = async () => {
+               if (!user?.id && !user?.userID) {
+                    setPlayerHistories([]);
+                    return;
+               }
+               try {
+                    const response = await fetchMyMatchHistory({ page: 1, size: 50 });
+                    if (response.success) {
+                         setPlayerHistories(response.data || []);
+                    } else {
+                         console.warn("Không thể tải lịch sử kèo:", response.error);
+                    }
+               } catch (error) {
+                    console.warn("Error loading player history:", error);
+               }
+          };
+          loadPlayerHistory();
+     }, [user?.id, user?.userID]);
 
      // Use ref to track reloading state to prevent infinite loops
      const isReloadingRef = React.useRef(false);
@@ -314,27 +544,40 @@ export default function BookingHistory({ user }) {
           setShowFindOpponentModal(true);
      };
 
-     const handleFindOpponentSuccess = (result) => {
+     const handleFindOpponentSuccess = async (result) => {
           if (result.type === "recurring") {
                setOpponentData(result);
                setShowFindOpponentModal(false);
                setShowRecurringOpponentModal(true);
           } else {
-               // Single booking success
-               const all = listMatchRequests({ status: "" });
-               const map = {};
-               all.forEach(r => { map[r.bookingId] = r; });
-               setBookingIdToRequest(map);
                setShowFindOpponentModal(false);
+               
+               // Reload bookings first to get updated matchRequestId
+               try {
+                    if (playerId) {
+                         const apiResult = await fetchBookingsByPlayer(playerId);
+                         if (apiResult.success) {
+                              const bookingList = normalizeApiBookings(apiResult.data);
+                              setBookings(bookingList);
+                              setGroupedBookings(buildRecurringGroups(bookingList));
+                         }
+                    }
+               } catch (error) {
+                    console.error("Error reloading bookings:", error);
+               }
+               
+               // Small delay to ensure backend has updated
+               await new Promise(resolve => setTimeout(resolve, 500));
+               
+               // Then load match requests
+               await loadMatchRequestsForBookings();
+               
                Swal.fire('Đã gửi!', 'Yêu cầu tìm đối đã được tạo.', 'success');
           }
      };
 
-     const handleRecurringOpponentSuccess = () => {
-          const all = listMatchRequests({ status: "" });
-          const map = {};
-          all.forEach(r => { map[r.bookingId] = r; });
-          setBookingIdToRequest(map);
+     const handleRecurringOpponentSuccess = async () => {
+          await loadMatchRequestsForBookings();
           setShowRecurringOpponentModal(false);
           setOpponentData(null);
           Swal.fire('Đã gửi!', 'Yêu cầu tìm đối cho lịch cố định đã được tạo.', 'success');
@@ -351,41 +594,7 @@ export default function BookingHistory({ user }) {
           Swal.fire('Cảm ơn bạn!', 'Đánh giá của bạn đã được gửi thành công.', 'success');
      };
 
-     const handleReschedule = (booking) => {
-          // Show "Coming Soon" message
-          Swal.fire({
-               icon: 'info',
-               title: '🚀 Chức năng đang phát triển',
-               html: `
-                    <div class="text-left space-y-3">
-                         <p class="text-gray-700">Chức năng <strong>Đổi giờ đặt sân</strong> đang được phát triển và sẽ sớm ra mắt!</p>
-                         <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                              <p class="text-sm text-blue-800 font-medium mb-2">✨ Tính năng sắp có:</p>
-                              <ul class="text-sm text-blue-700 space-y-1 list-disc list-inside">
-                                   <li>Đổi ngày đặt sân linh hoạt</li>
-                                   <li>Chọn khung giờ mới</li>
-                                   <li>Tự động tính chênh lệch giá</li>
-                                   <li>Xác nhận nhanh chóng</li>
-                              </ul>
-                         </div>
-                         <p class="text-sm text-gray-600">Hiện tại, vui lòng liên hệ chủ sân để đổi giờ. Cảm ơn bạn đã thông cảm! 🙏</p>
-                    </div>
-               `,
-               confirmButtonText: 'Đã hiểu',
-               confirmButtonColor: '#0d9488',
-               width: '500px',
-          });
 
-          // Keep the old code commented for future use
-          // setSelectedBooking(booking);
-          // setShowRescheduleModal(true);
-     };
-
-     const handleRescheduleSuccess = (result) => {
-          setShowRescheduleModal(false);
-          setSelectedBooking(null);
-          Swal.fire('Thành công!', `Đã đổi giờ từ ${result.oldDate} sang ${result.newDate}`, 'success');
-     };
 
      const handleViewInvoice = (bookingPayload) => {
           if (!bookingPayload) return;
@@ -428,6 +637,29 @@ export default function BookingHistory({ user }) {
           return timeElapsed <= TWO_HOURS;
      };
 
+     const shouldShowFindOpponentButton = (booking) => {
+          if (!booking) return false;
+          const statusLower = String(booking.status || booking.bookingStatus || "").toLowerCase();
+          const paymentLower = String(booking.paymentStatus || "").toLowerCase();
+
+          const isPendingWaitingPayment =
+               statusLower === "pending" &&
+               (paymentLower === "" || paymentLower === "pending" || paymentLower === "unpaid");
+
+          const isPendingPaid =
+               statusLower === "pending" &&
+               (paymentLower === "paid" || paymentLower === "đã thanh toán");
+
+          const isCompleted = statusLower === "completed";
+          const isCancelled = statusLower === "cancelled";
+
+          if (isPendingWaitingPayment || isPendingPaid || isCompleted || isCancelled) {
+               return false;
+          }
+
+          return true;
+     };
+
      // Helper function to check if booking is older than 2 hours (to hide cancel button)
      const isBookingOlderThan2Hours = (booking) => {
           if (!booking || !booking.createdAt) return false;
@@ -436,6 +668,26 @@ export default function BookingHistory({ user }) {
           const TWO_HOURS = 2 * 60 * 60 * 1000;
           const timeElapsed = now - createdAt;
           return timeElapsed > TWO_HOURS;
+     };
+
+     const shouldShowCancelButton = (booking) => {
+          if (!booking) return false;
+          const statusLower = String(booking.status || booking.bookingStatus || "").toLowerCase();
+          const paymentLower = String(booking.paymentStatus || "").toLowerCase();
+          const isPending = statusLower === "pending";
+          const isConfirmed = statusLower === "confirmed";
+          const isUnpaid = paymentLower === "" || paymentLower === "pending" || paymentLower === "unpaid" || paymentLower === "chờ thanh toán";
+          const isPaid = paymentLower === "paid" || paymentLower === "đã thanh toán";
+
+          const isPendingWaitingPayment = isPending && isUnpaid;
+          const isPendingPaid = isPending && isPaid;
+          const isConfirmedPaid = isConfirmed && isPaid;
+
+          const allowed = isPendingWaitingPayment || isPendingPaid || isConfirmedPaid;
+
+          if (!allowed) return false;
+          if (statusLower === "cancelled" || statusLower === "expired") return false;
+          return true;
      };
 
      // Format time remaining (supports hours and minutes)
@@ -780,6 +1032,8 @@ export default function BookingHistory({ user }) {
                const result = await cancelBookingAPI(bookingId, reason || "Hủy booking chưa được xác nhận");
 
                if (result.success) {
+                    const bookingKey = String(cancelBooking.id || cancelBooking.bookingId);
+
                     // Extract refund information from response
                     const refundInfo = {
                          message: result.message || result.data?.message,
@@ -790,37 +1044,36 @@ export default function BookingHistory({ user }) {
                          refundQR: result.refundQR || result.data?.refundQR,
                     };
 
-                    // Build success message with refund details
+                    const cleanReason = stripRefundQrInfo(refundInfo.cancelReason || result.data?.cancelReason || "");
+
+                    if (bookingKey) {
+                         setBookings(prev => {
+                              const updated = prev.map(b => {
+                                   const key = String(b.id || b.bookingId);
+                                   if (key !== bookingKey) return b;
+                                   return {
+                                        ...b,
+                                        status: "cancelled",
+                                        bookingStatus: "cancelled",
+                                        cancelReason: cleanReason || b.cancelReason,
+                                        cancelledAt: new Date().toISOString(),
+                                        paymentStatus: result.data?.paymentStatus || b.paymentStatus
+                                   };
+                              });
+                              setGroupedBookings(buildRecurringGroups(updated));
+                              return updated;
+                         });
+                    }
+
+                    // Build success message with cancellation reason only
                     let successHtml = `
                          <p class="mb-3">${refundInfo.message || 'Đã hủy booking thành công!'}</p>
                     `;
 
-                    if (refundInfo.cancelReason) {
+                    if (cleanReason) {
                          successHtml += `
                               <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 text-left">
-                                   <p class="text-sm text-blue-800">${refundInfo.cancelReason}</p>
-                              </div>
-                         `;
-                    }
-
-                    if (refundInfo.finalRefundAmount > 0) {
-                         successHtml += `
-                              <div class="bg-green-50 border border-green-200 rounded-lg p-3 mb-3">
-                                   <p class="text-sm text-gray-600 mb-1">Số tiền được hoàn:</p>
-                                   <p class="text-2xl font-bold text-green-600">${formatPrice(refundInfo.finalRefundAmount)}</p>
-                                   ${refundInfo.penaltyAmount > 0 ? `
-                                        <p class="text-xs text-gray-500 mt-1">(Bị phạt: ${formatPrice(refundInfo.penaltyAmount)})</p>
-                                   ` : ''}
-                              </div>
-                         `;
-                    }
-
-                    // Add QR code if available
-                    if (refundInfo.refundQR) {
-                         successHtml += `
-                              <div class="mt-3 text-center">
-                                   <p class="text-sm font-semibold text-gray-700 mb-2">Mã QR hoàn tiền:</p>
-                                   <img src="${refundInfo.refundQR}" alt="Refund QR Code" class="mx-auto border border-gray-200 rounded-lg" style="max-width: 200px;" />
+                                   <p class="text-sm text-blue-800">${cleanReason}</p>
                               </div>
                          `;
                     }
@@ -830,7 +1083,7 @@ export default function BookingHistory({ user }) {
 
                     await Swal.fire({
                          icon: 'success',
-                         title: isPending ? 'Đã hủy thành công!' : 'Đã gửi yêu cầu hủy!',
+                         title: 'Đã hủy thành công!',
                          html: successHtml,
                          confirmButtonColor: '#10b981',
                          width: '500px',
@@ -1370,9 +1623,9 @@ export default function BookingHistory({ user }) {
                                                                            </span>
                                                                       )}
                                                                  </div>
-                                                                 {b.cancelReason && (
+                                                                 {stripRefundQrInfo(b.cancelReason) && (
                                                                       <div className="text-xs text-red-600 italic">
-                                                                           Lý do hủy: {b.cancelReason}
+                                                                           Lý do hủy: {stripRefundQrInfo(b.cancelReason)}
                                                                       </div>
                                                                  )}
                                                             </div>
@@ -1382,20 +1635,20 @@ export default function BookingHistory({ user }) {
                                                                  {formatPrice(b.totalPrice || b.price)}
                                                             </div>
                                                             {b.depositAmount > 0 && b.totalPrice > b.depositAmount && (
-                                                                 <div className="text-xs text-gray-500 mb-1">
-                                                                      (Còn lại: {formatPrice(b.totalPrice - b.depositAmount)})
+                                                                 <div className="text-sm flex items-center gap-1 text-gray-500 mb-1">
+                                                                      (Còn lại: <span className="font-medium text-orange-500">{formatPrice(b.totalPrice - b.depositAmount)}</span>)
                                                                  </div>
                                                             )}
-                                                            <div className="text-xs text-gray-500">
+                                                            <div className="text-xs text-gray-700">
                                                                  {b.createdAt && new Date(b.createdAt).toLocaleDateString('vi-VN')}
                                                             </div>
                                                             {b.confirmedAt && (
-                                                                 <div className="text-xs text-green-600">
+                                                                 <div className="text-sm font-medium text-green-600">
                                                                       Xác nhận: {new Date(b.confirmedAt).toLocaleDateString('vi-VN')}
                                                                  </div>
                                                             )}
                                                             {b.cancelledAt && (
-                                                                 <div className="text-xs text-red-600">
+                                                                 <div className="text-sm font-medium text-red-600">
                                                                       Hủy: {new Date(b.cancelledAt).toLocaleDateString('vi-VN')}
                                                                  </div>
                                                             )}
@@ -1417,15 +1670,8 @@ export default function BookingHistory({ user }) {
                                                                            Tiếp tục thanh toán
                                                                       </Button>
                                                                  )}
-                                                                 <Button
-                                                                      variant="outline"
-                                                                      onClick={() => handleReschedule(b)}
-                                                                      className="px-3 py-2 text-sm bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-700 hover:border-blue-300 transition-colors rounded-3xl"
-                                                                 >
-                                                                      <Calendar className="w-4 h-4 mr-2" />
-                                                                      Đổi giờ
-                                                                 </Button>
-                                                                 {b.status !== "cancelled" && b.status !== "expired" && !isBookingOlderThan2Hours(b) && (
+
+                                                                 {shouldShowCancelButton(b) && (
                                                                       <Button variant="destructive" onClick={() => handleCancel(b.id)} className="px-3 rounded-3xl py-2 text-sm">
                                                                            <Trash2 className="w-4 h-4 mr-2" />
                                                                            Hủy đặt
@@ -1443,7 +1689,8 @@ export default function BookingHistory({ user }) {
                                                                  {/* MatchRequest actions */}
                                                                  {(() => {
                                                                       const req = bookingIdToRequest[b.id];
-                                                                      if (!req) {
+                                                                      const canShowFindOpponent = shouldShowFindOpponentButton(b);
+                                                                      if (!req && canShowFindOpponent) {
                                                                            return (
                                                                                 <Button
                                                                                      variant="secondary"
@@ -1455,69 +1702,67 @@ export default function BookingHistory({ user }) {
                                                                                 </Button>
                                                                            );
                                                                       }
-                                                                      return (
-                                                                           <div className="flex items-center gap-2">
-                                                                                <Badge variant="outline" className="text-xs">Đã yêu cầu • {req.status}</Badge>
-                                                                                <Button
-                                                                                     variant="outline"
-                                                                                     className="px-3 !rounded-full py-2 text-sm"
-                                                                                     onClick={() => {
-                                                                                          // refresh joins for this request
-                                                                                          setRequestJoins(prev => ({ ...prev, [req.requestId]: listMatchJoinsByRequest(req.requestId) }));
-                                                                                          Swal.fire({
-                                                                                               toast: true,
-                                                                                               position: 'top-end',
-                                                                                               icon: 'success',
-                                                                                               title: 'Đã tải danh sách đội tham gia',
-                                                                                               showConfirmButton: false,
-                                                                                               timer: 2200,
-                                                                                               timerProgressBar: true
-                                                                                          });
-                                                                                     }}
-                                                                                >
-                                                                                     Tải đội tham gia
-                                                                                </Button>
-                                                                           </div>
-                                                                      );
+                                                                      if (req) {
+                                                                           const currentRequestId = extractRequestId(req);
+                                                                           return (
+                                                                                <div className="flex items-center gap-2">
+                                                                                     <Badge variant="outline" className="text-xs">
+                                                                                          Đã yêu cầu • {req.status || req.state || 'Đang mở'}
+                                                                                     </Badge>
+                                                                                     <Button
+                                                                                          variant="outline"
+                                                                                          className="px-3 !rounded-full py-2 text-sm"
+                                                                                          onClick={() => refreshRequestForBooking(b.id, currentRequestId)}
+                                                                                     >
+                                                                                          Tải đội tham gia
+                                                                                     </Button>
+                                                                                </div>
+                                                                           );
+                                                                      }
+                                                                      return null;
                                                                  })()}
                                                             </>
                                                        )}
                                                   </div>
                                                   {/* Joins list for this booking's request (owner view) */}
-                                                  {bookingIdToRequest[b.id] && Array.isArray(requestJoins[bookingIdToRequest[b.id].requestId]) && requestJoins[bookingIdToRequest[b.id].requestId].length > 0 && (
-                                                       <div className="mt-3 p-3 rounded-xl border border-teal-100 bg-white/70">
-                                                            <div className="font-semibold text-teal-800 mb-2">Đội tham gia</div>
-                                                            <div className="space-y-2">
-                                                                 {requestJoins[bookingIdToRequest[b.id].requestId].map(j => (
-                                                                      <div key={j.joinId} className="flex items-center justify-between text-sm">
-                                                                           <div className="flex items-center gap-2">
-                                                                                <Badge variant="outline" className="text-xs">{j.level || "any"}</Badge>
-                                                                                <span className="text-gray-700">User: {j.userId}</span>
-                                                                                <span className="text-gray-500">• {j.status}</span>
-                                                                           </div>
-                                                                           <div className="flex items-center gap-2">
-                                                                                {j.status === "Pending" && (
-                                                                                     <>
-                                                                                          <Button className="px-2 py-1 text-xs" onClick={() => {
-                                                                                               acceptMatchJoin({ joinId: j.joinId });
-                                                                                               setRequestJoins(prev => ({ ...prev, [bookingIdToRequest[b.id].requestId]: listMatchJoinsByRequest(bookingIdToRequest[b.id].requestId) }));
-                                                                                               const all = listMatchRequests({ status: "" });
-                                                                                               const map = {};
-                                                                                               all.forEach(r => { map[r.bookingId] = r; });
-                                                                                               setBookingIdToRequest(map);
-                                                                                          }}>Chấp nhận</Button>
-                                                                                          <Button variant="outline" className="px-2 py-1 text-xs" onClick={() => {
-                                                                                               rejectMatchJoin({ joinId: j.joinId });
-                                                                                               setRequestJoins(prev => ({ ...prev, [bookingIdToRequest[b.id].requestId]: listMatchJoinsByRequest(bookingIdToRequest[b.id].requestId) }));
-                                                                                          }}>Từ chối</Button>
-                                                                                     </>
-                                                                                )}
-                                                                           </div>
-                                                                      </div>
-                                                                 ))}
+                                                  {(() => {
+                                                       const req = bookingIdToRequest[b.id];
+                                                       if (!req) return null;
+                                                       const requestId = extractRequestId(req);
+                                                       const participants = requestId
+                                                            ? (requestJoins[requestId] || extractParticipants(req))
+                                                            : extractParticipants(req);
+                                                       if (!participants || participants.length === 0) return null;
+                                                       const requestOwnerId = req.ownerId || req.userId || req.createdById || req.createdByUserId;
+                                                       const isRequestOwner = user && requestOwnerId && String(requestOwnerId) === String(user?.userID || user?.UserID || user?.id || user?.userId);
+                                                       return (
+                                                            <div className="mt-3 p-3 rounded-xl border border-teal-100 bg-white/70">
+                                                                 <div className="font-semibold text-teal-800 mb-2">Đội tham gia</div>
+                                                                 <div className="space-y-2">
+                                                                      {participants.map((j) => {
+                                                                           const participantId = j.participantId || j.joinId || j.id;
+                                                                           return (
+                                                                                <div key={participantId || Math.random()} className="flex items-center justify-between text-sm">
+                                                                                     <div className="flex items-center gap-2">
+                                                                                          <Badge variant="outline" className="text-xs">{j.level || j.skillLevel || "any"}</Badge>
+                                                                                          <span className="text-gray-700">{j.teamName || `User: ${j.userId || participantId}`}</span>
+                                                                                          <span className="text-gray-500">• {j.status}</span>
+                                                                                     </div>
+                                                                                     <div className="flex items-center gap-2">
+                                                                                          {j.status === "Pending" && isRequestOwner && (
+                                                                                               <>
+                                                                                                    <Button className="px-2 py-1 text-xs" onClick={() => handleAcceptParticipant(b.id, requestId, j)}>Chấp nhận</Button>
+                                                                                                    <Button variant="outline" className="px-2 py-1 text-xs" onClick={() => handleRejectParticipant(b.id, requestId, j)}>Từ chối</Button>
+                                                                                               </>
+                                                                                          )}
+                                                                                     </div>
+                                                                                </div>
+                                                                           );
+                                                                      })}
+                                                                 </div>
                                                             </div>
-                                                       </div>
-                                                  )}
+                                                       );
+                                                  })()}
                                              </div>
                                         </FadeIn>
                                    ))}
@@ -1632,17 +1877,6 @@ export default function BookingHistory({ user }) {
                     }}
                     booking={selectedBooking}
                     onSuccess={handleRatingSuccess}
-               />
-
-               {/* Reschedule Modal */}
-               <RescheduleModal
-                    isOpen={showRescheduleModal}
-                    onClose={() => {
-                         setShowRescheduleModal(false);
-                         setSelectedBooking(null);
-                    }}
-                    booking={selectedBooking}
-                    onSuccess={handleRescheduleSuccess}
                />
 
                <InvoiceModal

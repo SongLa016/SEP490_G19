@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Users, Star, MessageSquare, Calendar, MapPin, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { Button, Modal, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from "./ui/index";
-import { createMatchRequest, createCommunityPost } from "../utils/communityStore";
+import { createMatchRequestAPI } from "../services/matchRequests";
 import { Link } from "react-router-dom";
 
 export default function FindOpponentModal({
@@ -58,36 +58,22 @@ export default function FindOpponentModal({
                          termsAccepted
                     });
                } else {
-                    // Create match request for single booking
-                    const matchRequest = createMatchRequest({
-                         bookingId: booking.id,
-                         ownerId: user?.id,
-                         level,
-                         note: note.trim(),
-                         fieldName: booking.fieldName,
-                         address: booking.fieldAddress || booking.address || "",
-                         date: booking.date,
-                         slotName: booking.slotName || booking.time || "",
-                         price: booking.price || 0,
-                         createdByName: user?.name || "Người dùng"
-                    });
+                    const payload = {
+                         bookingId: booking.bookingId || booking.id,
+                         description: `${note.trim()} | Mức độ: ${level}`,
+                         playerCount: booking.playerCount || booking.expectedPlayers || 7,
+                         expiresInHours: 24
+                    };
 
-                    // Create community post
-                    createCommunityPost({
-                         userId: user?.id,
-                         content: `Tìm đối – ${booking.fieldName}`,
-                         location: booking.fieldAddress || booking.address || "",
-                         time: `${booking.date} ${booking.slotName || booking.time || ""}`.trim(),
-                         authorName: user?.name || "Người dùng",
-                         bookingId: booking.id,
-                         fieldName: booking.fieldName,
-                         date: booking.date,
-                         slotName: booking.slotName || booking.time || ""
-                    });
+                    const response = await createMatchRequestAPI(payload);
 
-                    onSuccess({
+                    if (!response.success) {
+                         throw new Error(response.error || "Không thể tạo yêu cầu tìm đối");
+                    }
+
+                    onSuccess?.({
                          type: "single",
-                         matchRequest,
+                         matchRequest: response.data,
                          booking
                     });
                }

@@ -10,10 +10,7 @@ export default function PaymentStepSection({
      selectedDays,
      isProcessing,
      formatPrice,
-     paymentAmountType,
-     isQrGenerating,
      errors = {},
-     onPaymentAmountChange,
      onConfirmPayment,
      onCancelBooking = () => { },
      isPaymentLocked = false,
@@ -26,20 +23,9 @@ export default function PaymentStepSection({
           accountHolder: bookingData.accountHolder || bookingData.ownerName
      };
      const hasBankInfo = !!(fallbackAccount?.bankName || fallbackAccount?.accountNumber || fallbackAccount?.accountHolder);
-     const depositAvailable = (bookingData.depositAmount || 0) > 0;
-     const hasSelection = Boolean(paymentAmountType);
-     // Calculate transfer amount the same way as QR generation
-     const calculateTransferAmount = () => {
-          if (!paymentAmountType) return 0;
-
-          if (paymentAmountType === "full") {
-               return bookingData.totalPrice || 0;
-          } else {
-               return bookingData.depositAmount || 0;
-          }
-     };
-
-     const transferAmount = calculateTransferAmount();
+     const depositAmount = bookingData.depositAmount || bookingInfo?.depositAmount || 0;
+     const depositAvailable = depositAmount > 0;
+     const transferAmount = depositAmount;
      const formatCountdown = (seconds) => {
           const safeSeconds = Math.max(0, seconds || 0);
           const minutes = Math.floor(safeSeconds / 60);
@@ -83,54 +69,37 @@ export default function PaymentStepSection({
                          )}
 
                          <div className="space-y-2 text-sm">
-                              <div className="text-gray-600 font-medium">Chọn hình thức thanh toán</div>
-                              <div className="space-y-2">
-                                   {depositAvailable && (
-                                        <label className={`flex items-center justify-between p-3 border rounded-2xl ${depositAvailable ? "cursor-pointer hover:bg-gray-50" : "opacity-60 cursor-not-allowed"}`}>
-                                             <span className="text-sm flex items-center gap-1 text-gray-700">Thanh toán tiền cọc ( <p className="font-semibold text-yellow-600">{formatPrice(bookingData.depositAmount)}</p>)</span>
-                                             <input
-                                                  type="radio"
-                                                  name="paymentAmountType"
-                                                  value="deposit"
-                                                  checked={paymentAmountType === "deposit"}
-                                                  onChange={() => onPaymentAmountChange("deposit")}
-                                                  disabled={!depositAvailable}
-                                             />
-                                        </label>
-                                   )}
-                                   <label className="flex items-center justify-between p-3 border rounded-2xl cursor-pointer hover:bg-gray-50">
-                                        <span className="text-sm flex items-center gap-1 text-gray-700">Thanh toán toàn bộ ( <p className="font-semibold text-red-600">{formatPrice(bookingData.totalPrice)}</p>)</span>
-                                        <input
-                                             type="radio"
-                                             name="paymentAmountType"
-                                             value="full"
-                                             checked={paymentAmountType === "full"}
-                                             onChange={() => onPaymentAmountChange("full")}
-                                        />
-                                   </label>
-                              </div>
+                              <div className="text-gray-600 font-medium">Số tiền cần thanh toán</div>
+                              {depositAvailable ? (
+                                   <>
+                                        <div className="flex items-center justify-between p-3 border rounded-2xl bg-amber-50">
+                                             <span className="text-sm text-gray-700">Thanh toán tiền cọc</span>
+                                             <span className="text-xl font-bold text-yellow-600">
+                                                  {formatPrice(depositAmount)}
+                                             </span>
+                                        </div>
+                                        <p className="text-xs text-gray-500">
+                                             Hệ thống chỉ yêu cầu thanh toán tiền cọc để giữ sân. Số tiền còn lại sẽ được thanh toán sau khi trận đấu hoàn tất.
+                                        </p>
+                                   </>
+                              ) : (
+                                   <p className="text-sm text-gray-500">Sân này chưa cấu hình tiền cọc. Vui lòng liên hệ chủ sân.</p>
+                              )}
                               {errors.payment && (
                                    <p className="text-xs text-red-500">{errors.payment}</p>
                               )}
                          </div>
 
-                         {hasSelection ? (
-                              isQrGenerating ? (
-                                   <div className="text-sm text-gray-600 text-center">
-                                        Đang tạo mã QR cho số tiền bạn chọn...
-                                   </div>
-                              ) : bookingInfo?.qrCodeUrl ? (
+                         {depositAvailable ? (
+                              bookingInfo?.qrCodeUrl ? (
                                    <div className="flex flex-col items-center text-center">
                                         <div className="p-2 bg-white border-4 border-teal-100 rounded-2xl shadow-lg mb-3">
                                              <img
                                                   src={bookingInfo.qrCodeUrl}
                                                   alt="QR thanh toán"
                                                   className="w-80 h-[400px]"
-                                                  // ADD THIS TO FORCE BROWSER RELOAD
-                                                  key={`qr-${paymentAmountType}-${Date.now()}`}
                                                   onError={(e) => {
                                                        console.log('❌ QR image failed to load');
-                                                       // Force reload the image
                                                        e.target.src = bookingInfo.qrCodeUrl + '&force=' + Date.now();
                                                   }}
                                              />
@@ -142,8 +111,8 @@ export default function PaymentStepSection({
                                         )}
                                    </div>
                               ) : (
-                                   <div className="text-sm text-red-500 text-center">
-                                        Không thể tạo mã QR cho lựa chọn này. Vui lòng thử lại hoặc liên hệ chủ sân.
+                                   <div className="text-sm text-gray-600 text-center">
+                                        Đang tải mã QR tiền cọc từ hệ thống...
                                    </div>
                               )
                          ) : (
@@ -166,7 +135,7 @@ export default function PaymentStepSection({
                                         <span className="text-gray-500">Chủ tài khoản</span>
                                         <span className="font-semibold text-gray-900 text-right">{fallbackAccount.accountHolder}</span>
                                    </div>
-                                   {hasSelection && transferAmount > 0 && (
+                                   {depositAvailable && transferAmount > 0 && (
                                         <div className="pt-2 border-t border-blue-50">
                                              <div className="flex justify-between">
                                                   <span className="text-gray-600 font-medium">Số tiền cần thanh toán</span>
@@ -305,8 +274,8 @@ export default function PaymentStepSection({
                     <div className="flex flex-col lg:flex-row gap-3 mt-4">
                          <Button
                               onClick={onConfirmPayment}
-                              disabled={isProcessing || !paymentAmountType || isQrGenerating}
-                              className={`w-full py-3 rounded-2xl text-white font-semibold ${(isProcessing || !paymentAmountType || isQrGenerating) ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
+                              disabled={isProcessing || !bookingInfo?.qrCodeUrl}
+                              className={`w-full py-3 rounded-2xl text-white font-semibold ${(isProcessing || !bookingInfo?.qrCodeUrl) ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
                          >
                               {isProcessing ? "Đang xử lý..." : "Hoàn tất đặt sân"}
                          </Button>

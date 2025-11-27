@@ -1019,6 +1019,7 @@ const BookingManagement = ({ isDemo = false }) => {
                                                   onChange={setSelectedDate}
                                                   placeholder="Chọn ngày"
                                                   minDate={new Date().toISOString().split('T')[0]}
+                                                  className="rounded-2xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
                                              />
                                         </div>
 
@@ -1110,6 +1111,7 @@ const BookingManagement = ({ isDemo = false }) => {
                                                        <TableHead className="text-white font-semibold">Sân & Thời gian</TableHead>
                                                        <TableHead className="text-white font-semibold">Trạng thái</TableHead>
                                                        <TableHead className="text-white font-semibold">Thanh toán</TableHead>
+                                                       <TableHead className="text-white font-semibold">Tiền cọc</TableHead>
                                                        <TableHead className="text-white font-semibold">Số tiền</TableHead>
                                                        <TableHead className="text-white font-semibold">Thao tác</TableHead>
                                                   </TableRow>
@@ -1155,6 +1157,9 @@ const BookingManagement = ({ isDemo = false }) => {
                                                                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(booking.paymentStatus)}`}>
                                                                       {getPaymentStatusText(booking.paymentStatus)}
                                                                  </span>
+                                                            </TableCell>
+                                                            <TableCell className="text-sm font-bold text-yellow-500">
+                                                                 {formatCurrency(booking.depositAmount)}
                                                             </TableCell>
                                                             <TableCell className="text-sm font-bold text-emerald-600">
                                                                  {formatCurrency(booking.amount)}

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { AlertCircle } from "lucide-react";
 import Swal from 'sweetalert2';
 import { Button, Modal } from "./ui";
-import { validateBookingData, checkFieldAvailability, generateQRCode } from "../services/bookings";
+import { validateBookingData, checkFieldAvailability } from "../services/bookings";
 import { createBooking, createBookingAPI, fetchOwnerBankAccounts, fetchBankAccount } from "../index";
 import { createMatchRequest, createCommunityPost } from "../index";
 import EmailVerificationModal from "./EmailVerificationModal";
@@ -30,8 +30,6 @@ export default function BookingModal({
      const [errors, setErrors] = useState({});
      const [bookingInfo, setBookingInfo] = useState(null); // Lưu thông tin booking từ API
      const [ownerBankAccount, setOwnerBankAccount] = useState(null); // Thông tin ngân hàng owner
-     const [paymentAmountType, setPaymentAmountType] = useState(""); // deposit | full
-     const [isQrGenerating, setIsQrGenerating] = useState(false);
      const [createdMatchRequest, setCreatedMatchRequest] = useState(null);
      const [createdCommunityPost, setCreatedCommunityPost] = useState(null);
      // Opponent flow: always assume user may find opponent after booking via BookingHistory
@@ -335,8 +333,6 @@ export default function BookingModal({
                setErrors({});
                setBookingInfo(null);
                setOwnerBankAccount(null);
-               setPaymentAmountType("");
-               setIsQrGenerating(false);
                setPaymentLockExpiresAt(null);
                setLockRemainingMs(0);
                if (fieldData?.isRecurringPreset) {
@@ -469,131 +465,6 @@ export default function BookingModal({
           return () => { ignore = true; };
      }, [isOpen, fieldData]);
 
-     useEffect(() => {
-          if (paymentAmountType === "deposit" && (bookingData.depositAmount || 0) <= 0) {
-               setPaymentAmountType("");
-          }
-     }, [paymentAmountType, bookingData.depositAmount]);
-
-     const buildLocalQrUrl = useCallback((amount) => {
-          console.log('🔍 buildLocalQrUrl received amount:', amount);
-
-          if (!ownerBankAccount?.accountNumber || !ownerBankAccount?.bankShortCode) return null;
-          const normalizedCode = String(ownerBankAccount.bankShortCode).replace(/\s+/g, "").toUpperCase();
-          const accountNumber = String(ownerBankAccount.accountNumber).replace(/\s+/g, "");
-          if (!normalizedCode || !accountNumber) return null;
-
-          const base = `https://img.vietqr.io/image/${normalizedCode}-${accountNumber}-compact2.png`;
-          const params = new URLSearchParams({
-               amount: Math.round(Number(amount) || 0),
-               addInfo: `BOOKING-${bookingInfo?.bookingId || ""}`,
-               t: `${paymentAmountType}_${Date.now()}`
-          });
-          if (ownerBankAccount.accountHolder) {
-               params.set("accountName", ownerBankAccount.accountHolder);
-          }
-
-          const finalUrl = `${base}?${params.toString()}`;
-          console.log('🔗 Final QR URL with cache buster:', finalUrl);
-          return finalUrl;
-     }, [ownerBankAccount, bookingInfo?.bookingId, paymentAmountType]);
-
-
-     const handlePaymentAmountChange = (type) => {
-          console.log('🔄 Changing payment type to:', type);
-
-          // Clear the current QR code first
-          setBookingInfo(prev => prev ? {
-               ...prev,
-               qrCodeUrl: null,
-               qrExpiresAt: null
-          } : prev);
-
-          setPaymentAmountType(type);
-          setErrors(prev => ({ ...prev, payment: "" }));
-     };
-
-     useEffect(() => {
-          if (!bookingInfo?.bookingId || !paymentAmountType) return;
-
-          const fallbackTotal = Number(bookingInfo.totalPrice) || 0;
-          const fallbackDeposit = Number(bookingInfo.depositAmount) || 0;
-          const resolvedTotal = Number(bookingData.totalPrice) || fallbackTotal;
-          const resolvedDeposit = Number(bookingData.depositAmount) || fallbackDeposit;
-          const targetAmount = paymentAmountType === "full" ? resolvedTotal : resolvedDeposit;
-
-          if (!targetAmount || targetAmount <= 0) {
-               setErrors(prev => ({ ...prev, payment: "Số tiền không hợp lệ để tạo QR." }));
-               return;
-          }
-
-          let cancelled = false;
-          const regenerate = async () => {
-               setIsQrGenerating(true);
-               try {
-                    const localUrl = buildLocalQrUrl(targetAmount);
-
-                    // ADD THIS CHECK
-                    console.log('🔄 Regenerating QR code with amount:', targetAmount);
-                    console.log('📝 Current bookingInfo.qrCodeUrl:', bookingInfo?.qrCodeUrl);
-
-                    if (localUrl) {
-                         if (!cancelled) {
-                              setBookingInfo(prev => ({
-                                   ...prev,
-                                   qrCodeUrl: localUrl,
-                                   qrExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString()
-                              }));
-                              setIsQrGenerating(false);
-
-                              // VERIFY THE UPDATE
-                              console.log('✅ Updated bookingInfo with new QR URL');
-                         }
-                         return;
-                    }
-                    // ... rest of your code
-
-                    const qrResult = await generateQRCode(bookingInfo.bookingId, {
-                         paymentType: paymentAmountType,
-                         amount: targetAmount
-                    });
-
-                    if (!cancelled) {
-                         if (qrResult?.success && qrResult.qrCodeUrl) {
-                              setBookingInfo(prev => ({
-                                   ...prev,
-                                   qrCodeUrl: qrResult.qrCodeUrl,
-                                   qrExpiresAt: qrResult.data?.qrExpiresAt || new Date(Date.now() + 7 * 60 * 1000).toISOString()
-                              }));
-                         } else {
-                              setErrors(prev => ({ ...prev, payment: "Không thể tạo QR. Vui lòng thử lại." }));
-                         }
-                    }
-               } catch (error) {
-                    console.error("Failed to regenerate QR code:", error);
-                    if (!cancelled) {
-                         setErrors(prev => ({ ...prev, payment: "Không thể tạo QR. Vui lòng thử lại." }));
-                    }
-               } finally {
-                    if (!cancelled) {
-                         setIsQrGenerating(false);
-                    }
-               }
-          };
-
-          regenerate();
-          return () => { cancelled = true; };
-     }, [
-          paymentAmountType,
-          bookingInfo?.bookingId,
-          bookingInfo?.qrCodeUrl,
-          bookingInfo?.totalPrice,
-          bookingInfo?.depositAmount,
-          bookingData.totalPrice,
-          bookingData.depositAmount,
-          ownerBankAccount,
-          buildLocalQrUrl
-     ]);
      const formatPrice = (price) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 
      const validateForm = () => {
@@ -847,16 +718,49 @@ export default function BookingModal({
                     return;
                }
 
-               // Lưu thông tin booking (QR sẽ được tạo sau khi người dùng chọn số tiền)
+               const rawQrCode =
+                    apiResult.data?.qrCodeUrl ||
+                    apiResult.data?.qrCode ||
+                    apiResult.data?.QRCode ||
+                    apiResult.data?.qrImage ||
+                    apiResult.data?.depositQrCode ||
+                    null;
+               let normalizedQrCode = rawQrCode;
+               if (normalizedQrCode && typeof normalizedQrCode === "string") {
+                    const lower = normalizedQrCode.toLowerCase();
+                    const isHttp = lower.startsWith("http://") || lower.startsWith("https://");
+                    const isData = lower.startsWith("data:");
+                    if (!isHttp && !isData) {
+                         normalizedQrCode = `data:image/png;base64,${normalizedQrCode}`;
+                    }
+               }
+
+               const qrExpiresAt = apiResult.data?.qrExpiresAt || apiResult.data?.QRExpiresAt || apiResult.data?.qrExpiry || null;
+               const apiTotalPrice = Number(apiResult.data?.totalPrice ?? totalPrice ?? bookingData.totalPrice ?? 0);
+               const apiDepositAmount = Number(apiResult.data?.depositAmount ?? depositAmount ?? bookingData.depositAmount ?? 0);
+               const apiRemainingAmountRaw = apiResult.data?.remainingAmount ?? apiResult.data?.RemainingAmount;
+               const apiRemainingAmount = typeof apiRemainingAmountRaw === "number"
+                    ? apiRemainingAmountRaw
+                    : Math.max(0, apiTotalPrice - apiDepositAmount);
+
+               setBookingData(prev => ({
+                    ...prev,
+                    totalPrice: apiTotalPrice || prev.totalPrice,
+                    depositAmount: apiDepositAmount || prev.depositAmount,
+                    remainingAmount: apiRemainingAmount ?? prev.remainingAmount
+               }));
+
+               // Lưu thông tin booking cùng QR do backend trả về
                setBookingInfo({
                     bookingId: bookingId,
                     scheduleId: apiResult.data?.scheduleID || apiResult.data?.scheduleId,
                     bookingStatus: apiResult.data?.bookingStatus || "Pending",
                     paymentStatus: apiResult.data?.paymentStatus || "Pending",
-                    qrCodeUrl: null,
-                    qrExpiresAt: null,
-                    totalPrice: totalPrice,
-                    depositAmount: depositAmount
+                    qrCodeUrl: normalizedQrCode,
+                    qrExpiresAt: qrExpiresAt,
+                    totalPrice: apiTotalPrice,
+                    depositAmount: apiDepositAmount,
+                    remainingAmount: apiRemainingAmount
                });
 
                // Chuyển sang bước thanh toán và khóa thao tác trong 5 phút hoặc đến khi hủy
@@ -899,8 +803,6 @@ export default function BookingModal({
           setPaymentLockExpiresAt(null);
           setLockRemainingMs(0);
           setBookingInfo(null);
-          setPaymentAmountType("");
-          setIsQrGenerating(false);
           setStep("details");
           onClose?.();
 
@@ -932,8 +834,14 @@ export default function BookingModal({
                return;
           }
 
-          if (!paymentAmountType) {
-               setErrors(prev => ({ ...prev, payment: "Vui lòng chọn số tiền thanh toán và tạo QR trước khi hoàn tất." }));
+          if (!bookingInfo?.qrCodeUrl) {
+               setErrors(prev => ({ ...prev, payment: "Đang tạo mã QR tiền cọc. Vui lòng đợi trong giây lát." }));
+               await Swal.fire({
+                    icon: 'info',
+                    title: 'Đang tạo QR',
+                    text: 'Vui lòng đợi hệ thống tạo mã QR tiền cọc trước khi xác nhận.',
+                    confirmButtonColor: '#10b981'
+               });
                return;
           }
 
@@ -946,7 +854,7 @@ export default function BookingModal({
                          ...bookingData,
                          bookingId: bookingInfo.bookingId,
                          status: "pending",
-                         paymentMethod: paymentAmountType,
+                         paymentMethod: "deposit",
                          createdAt: new Date().toISOString()
                     }
                });
@@ -1120,10 +1028,7 @@ export default function BookingModal({
                                    selectedDays={selectedDays}
                                    isProcessing={isProcessing}
                                    formatPrice={formatPrice}
-                                   paymentAmountType={paymentAmountType}
-                                   isQrGenerating={isQrGenerating}
                                    errors={errors}
-                                   onPaymentAmountChange={handlePaymentAmountChange}
                                    onConfirmPayment={handleConfirmPayment}
                                    isPaymentLocked={isPaymentLockActive}
                                    lockCountdownSeconds={lockCountdownSeconds}
