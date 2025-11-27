@@ -17,7 +17,8 @@ import {
      FileText,
      AlertCircle,
      CreditCard,
-     CheckSquare
+     CheckSquare,
+     QrCode
 } from "lucide-react";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Card, Button, Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../../../shared/components/ui";
@@ -25,6 +26,7 @@ import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import { DemoRestrictedModal } from "../../../shared";
 import { cancelBooking, fetchCancellationRequests, confirmCancellation, deleteCancellationRequest, fetchBookingsByOwner, confirmPaymentAPI, confirmByOwner, fetchCancellationRequestById } from "../../../shared/services/bookings";
+import { profileService } from "../../../shared/services/profileService";
 import Swal from "sweetalert2";
 
 
@@ -796,7 +798,31 @@ const BookingManagement = ({ isDemo = false }) => {
           try {
                const result = await fetchBookingsByOwner(ownerId);
                if (result.success) {
-                    const normalizedBookings = normalizeBookingData(result.data);
+                    // Fetch user info for each booking
+                    const bookingsWithUserInfo = await Promise.all(
+                         result.data.map(async (booking) => {
+                              if (booking.userId || booking.userID) {
+                                   try {
+                                        const userId = booking.userId || booking.userID;
+                                        const userResult = await profileService.getProfile(userId);
+                                        if (userResult.ok && userResult.data) {
+                                             const userData = userResult.profile || userResult.data;
+                                             return {
+                                                  ...booking,
+                                                  customerName: userData.fullName || userData.name || userData.userName,
+                                                  customerPhone: userData.phoneNumber || userData.phone,
+                                                  customerEmail: userData.email,
+                                             };
+                                        }
+                                   } catch (error) {
+                                        console.error(`Failed to fetch user ${booking.userId}:`, error);
+                                   }
+                              }
+                              return booking;
+                         })
+                    );
+
+                    const normalizedBookings = normalizeBookingData(bookingsWithUserInfo);
                     setBookings(normalizedBookings);
                } else {
                     setBookingError(result.error || "Không thể tải danh sách booking.");
@@ -1155,14 +1181,17 @@ const BookingManagement = ({ isDemo = false }) => {
                                                                                 <CheckCircle className="w-4 h-4" />
                                                                            </Button>
                                                                       )}
-                                                                      <Button
-                                                                           variant="ghost"
-                                                                           size="sm"
-                                                                           onClick={() => handleCancelBooking(booking.bookingId || booking.id)}
-                                                                           className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                                      >
-                                                                           <XCircle className="w-4 h-4" />
-                                                                      </Button>
+                                                                      {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                                                                           <Button
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                onClick={() => handleCancelBooking(booking.bookingId || booking.id)}
+                                                                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                                                title="Hủy booking"
+                                                                           >
+                                                                                <XCircle className="w-4 h-4" />
+                                                                           </Button>
+                                                                      )}
                                                                  </div>
                                                             </TableCell>
                                                        </TableRow>
@@ -1293,15 +1322,60 @@ const BookingManagement = ({ isDemo = false }) => {
                                                   </div>
                                              </div>
 
-                                             {/* Notes */}
-                                             {selectedBooking.notes && (
+                                             {/* Cancellation Info for Cancelled Bookings */}
+                                             {selectedBooking.status === 'cancelled' && selectedBooking.notes && (
+                                                  <>
+                                                       <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-xl border border-red-200">
+                                                            <h3 className="text-lg font-semibold text-red-800 mb-3 flex items-center">
+                                                                 <AlertCircle className="w-5 h-5 mr-2" />
+                                                                 Lý do hủy booking
+                                                            </h3>
+                                                            <div className="bg-white p-4 rounded-lg border border-red-100">
+                                                                 <p className="text-sm font-medium text-gray-900 leading-relaxed whitespace-pre-wrap">
+                                                                      {(() => {
+                                                                           let displayNotes = selectedBooking.notes;
+                                                                           if (displayNotes.includes('RefundQR:')) {
+                                                                                displayNotes = displayNotes.split('|')[0].trim();
+                                                                           }
+                                                                           displayNotes = displayNotes.replace(/^Lý do hủy:\s*/i, '');
+                                                                           return displayNotes;
+                                                                      })()}
+                                                                 </p>
+                                                            </div>
+                                                       </div>
+                                                       {selectedBooking.amount > 0 && (
+                                                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                                                                 <h3 className="text-lg font-semibold text-green-800 mb-3 flex items-center">
+                                                                      <DollarSign className="w-5 h-5 mr-2" />
+                                                                      Thông tin hoàn tiền
+                                                                 </h3>
+                                                                 <div className="bg-white p-4 rounded-lg border border-green-100">
+                                                                      <div className="space-y-2 text-sm">
+                                                                           <div className="flex justify-between items-center">
+                                                                                <span className="text-gray-600">Số tiền đã hoàn:</span>
+                                                                                <span className="text-lg font-bold text-green-600">
+                                                                                     {formatCurrency(selectedBooking.amount)}
+                                                                                </span>
+                                                                           </div>
+                                                                           <p className="text-xs text-gray-500 mt-2">
+                                                                                ✓ Đã hoàn tiền cho khách hàng
+                                                                           </p>
+                                                                      </div>
+                                                                 </div>
+                                                            </div>
+                                                       )}
+                                                  </>
+                                             )}
+
+                                             {/* Notes for non-cancelled bookings */}
+                                             {selectedBooking.status !== 'cancelled' && selectedBooking.notes && (
                                                   <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
                                                        <h3 className="text-lg font-semibold text-purple-800 mb-3 flex items-center">
                                                             <FileText className="w-5 h-5 mr-2" />
                                                             Ghi chú
                                                        </h3>
                                                        <div className="bg-white p-4 rounded-lg border border-purple-100">
-                                                            <p className="text-sm font-medium text-gray-900 leading-relaxed">
+                                                            <p className="text-sm font-medium text-gray-900 leading-relaxed whitespace-pre-wrap">
                                                                  {selectedBooking.notes}
                                                             </p>
                                                        </div>
@@ -1379,21 +1453,22 @@ const BookingManagement = ({ isDemo = false }) => {
                                    </div>
                               ) : (
                                    <div className="overflow-x-auto">
-                                        <Table>
+                                        <Table className="rounded-2xl border border-teal-300">
                                              <TableHeader>
                                                   <TableRow>
                                                        <TableHead>ID</TableHead>
                                                        <TableHead>Booking ID</TableHead>
                                                        <TableHead>Lý do</TableHead>
                                                        <TableHead>Ngày tạo</TableHead>
-                                                       <TableHead className="text-right">Thao tác</TableHead>
+                                                       <TableHead>QR Hoàn tiền</TableHead>
+                                                       <TableHead className="text-center">Thao tác</TableHead>
                                                   </TableRow>
                                              </TableHeader>
                                              <TableBody>
                                                   {cancellationRequests.map((request) => (
-                                                       <TableRow key={request.id || request.cancellationId}>
+                                                       <TableRow key={request.requestId || request.id || request.cancellationId}>
                                                             <TableCell className="font-medium">
-                                                                 #{request.id || request.cancellationId}
+                                                                 #{request.requestId || request.id || request.cancellationId}
                                                             </TableCell>
                                                             <TableCell>
                                                                  <span className="text-teal-600 font-semibold">
@@ -1403,48 +1478,88 @@ const BookingManagement = ({ isDemo = false }) => {
                                                             <TableCell>
                                                                  <div className="max-w-md">
                                                                       <p className="text-sm text-gray-700 line-clamp-2">
-                                                                           {request.reason}
+                                                                           {request.requestReason?.split('|')[0]?.trim() || request.reason || 'Không có lý do'}
                                                                       </p>
                                                                  </div>
                                                             </TableCell>
                                                             <TableCell>
                                                                  <div className="text-sm">
                                                                       <p className="text-gray-900">
-                                                                           {request.createdAt ? new Date(request.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
+                                                                           {(request.requestedAt || request.createdAt) ? new Date(request.requestedAt || request.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
                                                                       </p>
                                                                       <p className="text-gray-500 text-xs">
-                                                                           {request.createdAt ? new Date(request.createdAt).toLocaleTimeString('vi-VN') : ''}
+                                                                           {(request.requestedAt || request.createdAt) ? new Date(request.requestedAt || request.createdAt).toLocaleTimeString('vi-VN') : ''}
                                                                       </p>
                                                                  </div>
                                                             </TableCell>
+                                                            <TableCell>
+                                                                 {(() => {
+                                                                      const qrMatch = request.requestReason?.match(/RefundQR:\s*(https?:\/\/[^\s]+)/);
+                                                                      const qrUrl = qrMatch ? qrMatch[1] : null;
+                                                                      return qrUrl ? (
+                                                                           <button
+                                                                                onClick={() => {
+                                                                                     Swal.fire({
+                                                                                          title: 'QR Code Hoàn tiền',
+                                                                                          html: `
+                                                                                               <div class="flex flex-col items-center">
+                                                                                                    <img src="${qrUrl}" alt="QR Code" class="max-w-full h-auto rounded-lg shadow-lg" style="max-height: 400px;" />
+                                                                                                    <p class="text-sm text-gray-600 mt-3">Quét mã QR để hoàn tiền</p>
+                                                                                               </div>
+                                                                                          `,
+                                                                                          showConfirmButton: true,
+                                                                                          confirmButtonText: 'Đóng',
+                                                                                          width: '500px'
+                                                                                     });
+                                                                                }}
+                                                                                className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                                                           >
+                                                                                <QrCode className="w-4 h-4" />
+                                                                                Xem QR
+                                                                           </button>
+                                                                      ) : (
+                                                                           <span className="text-xs text-gray-400">Không có</span>
+                                                                      );
+                                                                 })()}
+                                                            </TableCell>
                                                             <TableCell className="text-right">
-                                                                 <div className="flex items-center justify-end gap-2">
+                                                                 <div className="flex items-center justify-center gap-2">
                                                                       <Button
-                                                                           onClick={() => handleViewCancellationDetails(request.id || request.cancellationId)}
+                                                                           onClick={() => handleViewCancellationDetails(request.requestId || request.id || request.cancellationId)}
                                                                            size="sm"
                                                                            variant="ghost"
                                                                            className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 rounded-xl"
                                                                       >
                                                                            <Eye className="w-4 h-4 mr-1" />
-                                                                           Chi tiết
+
                                                                       </Button>
-                                                                      <Button
-                                                                           onClick={() => handleConfirmCancellation(request.id || request.cancellationId)}
-                                                                           size="sm"
-                                                                           className="bg-green-600 hover:bg-green-700 rounded-xl"
-                                                                      >
-                                                                           <CheckCircle className="w-4 h-4 mr-1" />
-                                                                           Xác nhận
-                                                                      </Button>
-                                                                      <Button
-                                                                           onClick={() => handleDeleteCancellation(request.id || request.cancellationId)}
-                                                                           size="sm"
-                                                                           variant="outline"
-                                                                           className="border-red-300 text-red-600 hover:bg-red-50 rounded-xl"
-                                                                      >
-                                                                           <XCircle className="w-4 h-4 mr-1" />
-                                                                           Xóa
-                                                                      </Button>
+                                                                      {(request.requestStatus || request.status) === "Pending" && (
+                                                                           <Button
+                                                                                onClick={() => handleConfirmCancellation(request.requestId || request.id || request.cancellationId)}
+                                                                                size="sm"
+                                                                                className="bg-green-600 hover:bg-green-700 rounded-xl"
+                                                                           >
+                                                                                <CheckCircle className="w-4 h-4 mr-1" />
+                                                                                Xác nhận
+                                                                           </Button>
+                                                                      )}
+                                                                      {(request.requestStatus || request.status) === "Pending" && (
+                                                                           <Button
+                                                                                onClick={() => handleDeleteCancellation(request.requestId || request.id || request.cancellationId)}
+                                                                                size="sm"
+                                                                                variant="outline"
+                                                                                className="border-red-300 text-red-600 hover:bg-red-50 rounded-xl"
+                                                                           >
+                                                                                <XCircle className="w-4 h-4 mr-1" />
+                                                                                Xóa
+                                                                           </Button>
+                                                                      )}
+                                                                      {(request.requestStatus || request.status) === "Confirmed" && (
+                                                                           <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 flex items-center gap-1">
+                                                                                <CheckCircle className="w-3 h-3" />
+                                                                                Đã xác nhận
+                                                                           </span>
+                                                                      )}
                                                                  </div>
                                                             </TableCell>
                                                        </TableRow>
@@ -1487,7 +1602,7 @@ const BookingManagement = ({ isDemo = false }) => {
                                                   ID yêu cầu
                                              </label>
                                              <p className="text-sm font-semibold text-gray-900">
-                                                  #{selectedCancellation.id || selectedCancellation.cancellationId || selectedCancellation.requestID || 'N/A'}
+                                                  #{selectedCancellation.requestId || selectedCancellation.id || selectedCancellation.cancellationId || 'N/A'}
                                              </p>
                                         </div>
                                         <div className="bg-white p-3 rounded-lg border border-red-100">
@@ -1505,8 +1620,8 @@ const BookingManagement = ({ isDemo = false }) => {
                                                   Ngày tạo
                                              </label>
                                              <p className="text-sm font-semibold text-gray-900">
-                                                  {selectedCancellation.createdAt
-                                                       ? new Date(selectedCancellation.createdAt).toLocaleString('vi-VN')
+                                                  {selectedCancellation.requestedAt || selectedCancellation.createdAt
+                                                       ? new Date(selectedCancellation.requestedAt || selectedCancellation.createdAt).toLocaleString('vi-VN')
                                                        : 'N/A'}
                                              </p>
                                         </div>
@@ -1516,7 +1631,7 @@ const BookingManagement = ({ isDemo = false }) => {
                                                   Trạng thái
                                              </label>
                                              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                                                  {selectedCancellation.status || 'Pending'}
+                                                  {selectedCancellation.requestStatus || selectedCancellation.status || 'Pending'}
                                              </span>
                                         </div>
                                    </div>
@@ -1530,46 +1645,83 @@ const BookingManagement = ({ isDemo = false }) => {
                                    </h3>
                                    <div className="bg-white p-4 rounded-lg border border-orange-100">
                                         <p className="text-sm font-medium text-gray-900 leading-relaxed whitespace-pre-wrap">
-                                             {selectedCancellation.reason || selectedCancellation.Reason || 'Không có lý do'}
+                                             {selectedCancellation.requestReason?.split('|')[0]?.trim() || selectedCancellation.reason || selectedCancellation.Reason || 'Không có lý do'}
                                         </p>
                                    </div>
                               </div>
 
+                              {/* QR Code */}
+                              {(() => {
+                                   const qrMatch = selectedCancellation.requestReason?.match(/RefundQR:\s*(https?:\/\/[^\s]+)/);
+                                   const qrUrl = qrMatch ? qrMatch[1] : null;
+                                   return qrUrl ? (
+                                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+                                             <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
+                                                  <QrCode className="w-5 h-5 mr-2" />
+                                                  QR Code Hoàn tiền
+                                             </h3>
+                                             <div className="bg-white p-4 rounded-lg border border-blue-100 flex flex-col items-center">
+                                                  <img
+                                                       src={qrUrl}
+                                                       alt="QR Code Hoàn tiền"
+                                                       className="max-w-full h-auto rounded-lg shadow-md"
+                                                       style={{ maxHeight: '300px' }}
+                                                  />
+                                                  <p className="text-sm text-gray-600 mt-3">Quét mã QR để hoàn tiền cho khách hàng</p>
+                                             </div>
+                                        </div>
+                                   ) : null;
+                              })()}
+
                               {/* Actions */}
-                              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-                                   <Button
-                                        variant="outline"
-                                        onClick={() => {
-                                             setIsCancellationDetailModalOpen(false);
-                                             setSelectedCancellation(null);
-                                        }}
-                                        className="rounded-xl border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold"
-                                   >
-                                        Đóng
-                                   </Button>
-                                   <Button
-                                        onClick={async () => {
-                                             setIsCancellationDetailModalOpen(false);
-                                             await handleConfirmCancellation(selectedCancellation.id || selectedCancellation.cancellationId || selectedCancellation.requestID);
-                                             setSelectedCancellation(null);
-                                        }}
-                                        className="rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold"
-                                   >
-                                        <CheckCircle className="w-4 h-4 mr-2" />
-                                        Xác nhận hủy
-                                   </Button>
-                                   <Button
-                                        variant="outline"
-                                        onClick={async () => {
-                                             setIsCancellationDetailModalOpen(false);
-                                             await handleDeleteCancellation(selectedCancellation.id || selectedCancellation.cancellationId || selectedCancellation.requestID);
-                                             setSelectedCancellation(null);
-                                        }}
-                                        className="rounded-xl border-red-300 text-red-600 hover:bg-red-50 font-semibold"
-                                   >
-                                        <XCircle className="w-4 h-4 mr-2" />
-                                        Xóa yêu cầu
-                                   </Button>
+                              <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                                   {(selectedCancellation.requestStatus || selectedCancellation.status) === "Confirmed" && (
+                                        <div className="px-4 py-2 rounded-xl bg-green-50 border border-green-200 flex items-center gap-2">
+                                             <CheckCircle className="w-5 h-5 text-green-600" />
+                                             <span className="text-sm font-semibold text-green-700">
+                                                  Yêu cầu đã được xác nhận
+                                             </span>
+                                        </div>
+                                   )}
+                                   <div className="flex space-x-3 ml-auto">
+                                        <Button
+                                             variant="outline"
+                                             onClick={() => {
+                                                  setIsCancellationDetailModalOpen(false);
+                                                  setSelectedCancellation(null);
+                                             }}
+                                             className="rounded-xl border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold"
+                                        >
+                                             Đóng
+                                        </Button>
+                                        {(selectedCancellation.requestStatus || selectedCancellation.status) === "Pending" && (
+                                             <>
+                                                  <Button
+                                                       onClick={async () => {
+                                                            setIsCancellationDetailModalOpen(false);
+                                                            await handleConfirmCancellation(selectedCancellation.requestId || selectedCancellation.id || selectedCancellation.cancellationId);
+                                                            setSelectedCancellation(null);
+                                                       }}
+                                                       className="rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold"
+                                                  >
+                                                       <CheckCircle className="w-4 h-4 mr-2" />
+                                                       Xác nhận hủy
+                                                  </Button>
+                                                  <Button
+                                                       variant="outline"
+                                                       onClick={async () => {
+                                                            setIsCancellationDetailModalOpen(false);
+                                                            await handleDeleteCancellation(selectedCancellation.requestId || selectedCancellation.id || selectedCancellation.cancellationId);
+                                                            setSelectedCancellation(null);
+                                                       }}
+                                                       className="rounded-xl border-red-300 text-red-600 hover:bg-red-50 font-semibold"
+                                                  >
+                                                       <XCircle className="w-4 h-4 mr-2" />
+                                                       Xóa yêu cầu
+                                                  </Button>
+                                             </>
+                                        )}
+                                   </div>
                               </div>
                          </div>
                     ) : (
