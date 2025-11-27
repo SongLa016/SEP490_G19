@@ -22,9 +22,7 @@ namespace BallSport.Application.Services.MatchFinding
         // 1. LẤY DANH SÁCH KÈO ĐƯỢC LOẠI BỎ KÈO CỦA MÌNH + ĐÚNG NGÀY GIỜ
         public async Task<PagedResponse<MatchRequestListItemDto>> GetActiveRequestsAsync(int page = 1, int size = 10, int? currentUserId = null)
         {
-            var requests = currentUserId.HasValue
-                ? await _repo.GetActiveRequestsExcludeMineAsync(currentUserId.Value)
-                : await _repo.GetActiveRequestsAsync();
+            var requests = await _repo.GetActiveRequestsAsync(); 
 
             var dtos = requests.Select(r =>
             {
