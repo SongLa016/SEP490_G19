@@ -141,6 +141,8 @@ namespace BallSport.Application.Services
             var payment = new Payment
             {
                 BookingId = booking.BookingId,
+                OwnerId = booking.Schedule?.Field?.Complex?.OwnerId
+              ?? throw new Exception("Booking không có owner"),
                 Amount = booking.RemainingAmount ?? 0m,
                 Status = "Success",
                 Method = "VNPay",

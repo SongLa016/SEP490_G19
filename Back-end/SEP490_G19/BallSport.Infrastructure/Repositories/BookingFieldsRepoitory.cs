@@ -104,7 +104,6 @@ namespace BallSport.Infrastructure.Repositories
         public async Task<bool> CompleteBookingAsync(int bookingId)
         {
             var booking = await _context.Bookings
-                 .AsNoTracking()
                 .Include(b => b.Schedule)
                     .ThenInclude(s => s.Field)
                 .FirstOrDefaultAsync(b => b.BookingId == bookingId);
@@ -117,13 +116,16 @@ namespace BallSport.Infrastructure.Repositories
 
             if (booking.Schedule?.Field != null)
             {
-                booking.Schedule.Field.Status = "Available"; 
+                booking.Schedule.Field.Status = "Available";
+                _context.Fields.Update(booking.Schedule.Field);
             }
 
             _context.Bookings.Update(booking);
             await _context.SaveChangesAsync();
+
             return true;
         }
+
 
 
         public async Task<Booking?> GetBookingWithBankAsync(int bookingId)
