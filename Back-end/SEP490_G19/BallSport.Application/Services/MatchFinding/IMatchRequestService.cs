@@ -60,5 +60,6 @@ namespace BallSport.Application.Services.MatchFinding
         /// Dọn dẹp kèo quá hạn (có thể chạy bằng Hangfire/BackgroundService)
         /// </summary>
         Task<int> ExpireOldRequestsAsync();
+        Task<(bool hasRequest, int? matchRequestId)> GetBookingRequestInfoAsync(int bookingId);
     }
 }

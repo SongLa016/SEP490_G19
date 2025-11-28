@@ -340,7 +340,18 @@ namespace BallSport.Application.Services.MatchFinding
         // HỖ TRỢ
         public async Task<bool> IsBookingAlreadyHasRequestAsync(int bookingId)
             => await _repo.HasActiveRequestForBookingAsync(bookingId);
+        // THÊM MỚI – DÀNH RIÊNG CHO ENDPOINT CHECK HAS-REQUEST
+        public async Task<(bool hasRequest, int? matchRequestId)> GetBookingRequestInfoAsync(int bookingId)
+        {
+            var request = await _repo.GetRequestByBookingIdAsync(bookingId);
 
+            if (request == null)
+                return (false, null);
+
+            bool hasActiveRequest = request.Status == "Open" || request.Status == "Matched";
+
+            return (hasActiveRequest, hasActiveRequest ? request.MatchRequestId : null);
+        }
         public async Task<MatchRequest?> GetRequestByBookingIdAsync(int bookingId)
             => await _repo.GetRequestByBookingIdAsync(bookingId);
 

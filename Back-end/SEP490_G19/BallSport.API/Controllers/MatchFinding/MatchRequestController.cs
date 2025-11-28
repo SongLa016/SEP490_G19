@@ -219,12 +219,18 @@ namespace BallSport.API.Controllers.MatchFinding
         [AllowAnonymous]
         public async Task<IActionResult> CheckBookingHasRequest(int bookingId)
         {
-            var hasRequest = await _service.IsBookingAlreadyHasRequestAsync(bookingId);
+            var (hasRequest, matchRequestId) = await _service.GetBookingRequestInfoAsync(bookingId);
+
             return Ok(new
             {
                 success = true,
                 message = hasRequest ? "Booking đã có kèo tìm đối thủ" : "Booking chưa có kèo",
-                data = new { bookingId, hasRequest }
+                data = new
+                {
+                    bookingId,
+                    hasRequest,
+                    matchRequestId  // ← MỚI: có cũng trả, không có thì null
+                }
             });
         }
 
