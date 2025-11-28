@@ -648,3 +648,6 @@ CREATE TABLE BookingPackageSessionDraft (
     CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
     UpdatedAt DATETIME NULL
 );
+
+  ALTER TABLE Users
+    ALTER COLUMN Avatar NVARCHAR(MAX) NULL;

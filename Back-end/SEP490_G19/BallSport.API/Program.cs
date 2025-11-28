@@ -29,6 +29,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using static BallSport.Application.Services.UserService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -140,6 +141,7 @@ services.AddScoped<UserRepositories>();
 services.AddScoped<UserService>();
 services.AddScoped<JwtService>();
 services.AddScoped<OTPService>();
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
 // --- Booking & Payment ---
 services.AddScoped<BookingService>();
@@ -197,7 +199,7 @@ services.AddScoped<IReportService, ReportService>();
 
 services.AddScoped<IMatchRequestRepository, MatchRequestRepository>();
 services.AddScoped<IMatchParticipantRepository, MatchParticipantRepository>();
-services.AddScoped<IMatchRequestService, MatchRequestService>();
+//services.AddScoped<IMatchRequestService, MatchRequestService>();
 
 // --- Settings ---
 services.Configure<CommunitySettings>(config.GetSection("CommunitySettings"));
