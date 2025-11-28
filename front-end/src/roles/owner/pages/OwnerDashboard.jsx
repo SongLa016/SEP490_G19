@@ -56,13 +56,37 @@ export default function OwnerDashboard({ isDemo = false }) {
      // Helper function để extract số từ API response
      const extractNumber = (data, ...keys) => {
           if (!data) return 0;
+
+          // Thử tìm trong các keys được chỉ định
           for (const key of keys) {
                if (data[key] !== undefined && data[key] !== null) {
-                    return typeof data[key] === 'number' ? data[key] : parseFloat(data[key]) || 0;
+                    const value = typeof data[key] === 'number' ? data[key] : parseFloat(data[key]);
+                    if (!isNaN(value)) return value;
                }
           }
+
+          // Nếu data là số trực tiếp
           if (typeof data === 'number') return data;
+
+          // Nếu data là string số
+          if (typeof data === 'string') {
+               const parsed = parseFloat(data);
+               if (!isNaN(parsed)) return parsed;
+          }
+
+          // Nếu data là array, trả về length
           if (Array.isArray(data)) return data.length;
+
+          // Thử tìm bất kỳ property nào là number
+          for (const key in data) {
+               if (data.hasOwnProperty(key)) {
+                    const value = data[key];
+                    if (typeof value === 'number' && !isNaN(value)) {
+                         return value;
+                    }
+               }
+          }
+
           return 0;
      };
 
@@ -114,15 +138,20 @@ export default function OwnerDashboard({ isDemo = false }) {
                     fetchOwnerDailyRevenue({ fromDate: fromDateStr, toDate }),
                     fetchOwnerFieldPerformance({ fromDate: fromDateStr, toDate }),
                     fetchOwnerFillRate({ fromDate: fromDateStr, toDate }),
-                    fetchOwnerRecentBookings({ topCount: 5 })
+                    fetchOwnerRecentBookings({ topCount: 6 })
                ]);
 
                // Cập nhật stats
+               // Debug: Log API response để kiểm tra format
+               if (totalBookingsResult.ok && totalBookingsResult.data) {
+                    console.log('[OwnerDashboard] Total Bookings API Response:', totalBookingsResult.data);
+               }
+
                const newStats = {
                     totalRevenue: extractNumber(totalRevenueResult.ok ? totalRevenueResult.data : null,
                          'totalRevenue', 'revenue', 'amount', 'total', 'sum'),
                     totalBookings: extractNumber(totalBookingsResult.ok ? totalBookingsResult.data : null,
-                         'totalBookings', 'bookings', 'total', 'count', 'bookingCount'),
+                         'totalBookings', 'bookings', 'total', 'count', 'bookingCount', 'totalBookingCount'),
                     activeFields: fieldPerformanceResult.ok && fieldPerformanceResult.data ?
                          (Array.isArray(fieldPerformanceResult.data) ? fieldPerformanceResult.data.length :
                               extractNumber(fieldPerformanceResult.data, 'activeFields', 'total', 'count')) : 0,
@@ -224,6 +253,27 @@ export default function OwnerDashboard({ isDemo = false }) {
           return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
      };
 
+     const formatDate = (dateValue) => {
+          // Nếu là string ngắn như "T2", "T3" thì giữ nguyên
+          if (typeof dateValue === 'string' && dateValue.length <= 3) {
+               return dateValue;
+          }
+
+          // Nếu là date string hoặc date object, format thành DD/MM/YYYY
+          try {
+               const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+               if (isNaN(date.getTime())) {
+                    return dateValue; // Trả về giá trị gốc nếu không parse được
+               }
+               const day = String(date.getDate()).padStart(2, '0');
+               const month = String(date.getMonth() + 1).padStart(2, '0');
+               const year = date.getFullYear();
+               return `${day}/${month}/${year}`;
+          } catch (error) {
+               return dateValue; // Trả về giá trị gốc nếu có lỗi
+          }
+     };
+
      const cards = [
           {
                title: "Tổng doanh thu",
@@ -275,7 +325,8 @@ export default function OwnerDashboard({ isDemo = false }) {
           { id: 2, customer: "Trần Thị B", field: "Sân B2", time: "19:30-20:30", status: "pending", amount: 180000 },
           { id: 3, customer: "Lê Văn C", field: "Sân A2", time: "20:00-21:00", status: "confirmed", amount: 200000 },
           { id: 4, customer: "Phạm Thị D", field: "Sân C1", time: "17:00-18:00", status: "cancelled", amount: 120000 },
-          { id: 5, customer: "Hoàng Văn E", field: "Sân B1", time: "21:00-22:00", status: "confirmed", amount: 160000 }
+          { id: 5, customer: "Hoàng Văn E", field: "Sân B1", time: "21:00-22:00", status: "confirmed", amount: 160000 },
+          { id: 6, customer: "Võ Thị F", field: "Sân A3", time: "19:00-20:00", status: "confirmed", amount: 170000 }
      ];
 
      const demoFieldPerformance = [
@@ -384,7 +435,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                                    ) : (
                                         displayRevenueData.map((item, index) => (
                                              <div key={index} className="flex items-center justify-between">
-                                                  <span className="text-sm text-gray-600 w-8">{item.day}</span>
+                                                  <span className="text-sm text-gray-600 min-w-[80px]">{formatDate(item.day || item.date)}</span>
                                                   <div className="flex-1 mx-4">
                                                        <div className="bg-gray-200 rounded-full h-2">
                                                             <div
@@ -475,7 +526,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                                              <p>Chưa có booking nào</p>
                                         </div>
                                    ) : (
-                                        displayRecentBookings.map((booking) => (
+                                        displayRecentBookings.slice(0, 6).map((booking) => (
                                              <div key={booking.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
                                                   <div className="flex items-center space-x-3">
                                                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">

@@ -20,6 +20,7 @@ export { Button } from "./button";
 export { Textarea } from "./textarea";
 export { Calendar } from "./calendar";
 export { DatePicker } from "./datepicker";
+export { Checkbox } from "./checkbox";
 export { Popover, PopoverTrigger, PopoverContent } from "./popover";
 export { Combobox } from "./combobox";
 export {

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE = "https://sep490-g19-zxph.onrender.com/api/match-requests";
+const API_BASE = "https://sep490-g19-zxph.onrender.com/api/match-requests/";
 
 const apiClient = axios.create({
   baseURL: API_BASE,
@@ -87,7 +87,7 @@ export async function fetchMatchRequestById(requestId) {
     return { success: false, error: "Thiếu requestId" };
   }
   try {
-    const response = await apiClient.get(`/${requestId}`);
+    const response = await apiClient.get(`${requestId}`);
     return {
       success: true,
       data: response.data,
@@ -120,7 +120,7 @@ export async function joinMatchRequestAPI(requestId, payload) {
     return { success: false, error: "Thiếu requestId" };
   }
   try {
-    const response = await apiClient.post(`/${requestId}/join`, payload);
+    const response = await apiClient.post(`${requestId}/join`, payload);
     return {
       success: true,
       data: response.data,
@@ -139,7 +139,7 @@ export async function acceptMatchParticipant(requestId, participantId) {
   }
   try {
     const response = await apiClient.post(
-      `/${requestId}/accept/${participantId}`
+      `${requestId}/accept/${participantId}`
     );
     return {
       success: true,
@@ -159,7 +159,7 @@ export async function rejectOrWithdrawParticipant(requestId, participantId) {
   }
   try {
     const response = await apiClient.post(
-      `/${requestId}/reject-or-withdraw/${participantId}`
+      `${requestId}/reject-or-withdraw/${participantId}`
     );
     return {
       success: true,
@@ -178,7 +178,7 @@ export async function deleteMatchRequest(requestId) {
     return { success: false, error: "Thiếu requestId" };
   }
   try {
-    const response = await apiClient.delete(`/${requestId}`);
+    const response = await apiClient.delete(`${requestId}`);
     return {
       success: true,
       data: response.data,
@@ -194,7 +194,7 @@ export async function deleteMatchRequest(requestId) {
 export async function fetchMyMatchHistory(params = {}) {
   try {
     const { page = 1, size = 20 } = params;
-    const response = await apiClient.get("/my-history", {
+    const response = await apiClient.get("my-history", {
       params: { page, size },
     });
     return {
@@ -215,7 +215,7 @@ export async function checkMatchRequestByBooking(bookingId) {
     return { success: false, error: "Thiếu bookingId" };
   }
   try {
-    const response = await apiClient.get(`/booking/${bookingId}/has-request`);
+    const response = await apiClient.get(`booking/${bookingId}/has-request`);
     return {
       success: true,
       data: response.data,
@@ -230,7 +230,7 @@ export async function checkMatchRequestByBooking(bookingId) {
 
 export async function expireOldMatchRequests() {
   try {
-    const response = await apiClient.post("/expire-old");
+    const response = await apiClient.post("expire-old");
     return {
       success: true,
       data: response.data,
@@ -242,4 +242,3 @@ export async function expireOldMatchRequests() {
     };
   }
 }
-

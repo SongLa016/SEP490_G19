@@ -652,3 +652,71 @@ export async function fetchAvailableSchedulesByFieldAndDate(fieldId, date) {
     };
   }
 }
+
+/**
+ * Fetch a single field schedule by ID using public endpoint
+ * @param {number|string} scheduleId - Schedule ID
+ * @returns {Promise<Object>} Schedule data
+ */
+export async function fetchFieldScheduleById(scheduleId) {
+  try {
+    if (!scheduleId) {
+      return {
+        success: false,
+        error: "Schedule ID is required",
+      };
+    }
+
+    const endpoint = `/FieldSchedule/public/${scheduleId}`;
+
+    console.log(`Fetching public field schedule by ID: ${scheduleId}`);
+
+    // Create a separate axios instance without auth token for public endpoint
+    const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+    const API_BASE_URL =
+      process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
+
+    const publicApiClient = axios.create({
+      baseURL: `${API_BASE_URL}/api`,
+      timeout: 30000,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    // Ensure no auth token is sent for public endpoint
+    publicApiClient.interceptors.request.use((config) => {
+      delete config.headers.Authorization;
+      return config;
+    });
+
+    console.log(`Calling public endpoint: ${API_BASE_URL}/api${endpoint}`);
+    const response = await publicApiClient.get(endpoint);
+
+    let data = response.data;
+
+    // Handle different response structures
+    if (data && (data.scheduleId || data.ScheduleID || data.scheduleID)) {
+      return {
+        success: true,
+        data: normalizeFieldSchedule(data),
+      };
+    } else if (data && data.data) {
+      return {
+        success: true,
+        data: normalizeFieldSchedule(data.data),
+      };
+    } else {
+      return {
+        success: false,
+        error: "Invalid response format",
+      };
+    }
+  } catch (error) {
+    console.error(`Error fetching field schedule by ID ${scheduleId}:`, error);
+    return {
+      success: false,
+      error: handleApiError(error),
+    };
+  }
+}

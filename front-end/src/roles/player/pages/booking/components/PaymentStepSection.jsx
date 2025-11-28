@@ -72,8 +72,8 @@ export default function PaymentStepSection({
                               <div className="text-gray-600 font-medium">Số tiền cần thanh toán</div>
                               {depositAvailable ? (
                                    <>
-                                        <div className="flex items-center justify-between p-3 border rounded-2xl bg-amber-50">
-                                             <span className="text-sm text-gray-700">Thanh toán tiền cọc</span>
+                                        <div className="flex items-center justify-between py-2 px-4 border rounded-2xl bg-amber-50">
+                                             <span className="text-sm font-medium text-gray-700">Thanh toán tiền cọc</span>
                                              <span className="text-xl font-bold text-yellow-600">
                                                   {formatPrice(depositAmount)}
                                              </span>
@@ -97,7 +97,7 @@ export default function PaymentStepSection({
                                              <img
                                                   src={bookingInfo.qrCodeUrl}
                                                   alt="QR thanh toán"
-                                                  className="w-80 h-[400px]"
+                                                  className="w-72 h-[350px]"
                                                   onError={(e) => {
                                                        console.log('❌ QR image failed to load');
                                                        e.target.src = bookingInfo.qrCodeUrl + '&force=' + Date.now();

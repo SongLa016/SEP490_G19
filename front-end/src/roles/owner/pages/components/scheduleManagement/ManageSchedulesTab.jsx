@@ -1,6 +1,7 @@
-import React from "react";
-import { Card, Button, Badge, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Pagination, usePagination } from "../../../../../shared/components/ui";
-import { Plus, Calendar, Loader2, Trash2, Loader } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { Card, Button, Badge, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Pagination, usePagination, Input, Checkbox } from "../../../../../shared/components/ui";
+import { Plus, Calendar, Loader2, Trash2, Loader, Search, X, ChevronDown, ChevronUp } from "lucide-react";
+import Swal from "sweetalert2";
 
 export default function ManageSchedulesTab({
      fields,
@@ -17,6 +18,14 @@ export default function ManageSchedulesTab({
      onUpdateStatus,
      onDeleteSchedule
 }) {
+     const [searchTerm, setSearchTerm] = useState('');
+     const [selectedSchedules, setSelectedSchedules] = useState(new Set());
+     const [sortBy, setSortBy] = useState('date'); // date, field, slot, status
+     const [sortOrder, setSortOrder] = useState('asc'); // asc, desc
+     const [viewMode, setViewMode] = useState('table'); // table, grouped
+     const [filterMonth, setFilterMonth] = useState('all');
+     const [filterQuarter, setFilterQuarter] = useState('all');
+     const [filterYear, setFilterYear] = useState('all');
      const getStatusBadge = (status) => {
           const statusLower = status.toLowerCase();
           if (statusLower === 'available') {
@@ -38,33 +47,212 @@ export default function ManageSchedulesTab({
           return '00:00';
      };
 
-     // Filter schedules based on filters
-     const filteredSchedules = fieldSchedules.filter((schedule) => {
-          const fieldId = schedule.fieldId || schedule.FieldID;
-          const status = schedule.status || schedule.Status || '';
-          const scheduleDate = schedule.scheduleDate || schedule.ScheduleDate;
-
-          // Filter by field
-          if (scheduleFilterField !== 'all' && fieldId.toString() !== scheduleFilterField) {
-               return false;
+     // Helper to get date from schedule
+     const getScheduleDate = (schedule) => {
+          const scheduleDate = schedule.date || schedule.scheduleDate || schedule.ScheduleDate;
+          if (typeof scheduleDate === 'string') {
+               return new Date(scheduleDate);
+          } else if (scheduleDate && scheduleDate.year) {
+               return new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day);
           }
+          return null;
+     };
 
-          // Filter by status
-          if (scheduleFilterStatus !== 'all' && status.toLowerCase() !== scheduleFilterStatus.toLowerCase()) {
-               return false;
-          }
+     // Filter and sort schedules
+     const filteredSchedules = useMemo(() => {
+          let filtered = fieldSchedules.filter((schedule) => {
+               const fieldId = schedule.fieldId || schedule.FieldID;
+               const status = schedule.status || schedule.Status || '';
+               const fieldName = (schedule.fieldName || schedule.FieldName || '').toLowerCase();
+               const slotName = (schedule.slotName || schedule.SlotName || '').toLowerCase();
+               const date = getScheduleDate(schedule);
 
-          // Filter by date
-          if (scheduleFilterDate) {
-               const filterDateStr = scheduleFilterDate.toISOString().split('T')[0];
-               const scheduleDateStr = scheduleDate ? new Date(scheduleDate).toISOString().split('T')[0] : '';
-               if (scheduleDateStr !== filterDateStr) {
+               // Filter by field
+               if (scheduleFilterField !== 'all' && fieldId.toString() !== scheduleFilterField) {
                     return false;
                }
-          }
 
-          return true;
-     });
+               // Filter by status
+               if (scheduleFilterStatus !== 'all' && status.toLowerCase() !== scheduleFilterStatus.toLowerCase()) {
+                    return false;
+               }
+
+               // Filter by date
+               if (scheduleFilterDate) {
+                    const filterDateStr = scheduleFilterDate.toISOString().split('T')[0];
+                    const scheduleDateStr = date ? date.toISOString().split('T')[0] : '';
+                    if (scheduleDateStr !== filterDateStr) {
+                         return false;
+                    }
+               }
+
+               // Filter by month
+               if (filterMonth && filterMonth !== 'all' && date) {
+                    if (date.getMonth() + 1 !== Number(filterMonth)) {
+                         return false;
+                    }
+               }
+
+               // Filter by quarter
+               if (filterQuarter && filterQuarter !== 'all' && date) {
+                    const quarter = Math.floor(date.getMonth() / 3) + 1;
+                    if (quarter !== Number(filterQuarter)) {
+                         return false;
+                    }
+               }
+
+               // Filter by year
+               if (filterYear && filterYear !== 'all' && date) {
+                    if (date.getFullYear() !== Number(filterYear)) {
+                         return false;
+                    }
+               }
+
+               // Search filter
+               if (searchTerm) {
+                    const search = searchTerm.toLowerCase();
+                    const scheduleId = (schedule.scheduleId || schedule.ScheduleID || '').toString();
+                    if (!fieldName.includes(search) &&
+                         !slotName.includes(search) &&
+                         !scheduleId.includes(search)) {
+                         return false;
+                    }
+               }
+
+               return true;
+          });
+
+          // Sort schedules
+          filtered.sort((a, b) => {
+               let aValue, bValue;
+
+               if (sortBy === 'date') {
+                    const dateA = getScheduleDate(a);
+                    const dateB = getScheduleDate(b);
+                    aValue = dateA ? dateA.getTime() : 0;
+                    bValue = dateB ? dateB.getTime() : 0;
+               } else if (sortBy === 'field') {
+                    aValue = (a.fieldName || a.FieldName || '').toLowerCase();
+                    bValue = (b.fieldName || b.FieldName || '').toLowerCase();
+               } else if (sortBy === 'slot') {
+                    aValue = (a.slotName || a.SlotName || '').toLowerCase();
+                    bValue = (b.slotName || b.SlotName || '').toLowerCase();
+               } else if (sortBy === 'status') {
+                    aValue = (a.status || a.Status || '').toLowerCase();
+                    bValue = (b.status || b.Status || '').toLowerCase();
+               }
+
+               if (sortOrder === 'asc') {
+                    return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+               } else {
+                    return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+               }
+          });
+
+          return filtered;
+     }, [fieldSchedules, scheduleFilterField, scheduleFilterStatus, scheduleFilterDate,
+          filterMonth, filterQuarter, filterYear, searchTerm, sortBy, sortOrder]);
+
+     const handleSort = (column) => {
+          if (sortBy === column) {
+               setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+          } else {
+               setSortBy(column);
+               setSortOrder('asc');
+          }
+     };
+
+     const handleSelectAll = (checked) => {
+          if (checked) {
+               setSelectedSchedules(new Set(paginatedSchedules.map(s => s.scheduleId || s.ScheduleID)));
+          } else {
+               setSelectedSchedules(new Set());
+          }
+     };
+
+     const handleSelectSchedule = (scheduleId, checked) => {
+          const newSet = new Set(selectedSchedules);
+          if (checked) {
+               newSet.add(scheduleId);
+          } else {
+               newSet.delete(scheduleId);
+          }
+          setSelectedSchedules(newSet);
+     };
+
+     const handleBulkDelete = async () => {
+          if (selectedSchedules.size === 0) return;
+
+          const confirm = await Swal.fire({
+               title: 'Xác nhận xóa',
+               html: `Bạn có chắc muốn xóa <strong>${selectedSchedules.size}</strong> lịch trình đã chọn?`,
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (confirm.isConfirmed) {
+               // Import deleteFieldSchedule directly
+               const { deleteFieldSchedule } = await import('../../../../../shared/services/fieldSchedules');
+
+               let successCount = 0;
+               let errorCount = 0;
+               const errors = [];
+
+               for (const scheduleId of selectedSchedules) {
+                    try {
+                         const result = await deleteFieldSchedule(scheduleId);
+                         if (result.success) {
+                              successCount++;
+                         } else {
+                              errorCount++;
+                              errors.push(`ID ${scheduleId}: ${result.error || 'Lỗi không xác định'}`);
+                         }
+                         // Small delay to avoid overwhelming server
+                         await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                         errorCount++;
+                         errors.push(`ID ${scheduleId}: ${error.message || 'Lỗi không xác định'}`);
+                    }
+               }
+
+               setSelectedSchedules(new Set());
+
+               const errorList = errors.slice(0, 5);
+               const moreErrors = errors.length > 5 ? `<p class="text-xs text-gray-500 mt-2">...và ${errors.length - 5} lỗi khác</p>` : '';
+
+               await Swal.fire({
+                    icon: successCount > 0 ? (errorCount > 0 ? 'warning' : 'success') : 'error',
+                    title: successCount > 0 ? (errorCount > 0 ? 'Xóa một phần thành công' : 'Xóa thành công') : 'Xóa thất bại',
+                    html: `
+                         <div class="text-left">
+                              <div class="mb-3 p-3 bg-gray-50 rounded">
+                                   <p class="font-semibold">Kết quả:</p>
+                                   <p class="text-green-600">✓ Thành công: ${successCount}</p>
+                                   <p class="text-red-600">✗ Thất bại: ${errorCount}</p>
+                              </div>
+                              ${errorList.length > 0 ? `
+                                   <div class="mt-2">
+                                        <p class="font-semibold text-sm mb-1">Chi tiết lỗi:</p>
+                                        <div class="text-xs space-y-1 max-h-40 overflow-y-auto">
+                                             ${errorList.map(err => `<p class="text-red-600">• ${err}</p>`).join('')}
+                                        </div>
+                                        ${moreErrors}
+                                   </div>
+                              ` : ''}
+                         </div>
+                    `,
+                    confirmButtonColor: successCount > 0 ? '#10b981' : '#ef4444',
+                    width: '600px'
+               });
+
+               // Refresh the list
+               onRefresh();
+          }
+     };
 
      // Pagination for schedules (10 per page)
      const {
@@ -102,52 +290,183 @@ export default function ManageSchedulesTab({
                     </div>
                </div>
 
-               {/* Filters */}
-               <Card className="p-4 rounded-3xl border border-teal-100">
-                    <div className="flex items-center gap-4 flex-wrap">
-                         <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-700">Sân:</span>
-                              <Select value={scheduleFilterField} onValueChange={onScheduleFilterFieldChange}>
-                                   <SelectTrigger className="w-[200px] rounded-2xl">
-                                        <SelectValue placeholder="Chọn sân" />
-                                   </SelectTrigger>
-                                   <SelectContent>
-                                        <SelectItem value="all">Tất cả</SelectItem>
-                                        {fields.map((field) => (
-                                             <SelectItem key={field.fieldId} value={field.fieldId.toString()}>
-                                                  {field.name}
-                                             </SelectItem>
-                                        ))}
-                                   </SelectContent>
-                              </Select>
-                         </div>
-
-                         <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-700">Trạng thái:</span>
-                              <Select value={scheduleFilterStatus} onValueChange={onScheduleFilterStatusChange}>
-                                   <SelectTrigger className="w-[150px] rounded-2xl">
-                                        <SelectValue placeholder="Chọn trạng thái" />
-                                   </SelectTrigger>
-                                   <SelectContent>
-                                        <SelectItem value="all">Tất cả</SelectItem>
-                                        <SelectItem value="Available">Available</SelectItem>
-                                        <SelectItem value="Booked">Booked</SelectItem>
-                                        <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                   </SelectContent>
-                              </Select>
-                         </div>
-
-                         <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-700">Ngày:</span>
-                              <DatePicker
-                                   value={scheduleFilterDate}
-                                   onChange={onScheduleFilterDateChange}
-                                   className="w-[180px] rounded-2xl"
-                                   placeholder="Chọn ngày"
+               {/* Search and View Mode */}
+               <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-2 flex-1 min-w-[300px]">
+                         <div className="relative flex-1">
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                              <Input
+                                   placeholder="Tìm kiếm theo sân, slot, ID..."
+                                   value={searchTerm}
+                                   onChange={(e) => setSearchTerm(e.target.value)}
+                                   className="pl-10 rounded-2xl"
                               />
                          </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                         <Select value={viewMode} onValueChange={setViewMode}>
+                              <SelectTrigger className="w-[150px] rounded-2xl">
+                                   <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                   <SelectItem value="table">Xem bảng</SelectItem>
+                                   <SelectItem value="grouped">Xem nhóm</SelectItem>
+                              </SelectContent>
+                         </Select>
+                    </div>
+               </div>
+
+               {/* Filters */}
+               <Card className="p-4 rounded-3xl border border-teal-100">
+                    <div className="space-y-3">
+                         <div className="flex items-center gap-4 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                   <span className="font-medium text-gray-700">Sân:</span>
+                                   <Select value={scheduleFilterField} onValueChange={onScheduleFilterFieldChange}>
+                                        <SelectTrigger className="w-[200px] rounded-2xl">
+                                             <SelectValue placeholder="Chọn sân" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                             <SelectItem value="all">Tất cả</SelectItem>
+                                             {fields.map((field) => (
+                                                  <SelectItem key={field.fieldId} value={field.fieldId.toString()}>
+                                                       {field.name}
+                                                  </SelectItem>
+                                             ))}
+                                        </SelectContent>
+                                   </Select>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                   <span className="font-medium text-gray-700">Trạng thái:</span>
+                                   <Select value={scheduleFilterStatus} onValueChange={onScheduleFilterStatusChange}>
+                                        <SelectTrigger className="w-[150px] rounded-2xl">
+                                             <SelectValue placeholder="Chọn trạng thái" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                             <SelectItem value="all">Tất cả</SelectItem>
+                                             <SelectItem value="Available">Available</SelectItem>
+                                             <SelectItem value="Booked">Booked</SelectItem>
+                                             <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                        </SelectContent>
+                                   </Select>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                   <span className="font-medium text-gray-700">Ngày:</span>
+                                   <DatePicker
+                                        value={scheduleFilterDate}
+                                        onChange={onScheduleFilterDateChange}
+                                        className="w-[180px] rounded-2xl"
+                                        placeholder="Chọn ngày"
+                                   />
+                              </div>
+                         </div>
+
+                         {/* Month/Quarter/Year Filters */}
+                         <div className="flex items-center gap-4 flex-wrap border-t pt-3">
+                              <div className="flex items-center gap-2">
+                                   <span className="font-medium text-gray-700">Tháng:</span>
+                                   <Select value={filterMonth || 'all'} onValueChange={setFilterMonth}>
+                                        <SelectTrigger className="w-[150px] rounded-2xl">
+                                             <SelectValue placeholder="Tất cả tháng" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                             <SelectItem value="all">Tất cả tháng</SelectItem>
+                                             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
+                                                  <SelectItem key={m} value={m.toString()}>
+                                                       Tháng {m}
+                                                  </SelectItem>
+                                             ))}
+                                        </SelectContent>
+                                   </Select>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                   <span className="font-medium text-gray-700">Quý:</span>
+                                   <Select value={filterQuarter || 'all'} onValueChange={(val) => {
+                                        setFilterQuarter(val);
+                                        setFilterMonth('all'); // Clear month when quarter is selected
+                                   }}>
+                                        <SelectTrigger className="w-[150px] rounded-2xl">
+                                             <SelectValue placeholder="Tất cả quý" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                             <SelectItem value="all">Tất cả quý</SelectItem>
+                                             {[1, 2, 3, 4].map(q => (
+                                                  <SelectItem key={q} value={q.toString()}>
+                                                       Quý {q}
+                                                  </SelectItem>
+                                             ))}
+                                        </SelectContent>
+                                   </Select>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                   <span className="font-medium text-gray-700">Năm:</span>
+                                   <Select value={filterYear || 'all'} onValueChange={setFilterYear}>
+                                        <SelectTrigger className="w-[120px] rounded-2xl">
+                                             <SelectValue placeholder="Tất cả năm" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                             <SelectItem value="all">Tất cả năm</SelectItem>
+                                             {[new Date().getFullYear(), new Date().getFullYear() + 1, new Date().getFullYear() + 2].map(y => (
+                                                  <SelectItem key={y} value={y.toString()}>
+                                                       {y}
+                                                  </SelectItem>
+                                             ))}
+                                        </SelectContent>
+                                   </Select>
+                              </div>
+
+                              {(filterMonth !== 'all' || filterQuarter !== 'all' || filterYear !== 'all' || scheduleFilterDate) && (
+                                   <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                             setFilterMonth('all');
+                                             setFilterQuarter('all');
+                                             setFilterYear('all');
+                                             onScheduleFilterDateChange('');
+                                        }}
+                                        className="rounded-2xl"
+                                   >
+                                        <X className="w-4 h-4 mr-1" />
+                                        Xóa bộ lọc
+                                   </Button>
+                              )}
+                         </div>
+                    </div>
                </Card>
+
+               {/* Bulk Actions */}
+               {selectedSchedules.size > 0 && (
+                    <Card className="p-3 rounded-2xl border-2 border-teal-400 bg-teal-50">
+                         <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-teal-900">
+                                   Đã chọn <strong>{selectedSchedules.size}</strong> lịch trình
+                              </span>
+                              <div className="flex items-center gap-2">
+                                   <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setSelectedSchedules(new Set())}
+                                        className="rounded-xl"
+                                   >
+                                        Bỏ chọn
+                                   </Button>
+                                   <Button
+                                        size="sm"
+                                        onClick={handleBulkDelete}
+                                        className="bg-red-600 hover:bg-red-700 text-white rounded-xl"
+                                   >
+                                        <Trash2 className="w-4 h-4 mr-1" />
+                                        Xóa đã chọn
+                                   </Button>
+                              </div>
+                         </div>
+                    </Card>
+               )}
 
                {/* Table */}
                {loadingSchedules ? (
@@ -171,12 +490,57 @@ export default function ManageSchedulesTab({
                               <table className="w-full border-collapse border border-teal-200">
                                    <thead>
                                         <tr className="bg-gradient-to-r  from-teal-50 to-blue-50 border-b-2 border-teal-200">
-                                             <th className="p-2 text-center font-bold text-gray-800">ID</th>
-                                             <th className="p-2 text-center font-bold text-gray-800">Sân</th>
-                                             <th className="p-2 text-center font-bold text-gray-800">Slot</th>
-                                             <th className="p-4 text-center font-bold text-gray-800">Ngày</th>
+                                             <th className="p-2 text-center font-bold text-gray-800 w-12">
+                                                  <Checkbox
+                                                       checked={paginatedSchedules.length > 0 && paginatedSchedules.every(s => selectedSchedules.has(s.scheduleId || s.ScheduleID))}
+                                                       onCheckedChange={handleSelectAll}
+                                                  />
+                                             </th>
+                                             <th
+                                                  className="p-2 text-center font-bold text-gray-800 cursor-pointer hover:bg-teal-100 transition-colors"
+                                                  onClick={() => handleSort('date')}
+                                             >
+                                                  <div className="flex items-center justify-center gap-1">
+                                                       Ngày
+                                                       {sortBy === 'date' && (
+                                                            sortOrder === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                                                       )}
+                                                  </div>
+                                             </th>
+                                             <th
+                                                  className="p-2 text-center font-bold text-gray-800 cursor-pointer hover:bg-teal-100 transition-colors"
+                                                  onClick={() => handleSort('field')}
+                                             >
+                                                  <div className="flex items-center justify-center gap-1">
+                                                       Sân
+                                                       {sortBy === 'field' && (
+                                                            sortOrder === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                                                       )}
+                                                  </div>
+                                             </th>
+                                             <th
+                                                  className="p-2 text-center font-bold text-gray-800 cursor-pointer hover:bg-teal-100 transition-colors"
+                                                  onClick={() => handleSort('slot')}
+                                             >
+                                                  <div className="flex items-center justify-center gap-1">
+                                                       Slot
+                                                       {sortBy === 'slot' && (
+                                                            sortOrder === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                                                       )}
+                                                  </div>
+                                             </th>
                                              <th className="p-2 text-center font-bold text-gray-800">Thời gian</th>
-                                             <th className="p-2 text-center font-bold text-gray-800">Trạng thái</th>
+                                             <th
+                                                  className="p-2 text-center font-bold text-gray-800 cursor-pointer hover:bg-teal-100 transition-colors"
+                                                  onClick={() => handleSort('status')}
+                                             >
+                                                  <div className="flex items-center justify-center gap-1">
+                                                       Trạng thái
+                                                       {sortBy === 'status' && (
+                                                            sortOrder === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                                                       )}
+                                                  </div>
+                                             </th>
                                              <th className="p-2 text-center font-bold text-gray-800">Thao tác</th>
                                         </tr>
                                    </thead>
@@ -186,15 +550,13 @@ export default function ManageSchedulesTab({
                                              const fieldName = schedule.fieldName || schedule.FieldName || 'N/A';
                                              const slotName = schedule.slotName || schedule.SlotName || 'N/A';
                                              const status = schedule.status || schedule.Status || 'Available';
+                                             const isSelected = selectedSchedules.has(scheduleId);
 
                                              // Format date
                                              let dateStr = 'N/A';
-                                             const scheduleDate = schedule.date;
-                                             if (typeof scheduleDate === 'string') {
-                                                  const date = new Date(scheduleDate);
+                                             const date = getScheduleDate(schedule);
+                                             if (date) {
                                                   dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
-                                             } else if (scheduleDate && scheduleDate.year) {
-                                                  dateStr = `${scheduleDate.day}/${scheduleDate.month}/${scheduleDate.year}`;
                                              }
 
                                              // Format time
@@ -206,11 +568,19 @@ export default function ManageSchedulesTab({
                                              }
 
                                              return (
-                                                  <tr key={scheduleId} className="border border-gray-200  hover:bg-gray-50 transition-colors text-center">
-                                                       <td className="p-2  text-gray-700 font-mono text-sm border-r border-gray-200">#{scheduleId}</td>
+                                                  <tr
+                                                       key={scheduleId}
+                                                       className={`border border-gray-200 hover:bg-gray-50 transition-colors text-center ${isSelected ? 'bg-teal-50' : ''}`}
+                                                  >
+                                                       <td className="p-2 text-center border-r border-gray-200">
+                                                            <Checkbox
+                                                                 checked={isSelected}
+                                                                 onCheckedChange={(checked) => handleSelectSchedule(scheduleId, checked)}
+                                                            />
+                                                       </td>
+                                                       <td className="p-2 text-gray-700 border-r border-gray-200">{dateStr}</td>
                                                        <td className="p-4 text-gray-900 font-medium border-r border-gray-200">{fieldName}</td>
                                                        <td className="p-2 text-gray-700 border-r border-gray-200">{slotName}</td>
-                                                       <td className="p-2 text-gray-700 border-r border-gray-200">{dateStr}</td>
                                                        <td className="p-2 text-gray-700 font-mono text-sm border-r border-gray-200">{timeStr}</td>
                                                        <td className="p-2 text-center border-r border-gray-200">{getStatusBadge(status)}</td>
                                                        <td className="p-2 text-center">

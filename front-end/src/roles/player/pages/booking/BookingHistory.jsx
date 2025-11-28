@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Calendar, MapPin, Receipt, Search, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ArrowUpDown, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon, Info } from "lucide-react";
+import { Calendar, MapPin, Receipt, Search, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ArrowUpDown, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon, Info, RefreshCw, Loader2 } from "lucide-react";
 import { Section, Container, Card, CardContent, Input, Button, Badge, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, DatePicker, LoadingList, FadeIn, SlideIn, StaggerContainer, Modal } from "../../../../shared/components/ui";
 import { listBookingsByUser, updateBooking, fetchBookingsByPlayer, generateQRCode, confirmPaymentAPI } from "../../../../shared/index";
 import { cancelBooking as cancelBookingAPI } from "../../../../shared/services/bookings";
@@ -17,6 +17,7 @@ import RecurringOpponentModal from "../../../../shared/components/RecurringOppon
 import RatingModal from "../../../../shared/components/RatingModal";
 import InvoiceModal from "../../../../shared/components/InvoiceModal";
 import CancelBookingModal from "../../../../shared/components/CancelBookingModal";
+import { fetchFieldScheduleById } from "../../../../shared/services/fieldSchedules";
 import Swal from 'sweetalert2';
 
 const parseDateValue = (value) => {
@@ -31,6 +32,30 @@ const formatTimeLabel = (dateObj) => {
           hour: "2-digit",
           minute: "2-digit"
      });
+};
+
+const formatDateWithDay = (dateStr, startTime) => {
+     if (!dateStr) return "Chưa có ngày";
+     try {
+          let dateObj = null;
+          if (startTime) {
+               dateObj = new Date(startTime);
+          } else if (dateStr.includes('/')) {
+               const [d, m, y] = dateStr.split('/').map(Number);
+               dateObj = new Date(y, m - 1, d);
+          } else {
+               dateObj = new Date(dateStr);
+          }
+
+          if (dateObj && !isNaN(dateObj.getTime())) {
+               const dayNames = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+               const dayName = dayNames[dateObj.getDay()];
+               return `${dayName}, ${dateStr}`;
+          }
+     } catch (e) {
+          // Fallback to original date string
+     }
+     return dateStr;
 };
 
 const stripRefundQrInfo = (text) => {
@@ -55,7 +80,251 @@ const extractRequestId = (payload) => {
 
 const extractParticipants = (detail) => {
      if (!detail) return [];
-     return detail.participants || detail.participantsList || detail.joinRequests || [];
+
+     // Direct arrays that already represent participants
+     if (Array.isArray(detail)) return detail;
+
+     const candidateKeys = [
+          "participants",
+          "participantsList",
+          "joinRequests",
+          "joins",
+          "joinResponses",
+          "matchJoinResponses",
+          "matchJoinRequests",
+          "matchJoins",
+          "matchParticipants",
+          "pendingParticipants"
+     ];
+
+     for (const key of candidateKeys) {
+          if (Array.isArray(detail[key])) {
+               return detail[key];
+          }
+     }
+
+     // Some APIs wrap the payload in data/result fields
+     if (detail.data) {
+          const nested = extractParticipants(detail.data);
+          if (Array.isArray(nested) && nested.length > 0) {
+               return nested;
+          }
+     }
+     if (detail.result) {
+          const nested = extractParticipants(detail.result);
+          if (Array.isArray(nested) && nested.length > 0) {
+               return nested;
+          }
+     }
+
+     return [];
+};
+
+const getRequestOwnerId = (request) => {
+     if (!request) return null;
+     return (
+          request.ownerId ||
+          request.ownerID ||
+          request.userId ||
+          request.userID ||
+          request.createdById ||
+          request.createdByID ||
+          request.createdByUserId ||
+          request.createdByUserID ||
+          request.creatorUserId ||
+          request.creatorId ||
+          request.creatorID ||
+          request.createdBy ||
+          null
+     );
+};
+
+const getOwnerTeamNames = (request) => {
+     if (!request) return [];
+     const names = [
+          request.creatorTeamName,
+          request.homeTeamName,
+          request.hostTeamName,
+          request.ownerTeamName,
+          request.teamName,
+          request.ownerTeam,
+          request?.owner?.teamName,
+          request?.homeTeam?.name,
+          request?.hostTeam?.name,
+          request?.booking?.teamName
+     ];
+     return names
+          .filter((name) => typeof name === "string" && name.trim().length > 0)
+          .map((name) => name.trim().toLowerCase());
+};
+
+const isOwnerParticipant = (participant, ownerId, ownerTeamNames = []) => {
+     if (!participant) return false;
+     if (participant.isOwnerTeam || participant.isHostTeam || participant.role === "owner") return true;
+
+     const participantTeamName = (participant.teamName || participant.fullName || "")
+          .toString()
+          .trim()
+          .toLowerCase();
+
+     if (participantTeamName && ownerTeamNames.includes(participantTeamName)) {
+          return true;
+     }
+
+     if (ownerId == null) return false;
+
+     const ownerValue = String(ownerId);
+     const possibleOwnerIds = [
+          participant.ownerId,
+          participant.ownerID,
+          participant.userId,
+          participant.userID,
+          participant.playerId,
+          participant.playerID,
+          participant.createdById,
+          participant.createdByID,
+          participant.creatorId,
+          participant.creatorID,
+          participant.createdByUserId,
+          participant.createdByUserID,
+          participant.hostUserId,
+          participant.hostUserID,
+          participant.teamOwnerId,
+          participant.teamOwnerID,
+          participant?.user?.id,
+          participant?.user?.userId,
+          participant?.user?.userID,
+          participant?.owner?.id,
+          participant?.owner?.userId,
+          participant?.owner?.userID
+     ]
+          .filter((val) => val !== undefined && val !== null)
+          .map((val) => String(val));
+
+     if (!possibleOwnerIds.includes(ownerValue)) {
+          return false;
+     }
+
+     if (ownerTeamNames.length === 0) {
+          return true;
+     }
+
+     return ownerTeamNames.includes(participantTeamName);
+};
+
+const normalizeStatusValue = (value) => {
+     if (value === undefined || value === null) return "";
+     const raw = value.toString().trim().toLowerCase();
+     if (!raw) return "";
+     if (raw.includes("accept") || raw.includes("approve") || raw.includes("confirm") || raw.includes("match")) return "accepted";
+     if (raw.includes("reject") || raw.includes("deny") || raw.includes("decline")) return "rejected";
+     if (raw.includes("withdraw")) return "withdrawn";
+     if (raw.includes("cancel")) return "cancelled";
+     if (raw.includes("pending") || raw.includes("wait")) return "pending";
+     if (raw === "0") return "pending";
+     return raw;
+};
+
+const getOwnerDecisionStatus = (participant) => {
+     if (!participant) return "";
+     const ownerStatusSources = [
+          participant.statusFromA,
+          participant.statusFromOwner,
+          participant.statusFromHost,
+          participant.statusFromCreator,
+          participant.statusFromTeamA,
+          participant.statusFromRequester,
+          participant.ownerStatus,
+          participant.hostDecision,
+          participant.approvalStatus,
+          participant.status
+     ];
+
+     for (const source of ownerStatusSources) {
+          const normalized = normalizeStatusValue(source);
+          if (normalized) return normalized;
+     }
+     return "";
+};
+
+const getOpponentDecisionStatus = (participant) => {
+     if (!participant) return "";
+     const opponentStatusSources = [
+          participant.statusFromB,
+          participant.statusFromParticipant,
+          participant.statusFromTeam,
+          participant.statusFromTeamB,
+          participant.opponentStatus,
+          participant.teamStatus,
+          participant.joinStatus,
+          participant.state,
+          participant.participantStatus,
+          participant.responseStatus
+     ];
+
+     for (const source of opponentStatusSources) {
+          const normalized = normalizeStatusValue(source);
+          if (normalized) return normalized;
+     }
+     return "";
+};
+
+const participantNeedsOwnerAction = (participant) => {
+     const ownerStatus = getOwnerDecisionStatus(participant);
+     return !ownerStatus || ownerStatus === "pending";
+};
+
+const isParticipantAcceptedByOwner = (participant) => getOwnerDecisionStatus(participant) === "accepted";
+
+const isParticipantRejectedByOwner = (participant) => getOwnerDecisionStatus(participant) === "rejected";
+
+const normalizeParticipantStatus = (participant) => {
+     const ownerStatus = getOwnerDecisionStatus(participant);
+     const opponentStatus = getOpponentDecisionStatus(participant);
+
+     if (ownerStatus === "accepted" && opponentStatus === "accepted") {
+          return "Hai đội đã xác nhận";
+     }
+
+     if (ownerStatus === "accepted" && (!opponentStatus || opponentStatus === "pending")) {
+          return "Đã chấp nhận • Chờ đội bạn";
+     }
+
+     if (participantNeedsOwnerAction(participant)) {
+          return "Chờ bạn duyệt";
+     }
+
+     if (ownerStatus === "rejected") {
+          return "Đã từ chối";
+     }
+
+     if (opponentStatus === "rejected" || opponentStatus === "cancelled") {
+          return "Đội bạn đã hủy";
+     }
+
+     if (opponentStatus === "withdrawn") {
+          return "Đội bạn đã rút";
+     }
+
+     const fallback =
+          ownerStatus ||
+          opponentStatus ||
+          normalizeStatusValue(
+               participant?.status ??
+               participant?.state ??
+               participant?.joinStatus ??
+               participant?.joinState
+          ) ||
+          "pending";
+
+     return fallback.charAt(0).toUpperCase() + fallback.slice(1);
+};
+
+const filterParticipantsForDisplay = (participants, request) => {
+     if (!Array.isArray(participants)) return [];
+     const ownerId = getRequestOwnerId(request);
+     const ownerTeamNames = getOwnerTeamNames(request);
+     return participants.filter((participant) => !isOwnerParticipant(participant, ownerId, ownerTeamNames));
 };
 
 const getParticipantId = (participant) => {
@@ -75,16 +344,32 @@ const deriveStatusFromApi = (statusInput) => {
 
 const normalizeApiBookings = (items = []) =>
      items.map((item, index) => {
+          // Debug: Log raw data từ API
+          console.log(`🔍 [Normalize Booking ${index}] Raw API data:`, {
+               bookingId: item.bookingId ?? item.bookingID ?? item.id,
+               scheduleId: item.scheduleId ?? item.scheduleID ?? item.ScheduleID,
+               slotId: item.slotId ?? item.slotID ?? item.SlotID,
+               date: item.date,
+               startTime: item.startTime,
+               endTime: item.endTime,
+               slotName: item.slotName,
+               time: item.time,
+               duration: item.duration,
+               fullItem: item
+          });
+
           const start = parseDateValue(item.startTime);
           const end = parseDateValue(item.endTime);
           const timeLabel = start && end ? `${formatTimeLabel(start)} - ${formatTimeLabel(end)}` : (item.slotName || item.time || "");
           const durationMinutes = start && end ? Math.max(15, Math.round((end - start) / 60000)) : item.duration;
-          return {
+
+          const normalized = {
                id: String(item.bookingId ?? item.bookingID ?? item.id ?? `API-${index}`),
                bookingId: item.bookingId ?? item.bookingID ?? item.id ?? `API-${index}`,
                // Database fields
                userId: item.userId ?? item.userID ?? item.UserID,
                scheduleId: item.scheduleId ?? item.scheduleID ?? item.ScheduleID,
+               slotId: item.slotId ?? item.slotID ?? item.SlotID,
                totalPrice: Number(item.totalPrice ?? item.TotalPrice ?? item.price ?? 0),
                depositAmount: Number(item.depositAmount ?? item.DepositAmount ?? 0),
                bookingStatus: item.bookingStatus ?? item.BookingStatus ?? item.status,
@@ -116,6 +401,42 @@ const normalizeApiBookings = (items = []) =>
                totalWeeks: item.totalWeeks || item.recurringWeeks || item.totalSessions || 0,
                apiSource: item
           };
+
+          // Debug: Log normalized data
+          console.log(`🔍 [Normalize Booking ${index}] Normalized data:`, {
+               id: normalized.id,
+               scheduleId: normalized.scheduleId,
+               slotId: normalized.slotId,
+               date: normalized.date,
+               time: normalized.time,
+               startTime: normalized.startTime,
+               endTime: normalized.endTime,
+               duration: normalized.duration,
+               slotName: normalized.slotName
+          });
+
+          // Kiểm tra nếu chuẩn: 06:00 - 07:30, Thứ 2 ngày 1/12/2025
+          const expectedTime = "06:00 - 07:30";
+          const expectedDateStr = "01/12/2025";
+          if (normalized.time === expectedTime && normalized.date && normalized.date.includes("01/12/2025")) {
+               console.log(`✅ [Normalize Booking ${index}] Dữ liệu CHUẨN sau normalize:`, {
+                    time: normalized.time,
+                    date: normalized.date,
+                    startTime: normalized.startTime,
+                    endTime: normalized.endTime
+               });
+          } else if (normalized.scheduleId || normalized.slotId) {
+               console.log(`⚠️ [Normalize Booking ${index}] Dữ liệu KHÔNG CHUẨN sau normalize:`, {
+                    actualTime: normalized.time,
+                    expectedTime: expectedTime,
+                    actualDate: normalized.date,
+                    expectedDate: expectedDateStr,
+                    startTime: normalized.startTime,
+                    endTime: normalized.endTime
+               });
+          }
+
+          return normalized;
      });
 
 const buildRecurringGroups = (bookingList = []) => {
@@ -173,6 +494,7 @@ export default function BookingHistory({ user }) {
      const [isLoadingQR, setIsLoadingQR] = useState(false);
      const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
      const [timeRemaining, setTimeRemaining] = useState({}); // Track time remaining for each booking
+     const [scheduleDataMap, setScheduleDataMap] = useState({}); // Map scheduleId -> schedule data from API
      const playerId = user?.userID || user?.UserID || user?.id || user?.Id || user?.userId;
 
      // Scroll to top when filters or sorting change
@@ -209,6 +531,36 @@ export default function BookingHistory({ user }) {
                     if (!isMounted) return;
                     setBookings(bookingList);
                     setGroupedBookings(buildRecurringGroups(bookingList));
+
+                    // Fetch schedule data for each booking
+                    const schedulePromises = bookingList
+                         .filter(b => b.scheduleId)
+                         .map(async (booking) => {
+                              try {
+                                   const scheduleResult = await fetchFieldScheduleById(booking.scheduleId);
+                                   if (scheduleResult.success && scheduleResult.data) {
+                                        return {
+                                             scheduleId: booking.scheduleId,
+                                             data: scheduleResult.data
+                                        };
+                                   }
+                              } catch (error) {
+                                   console.error(`Error fetching schedule ${booking.scheduleId}:`, error);
+                              }
+                              return null;
+                         });
+
+                    const scheduleResults = await Promise.all(schedulePromises);
+                    const scheduleMap = {};
+                    scheduleResults.forEach(result => {
+                         if (result && result.scheduleId) {
+                              scheduleMap[result.scheduleId] = result.data;
+                         }
+                    });
+
+                    if (!isMounted) return;
+                    setScheduleDataMap(scheduleMap);
+                    console.log("📅 [Booking History] Loaded schedule data:", scheduleMap);
                } catch (error) {
                     console.error("Error loading booking history:", error);
                     const fallback = listBookingsByUser(String(playerId));
@@ -247,14 +599,47 @@ export default function BookingHistory({ user }) {
           const map = {};
           const joinsMap = {};
 
+          // First pass: Check bookings that already have matchRequestId in their data
+          // This is the most reliable way to find match requests after reload
+          const bookingsWithRequestId = bookings.filter(booking => {
+               const requestId = booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
+               return requestId && booking.id;
+          });
+
+          if (bookingsWithRequestId.length > 0) {
+               await Promise.all(
+                    bookingsWithRequestId.map(async (booking) => {
+                         const requestId = booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
+                         if (!requestId || !booking.id) return;
+
+                         try {
+                              // Fetch detail of the match request using the ID from booking data
+                              const detailResp = await fetchMatchRequestById(requestId);
+                              if (detailResp?.success && detailResp.data) {
+                                   map[booking.id] = detailResp.data;
+                                   joinsMap[requestId] = extractParticipants(detailResp.data);
+
+                                   console.log("✅ [loadMatchRequests] Mapped from booking.matchRequestId:", {
+                                        bookingId: booking.bookingId,
+                                        bookingDisplayId: booking.id,
+                                        requestId: requestId
+                                   });
+                              }
+                         } catch (error) {
+                              console.warn("Error fetching match request by ID:", requestId, error);
+                         }
+                    })
+               );
+          }
+
           try {
-               // Fetch all match requests from database
+               // Second pass: Fetch all match requests from database and match by bookingId
                const matchRequestsResp = await fetchMatchRequests({ page: 1, size: 1000 });
-               
+
                if (matchRequestsResp.success && Array.isArray(matchRequestsResp.data)) {
                     // Create a map from bookingId to matchRequest (normalize to string for comparison)
                     const bookingIdToMatchRequestMap = {};
-                    
+
                     matchRequestsResp.data.forEach((matchRequest) => {
                          const matchRequestBookingId = matchRequest.bookingId || matchRequest.bookingID || matchRequest.BookingID;
                          if (matchRequestBookingId) {
@@ -264,68 +649,94 @@ export default function BookingHistory({ user }) {
                          }
                     });
 
-                    // Map match requests to bookings
+                    // Map match requests to bookings that don't already have a match request
                     bookings.forEach((booking) => {
-                         // Check both booking.bookingId and booking.id (normalized to string)
-                         const bookingId1 = booking.bookingId ? String(booking.bookingId) : null;
-                         const bookingId2 = booking.id ? String(booking.id) : null;
-                         
-                         // Try to find match request by either bookingId
+                         // Skip if already mapped in first pass
+                         if (map[booking.id]) return;
+
+                         // Only compare booking.bookingId (database ID) with matchRequest.bookingId
+                         // booking.id is just a display key, not the actual database ID
+                         const bookingId = booking.bookingId ? String(booking.bookingId) : null;
+
+                         // Try to find match request by bookingId
                          let matchRequest = null;
-                         if (bookingId1 && bookingIdToMatchRequestMap[bookingId1]) {
-                              matchRequest = bookingIdToMatchRequestMap[bookingId1];
-                         } else if (bookingId2 && bookingIdToMatchRequestMap[bookingId2]) {
-                              matchRequest = bookingIdToMatchRequestMap[bookingId2];
+                         if (bookingId && bookingIdToMatchRequestMap[bookingId]) {
+                              matchRequest = bookingIdToMatchRequestMap[bookingId];
                          }
-                         
+
                          if (matchRequest) {
                               const requestId = extractRequestId(matchRequest);
-                              if (requestId) {
-                                   // Use booking.id as key (for display)
+                              if (requestId && booking.id) {
+                                   // Use booking.id as key (for display), but match by booking.bookingId
                                    map[booking.id] = matchRequest;
                                    joinsMap[requestId] = extractParticipants(matchRequest);
+
+                                   console.log("✅ [loadMatchRequests] Mapped match request by bookingId:", {
+                                        bookingId: booking.bookingId,
+                                        bookingDisplayId: booking.id,
+                                        requestId: requestId,
+                                        matchRequestBookingId: matchRequest.bookingId
+                                   });
                               }
+                         } else if (bookingId) {
+                              // Log when no match found for debugging
+                              console.log("⚠️ [loadMatchRequests] No match request found for booking:", {
+                                   bookingId: booking.bookingId,
+                                   bookingDisplayId: booking.id,
+                                   availableMatchRequestIds: Object.keys(bookingIdToMatchRequestMap)
+                              });
                          }
                     });
-                    
+
                     console.log("Match requests loaded:", {
                          totalMatchRequests: matchRequestsResp.data.length,
                          mappedBookings: Object.keys(map).length,
                          bookingIdMap: Object.keys(bookingIdToMatchRequestMap),
-                         bookings: bookings.map(b => ({ id: b.id, bookingId: b.bookingId }))
+                         bookings: bookings.map(b => ({ id: b.id, bookingId: b.bookingId, matchRequestId: b.matchRequestId }))
                     });
                }
           } catch (error) {
                console.warn("Error loading match requests:", error);
-               
-               // Fallback: try individual checks for each booking
+          }
+
+          // Third pass: Fallback for bookings that still don't have match requests
+          // Try individual checks for each booking that wasn't mapped yet
+          const unmappedBookings = bookings.filter(booking => !map[booking.id] && booking.bookingId);
+          if (unmappedBookings.length > 0) {
                await Promise.all(
-                    bookings.map(async (booking) => {
-                         const bookingId = booking.bookingId || booking.id;
-                         if (!bookingId) return;
+                    unmappedBookings.map(async (booking) => {
+                         // Use booking.bookingId (database ID) for API calls, not booking.id (display key)
+                         const bookingId = booking.bookingId;
+                         if (!bookingId) {
+                              console.log("⚠️ [loadMatchRequests] Booking missing bookingId:", {
+                                   bookingDisplayId: booking.id,
+                                   booking: booking
+                              });
+                              return;
+                         }
                          try {
-                              // First, check if booking already has matchRequestId in its data
-                              const existingRequestId = booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
-                              
-                              let requestId = null;
-                              
-                              if (existingRequestId) {
-                                   // Use the existing matchRequestId from booking data
-                                   requestId = existingRequestId;
-                              } else {
-                                   // Fallback: check via API
-                                   const hasRequestResp = await checkMatchRequestByBooking(bookingId);
-                                   if (!hasRequestResp?.success) return;
-                                   requestId = extractRequestId(hasRequestResp.data ?? hasRequestResp);
-                              }
-                              
+                              // Check via API using booking.bookingId (database ID)
+                              const hasRequestResp = await checkMatchRequestByBooking(bookingId);
+                              if (!hasRequestResp?.success) return;
+                              const requestId = extractRequestId(hasRequestResp.data ?? hasRequestResp);
+
                               if (!requestId) return;
-                              
+
                               // Fetch detail of the match request
                               const detailResp = await fetchMatchRequestById(requestId);
                               if (!detailResp?.success) return;
-                              map[booking.id] = detailResp.data;
-                              joinsMap[requestId] = extractParticipants(detailResp.data);
+
+                              // Map using booking.id (display key) but matched by booking.bookingId
+                              if (booking.id) {
+                                   map[booking.id] = detailResp.data;
+                                   joinsMap[requestId] = extractParticipants(detailResp.data);
+
+                                   console.log("✅ [loadMatchRequests] Fallback mapped match request:", {
+                                        bookingId: booking.bookingId,
+                                        bookingDisplayId: booking.id,
+                                        requestId: requestId
+                                   });
+                              }
                          } catch (error) {
                               console.warn("Không thể tải kèo cho booking", bookingId, error);
                          }
@@ -333,23 +744,95 @@ export default function BookingHistory({ user }) {
                );
           }
 
-          setBookingIdToRequest(map);
-          setRequestJoins(joinsMap);
+          // Merge with existing state instead of replacing completely
+          // This preserves match requests that were just created but might not be in API yet
+          setBookingIdToRequest(prev => {
+               const merged = { ...prev, ...map };
+               console.log("🔄 [loadMatchRequests] Merged bookingIdToRequest:", {
+                    previous: Object.keys(prev).length,
+                    new: Object.keys(map).length,
+                    merged: Object.keys(merged).length
+               });
+               return merged;
+          });
+          setRequestJoins(prev => ({ ...prev, ...joinsMap }));
      }, [bookings]);
 
      useEffect(() => {
           loadMatchRequestsForBookings();
      }, [loadMatchRequestsForBookings]);
 
+     const [refreshingRequests, setRefreshingRequests] = useState({}); // Track which requests are being refreshed
+     const [processingParticipants, setProcessingParticipants] = useState({}); // Track which participants are being processed (accept/reject)
+
      const refreshRequestForBooking = React.useCallback(async (bookingKey, requestId) => {
           if (!bookingKey || !requestId) return;
+
+          // Set loading state
+          setRefreshingRequests(prev => ({ ...prev, [requestId]: true }));
+
           try {
                const detailResp = await fetchMatchRequestById(requestId);
-               if (!detailResp?.success) return;
+               if (!detailResp?.success) {
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: 'Không thể tải thông tin đội tham gia.',
+                         timer: 2000,
+                         showConfirmButton: false
+                    });
+                    return;
+               }
+
+               const participants = extractParticipants(detailResp.data);
                setBookingIdToRequest(prev => ({ ...prev, [bookingKey]: detailResp.data }));
-               setRequestJoins(prev => ({ ...prev, [requestId]: extractParticipants(detailResp.data) }));
+               setRequestJoins(prev => ({ ...prev, [requestId]: participants }));
+
+               // Show success message if there are new participants
+               if (participants && participants.length > 0) {
+                    const pendingCount = participants.filter(p => p.status === "Pending").length;
+                    if (pendingCount > 0) {
+                         Swal.fire({
+                              icon: 'success',
+                              title: 'Đã tải đội tham gia',
+                              text: `Có ${participants.length} đội tham gia (${pendingCount} đang chờ xử lý)`,
+                              timer: 2000,
+                              showConfirmButton: false
+                         });
+                    } else {
+                         Swal.fire({
+                              icon: 'success',
+                              title: 'Đã tải đội tham gia',
+                              text: `Có ${participants.length} đội tham gia`,
+                              timer: 1500,
+                              showConfirmButton: false
+                         });
+                    }
+               } else {
+                    Swal.fire({
+                         icon: 'info',
+                         title: 'Chưa có đội tham gia',
+                         text: 'Yêu cầu của bạn chưa có đội nào tham gia.',
+                         timer: 2000,
+                         showConfirmButton: false
+                    });
+               }
           } catch (error) {
                console.warn("Không thể làm mới kèo:", error);
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: error.message || 'Không thể tải thông tin đội tham gia.',
+                    timer: 2000,
+                    showConfirmButton: false
+               });
+          } finally {
+               // Clear loading state
+               setRefreshingRequests(prev => {
+                    const updated = { ...prev };
+                    delete updated[requestId];
+                    return updated;
+               });
           }
      }, []);
 
@@ -369,7 +852,8 @@ export default function BookingHistory({ user }) {
                title: 'Chấp nhận đội tham gia?',
                html: `
                    <div class="text-left space-y-1">
-                        <p class="text-sm"><strong>Đội:</strong> ${participant.teamName || participantId}</p>
+                        <p class="text-sm"><strong>Đội:</strong> ${participant.teamName || `User: ${participantId}`}</p>
+                        <p class="text-sm"><strong>Trình độ:</strong> ${participant.level || participant.skillLevel || 'N/A'}</p>
                         <p class="text-sm"><strong>Trạng thái:</strong> ${participant.status}</p>
                    </div>
               `,
@@ -381,13 +865,50 @@ export default function BookingHistory({ user }) {
 
           if (!confirm.isConfirmed) return;
 
+          // Set loading state
+          const processingKey = `${requestId}-${participantId}`;
+          setProcessingParticipants(prev => ({ ...prev, [processingKey]: true }));
+
           try {
+               console.log("✅ [AcceptParticipant] Calling API:", {
+                    requestId,
+                    participantId,
+                    endpoint: `/api/match-requests/${requestId}/accept/${participantId}`
+               });
+
                const response = await acceptMatchParticipant(requestId, participantId);
-               if (!response.success) throw new Error(response.error || "Không thể chấp nhận đội này.");
+
+               if (!response.success) {
+                    throw new Error(response.error || "Không thể chấp nhận đội này.");
+               }
+
+               console.log("✅ [AcceptParticipant] API success:", response.data);
+
+               // Refresh the request to get updated participant list
                await refreshRequestForBooking(bookingKey, requestId);
-               Swal.fire({ icon: 'success', title: 'Đã chấp nhận đội tham gia', timer: 1500, showConfirmButton: false });
+
+               Swal.fire({
+                    icon: 'success',
+                    title: 'Đã chấp nhận đội tham gia',
+                    text: `Đội "${participant.teamName || `User: ${participantId}`}" đã được chấp nhận tham gia.`,
+                    timer: 2000,
+                    showConfirmButton: false
+               });
           } catch (error) {
-               Swal.fire({ icon: 'error', title: 'Lỗi', text: error.message || 'Không thể chấp nhận đội.' });
+               console.error("❌ [AcceptParticipant] Error:", error);
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: error.message || 'Không thể chấp nhận đội. Vui lòng thử lại.',
+                    confirmButtonText: 'Đóng'
+               });
+          } finally {
+               // Clear loading state
+               setProcessingParticipants(prev => {
+                    const updated = { ...prev };
+                    delete updated[processingKey];
+                    return updated;
+               });
           }
      };
 
@@ -407,8 +928,9 @@ export default function BookingHistory({ user }) {
                title: 'Từ chối đội tham gia?',
                html: `
                    <div class="text-left space-y-1">
-                        <p class="text-sm"><strong>Đội:</strong> ${participant.teamName || participantId}</p>
-                        <p class="text-sm">Hành động này không thể hoàn tác.</p>
+                        <p class="text-sm"><strong>Đội:</strong> ${participant.teamName || `User: ${participantId}`}</p>
+                        <p class="text-sm"><strong>Trình độ:</strong> ${participant.level || participant.skillLevel || 'N/A'}</p>
+                        <p class="text-sm text-red-600"><strong>⚠️ Hành động này không thể hoàn tác.</strong></p>
                    </div>
               `,
                showCancelButton: true,
@@ -419,13 +941,50 @@ export default function BookingHistory({ user }) {
 
           if (!confirm.isConfirmed) return;
 
+          // Set loading state
+          const processingKey = `${requestId}-${participantId}`;
+          setProcessingParticipants(prev => ({ ...prev, [processingKey]: true }));
+
           try {
+               console.log("❌ [RejectParticipant] Calling API:", {
+                    requestId,
+                    participantId,
+                    endpoint: `/api/match-requests/${requestId}/reject-or-withdraw/${participantId}`
+               });
+
                const response = await rejectOrWithdrawParticipant(requestId, participantId);
-               if (!response.success) throw new Error(response.error || "Không thể từ chối đội này.");
+
+               if (!response.success) {
+                    throw new Error(response.error || "Không thể từ chối đội này.");
+               }
+
+               console.log("✅ [RejectParticipant] API success:", response.data);
+
+               // Refresh the request to get updated participant list
                await refreshRequestForBooking(bookingKey, requestId);
-               Swal.fire({ icon: 'success', title: 'Đã xử lý đội tham gia', timer: 1500, showConfirmButton: false });
+
+               Swal.fire({
+                    icon: 'success',
+                    title: 'Đã từ chối đội tham gia',
+                    text: `Đội "${participant.teamName || `User: ${participantId}`}" đã bị từ chối.`,
+                    timer: 2000,
+                    showConfirmButton: false
+               });
           } catch (error) {
-               Swal.fire({ icon: 'error', title: 'Lỗi', text: error.message || 'Không thể xử lý đội.' });
+               console.error("❌ [RejectParticipant] Error:", error);
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: error.message || 'Không thể từ chối đội. Vui lòng thử lại.',
+                    confirmButtonText: 'Đóng'
+               });
+          } finally {
+               // Clear loading state
+               setProcessingParticipants(prev => {
+                    const updated = { ...prev };
+                    delete updated[processingKey];
+                    return updated;
+               });
           }
      };
 
@@ -551,27 +1110,139 @@ export default function BookingHistory({ user }) {
                setShowRecurringOpponentModal(true);
           } else {
                setShowFindOpponentModal(false);
-               
-               // Reload bookings first to get updated matchRequestId
-               try {
-                    if (playerId) {
-                         const apiResult = await fetchBookingsByPlayer(playerId);
-                         if (apiResult.success) {
-                              const bookingList = normalizeApiBookings(apiResult.data);
-                              setBookings(bookingList);
-                              setGroupedBookings(buildRecurringGroups(bookingList));
+
+               // If we have the match request data, add it to state immediately
+               if (result.matchRequest) {
+                    const matchRequest = result.matchRequest;
+                    const requestId = extractRequestId(matchRequest);
+                    // Use selectedBooking if available, otherwise use result.booking
+                    const booking = selectedBooking || result.booking;
+                    // Use booking.id as display key (consistent with loadMatchRequestsForBookings)
+                    const bookingDisplayId = booking?.id;
+                    const bookingDatabaseId = booking?.bookingId;
+                    const matchRequestBookingId = matchRequest.bookingId || matchRequest.bookingID || matchRequest.BookingID;
+
+                    console.log("✅ [FindOpponentSuccess] Match request created:", {
+                         requestId,
+                         bookingDisplayId,
+                         bookingDatabaseId,
+                         matchRequestBookingId,
+                         booking: booking,
+                         matchRequest: matchRequest
+                    });
+
+                    if (requestId && bookingDisplayId) {
+                         // Add to bookingIdToRequest map using booking.id (display key)
+                         // This is consistent with how loadMatchRequestsForBookings maps
+                         setBookingIdToRequest(prev => {
+                              const updated = { ...prev };
+
+                              // Map by booking.id (display key) - this is what we use in the UI
+                              updated[bookingDisplayId] = matchRequest;
+
+                              // Also try to find and map any other bookings with the same bookingId
+                              // in case the booking list hasn't updated yet
+                              if (matchRequestBookingId) {
+                                   const normalizedMatchRequestBookingId = String(matchRequestBookingId);
+                                   bookings.forEach(b => {
+                                        if (String(b.bookingId) === normalizedMatchRequestBookingId && b.id) {
+                                             updated[b.id] = matchRequest;
+                                        }
+                                   });
+                              }
+
+                              console.log("📝 [FindOpponentSuccess] Updated bookingIdToRequest:", {
+                                   keys: Object.keys(updated),
+                                   bookingDisplayId,
+                                   matchRequestBookingId
+                              });
+                              return updated;
+                         });
+
+                         // Add participants to requestJoins
+                         const participants = extractParticipants(matchRequest);
+                         if (participants && participants.length > 0) {
+                              setRequestJoins(prev => ({
+                                   ...prev,
+                                   [requestId]: participants
+                              }));
                          }
+                    } else {
+                         console.warn("⚠️ [FindOpponentSuccess] Missing requestId:", {
+                              matchRequest
+                         });
                     }
-               } catch (error) {
-                    console.error("Error reloading bookings:", error);
                }
-               
-               // Small delay to ensure backend has updated
-               await new Promise(resolve => setTimeout(resolve, 500));
-               
-               // Then load match requests
+
+               // Preserve the match request we just added to state
+               const preservedMatchRequest = result.matchRequest;
+               const preservedRequestId = extractRequestId(preservedMatchRequest);
+               const preservedBooking = selectedBooking || result.booking;
+               const preservedBookingId = preservedBooking?.id || preservedBooking?.bookingId;
+               const preservedBookingDatabaseId = preservedBooking?.bookingId;
+
+               // Wait longer to ensure backend has updated the booking with matchRequestId
+               // Retry mechanism to ensure backend has processed the update
+               const maxRetries = 3;
+               let bookingUpdated = false;
+
+               for (let retryCount = 0; retryCount < maxRetries && !bookingUpdated; retryCount++) {
+                    // Wait before checking (longer delay for first retry)
+                    const currentRetry = retryCount;
+                    const delay = currentRetry === 0 ? 2000 : 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+
+                    try {
+                         if (playerId) {
+                              const apiResult = await fetchBookingsByPlayer(playerId);
+                              if (apiResult.success) {
+                                   const bookingList = normalizeApiBookings(apiResult.data);
+
+                                   // Find the booking in the new list that matches our preserved booking
+                                   const updatedBooking = bookingList.find(b =>
+                                        (preservedBookingDatabaseId && b.bookingId && String(b.bookingId) === String(preservedBookingDatabaseId)) ||
+                                        (b.id === preservedBookingId) ||
+                                        (b.bookingId && String(b.bookingId) === String(preservedBookingId)) ||
+                                        (b.id && String(b.id) === String(preservedBookingId))
+                                   );
+
+                                   if (updatedBooking) {
+                                        // Check if booking now has matchRequestId (backend has updated)
+                                        const hasMatchRequestId = updatedBooking.matchRequestId || updatedBooking.matchRequestID || updatedBooking.MatchRequestID;
+
+                                        if (hasMatchRequestId || currentRetry === maxRetries - 1) {
+                                             // Backend has updated or this is the last retry
+                                             setBookings(bookingList);
+                                             setGroupedBookings(buildRecurringGroups(bookingList));
+
+                                             // Ensure our newly created match request is mapped
+                                             if (preservedMatchRequest && preservedRequestId && updatedBooking.id) {
+                                                  setBookingIdToRequest(prev => ({
+                                                       ...prev,
+                                                       [updatedBooking.id]: preservedMatchRequest
+                                                  }));
+                                                  console.log("✅ [FindOpponentSuccess] Preserved match request after booking reload:", {
+                                                       updatedBookingId: updatedBooking.id,
+                                                       preservedRequestId,
+                                                       hasMatchRequestId: !!hasMatchRequestId,
+                                                       retryCount: currentRetry + 1
+                                                  });
+                                             }
+                                             bookingUpdated = true;
+                                        }
+                                   }
+                              }
+                         }
+                    } catch (error) {
+                         console.error("Error reloading bookings (retry", currentRetry + 1, "):", error);
+                    }
+               }
+
+               // Then load match requests to ensure everything is in sync
+               // This will merge with our preserved state, not replace it
+               // The improved loadMatchRequestsForBookings will now prioritize matchRequestId from booking data
                await loadMatchRequestsForBookings();
-               
+
                Swal.fire('Đã gửi!', 'Yêu cầu tìm đối đã được tạo.', 'success');
           }
      };
@@ -637,6 +1308,14 @@ export default function BookingHistory({ user }) {
           return timeElapsed <= TWO_HOURS;
      };
 
+     const hasExistingMatchRequest = (booking) => {
+          if (!booking) return false;
+          if (booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID) return true;
+          if (booking.hasOpponent) return true;
+          if (!booking.id) return false;
+          return Boolean(bookingIdToRequest[booking.id]);
+     };
+
      const shouldShowFindOpponentButton = (booking) => {
           if (!booking) return false;
           const statusLower = String(booking.status || booking.bookingStatus || "").toLowerCase();
@@ -651,13 +1330,87 @@ export default function BookingHistory({ user }) {
                (paymentLower === "paid" || paymentLower === "đã thanh toán");
 
           const isCompleted = statusLower === "completed";
-          const isCancelled = statusLower === "cancelled";
+          const isCancelled = statusLower === "cancelled" || statusLower === "expired";
 
           if (isPendingWaitingPayment || isPendingPaid || isCompleted || isCancelled) {
                return false;
           }
 
+          if (hasExistingMatchRequest(booking)) {
+               return false;
+          }
+
           return true;
+     };
+
+     const normalizeRequestStatus = (request) => {
+          const raw = (request?.status || request?.state || "").toString().toLowerCase();
+          if (raw.includes("match")) return "matched";
+          if (raw.includes("pending") || raw.includes("waiting")) return "pending";
+          if (raw.includes("expire")) return "expired";
+          if (raw.includes("cancel")) return "cancelled";
+          if (raw.includes("reject")) return "cancelled";
+          if (raw.includes("open") || raw.includes("active")) return "open";
+
+          const participants = extractParticipants(request);
+          if (participants.some(p => (p.status || "").toLowerCase() === "accepted")) {
+               return "pending";
+          }
+
+          if (!raw || raw === "0") return "open";
+          return raw;
+     };
+
+     const getRequestBadgeConfig = (request) => {
+          const status = normalizeRequestStatus(request);
+          const participants = filterParticipantsForDisplay(extractParticipants(request), request);
+          const pendingCount = participants.filter(participantNeedsOwnerAction).length;
+          const acceptedCount = participants.filter(isParticipantAcceptedByOwner).length;
+
+          const configMap = {
+               open: {
+                    text: "Đang mở • Chờ đội tham gia",
+                    className: "border-blue-200 text-blue-600 bg-blue-50"
+               },
+               pending: {
+                    text: acceptedCount > 0
+                         ? `Đang chờ xác nhận • ${acceptedCount} đội đã được duyệt`
+                         : `Đang chờ xác nhận${pendingCount ? ` • ${pendingCount} đội chờ duyệt` : ""}`,
+                    className: "border-amber-200 text-amber-700 bg-amber-50"
+               },
+               matched: {
+                    text: "Đã tìm được đối • Trận đấu đã xác nhận",
+                    className: "border-emerald-300 text-emerald-700 bg-emerald-50"
+               },
+               expired: {
+                    text: "Đã hết hạn",
+                    className: "border-gray-300 text-gray-600 bg-gray-50"
+               },
+               cancelled: {
+                    text: "Đã hủy",
+                    className: "border-red-300 text-red-600 bg-red-50"
+               }
+          };
+
+          return {
+               status,
+               ...(
+                    configMap[status] || {
+                         text: "Đang mở",
+                         className: "border-blue-200 text-blue-600 bg-blue-50"
+                    }
+               )
+          };
+     };
+
+     const isRequestLocked = (request) => {
+          const status = normalizeRequestStatus(request);
+          return status === "matched" || status === "expired" || status === "cancelled";
+     };
+
+     const getAcceptedParticipants = (request) => {
+          const participants = filterParticipantsForDisplay(extractParticipants(request), request);
+          return participants.filter(isParticipantAcceptedByOwner);
      };
 
      // Helper function to check if booking is older than 2 hours (to hide cancel button)
@@ -1583,20 +2336,117 @@ export default function BookingHistory({ user }) {
                                                                  <div className="flex flex-wrap items-center gap-2 text-sm">
                                                                       <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-100 text-teal-700 px-2 py-1 rounded-full">
                                                                            <MapPin className="w-4 h-4" />
-                                                                           <span className="font-medium">{b.address}</span>
-                                                                      </span>
-                                                                      <span className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 text-gray-700 px-2 py-1 rounded-full">
-                                                                           <Calendar className="w-4 h-4" />
-                                                                           <span className="font-medium">{b.date} • {b.time}</span>
+                                                                           <span className="font-medium">{b.address || "Chưa có địa chỉ"}</span>
                                                                       </span>
                                                                  </div>
 
-                                                                 {b.duration && (
-                                                                      <div className="text-xs text-gray-600 flex items-center gap-1">
-                                                                           <Clock className="w-3 h-3" />
-                                                                           Thời lượng: <span className="font-medium text-teal-700">{b.duration} phút</span>
-                                                                      </div>
-                                                                 )}
+                                                                 {/* Lịch trình chi tiết */}
+                                                                 {(() => {
+                                                                      // Lấy thông tin từ API FieldSchedule/public/{scheduleId}
+                                                                      const scheduleData = b.scheduleId ? scheduleDataMap[b.scheduleId] : null;
+
+                                                                      // Lấy date từ schedule API (format: "2025-12-01")
+                                                                      let displayDate = null;
+                                                                      if (scheduleData && scheduleData.date) {
+                                                                           try {
+                                                                                // Parse date từ format "2025-12-01" hoặc "YYYY-MM-DD"
+                                                                                const [year, month, day] = scheduleData.date.split('-').map(Number);
+                                                                                if (year && month && day) {
+                                                                                     const dateObj = new Date(year, month - 1, day);
+                                                                                     displayDate = dateObj.toLocaleDateString("vi-VN");
+                                                                                } else {
+                                                                                     const dateObj = new Date(scheduleData.date);
+                                                                                     if (!isNaN(dateObj.getTime())) {
+                                                                                          displayDate = dateObj.toLocaleDateString("vi-VN");
+                                                                                     }
+                                                                                }
+                                                                           } catch (e) {
+
+                                                                                displayDate = scheduleData.date;
+                                                                           }
+                                                                      }
+
+                                                                      // Fallback về booking date nếu không có trong schedule
+                                                                      if (!displayDate) {
+                                                                           displayDate = b.date;
+                                                                      }
+
+                                                                      // Lấy time từ schedule API (startTime và endTime)
+                                                                      let displayTime = null;
+                                                                      if (scheduleData && scheduleData.startTime && scheduleData.endTime) {
+                                                                           // Format time từ "06:00" và "07:30"
+                                                                           const formatTime = (timeStr) => {
+                                                                                if (!timeStr) return "";
+                                                                                // Remove seconds if present (06:00:00 -> 06:00)
+                                                                                return timeStr.split(':').slice(0, 2).join(':');
+                                                                           };
+                                                                           displayTime = `${formatTime(scheduleData.startTime)} - ${formatTime(scheduleData.endTime)}`;
+                                                                      }
+
+                                                                      // Fallback về booking time nếu không có trong schedule
+                                                                      if (!displayTime) {
+                                                                           displayTime = b.time;
+                                                                      }
+
+                                                                      // Tính duration từ startTime và endTime
+                                                                      let displayDuration = b.duration;
+                                                                      if (scheduleData && scheduleData.startTime && scheduleData.endTime) {
+                                                                           try {
+                                                                                const [startHour, startMin] = scheduleData.startTime.split(':').map(Number);
+                                                                                const [endHour, endMin] = scheduleData.endTime.split(':').map(Number);
+                                                                                if (!isNaN(startHour) && !isNaN(startMin) && !isNaN(endHour) && !isNaN(endMin)) {
+                                                                                     const startMinutes = startHour * 60 + startMin;
+                                                                                     const endMinutes = endHour * 60 + endMin;
+                                                                                     displayDuration = Math.max(15, endMinutes - startMinutes);
+                                                                                }
+                                                                           } catch (e) {
+
+                                                                           }
+                                                                      }
+
+
+
+                                                                      // Kiểm tra nếu chuẩn: 06:00 - 07:30, Thứ 2 ngày 1/12/2025
+                                                                      const expectedTime = "06:00 - 07:30";
+                                                                      const expectedDate = "Thứ hai, 01/12/2025";
+                                                                      const actualDateWithDay = displayDate ? formatDateWithDay(displayDate, null) : null;
+                                                                      if (displayTime === expectedTime && actualDateWithDay === expectedDate) {
+
+                                                                      } else {
+
+                                                                      }
+
+                                                                      return (
+                                                                           <div className="flex flex-col gap-2 p-3 bg-gradient-to-r from-blue-50 to-teal-50 border border-blue-200 rounded-xl">
+                                                                                <div className="flex items-center gap-2 text-sm">
+                                                                                     <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                                                                     <div className="flex-1">
+                                                                                          <span className="font-semibold text-gray-900">
+                                                                                               {displayDate ? formatDateWithDay(displayDate, b.startTime) : "Chưa có ngày"}
+                                                                                          </span>
+                                                                                     </div>
+                                                                                </div>
+                                                                                <div className="flex items-center gap-2 text-sm">
+                                                                                     <Clock className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                                                                                     <div className="flex-1">
+                                                                                          {displayTime ? (
+                                                                                               <span className="font-medium text-gray-900">{displayTime}</span>
+                                                                                          ) : (
+                                                                                               <span className="text-gray-500 italic">Chưa có thời gian</span>
+                                                                                          )}
+
+                                                                                     </div>
+                                                                                </div>
+                                                                                {displayDuration && (
+                                                                                     <div className="flex items-center gap-2 text-xs text-gray-600">
+                                                                                          <Clock className="w-3 h-3 text-gray-500" />
+                                                                                          <span>Thời lượng: <span className="font-medium text-teal-700">{displayDuration} phút</span> ({Math.floor(displayDuration / 60)}h{displayDuration % 60 > 0 ? `${displayDuration % 60}p` : ''})</span>
+                                                                                     </div>
+                                                                                )}
+
+                                                                           </div>
+                                                                      );
+                                                                 })()}
 
                                                                  {/* Additional booking information */}
                                                                  <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -1689,36 +2539,61 @@ export default function BookingHistory({ user }) {
                                                                  {/* MatchRequest actions */}
                                                                  {(() => {
                                                                       const req = bookingIdToRequest[b.id];
+                                                                      const fallbackRequestId = b.matchRequestId || b.matchRequestID || b.MatchRequestID;
+                                                                      const hasRequest = hasExistingMatchRequest(b);
                                                                       const canShowFindOpponent = shouldShowFindOpponentButton(b);
-                                                                      if (!req && canShowFindOpponent) {
+
+                                                                      if (!hasRequest && canShowFindOpponent) {
                                                                            return (
                                                                                 <Button
                                                                                      variant="secondary"
                                                                                      onClick={() => handleFindOpponent(b)}
-                                                                                     className="px-3 !rounded-full py-2 text-sm"
+                                                                                     className="px-4 !rounded-full py-2.5 text-sm font-medium bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
                                                                                 >
-                                                                                     <UserSearchIcon className="w-4 h-4 mr-2" />
-                                                                                     Tìm đối thủ
+                                                                                     <UserSearchIcon className="w-4 h-4" />
+                                                                                     <span>Tìm đối thủ</span>
                                                                                 </Button>
                                                                            );
                                                                       }
-                                                                      if (req) {
-                                                                           const currentRequestId = extractRequestId(req);
+
+                                                                      if (hasRequest) {
+                                                                           const currentRequestId = extractRequestId(req) || fallbackRequestId;
+                                                                           const badgeConfig = req ? getRequestBadgeConfig(req) : {
+                                                                                text: "Đang tải thông tin kèo...",
+                                                                                className: "border-teal-200 text-teal-700 bg-teal-50"
+                                                                           };
+                                                                           const requestLocked = req ? isRequestLocked(req) : false;
+                                                                           const canRefresh = req ? !requestLocked : Boolean(currentRequestId);
+
                                                                            return (
-                                                                                <div className="flex items-center gap-2">
-                                                                                     <Badge variant="outline" className="text-xs">
-                                                                                          Đã yêu cầu • {req.status || req.state || 'Đang mở'}
+                                                                                <div className="flex flex-col gap-2">
+                                                                                     <Badge variant="outline" className={`text-xs ${badgeConfig.className}`}>
+                                                                                          Đã yêu cầu • {badgeConfig.text}
                                                                                      </Badge>
-                                                                                     <Button
-                                                                                          variant="outline"
-                                                                                          className="px-3 !rounded-full py-2 text-sm"
-                                                                                          onClick={() => refreshRequestForBooking(b.id, currentRequestId)}
-                                                                                     >
-                                                                                          Tải đội tham gia
-                                                                                     </Button>
+                                                                                     {canRefresh && currentRequestId && (
+                                                                                          <Button
+                                                                                               variant="outline"
+                                                                                               className="px-3 !rounded-full py-2 text-sm flex items-center gap-2"
+                                                                                               onClick={() => refreshRequestForBooking(b.id, currentRequestId)}
+                                                                                               disabled={refreshingRequests[currentRequestId]}
+                                                                                          >
+                                                                                               {refreshingRequests[currentRequestId] ? (
+                                                                                                    <>
+                                                                                                         <Loader2 className="w-4 h-4 animate-spin" />
+                                                                                                         <span>Đang tải...</span>
+                                                                                                    </>
+                                                                                               ) : (
+                                                                                                    <>
+                                                                                                         <RefreshCw className="w-4 h-4" />
+                                                                                                         <span>Tải đội tham gia</span>
+                                                                                                    </>
+                                                                                               )}
+                                                                                          </Button>
+                                                                                     )}
                                                                                 </div>
                                                                            );
                                                                       }
+
                                                                       return null;
                                                                  })()}
                                                             </>
@@ -1732,28 +2607,99 @@ export default function BookingHistory({ user }) {
                                                        const participants = requestId
                                                             ? (requestJoins[requestId] || extractParticipants(req))
                                                             : extractParticipants(req);
-                                                       if (!participants || participants.length === 0) return null;
-                                                       const requestOwnerId = req.ownerId || req.userId || req.createdById || req.createdByUserId;
+                                                       const requestOwnerId = getRequestOwnerId(req);
+                                                       const displayParticipants = filterParticipantsForDisplay(participants, req);
+                                                       if (!displayParticipants || displayParticipants.length === 0) return null;
                                                        const isRequestOwner = user && requestOwnerId && String(requestOwnerId) === String(user?.userID || user?.UserID || user?.id || user?.userId);
+                                                       const badgeConfig = getRequestBadgeConfig(req);
+                                                       const acceptedTeams = getAcceptedParticipants(req);
+                                                       const requestLocked = isRequestLocked(req);
                                                        return (
                                                             <div className="mt-3 p-3 rounded-xl border border-teal-100 bg-white/70">
-                                                                 <div className="font-semibold text-teal-800 mb-2">Đội tham gia</div>
+                                                                 <div className="flex flex-col gap-1 mb-3">
+                                                                      <div className="font-semibold text-teal-800">Đội tham gia</div>
+                                                                      <Badge variant="outline" className={`text-xs w-fit ${badgeConfig.className}`}>
+                                                                           {badgeConfig.text}
+                                                                      </Badge>
+                                                                      {requestLocked && acceptedTeams.length > 0 && (
+                                                                           <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-lg">
+                                                                                Trận đấu đã được xác nhận với {acceptedTeams.length} đội.
+                                                                           </div>
+                                                                      )}
+                                                                 </div>
                                                                  <div className="space-y-2">
-                                                                      {participants.map((j) => {
+                                                                      {displayParticipants.map((j) => {
                                                                            const participantId = j.participantId || j.joinId || j.id;
+                                                                           const participantTeamName =
+                                                                                j.teamName ||
+                                                                                j.fullName ||
+                                                                                j.participantName ||
+                                                                                j.userName ||
+                                                                                `User: ${j.userId || participantId}`;
+                                                                           const participantStatus = normalizeParticipantStatus(j);
+                                                                           const needsOwnerAction = participantNeedsOwnerAction(j);
+                                                                           const isAccepted = isParticipantAcceptedByOwner(j);
+                                                                           const isRejected = isParticipantRejectedByOwner(j);
                                                                            return (
                                                                                 <div key={participantId || Math.random()} className="flex items-center justify-between text-sm">
-                                                                                     <div className="flex items-center gap-2">
-                                                                                          <Badge variant="outline" className="text-xs">{j.level || j.skillLevel || "any"}</Badge>
-                                                                                          <span className="text-gray-700">{j.teamName || `User: ${j.userId || participantId}`}</span>
-                                                                                          <span className="text-gray-500">• {j.status}</span>
+                                                                                     <div className="flex flex-wrap items-center gap-2 text-gray-700">
+                                                                                          <span className="font-medium">{participantTeamName}</span>
+                                                                                          {j.playerCount && <span className="text-gray-500">• {j.playerCount} người</span>}
+                                                                                          <span className="text-gray-500">• {participantStatus}</span>
                                                                                      </div>
                                                                                      <div className="flex items-center gap-2">
-                                                                                          {j.status === "Pending" && isRequestOwner && (
-                                                                                               <>
-                                                                                                    <Button className="px-2 py-1 text-xs" onClick={() => handleAcceptParticipant(b.id, requestId, j)}>Chấp nhận</Button>
-                                                                                                    <Button variant="outline" className="px-2 py-1 text-xs" onClick={() => handleRejectParticipant(b.id, requestId, j)}>Từ chối</Button>
-                                                                                               </>
+                                                                                          {needsOwnerAction && isRequestOwner && (() => {
+                                                                                               const processingKey = `${requestId}-${participantId}`;
+                                                                                               const isProcessing = processingParticipants[processingKey];
+                                                                                               return (
+                                                                                                    <>
+                                                                                                         <Button
+                                                                                                              className="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-1"
+                                                                                                              onClick={() => handleAcceptParticipant(b.id, requestId, j)}
+                                                                                                              disabled={isProcessing}
+                                                                                                         >
+                                                                                                              {isProcessing ? (
+                                                                                                                   <>
+                                                                                                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                                                                                                        <span>Đang xử lý...</span>
+                                                                                                                   </>
+                                                                                                              ) : (
+                                                                                                                   <>
+                                                                                                                        <CheckCircle className="w-3 h-3" />
+                                                                                                                        <span>Chấp nhận</span>
+                                                                                                                   </>
+                                                                                                              )}
+                                                                                                         </Button>
+                                                                                                         <Button
+                                                                                                              variant="outline"
+                                                                                                              className="px-3 py-1.5 text-xs border-red-300 text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-1"
+                                                                                                              onClick={() => handleRejectParticipant(b.id, requestId, j)}
+                                                                                                              disabled={isProcessing}
+                                                                                                         >
+                                                                                                              {isProcessing ? (
+                                                                                                                   <>
+                                                                                                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                                                                                                        <span>Đang xử lý...</span>
+                                                                                                                   </>
+                                                                                                              ) : (
+                                                                                                                   <>
+                                                                                                                        <XCircle className="w-3 h-3" />
+                                                                                                                        <span>Từ chối</span>
+                                                                                                                   </>
+                                                                                                              )}
+                                                                                                         </Button>
+                                                                                                    </>
+                                                                                               );
+                                                                                          })()}
+                                                                                          {isAccepted && (
+                                                                                               <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
+                                                                                                    Đã chấp nhận
+                                                                                               </Badge>
+                                                                                          )}
+                                                                                          {isRejected && (
+                                                                                               <Badge className="text-xs bg-red-100 text-red-700 border-red-300">
+                                                                                                    Đã từ chối
+                                                                                               </Badge>
                                                                                           )}
                                                                                      </div>
                                                                                 </div>

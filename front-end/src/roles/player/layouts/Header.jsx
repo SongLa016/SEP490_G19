@@ -117,7 +117,7 @@ export default function Header({ user, onLoggedOut }) {
                                         <Link
                                              key={item.id}
                                              to={`/${item.id}`}
-                                             className={`flex items-center px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${location.pathname === `/${item.id}`
+                                             className={`flex items-center truncate px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${location.pathname === `/${item.id}`
                                                   ? `${isScrolled ? 'text-teal-600  border-b-teal-600' : 'text-white border-b-teal-500'} border-b-2`
                                                   : `${isScrolled ? 'text-white hover:text-teal-600' : 'text-teal-800 hover:text-gray-700'} hover:border-b-2 hover:border-teal-500`
                                                   }`}

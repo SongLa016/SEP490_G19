@@ -58,7 +58,11 @@ export default function ScheduleManagement({ isDemo = false }) {
           fieldId: '',
           slotId: '',
           date: '',
-          status: 'Available'
+          status: 'Available',
+          scheduleType: 'single',
+          month: '',
+          quarter: '',
+          year: ''
      });
      const [scheduleFormErrors, setScheduleFormErrors] = useState({});
      const [isSubmittingSchedule, setIsSubmittingSchedule] = useState(false);
@@ -814,6 +818,10 @@ export default function ScheduleManagement({ isDemo = false }) {
                slotId: '',
                date: '',
                status: 'Available',
+               scheduleType: 'single',
+               month: '',
+               quarter: '',
+               year: '',
                ...defaults
           });
           setScheduleFormErrors({});
@@ -828,7 +836,11 @@ export default function ScheduleManagement({ isDemo = false }) {
                fieldId: defaultFieldId,
                slotId: '',
                date: '',
-               status: 'Available'
+               status: 'Available',
+               scheduleType: 'single',
+               month: '',
+               quarter: '',
+               year: ''
           });
      }, [scheduleFilterField, isFieldMaintenance, openScheduleModal]);
 
@@ -857,9 +869,51 @@ export default function ScheduleManagement({ isDemo = false }) {
                fieldId: '',
                slotId: '',
                date: '',
-               status: 'Available'
+               status: 'Available',
+               scheduleType: 'single',
+               month: '',
+               quarter: '',
+               year: ''
           });
           setScheduleFormErrors({});
+     };
+
+     // Helper function to get all dates for month/quarter
+     const getAllDatesForPeriod = (scheduleType, month, quarter, year) => {
+          const dates = [];
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          if (scheduleType === 'month' && month && year) {
+               const yearNum = Number(year);
+               const monthNum = Number(month);
+               const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+               
+               for (let day = 1; day <= daysInMonth; day++) {
+                    const date = new Date(yearNum, monthNum - 1, day);
+                    // Only include future dates
+                    if (date >= today) {
+                         dates.push(date.toISOString().split('T')[0]);
+                    }
+               }
+          } else if (scheduleType === 'quarter' && quarter && year) {
+               const yearNum = Number(year);
+               const quarterNum = Number(quarter);
+               const startMonth = (quarterNum - 1) * 3 + 1;
+               
+               for (let m = startMonth; m < startMonth + 3; m++) {
+                    const daysInMonth = new Date(yearNum, m, 0).getDate();
+                    for (let day = 1; day <= daysInMonth; day++) {
+                         const date = new Date(yearNum, m - 1, day);
+                         // Only include future dates
+                         if (date >= today) {
+                              dates.push(date.toISOString().split('T')[0]);
+                         }
+                    }
+               }
+          }
+          
+          return dates;
      };
 
      // Handle submit schedule
@@ -870,7 +924,16 @@ export default function ScheduleManagement({ isDemo = false }) {
           const errors = {};
           if (!scheduleFormData.fieldId) errors.fieldId = 'Vui lòng chọn sân';
           if (!scheduleFormData.slotId) errors.slotId = 'Vui lòng chọn slot';
-          if (!scheduleFormData.date) errors.date = 'Vui lòng chọn ngày';
+          
+          if (scheduleFormData.scheduleType === 'single') {
+               if (!scheduleFormData.date) errors.date = 'Vui lòng chọn ngày';
+          } else if (scheduleFormData.scheduleType === 'month') {
+               if (!scheduleFormData.month) errors.month = 'Vui lòng chọn tháng';
+               if (!scheduleFormData.year) errors.year = 'Vui lòng chọn năm';
+          } else if (scheduleFormData.scheduleType === 'quarter') {
+               if (!scheduleFormData.quarter) errors.quarter = 'Vui lòng chọn quý';
+               if (!scheduleFormData.year) errors.year = 'Vui lòng chọn năm';
+          }
 
           if (Object.keys(errors).length > 0) {
                setScheduleFormErrors(errors);
@@ -911,35 +974,105 @@ export default function ScheduleManagement({ isDemo = false }) {
                const slotEndTime = slot.endTime || slot.EndTime || '00:00';
                const slotName = slot.slotName || slot.SlotName || slot.name || "";
 
-               // Tạo schedule với đầy đủ thông tin
-               const result = await createFieldSchedule({
-                    scheduleId: 0, // Luôn là 0 khi tạo mới
-                    fieldId: Number(scheduleFormData.fieldId),
-                    fieldName: String(field.name || ""),
-                    slotId: Number(scheduleFormData.slotId),
-                    slotName: String(slotName),
-                    date: scheduleFormData.date, // Format: "YYYY-MM-DD"
-                    startTime: slotStartTime, // Format: "HH:MM" hoặc "HH:MM:SS"
-                    endTime: slotEndTime, // Format: "HH:MM" hoặc "HH:MM:SS"
-                    status: String(scheduleFormData.status || "Available")
-               });
+               // Determine dates to create schedules for
+               let datesToCreate = [];
+               if (scheduleFormData.scheduleType === 'single') {
+                    datesToCreate = [scheduleFormData.date];
+               } else if (scheduleFormData.scheduleType === 'month') {
+                    datesToCreate = getAllDatesForPeriod('month', scheduleFormData.month, null, scheduleFormData.year);
+               } else if (scheduleFormData.scheduleType === 'quarter') {
+                    datesToCreate = getAllDatesForPeriod('quarter', null, scheduleFormData.quarter, scheduleFormData.year);
+               }
 
-               if (result.success) {
+               if (datesToCreate.length === 0) {
+                    await Swal.fire({
+                         icon: 'warning',
+                         title: 'Không có ngày hợp lệ',
+                         text: 'Tất cả các ngày trong khoảng thời gian đã chọn đều là quá khứ. Vui lòng chọn khoảng thời gian khác.',
+                         confirmButtonColor: '#f59e0b'
+                    });
+                    setIsSubmittingSchedule(false);
+                    return;
+               }
+
+               // Create schedules for all dates
+               let successCount = 0;
+               let errorCount = 0;
+               const errors = [];
+
+               for (const dateStr of datesToCreate) {
+                    try {
+                         const result = await createFieldSchedule({
+                              scheduleId: 0, // Luôn là 0 khi tạo mới
+                              fieldId: Number(scheduleFormData.fieldId),
+                              fieldName: String(field.name || ""),
+                              slotId: Number(scheduleFormData.slotId),
+                              slotName: String(slotName),
+                              date: dateStr, // Format: "YYYY-MM-DD"
+                              startTime: slotStartTime, // Format: "HH:MM" hoặc "HH:MM:SS"
+                              endTime: slotEndTime, // Format: "HH:MM" hoặc "HH:MM:SS"
+                              status: String(scheduleFormData.status || "Available")
+                         });
+
+                         if (result.success) {
+                              successCount++;
+                         } else {
+                              errorCount++;
+                              errors.push(`${dateStr}: ${result.error || 'Lỗi không xác định'}`);
+                         }
+
+                         // Add small delay between requests to avoid overwhelming the server
+                         await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                         errorCount++;
+                         errors.push(`${dateStr}: ${error.message || 'Lỗi không xác định'}`);
+                         console.error(`Error creating schedule for ${dateStr}:`, error);
+                    }
+               }
+
+               // Show result
+               if (errorCount === 0) {
                     await Swal.fire({
                          icon: 'success',
                          title: 'Tạo lịch trình thành công!',
-                         text: `Đã tạo lịch trình cho ${field.name} - ${slot.slotName || slot.SlotName || slot.name}`,
-                         confirmButtonColor: '#10b981'
+                         text: `Đã tạo ${successCount} lịch trình cho ${field.name} - ${slot.slotName || slot.SlotName || slot.name}`,
+                         confirmButtonColor: '#10b981',
+                         timer: 2000
                     });
                     handleCloseScheduleModal();
                     await loadFieldSchedules();
                } else {
+                    const errorList = errors.slice(0, 5); // Chỉ hiển thị 5 lỗi đầu
+                    const moreErrors = errors.length > 5 ? `<p class="text-xs text-gray-500 mt-2">...và ${errors.length - 5} lỗi khác</p>` : '';
+
                     await Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: result.error || 'Không thể tạo lịch trình',
-                         confirmButtonColor: '#ef4444'
+                         icon: errorCount === datesToCreate.length ? 'error' : 'warning',
+                         title: errorCount === datesToCreate.length ? 'Tạo lịch trình thất bại' : 'Tạo một phần thành công',
+                         html: `
+                              <div class="text-left">
+                                   <div class="mb-3 p-3 bg-gray-50 rounded">
+                                        <p class="font-semibold">Kết quả:</p>
+                                        <p class="text-green-600">✓ Thành công: ${successCount}</p>
+                                        <p class="text-red-600">✗ Thất bại: ${errorCount}</p>
+                                   </div>
+                                   ${errorList.length > 0 ? `
+                                        <div class="mt-2">
+                                             <p class="font-semibold text-sm mb-1">Chi tiết lỗi:</p>
+                                             <div class="text-xs space-y-1 max-h-40 overflow-y-auto">
+                                                  ${errorList.map(err => `<p class="text-red-600">• ${err}</p>`).join('')}
+                                             </div>
+                                             ${moreErrors}
+                                        </div>
+                                   ` : ''}
+                              </div>
+                         `,
+                         confirmButtonColor: errorCount === datesToCreate.length ? '#ef4444' : '#f59e0b',
+                         width: '600px'
                     });
+                    if (successCount > 0) {
+                         handleCloseScheduleModal();
+                         await loadFieldSchedules();
+                    }
                }
           } catch (error) {
                console.error('Error creating schedule:', error);
