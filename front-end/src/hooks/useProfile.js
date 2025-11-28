@@ -11,7 +11,7 @@ export const useProfile = (userId) => {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // Load profile data
+
   const loadProfile = async () => {
     if (!userId) return;
 
@@ -27,7 +27,7 @@ export const useProfile = (userId) => {
     }
   };
 
-  // Save profile data
+ 
   const saveProfile = async (profileData) => {
     if (!userId) return;
 
@@ -35,16 +35,15 @@ export const useProfile = (userId) => {
       setSaving(true);
       setError(null);
 
-      // Validate data
+     
       const validation = validateProfileData(profileData);
       if (!validation.isValid) {
         throw new Error(JSON.stringify(validation.errors));
       }
 
-      // Format data for API
       const formattedData = formatProfileForAPI(profileData);
 
-      // Save to API
+  
       const savedProfile = await profileService.updateProfile(
         userId,
         formattedData
@@ -60,7 +59,7 @@ export const useProfile = (userId) => {
     }
   };
 
-  // Upload avatar
+
   const uploadAvatar = async (file) => {
     if (!userId || !file) return;
 
@@ -70,7 +69,7 @@ export const useProfile = (userId) => {
 
       const result = await profileService.uploadAvatar(userId, file);
 
-      // Update profile with new avatar
+   
       setProfile((prev) => ({
         ...prev,
         avatar: result.avatarUrl,
@@ -85,7 +84,7 @@ export const useProfile = (userId) => {
     }
   };
 
-  // Load profile on mount
+
   useEffect(() => {
     loadProfile();
   }, [userId]);
@@ -158,7 +157,7 @@ export const useProfileSettings = (userId) => {
     try {
       setLoading(true);
       setError(null);
-      // Assuming there's an endpoint for settings
+   
       const settingsData = await profileService.getSettings(userId);
       setSettings(settingsData);
     } catch (err) {
