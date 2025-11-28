@@ -1,12 +1,14 @@
+using System.Text;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using BallSport.Application.CloudinarySettings;
-using BallSport.Application.Common.Extensions;
 using BallSport.Application.Services;
 using BallSport.Application.Services.AdminStatistics;
 using BallSport.Application.Services.Community;
 using BallSport.Application.Services.MatchFinding;
 using BallSport.Application.Services.OwnerStatistics;
 using BallSport.Application.Services.StatisticOwner;
-
 using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
@@ -27,8 +29,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using System.Text;
-using System.Text.Json.Serialization;
+using static BallSport.Application.Services.UserService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,10 +43,8 @@ builder.Services.Configure<CloudinarySettings>(
 services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.Converters.Clear();
         options.JsonSerializerOptions.Converters.Add(new TimeOnlyJsonConverter());
         options.JsonSerializerOptions.Converters.Add(new DateOnlyJsonConverter());
-     
     });
 
 services.AddEndpointsApiExplorer();
@@ -142,6 +141,7 @@ services.AddScoped<UserRepositories>();
 services.AddScoped<UserService>();
 services.AddScoped<JwtService>();
 services.AddScoped<OTPService>();
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
 // --- Booking & Payment ---
 services.AddScoped<BookingService>();
@@ -150,12 +150,6 @@ services.AddScoped<BookingCancellationRepository>();
 services.AddScoped<BookingCancellationReRepository>();
 services.AddScoped<BookingCancellationReService>();
 services.AddScoped<PaymentRepository>();
-services.AddScoped<BookingPackageRepository>();
-services.AddScoped<MonthlyPackagePaymentRepo>();
-services.AddScoped<PackageSessionRepository>();
-
-
-
 
 // --- Bank accounts ---
 services.AddScoped<PlayerBankAccountRepository>();
@@ -203,9 +197,9 @@ services.AddScoped<INotificationService, NotificationService>();
 services.AddScoped<IReportService, ReportService>();
 // --- Match Finding module ---
 
-// --- MODULE TÌM ĐỐI THỦ (Match Finding) ---
-services.AddScoped<IMatchFindingRepository, MatchFindingRepository>();
-services.AddScoped<IMatchFindingService, MatchFindingService>();
+services.AddScoped<IMatchRequestRepository, MatchRequestRepository>();
+services.AddScoped<IMatchParticipantRepository, MatchParticipantRepository>();
+//services.AddScoped<IMatchRequestService, MatchRequestService>();
 
 // --- Settings ---
 services.Configure<CommunitySettings>(config.GetSection("CommunitySettings"));

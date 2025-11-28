@@ -1,4 +1,4 @@
--- 1. Người dùng & Xác thực (4 bảng)
+﻿-- 1. Người dùng & Xác thực (4 bảng)
 
 CREATE TABLE Roles (
     RoleID INT IDENTITY(1,1) PRIMARY KEY,                      -- ID vai trò
@@ -490,36 +490,6 @@ DROP COLUMN Image;
 ALTER TABLE FieldComplexes
 ADD ImageUrl NVARCHAR(MAX) NULL;
 
--- 1) Gói booking theo tháng/quý
-CREATE TABLE BookingPackages (
-    BookingPackageID INT IDENTITY(1,1) PRIMARY KEY,        -- ID gói
-    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),  -- Ai đặt gói
-    FieldID INT NOT NULL FOREIGN KEY REFERENCES Fields(FieldID), -- Sân áp dụng
-    PackageName NVARCHAR(255) NOT NULL,                     -- Tên gói (VD: Tháng 05/2025)
-    StartDate DATE NOT NULL,                                 -- Ngày bắt đầu gói
-    EndDate DATE NOT NULL,                                   -- Ngày kết thúc gói
-    TotalPrice DECIMAL(18,2) NOT NULL,                      -- Tổng tiền của cả gói
-    BookingStatus NVARCHAR(20) DEFAULT 'Pending',           -- Pending / Confirmed / Cancelled / Completed
-    PaymentStatus NVARCHAR(20) DEFAULT 'Pending',           -- Pending / Paid / Refunded
-    QRCode NVARCHAR(255) NULL,                               -- QR code giữ chỗ
-    QRExpiresAt DATETIME2 NULL,                              -- Hết hạn QR
-    CreatedAt DATETIME2 DEFAULT GETDATE(),
-    UpdatedAt DATETIME2 DEFAULT GETDATE()
-);
-
--- 2) Buổi con trong gói
-CREATE TABLE PackageSessions (
-    PackageSessionID INT IDENTITY(1,1) PRIMARY KEY,         -- ID buổi con
-    BookingPackageID INT NOT NULL FOREIGN KEY REFERENCES BookingPackages(BookingPackageID), -- Gói cha
-    ScheduleID INT NOT NULL FOREIGN KEY REFERENCES FieldSchedules(ScheduleID), -- Slot / ngày cụ thể
-    SessionDate DATE NOT NULL,                               -- Ngày buổi chơi (copy từ FieldSchedules.Date)
-    PricePerSession DECIMAL(18,2) NOT NULL,                 -- Giá 1 buổi (lấy từ FieldPrices hoặc Field.PricePerHour)
-    SessionStatus NVARCHAR(20) DEFAULT 'Pending',           -- Pending / Confirmed / Cancelled / Completed
-    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID), -- Ai đặt (copy từ BookingPackage)
-    CreatedAt DATETIME2 DEFAULT GETDATE(),
-    UpdatedAt DATETIME2 DEFAULT GETDATE()
-);
-
 -- 1. Cập nhật MatchRequests
 ALTER TABLE MatchRequests ADD 
     OpponentUserID INT NULL FOREIGN KEY REFERENCES Users(UserID),
@@ -619,6 +589,35 @@ BEGIN
     END
 END
 GO
+-- 1) Gói booking theo tháng/quý
+CREATE TABLE BookingPackages (
+    BookingPackageID INT IDENTITY(1,1) PRIMARY KEY,        -- ID gói
+    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),  -- Ai đặt gói
+    FieldID INT NOT NULL FOREIGN KEY REFERENCES Fields(FieldID), -- Sân áp dụng
+    PackageName NVARCHAR(255) NOT NULL,                     -- Tên gói (VD: Tháng 05/2025)
+    StartDate DATE NOT NULL,                                 -- Ngày bắt đầu gói
+    EndDate DATE NOT NULL,                                   -- Ngày kết thúc gói
+    TotalPrice DECIMAL(18,2) NOT NULL,                      -- Tổng tiền của cả gói
+    BookingStatus NVARCHAR(20) DEFAULT 'Pending',           -- Pending / Confirmed / Cancelled / Completed
+    PaymentStatus NVARCHAR(20) DEFAULT 'Pending',           -- Pending / Paid / Refunded
+    QRCode NVARCHAR(255) NULL,                               -- QR code giữ chỗ
+    QRExpiresAt DATETIME2 NULL,                              -- Hết hạn QR
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE()
+);
+
+-- 2) Buổi con trong gói
+CREATE TABLE PackageSessions (
+    PackageSessionID INT IDENTITY(1,1) PRIMARY KEY,         -- ID buổi con
+    BookingPackageID INT NOT NULL FOREIGN KEY REFERENCES BookingPackages(BookingPackageID), -- Gói cha
+    ScheduleID INT NOT NULL FOREIGN KEY REFERENCES FieldSchedules(ScheduleID), -- Slot / ngày cụ thể
+    SessionDate DATE NOT NULL,                               -- Ngày buổi chơi (copy từ FieldSchedules.Date)
+    PricePerSession DECIMAL(18,2) NOT NULL,                 -- Giá 1 buổi (lấy từ FieldPrices hoặc Field.PricePerHour)
+    SessionStatus NVARCHAR(20) DEFAULT 'Pending',           -- Pending / Confirmed / Cancelled / Completed
+    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID), -- Ai đặt (copy từ BookingPackage)
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE()
+);
 
 CREATE TABLE MonthlyPackagePayments (
     PaymentID INT IDENTITY(1,1) PRIMARY KEY,                      
@@ -638,4 +637,17 @@ CREATE TABLE MonthlyPackagePayments (
     UpdatedAt DATETIME2 DEFAULT GETDATE()
 );
 
+CREATE TABLE BookingPackageSessionDraft (
+    DraftId INT IDENTITY(1,1) PRIMARY KEY,
+    BookingPackageId INT NOT NULL, -- ID gói tháng
+    UserId INT NOT NULL,           -- người dùng tạo gói
+    FieldId INT NOT NULL,          -- sân/field liên quan
+    SlotId INT NOT NULL,           -- slot trong tuần mà user chọn
+    DayOfWeek TINYINT NOT NULL,    -- 0=Sunday, 1=Monday,..., 6=Saturday
+    Status NVARCHAR(20) NOT NULL DEFAULT 'Draft', -- Draft / Confirmed
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME NULL
+);
 
+  ALTER TABLE Users
+    ALTER COLUMN Avatar NVARCHAR(MAX) NULL;
