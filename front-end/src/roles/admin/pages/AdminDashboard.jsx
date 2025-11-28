@@ -191,10 +191,10 @@ export default function AdminDashboard() {
                     <div className="flex items-center justify-between">
                          <div>
                               <h1 className="text-3xl font-bold bg-gradient-to-r from-red-700 to-pink-700 bg-clip-text text-transparent">
-                                   Admin Dashboard
+                                   Admin Dashboard.
                               </h1>
                               <p className="text-slate-600 mt-2 font-medium">
-                                   Tổng quan hệ thống và quản lý toàn bộ nền tảng
+                                   Tổng quan hệ thống và quản lý toàn bộ nền tảng.
                               </p>
                          </div>
                          <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
@@ -310,8 +310,8 @@ export default function AdminDashboard() {
                                         <div className="flex items-center space-x-3">
                                              <Building2 className="w-5 h-5 text-purple-600" />
                                              <div className="text-left">
-                                                  <p className="font-medium text-slate-900">Quản lý sân</p>
-                                                  <p className="text-sm text-slate-600">Kiểm tra và phê duyệt sân</p>
+                                                  <p className="font-medium text-slate-900"> Quản lý sân </p>
+                                                  <p className="text-sm text-slate-600"> Kiểm tra và phê duyệt sân </p>
                                              </div>
                                         </div>
                                    </Button>
