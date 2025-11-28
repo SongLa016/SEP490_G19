@@ -98,9 +98,6 @@ const PostManagement = lazy(() =>
 const SystemSettings = lazy(() =>
   import("./roles/admin/pages/SystemSettings")
 );
-const OwnerRegistrationApproval = lazy(() =>
-  import("./roles/admin/pages/OwnerRegistrationApproval")
-);
 
 // Demo Pages
 
@@ -629,23 +626,6 @@ function AppContent() {
             )
           }
         />
-        <Route
-          path="/admin/owner-registration"
-          element={
-            user ? (
-              user.roleName === "Admin" ? (
-                <AdminLayout user={user} onLoggedOut={logout}>
-                  <OwnerRegistrationApproval />
-                </AdminLayout>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-
         {/* Profile Routes */}
         <Route
           path="/profile"

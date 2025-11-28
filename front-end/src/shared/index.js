@@ -43,7 +43,6 @@ export * from "./services/cancellationPolicies";
 export * from "./services/depositPolicies";
 export * from "./services/fields";
 export * from "./services/notifications";
-export * from "./services/ownerRegistrationRequests";
 export * from "./services/ownerBankAccount";
 export * from "./services/fieldSchedules";
 export * from "./services/passwordResetService";

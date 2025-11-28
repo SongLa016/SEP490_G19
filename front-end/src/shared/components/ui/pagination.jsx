@@ -79,9 +79,9 @@ export function Pagination({
      return (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
                <div className="text-sm text-gray-600">
-                    Hiển thị <span className="font-medium">{startItem}</span> đến{" "}
-                    <span className="font-medium">{endItem}</span> trong tổng số{" "}
-                    <span className="font-medium">{totalItems}</span>
+                    Hiển thị <span className="font-medium text-teal-600">{startItem}</span> đến{" "}
+                    <span className="font-medium text-teal-600">{endItem}</span> trong tổng số{" "}
+                    <span className="font-medium text-teal-600">{totalItems}</span>
                </div>
 
                <div className="flex items-center gap-2">
@@ -90,7 +90,7 @@ export function Pagination({
                          size="sm"
                          onClick={handlePrevious}
                          disabled={currentPage === 1}
-                         className="rounded-lg"
+                         className="rounded-full p-2"
                     >
                          <ChevronLeft className="w-4 h-4" />
                     </Button>
@@ -110,9 +110,9 @@ export function Pagination({
                                    variant={currentPage === page ? "default" : "outline"}
                                    size="sm"
                                    onClick={() => handlePageClick(page)}
-                                   className={`rounded-lg min-w-[2.5rem] ${currentPage === page
-                                             ? "bg-teal-600 text-white hover:bg-teal-700"
-                                             : ""
+                                   className={`rounded-full p-2 w-8 h-8 ${currentPage === page
+                                        ? "bg-teal-600 text-white hover:bg-teal-700"
+                                        : ""
                                         }`}
                               >
                                    {page}
@@ -125,7 +125,7 @@ export function Pagination({
                          size="sm"
                          onClick={handleNext}
                          disabled={currentPage === totalPages}
-                         className="rounded-lg"
+                         className="rounded-full p-2"
                     >
                          <ChevronRight className="w-4 h-4" />
                     </Button>

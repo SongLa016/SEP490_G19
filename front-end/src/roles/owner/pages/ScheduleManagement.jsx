@@ -17,6 +17,8 @@ import {
 import { fetchAllComplexesWithFields } from "../../../shared/services/fields";
 import { fetchTimeSlots, fetchTimeSlotsByField, createTimeSlot, updateTimeSlot, deleteTimeSlot } from "../../../shared/services/timeSlots";
 import { createFieldSchedule, fetchFieldSchedulesByField, fetchFieldSchedules, updateFieldScheduleStatus, deleteFieldSchedule } from "../../../shared/services/fieldSchedules";
+import { fetchBookingsByOwner } from "../../../shared/services/bookings";
+import { profileService } from "../../../shared/services/profileService";
 import Swal from "sweetalert2";
 import { DateSelector, MonthlyCalendar, FieldList, ComplexAndFieldSelector, ScheduleGrid, ScheduleModal, TimeSlotModal, TimeSlotsTab, ManageSchedulesTab, StatisticsCards } from "./components/scheduleManagement";
 
@@ -103,8 +105,9 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
           return `${names.slice(0, 3).join(', ')} và ${names.length - 3} sân khác`;
      }, [maintenanceFields]);
-     // TODO: Add bookings state when API is ready
-     // const [bookings, setBookings] = useState([]);
+     // Bookings state to track actual bookings
+     const [bookings, setBookings] = useState([]);
+     const [loadingBookings, setLoadingBookings] = useState(false);
 
      // Quick slot templates
      const quickSlotTemplates = [
@@ -595,7 +598,6 @@ export default function ScheduleManagement({ isDemo = false }) {
                          }
                     });
 
-                    console.log(`Total slots before deduplication: ${allSlots.length}`);
 
                     // Deduplicate slots by time range (startTime-endTime)
                     // Keep one slot per unique time range for display
@@ -646,6 +648,59 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      }, [selectedComplex, fields, selectedFieldForSchedule]);
 
+     // Load bookings for owner
+     const loadBookings = useCallback(async () => {
+          try {
+               setLoadingBookings(true);
+               if (!currentUserId) {
+                    setBookings([]);
+                    return;
+               }
+
+               const result = await fetchBookingsByOwner(currentUserId);
+               if (result.success && result.data) {
+
+                    // Fetch user info for each booking to get customer details
+                    const bookingsWithUserInfo = await Promise.all(
+                         result.data.map(async (booking) => {
+                              const userId = booking.userId || booking.userID;
+                              if (userId) {
+                                   try {
+                                        const userResult = await profileService.getProfile(userId);
+
+                                        if (userResult.ok && userResult.data) {
+                                             const userData = userResult.profile || userResult.data || userResult.data.profile || userResult.data.data;
+
+                                             return {
+                                                  ...booking,
+                                                  customerName: userData?.fullName || userData?.name || userData?.userName || userData?.FullName || userData?.Name || 'Khách hàng',
+                                                  customerPhone: userData?.phoneNumber || userData?.phone || userData?.PhoneNumber || userData?.Phone || 'N/A',
+                                                  customerEmail: userData?.email || userData?.Email || 'N/A',
+                                             };
+                                        } else {
+                                        }
+                                   } catch (error) {
+                                   }
+                              } else {
+                              }
+                              return booking;
+                         })
+                    );
+
+
+                    setBookings(bookingsWithUserInfo || []);
+               } else {
+                    console.warn('Failed to load bookings:', result.error);
+                    setBookings([]);
+               }
+          } catch (error) {
+               console.error('Error loading bookings:', error);
+               setBookings([]);
+          } finally {
+               setLoadingBookings(false);
+          }
+     }, [currentUserId]);
+
      // Load schedules for table based on selected field
      const loadSchedulesForTable = useCallback(async () => {
           try {
@@ -661,16 +716,14 @@ export default function ScheduleManagement({ isDemo = false }) {
                // If specific field is selected, fetch only that field's schedules
                if (selectedFieldForSchedule !== 'all') {
                     const fieldId = Number(selectedFieldForSchedule);
-                    console.log(`Loading schedules for field ${fieldId}`);
                     const result = await fetchFieldSchedulesByField(fieldId);
-                    console.log(`Received ${result.data?.length || 0} schedules for field ${fieldId}:`, result.data);
                     if (result.success && result.data) {
                          allSchedules = result.data;
                     }
                } else {
                     // If "all" is selected, fetch schedules for all fields in the complex
                     const fieldIds = fields.map(f => f.fieldId);
-                    console.log(`Loading schedules for all fields:`, fieldIds);
+
                     const fetchPromises = fieldIds.map(fieldId =>
                          fetchFieldSchedulesByField(fieldId)
                     );
@@ -678,34 +731,125 @@ export default function ScheduleManagement({ isDemo = false }) {
                     const results = await Promise.all(fetchPromises);
                     results.forEach((result, index) => {
                          const fieldId = fieldIds[index];
-                         console.log(`Field ${fieldId}: received ${result.data?.length || 0} schedules`, result.data);
+
                          if (result.success && result.data && Array.isArray(result.data)) {
                               allSchedules = [...allSchedules, ...result.data];
                          }
                     });
                }
 
-               console.log(`Total schedules loaded: ${allSchedules.length}`, allSchedules);
+               // Process expired schedules: auto-update to Maintenance and auto-delete after 2 days
+               await processExpiredSchedules(allSchedules);
+
                setFieldSchedules(allSchedules);
           } catch (error) {
-               console.error('Error loading schedules for table:', error);
+
                setFieldSchedules([]);
           } finally {
                setLoadingSchedules(false);
           }
      }, [selectedComplex, fields, selectedFieldForSchedule]);
 
+     // Process expired schedules: auto-update to Maintenance and auto-delete after 2 days
+     const processExpiredSchedules = useCallback(async (schedules) => {
+          if (!schedules || schedules.length === 0) return;
+
+          const now = new Date();
+          const twoDaysAgo = new Date(now);
+          twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+          console.log(`[processExpiredSchedules] Processing ${schedules.length} schedules`);
+
+          for (const schedule of schedules) {
+               try {
+                    const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
+                    if (!scheduleId) continue;
+
+                    // Get schedule date and end time
+                    let scheduleDate = null;
+                    if (typeof schedule.date === 'string') {
+                         scheduleDate = new Date(schedule.date);
+                    } else if (schedule.date && schedule.date.year) {
+                         scheduleDate = new Date(schedule.date.year, schedule.date.month - 1, schedule.date.day);
+                    }
+
+                    if (!scheduleDate) continue;
+
+                    // Get end time
+                    let endTime = schedule.endTime || schedule.EndTime || '23:59:59';
+                    if (typeof endTime === 'object' && endTime.hour !== undefined) {
+                         endTime = `${String(endTime.hour).padStart(2, '0')}:${String(endTime.minute).padStart(2, '0')}:00`;
+                    }
+
+                    // Parse end time
+                    const [hours, minutes] = endTime.split(':').map(Number);
+                    const scheduleEndDateTime = new Date(scheduleDate);
+                    scheduleEndDateTime.setHours(hours || 23, minutes || 59, 0, 0);
+
+                    // Check if schedule has expired
+                    if (scheduleEndDateTime < now) {
+                         const status = (schedule.status || schedule.Status || '').toLowerCase();
+
+                         // If expired more than 2 days, delete it
+                         if (scheduleEndDateTime < twoDaysAgo) {
+                              console.log(`[processExpiredSchedules] Deleting schedule ${scheduleId} (expired more than 2 days)`);
+                              try {
+                                   const deleteResult = await deleteFieldSchedule(scheduleId);
+                                   if (deleteResult.success) {
+                                        console.log(`[processExpiredSchedules] Successfully deleted schedule ${scheduleId}`);
+                                   } else {
+                                        console.warn(`[processExpiredSchedules] Failed to delete schedule ${scheduleId}:`, deleteResult.error);
+                                   }
+                              } catch (error) {
+                                   console.error(`[processExpiredSchedules] Error deleting schedule ${scheduleId}:`, error);
+                              }
+                         }
+                         // If expired but less than 2 days, update to Maintenance if not already
+                         else if (status !== 'maintenance') {
+                              console.log(`[processExpiredSchedules] Updating schedule ${scheduleId} to Maintenance (expired)`);
+                              try {
+                                   const updateResult = await updateFieldScheduleStatus(scheduleId, 'Maintenance');
+                                   if (updateResult.success) {
+                                        console.log(`[processExpiredSchedules] Successfully updated schedule ${scheduleId} to Maintenance`);
+                                        // Update the schedule in the array
+                                        schedule.status = 'Maintenance';
+                                        schedule.Status = 'Maintenance';
+                                   } else {
+                                        console.warn(`[processExpiredSchedules] Failed to update schedule ${scheduleId}:`, updateResult.error);
+                                   }
+                              } catch (error) {
+                                   console.error(`[processExpiredSchedules] Error updating schedule ${scheduleId}:`, error);
+                              }
+                         }
+                    }
+               } catch (error) {
+                    console.error(`[processExpiredSchedules] Error processing schedule:`, error);
+               }
+          }
+     }, []);
+
      useEffect(() => {
           loadData();
      }, [loadData]);
+
+     // Load bookings when user is available
+     useEffect(() => {
+          if (currentUserId) {
+               loadBookings();
+          }
+     }, [currentUserId, loadBookings]);
 
      // Load time slots and schedules when complex, fields, or selectedFieldForSchedule changes
      useEffect(() => {
           if (selectedComplex && fields.length > 0) {
                loadTimeSlotsForTable();
                loadSchedulesForTable();
+               // Also reload bookings to ensure we have the latest booking data
+               if (currentUserId) {
+                    loadBookings();
+               }
           }
-     }, [selectedComplex, fields, selectedFieldForSchedule, loadTimeSlotsForTable, loadSchedulesForTable]);
+     }, [selectedComplex, fields, selectedFieldForSchedule, loadTimeSlotsForTable, loadSchedulesForTable, currentUserId, loadBookings]);
 
      // Load FieldSchedules
      const loadFieldSchedules = useCallback(async () => {
@@ -731,6 +875,10 @@ export default function ScheduleManagement({ isDemo = false }) {
                               fieldIds.includes(s.fieldId || s.FieldID)
                          );
                     }
+
+                    // Process expired schedules: auto-update to Maintenance and auto-delete after 2 days
+                    await processExpiredSchedules(schedules);
+
                     setFieldSchedules(schedules);
                } else {
                     setFieldSchedules([]);
@@ -741,7 +889,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           } finally {
                setLoadingSchedules(false);
           }
-     }, [scheduleFilterField, selectedComplex]);
+     }, [scheduleFilterField, selectedComplex, processExpiredSchedules]);
 
      useEffect(() => {
           if (activeTab === 'manage-schedules') {
@@ -883,12 +1031,12 @@ export default function ScheduleManagement({ isDemo = false }) {
           const dates = [];
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          
+
           if (scheduleType === 'month' && month && year) {
                const yearNum = Number(year);
                const monthNum = Number(month);
                const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
-               
+
                for (let day = 1; day <= daysInMonth; day++) {
                     const date = new Date(yearNum, monthNum - 1, day);
                     // Only include future dates
@@ -900,7 +1048,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                const yearNum = Number(year);
                const quarterNum = Number(quarter);
                const startMonth = (quarterNum - 1) * 3 + 1;
-               
+
                for (let m = startMonth; m < startMonth + 3; m++) {
                     const daysInMonth = new Date(yearNum, m, 0).getDate();
                     for (let day = 1; day <= daysInMonth; day++) {
@@ -912,7 +1060,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                     }
                }
           }
-          
+
           return dates;
      };
 
@@ -924,7 +1072,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           const errors = {};
           if (!scheduleFormData.fieldId) errors.fieldId = 'Vui lòng chọn sân';
           if (!scheduleFormData.slotId) errors.slotId = 'Vui lòng chọn slot';
-          
+
           if (scheduleFormData.scheduleType === 'single') {
                if (!scheduleFormData.date) errors.date = 'Vui lòng chọn ngày';
           } else if (scheduleFormData.scheduleType === 'month') {
@@ -1187,8 +1335,26 @@ export default function ScheduleManagement({ isDemo = false }) {
                }
                return matches;
           });
-          console.log(`getSchedulesForTimeSlot(${slotId}, ${dateStr}): found ${matchingSchedules.length} schedules`);
-          return matchingSchedules;
+
+          // Update schedule status to "Booked" if there's a booking for it
+          const enrichedSchedules = matchingSchedules.map(schedule => {
+               const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
+               const booking = bookings.find(b => {
+                    const bookingScheduleId = b.scheduleId || b.scheduleID || b.ScheduleID;
+                    return bookingScheduleId && Number(bookingScheduleId) === Number(scheduleId);
+               });
+
+               if (booking) {
+                    // Return schedule with Booked status
+                    return {
+                         ...schedule,
+                         status: 'Booked'
+                    };
+               }
+               return schedule;
+          });
+
+          return enrichedSchedules;
      };
 
 
@@ -1234,6 +1400,40 @@ export default function ScheduleManagement({ isDemo = false }) {
      // Check if slot is booked - wrapped in useCallback for useMemo dependency
      const isSlotBooked = useCallback((fieldId, date, slotId) => {
           const dateStr = date.toISOString().split('T')[0];
+
+          // First check if there's a booking for this schedule
+          const booking = bookings.find(b => {
+               const bookingScheduleId = b.scheduleId || b.scheduleID || b.ScheduleID;
+               if (!bookingScheduleId) return false;
+
+               // Find the schedule for this booking
+               const schedule = fieldSchedules.find(s => {
+                    const scheduleId = s.scheduleId ?? s.ScheduleID ?? s.id;
+                    return Number(scheduleId) === Number(bookingScheduleId);
+               });
+
+               if (!schedule) return false;
+
+               const scheduleFieldId = schedule.fieldId ?? schedule.FieldId;
+               const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
+               let scheduleDateStr = '';
+               if (typeof schedule.date === 'string') {
+                    scheduleDateStr = schedule.date.split('T')[0];
+               } else if (schedule.date && schedule.date.year) {
+                    scheduleDateStr = `${schedule.date.year}-${String(schedule.date.month).padStart(2, '0')}-${String(schedule.date.day).padStart(2, '0')}`;
+               }
+
+               return Number(scheduleFieldId) === Number(fieldId) &&
+                    Number(scheduleSlotId) === Number(slotId) &&
+                    scheduleDateStr === dateStr;
+          });
+
+          // If there's a booking, consider it booked
+          if (booking) {
+               return true;
+          }
+
+          // Otherwise check schedule status
           const schedule = fieldSchedules.find(s => {
                const scheduleFieldId = s.fieldId ?? s.FieldId;
                const scheduleSlotId = s.slotId ?? s.SlotId ?? s.SlotID;
@@ -1249,17 +1449,104 @@ export default function ScheduleManagement({ isDemo = false }) {
           });
           // Nếu có schedule và status là "Booked" thì coi như đã đặt
           return schedule && (schedule.status === 'Booked' || schedule.status === 'booked');
-     }, [fieldSchedules]);
+     }, [fieldSchedules, bookings]);
 
      // Get booking info
      const getBookingInfo = (fieldId, date, slotId) => {
-          const schedule = getScheduleForSlot(fieldId, date, slotId);
-          if (!schedule) return null;
-          return {
-               customerName: 'Khách hàng',
-               customerPhone: '0912345678',
-               status: schedule.status || 'Available'
-          };
+          const dateStr = date.toISOString().split('T')[0];
+
+          // First, try to find booking directly by scheduleId
+          // Find the schedule first
+          const schedule = fieldSchedules.find(s => {
+               const scheduleFieldId = s.fieldId ?? s.FieldId;
+               const scheduleSlotId = s.slotId ?? s.SlotId ?? s.SlotID;
+               let scheduleDateStr = '';
+               if (typeof s.date === 'string') {
+                    scheduleDateStr = s.date.split('T')[0];
+               } else if (s.date && s.date.year) {
+                    scheduleDateStr = `${s.date.year}-${String(s.date.month).padStart(2, '0')}-${String(s.date.day).padStart(2, '0')}`;
+               }
+               return Number(scheduleFieldId) === Number(fieldId) &&
+                    Number(scheduleSlotId) === Number(slotId) &&
+                    scheduleDateStr === dateStr;
+          });
+
+          if (schedule) {
+               const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
+               const booking = bookings.find(b => {
+                    const bookingScheduleId = b.scheduleId || b.scheduleID || b.ScheduleID;
+                    const match = bookingScheduleId && Number(bookingScheduleId) === Number(scheduleId);
+                    if (match) {
+                         console.log(`[getBookingInfo] Found booking by scheduleId:`, b);
+                    }
+                    return match;
+               });
+
+               if (booking) {
+
+                    return {
+                         bookingId: booking.bookingId || booking.BookingID || booking.id,
+                         customerName: booking.playerName || booking.PlayerName || booking.customerName || booking.fullName || booking.name || 'Khách hàng',
+                         customerPhone: booking.playerPhone || booking.PlayerPhone || booking.phone || booking.Phone || booking.phoneNumber || 'N/A',
+                         customerEmail: booking.customerEmail || booking.email || booking.Email || 'N/A',
+                         totalPrice: booking.totalPrice || booking.TotalPrice || 0,
+                         depositAmount: booking.depositAmount || booking.DepositAmount || 0,
+                         status: booking.status || booking.Status || 'Booked',
+                         paymentStatus: booking.paymentStatus || booking.PaymentStatus || 'N/A',
+                         hasOpponent: booking.hasOpponent || booking.HasOpponent || false,
+                         address: booking.address || booking.complexName || booking.ComplexName || 'N/A',
+                         bookingDate: booking.bookingDate || booking.BookingDate || booking.createdDate || booking.CreatedDate || 'N/A'
+                    };
+               }
+          }
+
+          // Fallback: try to find booking by fieldId, slotId, and date directly
+          // Some bookings might have these fields directly
+          const directBooking = bookings.find(b => {
+               const bookingFieldId = b.fieldId || b.fieldID || b.FieldID;
+               const bookingSlotId = b.slotId || b.slotID || b.SlotID;
+               let bookingDateStr = '';
+
+               if (b.date) {
+                    if (typeof b.date === 'string') {
+                         bookingDateStr = b.date.split('T')[0];
+                    } else if (b.date.year) {
+                         bookingDateStr = `${b.date.year}-${String(b.date.month).padStart(2, '0')}-${String(b.date.day).padStart(2, '0')}`;
+                    }
+               } else if (b.bookingDate) {
+                    const bookingDate = new Date(b.bookingDate);
+                    bookingDateStr = bookingDate.toISOString().split('T')[0];
+               }
+
+               const match = Number(bookingFieldId) === Number(fieldId) &&
+                    Number(bookingSlotId) === Number(slotId) &&
+                    bookingDateStr === dateStr;
+
+               if (match) {
+                    console.log(`[getBookingInfo] Found booking by direct match:`, b);
+               }
+               return match;
+          });
+
+          if (directBooking) {
+               console.log(`[getBookingInfo] Returning direct booking info:`, directBooking);
+               return {
+                    bookingId: directBooking.bookingId || directBooking.BookingID || directBooking.id,
+                    customerName: directBooking.playerName || directBooking.PlayerName || directBooking.customerName || directBooking.fullName || directBooking.name || 'Khách hàng',
+                    customerPhone: directBooking.playerPhone || directBooking.PlayerPhone || directBooking.phone || directBooking.Phone || directBooking.phoneNumber || 'N/A',
+                    customerEmail: directBooking.customerEmail || directBooking.email || directBooking.Email || 'N/A',
+                    totalPrice: directBooking.totalPrice || directBooking.TotalPrice || 0,
+                    depositAmount: directBooking.depositAmount || directBooking.DepositAmount || 0,
+                    status: directBooking.status || directBooking.Status || 'Booked',
+                    paymentStatus: directBooking.paymentStatus || directBooking.PaymentStatus || 'N/A',
+                    hasOpponent: directBooking.hasOpponent || directBooking.HasOpponent || false,
+                    address: directBooking.address || directBooking.complexName || directBooking.ComplexName || 'N/A',
+                    bookingDate: directBooking.bookingDate || directBooking.BookingDate || directBooking.createdDate || directBooking.CreatedDate || 'N/A'
+               };
+          }
+
+          console.log(`[getBookingInfo] No booking found for fieldId=${fieldId}, slotId=${slotId}, date=${dateStr}`);
+          return null;
      };
 
 

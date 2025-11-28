@@ -240,132 +240,125 @@ export default function NotificationsManagement({ isDemo = false }) {
                     {/* Statistics */}
                     {stats && (
                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                              <Card className="p-4">
-                                   <div className="flex items-center gap-3">
-                                        <Bell className="w-8 h-8 text-blue-600" />
-                                        <div>
-                                             <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-                                             <div className="text-sm text-gray-600">Tổng thông báo</div>
+                              <Card className="p-4 rounded-2xl shadow-lg border my-auto border-blue-300">
+                                   <div className="flex items-center  justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                             <Bell className="w-8 h-8 text-blue-600" />
+                                             <div className="text-sm font-medium text-gray-700">Tổng thông báo</div>
                                         </div>
+                                        <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
                                    </div>
                               </Card>
-                              <Card className="p-4">
-                                   <div className="flex items-center gap-3">
-                                        <Send className="w-8 h-8 text-green-600" />
-                                        <div>
-                                             <div className="text-2xl font-bold text-gray-900">{stats.sent}</div>
-                                             <div className="text-sm text-gray-600">Đã gửi</div>
-                                        </div>
+                              <Card className="p-4 rounded-2xl shadow-lg border my-auto border-green-300">
+                                   <div className="flex items-center justify-between gap-3">
+
+                                        <div className="flex items-center gap-3">
+                                             <Send className="w-8 h-8 text-green-600" />
+                                             <div className="text-sm font-medium text-gray-700">Đã gửi</div>
+                                        </div>  <div className="text-2xl font-bold text-gray-900">{stats.sent}</div>
                                    </div>
                               </Card>
-                              <Card className="p-4">
-                                   <div className="flex items-center gap-3">
-                                        <AlertCircle className="w-8 h-8 text-red-600" />
-                                        <div>
-                                             <div className="text-2xl font-bold text-gray-900">{stats.byPriority.urgent + stats.byPriority.high}</div>
-                                             <div className="text-sm text-gray-600">Ưu tiên cao</div>
-                                        </div>
+                              <Card className="p-4 rounded-2xl shadow-lg border my-auto border-red-300">
+                                   <div className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                             <AlertCircle className="w-8 h-8 text-red-600" />
+                                             <div className="text-sm font-medium text-gray-700">Ưu tiên cao</div>
+                                        </div> <div className="text-2xl font-bold text-gray-900">{stats.byPriority.urgent + stats.byPriority.high}</div>
                                    </div>
                               </Card>
-                              <Card className="p-4">
-                                   <div className="flex items-center gap-3">
-                                        <MessageSquare className="w-8 h-8 text-purple-600" />
-                                        <div>
-                                             <div className="text-2xl font-bold text-gray-900">{stats.byType.cancellation}</div>
-                                             <div className="text-sm text-gray-600">Hủy đặt sân</div>
-                                        </div>
+                              <Card className="p-4 rounded-2xl shadow-lg border my-auto border-purple-300">
+                                   <div className="flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3">
+                                             <MessageSquare className="w-8 h-8 text-purple-600" />
+                                             <div className="text-sm font-medium text-gray-700">Hủy đặt sân</div>
+                                        </div> <div className="text-2xl font-bold text-gray-900">{stats.byType.cancellation}</div>
+
                                    </div>
                               </Card>
                          </div>
-                    )}
+                    )
+                    }
 
                     {/* Notifications List */}
-                    {notifications.length === 0 ? (
-                         <Card className="p-6">
-                              <div className="text-center py-12">
-                                   <Bell className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                                   <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có thông báo nào</h3>
-                                   <p className="text-gray-500 mb-4">Gửi thông báo đầu tiên cho người dùng</p>
-                                   <Button onClick={handleCreateNotification} className="flex items-center gap-2">
-                                        <Plus className="w-4 h-4" />
-                                        Gửi thông báo
-                                   </Button>
-                              </div>
-                         </Card>
-                    ) : (
-                         <div className="grid gap-6">
-                              {notifications.map((notification) => {
-                                   const typeInfo = getTypeInfo(notification.type);
-                                   const priorityInfo = getPriorityInfo(notification.priority);
+                    {
+                         notifications.length === 0 ? (
+                              <Card className="p-6 rounded-2xl shadow-lg border border-blue-300">
+                                   <div className="text-center py-12">
+                                        <Bell className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                                        <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có thông báo nào</h3>
+                                        <p className="text-gray-500 mb-4">Gửi thông báo đầu tiên cho người dùng</p>
+                                        <Button onClick={handleCreateNotification} className="flex items-center gap-2">
+                                             <Plus className="w-4 h-4" />
+                                             Gửi thông báo
+                                        </Button>
+                                   </div>
+                              </Card>
+                         ) : (
+                              <div className="grid gap-6">
+                                   {notifications.map((notification) => {
+                                        const typeInfo = getTypeInfo(notification.type);
+                                        const priorityInfo = getPriorityInfo(notification.priority);
 
-                                   return (
-                                        <Card key={notification.notificationId} className="p-6">
-                                             <div className="flex items-start justify-between">
-                                                  <div className="flex-1">
-                                                       <div className="flex items-center gap-3 mb-2">
-                                                            <span className="text-2xl">{typeInfo.icon}</span>
-                                                            <h3 className="text-lg font-semibold text-gray-900">{notification.title}</h3>
-                                                            <span className={`text-xs px-2 py-1 rounded-full ${typeInfo.color}`}>
-                                                                 {typeInfo.label}
-                                                            </span>
-                                                            <span className={`text-xs px-2 py-1 rounded-full ${priorityInfo.color}`}>
-                                                                 {priorityInfo.label}
-                                                            </span>
-                                                       </div>
-
-                                                       <p className="text-gray-600 mb-3">{notification.message}</p>
-
-                                                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500">
-                                                            <div className="flex items-center gap-1">
-                                                                 <Target className="w-4 h-4" />
-                                                                 <span>Sân: {getComplexName(notification.complexId)}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1">
-                                                                 <Users className="w-4 h-4" />
-                                                                 <span>
-                                                                      {notification.targetAudience === 'all_users'
-                                                                           ? 'Tất cả người dùng'
-                                                                           : 'Người đã đặt sân'
-                                                                      }
+                                        return (
+                                             <Card key={notification.notificationId} className="p-6 rounded-2xl shadow-lg border border-blue-300">
+                                                  <div className="flex items-start justify-between">
+                                                       <div className="flex-1">
+                                                            <div className="flex items-center gap-3 mb-2">
+                                                                 <span className="text-2xl">{typeInfo.icon}</span>
+                                                                 <h3 className="text-lg font-semibold text-gray-900">{notification.title}</h3>
+                                                                 <span className={`text-xs px-2 py-1  font-medium rounded-full ${typeInfo.color}`}>
+                                                                      {typeInfo.label}
+                                                                 </span>
+                                                                 <span className={`text-xs px-2 py-1  font-medium rounded-full ${priorityInfo.color}`}>
+                                                                      {priorityInfo.label}
                                                                  </span>
                                                             </div>
-                                                            <div className="flex items-center gap-1">
-                                                                 <Calendar className="w-4 h-4" />
-                                                                 <span>Gửi: {formatDate(notification.sentAt)}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1">
-                                                                 <CheckCircle className="w-4 h-4" />
-                                                                 <span>{notification.isActive ? 'Đã gửi' : 'Chưa gửi'}</span>
+
+                                                            <p className="text-gray-600 mb-3 text-sm font-medium">Nội dung: {notification.message}</p>
+
+                                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500">
+                                                                 <div className="flex items-center gap-1">
+                                                                      <Target className="w-4 h-4" />
+                                                                      <span>Sân: {getComplexName(notification.complexId)}</span>
+                                                                 </div>
+                                                                 <div className="flex items-center gap-1">
+                                                                      <Users className="w-4 h-4" />
+                                                                      <span>
+                                                                           {notification.targetAudience === 'all_users'
+                                                                                ? 'Tất cả người dùng'
+                                                                                : 'Người đã đặt sân'
+                                                                           }
+                                                                      </span>
+                                                                 </div>
+                                                                 <div className="flex items-center gap-1">
+                                                                      <Calendar className="w-4 h-4" />
+                                                                      <span>Gửi: {formatDate(notification.sentAt)}</span>
+                                                                 </div>
+                                                                 <div className="flex items-center gap-1">
+                                                                      <CheckCircle className="w-4 h-4" />
+                                                                      <span>{notification.isActive ? 'Đã gửi' : 'Chưa gửi'}</span>
+                                                                 </div>
                                                             </div>
                                                        </div>
-                                                  </div>
 
-                                                  <div className="flex items-center gap-2">
-                                                       <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => handleEditNotification(notification)}
-                                                            className="flex items-center gap-1"
-                                                       >
-                                                            <Edit className="w-4 h-4" />
-                                                            Sửa
-                                                       </Button>
-                                                       <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => handleDeleteNotification(notification.notificationId)}
-                                                            className="flex items-center gap-1 text-red-600 hover:text-red-700"
-                                                       >
-                                                            <Trash2 className="w-4 h-4" />
-                                                            Xóa
-                                                       </Button>
+                                                       <div className="flex items-center gap-2">
+                                                            <Button
+                                                                 variant="outline"
+                                                                 size="sm"
+                                                                 onClick={() => handleDeleteNotification(notification.notificationId)}
+                                                                 className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-300 rounded-2xl"
+                                                            >
+                                                                 <Trash2 className="w-4 h-4" />
+                                                                 Xóa
+                                                            </Button>
+                                                       </div>
                                                   </div>
-                                             </div>
-                                        </Card>
-                                   );
-                              })}
-                         </div>
-                    )}
+                                             </Card>
+                                        );
+                                   })}
+                              </div>
+                         )
+                    }
 
                     {/* Modal for creating/editing notification */}
                     <Modal
@@ -506,8 +499,8 @@ export default function NotificationsManagement({ isDemo = false }) {
                          onClose={() => setShowDemoRestrictedModal(false)}
                          featureName="Thông báo"
                     />
-               </div>
-          </OwnerLayout>
+               </div >
+          </OwnerLayout >
      );
 }
 

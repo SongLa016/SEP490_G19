@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
-import { Card, Button, Input, Modal } from "../../../shared/components/ui";
+import { Card, Button, Input, Modal, Pagination } from "../../../shared/components/ui";
 import { DemoRestrictedModal } from "../../../shared";
 import {
      Shield,
@@ -392,14 +392,14 @@ export default function DepositPolicies({ isDemo = false }) {
                               <h1 className="text-3xl font-bold text-gray-900">Chính sách đặt cọc</h1>
                               <p className="text-gray-600 mt-1">Thiết lập chính sách đặt cọc cho các sân của bạn</p>
                          </div>
-                         <Button onClick={handleCreatePolicy} className="flex items-center gap-2">
-                              <Plus className="w-4 h-4" />
+                         <Button onClick={handleCreatePolicy} className="flex items-center gap-2 rounded-2xl">
+                              <Plus className="w-4 h-4 animate-pulse" />
                               Thêm chính sách
                          </Button>
                     </div>
 
                     {policies.length === 0 ? (
-                         <Card className="p-6">
+                         <Card className="p-4 rounded-2xl shadow-lg border border-teal-300">
                               <div className="text-center py-12">
                                    <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                                    <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có chính sách đặt cọc</h3>
@@ -413,7 +413,7 @@ export default function DepositPolicies({ isDemo = false }) {
                     ) : (
                          <div className="grid gap-6">
                               {policies.map((policy) => (
-                                   <Card key={policy.depositPolicyId} className="p-6">
+                                   <Card key={policy.depositPolicyId} className="p-4 rounded-2xl shadow-lg border bg-teal-50 border-teal-300">
                                         <div className="flex items-start justify-between">
                                              <div className="flex-1">
                                                   <div className="flex items-center gap-3 mb-2">
@@ -423,35 +423,35 @@ export default function DepositPolicies({ isDemo = false }) {
                                                   </div>
 
                                                   <div className="flex items-center gap-6 text-sm text-gray-500 mb-3">
-                                                       <div className="flex items-center gap-1">
+                                                       <div className="flex items-center gap-1 text-teal-600 font-medium border border-teal-300 rounded-2xl px-2 py-1">
                                                             <Building2 className="w-4 h-4" />
-                                                            <span>Sân: {getFieldName(policy.fieldId)}</span>
+                                                            <span> {getFieldName(policy.fieldId)}</span>
                                                        </div>
                                                   </div>
 
-                                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-                                                       <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
+                                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3">
+                                                       <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-2xl border border-blue-300">
                                                             <Percent className="w-5 h-5 text-blue-600" />
                                                             <div>
-                                                                 <p className="text-xs text-gray-500">Tỷ lệ đặt cọc</p>
+                                                                 <p className="text-xs font-medium text-gray-600">Tỷ lệ đặt cọc</p>
                                                                  <p className="text-sm font-semibold text-blue-900">
                                                                       {policy.depositPercent}%
                                                                  </p>
                                                             </div>
                                                        </div>
-                                                       <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg">
+                                                       <div className="flex items-center gap-2 p-3 bg-green-50 rounded-2xl border border-green-300">
                                                             <DollarSign className="w-5 h-5 text-green-600" />
                                                             <div>
-                                                                 <p className="text-xs text-gray-500">Cọc tối thiểu</p>
+                                                                 <p className="text-xs font-medium text-gray-600">Cọc tối thiểu</p>
                                                                  <p className="text-sm font-semibold text-green-900">
                                                                       {formatCurrency(policy.minDeposit)}
                                                                  </p>
                                                             </div>
                                                        </div>
-                                                       <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg">
+                                                       <div className="flex items-center gap-2 p-3 bg-purple-50 rounded-2xl border border-purple-300">
                                                             <DollarSign className="w-5 h-5 text-purple-600" />
                                                             <div>
-                                                                 <p className="text-xs text-gray-500">Cọc tối đa</p>
+                                                                 <p className="text-xs font-medium text-gray-600">Cọc tối đa</p>
                                                                  <p className="text-sm font-semibold text-purple-900">
                                                                       {formatCurrency(policy.maxDeposit)}
                                                                  </p>
@@ -460,7 +460,7 @@ export default function DepositPolicies({ isDemo = false }) {
                                                   </div>
 
                                                   {policy.createdAt && (
-                                                       <p className="text-xs text-gray-400 mt-4">
+                                                       <p className="text-xs font-medium text-gray-600 mt-4">
                                                             Tạo lúc: {new Date(policy.createdAt).toLocaleString('vi-VN')}
                                                        </p>
                                                   )}
@@ -471,18 +471,18 @@ export default function DepositPolicies({ isDemo = false }) {
                                                        variant="outline"
                                                        size="sm"
                                                        onClick={() => handleEditPolicy(policy)}
-                                                       className="flex items-center gap-1"
+                                                       className="flex items-center gap-1 rounded-2xl"
                                                   >
-                                                       <Edit className="w-4 h-4" />
+                                                       <Edit className="w-4 h-4 animate-pulse" />
                                                        Sửa
                                                   </Button>
                                                   <Button
                                                        variant="outline"
                                                        size="sm"
                                                        onClick={() => handleDeletePolicy(policy.depositPolicyId)}
-                                                       className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                                                       className="flex items-center gap-1 text-red-600 hover:text-red-700 rounded-2xl"
                                                   >
-                                                       <Trash2 className="w-4 h-4" />
+                                                       <Trash2 className="w-4 h-4 animate-pulse" />
                                                        Xóa
                                                   </Button>
                                              </div>
@@ -558,25 +558,25 @@ export default function DepositPolicies({ isDemo = false }) {
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                              Cọc tối thiểu (VND)
                                         </label>
-                                   <Input
-                                        type="text"
-                                        readOnly
-                                        value={
-                                             slotPriceInfo.loading
-                                                  ? 'Đang tính...'
-                                                  : formData.minDeposit != null
-                                                       ? formatCurrency(formData.minDeposit)
-                                                       : 'Chưa có dữ liệu'
-                                        }
-                                        className="bg-gray-50 cursor-not-allowed"
-                                   />
-                                   <p className="text-xs text-gray-500 mt-1">
-                                        {slotPriceInfo.loading
-                                             ? 'Đang tải giá slot...'
-                                             : slotMinPrice != null
-                                                  ? `Slot rẻ nhất: ${formatCurrency(slotMinPrice)}`
-                                                  : 'Vui lòng thiết lập giá slot cho sân này.'}
-                                   </p>
+                                        <Input
+                                             type="text"
+                                             readOnly
+                                             value={
+                                                  slotPriceInfo.loading
+                                                       ? 'Đang tính...'
+                                                       : formData.minDeposit != null
+                                                            ? formatCurrency(formData.minDeposit)
+                                                            : 'Chưa có dữ liệu'
+                                             }
+                                             className="bg-gray-50 cursor-not-allowed"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                             {slotPriceInfo.loading
+                                                  ? 'Đang tải giá slot...'
+                                                  : slotMinPrice != null
+                                                       ? `Slot rẻ nhất: ${formatCurrency(slotMinPrice)}`
+                                                       : 'Vui lòng thiết lập giá slot cho sân này.'}
+                                        </p>
                                    </div>
 
                                    <div>

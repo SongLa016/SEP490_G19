@@ -100,6 +100,51 @@ export async function fetchMatchRequestById(requestId) {
   }
 }
 
+export async function fetchMatchRequestByBookingId(bookingId) {
+  if (!bookingId) {
+    return { success: false, error: "Thiếu bookingId" };
+  }
+  try {
+    const response = await apiClient.get(`booking/${bookingId}`);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: handleApiError(error),
+    };
+  }
+}
+
+export async function checkBookingHasMatchRequest(bookingId) {
+  if (!bookingId) {
+    return { success: false, error: "Thiếu bookingId", hasRequest: false };
+  }
+  try {
+    const response = await apiClient.get(`booking/${bookingId}/has-request`);
+    return {
+      success: true,
+      hasRequest: response.data?.data?.hasRequest || response.data?.hasRequest || false,
+      data: response.data,
+    };
+  } catch (error) {
+    // If 404, booking doesn't have match request
+    if (error.response?.status === 404) {
+      return {
+        success: true,
+        hasRequest: false,
+      };
+    }
+    return {
+      success: false,
+      error: handleApiError(error),
+      hasRequest: false,
+    };
+  }
+}
+
 export async function createMatchRequestAPI(payload) {
   try {
     const response = await apiClient.post("", payload);

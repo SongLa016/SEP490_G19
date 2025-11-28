@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Card, Button, Badge, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Pagination, usePagination, Input, Checkbox } from "../../../../../shared/components/ui";
-import { Plus, Calendar, Loader2, Trash2, Loader, Search, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Calendar, Loader2, Trash2, Loader, Search, X, ChevronDown, ChevronUp, Grid3x3, Table2, Clock, MapPin } from "lucide-react";
 import Swal from "sweetalert2";
 
 export default function ManageSchedulesTab({
@@ -23,6 +23,7 @@ export default function ManageSchedulesTab({
      const [sortBy, setSortBy] = useState('date'); // date, field, slot, status
      const [sortOrder, setSortOrder] = useState('asc'); // asc, desc
      const [viewMode, setViewMode] = useState('table'); // table, grouped
+     const [groupBy, setGroupBy] = useState('date'); // date, field, status
      const [filterMonth, setFilterMonth] = useState('all');
      const [filterQuarter, setFilterQuarter] = useState('all');
      const [filterYear, setFilterYear] = useState('all');
@@ -153,6 +154,51 @@ export default function ManageSchedulesTab({
      }, [fieldSchedules, scheduleFilterField, scheduleFilterStatus, scheduleFilterDate,
           filterMonth, filterQuarter, filterYear, searchTerm, sortBy, sortOrder]);
 
+     // Group schedules for grouped view
+     const groupedSchedules = useMemo(() => {
+          if (viewMode !== 'grouped') return null;
+
+          const groups = {};
+
+          filteredSchedules.forEach(schedule => {
+               let groupKey = '';
+
+               if (groupBy === 'date') {
+                    const date = getScheduleDate(schedule);
+                    if (date) {
+                         groupKey = date.toISOString().split('T')[0];
+                    } else {
+                         groupKey = 'Không xác định';
+                    }
+               } else if (groupBy === 'field') {
+                    groupKey = schedule.fieldName || schedule.FieldName || 'Không xác định';
+               } else if (groupBy === 'status') {
+                    groupKey = schedule.status || schedule.Status || 'Available';
+               }
+
+               if (!groups[groupKey]) {
+                    groups[groupKey] = [];
+               }
+               groups[groupKey].push(schedule);
+          });
+
+          // Sort groups
+          const sortedGroups = Object.keys(groups).sort((a, b) => {
+               if (groupBy === 'date') {
+                    return new Date(a) - new Date(b);
+               } else if (groupBy === 'status') {
+                    const order = { 'Available': 1, 'Booked': 2, 'Maintenance': 3 };
+                    return (order[a] || 99) - (order[b] || 99);
+               }
+               return a.localeCompare(b);
+          });
+
+          return sortedGroups.map(key => ({
+               key,
+               schedules: groups[key]
+          }));
+     }, [filteredSchedules, viewMode, groupBy]);
+
      const handleSort = (column) => {
           if (sortBy === column) {
                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -264,6 +310,16 @@ export default function ManageSchedulesTab({
           itemsPerPage,
      } = usePagination(filteredSchedules, 10);
 
+     // Pagination for grouped view (5 groups per page)
+     const {
+          currentPage: currentGroupPage,
+          totalPages: totalGroupPages,
+          currentItems: paginatedGroups,
+          handlePageChange: handleGroupPageChange,
+          totalItems: totalGroupItems,
+          itemsPerPage: groupsPerPage,
+     } = usePagination(groupedSchedules || [], 5);
+
      return (
           <>
                <div className="flex items-center justify-between flex-wrap gap-4">
@@ -276,7 +332,7 @@ export default function ManageSchedulesTab({
                               onClick={onAddSchedule}
                               className="bg-teal-600 hover:bg-teal-700 rounded-2xl text-white"
                          >
-                              <Plus className="w-4 h-4 mr-2" />
+                              <Plus className="w-4 h-4 mr-2 animate-pulse" />
                               Thêm lịch trình
                          </Button>
                          <Button
@@ -284,7 +340,7 @@ export default function ManageSchedulesTab({
                               variant="outline"
                               className="text-teal-600 hover:text-teal-700 rounded-2xl hover:bg-teal-50 border-teal-200"
                          >
-                              <Loader className="w-4 h-4 mr-2 animate-spin" />
+                              <Loader className="w-4 h-4 mr-2 " />
                               Làm mới
                          </Button>
                     </div>
@@ -309,10 +365,47 @@ export default function ManageSchedulesTab({
                                    <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                   <SelectItem value="table">Xem bảng</SelectItem>
-                                   <SelectItem value="grouped">Xem nhóm</SelectItem>
+                                   <SelectItem value="table">
+                                        <div className="flex items-center gap-2">
+                                             <Table2 className="w-4 h-4" />
+                                             <span>Xem bảng</span>
+                                        </div>
+                                   </SelectItem>
+                                   <SelectItem value="grouped">
+                                        <div className="flex items-center gap-2">
+                                             <Grid3x3 className="w-4 h-4" />
+                                             <span>Xem nhóm</span>
+                                        </div>
+                                   </SelectItem>
                               </SelectContent>
                          </Select>
+                         {viewMode === 'grouped' && (
+                              <Select value={groupBy} onValueChange={setGroupBy}>
+                                   <SelectTrigger className="w-[150px] rounded-2xl">
+                                        <SelectValue />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                        <SelectItem value="date">
+                                             <div className="flex items-center gap-2">
+                                                  <Calendar className="w-4 h-4" />
+                                                  <span>Theo ngày</span>
+                                             </div>
+                                        </SelectItem>
+                                        <SelectItem value="field">
+                                             <div className="flex items-center gap-2">
+                                                  <MapPin className="w-4 h-4" />
+                                                  <span>Theo sân</span>
+                                             </div>
+                                        </SelectItem>
+                                        <SelectItem value="status">
+                                             <div className="flex items-center gap-2">
+                                                  <Clock className="w-4 h-4" />
+                                                  <span>Theo trạng thái</span>
+                                             </div>
+                                        </SelectItem>
+                                   </SelectContent>
+                              </Select>
+                         )}
                     </div>
                </div>
 
@@ -484,7 +577,174 @@ export default function ManageSchedulesTab({
                               <p className="text-gray-500">Tạo Time Slot để tự động tạo lịch trình</p>
                          </div>
                     </Card>
+               ) : viewMode === 'grouped' ? (
+                    // Grouped View
+                    <div className="space-y-4">
+                         {paginatedGroups && paginatedGroups.length > 0 ? (
+                              paginatedGroups.map((group) => {
+                                   let groupTitle = '';
+                                   let groupIcon = <Calendar className="w-5 h-5" />;
+
+                                   if (groupBy === 'date') {
+                                        const date = new Date(group.key);
+                                        groupTitle = date.toLocaleDateString('vi-VN', {
+                                             weekday: 'long',
+                                             year: 'numeric',
+                                             month: 'long',
+                                             day: 'numeric'
+                                        });
+                                        groupIcon = <Calendar className="w-5 h-5" />;
+                                   } else if (groupBy === 'field') {
+                                        groupTitle = group.key;
+                                        groupIcon = <MapPin className="w-5 h-5" />;
+                                   } else if (groupBy === 'status') {
+                                        const statusLower = group.key.toLowerCase();
+                                        if (statusLower === 'available') {
+                                             groupTitle = 'Available';
+                                        } else if (statusLower === 'booked') {
+                                             groupTitle = 'Booked';
+                                        } else if (statusLower === 'maintenance') {
+                                             groupTitle = 'Maintenance';
+                                        } else {
+                                             groupTitle = group.key;
+                                        }
+                                        groupIcon = <Clock className="w-5 h-5" />;
+                                   }
+
+                                   return (
+                                        <Card key={group.key} className="rounded-2xl border-2 border-teal-200 overflow-hidden">
+                                             <div className="bg-gradient-to-r from-teal-50 to-blue-50 px-4 py-3 border-b-2 border-teal-200">
+                                                  <div className="flex items-center justify-between">
+                                                       <div className="flex items-center gap-2">
+                                                            {groupIcon}
+                                                            <h3 className="font-bold text-gray-900">{groupTitle}</h3>
+                                                            <Badge className="bg-teal-100 text-teal-800">
+                                                                 {group.schedules.length} lịch trình
+                                                            </Badge>
+                                                       </div>
+                                                  </div>
+                                             </div>
+                                             <div className="p-4">
+                                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                       {group.schedules.map((schedule) => {
+                                                            const scheduleId = schedule.scheduleId || schedule.ScheduleID;
+                                                            const fieldName = schedule.fieldName || schedule.FieldName || 'N/A';
+                                                            const slotName = schedule.slotName || schedule.SlotName || 'N/A';
+                                                            const status = schedule.status || schedule.Status || 'Available';
+                                                            const isSelected = selectedSchedules.has(scheduleId);
+
+                                                            // Format date
+                                                            let dateStr = 'N/A';
+                                                            const date = getScheduleDate(schedule);
+                                                            if (date) {
+                                                                 dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+                                                            }
+
+                                                            // Format time
+                                                            let timeStr = 'N/A';
+                                                            const startTime = schedule.startTime || schedule.StartTime;
+                                                            const endTime = schedule.endTime || schedule.EndTime;
+                                                            if (startTime && endTime) {
+                                                                 timeStr = `${formatTimeObj(startTime)} - ${formatTimeObj(endTime)}`;
+                                                            }
+
+                                                            return (
+                                                                 <Card
+                                                                      key={scheduleId}
+                                                                      className={`p-3 rounded-xl border-2 transition-all hover:shadow-lg ${isSelected
+                                                                           ? 'border-teal-500 bg-teal-50'
+                                                                           : 'border-gray-200 hover:border-teal-300'
+                                                                           }`}
+                                                                 >
+                                                                      <div className="flex items-start justify-between mb-2">
+                                                                           <Checkbox
+                                                                                checked={isSelected}
+                                                                                onCheckedChange={(checked) => handleSelectSchedule(scheduleId, checked)}
+                                                                                className="mt-1"
+                                                                           />
+                                                                           {getStatusBadge(status)}
+                                                                      </div>
+                                                                      {groupBy !== 'date' && (
+                                                                           <div className="mb-2">
+                                                                                <div className="flex items-center gap-1 text-xs text-gray-600">
+                                                                                     <Calendar className="w-3 h-3" />
+                                                                                     <span>{dateStr}</span>
+                                                                                </div>
+                                                                           </div>
+                                                                      )}
+                                                                      {groupBy !== 'field' && (
+                                                                           <div className="mb-2">
+                                                                                <div className="flex items-center gap-1 text-sm font-medium text-gray-900">
+                                                                                     <MapPin className="w-4 h-4 text-teal-600" />
+                                                                                     <span>{fieldName}</span>
+                                                                                </div>
+                                                                           </div>
+                                                                      )}
+                                                                      <div className="mb-2">
+                                                                           <div className="flex items-center gap-1 text-sm text-gray-700">
+                                                                                <Clock className="w-4 h-4 text-blue-600" />
+                                                                                <span className="font-medium">{slotName}</span>
+                                                                           </div>
+                                                                           <div className="text-xs text-gray-500 ml-5 mt-1">
+                                                                                {timeStr}
+                                                                           </div>
+                                                                      </div>
+                                                                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-200">
+                                                                           <Select
+                                                                                value={status}
+                                                                                onValueChange={(newStatus) => onUpdateStatus(scheduleId, newStatus)}
+                                                                           >
+                                                                                <SelectTrigger className="w-[120px] h-7 text-xs flex-1">
+                                                                                     <SelectValue />
+                                                                                </SelectTrigger>
+                                                                                <SelectContent>
+                                                                                     <SelectItem value="Available">Available</SelectItem>
+                                                                                     <SelectItem value="Booked">Booked</SelectItem>
+                                                                                     <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                                                                </SelectContent>
+                                                                           </Select>
+                                                                           <Button
+                                                                                onClick={() => onDeleteSchedule(scheduleId, `${fieldName} - ${slotName} - ${dateStr}`)}
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 h-7 px-2"
+                                                                           >
+                                                                                <Trash2 className="w-3 h-3" />
+                                                                           </Button>
+                                                                      </div>
+                                                                 </Card>
+                                                            );
+                                                       })}
+                                                  </div>
+                                             </div>
+                                        </Card>
+                                   );
+                              })
+                         ) : (
+                              <Card className="p-12 rounded-3xl border-2 border-teal-400">
+                                   <div className="text-center">
+                                        <Grid3x3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                                        <h3 className="text-lg font-medium text-gray-900 mb-2">Không có lịch trình nào</h3>
+                                        <p className="text-gray-500">Thử thay đổi bộ lọc hoặc tạo lịch trình mới</p>
+                                   </div>
+                              </Card>
+                         )}
+
+                         {/* Pagination for Grouped View */}
+                         {groupedSchedules && groupedSchedules.length > 0 && (
+                              <div className="pt-4 border-t border-gray-200">
+                                   <Pagination
+                                        currentPage={currentGroupPage}
+                                        totalPages={totalGroupPages}
+                                        onPageChange={handleGroupPageChange}
+                                        itemsPerPage={groupsPerPage}
+                                        totalItems={totalGroupItems}
+                                   />
+                              </div>
+                         )}
+                    </div>
                ) : (
+                    // Table View
                     <Card className="overflow-hidden rounded-3xl border-2 border-teal-400">
                          <div className="overflow-x-auto">
                               <table className="w-full border-collapse border border-teal-200">

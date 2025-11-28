@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Calendar, MapPin, Receipt, Search, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ArrowUpDown, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon, Info, RefreshCw, Loader2 } from "lucide-react";
+import { Calendar, MapPin, Receipt, Search, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ArrowUpDown, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon, Info, RefreshCw, Loader2, User, Phone } from "lucide-react";
 import { Section, Container, Card, CardContent, Input, Button, Badge, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, DatePicker, LoadingList, FadeIn, SlideIn, StaggerContainer, Modal } from "../../../../shared/components/ui";
 import { listBookingsByUser, updateBooking, fetchBookingsByPlayer, generateQRCode, confirmPaymentAPI } from "../../../../shared/index";
 import { cancelBooking as cancelBookingAPI } from "../../../../shared/services/bookings";
 import {
      fetchMatchRequestById,
      fetchMatchRequests,
+     fetchMatchRequestByBookingId,
+     checkBookingHasMatchRequest,
      checkMatchRequestByBooking,
      acceptMatchParticipant,
      rejectOrWithdrawParticipant,
@@ -19,448 +21,39 @@ import InvoiceModal from "../../../../shared/components/InvoiceModal";
 import CancelBookingModal from "../../../../shared/components/CancelBookingModal";
 import { fetchFieldScheduleById } from "../../../../shared/services/fieldSchedules";
 import Swal from 'sweetalert2';
+// Components
+import {
+     BookingStats,
+     BookingFilters,
+     BookingCard
+} from './components';
 
-const parseDateValue = (value) => {
-     if (!value) return null;
-     const date = new Date(value);
-     return Number.isNaN(date.getTime()) ? null : date;
-};
-
-const formatTimeLabel = (dateObj) => {
-     if (!dateObj) return "";
-     return dateObj.toLocaleTimeString("vi-VN", {
-          hour: "2-digit",
-          minute: "2-digit"
-     });
-};
-
-const formatDateWithDay = (dateStr, startTime) => {
-     if (!dateStr) return "Chưa có ngày";
-     try {
-          let dateObj = null;
-          if (startTime) {
-               dateObj = new Date(startTime);
-          } else if (dateStr.includes('/')) {
-               const [d, m, y] = dateStr.split('/').map(Number);
-               dateObj = new Date(y, m - 1, d);
-          } else {
-               dateObj = new Date(dateStr);
-          }
-
-          if (dateObj && !isNaN(dateObj.getTime())) {
-               const dayNames = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
-               const dayName = dayNames[dateObj.getDay()];
-               return `${dayName}, ${dateStr}`;
-          }
-     } catch (e) {
-          // Fallback to original date string
-     }
-     return dateStr;
-};
-
-const stripRefundQrInfo = (text) => {
-     if (!text) return "";
-     const markerIndex = text.toLowerCase().indexOf("refundqr");
-     if (markerIndex === -1) return text;
-     const stripped = text.substring(0, markerIndex);
-     return stripped.replace(/\|\s*$/, "").trim();
-};
-
-const extractRequestId = (payload) => {
-     if (!payload) return null;
-     if (typeof payload === "number") return payload;
-     if (payload.requestId) return payload.requestId;
-     if (payload.matchRequestId) return payload.matchRequestId;
-     if (payload.id) return payload.id;
-     if (payload.data) return extractRequestId(payload.data);
-     if (payload.hasRequest && payload.request) return extractRequestId(payload.request);
-     if (payload.hasRequest && payload.id) return payload.id;
-     return null;
-};
-
-const extractParticipants = (detail) => {
-     if (!detail) return [];
-
-     // Direct arrays that already represent participants
-     if (Array.isArray(detail)) return detail;
-
-     const candidateKeys = [
-          "participants",
-          "participantsList",
-          "joinRequests",
-          "joins",
-          "joinResponses",
-          "matchJoinResponses",
-          "matchJoinRequests",
-          "matchJoins",
-          "matchParticipants",
-          "pendingParticipants"
-     ];
-
-     for (const key of candidateKeys) {
-          if (Array.isArray(detail[key])) {
-               return detail[key];
-          }
-     }
-
-     // Some APIs wrap the payload in data/result fields
-     if (detail.data) {
-          const nested = extractParticipants(detail.data);
-          if (Array.isArray(nested) && nested.length > 0) {
-               return nested;
-          }
-     }
-     if (detail.result) {
-          const nested = extractParticipants(detail.result);
-          if (Array.isArray(nested) && nested.length > 0) {
-               return nested;
-          }
-     }
-
-     return [];
-};
-
-const getRequestOwnerId = (request) => {
-     if (!request) return null;
-     return (
-          request.ownerId ||
-          request.ownerID ||
-          request.userId ||
-          request.userID ||
-          request.createdById ||
-          request.createdByID ||
-          request.createdByUserId ||
-          request.createdByUserID ||
-          request.creatorUserId ||
-          request.creatorId ||
-          request.creatorID ||
-          request.createdBy ||
-          null
-     );
-};
-
-const getOwnerTeamNames = (request) => {
-     if (!request) return [];
-     const names = [
-          request.creatorTeamName,
-          request.homeTeamName,
-          request.hostTeamName,
-          request.ownerTeamName,
-          request.teamName,
-          request.ownerTeam,
-          request?.owner?.teamName,
-          request?.homeTeam?.name,
-          request?.hostTeam?.name,
-          request?.booking?.teamName
-     ];
-     return names
-          .filter((name) => typeof name === "string" && name.trim().length > 0)
-          .map((name) => name.trim().toLowerCase());
-};
-
-const isOwnerParticipant = (participant, ownerId, ownerTeamNames = []) => {
-     if (!participant) return false;
-     if (participant.isOwnerTeam || participant.isHostTeam || participant.role === "owner") return true;
-
-     const participantTeamName = (participant.teamName || participant.fullName || "")
-          .toString()
-          .trim()
-          .toLowerCase();
-
-     if (participantTeamName && ownerTeamNames.includes(participantTeamName)) {
-          return true;
-     }
-
-     if (ownerId == null) return false;
-
-     const ownerValue = String(ownerId);
-     const possibleOwnerIds = [
-          participant.ownerId,
-          participant.ownerID,
-          participant.userId,
-          participant.userID,
-          participant.playerId,
-          participant.playerID,
-          participant.createdById,
-          participant.createdByID,
-          participant.creatorId,
-          participant.creatorID,
-          participant.createdByUserId,
-          participant.createdByUserID,
-          participant.hostUserId,
-          participant.hostUserID,
-          participant.teamOwnerId,
-          participant.teamOwnerID,
-          participant?.user?.id,
-          participant?.user?.userId,
-          participant?.user?.userID,
-          participant?.owner?.id,
-          participant?.owner?.userId,
-          participant?.owner?.userID
-     ]
-          .filter((val) => val !== undefined && val !== null)
-          .map((val) => String(val));
-
-     if (!possibleOwnerIds.includes(ownerValue)) {
-          return false;
-     }
-
-     if (ownerTeamNames.length === 0) {
-          return true;
-     }
-
-     return ownerTeamNames.includes(participantTeamName);
-};
-
-const normalizeStatusValue = (value) => {
-     if (value === undefined || value === null) return "";
-     const raw = value.toString().trim().toLowerCase();
-     if (!raw) return "";
-     if (raw.includes("accept") || raw.includes("approve") || raw.includes("confirm") || raw.includes("match")) return "accepted";
-     if (raw.includes("reject") || raw.includes("deny") || raw.includes("decline")) return "rejected";
-     if (raw.includes("withdraw")) return "withdrawn";
-     if (raw.includes("cancel")) return "cancelled";
-     if (raw.includes("pending") || raw.includes("wait")) return "pending";
-     if (raw === "0") return "pending";
-     return raw;
-};
-
-const getOwnerDecisionStatus = (participant) => {
-     if (!participant) return "";
-     const ownerStatusSources = [
-          participant.statusFromA,
-          participant.statusFromOwner,
-          participant.statusFromHost,
-          participant.statusFromCreator,
-          participant.statusFromTeamA,
-          participant.statusFromRequester,
-          participant.ownerStatus,
-          participant.hostDecision,
-          participant.approvalStatus,
-          participant.status
-     ];
-
-     for (const source of ownerStatusSources) {
-          const normalized = normalizeStatusValue(source);
-          if (normalized) return normalized;
-     }
-     return "";
-};
-
-const getOpponentDecisionStatus = (participant) => {
-     if (!participant) return "";
-     const opponentStatusSources = [
-          participant.statusFromB,
-          participant.statusFromParticipant,
-          participant.statusFromTeam,
-          participant.statusFromTeamB,
-          participant.opponentStatus,
-          participant.teamStatus,
-          participant.joinStatus,
-          participant.state,
-          participant.participantStatus,
-          participant.responseStatus
-     ];
-
-     for (const source of opponentStatusSources) {
-          const normalized = normalizeStatusValue(source);
-          if (normalized) return normalized;
-     }
-     return "";
-};
-
-const participantNeedsOwnerAction = (participant) => {
-     const ownerStatus = getOwnerDecisionStatus(participant);
-     return !ownerStatus || ownerStatus === "pending";
-};
-
-const isParticipantAcceptedByOwner = (participant) => getOwnerDecisionStatus(participant) === "accepted";
-
-const isParticipantRejectedByOwner = (participant) => getOwnerDecisionStatus(participant) === "rejected";
-
-const normalizeParticipantStatus = (participant) => {
-     const ownerStatus = getOwnerDecisionStatus(participant);
-     const opponentStatus = getOpponentDecisionStatus(participant);
-
-     if (ownerStatus === "accepted" && opponentStatus === "accepted") {
-          return "Hai đội đã xác nhận";
-     }
-
-     if (ownerStatus === "accepted" && (!opponentStatus || opponentStatus === "pending")) {
-          return "Đã chấp nhận • Chờ đội bạn";
-     }
-
-     if (participantNeedsOwnerAction(participant)) {
-          return "Chờ bạn duyệt";
-     }
-
-     if (ownerStatus === "rejected") {
-          return "Đã từ chối";
-     }
-
-     if (opponentStatus === "rejected" || opponentStatus === "cancelled") {
-          return "Đội bạn đã hủy";
-     }
-
-     if (opponentStatus === "withdrawn") {
-          return "Đội bạn đã rút";
-     }
-
-     const fallback =
-          ownerStatus ||
-          opponentStatus ||
-          normalizeStatusValue(
-               participant?.status ??
-               participant?.state ??
-               participant?.joinStatus ??
-               participant?.joinState
-          ) ||
-          "pending";
-
-     return fallback.charAt(0).toUpperCase() + fallback.slice(1);
-};
-
-const filterParticipantsForDisplay = (participants, request) => {
-     if (!Array.isArray(participants)) return [];
-     const ownerId = getRequestOwnerId(request);
-     const ownerTeamNames = getOwnerTeamNames(request);
-     return participants.filter((participant) => !isOwnerParticipant(participant, ownerId, ownerTeamNames));
-};
-
-const getParticipantId = (participant) => {
-     if (!participant) return null;
-     return participant.participantId || participant.joinId || participant.id || null;
-};
-
-const deriveStatusFromApi = (statusInput) => {
-     const raw = (statusInput ?? "").toString().toLowerCase();
-     if (!raw) return "confirmed";
-     if (raw.includes("cancel") || raw.includes("reject") || raw === "0") return "cancelled";
-     if (raw.includes("complete") || raw.includes("done")) return "completed";
-     if (raw.includes("pending") || raw.includes("wait")) return "pending";
-     if (raw.includes("confirm")) return "confirmed";
-     return raw;
-};
-
-const normalizeApiBookings = (items = []) =>
-     items.map((item, index) => {
-          // Debug: Log raw data từ API
-          console.log(`🔍 [Normalize Booking ${index}] Raw API data:`, {
-               bookingId: item.bookingId ?? item.bookingID ?? item.id,
-               scheduleId: item.scheduleId ?? item.scheduleID ?? item.ScheduleID,
-               slotId: item.slotId ?? item.slotID ?? item.SlotID,
-               date: item.date,
-               startTime: item.startTime,
-               endTime: item.endTime,
-               slotName: item.slotName,
-               time: item.time,
-               duration: item.duration,
-               fullItem: item
-          });
-
-          const start = parseDateValue(item.startTime);
-          const end = parseDateValue(item.endTime);
-          const timeLabel = start && end ? `${formatTimeLabel(start)} - ${formatTimeLabel(end)}` : (item.slotName || item.time || "");
-          const durationMinutes = start && end ? Math.max(15, Math.round((end - start) / 60000)) : item.duration;
-
-          const normalized = {
-               id: String(item.bookingId ?? item.bookingID ?? item.id ?? `API-${index}`),
-               bookingId: item.bookingId ?? item.bookingID ?? item.id ?? `API-${index}`,
-               // Database fields
-               userId: item.userId ?? item.userID ?? item.UserID,
-               scheduleId: item.scheduleId ?? item.scheduleID ?? item.ScheduleID,
-               slotId: item.slotId ?? item.slotID ?? item.SlotID,
-               totalPrice: Number(item.totalPrice ?? item.TotalPrice ?? item.price ?? 0),
-               depositAmount: Number(item.depositAmount ?? item.DepositAmount ?? 0),
-               bookingStatus: item.bookingStatus ?? item.BookingStatus ?? item.status,
-               paymentStatus: item.paymentStatus ?? item.PaymentStatus ?? "Pending",
-               hasOpponent: Boolean(item.hasOpponent ?? item.HasOpponent ?? false),
-               matchRequestId: item.matchRequestId ?? item.matchRequestID ?? item.MatchRequestID ?? null,
-               qrCode: item.qrCode ?? item.QRCode ?? null,
-               qrExpiresAt: item.qrExpiresAt ?? item.QRExpiresAt ?? null,
-               createdAt: item.createdAt ?? item.CreatedAt ?? item.startTime,
-               confirmedAt: item.confirmedAt ?? item.ConfirmedAt ?? null,
-               cancelledAt: item.cancelledAt ?? item.CancelledAt ?? null,
-               cancelledBy: item.cancelledBy ?? item.CancelledBy ?? null,
-               cancelReason: item.cancelReason ?? item.CancelReason ?? null,
-               // Display fields
-               fieldName: item.fieldName || "Chưa rõ sân",
-               address: item.complexName || item.fieldAddress || item.address || "",
-               date: start ? start.toLocaleDateString("vi-VN") : item.date || "",
-               time: timeLabel,
-               slotName: item.slotName,
-               startTime: item.startTime,
-               endTime: item.endTime,
-               duration: durationMinutes,
-               price: Number(item.totalPrice ?? item.TotalPrice ?? item.price ?? 0),
-               paymentMethod: item.paymentMethod,
-               status: deriveStatusFromApi(item.status || item.bookingStatus || item.BookingStatus),
-               isRecurring: Boolean(item.isRecurring),
-               recurringGroupId: item.recurringGroupId,
-               weekNumber: item.weekNumber,
-               totalWeeks: item.totalWeeks || item.recurringWeeks || item.totalSessions || 0,
-               apiSource: item
-          };
-
-          // Debug: Log normalized data
-          console.log(`🔍 [Normalize Booking ${index}] Normalized data:`, {
-               id: normalized.id,
-               scheduleId: normalized.scheduleId,
-               slotId: normalized.slotId,
-               date: normalized.date,
-               time: normalized.time,
-               startTime: normalized.startTime,
-               endTime: normalized.endTime,
-               duration: normalized.duration,
-               slotName: normalized.slotName
-          });
-
-          // Kiểm tra nếu chuẩn: 06:00 - 07:30, Thứ 2 ngày 1/12/2025
-          const expectedTime = "06:00 - 07:30";
-          const expectedDateStr = "01/12/2025";
-          if (normalized.time === expectedTime && normalized.date && normalized.date.includes("01/12/2025")) {
-               console.log(`✅ [Normalize Booking ${index}] Dữ liệu CHUẨN sau normalize:`, {
-                    time: normalized.time,
-                    date: normalized.date,
-                    startTime: normalized.startTime,
-                    endTime: normalized.endTime
-               });
-          } else if (normalized.scheduleId || normalized.slotId) {
-               console.log(`⚠️ [Normalize Booking ${index}] Dữ liệu KHÔNG CHUẨN sau normalize:`, {
-                    actualTime: normalized.time,
-                    expectedTime: expectedTime,
-                    actualDate: normalized.date,
-                    expectedDate: expectedDateStr,
-                    startTime: normalized.startTime,
-                    endTime: normalized.endTime
-               });
-          }
-
-          return normalized;
-     });
-
-const buildRecurringGroups = (bookingList = []) => {
-     const grouped = {};
-     bookingList.forEach((booking) => {
-          if (booking.isRecurring && booking.recurringGroupId) {
-               if (!grouped[booking.recurringGroupId]) {
-                    grouped[booking.recurringGroupId] = {
-                         groupId: booking.recurringGroupId,
-                         fieldName: booking.fieldName,
-                         address: booking.address,
-                         time: booking.time,
-                         duration: booking.duration,
-                         price: booking.price,
-                         paymentMethod: booking.paymentMethod,
-                         totalWeeks: booking.totalWeeks || 0,
-                         bookings: []
-                    };
-               }
-               grouped[booking.recurringGroupId].bookings.push(booking);
-          }
-     });
-     return grouped;
-};
+// Utils
+import {
+     formatPrice,
+     formatTimeRemaining,
+     stripRefundQrInfo,
+     formatDateWithDay,
+     extractRequestId,
+     extractParticipants,
+     getRequestOwnerId,
+     getOwnerTeamNames,
+     getParticipantId,
+     normalizeParticipantStatus,
+     participantNeedsOwnerAction,
+     isParticipantAcceptedByOwner,
+     isParticipantRejectedByOwner,
+     filterParticipantsForDisplay,
+     getOwnerDecisionStatus,
+     getOpponentDecisionStatus,
+     shouldShowCancelButton,
+     isPendingUnpaidWithin2Hours,
+     shouldShowFindOpponentButton,
+     hasExistingMatchRequest,
+     getRecurringStatus,
+     normalizeApiBookings,
+     buildRecurringGroups
+} from './utils';
 
 export default function BookingHistory({ user }) {
      const [query, setQuery] = useState("");
@@ -495,6 +88,7 @@ export default function BookingHistory({ user }) {
      const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
      const [timeRemaining, setTimeRemaining] = useState({}); // Track time remaining for each booking
      const [scheduleDataMap, setScheduleDataMap] = useState({}); // Map scheduleId -> schedule data from API
+     const [activeTab, setActiveTab] = useState("bookings"); // "bookings" or "matchHistory"
      const playerId = user?.userID || user?.UserID || user?.id || user?.Id || user?.userId;
 
      // Scroll to top when filters or sorting change
@@ -560,9 +154,9 @@ export default function BookingHistory({ user }) {
 
                     if (!isMounted) return;
                     setScheduleDataMap(scheduleMap);
-                    console.log("📅 [Booking History] Loaded schedule data:", scheduleMap);
+
                } catch (error) {
-                    console.error("Error loading booking history:", error);
+
                     const fallback = listBookingsByUser(String(playerId));
                     if (isMounted) {
                          setBookingError(error.message || "Không thể tải lịch sử đặt sân.");
@@ -585,6 +179,7 @@ export default function BookingHistory({ user }) {
 
      const loadMatchRequestsForBookings = React.useCallback(async () => {
           if (!bookings || bookings.length === 0) {
+
                setBookingIdToRequest({});
                setRequestJoins({});
                return;
@@ -603,8 +198,12 @@ export default function BookingHistory({ user }) {
           // This is the most reliable way to find match requests after reload
           const bookingsWithRequestId = bookings.filter(booking => {
                const requestId = booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
+               if (requestId && booking.id) {
+
+               }
                return requestId && booking.id;
           });
+
 
           if (bookingsWithRequestId.length > 0) {
                await Promise.all(
@@ -619,11 +218,7 @@ export default function BookingHistory({ user }) {
                                    map[booking.id] = detailResp.data;
                                    joinsMap[requestId] = extractParticipants(detailResp.data);
 
-                                   console.log("✅ [loadMatchRequests] Mapped from booking.matchRequestId:", {
-                                        bookingId: booking.bookingId,
-                                        bookingDisplayId: booking.id,
-                                        requestId: requestId
-                                   });
+
                               }
                          } catch (error) {
                               console.warn("Error fetching match request by ID:", requestId, error);
@@ -636,6 +231,7 @@ export default function BookingHistory({ user }) {
                // Second pass: Fetch all match requests from database and match by bookingId
                const matchRequestsResp = await fetchMatchRequests({ page: 1, size: 1000 });
 
+
                if (matchRequestsResp.success && Array.isArray(matchRequestsResp.data)) {
                     // Create a map from bookingId to matchRequest (normalize to string for comparison)
                     const bookingIdToMatchRequestMap = {};
@@ -646,54 +242,104 @@ export default function BookingHistory({ user }) {
                               // Normalize to string for consistent comparison
                               const normalizedId = String(matchRequestBookingId);
                               bookingIdToMatchRequestMap[normalizedId] = matchRequest;
+
+
+                         } else {
+
                          }
                     });
 
-                    // Map match requests to bookings that don't already have a match request
-                    bookings.forEach((booking) => {
-                         // Skip if already mapped in first pass
-                         if (map[booking.id]) return;
+                    await Promise.all(bookings.map(async (booking) => {
+
 
                          // Only compare booking.bookingId (database ID) with matchRequest.bookingId
                          // booking.id is just a display key, not the actual database ID
                          const bookingId = booking.bookingId ? String(booking.bookingId) : null;
 
+
+
                          // Try to find match request by bookingId
                          let matchRequest = null;
                          if (bookingId && bookingIdToMatchRequestMap[bookingId]) {
                               matchRequest = bookingIdToMatchRequestMap[bookingId];
+
+                         }
+
+                         // If not found in list, check if booking has match request using lightweight API
+                         // This handles cases where the list API doesn't return all match requests
+                         if (!matchRequest && bookingId) {
+                              try {
+                                   const hasRequestResp = await checkBookingHasMatchRequest(bookingId);
+                                   if (hasRequestResp?.success && hasRequestResp.hasRequest) {
+                                        // Extract matchRequestId if available in response
+                                        const matchRequestId = hasRequestResp.data?.data?.matchRequestId ||
+                                             hasRequestResp.data?.matchRequestId;
+
+                                        // If we have matchRequestId, fetch full details immediately
+                                        if (matchRequestId) {
+                                             try {
+                                                  const detailResp = await fetchMatchRequestById(matchRequestId);
+                                                  if (detailResp?.success && detailResp.data) {
+                                                       matchRequest = detailResp.data;
+
+                                                  } else {
+                                                       // Fallback to placeholder if fetch fails
+                                                       matchRequest = {
+                                                            bookingId: bookingId,
+                                                            hasRequest: true,
+                                                            placeholder: true,
+                                                            matchRequestId: matchRequestId,
+                                                            id: matchRequestId
+                                                       };
+                                                  }
+                                             } catch (error) {
+                                                  console.warn("Error fetching match request details:", error);
+                                                  // Fallback to placeholder
+                                                  matchRequest = {
+                                                       bookingId: bookingId,
+                                                       hasRequest: true,
+                                                       placeholder: true,
+                                                       matchRequestId: matchRequestId,
+                                                       id: matchRequestId
+                                                  };
+                                             }
+                                        } else {
+                                             // No matchRequestId in response, create placeholder
+                                             matchRequest = {
+                                                  bookingId: bookingId,
+                                                  hasRequest: true,
+                                                  placeholder: true
+                                             };
+
+                                        }
+                                   } else {
+
+                                   }
+                              } catch (error) {
+
+                              }
                          }
 
                          if (matchRequest) {
                               const requestId = extractRequestId(matchRequest);
-                              if (requestId && booking.id) {
+
+                              // For placeholder match requests, we don't have requestId
+                              // But we still need to add to map to hide "Find Opponent" button
+                              if (booking.id) {
                                    // Use booking.id as key (for display), but match by booking.bookingId
                                    map[booking.id] = matchRequest;
-                                   joinsMap[requestId] = extractParticipants(matchRequest);
 
-                                   console.log("✅ [loadMatchRequests] Mapped match request by bookingId:", {
-                                        bookingId: booking.bookingId,
-                                        bookingDisplayId: booking.id,
-                                        requestId: requestId,
-                                        matchRequestBookingId: matchRequest.bookingId
-                                   });
+                                   // Only add to joinsMap if we have requestId and participants
+                                   if (requestId) {
+                                        joinsMap[requestId] = extractParticipants(matchRequest);
+                                   }
+
+
                               }
                          } else if (bookingId) {
-                              // Log when no match found for debugging
-                              console.log("⚠️ [loadMatchRequests] No match request found for booking:", {
-                                   bookingId: booking.bookingId,
-                                   bookingDisplayId: booking.id,
-                                   availableMatchRequestIds: Object.keys(bookingIdToMatchRequestMap)
-                              });
-                         }
-                    });
 
-                    console.log("Match requests loaded:", {
-                         totalMatchRequests: matchRequestsResp.data.length,
-                         mappedBookings: Object.keys(map).length,
-                         bookingIdMap: Object.keys(bookingIdToMatchRequestMap),
-                         bookings: bookings.map(b => ({ id: b.id, bookingId: b.bookingId, matchRequestId: b.matchRequestId }))
-                    });
+                         }
+                    }));
                }
           } catch (error) {
                console.warn("Error loading match requests:", error);
@@ -708,10 +354,7 @@ export default function BookingHistory({ user }) {
                          // Use booking.bookingId (database ID) for API calls, not booking.id (display key)
                          const bookingId = booking.bookingId;
                          if (!bookingId) {
-                              console.log("⚠️ [loadMatchRequests] Booking missing bookingId:", {
-                                   bookingDisplayId: booking.id,
-                                   booking: booking
-                              });
+
                               return;
                          }
                          try {
@@ -731,11 +374,7 @@ export default function BookingHistory({ user }) {
                                    map[booking.id] = detailResp.data;
                                    joinsMap[requestId] = extractParticipants(detailResp.data);
 
-                                   console.log("✅ [loadMatchRequests] Fallback mapped match request:", {
-                                        bookingId: booking.bookingId,
-                                        bookingDisplayId: booking.id,
-                                        requestId: requestId
-                                   });
+
                               }
                          } catch (error) {
                               console.warn("Không thể tải kèo cho booking", bookingId, error);
@@ -748,31 +387,47 @@ export default function BookingHistory({ user }) {
           // This preserves match requests that were just created but might not be in API yet
           setBookingIdToRequest(prev => {
                const merged = { ...prev, ...map };
-               console.log("🔄 [loadMatchRequests] Merged bookingIdToRequest:", {
-                    previous: Object.keys(prev).length,
-                    new: Object.keys(map).length,
-                    merged: Object.keys(merged).length
-               });
+
                return merged;
           });
           setRequestJoins(prev => ({ ...prev, ...joinsMap }));
+
+
      }, [bookings]);
 
      useEffect(() => {
-          loadMatchRequestsForBookings();
-     }, [loadMatchRequestsForBookings]);
+          // Only load match requests when we have bookings
+          if (bookings && bookings.length > 0) {
+               loadMatchRequestsForBookings();
+          }
+     }, [bookings, loadMatchRequestsForBookings]);
 
      const [refreshingRequests, setRefreshingRequests] = useState({}); // Track which requests are being refreshed
      const [processingParticipants, setProcessingParticipants] = useState({}); // Track which participants are being processed (accept/reject)
 
-     const refreshRequestForBooking = React.useCallback(async (bookingKey, requestId) => {
-          if (!bookingKey || !requestId) return;
+     const refreshRequestForBooking = React.useCallback(async (bookingKey, requestIdOrBookingId) => {
+          if (!bookingKey || !requestIdOrBookingId) return;
 
           // Set loading state
-          setRefreshingRequests(prev => ({ ...prev, [requestId]: true }));
+          setRefreshingRequests(prev => ({ ...prev, [requestIdOrBookingId]: true }));
 
           try {
-               const detailResp = await fetchMatchRequestById(requestId);
+               // Check if we have a placeholder (no requestId)
+               const currentReq = bookingIdToRequest[bookingKey];
+               const isPlaceholder = currentReq?.placeholder === true;
+
+               let detailResp;
+               let actualRequestId;
+
+               if (isPlaceholder) {
+                    // Fetch by bookingId first to get requestId
+                    detailResp = await fetchMatchRequestByBookingId(requestIdOrBookingId);
+                    actualRequestId = extractRequestId(detailResp?.data);
+               } else {
+                    // Fetch by requestId directly
+                    detailResp = await fetchMatchRequestById(requestIdOrBookingId);
+                    actualRequestId = requestIdOrBookingId;
+               }
                if (!detailResp?.success) {
                     Swal.fire({
                          icon: 'error',
@@ -786,16 +441,26 @@ export default function BookingHistory({ user }) {
 
                const participants = extractParticipants(detailResp.data);
                setBookingIdToRequest(prev => ({ ...prev, [bookingKey]: detailResp.data }));
-               setRequestJoins(prev => ({ ...prev, [requestId]: participants }));
+               if (actualRequestId) {
+                    setRequestJoins(prev => ({ ...prev, [actualRequestId]: participants }));
+               }
 
-               // Show success message if there are new participants
-               if (participants && participants.length > 0) {
-                    const pendingCount = participants.filter(p => p.status === "Pending").length;
+               // Filter to show only joining teams (not owner team)
+               const joiningTeams = filterParticipantsForDisplay(participants, detailResp.data);
+
+               // Show success message based on filtered participants
+               if (joiningTeams && joiningTeams.length > 0) {
+                    // Count pending teams (statusFromB = "Pending")
+                    const pendingCount = joiningTeams.filter(p => {
+                         const statusFromB = String(p.statusFromB || "").toLowerCase();
+                         return statusFromB === "pending";
+                    }).length;
+
                     if (pendingCount > 0) {
                          Swal.fire({
                               icon: 'success',
                               title: 'Đã tải đội tham gia',
-                              text: `Có ${participants.length} đội tham gia (${pendingCount} đang chờ xử lý)`,
+                              text: `Có ${joiningTeams.length} đội tham gia (${pendingCount} đang chờ xử lý)`,
                               timer: 2000,
                               showConfirmButton: false
                          });
@@ -803,7 +468,7 @@ export default function BookingHistory({ user }) {
                          Swal.fire({
                               icon: 'success',
                               title: 'Đã tải đội tham gia',
-                              text: `Có ${participants.length} đội tham gia`,
+                              text: `Có ${joiningTeams.length} đội tham gia`,
                               timer: 1500,
                               showConfirmButton: false
                          });
@@ -830,11 +495,11 @@ export default function BookingHistory({ user }) {
                // Clear loading state
                setRefreshingRequests(prev => {
                     const updated = { ...prev };
-                    delete updated[requestId];
+                    delete updated[requestIdOrBookingId];
                     return updated;
                });
           }
-     }, []);
+     }, [bookingIdToRequest]);
 
      const handleAcceptParticipant = async (bookingKey, requestId, participant) => {
           const participantId = getParticipantId(participant);
@@ -851,16 +516,25 @@ export default function BookingHistory({ user }) {
                icon: 'question',
                title: 'Chấp nhận đội tham gia?',
                html: `
-                   <div class="text-left space-y-1">
-                        <p class="text-sm"><strong>Đội:</strong> ${participant.teamName || `User: ${participantId}`}</p>
-                        <p class="text-sm"><strong>Trình độ:</strong> ${participant.level || participant.skillLevel || 'N/A'}</p>
-                        <p class="text-sm"><strong>Trạng thái:</strong> ${participant.status}</p>
+                   <div class="text-left space-y-2">
+                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                             <p class="text-sm mb-2"><strong>Thông tin đội:</strong></p>
+                             <div class="space-y-1 text-sm">
+                                  <p><strong>Tên đội:</strong> ${participant.teamName || 'Chưa có'}</p>
+                                  ${participant.fullName ? `<p><strong>Người liên hệ:</strong> ${participant.fullName}</p>` : ''}
+                                  ${participant.contactPhone ? `<p><strong>Số điện thoại:</strong> ${participant.contactPhone}</p>` : ''}
+                                  <p><strong>Số người:</strong> ${participant.playerCount || 'Chưa rõ'} người</p>
+                                  ${participant.note && participant.note.trim() ? `<p><strong>Ghi chú:</strong> <em>${participant.note}</em></p>` : ''}
+                             </div>
+                        </div>
+                        <p class="text-sm text-gray-600">Bạn có chắc muốn chấp nhận đội này tham gia?</p>
                    </div>
               `,
                showCancelButton: true,
                confirmButtonText: 'Chấp nhận',
                cancelButtonText: 'Hủy',
-               confirmButtonColor: '#10b981'
+               confirmButtonColor: '#10b981',
+               width: '500px'
           });
 
           if (!confirm.isConfirmed) return;
@@ -870,20 +544,10 @@ export default function BookingHistory({ user }) {
           setProcessingParticipants(prev => ({ ...prev, [processingKey]: true }));
 
           try {
-               console.log("✅ [AcceptParticipant] Calling API:", {
-                    requestId,
-                    participantId,
-                    endpoint: `/api/match-requests/${requestId}/accept/${participantId}`
-               });
-
                const response = await acceptMatchParticipant(requestId, participantId);
-
                if (!response.success) {
                     throw new Error(response.error || "Không thể chấp nhận đội này.");
                }
-
-               console.log("✅ [AcceptParticipant] API success:", response.data);
-
                // Refresh the request to get updated participant list
                await refreshRequestForBooking(bookingKey, requestId);
 
@@ -927,16 +591,27 @@ export default function BookingHistory({ user }) {
                icon: 'warning',
                title: 'Từ chối đội tham gia?',
                html: `
-                   <div class="text-left space-y-1">
-                        <p class="text-sm"><strong>Đội:</strong> ${participant.teamName || `User: ${participantId}`}</p>
-                        <p class="text-sm"><strong>Trình độ:</strong> ${participant.level || participant.skillLevel || 'N/A'}</p>
-                        <p class="text-sm text-red-600"><strong>⚠️ Hành động này không thể hoàn tác.</strong></p>
+                   <div class="text-left space-y-2">
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                             <p class="text-sm mb-2"><strong>Thông tin đội:</strong></p>
+                             <div class="space-y-1 text-sm">
+                                  <p><strong>Tên đội:</strong> ${participant.teamName || 'Chưa có'}</p>
+                                  ${participant.fullName ? `<p><strong>Người liên hệ:</strong> ${participant.fullName}</p>` : ''}
+                                  ${participant.contactPhone ? `<p><strong>Số điện thoại:</strong> ${participant.contactPhone}</p>` : ''}
+                                  <p><strong>Số người:</strong> ${participant.playerCount || 'Chưa rõ'} người</p>
+                             </div>
+                        </div>
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                             <p class="text-sm text-red-600"><strong>⚠️ Cảnh báo:</strong></p>
+                             <p class="text-sm text-gray-700">Hành động này không thể hoàn tác. Đội sẽ bị từ chối và không thể tham gia lại.</p>
+                        </div>
                    </div>
               `,
                showCancelButton: true,
                confirmButtonText: 'Từ chối',
                cancelButtonText: 'Hủy',
-               confirmButtonColor: '#ef4444'
+               confirmButtonColor: '#ef4444',
+               width: '500px'
           });
 
           if (!confirm.isConfirmed) return;
@@ -946,11 +621,7 @@ export default function BookingHistory({ user }) {
           setProcessingParticipants(prev => ({ ...prev, [processingKey]: true }));
 
           try {
-               console.log("❌ [RejectParticipant] Calling API:", {
-                    requestId,
-                    participantId,
-                    endpoint: `/api/match-requests/${requestId}/reject-or-withdraw/${participantId}`
-               });
+
 
                const response = await rejectOrWithdrawParticipant(requestId, participantId);
 
@@ -958,7 +629,7 @@ export default function BookingHistory({ user }) {
                     throw new Error(response.error || "Không thể từ chối đội này.");
                }
 
-               console.log("✅ [RejectParticipant] API success:", response.data);
+
 
                // Refresh the request to get updated participant list
                await refreshRequestForBooking(bookingKey, requestId);
@@ -1096,8 +767,6 @@ export default function BookingHistory({ user }) {
           return () => clearInterval(interval);
      }, [playerId]);
 
-     const formatPrice = (price) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price);
-
      const handleFindOpponent = (booking) => {
           setSelectedBooking(booking);
           setShowFindOpponentModal(true);
@@ -1122,14 +791,6 @@ export default function BookingHistory({ user }) {
                     const bookingDatabaseId = booking?.bookingId;
                     const matchRequestBookingId = matchRequest.bookingId || matchRequest.bookingID || matchRequest.BookingID;
 
-                    console.log("✅ [FindOpponentSuccess] Match request created:", {
-                         requestId,
-                         bookingDisplayId,
-                         bookingDatabaseId,
-                         matchRequestBookingId,
-                         booking: booking,
-                         matchRequest: matchRequest
-                    });
 
                     if (requestId && bookingDisplayId) {
                          // Add to bookingIdToRequest map using booking.id (display key)
@@ -1151,11 +812,7 @@ export default function BookingHistory({ user }) {
                                    });
                               }
 
-                              console.log("📝 [FindOpponentSuccess] Updated bookingIdToRequest:", {
-                                   keys: Object.keys(updated),
-                                   bookingDisplayId,
-                                   matchRequestBookingId
-                              });
+
                               return updated;
                          });
 
@@ -1221,12 +878,7 @@ export default function BookingHistory({ user }) {
                                                        ...prev,
                                                        [updatedBooking.id]: preservedMatchRequest
                                                   }));
-                                                  console.log("✅ [FindOpponentSuccess] Preserved match request after booking reload:", {
-                                                       updatedBookingId: updatedBooking.id,
-                                                       preservedRequestId,
-                                                       hasMatchRequestId: !!hasMatchRequestId,
-                                                       retryCount: currentRetry + 1
-                                                  });
+
                                              }
                                              bookingUpdated = true;
                                         }
@@ -1310,10 +962,24 @@ export default function BookingHistory({ user }) {
 
      const hasExistingMatchRequest = (booking) => {
           if (!booking) return false;
-          if (booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID) return true;
-          if (booking.hasOpponent) return true;
+
+          // Check if booking has matchRequestId in its data
+          const hasMatchRequestId = booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
+          if (hasMatchRequestId) {
+               return true;
+          }
+
+          // Check if booking has opponent flag
+          if (booking.hasOpponent) {
+               return true;
+          }
+
+          // Check if booking is in bookingIdToRequest map (including placeholders)
           if (!booking.id) return false;
-          return Boolean(bookingIdToRequest[booking.id]);
+          const matchRequest = bookingIdToRequest[booking.id];
+
+          // If we have a match request (even placeholder), booking has a request
+          return Boolean(matchRequest);
      };
 
      const shouldShowFindOpponentButton = (booking) => {
@@ -1369,7 +1035,7 @@ export default function BookingHistory({ user }) {
 
           const configMap = {
                open: {
-                    text: "Đang mở • Chờ đội tham gia",
+                    text: "Đang mở ",
                     className: "border-blue-200 text-blue-600 bg-blue-50"
                },
                pending: {
@@ -1423,37 +1089,96 @@ export default function BookingHistory({ user }) {
           return timeElapsed > TWO_HOURS;
      };
 
-     const shouldShowCancelButton = (booking) => {
+     // Helper function to check if booking match date has passed or is within 12 hours
+     const shouldHideCancelButtonByDate = (booking) => {
           if (!booking) return false;
-          const statusLower = String(booking.status || booking.bookingStatus || "").toLowerCase();
-          const paymentLower = String(booking.paymentStatus || "").toLowerCase();
-          const isPending = statusLower === "pending";
-          const isConfirmed = statusLower === "confirmed";
-          const isUnpaid = paymentLower === "" || paymentLower === "pending" || paymentLower === "unpaid" || paymentLower === "chờ thanh toán";
-          const isPaid = paymentLower === "paid" || paymentLower === "đã thanh toán";
 
-          const isPendingWaitingPayment = isPending && isUnpaid;
-          const isPendingPaid = isPending && isPaid;
-          const isConfirmedPaid = isConfirmed && isPaid;
+          // Get match date and time from schedule data or booking data
+          const scheduleData = booking.scheduleId ? scheduleDataMap[booking.scheduleId] : null;
 
-          const allowed = isPendingWaitingPayment || isPendingPaid || isConfirmedPaid;
+          let matchDate = null;
+          let matchTime = null;
 
-          if (!allowed) return false;
-          if (statusLower === "cancelled" || statusLower === "expired") return false;
-          return true;
-     };
-
-     // Format time remaining (supports hours and minutes)
-     const formatTimeRemaining = (milliseconds) => {
-          if (!milliseconds || milliseconds <= 0) return "0:00";
-          const totalSeconds = Math.floor(milliseconds / 1000);
-          const hours = Math.floor(totalSeconds / 3600);
-          const minutes = Math.floor((totalSeconds % 3600) / 60);
-          const seconds = totalSeconds % 60;
-          if (hours > 0) {
-               return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          // Try to get date from schedule data
+          if (scheduleData && scheduleData.date) {
+               try {
+                    const [year, month, day] = scheduleData.date.split('-').map(Number);
+                    if (year && month && day) {
+                         matchDate = new Date(year, month - 1, day);
+                    }
+               } catch (e) {
+                    // Ignore
+               }
           }
-          return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+          // Fallback to booking date
+          if (!matchDate && booking.date) {
+               try {
+                    if (booking.date.includes('/')) {
+                         const [d, m, y] = booking.date.split('/').map(Number);
+                         if (y && m && d) {
+                              matchDate = new Date(y, m - 1, d);
+                         }
+                    } else {
+                         matchDate = new Date(booking.date);
+                         if (isNaN(matchDate.getTime())) {
+                              matchDate = null;
+                         }
+                    }
+               } catch (e) {
+                    matchDate = null;
+               }
+          }
+
+          // Get time from schedule data or booking
+          if (scheduleData && scheduleData.startTime) {
+               matchTime = scheduleData.startTime;
+          } else if (booking.startTime) {
+               matchTime = booking.startTime;
+          } else if (booking.time) {
+               // Try to extract start time from time range (e.g., "06:00 - 07:30")
+               const timeMatch = booking.time.match(/^(\d{1,2}):(\d{2})/);
+               if (timeMatch) {
+                    matchTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+               }
+          }
+
+          if (!matchDate) return false; // Can't determine, allow cancel button
+
+          // Check if match date has passed
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          const matchDateOnly = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate());
+
+          // If match date is in the past, hide cancel button
+          if (matchDateOnly < today) {
+               return true;
+          }
+
+          // If match date is today, check if less than 12 hours before start time
+          if (matchDateOnly.getTime() === today.getTime() && matchTime) {
+               try {
+                    const [hours, minutes] = matchTime.split(':').map(Number);
+                    if (!isNaN(hours) && !isNaN(minutes)) {
+                         const matchDateTime = new Date(matchDate);
+                         matchDateTime.setHours(hours, minutes, 0, 0);
+
+                         const nowTime = new Date().getTime();
+                         const matchTimeMs = matchDateTime.getTime();
+                         const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+                         const timeUntilMatch = matchTimeMs - nowTime;
+
+                         // If less than 12 hours before match, hide cancel button
+                         if (timeUntilMatch < TWELVE_HOURS && timeUntilMatch > 0) {
+                              return true;
+                         }
+                    }
+               } catch (e) {
+                    // Ignore parsing errors
+               }
+          }
+
+          return false;
      };
 
      // Handle continue payment
@@ -1669,17 +1394,6 @@ export default function BookingHistory({ user }) {
                default:
                     return <Badge variant="outline" className="bg-yellow-500 text-white border border-yellow-200 hover:bg-yellow-600 hover:text-white">Chờ Thanh Toán</Badge>;
           }
-     };
-
-     const getRecurringStatus = (group) => {
-          const totalBookings = group.bookings.length;
-          const cancelledBookings = group.bookings.filter(b => b.status === "cancelled").length;
-          const completedBookings = group.bookings.filter(b => b.status === "completed").length;
-
-          if (cancelledBookings === totalBookings) return "cancelled";
-          if (completedBookings === totalBookings) return "completed";
-          if (cancelledBookings > 0) return "partial";
-          return "active";
      };
 
      const stats = useMemo(() => {
@@ -1915,6 +1629,55 @@ export default function BookingHistory({ user }) {
           }));
      };
 
+     const handlers = {
+          // View handlers
+          handleViewInvoice,
+          handleContinuePayment,
+          handleCancel,
+          handleRating,
+          handleFindOpponent,
+
+          // Match request handlers
+          handleAcceptParticipant,
+          handleRejectParticipant,
+          refreshRequestForBooking,
+
+          // Validation functions
+          isPendingUnpaidWithin2Hours,
+          shouldShowCancelButton,
+          shouldShowFindOpponentButton,
+          hasExistingMatchRequest: (booking) => hasExistingMatchRequest(booking, bookingIdToRequest),
+
+          // Helper functions
+          extractRequestId,
+          extractParticipants,
+          getRequestOwnerId,
+          getOwnerTeamNames,
+          getParticipantId,
+          filterParticipantsForDisplay,
+          normalizeParticipantStatus,
+          participantNeedsOwnerAction,
+          isParticipantAcceptedByOwner,
+          isParticipantRejectedByOwner,
+          getOwnerDecisionStatus,
+          getOpponentDecisionStatus,
+
+          // Badge and status functions
+          getRequestBadgeConfig,
+          getAcceptedParticipants,
+          isRequestLocked,
+          normalizeRequestStatus
+     };
+
+     const matchRequestData = {
+          bookingIdToRequest,
+          requestJoins,
+          refreshingRequests,
+          processingParticipants,
+          refreshRequestForBooking,
+          extractRequestId
+     };
+
      return (
           <Section className="min-h-screen bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center">
                <div className="py-32 mx-5 md:py-44 bg-[url('https://i.pinimg.com/originals/a3/c7/79/a3c779e5d5b622eeb598ac1d50c05cb8.png')] bg-cover bg-center rounded-b-3xl overflow-hidden">
@@ -1926,867 +1689,1099 @@ export default function BookingHistory({ user }) {
                     </Container>
                </div>
                <Container className="-mt-32 md:-mt-36 px-5 py-2 relative z-10 max-w-6xl">
-                    <Card className="mb-4 border p-1 bg-white/80 backdrop-blur rounded-[30px] shadow-xl ring-1 ring-teal-100 border-teal-200"><CardContent>
-                         <div className="pt-2">
-                              <div className="flex items-center justify-between">
-                                   <div>
-                                        <h2 className="text-2xl font-bold text-teal-800">Lịch sử đặt sân</h2>
-                                        <div className="mt-1 h-1.5 w-24 bg-gradient-to-r from-teal-500 via-emerald-400 to-transparent rounded-full" />
-                                        {/* <p className="text-teal-700 font-semibold mt-2">Tổng cộng {stats.total} lượt - Sắp tới {stats.upcoming}</p> */}
+                    <Card className="mb-4 border p-1 bg-white/80 backdrop-blur rounded-[30px] shadow-xl ring-1 ring-teal-100 border-teal-200">
+                         <CardContent>
+                              <BookingStats stats={stats} />
+
+                              <BookingFilters
+                                   query={query}
+                                   setQuery={setQuery}
+                                   statusFilter={statusFilter}
+                                   setStatusFilter={setStatusFilter}
+                                   dateFrom={dateFrom}
+                                   setDateFrom={setDateFrom}
+                                   dateTo={dateTo}
+                                   setDateTo={setDateTo}
+                                   sortBy={sortBy}
+                                   setSortBy={setSortBy}
+                                   onReset={() => {
+                                        setQuery("");
+                                        setStatusFilter("all");
+                                        setDateFrom("");
+                                        setDateTo("");
+                                        setSortBy("newest");
+                                        setCurrentPage(1);
+                                   }}
+                              />
+
+                              {bookingError && (
+                                   <div className="mb-4 p-3 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
+                                        {bookingError}
                                    </div>
-                                   <div className="hidden md:flex items-center gap-2">
-                                        <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 shadow-sm">
-                                             Hoàn tất {stats.completed} • Hủy {stats.cancelled}
-                                        </span>
-                                        {stats.pending > 0 && (
-                                             <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-yellow-50 text-yellow-700 border border-yellow-200 shadow-sm flex items-center gap-1">
-                                                  <Clock className="w-3 h-3" />
-                                                  Chờ xác nhận: {stats.pending}
+                              )}
+
+                              {isLoadingBookings && (
+                                   <div className="mb-4">
+                                        <LoadingList count={3} />
+                                   </div>
+                              )}
+
+                              {/* Tab Navigation */}
+                              <div className="mb-4 flex items-center justify-center gap-2 border-b border-teal-200">
+                                   <button
+                                        onClick={() => setActiveTab("bookings")}
+                                        className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-all duration-300 ${activeTab === "bookings"
+                                             ? "bg-teal-500 text-white border-b-2 border-teal-600"
+                                             : "text-gray-600 hover:text-teal-600 hover:bg-teal-50"
+                                             }`}
+                                   >
+                                        <CalendarIcon className="w-4 h-4 inline mr-2" />
+                                        Lịch sử đặt sân
+                                   </button>
+                                   <button
+                                        onClick={() => setActiveTab("matchHistory")}
+                                        className={`px-4 py-2 text-sm  font-semibold rounded-t-lg transition-all duration-300 relative ${activeTab === "matchHistory"
+                                             ? "bg-teal-500 text-white border-b-2 border-teal-600"
+                                             : "text-gray-600 hover:text-teal-600 hover:bg-teal-50"
+                                             }`}
+                                   >
+                                        <UserSearch className="w-4 h-4 inline mr-2" />
+                                        Lịch sử ghép đối
+                                        {playerHistories && playerHistories.length > 0 && (
+                                             <span className="ml-2 px-1.5 py-0.5 text-xs border  bg-white/30  rounded-full">
+                                                  {playerHistories.length}
                                              </span>
                                         )}
-                                   </div>
+                                   </button>
                               </div>
-                         </div>
-                         {/* Search Bar */}
-                         <div className="pt-4 flex items-center justify-between gap-3 mb-4">
-                              <div className="relative w-full">
-                                   <Search color="teal" className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 pointer-events-none z-10" />
-                                   <Input
-                                        placeholder="Tìm theo mã, tên sân, địa chỉ..."
-                                        value={query}
-                                        onChange={(e) => setQuery(e.target.value)}
-                                        className="pl-10 pr-10 border rounded-xl border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0 focus-visible:outline-none"
-                                   />
-                                   {query && (
-                                        <Button
-                                             onClick={() => setQuery("")}
-                                             className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-0 h-auto bg-transparent border-0 hover:bg-transparent"
-                                        >
-                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                             </svg>
-                                        </Button>
-                                   )}
-                              </div>
-                              <div className="flex justify-end gap-2 ">
-                                   <Button
-                                        onClick={() => { setQuery(""); setStatusFilter("all"); setDateFrom(""); setDateTo(""); setSortBy("newest"); setCurrentPage(1); }}
-                                        variant="outline"
-                                        className="px-4 py-2 rounded-xl border border-red-200 text-red-700 hover:text-red-700 hover:bg-red-50"
-                                   >
-                                        <X className="w-4 h-4" />
-                                   </Button>
-                              </div>
-                         </div>
 
-                         {/* Filter Controls */}
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                              <div>
-                                   <label className="block text-sm font-medium text-teal-600 mb-2">Trạng thái</label>
-                                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                        <SelectTrigger className="border rounded-xl border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0 bg-white/80">
-                                             <SelectValue placeholder="Chọn trạng thái" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             <SelectItem value="all">Tất cả trạng thái</SelectItem>
-                                             <SelectItem value="pending">Chờ xác nhận</SelectItem>
-                                             <SelectItem value="confirmed">Đã xác nhận</SelectItem>
-                                             <SelectItem value="completed">Hoàn tất</SelectItem>
-                                             <SelectItem value="cancelled">Đã hủy</SelectItem>
-                                        </SelectContent>
-                                   </Select>
-                              </div>
-                              <div>
-                                   <label className="block text-sm font-medium text-teal-600 mb-2">Từ ngày</label>
-                                   <DatePicker value={dateFrom} onChange={setDateFrom} className="border rounded-xl border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0" />
-                              </div>
-                              <div>
-                                   <label className="block text-sm font-medium text-teal-600 mb-2">Đến ngày</label>
-                                   <DatePicker value={dateTo} onChange={setDateTo} className="border rounded-xl border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0" />
-                              </div>
-                              <div>
-                                   <label className="block text-sm font-medium text-teal-600 mb-2">Sắp xếp</label>
-                                   <Select value={sortBy} onValueChange={setSortBy}>
-                                        <SelectTrigger className="border rounded-xl border-teal-300 focus-visible:border-teal-500 focus-visible:ring-0">
-                                             <div className="flex items-center gap-2 text-gray-600 w-full">
-                                                  <ArrowUpDown className="w-4 h-4" />
-                                                  <SelectValue placeholder="Chọn cách sắp xếp" />
+                              {/* Results Summary - Only show for bookings tab */}
+                              {activeTab === "bookings" && (
+                                   <div className=" p-2 px-3 bg-teal-50 border border-teal-200 rounded-3xl">
+                                        <div className="flex items-center justify-between">
+                                             <div className="flex items-center gap-4 text-sm">
+                                                  <span className="text-red-700 font-semibold flex items-center gap-1">
+                                                       <BarChart3 className="w-4 h-4" />
+                                                       Tổng cộng: <span className="text-red-800 font-bold">{visibleGroups.length + visibleSingles.length}</span> đặt sân
+                                                  </span>
+                                                  <span className="text-yellow-600 flex items-center gap-1">
+                                                       <RotateCcw className="w-4 h-4" />
+                                                       Lịch định kỳ: <span className="font-semibold">{visibleGroups.length}</span>
+                                                  </span>
+                                                  <span className="text-blue-600 flex items-center gap-1">
+                                                       <CalendarIcon className="w-4 h-4" />
+                                                       Đặt đơn: <span className="font-semibold">{visibleSingles.length}</span>
+                                                  </span>
                                              </div>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             <SelectItem value="newest">Mới nhất</SelectItem>
-                                             <SelectItem value="oldest">Cũ nhất</SelectItem>
-                                             <SelectItem value="price-asc">Giá tăng dần</SelectItem>
-                                             <SelectItem value="price-desc">Giá giảm dần</SelectItem>
-                                        </SelectContent>
-                                   </Select>
-                              </div>
-                         </div>
-
-                         {bookingError && (
-                              <div className="mb-4 p-3 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
-                                   {bookingError}
-                              </div>
-                         )}
-
-                         {isLoadingBookings && (
-                              <div className="mb-4">
-                                   <LoadingList count={3} />
-                              </div>
-                         )}
-
-                         {/* Results Summary */}
-                         <div className=" p-2 px-3 bg-teal-50 border border-teal-200 rounded-3xl">
-                              <div className="flex items-center justify-between">
-                                   <div className="flex items-center gap-4 text-sm">
-                                        <span className="text-red-700 font-semibold flex items-center gap-1">
-                                             <BarChart3 className="w-4 h-4" />
-                                             Tổng cộng: <span className="text-red-800 font-bold">{visibleGroups.length + visibleSingles.length}</span> đặt sân
-                                        </span>
-                                        <span className="text-yellow-600 flex items-center gap-1">
-                                             <RotateCcw className="w-4 h-4" />
-                                             Lịch định kỳ: <span className="font-semibold">{visibleGroups.length}</span>
-                                        </span>
-                                        <span className="text-blue-600 flex items-center gap-1">
-                                             <CalendarIcon className="w-4 h-4" />
-                                             Đặt đơn: <span className="font-semibold">{visibleSingles.length}</span>
-                                        </span>
+                                             <div className="text-xs text-teal-600">
+                                                  Hiển thị {Math.min(endIndex, totalSingleBookings)}/{totalSingleBookings} đặt đơn
+                                             </div>
+                                        </div>
                                    </div>
-                                   <div className="text-xs text-teal-600">
-                                        Hiển thị {Math.min(endIndex, totalSingleBookings)}/{totalSingleBookings} đặt đơn
-                                   </div>
-                              </div>
-                         </div>
+                              )}
 
-                         {/* Action Buttons */}
+                              {/* Action Buttons */}
 
-                    </CardContent></Card>
+                         </CardContent></Card>
 
-                    <div className="space-y-4">
-                         {/* Recurring Bookings */}
-                         {visibleGroups.length > 0 && (
-                              <StaggerContainer staggerDelay={50}>
-                                   {visibleGroups.map((group, index) => {
-                                        const status = getRecurringStatus(group);
-                                        const sortedBookings = (group.bookings || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
-                                        const firstBooking = sortedBookings.length > 0 ? sortedBookings[0] : null;
-                                        const lastBooking = sortedBookings.length > 0 ? sortedBookings[sortedBookings.length - 1] : null;
-                                        return (
-                                             <FadeIn key={group.groupId} delay={index * 50}>
-                                                  <div key={group.groupId} className="p-5 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 to-emerald-50 hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
-                                                       <div className="flex justify-between items-start mb-4">
-                                                            <div className="flex items-center gap-3 flex-wrap">
-                                                                 <div className="flex items-center gap-2">
-                                                                      <Repeat className="w-6 h-6 text-teal-600" />
-                                                                      <h3 className="text-xl font-bold text-teal-900">{group.fieldName}</h3>
+                    {/* Bookings Tab Content */}
+                    {activeTab === "bookings" && (
+                         <div className="space-y-4">
+                              {/* Recurring Bookings */}
+                              {visibleGroups.length > 0 && (
+                                   <StaggerContainer staggerDelay={50}>
+                                        {visibleGroups.map((group, index) => {
+                                             const status = getRecurringStatus(group);
+                                             const sortedBookings = (group.bookings || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+                                             const firstBooking = sortedBookings.length > 0 ? sortedBookings[0] : null;
+                                             const lastBooking = sortedBookings.length > 0 ? sortedBookings[sortedBookings.length - 1] : null;
+                                             return (
+                                                  <FadeIn key={group.groupId} delay={index * 50}>
+                                                       <div key={group.groupId} className="p-5 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 to-emerald-50 hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
+                                                            <div className="flex justify-between items-start mb-4">
+                                                                 <div className="flex items-center gap-3 flex-wrap">
+                                                                      <div className="flex items-center gap-2">
+                                                                           <Repeat className="w-6 h-6 text-teal-600" />
+                                                                           <h3 className="text-xl font-bold text-teal-900">{group.fieldName}</h3>
+                                                                      </div>
+                                                                      <div className="flex items-center gap-2 flex-wrap">
+                                                                           <Badge variant="outline" className="text-teal-700 border-teal-400 bg-teal-100 font-semibold px-3 py-1 flex items-center gap-1">
+                                                                                <Repeat className="w-3 h-3" />
+                                                                                Lịch định kỳ
+                                                                           </Badge>
+                                                                           {status === "active" && (
+                                                                                <Badge variant="default" className="bg-green-500 text-white font-semibold flex items-center gap-1">
+                                                                                     <CheckCircle className="w-3 h-3" />
+                                                                                     Đang hoạt động
+                                                                                </Badge>
+                                                                           )}
+                                                                           {status === "partial" && (
+                                                                                <Badge variant="secondary" className="bg-yellow-500 text-white font-semibold flex items-center gap-1">
+                                                                                     <AlertTriangle className="w-3 h-3" />
+                                                                                     Một phần
+                                                                                </Badge>
+                                                                           )}
+                                                                           {status === "completed" && (
+                                                                                <Badge variant="secondary" className="bg-blue-500 text-white font-semibold flex items-center gap-1">
+                                                                                     <CheckCircle className="w-3 h-3" />
+                                                                                     Hoàn tất
+                                                                                </Badge>
+                                                                           )}
+                                                                           {status === "cancelled" && (
+                                                                                <Badge variant="destructive" className="bg-red-500 text-white font-semibold flex items-center gap-1">
+                                                                                     <XCircle className="w-3 h-3" />
+                                                                                     Đã hủy
+                                                                                </Badge>
+                                                                           )}
+                                                                      </div>
                                                                  </div>
-                                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                                      <Badge variant="outline" className="text-teal-700 border-teal-400 bg-teal-100 font-semibold px-3 py-1 flex items-center gap-1">
-                                                                           <Repeat className="w-3 h-3" />
-                                                                           Lịch định kỳ
-                                                                      </Badge>
-                                                                      {status === "active" && (
-                                                                           <Badge variant="default" className="bg-green-500 text-white font-semibold flex items-center gap-1">
-                                                                                <CheckCircle className="w-3 h-3" />
-                                                                                Đang hoạt động
-                                                                           </Badge>
-                                                                      )}
-                                                                      {status === "partial" && (
-                                                                           <Badge variant="secondary" className="bg-yellow-500 text-white font-semibold flex items-center gap-1">
-                                                                                <AlertTriangle className="w-3 h-3" />
-                                                                                Một phần
-                                                                           </Badge>
-                                                                      )}
-                                                                      {status === "completed" && (
-                                                                           <Badge variant="secondary" className="bg-blue-500 text-white font-semibold flex items-center gap-1">
-                                                                                <CheckCircle className="w-3 h-3" />
-                                                                                Hoàn tất
-                                                                           </Badge>
-                                                                      )}
-                                                                      {status === "cancelled" && (
-                                                                           <Badge variant="destructive" className="bg-red-500 text-white font-semibold flex items-center gap-1">
-                                                                                <XCircle className="w-3 h-3" />
-                                                                                Đã hủy
-                                                                           </Badge>
+                                                                 <Button
+                                                                      variant="outline"
+                                                                      onClick={() => toggleRecurringDetails(group.groupId)}
+                                                                      className=" text-sm border border-teal-200 text-teal-700 rounded-full"
+                                                                 >
+                                                                      {showRecurringDetails[group.groupId] ? <ChevronUp className="w-5 h-5 mr-1" /> : <ChevronDown className="w-5 h-5 mr-1" />} {showRecurringDetails[group.groupId] ? "Ẩn chi tiết" : "Xem chi tiết"}
+                                                                 </Button>
+                                                            </div>
+
+                                                            <div className="text-sm text-gray-600 mb-4">
+                                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                      <div className="space-y-2">
+                                                                           <div className="flex border w-fit border-teal-200 rounded-full px-3 py-2 items-center bg-white/80">
+                                                                                <MapPin className="w-4 h-4 mr-2 text-teal-600" />
+                                                                                <span className="text-teal-700 font-semibold">{group.address}</span>
+                                                                           </div>
+                                                                           <div className="flex px-3 py-2 items-center bg-white/80 rounded-full border border-teal-200">
+                                                                                <Calendar className="w-4 h-4 mr-2 text-teal-600" />
+                                                                                <span className="text-teal-700 font-semibold">
+                                                                                     {firstBooking && lastBooking ? `Từ ${firstBooking.date} đến ${lastBooking.date}` : "Chưa có ngày"} • {group.time}
+                                                                                </span>
+                                                                           </div>
+                                                                      </div>
+                                                                      <div className="space-y-2">
+                                                                           <div className="flex px-3 py-2 items-center bg-white/80 rounded-full border border-teal-200">
+                                                                                <CalendarDays className="w-4 h-4 mr-2 text-teal-600" />
+                                                                                <span className="text-teal-700 font-semibold">{group.totalWeeks} tuần • {sortedBookings.length} buổi</span>
+                                                                           </div>
+                                                                           <div className="flex px-3 py-2 items-center bg-white/80 rounded-full border border-teal-200">
+                                                                                <Receipt className="w-4 h-4 mr-2 text-teal-600" />
+                                                                                <span className="text-teal-700 font-semibold">Giá: {formatPrice(group.price)}/buổi</span>
+                                                                           </div>
+                                                                      </div>
+                                                                 </div>
+                                                            </div>
+
+                                                            <div className="flex justify-between items-center bg-white/60 rounded-xl p-4 border border-teal-200">
+                                                                 <div className="flex items-center gap-4">
+                                                                      <div className="text-center">
+                                                                           <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-500">
+                                                                                {formatPrice(group.price * group.totalWeeks)}
+                                                                           </div>
+                                                                           <div className="text-xs text-teal-600 font-medium">Tổng thanh toán</div>
+                                                                      </div>
+                                                                      <div className="text-center">
+                                                                           <div className="text-lg font-bold text-teal-700">
+                                                                                {sortedBookings.length}/{group.totalWeeks}
+                                                                           </div>
+                                                                           <div className="text-xs text-teal-600 font-medium">Buổi đã đặt</div>
+                                                                      </div>
+                                                                 </div>
+                                                                 <div className="flex gap-2">
+                                                                      <Button variant="secondary" onClick={() => handleViewInvoice(firstBooking || group.bookings?.[0])} className="px-4 py-2 border border-teal-200 rounded-full text-sm font-semibold">
+                                                                           <Receipt className="w-4 h-4 mr-2" /> Xem hóa đơn
+                                                                      </Button>
+                                                                      {status !== "cancelled" && (
+                                                                           <Button variant="destructive" onClick={() => handleCancelRecurring(group.groupId)} className="px-4 py-2 border border-red-200 rounded-full text-sm font-semibold">
+                                                                                <Trash2 className="w-4 h-4 mr-2" /> Hủy lịch
+                                                                           </Button>
                                                                       )}
                                                                  </div>
                                                             </div>
-                                                            <Button
-                                                                 variant="outline"
-                                                                 onClick={() => toggleRecurringDetails(group.groupId)}
-                                                                 className=" text-sm border border-teal-200 text-teal-700 rounded-full"
-                                                            >
-                                                                 {showRecurringDetails[group.groupId] ? <ChevronUp className="w-5 h-5 mr-1" /> : <ChevronDown className="w-5 h-5 mr-1" />} {showRecurringDetails[group.groupId] ? "Ẩn chi tiết" : "Xem chi tiết"}
-                                                            </Button>
-                                                       </div>
 
-                                                       <div className="text-sm text-gray-600 mb-4">
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                                 <div className="space-y-2">
-                                                                      <div className="flex border w-fit border-teal-200 rounded-full px-3 py-2 items-center bg-white/80">
-                                                                           <MapPin className="w-4 h-4 mr-2 text-teal-600" />
-                                                                           <span className="text-teal-700 font-semibold">{group.address}</span>
+                                                            {showRecurringDetails[group.groupId] && (
+                                                                 <div className="mt-4 pt-4 border-t border-teal-200">
+                                                                      <h4 className="font-medium text-gray-900 mb-3">Chi tiết các buổi đặt sân:</h4>
+                                                                      <div className="space-y-2">
+                                                                           {sortedBookings.map((booking) => (
+                                                                                <div key={booking.id} className="flex flex-col gap-2 p-3 bg-white/80 backdrop-blur rounded-xl border border-teal-100">
+                                                                                     <div className="flex justify-between items-center">
+                                                                                          <div className="flex items-center gap-3 flex-wrap">
+                                                                                               <span className="px-2 py-0.5 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Tuần {booking.weekNumber}</span>
+                                                                                               <span className="inline-flex items-center gap-1 text-sm text-gray-700 bg-gray-50 border border-gray-200 font-semibold px-2 py-1 rounded-full"><Calendar className="w-3.5 h-3.5" /> {booking.date}</span>
+                                                                                               {statusBadge(booking.status, booking.cancelReason)}
+                                                                                               {paymentStatusBadge(booking.paymentStatus)}
+                                                                                          </div>
+                                                                                     </div>
+
+                                                                                     {/* Thông báo cho booking đang chờ xác nhận trong recurring */}
+                                                                                     {booking.status === 'pending' && (booking.paymentStatus === 'paid' || booking.paymentStatus === 'Paid') && (
+                                                                                          <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                                                                               <div className="flex items-start gap-2">
+                                                                                                    <Clock className="w-3 h-3 text-yellow-600 mt-0.5 flex-shrink-0" />
+                                                                                                    <p className="text-xs text-yellow-800">
+                                                                                                         Buổi này đang chờ chủ sân xác nhận
+                                                                                                    </p>
+                                                                                               </div>
+                                                                                          </div>
+                                                                                     )}
+
+                                                                                     {/* Thông báo và button thanh toán cho booking pending + unpaid trong 2 tiếng (recurring) */}
+                                                                                     {isPendingUnpaidWithin2Hours(booking) && (
+                                                                                          <div className="p-2 bg-orange-50 border border-orange-200 rounded-lg mb-2">
+                                                                                               <div className="flex items-start gap-2">
+                                                                                                    <Clock className="w-3 h-3 text-orange-600 mt-0.5 flex-shrink-0" />
+                                                                                                    <div className="flex-1">
+                                                                                                         <p className="text-xs text-orange-800 font-medium mb-1">
+                                                                                                              ⏰ Cần thanh toán trong {formatTimeRemaining(timeRemaining[booking.id] || 0)}
+                                                                                                         </p>
+                                                                                                         <Button
+                                                                                                              onClick={() => handleContinuePayment(booking)}
+                                                                                                              className="mt-1 bg-orange-600 hover:bg-orange-700 text-white text-xs px-3 py-1 rounded-lg"
+                                                                                                         >
+                                                                                                              <CreditCard className="w-3 h-3 mr-1" />
+                                                                                                              Thanh toán
+                                                                                                         </Button>
+                                                                                                    </div>
+                                                                                               </div>
+                                                                                          </div>
+                                                                                     )}
+
+                                                                                     {/* Thông báo cho booking đã hết hạn thanh toán (recurring) */}
+                                                                                     {booking.status === 'expired' && (
+                                                                                          <div className="p-2 bg-gray-50 border border-gray-200 rounded-lg mb-2">
+                                                                                               <div className="flex items-start gap-2">
+                                                                                                    <XCircle className="w-3 h-3 text-gray-600 mt-0.5 flex-shrink-0" />
+                                                                                                    <p className="text-xs text-gray-800">
+                                                                                                         Đã hết hạn thanh toán
+                                                                                                    </p>
+                                                                                               </div>
+                                                                                          </div>
+                                                                                     )}
+
+                                                                                     <div className="flex justify-end gap-2">
+                                                                                          {booking.status !== "cancelled" && booking.status !== "expired" && !isBookingOlderThan2Hours(booking) && !shouldHideCancelButtonByDate(booking) && (
+                                                                                               <Button variant="outline" onClick={() => handleCancelSingleRecurring(booking.id)} className="px-2 !py-0.5 text-xs rounded-xl border border-red-200 text-red-700 hover:text-red-700 hover:bg-red-50">
+                                                                                                    Hủy
+                                                                                               </Button>
+                                                                                          )}
+                                                                                          {booking.status === "completed" && (
+                                                                                               <Button
+                                                                                                    onClick={() => handleRating(booking)}
+                                                                                                    className="px-2 py-1 text-xs rounded-3xl bg-yellow-50 text-yellow-700 border hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 transition-colors"
+                                                                                               >
+                                                                                                    <Star className="w-3 h-3 mr-1" /> Đánh giá
+                                                                                               </Button>
+                                                                                          )}
+                                                                                     </div>
+                                                                                </div>
+                                                                           ))}
                                                                       </div>
-                                                                      <div className="flex px-3 py-2 items-center bg-white/80 rounded-full border border-teal-200">
-                                                                           <Calendar className="w-4 h-4 mr-2 text-teal-600" />
-                                                                           <span className="text-teal-700 font-semibold">
-                                                                                {firstBooking && lastBooking ? `Từ ${firstBooking.date} đến ${lastBooking.date}` : "Chưa có ngày"} • {group.time}
+                                                                 </div>
+                                                            )}
+                                                       </div>
+                                                  </FadeIn>
+                                             );
+                                        })}
+                                   </StaggerContainer>
+                              )}
+
+                              {/* Single Bookings */}
+                              {paginatedSingles.length > 0 && (
+                                   <StaggerContainer staggerDelay={50} className="space-y-4">
+                                        {paginatedSingles.map((b, index) => (
+                                             <FadeIn key={b.id} delay={index * 50}>
+                                                  <div key={b.id} className="p-4 rounded-2xl border border-teal-200 bg-white/80 backdrop-blur hover:shadow-lg shadow-sm transition-all duration-300 hover:scale-[1.01]">
+                                                       <div className="flex justify-between items-start gap-4">
+                                                            <div className="min-w-0 flex-1">
+                                                                 <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                                                      <h3 className="text-lg font-semibold text-teal-900 truncate">{b.fieldName}</h3>
+                                                                      {statusBadge(b.status, b.cancelReason)}
+                                                                      {paymentStatusBadge(b.paymentStatus)}
+                                                                      <span className="px-2 py-0.5 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200 font-medium">#{b.id}</span>
+                                                                 </div>
+
+                                                                 {/* Thông báo cho booking đang chờ xác nhận */}
+                                                                 {b.status === 'pending' && (b.paymentStatus === 'paid' || b.paymentStatus === 'Paid') && (
+                                                                      <div className="mt-2 mb-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                                                           <div className="flex items-start gap-2">
+                                                                                <Clock className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                                                                                <div className="text-sm text-yellow-800">
+                                                                                     <p className="font-medium mb-1">Đang chờ chủ sân xác nhận</p>
+                                                                                     <p className="text-xs text-yellow-700">
+                                                                                          Booking của bạn đang chờ chủ sân xem xét và xác nhận.
+                                                                                          Bạn sẽ nhận được thông báo khi booking được xác nhận.
+                                                                                     </p>
+                                                                                </div>
+                                                                           </div>
+                                                                      </div>
+                                                                 )}
+
+                                                                 {/* Thông báo và button thanh toán cho booking pending + unpaid trong 2 tiếng */}
+                                                                 {isPendingUnpaidWithin2Hours(b) && (
+                                                                      <div className="mt-2 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                                                           <div className="flex items-start gap-2">
+                                                                                <Clock className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                                                                                <div className="flex-1">
+                                                                                     <div className="text-sm text-orange-800">
+                                                                                          <p className="font-medium mb-1">⏰ Cần thanh toán trong {formatTimeRemaining(timeRemaining[b.id] || 0)}</p>
+                                                                                          <p className="text-xs text-orange-700 mb-2">
+                                                                                               Booking của bạn sẽ tự động hủy sau 2 tiếng nếu chưa thanh toán.
+                                                                                               Vui lòng thanh toán ngay để giữ chỗ.
+                                                                                          </p>
+                                                                                     </div>
+                                                                                     <Button
+                                                                                          onClick={() => handleContinuePayment(b)}
+                                                                                          className="mt-2 bg-orange-600 hover:bg-orange-700 text-white text-sm px-4 py-2 rounded-lg"
+                                                                                     >
+                                                                                          <CreditCard className="w-4 h-4 mr-2" />
+                                                                                          Tiếp tục thanh toán
+                                                                                     </Button>
+                                                                                </div>
+                                                                           </div>
+                                                                      </div>
+                                                                 )}
+
+                                                                 {/* Thông báo cho booking đã hết hạn thanh toán */}
+                                                                 {b.status === 'expired' && (
+                                                                      <div className="mt-2 mb-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                                                           <div className="flex items-start gap-2">
+                                                                                <XCircle className="w-4 h-4 text-gray-600 mt-0.5 flex-shrink-0" />
+                                                                                <div className="text-sm text-gray-800">
+                                                                                     <p className="font-medium mb-1">Đã hết hạn thanh toán</p>
+                                                                                     <p className="text-xs text-gray-700">
+                                                                                          Booking đã bị hủy do quá thời gian thanh toán (2 tiếng).
+                                                                                     </p>
+                                                                                </div>
+                                                                           </div>
+                                                                      </div>
+                                                                 )}
+
+                                                                 <div className="space-y-2">
+                                                                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                                                                           <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-100 text-teal-700 px-2 py-1 rounded-full">
+                                                                                <MapPin className="w-4 h-4" />
+                                                                                <span className="font-medium">{b.address || "Chưa có địa chỉ"}</span>
                                                                            </span>
                                                                       </div>
-                                                                 </div>
-                                                                 <div className="space-y-2">
-                                                                      <div className="flex px-3 py-2 items-center bg-white/80 rounded-full border border-teal-200">
-                                                                           <CalendarDays className="w-4 h-4 mr-2 text-teal-600" />
-                                                                           <span className="text-teal-700 font-semibold">{group.totalWeeks} tuần • {sortedBookings.length} buổi</span>
-                                                                      </div>
-                                                                      <div className="flex px-3 py-2 items-center bg-white/80 rounded-full border border-teal-200">
-                                                                           <Receipt className="w-4 h-4 mr-2 text-teal-600" />
-                                                                           <span className="text-teal-700 font-semibold">Giá: {formatPrice(group.price)}/buổi</span>
-                                                                      </div>
-                                                                 </div>
-                                                            </div>
-                                                       </div>
 
-                                                       <div className="flex justify-between items-center bg-white/60 rounded-xl p-4 border border-teal-200">
-                                                            <div className="flex items-center gap-4">
-                                                                 <div className="text-center">
-                                                                      <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-500">
-                                                                           {formatPrice(group.price * group.totalWeeks)}
+                                                                      {/* Lịch trình chi tiết */}
+                                                                      {(() => {
+                                                                           // Lấy thông tin từ API FieldSchedule/public/{scheduleId}
+                                                                           const scheduleData = b.scheduleId ? scheduleDataMap[b.scheduleId] : null;
+
+                                                                           // Lấy date từ schedule API (format: "2025-12-01")
+                                                                           let displayDate = null;
+                                                                           let displayDateObj = null; // Store Date object to get correct day of week
+                                                                           if (scheduleData && scheduleData.date) {
+                                                                                try {
+                                                                                     // Parse date từ format "2025-12-01" hoặc "YYYY-MM-DD"
+                                                                                     const [year, month, day] = scheduleData.date.split('-').map(Number);
+                                                                                     if (year && month && day) {
+                                                                                          displayDateObj = new Date(year, month - 1, day);
+                                                                                          displayDate = displayDateObj.toLocaleDateString("vi-VN");
+                                                                                     } else {
+                                                                                          displayDateObj = new Date(scheduleData.date);
+                                                                                          if (!isNaN(displayDateObj.getTime())) {
+                                                                                               displayDate = displayDateObj.toLocaleDateString("vi-VN");
+                                                                                          }
+                                                                                     }
+                                                                                } catch (e) {
+                                                                                     displayDate = scheduleData.date;
+                                                                                }
+                                                                           }
+
+                                                                           // Fallback về booking date nếu không có trong schedule
+                                                                           if (!displayDate) {
+                                                                                displayDate = b.date;
+                                                                                // Try to parse b.date to get Date object
+                                                                                if (b.date) {
+                                                                                     try {
+                                                                                          // Try different date formats
+                                                                                          if (b.date.includes('/')) {
+                                                                                               const [d, m, y] = b.date.split('/').map(Number);
+                                                                                               if (y && m && d) {
+                                                                                                    displayDateObj = new Date(y, m - 1, d);
+                                                                                               }
+                                                                                          } else {
+                                                                                               displayDateObj = new Date(b.date);
+                                                                                               if (isNaN(displayDateObj.getTime())) {
+                                                                                                    displayDateObj = null;
+                                                                                               }
+                                                                                          }
+                                                                                     } catch (e) {
+                                                                                          displayDateObj = null;
+                                                                                     }
+                                                                                }
+                                                                           }
+
+                                                                           // Lấy time từ schedule API (startTime và endTime)
+                                                                           let displayTime = null;
+                                                                           if (scheduleData && scheduleData.startTime && scheduleData.endTime) {
+                                                                                // Format time từ "06:00" và "07:30"
+                                                                                const formatTime = (timeStr) => {
+                                                                                     if (!timeStr) return "";
+                                                                                     // Remove seconds if present (06:00:00 -> 06:00)
+                                                                                     return timeStr.split(':').slice(0, 2).join(':');
+                                                                                };
+                                                                                displayTime = `${formatTime(scheduleData.startTime)} - ${formatTime(scheduleData.endTime)}`;
+                                                                           }
+
+                                                                           // Fallback về booking time nếu không có trong schedule
+                                                                           if (!displayTime) {
+                                                                                displayTime = b.time;
+                                                                           }
+
+                                                                           // Tính duration từ startTime và endTime
+                                                                           let displayDuration = b.duration;
+                                                                           if (scheduleData && scheduleData.startTime && scheduleData.endTime) {
+                                                                                try {
+                                                                                     const [startHour, startMin] = scheduleData.startTime.split(':').map(Number);
+                                                                                     const [endHour, endMin] = scheduleData.endTime.split(':').map(Number);
+                                                                                     if (!isNaN(startHour) && !isNaN(startMin) && !isNaN(endHour) && !isNaN(endMin)) {
+                                                                                          const startMinutes = startHour * 60 + startMin;
+                                                                                          const endMinutes = endHour * 60 + endMin;
+                                                                                          displayDuration = Math.max(15, endMinutes - startMinutes);
+                                                                                     }
+                                                                                } catch (e) {
+
+                                                                                }
+                                                                           }
+
+                                                                           // Format date with correct day of week from displayDateObj
+                                                                           let formattedDateWithDay = displayDate || "Chưa có ngày";
+                                                                           if (displayDateObj && !isNaN(displayDateObj.getTime())) {
+                                                                                const dayNames = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+                                                                                const dayName = dayNames[displayDateObj.getDay()];
+                                                                                // Format date as dd/mm/yyyy
+                                                                                const day = String(displayDateObj.getDate()).padStart(2, '0');
+                                                                                const month = String(displayDateObj.getMonth() + 1).padStart(2, '0');
+                                                                                const year = displayDateObj.getFullYear();
+                                                                                formattedDateWithDay = `${dayName}, ${day}/${month}/${year}`;
+                                                                           } else if (displayDate) {
+                                                                                // Fallback: try to parse displayDate string
+                                                                                try {
+                                                                                     let dateToParse = displayDate;
+                                                                                     if (dateToParse.includes('/')) {
+                                                                                          const [d, m, y] = dateToParse.split('/').map(Number);
+                                                                                          if (y && m && d) {
+                                                                                               const parsedDate = new Date(y, m - 1, d);
+                                                                                               if (!isNaN(parsedDate.getTime())) {
+                                                                                                    const dayNames = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+                                                                                                    const dayName = dayNames[parsedDate.getDay()];
+                                                                                                    formattedDateWithDay = `${dayName}, ${dateToParse}`;
+                                                                                               }
+                                                                                          }
+                                                                                     }
+                                                                                } catch (e) {
+                                                                                     // Keep original displayDate if parsing fails
+                                                                                }
+                                                                           }
+
+                                                                           return (
+                                                                                <div className="flex flex-col gap-2 p-3 bg-gradient-to-r from-blue-50 to-teal-50 border border-blue-200 rounded-xl">
+                                                                                     <div className="flex items-center gap-2 text-sm">
+                                                                                          <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                                                                          <div className="flex-1">
+                                                                                               <span className="font-semibold text-gray-900">
+                                                                                                    {formattedDateWithDay}
+                                                                                               </span>
+                                                                                          </div>
+                                                                                     </div>
+                                                                                     <div className="flex items-center gap-2 text-sm">
+                                                                                          <Clock className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                                                                                          <div className="flex-1">
+                                                                                               {displayTime ? (
+                                                                                                    <span className="font-medium text-gray-900">{displayTime}</span>
+                                                                                               ) : (
+                                                                                                    <span className="text-gray-500 italic">Chưa có thời gian</span>
+                                                                                               )}
+
+                                                                                          </div>
+                                                                                     </div>
+                                                                                     {displayDuration && (
+                                                                                          <div className="flex items-center gap-2 text-xs text-gray-600">
+                                                                                               <Clock className="w-3 h-3 text-gray-500" />
+                                                                                               <span>Thời lượng: <span className="font-medium text-teal-700">{displayDuration} phút</span> ({Math.floor(displayDuration / 60)}h{displayDuration % 60 > 0 ? `${displayDuration % 60}p` : ''})</span>
+                                                                                          </div>
+                                                                                     )}
+
+                                                                                </div>
+                                                                           );
+                                                                      })()}
+
+                                                                      {/* Additional booking information */}
+                                                                      <div className="flex flex-wrap items-center gap-2 text-xs">
+                                                                           {b.depositAmount > 0 && (
+                                                                                <span className="inline-flex items-center gap-1 bg-blue-50 border border-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                                                                                     <CreditCard className="w-3 h-3" />
+                                                                                     Cọc: <span className="font-medium">{formatPrice(b.depositAmount)}</span>
+                                                                                </span>
+                                                                           )}
+                                                                           {b.hasOpponent && (
+                                                                                <span className="inline-flex items-center gap-1 bg-green-50 border border-green-100 text-green-700 px-2 py-1 rounded-full">
+                                                                                     <UserSearch className="w-3 h-3" />
+                                                                                     Đã có đối
+                                                                                </span>
+                                                                           )}
+                                                                           {b.qrCode && (
+                                                                                <span className="inline-flex items-center gap-1 bg-purple-50 border border-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                                                                                     Mã QR: <span className="font-medium">{b.qrCode}</span>
+                                                                                </span>
+                                                                           )}
+                                                                           {b.cancelledBy && (
+                                                                                <span className="inline-flex items-center gap-1 bg-red-50 border border-red-100 text-red-700 px-2 py-1 rounded-full">
+                                                                                     Hủy bởi: <span className="font-medium">{b.cancelledBy}</span>
+                                                                                </span>
+                                                                           )}
                                                                       </div>
-                                                                      <div className="text-xs text-teal-600 font-medium">Tổng thanh toán</div>
-                                                                 </div>
-                                                                 <div className="text-center">
-                                                                      <div className="text-lg font-bold text-teal-700">
-                                                                           {sortedBookings.length}/{group.totalWeeks}
-                                                                      </div>
-                                                                      <div className="text-xs text-teal-600 font-medium">Buổi đã đặt</div>
+                                                                      {stripRefundQrInfo(b.cancelReason) && (
+                                                                           <div className="text-xs text-red-600 italic">
+                                                                                Lý do hủy: {stripRefundQrInfo(b.cancelReason)}
+                                                                           </div>
+                                                                      )}
                                                                  </div>
                                                             </div>
-                                                            <div className="flex gap-2">
-                                                                 <Button variant="secondary" onClick={() => handleViewInvoice(firstBooking || group.bookings?.[0])} className="px-4 py-2 border border-teal-200 rounded-full text-sm font-semibold">
-                                                                      <Receipt className="w-4 h-4 mr-2" /> Xem hóa đơn
-                                                                 </Button>
-                                                                 {status !== "cancelled" && (
-                                                                      <Button variant="destructive" onClick={() => handleCancelRecurring(group.groupId)} className="px-4 py-2 border border-red-200 rounded-full text-sm font-semibold">
-                                                                           <Trash2 className="w-4 h-4 mr-2" /> Hủy lịch
-                                                                      </Button>
+                                                            <div className="text-right shrink-0">
+                                                                 <div className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-500 mb-1">
+                                                                      {formatPrice(b.totalPrice || b.price)}
+                                                                 </div>
+                                                                 {b.depositAmount > 0 && b.totalPrice > b.depositAmount && (
+                                                                      <div className="text-sm flex items-center gap-1 text-gray-500 mb-1">
+                                                                           (Còn lại: <span className="font-medium text-orange-500">{formatPrice(b.totalPrice - b.depositAmount)}</span>)
+                                                                      </div>
+                                                                 )}
+                                                                 <div className="text-xs text-gray-700">
+                                                                      {b.createdAt && new Date(b.createdAt).toLocaleDateString('vi-VN')}
+                                                                 </div>
+                                                                 {b.confirmedAt && (
+                                                                      <div className="text-sm font-medium text-green-600">
+                                                                           Xác nhận: {new Date(b.confirmedAt).toLocaleDateString('vi-VN')}
+                                                                      </div>
+                                                                 )}
+                                                                 {b.cancelledAt && (
+                                                                      <div className="text-sm font-medium text-red-600">
+                                                                           Hủy: {new Date(b.cancelledAt).toLocaleDateString('vi-VN')}
+                                                                      </div>
                                                                  )}
                                                             </div>
                                                        </div>
+                                                       <div className="mt-4 pt-3 border-t items-center border-teal-100 flex flex-wrap gap-2">
+                                                            <Button variant="secondary" onClick={() => handleViewInvoice(b)} className="px-2 !py-1 text-sm rounded-3xl">
+                                                                 <Receipt className="w-4 h-4 mr-2" /> Xem hóa đơn
+                                                            </Button>
+                                                            {user && (
+                                                                 <>
+                                                                      {/* Button tiếp tục thanh toán cho booking pending + unpaid trong 2 tiếng */}
+                                                                      {isPendingUnpaidWithin2Hours(b) && (
+                                                                           <Button
+                                                                                onClick={() => handleContinuePayment(b)}
+                                                                                className="px-3 py-2 text-sm bg-orange-600 hover:bg-orange-700 text-white rounded-3xl"
+                                                                           >
+                                                                                <CreditCard className="w-4 h-4 mr-2" />
+                                                                                Tiếp tục thanh toán
+                                                                           </Button>
+                                                                      )}
 
-                                                       {showRecurringDetails[group.groupId] && (
-                                                            <div className="mt-4 pt-4 border-t border-teal-200">
-                                                                 <h4 className="font-medium text-gray-900 mb-3">Chi tiết các buổi đặt sân:</h4>
-                                                                 <div className="space-y-2">
-                                                                      {sortedBookings.map((booking) => (
-                                                                           <div key={booking.id} className="flex flex-col gap-2 p-3 bg-white/80 backdrop-blur rounded-xl border border-teal-100">
-                                                                                <div className="flex justify-between items-center">
-                                                                                     <div className="flex items-center gap-3 flex-wrap">
-                                                                                          <span className="px-2 py-0.5 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200">Tuần {booking.weekNumber}</span>
-                                                                                          <span className="inline-flex items-center gap-1 text-sm text-gray-700 bg-gray-50 border border-gray-200 font-semibold px-2 py-1 rounded-full"><Calendar className="w-3.5 h-3.5" /> {booking.date}</span>
-                                                                                          {statusBadge(booking.status, booking.cancelReason)}
-                                                                                          {paymentStatusBadge(booking.paymentStatus)}
-                                                                                     </div>
-                                                                                </div>
+                                                                      {shouldShowCancelButton(b) && !shouldHideCancelButtonByDate(b) && (
+                                                                           <Button variant="destructive" onClick={() => handleCancel(b.id)} className="px-3 rounded-3xl py-2 text-sm">
+                                                                                <Trash2 className="w-4 h-4 mr-2" />
+                                                                                Hủy đặt
+                                                                           </Button>
+                                                                      )}
+                                                                      {b.status === "completed" && (
+                                                                           <Button
+                                                                                onClick={() => handleRating(b)}
+                                                                                className="px-3 py-2 text-sm bg-yellow-50 text-yellow-700 border-yellow-400 hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-600 transition-colors rounded-3xl"
+                                                                           >
+                                                                                <Star className="w-4 h-4 mr-2" />
+                                                                                Đánh giá
+                                                                           </Button>
+                                                                      )}
+                                                                      {/* MatchRequest actions */}
+                                                                      {(() => {
+                                                                           const req = bookingIdToRequest[b.id];
+                                                                           const fallbackRequestId = b.matchRequestId || b.matchRequestID || b.MatchRequestID;
+                                                                           const hasRequest = hasExistingMatchRequest(b);
+                                                                           const canShowFindOpponent = shouldShowFindOpponentButton(b);
 
-                                                                                {/* Thông báo cho booking đang chờ xác nhận trong recurring */}
-                                                                                {booking.status === 'pending' && (booking.paymentStatus === 'paid' || booking.paymentStatus === 'Paid') && (
-                                                                                     <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                                                                          <div className="flex items-start gap-2">
-                                                                                               <Clock className="w-3 h-3 text-yellow-600 mt-0.5 flex-shrink-0" />
-                                                                                               <p className="text-xs text-yellow-800">
-                                                                                                    Buổi này đang chờ chủ sân xác nhận
-                                                                                               </p>
-                                                                                          </div>
-                                                                                     </div>
-                                                                                )}
+                                                                           if (!hasRequest && canShowFindOpponent) {
+                                                                                return (
+                                                                                     <Button
+                                                                                          variant="secondary"
+                                                                                          onClick={() => handleFindOpponent(b)}
+                                                                                          className="px-4 !rounded-full py-2.5 text-sm font-medium bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+                                                                                     >
+                                                                                          <UserSearchIcon className="w-4 h-4" />
+                                                                                          <span>Tìm đối thủ</span>
+                                                                                     </Button>
+                                                                                );
+                                                                           }
 
-                                                                                {/* Thông báo và button thanh toán cho booking pending + unpaid trong 2 tiếng (recurring) */}
-                                                                                {isPendingUnpaidWithin2Hours(booking) && (
-                                                                                     <div className="p-2 bg-orange-50 border border-orange-200 rounded-lg mb-2">
-                                                                                          <div className="flex items-start gap-2">
-                                                                                               <Clock className="w-3 h-3 text-orange-600 mt-0.5 flex-shrink-0" />
-                                                                                               <div className="flex-1">
-                                                                                                    <p className="text-xs text-orange-800 font-medium mb-1">
-                                                                                                         ⏰ Cần thanh toán trong {formatTimeRemaining(timeRemaining[booking.id] || 0)}
-                                                                                                    </p>
+                                                                           if (hasRequest) {
+                                                                                const currentRequestId = extractRequestId(req) || fallbackRequestId;
+                                                                                const isPlaceholder = req?.placeholder === true;
+                                                                                const badgeConfig = req ? getRequestBadgeConfig(req) : {
+                                                                                     text: "Đã ghép thành công",
+                                                                                     className: "border-teal-200 text-teal-700 bg-teal-50"
+                                                                                };
+                                                                                const requestLocked = req ? isRequestLocked(req) : false;
+                                                                                const requestStatus = normalizeRequestStatus(req);
+                                                                                const isMatched = requestStatus === "matched";
+
+                                                                                // Get accepted participants for matched status
+                                                                                const acceptedParticipants = isMatched ? getAcceptedParticipants(req) : [];
+
+                                                                                // For placeholder, allow refresh to fetch full details
+                                                                                const canRefresh = !isMatched && (isPlaceholder || (req ? !requestLocked : Boolean(currentRequestId)));
+
+                                                                                return (
+                                                                                     <div className="flex flex-col gap-2">
+                                                                                          <div className="flex items-center gap-2">
+                                                                                               <Badge variant="outline" className={`text-xs ${badgeConfig.className}`}>
+                                                                                                    {isMatched ? 'Đã ghép đôi' : 'Đã yêu cầu'} • {badgeConfig.text}
+                                                                                               </Badge>
+                                                                                               {canRefresh && (
                                                                                                     <Button
-                                                                                                         onClick={() => handleContinuePayment(booking)}
-                                                                                                         className="mt-1 bg-orange-600 hover:bg-orange-700 text-white text-xs px-3 py-1 rounded-lg"
+                                                                                                         variant="outline"
+                                                                                                         className="px-3 !rounded-full py-2 text-sm flex items-center gap-2"
+                                                                                                         onClick={() => refreshRequestForBooking(b.id, currentRequestId || b.bookingId)}
+                                                                                                         disabled={refreshingRequests[currentRequestId || b.bookingId]}
                                                                                                     >
-                                                                                                         <CreditCard className="w-3 h-3 mr-1" />
-                                                                                                         Thanh toán
+                                                                                                         {refreshingRequests[currentRequestId] ? (
+                                                                                                              <>
+                                                                                                                   <Loader2 className="w-4 h-4 animate-spin" />
+                                                                                                                   <span>Đang tải...</span>
+                                                                                                              </>
+                                                                                                         ) : (
+                                                                                                              <>
+                                                                                                                   <RefreshCw className="w-4 h-4" />
+                                                                                                                   <span>Tải đội tham gia</span>
+                                                                                                              </>
+                                                                                                         )}
                                                                                                     </Button>
+                                                                                               )}
+                                                                                          </div>
+
+                                                                                          {isMatched && acceptedParticipants.length > 0 && (
+                                                                                               <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                                                                                                    <div className="text-xs font-semibold text-green-800 mb-1">Đội đối thủ:</div>
+                                                                                                    {acceptedParticipants.map((p, idx) => (
+                                                                                                         <div key={idx} className="text-xs text-green-700">
+                                                                                                              • {p.teamName || p.fullName} ({p.playerCount || 0} người)
+                                                                                                         </div>
+                                                                                                    ))}
+                                                                                               </div>
+                                                                                          )}
+                                                                                     </div>
+                                                                                );
+                                                                           }
+
+                                                                           return null;
+                                                                      })()}
+                                                                 </>
+                                                            )}
+                                                       </div>
+                                                       {/* Joins list for this booking's request (owner view) */}
+                                                       {(() => {
+                                                            const req = bookingIdToRequest[b.id];
+                                                            if (!req) return null;
+
+
+
+                                                            const requestId = extractRequestId(req);
+                                                            const participants = requestId
+                                                                 ? (requestJoins[requestId] || extractParticipants(req))
+                                                                 : extractParticipants(req);
+                                                            const requestOwnerId = getRequestOwnerId(req);
+                                                            const displayParticipants = filterParticipantsForDisplay(participants, req);
+                                                            if (!displayParticipants || displayParticipants.length === 0) return null;
+                                                            const isRequestOwner = user && requestOwnerId && String(requestOwnerId) === String(user?.userID || user?.UserID || user?.id || user?.userId);
+
+
+                                                            const badgeConfig = getRequestBadgeConfig(req);
+                                                            const acceptedTeams = getAcceptedParticipants(req);
+                                                            const requestLocked = isRequestLocked(req);
+                                                            return (
+                                                                 <div className="mt-3 p-3 rounded-xl border border-teal-100 bg-white/70">
+                                                                      <div className="flex flex-col gap-1 mb-3">
+                                                                           <div className="font-semibold text-teal-800">Đội tham gia</div>
+                                                                           <Badge variant="outline" className={`text-xs w-fit ${badgeConfig.className}`}>
+                                                                                {badgeConfig.text}
+                                                                           </Badge>
+                                                                           {requestLocked && acceptedTeams.length > 0 && (
+                                                                                <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-lg">
+                                                                                     Trận đấu đã được xác nhận với {acceptedTeams.length} đội.
+                                                                                </div>
+                                                                           )}
+                                                                      </div>
+                                                                      <div className="space-y-2">
+                                                                           {displayParticipants.map((j) => {
+                                                                                const participantId = j.participantId || j.joinId || j.id;
+                                                                                const participantTeamName =
+                                                                                     j.teamName ||
+                                                                                     j.fullName ||
+                                                                                     j.participantName ||
+                                                                                     j.userName ||
+                                                                                     `User: ${j.userId || participantId}`;
+                                                                                const participantStatus = normalizeParticipantStatus(j);
+                                                                                const needsOwnerAction = participantNeedsOwnerAction(j);
+                                                                                const isAccepted = isParticipantAcceptedByOwner(j);
+                                                                                const isRejected = isParticipantRejectedByOwner(j);
+
+                                                                                console.log("🔍 [Participant check]", {
+                                                                                     participantId: participantId,
+                                                                                     teamName: participantTeamName,
+                                                                                     statusFromA: j.statusFromA,
+                                                                                     statusFromB: j.statusFromB,
+                                                                                     needsOwnerAction: needsOwnerAction,
+                                                                                     isRequestOwner: isRequestOwner,
+                                                                                     willShowButtons: needsOwnerAction && isRequestOwner
+                                                                                });
+
+                                                                                return (
+                                                                                     <div key={participantId || Math.random()} className="bg-white border border-gray-200 rounded-xl p-3 hover:shadow-sm transition-shadow">
+                                                                                          <div className="flex items-start justify-between gap-3">
+                                                                                               <div className="flex-1 space-y-2">
+                                                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                                                         <span className="font-semibold text-gray-900">{participantTeamName}</span>
+                                                                                                         {j.playerCount && (
+                                                                                                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                                                                                                   {j.playerCount} người
+                                                                                                              </Badge>
+                                                                                                         )}
+                                                                                                         <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600 border-gray-200">
+                                                                                                              {participantStatus}
+                                                                                                         </Badge>
+                                                                                                    </div>
+
+                                                                                                    {j.fullName && j.fullName !== participantTeamName && (
+                                                                                                         <div className="text-sm text-gray-600 flex items-center gap-1">
+                                                                                                              <User className="w-3 h-3" />
+                                                                                                              <span>{j.fullName}</span>
+                                                                                                         </div>
+                                                                                                    )}
+
+                                                                                                    {j.contactPhone && (
+                                                                                                         <div className="text-sm text-gray-600 flex items-center gap-1">
+                                                                                                              <Phone className="w-3 h-3" />
+                                                                                                              <span>{j.contactPhone}</span>
+                                                                                                         </div>
+                                                                                                    )}
+
+                                                                                                    {j.note && j.note.trim() && (
+                                                                                                         <div className="text-sm text-gray-600 flex items-start gap-1">
+                                                                                                              <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                                                                                              <span className="italic">{j.note}</span>
+                                                                                                         </div>
+                                                                                                    )}
+
+                                                                                                    <div className="text-xs text-gray-500">
+                                                                                                         Tham gia: {new Date(j.joinedAt).toLocaleString('vi-VN')}
+                                                                                                    </div>
+                                                                                               </div>
+
+                                                                                               <div className="flex my-auto items-end gap-2">
+                                                                                                    {needsOwnerAction && isRequestOwner && (() => {
+                                                                                                         const processingKey = `${requestId}-${participantId}`;
+                                                                                                         const isProcessing = processingParticipants[processingKey];
+                                                                                                         return (
+                                                                                                              <>
+                                                                                                                   <Button
+                                                                                                                        className="px-3 py-1.5 rounded-2xl text-sm bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                                                                                                                        onClick={() => handleAcceptParticipant(b.id, requestId, j)}
+                                                                                                                        disabled={isProcessing}
+                                                                                                                   >
+                                                                                                                        {isProcessing ? (
+                                                                                                                             <>
+                                                                                                                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                                                                                                                  <span>Đang xử lý...</span>
+                                                                                                                             </>
+                                                                                                                        ) : (
+                                                                                                                             <>
+                                                                                                                                  <CheckCircle className="w-3 h-3" />
+                                                                                                                                  <span>Chấp nhận</span>
+                                                                                                                             </>
+                                                                                                                        )}
+                                                                                                                   </Button>
+                                                                                                                   <Button
+                                                                                                                        variant="outline"
+                                                                                                                        className="px-3 py-1.5 text-sm border-red-300 text-red-600 hover:bg-red-50 rounded-2xl flex items-center gap-1"
+                                                                                                                        onClick={() => handleRejectParticipant(b.id, requestId, j)}
+                                                                                                                        disabled={isProcessing}
+                                                                                                                   >
+                                                                                                                        {isProcessing ? (
+                                                                                                                             <>
+                                                                                                                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                                                                                                                  <span>Đang xử lý...</span>
+                                                                                                                             </>
+                                                                                                                        ) : (
+                                                                                                                             <>
+                                                                                                                                  <XCircle className="w-3 h-3" />
+                                                                                                                                  <span>Từ chối</span>
+                                                                                                                             </>
+                                                                                                                        )}
+                                                                                                                   </Button>
+                                                                                                              </>
+                                                                                                         );
+                                                                                                    })()}
+                                                                                                    {isAccepted && (
+                                                                                                         <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
+                                                                                                              Đã chấp nhận
+                                                                                                         </Badge>
+                                                                                                    )}
+                                                                                                    {isRejected && (
+                                                                                                         <Badge className="text-xs bg-red-100 text-red-700 border-red-300">
+                                                                                                              Đã từ chối
+                                                                                                         </Badge>
+                                                                                                    )}
                                                                                                </div>
                                                                                           </div>
                                                                                      </div>
-                                                                                )}
-
-                                                                                {/* Thông báo cho booking đã hết hạn thanh toán (recurring) */}
-                                                                                {booking.status === 'expired' && (
-                                                                                     <div className="p-2 bg-gray-50 border border-gray-200 rounded-lg mb-2">
-                                                                                          <div className="flex items-start gap-2">
-                                                                                               <XCircle className="w-3 h-3 text-gray-600 mt-0.5 flex-shrink-0" />
-                                                                                               <p className="text-xs text-gray-800">
-                                                                                                    Đã hết hạn thanh toán
-                                                                                               </p>
-                                                                                          </div>
-                                                                                     </div>
-                                                                                )}
-
-                                                                                <div className="flex justify-end gap-2">
-                                                                                     {booking.status !== "cancelled" && booking.status !== "expired" && !isBookingOlderThan2Hours(booking) && (
-                                                                                          <Button variant="outline" onClick={() => handleCancelSingleRecurring(booking.id)} className="px-2 !py-0.5 text-xs rounded-xl border border-red-200 text-red-700 hover:text-red-700 hover:bg-red-50">
-                                                                                               Hủy
-                                                                                          </Button>
-                                                                                     )}
-                                                                                     {booking.status === "completed" && (
-                                                                                          <Button
-                                                                                               onClick={() => handleRating(booking)}
-                                                                                               className="px-2 py-1 text-xs rounded-3xl bg-yellow-50 text-yellow-700 border hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 transition-colors"
-                                                                                          >
-                                                                                               <Star className="w-3 h-3 mr-1" /> Đánh giá
-                                                                                          </Button>
-                                                                                     )}
-                                                                                </div>
-                                                                           </div>
-                                                                      ))}
+                                                                                );
+                                                                           })}
+                                                                      </div>
                                                                  </div>
-                                                            </div>
-                                                       )}
+                                                            );
+                                                       })()}
                                                   </div>
                                              </FadeIn>
-                                        );
-                                   })}
-                              </StaggerContainer>
-                         )}
+                                        ))}
+                                   </StaggerContainer>
+                              )}
 
-                         {/* Single Bookings */}
-                         {paginatedSingles.length > 0 && (
-                              <StaggerContainer staggerDelay={50} className="space-y-4">
-                                   {paginatedSingles.map((b, index) => (
-                                        <FadeIn key={b.id} delay={index * 50}>
-                                             <div key={b.id} className="p-4 rounded-2xl border border-teal-200 bg-white/80 backdrop-blur hover:shadow-lg shadow-sm transition-all duration-300 hover:scale-[1.01]">
-                                                  <div className="flex justify-between items-start gap-4">
-                                                       <div className="min-w-0 flex-1">
-                                                            <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                                                 <h3 className="text-lg font-semibold text-teal-900 truncate">{b.fieldName}</h3>
-                                                                 {statusBadge(b.status, b.cancelReason)}
-                                                                 {paymentStatusBadge(b.paymentStatus)}
-                                                                 <span className="px-2 py-0.5 rounded-full text-xs bg-teal-50 text-teal-700 border border-teal-200 font-medium">#{b.id}</span>
-                                                            </div>
-
-                                                            {/* Thông báo cho booking đang chờ xác nhận */}
-                                                            {b.status === 'pending' && (b.paymentStatus === 'paid' || b.paymentStatus === 'Paid') && (
-                                                                 <div className="mt-2 mb-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                                                      <div className="flex items-start gap-2">
-                                                                           <Clock className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-                                                                           <div className="text-sm text-yellow-800">
-                                                                                <p className="font-medium mb-1">Đang chờ chủ sân xác nhận</p>
-                                                                                <p className="text-xs text-yellow-700">
-                                                                                     Booking của bạn đang chờ chủ sân xem xét và xác nhận.
-                                                                                     Bạn sẽ nhận được thông báo khi booking được xác nhận.
-                                                                                </p>
-                                                                           </div>
-                                                                      </div>
-                                                                 </div>
-                                                            )}
-
-                                                            {/* Thông báo và button thanh toán cho booking pending + unpaid trong 2 tiếng */}
-                                                            {isPendingUnpaidWithin2Hours(b) && (
-                                                                 <div className="mt-2 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                                                                      <div className="flex items-start gap-2">
-                                                                           <Clock className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                                                                           <div className="flex-1">
-                                                                                <div className="text-sm text-orange-800">
-                                                                                     <p className="font-medium mb-1">⏰ Cần thanh toán trong {formatTimeRemaining(timeRemaining[b.id] || 0)}</p>
-                                                                                     <p className="text-xs text-orange-700 mb-2">
-                                                                                          Booking của bạn sẽ tự động hủy sau 2 tiếng nếu chưa thanh toán.
-                                                                                          Vui lòng thanh toán ngay để giữ chỗ.
-                                                                                     </p>
-                                                                                </div>
-                                                                                <Button
-                                                                                     onClick={() => handleContinuePayment(b)}
-                                                                                     className="mt-2 bg-orange-600 hover:bg-orange-700 text-white text-sm px-4 py-2 rounded-lg"
-                                                                                >
-                                                                                     <CreditCard className="w-4 h-4 mr-2" />
-                                                                                     Tiếp tục thanh toán
-                                                                                </Button>
-                                                                           </div>
-                                                                      </div>
-                                                                 </div>
-                                                            )}
-
-                                                            {/* Thông báo cho booking đã hết hạn thanh toán */}
-                                                            {b.status === 'expired' && (
-                                                                 <div className="mt-2 mb-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                                                                      <div className="flex items-start gap-2">
-                                                                           <XCircle className="w-4 h-4 text-gray-600 mt-0.5 flex-shrink-0" />
-                                                                           <div className="text-sm text-gray-800">
-                                                                                <p className="font-medium mb-1">Đã hết hạn thanh toán</p>
-                                                                                <p className="text-xs text-gray-700">
-                                                                                     Booking đã bị hủy do quá thời gian thanh toán (2 tiếng).
-                                                                                </p>
-                                                                           </div>
-                                                                      </div>
-                                                                 </div>
-                                                            )}
-
-                                                            <div className="space-y-2">
-                                                                 <div className="flex flex-wrap items-center gap-2 text-sm">
-                                                                      <span className="inline-flex items-center gap-1 bg-teal-50 border border-teal-100 text-teal-700 px-2 py-1 rounded-full">
-                                                                           <MapPin className="w-4 h-4" />
-                                                                           <span className="font-medium">{b.address || "Chưa có địa chỉ"}</span>
-                                                                      </span>
-                                                                 </div>
-
-                                                                 {/* Lịch trình chi tiết */}
-                                                                 {(() => {
-                                                                      // Lấy thông tin từ API FieldSchedule/public/{scheduleId}
-                                                                      const scheduleData = b.scheduleId ? scheduleDataMap[b.scheduleId] : null;
-
-                                                                      // Lấy date từ schedule API (format: "2025-12-01")
-                                                                      let displayDate = null;
-                                                                      if (scheduleData && scheduleData.date) {
-                                                                           try {
-                                                                                // Parse date từ format "2025-12-01" hoặc "YYYY-MM-DD"
-                                                                                const [year, month, day] = scheduleData.date.split('-').map(Number);
-                                                                                if (year && month && day) {
-                                                                                     const dateObj = new Date(year, month - 1, day);
-                                                                                     displayDate = dateObj.toLocaleDateString("vi-VN");
-                                                                                } else {
-                                                                                     const dateObj = new Date(scheduleData.date);
-                                                                                     if (!isNaN(dateObj.getTime())) {
-                                                                                          displayDate = dateObj.toLocaleDateString("vi-VN");
-                                                                                     }
-                                                                                }
-                                                                           } catch (e) {
-
-                                                                                displayDate = scheduleData.date;
-                                                                           }
-                                                                      }
-
-                                                                      // Fallback về booking date nếu không có trong schedule
-                                                                      if (!displayDate) {
-                                                                           displayDate = b.date;
-                                                                      }
-
-                                                                      // Lấy time từ schedule API (startTime và endTime)
-                                                                      let displayTime = null;
-                                                                      if (scheduleData && scheduleData.startTime && scheduleData.endTime) {
-                                                                           // Format time từ "06:00" và "07:30"
-                                                                           const formatTime = (timeStr) => {
-                                                                                if (!timeStr) return "";
-                                                                                // Remove seconds if present (06:00:00 -> 06:00)
-                                                                                return timeStr.split(':').slice(0, 2).join(':');
-                                                                           };
-                                                                           displayTime = `${formatTime(scheduleData.startTime)} - ${formatTime(scheduleData.endTime)}`;
-                                                                      }
-
-                                                                      // Fallback về booking time nếu không có trong schedule
-                                                                      if (!displayTime) {
-                                                                           displayTime = b.time;
-                                                                      }
-
-                                                                      // Tính duration từ startTime và endTime
-                                                                      let displayDuration = b.duration;
-                                                                      if (scheduleData && scheduleData.startTime && scheduleData.endTime) {
-                                                                           try {
-                                                                                const [startHour, startMin] = scheduleData.startTime.split(':').map(Number);
-                                                                                const [endHour, endMin] = scheduleData.endTime.split(':').map(Number);
-                                                                                if (!isNaN(startHour) && !isNaN(startMin) && !isNaN(endHour) && !isNaN(endMin)) {
-                                                                                     const startMinutes = startHour * 60 + startMin;
-                                                                                     const endMinutes = endHour * 60 + endMin;
-                                                                                     displayDuration = Math.max(15, endMinutes - startMinutes);
-                                                                                }
-                                                                           } catch (e) {
-
-                                                                           }
-                                                                      }
-
-
-
-                                                                      // Kiểm tra nếu chuẩn: 06:00 - 07:30, Thứ 2 ngày 1/12/2025
-                                                                      const expectedTime = "06:00 - 07:30";
-                                                                      const expectedDate = "Thứ hai, 01/12/2025";
-                                                                      const actualDateWithDay = displayDate ? formatDateWithDay(displayDate, null) : null;
-                                                                      if (displayTime === expectedTime && actualDateWithDay === expectedDate) {
-
-                                                                      } else {
-
-                                                                      }
-
-                                                                      return (
-                                                                           <div className="flex flex-col gap-2 p-3 bg-gradient-to-r from-blue-50 to-teal-50 border border-blue-200 rounded-xl">
-                                                                                <div className="flex items-center gap-2 text-sm">
-                                                                                     <Calendar className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                                                                                     <div className="flex-1">
-                                                                                          <span className="font-semibold text-gray-900">
-                                                                                               {displayDate ? formatDateWithDay(displayDate, b.startTime) : "Chưa có ngày"}
-                                                                                          </span>
-                                                                                     </div>
-                                                                                </div>
-                                                                                <div className="flex items-center gap-2 text-sm">
-                                                                                     <Clock className="w-4 h-4 text-teal-600 flex-shrink-0" />
-                                                                                     <div className="flex-1">
-                                                                                          {displayTime ? (
-                                                                                               <span className="font-medium text-gray-900">{displayTime}</span>
-                                                                                          ) : (
-                                                                                               <span className="text-gray-500 italic">Chưa có thời gian</span>
-                                                                                          )}
-
-                                                                                     </div>
-                                                                                </div>
-                                                                                {displayDuration && (
-                                                                                     <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                                                          <Clock className="w-3 h-3 text-gray-500" />
-                                                                                          <span>Thời lượng: <span className="font-medium text-teal-700">{displayDuration} phút</span> ({Math.floor(displayDuration / 60)}h{displayDuration % 60 > 0 ? `${displayDuration % 60}p` : ''})</span>
-                                                                                     </div>
-                                                                                )}
-
-                                                                           </div>
-                                                                      );
-                                                                 })()}
-
-                                                                 {/* Additional booking information */}
-                                                                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                                                                      {b.depositAmount > 0 && (
-                                                                           <span className="inline-flex items-center gap-1 bg-blue-50 border border-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                                                                                <CreditCard className="w-3 h-3" />
-                                                                                Cọc: <span className="font-medium">{formatPrice(b.depositAmount)}</span>
-                                                                           </span>
-                                                                      )}
-                                                                      {b.hasOpponent && (
-                                                                           <span className="inline-flex items-center gap-1 bg-green-50 border border-green-100 text-green-700 px-2 py-1 rounded-full">
-                                                                                <UserSearch className="w-3 h-3" />
-                                                                                Đã có đối
-                                                                           </span>
-                                                                      )}
-                                                                      {b.qrCode && (
-                                                                           <span className="inline-flex items-center gap-1 bg-purple-50 border border-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                                                                                Mã QR: <span className="font-medium">{b.qrCode}</span>
-                                                                           </span>
-                                                                      )}
-                                                                      {b.cancelledBy && (
-                                                                           <span className="inline-flex items-center gap-1 bg-red-50 border border-red-100 text-red-700 px-2 py-1 rounded-full">
-                                                                                Hủy bởi: <span className="font-medium">{b.cancelledBy}</span>
-                                                                           </span>
-                                                                      )}
-                                                                 </div>
-                                                                 {stripRefundQrInfo(b.cancelReason) && (
-                                                                      <div className="text-xs text-red-600 italic">
-                                                                           Lý do hủy: {stripRefundQrInfo(b.cancelReason)}
-                                                                      </div>
-                                                                 )}
-                                                            </div>
-                                                       </div>
-                                                       <div className="text-right shrink-0">
-                                                            <div className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-500 mb-1">
-                                                                 {formatPrice(b.totalPrice || b.price)}
-                                                            </div>
-                                                            {b.depositAmount > 0 && b.totalPrice > b.depositAmount && (
-                                                                 <div className="text-sm flex items-center gap-1 text-gray-500 mb-1">
-                                                                      (Còn lại: <span className="font-medium text-orange-500">{formatPrice(b.totalPrice - b.depositAmount)}</span>)
-                                                                 </div>
-                                                            )}
-                                                            <div className="text-xs text-gray-700">
-                                                                 {b.createdAt && new Date(b.createdAt).toLocaleDateString('vi-VN')}
-                                                            </div>
-                                                            {b.confirmedAt && (
-                                                                 <div className="text-sm font-medium text-green-600">
-                                                                      Xác nhận: {new Date(b.confirmedAt).toLocaleDateString('vi-VN')}
-                                                                 </div>
-                                                            )}
-                                                            {b.cancelledAt && (
-                                                                 <div className="text-sm font-medium text-red-600">
-                                                                      Hủy: {new Date(b.cancelledAt).toLocaleDateString('vi-VN')}
-                                                                 </div>
-                                                            )}
-                                                       </div>
-                                                  </div>
-                                                  <div className="mt-4 pt-3 border-t border-teal-100 flex flex-wrap gap-2">
-                                                       <Button variant="secondary" onClick={() => handleViewInvoice(b)} className="px-2 !py-1 text-sm rounded-3xl">
-                                                            <Receipt className="w-4 h-4 mr-2" /> Xem hóa đơn
+                              {/* Pagination for Single Bookings */}
+                              {totalSingleBookings > pageSize && (
+                                   <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                        <div className="text-sm text-teal-700">
+                                             Trang {currentPage}/{totalPages} • {Math.min(endIndex, totalSingleBookings)} trên {totalSingleBookings} đặt sân
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                             <Button
+                                                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                                  disabled={currentPage === 1}
+                                                  className={`px-3 py-1 rounded-full border transition-colors ${currentPage === 1 ? "bg-gray-50 text-gray-400 border-gray-300 cursor-not-allowed" : "bg-white text-teal-600 border-teal-200 hover:border-teal-300 hover:bg-teal-50"}`}
+                                             >
+                                                  <ChevronLeft className="w-4 h-4" />
+                                             </Button>
+                                             <div className="flex items-center gap-1">
+                                                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                                       <Button
+                                                            key={page}
+                                                            onClick={() => setCurrentPage(page)}
+                                                            className={`px-3 py-1 rounded-full border transition-colors ${page === currentPage ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600" : "border-teal-200 text-teal-600 bg-teal-50 hover:bg-teal-500 hover:text-white hover:border-teal-300"}`}
+                                                       >
+                                                            {page}
                                                        </Button>
-                                                       {user && (
-                                                            <>
-                                                                 {/* Button tiếp tục thanh toán cho booking pending + unpaid trong 2 tiếng */}
-                                                                 {isPendingUnpaidWithin2Hours(b) && (
-                                                                      <Button
-                                                                           onClick={() => handleContinuePayment(b)}
-                                                                           className="px-3 py-2 text-sm bg-orange-600 hover:bg-orange-700 text-white rounded-3xl"
-                                                                      >
-                                                                           <CreditCard className="w-4 h-4 mr-2" />
-                                                                           Tiếp tục thanh toán
-                                                                      </Button>
-                                                                 )}
+                                                  ))}
+                                             </div>
+                                             <Button
+                                                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                                  disabled={currentPage === totalPages}
+                                                  className={`px-3 py-1 rounded-full border transition-colors ${currentPage === totalPages ? "bg-gray-50 text-gray-400 border-gray-300 cursor-not-allowed" : "bg-white text-teal-600 border-teal-200 hover:border-teal-300 hover:bg-teal-50"}`}
+                                             >
+                                                  <ChevronRight className="w-4 h-4" />
+                                             </Button>
+                                        </div>
+                                   </div>
+                              )}
 
-                                                                 {shouldShowCancelButton(b) && (
-                                                                      <Button variant="destructive" onClick={() => handleCancel(b.id)} className="px-3 rounded-3xl py-2 text-sm">
-                                                                           <Trash2 className="w-4 h-4 mr-2" />
-                                                                           Hủy đặt
-                                                                      </Button>
-                                                                 )}
-                                                                 {b.status === "completed" && (
-                                                                      <Button
-                                                                           onClick={() => handleRating(b)}
-                                                                           className="px-3 py-2 text-sm bg-yellow-50 text-yellow-700 border-yellow-400 hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-600 transition-colors rounded-3xl"
-                                                                      >
-                                                                           <Star className="w-4 h-4 mr-2" />
-                                                                           Đánh giá
-                                                                      </Button>
-                                                                 )}
-                                                                 {/* MatchRequest actions */}
-                                                                 {(() => {
-                                                                      const req = bookingIdToRequest[b.id];
-                                                                      const fallbackRequestId = b.matchRequestId || b.matchRequestID || b.MatchRequestID;
-                                                                      const hasRequest = hasExistingMatchRequest(b);
-                                                                      const canShowFindOpponent = shouldShowFindOpponentButton(b);
+                              {visibleGroups.length === 0 && visibleSingles.length === 0 && (
+                                   <div className="text-center py-16">
+                                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-teal-50 text-teal-600 mb-3">
+                                             <SlidersHorizontal className="w-6 h-6" />
+                                        </div>
+                                        <div className="text-gray-900 font-medium">Không có kết quả phù hợp</div>
+                                        <div className="text-gray-500 text-sm">Thử thay đổi từ khóa hoặc bộ lọc.</div>
+                                   </div>
+                              )}
+                         </div>
+                    )}
 
-                                                                      if (!hasRequest && canShowFindOpponent) {
-                                                                           return (
-                                                                                <Button
-                                                                                     variant="secondary"
-                                                                                     onClick={() => handleFindOpponent(b)}
-                                                                                     className="px-4 !rounded-full py-2.5 text-sm font-medium bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
-                                                                                >
-                                                                                     <UserSearchIcon className="w-4 h-4" />
-                                                                                     <span>Tìm đối thủ</span>
-                                                                                </Button>
-                                                                           );
-                                                                      }
+                    {/* Match History Tab Content */}
+                    {activeTab === "matchHistory" && (
+                         <div className="space-y-4">
+                              {playerHistories && playerHistories.length > 0 ? (
+                                   <StaggerContainer staggerDelay={50}>
+                                        {playerHistories.map((h, index) => {
+                                             // Format date and time
+                                             // Parse matchDate properly to avoid timezone issues
+                                             let matchDate = null;
+                                             if (h.matchDate) {
+                                                  const dateStr = h.matchDate;
+                                                  if (dateStr.includes('T')) {
+                                                       // ISO format: extract date part and create date object
+                                                       const [datePart] = dateStr.split('T');
+                                                       const [year, month, day] = datePart.split('-').map(Number);
+                                                       matchDate = new Date(year, month - 1, day);
+                                                  } else {
+                                                       matchDate = new Date(dateStr);
+                                                  }
+                                             }
 
-                                                                      if (hasRequest) {
-                                                                           const currentRequestId = extractRequestId(req) || fallbackRequestId;
-                                                                           const badgeConfig = req ? getRequestBadgeConfig(req) : {
-                                                                                text: "Đang tải thông tin kèo...",
-                                                                                className: "border-teal-200 text-teal-700 bg-teal-50"
-                                                                           };
-                                                                           const requestLocked = req ? isRequestLocked(req) : false;
-                                                                           const canRefresh = req ? !requestLocked : Boolean(currentRequestId);
+                                             // Format date with day of week from matchDate (not current date)
+                                             let formattedDate = "Chưa có ngày";
+                                             if (matchDate && !isNaN(matchDate.getTime())) {
+                                                  const dayNames = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+                                                  const dayName = dayNames[matchDate.getDay()];
+                                                  // Format date as dd/mm/yyyy
+                                                  const day = String(matchDate.getDate()).padStart(2, '0');
+                                                  const month = String(matchDate.getMonth() + 1).padStart(2, '0');
+                                                  const year = matchDate.getFullYear();
+                                                  const dateStr = `${day}/${month}/${year}`;
+                                                  formattedDate = `${dayName}, ${dateStr}`;
+                                             }
+                                             const timeRange = h.startTime && h.endTime ? `${h.startTime} - ${h.endTime}` : h.startTime || "Chưa có giờ";
 
-                                                                           return (
-                                                                                <div className="flex flex-col gap-2">
-                                                                                     <Badge variant="outline" className={`text-xs ${badgeConfig.className}`}>
-                                                                                          Đã yêu cầu • {badgeConfig.text}
-                                                                                     </Badge>
-                                                                                     {canRefresh && currentRequestId && (
-                                                                                          <Button
-                                                                                               variant="outline"
-                                                                                               className="px-3 !rounded-full py-2 text-sm flex items-center gap-2"
-                                                                                               onClick={() => refreshRequestForBooking(b.id, currentRequestId)}
-                                                                                               disabled={refreshingRequests[currentRequestId]}
-                                                                                          >
-                                                                                               {refreshingRequests[currentRequestId] ? (
-                                                                                                    <>
-                                                                                                         <Loader2 className="w-4 h-4 animate-spin" />
-                                                                                                         <span>Đang tải...</span>
-                                                                                                    </>
-                                                                                               ) : (
-                                                                                                    <>
-                                                                                                         <RefreshCw className="w-4 h-4" />
-                                                                                                         <span>Tải đội tham gia</span>
-                                                                                                    </>
-                                                                                               )}
-                                                                                          </Button>
+                                             // Status badge
+                                             const getStatusBadge = (status) => {
+                                                  const statusLower = (status || "").toLowerCase();
+                                                  if (statusLower === "matched") {
+                                                       return <Badge className="bg-green-500 hover:bg-green-600 text-white border-green-200">Đã ghép đôi</Badge>;
+                                                  } else if (statusLower === "pending") {
+                                                       return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-200">Đang chờ</Badge>;
+                                                  } else if (statusLower === "cancelled" || statusLower === "expired") {
+                                                       return <Badge className="bg-red-500 hover:bg-red-600 text-white border-red-200">Đã hủy</Badge>;
+                                                  }
+                                                  return <Badge className="bg-gray-500 hover:bg-gray-600 text-white border-gray-200">{status || "Không rõ"}</Badge>;
+                                             };
+
+                                             // Role badge
+                                             const getRoleBadge = (role) => {
+                                                  const roleLower = (role || "").toLowerCase();
+                                                  if (roleLower === "creator") {
+                                                       return <Badge className="bg-blue-500 hover:bg-blue-600 text-white border-blue-200">Người tạo</Badge>;
+                                                  } else if (roleLower === "participant") {
+                                                       return <Badge className="bg-purple-500 hover:bg-purple-600 text-white border-purple-200">Người tham gia</Badge>;
+                                                  }
+                                                  return <Badge className="bg-gray-500 hover:bg-gray-600 text-white border-gray-200">{role || "Không rõ"}</Badge>;
+                                             };
+
+                                             return (
+                                                  <FadeIn key={h.historyId} delay={index * 50}>
+                                                       <div className="p-5 mb-3 rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
+                                                            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                                                                 {/* Left Section - Match Info */}
+                                                                 <div className="flex-1 space-y-3">
+                                                                      {/* Header */}
+                                                                      <div className="flex items-start justify-between gap-3">
+                                                                           <div>
+                                                                                <h3 className="text-xl font-bold text-emerald-900 mb-1">{h.fieldName || "Sân bóng"}</h3>
+                                                                                {h.complexName && (
+                                                                                     <p className="text-sm text-emerald-700 flex items-center gap-1">
+                                                                                          <MapPin className="w-4 h-4" />
+                                                                                          {h.complexName}
+                                                                                     </p>
+                                                                                )}
+                                                                           </div>
+                                                                           <div className="flex flex-col items-end gap-2">
+                                                                                {getStatusBadge(h.finalStatus)}
+                                                                                {getRoleBadge(h.role)}
+                                                                           </div>
+                                                                      </div>
+
+                                                                      {/* Match Date & Time */}
+                                                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                           <div className="flex items-center gap-2 px-3 py-1 bg-white/80 rounded-2xl border border-emerald-200">
+                                                                                <Calendar className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                                                                                <div>
+                                                                                     <p className="text-xs text-blue-600 font-medium">Ngày bắt đầu</p>
+                                                                                     <p className="text-sm font-semibold text-emerald-900">{formattedDate}</p>
+                                                                                </div>
+                                                                           </div>
+                                                                           <div className="flex items-center gap-2 px-3 py-1 bg-white/80 rounded-2xl border border-emerald-200">
+                                                                                <Clock className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+                                                                                <div>
+                                                                                     <p className="text-xs text-yellow-600 font-medium">Thời gian</p>
+                                                                                     <p className="text-sm font-semibold text-emerald-900">{timeRange}</p>
+                                                                                </div>
+                                                                           </div>
+                                                                      </div>
+
+                                                                      {/* Opponent Info */}
+                                                                      {h.opponentTeamName || h.opponentFullName ? (
+                                                                           <div className="px-3 py-2 bg-white/80 rounded-2xl border border-emerald-200">
+                                                                                <div className="flex items-center gap-2 mb-3">
+                                                                                     <UserSearch className="w-5 h-5 text-emerald-600" />
+                                                                                     <h4 className="font-semibold text-emerald-900">Thông tin đối thủ</h4>
+                                                                                </div>
+                                                                                <div className=" flex items-center gap-2">
+                                                                                     {h.opponentTeamName && (
+                                                                                          <div className="flex items-center gap-2">
+                                                                                               <span className="text-sm font-medium text-gray-700">Tên đội:</span>
+                                                                                               <span className="text-sm font-semibold text-emerald-900">{h.opponentTeamName}</span>
+                                                                                          </div>
+                                                                                     )}
+                                                                                     -
+                                                                                     {h.opponentFullName && (
+                                                                                          <div className="flex items-center gap-1">
+                                                                                               <User className="w-4 h-4 text-gray-500" />
+                                                                                               <span className="text-sm text-gray-700">{h.opponentFullName}</span>
+                                                                                          </div>
+                                                                                     )}
+                                                                                     -
+                                                                                     {h.opponentPhone && (
+                                                                                          <div className="flex items-center gap-1">
+                                                                                               <Phone className="w-4 h-4 text-gray-500" />
+                                                                                               <span className="text-sm text-gray-700">{h.opponentPhone}</span>
+                                                                                          </div>
+                                                                                     )}
+                                                                                     -
+                                                                                     {h.playerCount && (
+                                                                                          <div className="flex items-center gap-1">
+                                                                                               <span className="text-sm text-gray-600">Số người:</span>
+                                                                                               <Badge className="bg-blue-50 hover:bg-blue-600 text-blue-700 border-blue-200 text-xs">
+                                                                                                    {h.playerCount} người
+                                                                                               </Badge>
+                                                                                          </div>
                                                                                      )}
                                                                                 </div>
-                                                                           );
-                                                                      }
-
-                                                                      return null;
-                                                                 })()}
-                                                            </>
-                                                       )}
-                                                  </div>
-                                                  {/* Joins list for this booking's request (owner view) */}
-                                                  {(() => {
-                                                       const req = bookingIdToRequest[b.id];
-                                                       if (!req) return null;
-                                                       const requestId = extractRequestId(req);
-                                                       const participants = requestId
-                                                            ? (requestJoins[requestId] || extractParticipants(req))
-                                                            : extractParticipants(req);
-                                                       const requestOwnerId = getRequestOwnerId(req);
-                                                       const displayParticipants = filterParticipantsForDisplay(participants, req);
-                                                       if (!displayParticipants || displayParticipants.length === 0) return null;
-                                                       const isRequestOwner = user && requestOwnerId && String(requestOwnerId) === String(user?.userID || user?.UserID || user?.id || user?.userId);
-                                                       const badgeConfig = getRequestBadgeConfig(req);
-                                                       const acceptedTeams = getAcceptedParticipants(req);
-                                                       const requestLocked = isRequestLocked(req);
-                                                       return (
-                                                            <div className="mt-3 p-3 rounded-xl border border-teal-100 bg-white/70">
-                                                                 <div className="flex flex-col gap-1 mb-3">
-                                                                      <div className="font-semibold text-teal-800">Đội tham gia</div>
-                                                                      <Badge variant="outline" className={`text-xs w-fit ${badgeConfig.className}`}>
-                                                                           {badgeConfig.text}
-                                                                      </Badge>
-                                                                      {requestLocked && acceptedTeams.length > 0 && (
-                                                                           <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-lg">
-                                                                                Trận đấu đã được xác nhận với {acceptedTeams.length} đội.
+                                                                           </div>
+                                                                      ) : (
+                                                                           <div className="px-3 py-1 bg-yellow-50 rounded-2xl border border-yellow-200">
+                                                                                <p className="text-sm text-yellow-800 flex items-center gap-2">
+                                                                                     <Info className="w-4 h-4" />
+                                                                                     Chưa có thông tin đối thủ
+                                                                                </p>
                                                                            </div>
                                                                       )}
                                                                  </div>
-                                                                 <div className="space-y-2">
-                                                                      {displayParticipants.map((j) => {
-                                                                           const participantId = j.participantId || j.joinId || j.id;
-                                                                           const participantTeamName =
-                                                                                j.teamName ||
-                                                                                j.fullName ||
-                                                                                j.participantName ||
-                                                                                j.userName ||
-                                                                                `User: ${j.userId || participantId}`;
-                                                                           const participantStatus = normalizeParticipantStatus(j);
-                                                                           const needsOwnerAction = participantNeedsOwnerAction(j);
-                                                                           const isAccepted = isParticipantAcceptedByOwner(j);
-                                                                           const isRejected = isParticipantRejectedByOwner(j);
-                                                                           return (
-                                                                                <div key={participantId || Math.random()} className="flex items-center justify-between text-sm">
-                                                                                     <div className="flex flex-wrap items-center gap-2 text-gray-700">
-                                                                                          <span className="font-medium">{participantTeamName}</span>
-                                                                                          {j.playerCount && <span className="text-gray-500">• {j.playerCount} người</span>}
-                                                                                          <span className="text-gray-500">• {participantStatus}</span>
-                                                                                     </div>
-                                                                                     <div className="flex items-center gap-2">
-                                                                                          {needsOwnerAction && isRequestOwner && (() => {
-                                                                                               const processingKey = `${requestId}-${participantId}`;
-                                                                                               const isProcessing = processingParticipants[processingKey];
-                                                                                               return (
-                                                                                                    <>
-                                                                                                         <Button
-                                                                                                              className="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-1"
-                                                                                                              onClick={() => handleAcceptParticipant(b.id, requestId, j)}
-                                                                                                              disabled={isProcessing}
-                                                                                                         >
-                                                                                                              {isProcessing ? (
-                                                                                                                   <>
-                                                                                                                        <Loader2 className="w-3 h-3 animate-spin" />
-                                                                                                                        <span>Đang xử lý...</span>
-                                                                                                                   </>
-                                                                                                              ) : (
-                                                                                                                   <>
-                                                                                                                        <CheckCircle className="w-3 h-3" />
-                                                                                                                        <span>Chấp nhận</span>
-                                                                                                                   </>
-                                                                                                              )}
-                                                                                                         </Button>
-                                                                                                         <Button
-                                                                                                              variant="outline"
-                                                                                                              className="px-3 py-1.5 text-xs border-red-300 text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-1"
-                                                                                                              onClick={() => handleRejectParticipant(b.id, requestId, j)}
-                                                                                                              disabled={isProcessing}
-                                                                                                         >
-                                                                                                              {isProcessing ? (
-                                                                                                                   <>
-                                                                                                                        <Loader2 className="w-3 h-3 animate-spin" />
-                                                                                                                        <span>Đang xử lý...</span>
-                                                                                                                   </>
-                                                                                                              ) : (
-                                                                                                                   <>
-                                                                                                                        <XCircle className="w-3 h-3" />
-                                                                                                                        <span>Từ chối</span>
-                                                                                                                   </>
-                                                                                                              )}
-                                                                                                         </Button>
-                                                                                                    </>
-                                                                                               );
-                                                                                          })()}
-                                                                                          {isAccepted && (
-                                                                                               <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
-                                                                                                    Đã chấp nhận
-                                                                                               </Badge>
-                                                                                          )}
-                                                                                          {isRejected && (
-                                                                                               <Badge className="text-xs bg-red-100 text-red-700 border-red-300">
-                                                                                                    Đã từ chối
-                                                                                               </Badge>
-                                                                                          )}
-                                                                                     </div>
-                                                                                </div>
-                                                                           );
-                                                                      })}
-                                                                 </div>
-                                                            </div>
-                                                       );
-                                                  })()}
-                                             </div>
-                                        </FadeIn>
-                                   ))}
-                              </StaggerContainer>
-                         )}
 
-                         {/* Player Match History */}
-                         {playerHistories && playerHistories.length > 0 && (
-                              <SlideIn direction="up" delay={200}>
-                                   <div className="p-5 rounded-2xl border border-emerald-200 bg-emerald-50/50">
-                                        <div className="text-lg font-bold text-emerald-800 mb-2">Lịch sử ghép đối</div>
-                                        <div className="space-y-2">
-                                             {playerHistories.map((h, index) => (
-                                                  <FadeIn key={h.historyId} delay={index * 50}>
-                                                       <div key={h.historyId} className="flex justify-between items-center bg-white/80 border border-emerald-100 rounded-xl p-3 transition-all duration-200 hover:shadow-md hover:scale-[1.01]">
-                                                            <div className="flex flex-col">
-                                                                 <div className="font-semibold text-emerald-800">{h.fieldName || "Sân"}</div>
-                                                                 <div className="text-sm text-gray-700">{h.address}</div>
-                                                                 <div className="text-xs text-gray-600">{h.date} • {h.slotName}</div>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                 <div className="text-xs text-gray-500">{new Date(h.createdAt).toLocaleString('vi-VN')}</div>
-                                                                 <div className="text-xs font-semibold text-emerald-700">{h.role} • {h.finalStatus}</div>
+                                                                 {/* Right Section - Metadata */}
+                                                                 <div className="md:w-48 space-y-3">
+                                                                      <div className="p-3 bg-white/80 rounded-xl border border-emerald-200">
+                                                                           <p className="text-xs text-emerald-600 font-medium mb-1">ID Yêu cầu</p>
+                                                                           <p className="text-sm font-semibold text-emerald-900">#{h.matchRequestId || "N/A"}</p>
+                                                                      </div>
+                                                                      <div className="p-3 bg-white/80 rounded-xl border border-emerald-200">
+                                                                           <p className="text-xs text-emerald-600 font-medium mb-1">Ngày tạo</p>
+                                                                           <p className="text-sm font-semibold text-emerald-900">
+                                                                                {h.createdAt ? new Date(h.createdAt).toLocaleDateString('vi-VN', {
+                                                                                     year: 'numeric',
+                                                                                     month: 'short',
+                                                                                     day: 'numeric',
+                                                                                     hour: '2-digit',
+                                                                                     minute: '2-digit'
+                                                                                }) : "N/A"}
+                                                                           </p>
+                                                                      </div>
+                                                                 </div>
                                                             </div>
                                                        </div>
                                                   </FadeIn>
-                                             ))}
+                                             );
+                                        })}
+                                   </StaggerContainer>
+                              ) : (
+                                   <div className="text-center py-16">
+                                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 mb-4">
+                                             <UserSearch className="w-8 h-8" />
                                         </div>
+                                        <div className="text-gray-900 font-medium text-lg mb-2">Chưa có lịch sử ghép đối</div>
+                                        <div className="text-gray-500 text-sm">Bạn chưa có lịch sử ghép đối nào. Hãy tìm đối thủ cho các booking của bạn!</div>
                                    </div>
-                              </SlideIn>
-                         )}
-
-                         {/* Pagination for Single Bookings */}
-                         {totalSingleBookings > pageSize && (
-                              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                   <div className="text-sm text-teal-700">
-                                        Trang {currentPage}/{totalPages} • {Math.min(endIndex, totalSingleBookings)} trên {totalSingleBookings} đặt sân
-                                   </div>
-                                   <div className="flex items-center gap-2">
-                                        <Button
-                                             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                             disabled={currentPage === 1}
-                                             className={`px-3 py-1 rounded-full border transition-colors ${currentPage === 1 ? "bg-gray-50 text-gray-400 border-gray-300 cursor-not-allowed" : "bg-white text-teal-600 border-teal-200 hover:border-teal-300 hover:bg-teal-50"}`}
-                                        >
-                                             <ChevronLeft className="w-4 h-4" />
-                                        </Button>
-                                        <div className="flex items-center gap-1">
-                                             {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                                  <Button
-                                                       key={page}
-                                                       onClick={() => setCurrentPage(page)}
-                                                       className={`px-3 py-1 rounded-full border transition-colors ${page === currentPage ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600" : "border-teal-200 text-teal-600 bg-teal-50 hover:bg-teal-500 hover:text-white hover:border-teal-300"}`}
-                                                  >
-                                                       {page}
-                                                  </Button>
-                                             ))}
-                                        </div>
-                                        <Button
-                                             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                             disabled={currentPage === totalPages}
-                                             className={`px-3 py-1 rounded-full border transition-colors ${currentPage === totalPages ? "bg-gray-50 text-gray-400 border-gray-300 cursor-not-allowed" : "bg-white text-teal-600 border-teal-200 hover:border-teal-300 hover:bg-teal-50"}`}
-                                        >
-                                             <ChevronRight className="w-4 h-4" />
-                                        </Button>
-                                   </div>
-                              </div>
-                         )}
-
-                         {visibleGroups.length === 0 && visibleSingles.length === 0 && (
-                              <div className="text-center py-16">
-                                   <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-teal-50 text-teal-600 mb-3">
-                                        <SlidersHorizontal className="w-6 h-6" />
-                                   </div>
-                                   <div className="text-gray-900 font-medium">Không có kết quả phù hợp</div>
-                                   <div className="text-gray-500 text-sm">Thử thay đổi từ khóa hoặc bộ lọc.</div>
-                              </div>
-                         )}
-                    </div>
+                              )}
+                         </div>
+                    )}
                </Container>
 
                {/* Find Opponent Modal */}

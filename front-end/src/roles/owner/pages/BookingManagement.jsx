@@ -27,6 +27,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import { DemoRestrictedModal } from "../../../shared";
 import { cancelBooking, fetchCancellationRequests, confirmCancellation, deleteCancellationRequest, fetchBookingsByOwner, confirmPaymentAPI, confirmByOwner, fetchCancellationRequestById } from "../../../shared/services/bookings";
 import { profileService } from "../../../shared/services/profileService";
+import { fetchFieldScheduleById } from "../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
 
 
@@ -177,22 +178,11 @@ const BookingManagement = ({ isDemo = false }) => {
                     let confirmResult;
 
                     if (isConfirmedAndPaid) {
-                         // Booking đã confirmed và paid -> gọi confirm-by-owner để chuyển thành completed
-                         console.log(`[BookingManagement] Attempting to complete booking ${numericBookingId}`, {
-                              bookingId: numericBookingId,
-                              currentStatus: booking?.status,
-                              currentPaymentStatus: booking?.paymentStatus
-                         });
+
 
                          confirmResult = await confirmByOwner(numericBookingId);
 
                          if (confirmResult.success) {
-                              console.log('[BookingManagement] Complete booking response:', {
-                                   bookingId: numericBookingId,
-                                   responseData: confirmResult.data,
-                                   bookingStatus: confirmResult.data?.bookingStatus || confirmResult.data?.BookingStatus,
-                                   paymentStatus: confirmResult.data?.paymentStatus || confirmResult.data?.PaymentStatus
-                              });
 
                               await Swal.fire({
                                    icon: 'success',
@@ -204,22 +194,12 @@ const BookingManagement = ({ isDemo = false }) => {
                     } else {
                          // Booking pending -> gọi confirm-payment để xác nhận thanh toán
                          const amount = booking?.amount || 0;
-                         console.log(`[BookingManagement] Attempting to confirm payment for booking ${numericBookingId}`, {
-                              bookingId: numericBookingId,
-                              amount: amount,
-                              currentStatus: booking?.status,
-                              currentPaymentStatus: booking?.paymentStatus
-                         });
+
 
                          confirmResult = await confirmPaymentAPI(numericBookingId, amount);
 
                          if (confirmResult.success) {
-                              console.log('[BookingManagement] Confirm payment response:', {
-                                   bookingId: numericBookingId,
-                                   responseData: confirmResult.data,
-                                   bookingStatus: confirmResult.data?.bookingStatus || confirmResult.data?.BookingStatus,
-                                   paymentStatus: confirmResult.data?.paymentStatus || confirmResult.data?.PaymentStatus
-                              });
+
 
                               await Swal.fire({
                                    icon: 'success',
@@ -238,24 +218,17 @@ const BookingManagement = ({ isDemo = false }) => {
                          setTimeout(() => {
                               const updatedBooking = bookings.find(b => (b.bookingId || b.id) === numericBookingId);
                               if (updatedBooking) {
-                                   console.log('[BookingManagement] Updated booking status after confirm:', {
-                                        bookingId: numericBookingId,
-                                        normalizedStatus: updatedBooking.status,
-                                        normalizedPaymentStatus: updatedBooking.paymentStatus,
-                                        originalStatus: updatedBooking.originalStatus
-                                   });
+
                               }
                          }, 500);
                     } else {
                          // Kiểm tra nếu là lỗi CORS - có thể request đã thành công
                          const isCorsError = confirmResult.isCorsError;
                          const errorMsg = confirmResult.error || (isConfirmedAndPaid ? 'Không thể hoàn thành booking' : 'Không thể xác nhận thanh toán');
-                         console.error(`[BookingManagement] ${isConfirmedAndPaid ? 'Complete' : 'Confirm payment'} failed:`, errorMsg);
-                         console.log(`[BookingManagement] Is CORS error:`, isCorsError);
+
 
                          // Nếu là lỗi CORS, reload dữ liệu để kiểm tra xem có thay đổi không
                          if (isCorsError) {
-                              console.log('[BookingManagement] CORS error detected - reloading data to check if request succeeded...');
                               await loadBookings();
 
                               // Đợi một chút để dữ liệu được load
@@ -660,39 +633,89 @@ const BookingManagement = ({ isDemo = false }) => {
      // Normalize API booking data to match component format
      const normalizeBookingData = (apiBookings = []) => {
           return apiBookings.map((item, index) => {
-               // Parse date and time
-               const startTime = item.startTime ? new Date(item.startTime) : null;
-               const endTime = item.endTime ? new Date(item.endTime) : null;
-               const bookingDate = item.date || (startTime ? startTime.toISOString().split('T')[0] : '');
-               const timeSlot = startTime && endTime
-                    ? `${startTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} - ${endTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`
-                    : (item.slotName || item.timeSlot || '');
+               // Parse date and time with validation
+               let startTime = null;
+               let endTime = null;
 
-               // Normalize status - IMPORTANT: Check for 'confirmed' BEFORE 'completed'
-               // because 'completed' contains 'confirm' substring
-               // Handle both camelCase (bookingStatus) and PascalCase (BookingStatus) from backend
+               if (item.startTime) {
+                    const startDate = new Date(item.startTime);
+                    if (!isNaN(startDate.getTime())) {
+                         startTime = startDate;
+                    }
+               }
+
+               if (item.endTime) {
+                    const endDate = new Date(item.endTime);
+                    if (!isNaN(endDate.getTime())) {
+                         endTime = endDate;
+                    }
+               }
+
+               // Get booking date - prefer from item.date, then from startTime, then empty string
+               let bookingDate = '';
+               if (item.date) {
+                    // If date is already a string in YYYY-MM-DD format, use it directly
+                    if (typeof item.date === 'string' && item.date.match(/^\d{4}-\d{2}-\d{2}/)) {
+                         bookingDate = item.date.split('T')[0];
+                    } else {
+                         // Try to parse as date
+                         const dateObj = new Date(item.date);
+                         if (!isNaN(dateObj.getTime())) {
+                              bookingDate = dateObj.toISOString().split('T')[0];
+                         }
+                    }
+               } else if (startTime && !isNaN(startTime.getTime())) {
+                    bookingDate = startTime.toISOString().split('T')[0];
+               }
+
+               // Format time slot - prioritize time from schedule, then slot name
+               let timeSlot = '';
+
+               // First try to get time from startTime and endTime (from schedule)
+               if (startTime && endTime && !isNaN(startTime.getTime()) && !isNaN(endTime.getTime())) {
+                    try {
+                         const startTimeStr = startTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                         const endTimeStr = endTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                         timeSlot = `${startTimeStr} - ${endTimeStr}`;
+                    } catch (error) {
+                         console.error('Error formatting time slot from Date objects:', error);
+                    }
+               }
+
+               // If timeSlot is still empty, try to parse from string format (HH:MM - HH:MM)
+               if (!timeSlot && item.startTime && item.endTime) {
+                    try {
+                         // Handle string format like "06:00" or "06:00:00"
+                         const startTimeStr = typeof item.startTime === 'string'
+                              ? item.startTime.substring(0, 5)
+                              : item.startTime;
+                         const endTimeStr = typeof item.endTime === 'string'
+                              ? item.endTime.substring(0, 5)
+                              : item.endTime;
+
+                         if (startTimeStr && endTimeStr) {
+                              timeSlot = `${startTimeStr} - ${endTimeStr}`;
+                         }
+                    } catch (error) {
+                         console.error('Error formatting time slot from strings:', error);
+                    }
+               }
+
+               // If still empty, use slot name as fallback
+               if (!timeSlot) {
+                    timeSlot = item.slotName || item.SlotName || item.timeSlot || '';
+               }
+
+
                const rawStatus = item.bookingStatus || item.BookingStatus || item.status || item.Status || 'pending';
                const status = String(rawStatus).toLowerCase();
 
                // Log for debugging status mapping
                if (index === 0 || item.bookingStatus || item.BookingStatus) {
-                    console.log(`[normalizeBookingData] Booking ${item.bookingId || item.id || index} status mapping:`, {
-                         bookingId: item.bookingId || item.id,
-                         bookingStatus: item.bookingStatus,
-                         BookingStatus: item.BookingStatus,
-                         status: item.status,
-                         Status: item.Status,
-                         rawStatus: rawStatus,
-                         normalizedStatus: status
-                    });
+
                }
 
-               // Normalize status: 
-               // - If cancelled, always cancelled
-               // - If confirmed, keep as confirmed (don't auto-convert to completed based on time)
-               // - If completed, keep as completed
-               // - If pending, keep as pending
-               // - Otherwise, use the status from backend
+
                let normalizedStatus;
                if (status.includes('cancel')) {
                     normalizedStatus = 'cancelled';
@@ -715,13 +738,7 @@ const BookingManagement = ({ isDemo = false }) => {
 
                // Log for debugging payment status mapping
                if (index === 0 || item.paymentStatus || item.PaymentStatus) {
-                    console.log(`[normalizeBookingData] Booking ${item.bookingId || item.id || index} payment status mapping:`, {
-                         bookingId: item.bookingId || item.id,
-                         paymentStatus: item.paymentStatus,
-                         PaymentStatus: item.PaymentStatus,
-                         rawPaymentStatus: rawPaymentStatus,
-                         paymentStatusLowercase: paymentStatus
-                    });
+
                }
 
                let normalizedPaymentStatus;
@@ -745,31 +762,47 @@ const BookingManagement = ({ isDemo = false }) => {
 
                // Log final normalized payment status for debugging
                if (index === 0 || item.paymentStatus || item.PaymentStatus) {
-                    console.log(`[normalizeBookingData] Booking ${item.bookingId || item.id || index} final payment status:`, {
-                         bookingId: item.bookingId || item.id,
-                         rawPaymentStatus: rawPaymentStatus,
-                         paymentStatusLowercase: paymentStatus,
-                         normalizedPaymentStatus: normalizedPaymentStatus
-                    });
+
                }
 
                // Extract and normalize bookingId
                const rawBookingId = item.bookingId || item.bookingID || item.id;
                const numericBookingId = rawBookingId ? Number(rawBookingId) : null;
 
+               // Get field name from schedule data (preferred) or booking data
+               const fieldName = item.fieldName || item.FieldName || item.field || "Chưa rõ sân";
+
+               // Get slot name from schedule data (preferred) or booking data
+               const slotName = item.slotName || item.SlotName || item.timeSlot || '';
+               const finalTimeSlot = slotName || timeSlot;
+
                return {
                     id: numericBookingId ? String(numericBookingId) : `booking-${index}`,
                     bookingId: numericBookingId,
-                    field: item.fieldName || item.field || "Chưa rõ sân",
+                    field: fieldName,
                     customer: item.customerName || item.customer || item.userName || "Khách hàng",
                     phone: item.customerPhone || item.phone || "",
                     email: item.customerEmail || item.email || "",
                     date: bookingDate,
-                    timeSlot: timeSlot,
+                    timeSlot: finalTimeSlot,
                     status: normalizedStatus,
                     amount: Number(item.totalPrice || item.price || 0),
                     paymentStatus: normalizedPaymentStatus,
-                    createdAt: item.createdAt || item.createdDate || new Date().toISOString(),
+                    createdAt: (() => {
+                         if (item.createdAt) {
+                              const createdDate = new Date(item.createdAt);
+                              if (!isNaN(createdDate.getTime())) {
+                                   return createdDate.toISOString();
+                              }
+                         }
+                         if (item.createdDate) {
+                              const createdDate = new Date(item.createdDate);
+                              if (!isNaN(createdDate.getTime())) {
+                                   return createdDate.toISOString();
+                              }
+                         }
+                         return new Date().toISOString();
+                    })(),
                     notes: item.notes || item.note || "",
                     // Additional fields for detail modal
                     userId: item.userId || item.userID,
@@ -778,8 +811,8 @@ const BookingManagement = ({ isDemo = false }) => {
                     hasOpponent: Boolean(item.hasOpponent),
                     address: item.complexName || item.address || "",
                     // Store startTime and endTime for checking if booking has passed
-                    startTime: startTime ? startTime.toISOString() : null,
-                    endTime: endTime ? endTime.toISOString() : null,
+                    startTime: startTime && !isNaN(startTime.getTime()) ? startTime.toISOString() : null,
+                    endTime: endTime && !isNaN(endTime.getTime()) ? endTime.toISOString() : null,
                     // Store original status from backend for debugging
                     originalStatus: rawStatus
                };
@@ -798,17 +831,20 @@ const BookingManagement = ({ isDemo = false }) => {
           try {
                const result = await fetchBookingsByOwner(ownerId);
                if (result.success) {
-                    // Fetch user info for each booking
-                    const bookingsWithUserInfo = await Promise.all(
+                    // Fetch user info and schedule info for each booking
+                    const bookingsWithUserAndScheduleInfo = await Promise.all(
                          result.data.map(async (booking) => {
+                              let enrichedBooking = { ...booking };
+
+                              // Fetch user info
                               if (booking.userId || booking.userID) {
                                    try {
                                         const userId = booking.userId || booking.userID;
                                         const userResult = await profileService.getProfile(userId);
                                         if (userResult.ok && userResult.data) {
                                              const userData = userResult.profile || userResult.data;
-                                             return {
-                                                  ...booking,
+                                             enrichedBooking = {
+                                                  ...enrichedBooking,
                                                   customerName: userData.fullName || userData.name || userData.userName,
                                                   customerPhone: userData.phoneNumber || userData.phone,
                                                   customerEmail: userData.email,
@@ -818,11 +854,73 @@ const BookingManagement = ({ isDemo = false }) => {
                                         console.error(`Failed to fetch user ${booking.userId}:`, error);
                                    }
                               }
-                              return booking;
+
+                              // Fetch schedule info to get accurate field and slot names
+                              const scheduleId = booking.scheduleId || booking.scheduleID || booking.ScheduleID;
+                              if (scheduleId) {
+                                   try {
+                                        const scheduleResult = await fetchFieldScheduleById(scheduleId);
+                                        if (scheduleResult.success && scheduleResult.data) {
+                                             const scheduleData = scheduleResult.data;
+
+                                             // Get date from schedule
+                                             const scheduleDate = scheduleData.date || scheduleData.Date || enrichedBooking.date;
+
+                                             // Get time from schedule (format: "HH:MM" or "HH:MM:SS")
+                                             const scheduleStartTime = scheduleData.startTime || scheduleData.StartTime;
+                                             const scheduleEndTime = scheduleData.endTime || scheduleData.EndTime;
+
+                                             // Combine date and time to create full datetime strings
+                                             let fullStartTime = null;
+                                             let fullEndTime = null;
+
+                                             if (scheduleDate && scheduleStartTime && scheduleEndTime) {
+                                                  // Parse date
+                                                  let dateStr = '';
+                                                  if (typeof scheduleDate === 'string') {
+                                                       dateStr = scheduleDate.split('T')[0]; // Get YYYY-MM-DD part
+                                                  } else if (scheduleDate.year) {
+                                                       dateStr = `${scheduleDate.year}-${String(scheduleDate.month).padStart(2, '0')}-${String(scheduleDate.day).padStart(2, '0')}`;
+                                                  }
+
+                                                  // Parse time (handle both "HH:MM" and "HH:MM:SS")
+                                                  const startTimeStr = typeof scheduleStartTime === 'string'
+                                                       ? scheduleStartTime.substring(0, 5) // Get HH:MM part
+                                                       : `${String(scheduleStartTime.hour || 0).padStart(2, '0')}:${String(scheduleStartTime.minute || 0).padStart(2, '0')}`;
+
+                                                  const endTimeStr = typeof scheduleEndTime === 'string'
+                                                       ? scheduleEndTime.substring(0, 5) // Get HH:MM part
+                                                       : `${String(scheduleEndTime.hour || 0).padStart(2, '0')}:${String(scheduleEndTime.minute || 0).padStart(2, '0')}`;
+
+                                                  // Create full datetime strings
+                                                  if (dateStr && startTimeStr && endTimeStr) {
+                                                       fullStartTime = `${dateStr}T${startTimeStr}:00`;
+                                                       fullEndTime = `${dateStr}T${endTimeStr}:00`;
+                                                  }
+                                             }
+
+                                             enrichedBooking = {
+                                                  ...enrichedBooking,
+                                                  // Use schedule data for accurate field and slot info
+                                                  fieldName: scheduleData.fieldName || scheduleData.FieldName || enrichedBooking.fieldName || enrichedBooking.field,
+                                                  slotName: scheduleData.slotName || scheduleData.SlotName || enrichedBooking.slotName || enrichedBooking.timeSlot,
+                                                  // Also update date and time from schedule if available
+                                                  date: scheduleDate || enrichedBooking.date,
+                                                  // Use combined datetime if available, otherwise use original
+                                                  startTime: fullStartTime || scheduleData.startTime || scheduleData.StartTime || enrichedBooking.startTime,
+                                                  endTime: fullEndTime || scheduleData.endTime || scheduleData.EndTime || enrichedBooking.endTime,
+                                             };
+                                        }
+                                   } catch (error) {
+                                        console.error(`Failed to fetch schedule ${scheduleId}:`, error);
+                                   }
+                              }
+
+                              return enrichedBooking;
                          })
                     );
 
-                    const normalizedBookings = normalizeBookingData(bookingsWithUserInfo);
+                    const normalizedBookings = normalizeBookingData(bookingsWithUserAndScheduleInfo);
                     setBookings(normalizedBookings);
                } else {
                     setBookingError(result.error || "Không thể tải danh sách booking.");
@@ -855,6 +953,35 @@ const BookingManagement = ({ isDemo = false }) => {
      const handleViewDetails = (booking) => {
           setSelectedBooking(booking);
           setIsDetailModalOpen(true);
+     };
+
+     // Check if booking has passed (endTime is in the past)
+     const isBookingPassed = (booking) => {
+          if (!booking.endTime) {
+               // If no endTime, try to check from date and timeSlot
+               if (booking.date && booking.timeSlot) {
+                    // Try to parse timeSlot (format: "HH:MM - HH:MM")
+                    const timeMatch = booking.timeSlot.match(/(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})/);
+                    if (timeMatch) {
+                         const [, , , endHour, endMin] = timeMatch;
+                         const bookingDate = new Date(booking.date);
+                         bookingDate.setHours(parseInt(endHour), parseInt(endMin), 0, 0);
+                         return bookingDate < new Date();
+                    }
+               }
+               return false;
+          }
+
+          try {
+               const endTime = new Date(booking.endTime);
+               if (isNaN(endTime.getTime())) {
+                    return false;
+               }
+               return endTime < new Date();
+          } catch (error) {
+               console.error('Error checking if booking passed:', error);
+               return false;
+          }
      };
 
      const filteredBookings = useMemo(() => {
@@ -1171,31 +1298,41 @@ const BookingManagement = ({ isDemo = false }) => {
                                                                            size="sm"
                                                                            onClick={() => handleViewDetails(booking)}
                                                                            className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+                                                                           title="Xem chi tiết"
                                                                       >
                                                                            <Eye className="w-4 h-4" />
                                                                       </Button>
 
-                                                                      {(booking.status === 'pending' || (booking.status === 'confirmed' && booking.paymentStatus === 'paid')) && (
-                                                                           <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                onClick={() => handleConfirmBooking(booking.bookingId || booking.id)}
-                                                                                className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                                                title={booking.status === 'pending' ? "Xác nhận thanh toán" : "Hoàn thành booking"}
-                                                                           >
-                                                                                <CheckCircle className="w-4 h-4" />
-                                                                           </Button>
+                                                                      {!isBookingPassed(booking) && (
+                                                                           <>
+                                                                                {(booking.status === 'pending' || (booking.status === 'confirmed' && booking.paymentStatus === 'paid')) && (
+                                                                                     <Button
+                                                                                          variant="ghost"
+                                                                                          size="sm"
+                                                                                          onClick={() => handleConfirmBooking(booking.bookingId || booking.id)}
+                                                                                          className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                                                          title={booking.status === 'pending' ? "Xác nhận thanh toán" : "Hoàn thành booking"}
+                                                                                     >
+                                                                                          <CheckCircle className="w-4 h-4" />
+                                                                                     </Button>
+                                                                                )}
+                                                                                {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                                                                                     <Button
+                                                                                          variant="ghost"
+                                                                                          size="sm"
+                                                                                          onClick={() => handleCancelBooking(booking.bookingId || booking.id)}
+                                                                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                                                          title="Hủy booking"
+                                                                                     >
+                                                                                          <XCircle className="w-4 h-4" />
+                                                                                     </Button>
+                                                                                )}
+                                                                           </>
                                                                       )}
-                                                                      {booking.status !== 'cancelled' && booking.status !== 'completed' && (
-                                                                           <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                onClick={() => handleCancelBooking(booking.bookingId || booking.id)}
-                                                                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                                                title="Hủy booking"
-                                                                           >
-                                                                                <XCircle className="w-4 h-4" />
-                                                                           </Button>
+                                                                      {isBookingPassed(booking) && (
+                                                                           <span className="text-xs text-gray-500 italic" title="Lịch trình đã qua">
+                                                                                Đã qua
+                                                                           </span>
                                                                       )}
                                                                  </div>
                                                             </TableCell>
@@ -1218,41 +1355,41 @@ const BookingManagement = ({ isDemo = false }) => {
                               <Modal
                                    isOpen={isDetailModalOpen}
                                    onClose={() => setIsDetailModalOpen(false)}
-                                   title="Chi tiết booking"
+                                   title="Chi tiết đặt sân"
                                    className="max-w-2xl rounded-2xl border border-teal-200 shadow-lg h-[90vh] overflow-y-auto scrollbar-hide bg-gray-300"
                               >
                                    {selectedBooking && (
-                                        <div className="space-y-6">
+                                        <div className="space-y-3">
                                              {/* Customer Info */}
-                                             <div className="bg-gradient-to-r from-teal-50 to-emerald-50 p-4 rounded-xl border border-teal-200">
-                                                  <h3 className="text-lg font-semibold text-teal-800 mb-3 flex items-center">
+                                             <div className="bg-gradient-to-r from-teal-50 to-emerald-50 p-3 rounded-2xl border border-teal-200">
+                                                  <h3 className="text-lg font-semibold text-teal-800 mb-2 flex items-center">
                                                        <User className="w-5 h-5 mr-2" />
                                                        Thông tin khách hàng
                                                   </h3>
-                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                       <div className="bg-white p-3 rounded-lg border border-teal-100">
-                                                            <label className="text-sm font-semibold text-teal-700 flex items-center mb-2">
+                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
+                                                            <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">
                                                                  <User className="w-4 h-4 mr-1" />
                                                                  Tên khách hàng
                                                             </label>
                                                             <p className="text-sm font-semibold text-gray-900">{selectedBooking.customer}</p>
                                                        </div>
-                                                       <div className="bg-white p-3 rounded-lg border border-teal-100">
-                                                            <label className="text-sm font-semibold text-teal-700 flex items-center mb-2">
+                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
+                                                            <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">
                                                                  <Phone className="w-4 h-4 mr-1" />
                                                                  Số điện thoại
                                                             </label>
                                                             <p className="text-sm font-semibold text-gray-900">{selectedBooking.phone}</p>
                                                        </div>
-                                                       <div className="bg-white p-3 rounded-lg border border-teal-100">
-                                                            <label className="text-sm font-semibold text-teal-700 flex items-center mb-2">
+                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
+                                                            <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">
                                                                  <Mail className="w-4 h-4 mr-1" />
                                                                  Email
                                                             </label>
                                                             <p className="text-sm font-semibold text-gray-900">{selectedBooking.email}</p>
                                                        </div>
-                                                       <div className="bg-white p-3 rounded-lg border border-teal-100">
-                                                            <label className="text-sm font-semibold text-teal-700 flex items-center mb-2">
+                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
+                                                            <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">
                                                                  <Calendar className="w-4 h-4 mr-1" />
                                                                  Ngày đặt
                                                             </label>
@@ -1262,35 +1399,35 @@ const BookingManagement = ({ isDemo = false }) => {
                                              </div>
 
                                              {/* Booking Info */}
-                                             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
-                                                  <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
+                                             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-200">
+                                                  <h3 className="text-lg font-semibold text-blue-800 mb-2 flex items-center">
                                                        <Calendar className="w-5 h-5 mr-2" />
                                                        Thông tin booking
                                                   </h3>
-                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                       <div className="bg-white p-3 rounded-lg border border-blue-100">
-                                                            <label className="text-sm font-semibold text-blue-700 flex items-center mb-2">
+                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-blue-100">
+                                                            <label className="text-sm font-semibold text-blue-700 flex items-center mb-1">
                                                                  <MapPin className="w-4 h-4 mr-1" />
                                                                  Sân
                                                             </label>
                                                             <p className="text-sm font-semibold text-gray-900">{selectedBooking.field}</p>
                                                        </div>
-                                                       <div className="bg-white p-3 rounded-lg border border-blue-100">
-                                                            <label className="text-sm font-semibold text-blue-700 flex items-center mb-2">
+                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-blue-100">
+                                                            <label className="text-sm font-semibold text-blue-700 flex items-center mb-1">
                                                                  <Calendar className="w-4 h-4 mr-1" />
                                                                  Ngày
                                                             </label>
                                                             <p className="text-sm font-semibold text-gray-900">{formatDate(selectedBooking.date)}</p>
                                                        </div>
-                                                       <div className="bg-white p-3 rounded-lg border border-blue-100">
-                                                            <label className="text-sm font-semibold text-blue-700 flex items-center mb-2">
+                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-blue-100">
+                                                            <label className="text-sm font-semibold text-blue-700 flex items-center mb-1">
                                                                  <Clock className="w-4 h-4 mr-1" />
                                                                  Khung giờ
                                                             </label>
                                                             <p className="text-sm font-semibold text-gray-900">{selectedBooking.timeSlot}</p>
                                                        </div>
-                                                       <div className="bg-white p-3 rounded-lg border border-blue-100">
-                                                            <label className="text-sm font-semibold text-blue-700 flex items-center mb-2">
+                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-blue-100">
+                                                            <label className="text-sm font-semibold text-blue-700 flex items-center mb-1">
                                                                  <DollarSign className="w-4 h-4 mr-1" />
                                                                  Số tiền
                                                             </label>
@@ -1300,14 +1437,14 @@ const BookingManagement = ({ isDemo = false }) => {
                                              </div>
 
                                              {/* Status */}
-                                             <div className="bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-xl border border-amber-200">
-                                                  <h3 className="text-lg font-semibold text-amber-800 mb-3 flex items-center">
+                                             <div className="bg-gradient-to-r from-amber-50 to-yellow-50 p-3 rounded-2xl border border-amber-200">
+                                                  <h3 className="text-lg font-semibold text-amber-800 mb-2 flex items-center">
                                                        <AlertCircle className="w-5 h-5 mr-2" />
                                                        Trạng thái
                                                   </h3>
-                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                       <div className="bg-white p-3 rounded-lg border border-amber-100">
-                                                            <label className="text-sm font-semibold text-amber-700 flex items-center mb-2">
+                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-amber-100">
+                                                            <label className="text-sm font-semibold text-amber-700 flex items-center mb-1">
                                                                  <CheckSquare className="w-4 h-4 mr-1" />
                                                                  Trạng thái booking
                                                             </label>
@@ -1315,8 +1452,8 @@ const BookingManagement = ({ isDemo = false }) => {
                                                                  {getStatusText(selectedBooking.status)}
                                                             </span>
                                                        </div>
-                                                       <div className="bg-white p-3 rounded-lg border border-amber-100">
-                                                            <label className="text-sm font-semibold text-amber-700 flex items-center mb-2">
+                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-amber-100">
+                                                            <label className="text-sm font-semibold text-amber-700 flex items-center mb-1">
                                                                  <CreditCard className="w-4 h-4 mr-1" />
                                                                  Trạng thái thanh toán
                                                             </label>
@@ -1330,7 +1467,7 @@ const BookingManagement = ({ isDemo = false }) => {
                                              {/* Cancellation Info for Cancelled Bookings */}
                                              {selectedBooking.status === 'cancelled' && selectedBooking.notes && (
                                                   <>
-                                                       <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-xl border border-red-200">
+                                                       <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-2xl border border-red-200">
                                                             <h3 className="text-lg font-semibold text-red-800 mb-3 flex items-center">
                                                                  <AlertCircle className="w-5 h-5 mr-2" />
                                                                  Lý do hủy booking
@@ -1349,7 +1486,7 @@ const BookingManagement = ({ isDemo = false }) => {
                                                             </div>
                                                        </div>
                                                        {selectedBooking.amount > 0 && (
-                                                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200">
+                                                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-2xl border border-green-200">
                                                                  <h3 className="text-lg font-semibold text-green-800 mb-3 flex items-center">
                                                                       <DollarSign className="w-5 h-5 mr-2" />
                                                                       Thông tin hoàn tiền
@@ -1374,7 +1511,7 @@ const BookingManagement = ({ isDemo = false }) => {
 
                                              {/* Notes for non-cancelled bookings */}
                                              {selectedBooking.status !== 'cancelled' && selectedBooking.notes && (
-                                                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
+                                                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-2xl border border-purple-200">
                                                        <h3 className="text-lg font-semibold text-purple-800 mb-3 flex items-center">
                                                             <FileText className="w-5 h-5 mr-2" />
                                                             Ghi chú
@@ -1389,14 +1526,35 @@ const BookingManagement = ({ isDemo = false }) => {
 
                                              {/* Actions */}
                                              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-                                                  {(selectedBooking.status === 'pending' || (selectedBooking.status === 'confirmed' && selectedBooking.paymentStatus === 'paid')) && (
+                                                  {isBookingPassed(selectedBooking) ? (
+                                                       // Booking đã qua - chỉ hiển thị nút đóng
+                                                       <Button
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                 setIsDetailModalOpen(false);
+                                                            }}
+                                                            className="rounded-2xl"
+                                                       >
+                                                            Đóng
+                                                       </Button>
+                                                  ) : (selectedBooking.status === 'pending' || (selectedBooking.status === 'confirmed' && selectedBooking.paymentStatus === 'paid')) ? (
+                                                       // Booking chưa qua và có thể thao tác - hiển thị đầy đủ các nút
                                                        <>
+                                                            <Button
+                                                                 variant="outline"
+                                                                 onClick={() => {
+                                                                      setIsDetailModalOpen(false);
+                                                                 }}
+                                                                 className="rounded-2xl"
+                                                            >
+                                                                 Đóng
+                                                            </Button>
                                                             <Button
                                                                  onClick={() => {
                                                                       handleConfirmBooking(selectedBooking.bookingId || selectedBooking.id);
                                                                       setIsDetailModalOpen(false);
                                                                  }}
-                                                                 className="rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold"
+                                                                 className="rounded-2xl bg-green-600 hover:bg-green-700 text-white font-semibold"
                                                             >
                                                                  <CheckCircle className="w-4 h-4 mr-2" />
                                                                  {selectedBooking.status === 'pending' ? 'Xác nhận thanh toán' : 'Hoàn thành'}
@@ -1407,12 +1565,23 @@ const BookingManagement = ({ isDemo = false }) => {
                                                                       handleCancelBooking(selectedBooking.bookingId || selectedBooking.id);
                                                                       setIsDetailModalOpen(false);
                                                                  }}
-                                                                 className="rounded-xl border-red-300 text-red-600 hover:bg-red-50 font-semibold"
+                                                                 className="rounded-2xl border-red-300 text-red-600 hover:bg-red-50 font-semibold"
                                                             >
                                                                  <XCircle className="w-4 h-4 mr-2" />
                                                                  Hủy booking
                                                             </Button>
                                                        </>
+                                                  ) : (
+                                                       // Booking đã hủy hoặc hoàn thành - chỉ hiển thị nút đóng
+                                                       <Button
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                 setIsDetailModalOpen(false);
+                                                            }}
+                                                            className="rounded-2xl"
+                                                       >
+                                                            Đóng
+                                                       </Button>
                                                   )}
                                              </div>
                                         </div>

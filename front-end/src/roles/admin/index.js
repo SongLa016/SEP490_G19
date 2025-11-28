@@ -5,7 +5,6 @@ export { default as SystemNotificationsManagement } from "./pages/admin/SystemNo
 export { default as ViolationReportsManagement } from "./pages/admin/ViolationReportsManagement";
 export { default as BlogManagement } from "./pages/admin/BlogManagement";
 export { default as SystemSettings } from "./pages/admin/SystemSettings";
-export { default as OwnerRegistrationApproval } from "./pages/admin/OwnerRegistrationApproval";
 
 // Layout exports
 export { default as AdminLayout } from "./layouts/admin/AdminLayout";

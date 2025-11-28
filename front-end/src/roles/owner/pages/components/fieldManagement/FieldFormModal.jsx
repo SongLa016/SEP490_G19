@@ -47,7 +47,7 @@ const FieldFormModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title={isEdit ? "Chỉnh sửa sân" : "Thêm sân mới"}
-      className="max-w-2xl rounded-2xl shadow-lg px-3 max-h-[90vh] overflow-y-auto scrollbar-hide"
+      className="max-w-2xl rounded-2xl shadow-lg px-3 max-h-[90vh]"
     >
       <form onSubmit={onSubmit} className="space-y-3">
         {!isEdit && (
@@ -155,16 +155,26 @@ const FieldFormModal = ({
               <Leaf className="w-4 h-4 inline mr-1 text-blue-600" />
               Loại cỏ
             </label>
-            <Input
-              name="grassType"
-              value={formData.grassType}
-              onChange={onInputChange}
-              placeholder="Ví dụ: Cỏ nhân tạo"
-            />
+            <Select
+              value={formData.grassType || ""}
+              onValueChange={(value) =>
+                onInputChange({
+                  target: { name: "grassType", value },
+                })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn loại cỏ" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Nhân tạo">Nhân tạo</SelectItem>
+                <SelectItem value="Tự nhiên">Tự nhiên</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        <div>
+        <div className="flex flex-col gap-1">
           <label className=" text-sm items-center flex font-medium text-gray-700">
             <FileText className="w-4 h-4 inline mr-1 text-blue-600" />
             <span>Mô tả</span>
@@ -180,10 +190,10 @@ const FieldFormModal = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
+          <div className="flex flex-col gap-1">
             <label className="items-center flex text-sm font-medium text-gray-700">
               <DollarSign className="w-4 h-4 inline mr-1 text-blue-600" />
-              <span>Giá mỗi giờ (VND)</span> <span className="text-red-500">*</span>
+              <span>Giá trung bình (VND)</span> <span className="text-red-500">*</span>
             </label>
             <Input
               name="pricePerHour"
@@ -195,7 +205,7 @@ const FieldFormModal = ({
               required
             />
           </div>
-          <div>
+          <div className="flex flex-col gap-1">
             <label className="items-center flex text-sm font-medium text-gray-700">
               <CheckCircle className="w-4 h-4 inline mr-1 text-blue-600" />
               <span>Trạng thái</span>

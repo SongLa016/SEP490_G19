@@ -68,6 +68,98 @@ export default function ScheduleGrid({
                               statusBadge = '<span class="inline-block px-3  bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">Trống</span>';
                          }
 
+                         // Build booking info HTML if booked
+                         let bookingInfoHTML = '';
+                         if (booked && bookingInfo && bookingInfo.bookingId) {
+                              const formatCurrency = (amount) => {
+                                   return new Intl.NumberFormat('vi-VN', {
+                                        style: 'currency',
+                                        currency: 'VND'
+                                   }).format(amount || 0);
+                              };
+
+                              const getPaymentStatusBadge = (status) => {
+                                   const statusLower = (status || '').toLowerCase();
+                                   if (statusLower === 'paid' || statusLower === 'đã thanh toán') {
+                                        return '<span class="inline-block px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">Đã thanh toán</span>';
+                                   } else if (statusLower === 'pending' || statusLower === 'chờ thanh toán') {
+                                        return '<span class="inline-block px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">Chờ thanh toán</span>';
+                                   } else if (statusLower === 'cancelled' || statusLower === 'đã hủy') {
+                                        return '<span class="inline-block px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">Đã hủy</span>';
+                                   }
+                                   return '<span class="inline-block px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold">' + (status || 'N/A') + '</span>';
+                              };
+
+                              bookingInfoHTML = `
+                                   <div class="bg-green-50 px-4 py-3 rounded-2xl border-2 border-green-300 mt-3">
+                                        <p class="text-sm font-bold text-green-900 mb-3 flex items-center gap-2">
+                                             <span>📋</span>
+                                             <span>Thông tin Booking</span>
+                                        </p>
+                                        <div class="space-y-2">
+                                             <div class="flex items-center justify-between">
+                                                  <span class="text-xs text-gray-600">Mã Booking:</span>
+                                                  <span class="text-sm font-semibold text-green-900">#${bookingInfo.bookingId}</span>
+                                             </div>
+                                             <div class="border-t border-green-200 pt-2 mt-2">
+                                                  <p class="text-xs font-semibold text-gray-700 mb-2">Thông tin khách hàng:</p>
+                                                  <div class="space-y-1">
+                                                       <div class="flex items-center gap-2">
+                                                            <span class="text-xs text-gray-600">👤 Tên:</span>
+                                                            <span class="text-sm font-medium text-green-900">${bookingInfo.customerName || 'N/A'}</span>
+                                                       </div>
+                                                       <div class="flex items-center gap-2">
+                                                            <span class="text-xs text-gray-600">📞 SĐT:</span>
+                                                            <span class="text-sm font-medium text-green-900">${bookingInfo.customerPhone || 'N/A'}</span>
+                                                       </div>
+                                                       ${bookingInfo.customerEmail && bookingInfo.customerEmail !== 'N/A' ? `
+                                                       <div class="flex items-center gap-2">
+                                                            <span class="text-xs text-gray-600">📧 Email:</span>
+                                                            <span class="text-sm font-medium text-green-900">${bookingInfo.customerEmail}</span>
+                                                       </div>
+                                                       ` : ''}
+                                                  </div>
+                                             </div>
+                                             <div class="border-t border-green-200 pt-2 mt-2">
+                                                  <p class="text-xs font-semibold text-gray-700 mb-2">Thông tin thanh toán:</p>
+                                                  <div class="space-y-1">
+                                                       <div class="flex items-center justify-between">
+                                                            <span class="text-xs text-gray-600">Tổng tiền:</span>
+                                                            <span class="text-sm font-bold text-orange-500">${formatCurrency(bookingInfo.totalPrice)}</span>
+                                                       </div>
+                                                       ${bookingInfo.depositAmount > 0 ? `
+                                                       <div class="flex items-center justify-between">
+                                                            <span class="text-xs text-gray-600">Đặt cọc:</span>
+                                                            <span class="text-sm font-semibold text-yellow-600">${formatCurrency(bookingInfo.depositAmount)}</span>
+                                                       </div>
+                                                       ` : ''}
+                                                       <div class="flex items-center justify-between">
+                                                            <span class="text-xs text-gray-600">Trạng thái:</span>
+                                                            ${getPaymentStatusBadge(bookingInfo.paymentStatus)}
+                                                       </div>
+                                                  </div>
+                                             </div>
+                                             ${bookingInfo.hasOpponent ? `
+                                             <div class="border-t border-green-200 pt-2 mt-2">
+                                                  <div class="flex items-center gap-2">
+                                                       <span class="text-xs text-gray-600">⚽</span>
+                                                       <span class="text-xs font-medium text-green-900">Có đối thủ</span>
+                                                  </div>
+                                             </div>
+                                             ` : ''}
+                                             ${bookingInfo.address && bookingInfo.address !== 'N/A' ? `
+                                             <div class="border-t border-green-200 pt-2 mt-2">
+                                                  <div class="flex items-start gap-2">
+                                                       <span class="text-xs text-gray-600">📍</span>
+                                                       <span class="text-xs font-medium text-green-900">${bookingInfo.address}</span>
+                                                  </div>
+                                             </div>
+                                             ` : ''}
+                                        </div>
+                                   </div>
+                              `;
+                         }
+
                          Swal.fire({
                               title: `${statusIcon} Thông tin lịch trình`,
                               html: `
@@ -88,19 +180,13 @@ export default function ScheduleGrid({
                                              <p class="text-sm text-gray-600 mb-1"><strong class="text-gray-800">Ngày:</strong></p>
                                              <p class="text-base font-semibold text-gray-900">📅 ${selectedDate.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                                         </div>
-                                        ${booked && bookingInfo ? `
-                                        <div class="bg-green-50 px-4 rounded-2xl border border-green-200">
-                                             <p class="text-sm text-gray-600 mb-1"><strong class="text-gray-800">Thông tin khách hàng:</strong></p>
-                                             <p class="text-base font-semibold text-green-900">👤 ${bookingInfo.customerName}</p>
-                                             <p class="text-xs text-gray-600 mt-1">📞 ${bookingInfo.customerPhone}</p>
-                                        </div>
-                                        ` : ''}
+                                        ${bookingInfoHTML}
                                    </div>
                               `,
                               icon: 'info',
                               confirmButtonColor: '#0d9488',
                               confirmButtonText: 'Đóng',
-                              width: '550px'
+                              width: '600px'
                          });
                     }}
                >

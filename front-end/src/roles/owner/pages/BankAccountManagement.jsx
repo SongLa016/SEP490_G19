@@ -287,12 +287,12 @@ export default function BankAccountManagement({ isDemo = false }) {
                     loadData();
                } catch (error) {
                     console.error('Error deleting bank account:', error);
-                    
+
                     // Determine error type for better user message
                     let errorTitle = 'Không thể xóa tài khoản';
                     let errorText = error.message || 'Không thể xóa tài khoản ngân hàng. Vui lòng thử lại sau.';
                     let footer = '<small>Nếu vấn đề vẫn tiếp tục, vui lòng liên hệ hỗ trợ</small>';
-                    
+
                     // Check if error is about account being used by fields
                     if (error.message && (
                          error.message.includes('đang được sử dụng') ||
@@ -316,7 +316,7 @@ export default function BankAccountManagement({ isDemo = false }) {
                          errorTitle = 'Không thể xóa tài khoản';
                          // errorText already contains the appropriate message from handleApiError
                     }
-                    
+
                     await Swal.fire({
                          icon: 'error',
                          title: errorTitle,
@@ -432,7 +432,7 @@ export default function BankAccountManagement({ isDemo = false }) {
                                                                  <h3 className="text-base font-bold text-gray-900">{account.bankName}</h3>
                                                                  {account.isDefault && (
                                                                       <span className="px-2 py-1 absolute top-7 right-0 bg-yellow-100 text-yellow-700 border border-yellow-200 text-xs font-medium rounded-full flex items-center">
-                                                                           <Star className="w-3 h-3 mr-1 fill-current" />
+                                                                           <Star className="w-3 h-3 mr-1 fill-current animate-pulse" />
                                                                            Mặc định
                                                                       </span>
                                                                  )}

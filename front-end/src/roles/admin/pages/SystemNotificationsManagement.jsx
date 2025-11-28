@@ -10,10 +10,17 @@ import {
      SelectTrigger,
      SelectValue,
      Textarea,
-     Table,
      Modal,
      Badge
 } from "../../../shared/components/ui";
+import {
+     Table,
+     TableHeader,
+     TableBody,
+     TableRow,
+     TableHead,
+     TableCell
+} from "../../../shared/components/ui/table";
 import {
      createNotification,
      getNotifications,
@@ -21,6 +28,7 @@ import {
      deleteNotification,
      deleteAllNotifications
 } from "../../../shared/services/notifications";
+import { fetchAllUserStatistics } from "../../../shared/services/adminStatistics";
 import {
      Bell,
      Plus,
@@ -46,6 +54,8 @@ export default function SystemNotificationsManagement() {
      const [selectedNotification, setSelectedNotification] = useState(null);
      const [showDetailModal, setShowDetailModal] = useState(false);
      const [loading, setLoading] = useState(false);
+     const [users, setUsers] = useState([]);
+     const [selectedRecipientId, setSelectedRecipientId] = useState("0");
 
      const [newNotification, setNewNotification] = useState({
           message: "",
@@ -73,6 +83,25 @@ export default function SystemNotificationsManagement() {
           return [];
      };
 
+     const loadUsers = useCallback(async () => {
+          try {
+               const result = await fetchAllUserStatistics();
+               if (result.ok && result.data) {
+                    const usersData = Array.isArray(result.data) ? result.data : (result.data.users || result.data.data || []);
+                    const transformedUsers = usersData.map(user => ({
+                         id: user.userId,
+                         email: user.email,
+                         fullName: user.fullName,
+                         phone: user.phone || "N/A",
+                         role: user.roleName
+                    }));
+                    setUsers(transformedUsers);
+               }
+          } catch (err) {
+               console.error("Error loading users:", err);
+          }
+     }, []);
+
      const loadNotifications = useCallback(async (options = {}) => {
           try {
                setLoading(true);
@@ -95,16 +124,53 @@ export default function SystemNotificationsManagement() {
 
                     console.log("✅ [SystemNotificationsManagement] Parsed notifications:", {
                          count: notificationsData.length,
-                         sample: notificationsData[0]
+                         sample: notificationsData[0],
+                         allData: notificationsData
                     });
 
-                    setNotifications(notificationsData);
+                    // Nếu không có data, thử dùng mock data để test UI
+                    if (notificationsData.length === 0) {
+                         console.warn("⚠️ [SystemNotificationsManagement] No notifications from API, using mock data for testing");
+                         const mockNotifications = [
+                              {
+                                   notificationID: 1,
+                                   userId: 0,
+                                   type: "System",
+                                   targetId: 0,
+                                   message: "Hệ thống sẽ bảo trì từ 2:00-4:00 sáng ngày mai",
+                                   isRead: false,
+                                   createdAt: new Date().toISOString()
+                              },
+                              {
+                                   notificationID: 2,
+                                   userId: 2,
+                                   type: "NewComment",
+                                   targetId: 5,
+                                   message: "Bạn có bình luận mới trên bài viết",
+                                   isRead: true,
+                                   createdAt: new Date(Date.now() - 86400000).toISOString()
+                              },
+                              {
+                                   notificationID: 3,
+                                   userId: 0,
+                                   type: "System",
+                                   targetId: 0,
+                                   message: "Chào mừng bạn đến với hệ thống đặt sân!",
+                                   isRead: false,
+                                   createdAt: new Date(Date.now() - 172800000).toISOString()
+                              }
+                         ];
+                         setNotifications(mockNotifications);
+                    } else {
+                         setNotifications(notificationsData);
+                    }
                } else {
                     console.error("❌ [SystemNotificationsManagement] Failed to load:", result.reason);
                     setNotifications([]);
-                    // Không hiển thị alert nếu chỉ là không có data
-                    if (result.reason && !result.reason.includes("Không tìm thấy")) {
-                         alert("Không thể tải danh sách thông báo: " + result.reason);
+                    // Hiển thị thông báo lỗi
+                    if (result.reason) {
+                         console.error("Error reason:", result.reason);
+                         // Không alert để không làm phiền user, chỉ log
                     }
                }
           } catch (error) {
@@ -124,7 +190,8 @@ export default function SystemNotificationsManagement() {
           }
 
           loadNotifications({ type: typeFilter });
-     }, [user, typeFilter, loadNotifications]);
+          loadUsers();
+     }, [user, typeFilter, loadNotifications, loadUsers]);
 
      useEffect(() => {
           let filtered = notifications;
@@ -449,7 +516,7 @@ export default function SystemNotificationsManagement() {
                               <Button
                                    onClick={() => loadNotifications({ type: typeFilter })}
                                    variant="outline"
-                                   className="border-red-200 text-red-600 hover:bg-red-50"
+                                   className="border-red-200 rounded-2xl text-red-600 hover:bg-red-50"
                                    disabled={loading}
                               >
                                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -458,7 +525,7 @@ export default function SystemNotificationsManagement() {
                               <Button
                                    onClick={handleDeleteAllNotificationsAdmin}
                                    variant="outline"
-                                   className="border-red-300 text-red-600 hover:bg-red-50"
+                                   className="border-red-300 rounded-2xl text-red-600 hover:bg-red-50"
                                    disabled={loading || notifications.length === 0}
                               >
                                    <Trash2 className="w-4 h-4 mr-2" />
@@ -466,7 +533,7 @@ export default function SystemNotificationsManagement() {
                               </Button>
                               <Button
                                    onClick={() => setShowCreateModal(true)}
-                                   className="bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700"
+                                   className="bg-gradient-to-r  rounded-2xl from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700"
                               >
                                    <Plus className="w-4 h-4 mr-2" />
                                    Tạo thông báo
@@ -477,6 +544,8 @@ export default function SystemNotificationsManagement() {
                          </div>
                     </div>
                </div>
+
+
 
                {/* Filters */}
                <Card className="p-6 rounded-2xl shadow-lg">
@@ -623,11 +692,28 @@ export default function SystemNotificationsManagement() {
                               </div>
                          </div>
                     ) : (
-                         <Table
-                              data={filteredNotifications}
-                              columns={columns}
-                              className="w-full"
-                         />
+                         <div className="overflow-x-auto">
+                              <Table className="w-full  rounded-2xl border border-teal-300">
+                                   <TableHeader>
+                                        <TableRow>
+                                             {columns.map((column) => (
+                                                  <TableHead key={column.key}>{column.label}</TableHead>
+                                             ))}
+                                        </TableRow>
+                                   </TableHeader>
+                                   <TableBody>
+                                        {filteredNotifications.map((notification) => (
+                                             <TableRow key={notification.notificationID || notification.id || Math.random()}>
+                                                  {columns.map((column) => (
+                                                       <TableCell key={column.key}>
+                                                            {column.render(notification)}
+                                                       </TableCell>
+                                                  ))}
+                                             </TableRow>
+                                        ))}
+                                   </TableBody>
+                              </Table>
+                         </div>
                     )}
                </Card>
 
@@ -691,21 +777,47 @@ export default function SystemNotificationsManagement() {
                               </p>
                          </div>
 
-                         {/* User ID */}
+                         {/* User ID - Người nhận */}
                          <div>
                               <label className="block text-sm font-medium text-slate-700 mb-2">
                                    User ID (Người nhận)
                               </label>
-                              <Input
-                                   type="number"
-                                   value={newNotification.userId || ""}
-                                   onChange={(e) => setNewNotification({
-                                        ...newNotification,
-                                        userId: e.target.value ? parseInt(e.target.value) : 0
-                                   })}
-                                   placeholder="0 = Gửi cho tất cả, >0 = Gửi cho user cụ thể"
-                                   min="0"
-                              />
+                              <Select
+                                   value={selectedRecipientId}
+                                   onValueChange={(value) => {
+                                        setSelectedRecipientId(value);
+                                        setNewNotification({
+                                             ...newNotification,
+                                             userId: parseInt(value)
+                                        });
+                                   }}
+                              >
+                                   <SelectTrigger className="w-full rounded-xl">
+                                        <SelectValue />
+                                   </SelectTrigger>
+                                   <SelectContent className="max-h-[300px]">
+                                        <SelectItem value="0">
+                                             <div className="flex items-center space-x-2">
+                                                  <Users className="w-4 h-4 text-blue-600" />
+                                                  <span className="font-medium">0 = Gửi cho tất cả ({users.length} người)</span>
+                                             </div>
+                                        </SelectItem>
+                                        {users.map((user) => (
+                                             <SelectItem key={user.id} value={user.id.toString()}>
+                                                  <div className="flex items-center space-x-2">
+                                                       <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center text-white text-xs font-semibold">
+                                                            {user.fullName.charAt(0)}
+                                                       </div>
+                                                       <div className="flex-1">
+                                                            <p className="font-medium text-sm">{user.fullName}</p>
+                                                            <p className="text-xs text-slate-500">{user.email}</p>
+                                                       </div>
+                                                       <Badge className="text-xs">{user.role}</Badge>
+                                                  </div>
+                                             </SelectItem>
+                                        ))}
+                                   </SelectContent>
+                              </Select>
                               <p className="text-xs text-slate-500 mt-1">
                                    Để trống hoặc nhập 0 để gửi thông báo hệ thống cho tất cả người dùng
                               </p>
