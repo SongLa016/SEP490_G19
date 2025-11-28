@@ -17,7 +17,7 @@ namespace BallSport.Application.DTOs.MatchFinding
         public string OpponentFullName { get; set; } = string.Empty;
         public string OpponentTeamName { get; set; } = string.Empty;
         public string? OpponentPhone { get; set; }
-        public string? OpponentAvatar { get; set; }
+        
         public DateTime CreatedAt { get; set; }
     }
 }

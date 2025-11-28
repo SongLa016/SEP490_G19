@@ -6,7 +6,7 @@ namespace BallSport.Application.DTOs.MatchFinding
         public int ParticipantId { get; set; }
         public int UserId { get; set; }
         public string FullName { get; set; } = string.Empty;
-        public string? Avatar { get; set; }
+        
         public string TeamName { get; set; } = string.Empty;
         public PlayerCountOption PlayerCount { get; set; }
         public string? ContactPhone { get; set; }

@@ -22,7 +22,7 @@ namespace BallSport.Application.Services.MatchFinding
         // 1. LẤY DANH SÁCH KÈO ĐƯỢC LOẠI BỎ KÈO CỦA MÌNH + ĐÚNG NGÀY GIỜ
         public async Task<PagedResponse<MatchRequestListItemDto>> GetActiveRequestsAsync(int page = 1, int size = 10, int? currentUserId = null)
         {
-            var requests = await _repo.GetActiveRequestsAsync(); 
+            var requests = await _repo.GetActiveRequestsAsync();
 
             var dtos = requests.Select(r =>
             {
@@ -94,7 +94,7 @@ namespace BallSport.Application.Services.MatchFinding
                     ParticipantId = p.ParticipantId,
                     UserId = p.UserId,
                     FullName = p.User?.FullName ?? "Ẩn danh",
-                    Avatar = p.User?.Avatar != null ? Convert.ToBase64String(p.User.Avatar) : null,
+
                     TeamName = p.TeamName ?? "Đội bóng",
                     PlayerCount = (PlayerCountOption)(p.PlayerCount ?? 7),
                     ContactPhone = p.ContactPhone,
@@ -240,7 +240,7 @@ namespace BallSport.Application.Services.MatchFinding
                     {
                         UserId = participant.UserId,
                         FullName = participant.User?.FullName ?? "Ẩn danh",
-                        Avatar = participant.User?.Avatar != null ? Convert.ToBase64String(participant.User.Avatar) : null,
+
                         Phone = participant.User?.Phone ?? "Không có"
                     },
                     OpponentTeamName = participant.TeamName ?? "Đội bóng",
@@ -317,7 +317,7 @@ namespace BallSport.Application.Services.MatchFinding
                     OpponentTeamName = h.MatchRequest.MatchParticipants?
                         .FirstOrDefault(p => p.UserId == h.OpponentUserId)?.TeamName ?? "Đối thủ",
                     OpponentPhone = h.OpponentUser?.Phone,
-                    OpponentAvatar = h.OpponentUser?.Avatar != null ? Convert.ToBase64String(h.OpponentUser.Avatar) : null,
+
                     CreatedAt = h.CreatedAt ?? DateTime.UtcNow
                 };
             })
