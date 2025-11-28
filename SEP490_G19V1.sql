@@ -489,3 +489,162 @@ DROP COLUMN Image;
 
 ALTER TABLE FieldComplexes
 ADD ImageUrl NVARCHAR(MAX) NULL;
+
+-- 1. Cập nhật MatchRequests
+ALTER TABLE MatchRequests ADD 
+    OpponentUserID INT NULL FOREIGN KEY REFERENCES Users(UserID),
+    MatchedAt DATETIME2 NULL,
+    ExpiresAt DATETIME2 NULL,
+    PlayerCount INT NULL;
+
+-- 2. Tái tạo MatchParticipants (Mutual Matching)
+DROP TABLE IF EXISTS MatchParticipants;
+CREATE TABLE MatchParticipants (
+    ParticipantID INT IDENTITY(1,1) PRIMARY KEY,
+    MatchRequestID INT NOT NULL FOREIGN KEY REFERENCES MatchRequests(MatchRequestID),
+    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),
+    TeamName NVARCHAR(100) NULL,
+    PlayerCount INT NULL,
+    ContactPhone NVARCHAR(20) NULL,
+    Note NVARCHAR(255) NULL,
+    StatusFromB NVARCHAR(20) DEFAULT 'Pending'  
+        CHECK (StatusFromB IN ('Pending','Accepted','Rejected','Withdrawn')),
+    StatusFromA NVARCHAR(20) DEFAULT 'Accepted' 
+        CHECK (StatusFromA IN ('Accepted','Rejected','Cancelled')),
+    JoinedAt DATETIME2 DEFAULT GETDATE(),
+    RespondedAt DATETIME2 NULL,
+    CONSTRAINT UQ_OneJoinPerUser UNIQUE (MatchRequestID, UserID)
+);
+CREATE INDEX IX_MatchParticipants_Request ON MatchParticipants(MatchRequestID);
+
+-- 3. Hoàn thiện PlayerMatchHistory
+ALTER TABLE PlayerMatchHistory ADD 
+    OpponentUserID INT NULL FOREIGN KEY REFERENCES Users(UserID);
+CREATE INDEX IX_PlayerMatchHistory_Opponent ON PlayerMatchHistory(OpponentUserID);
+
+-- TRIGGER 1: Khi matched → HasOpponent = 1
+CREATE OR ALTER TRIGGER TR_MatchRequests_AfterMatched
+ON MatchRequests
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF UPDATE(Status)
+    BEGIN
+        UPDATE b
+        SET b.HasOpponent = 1
+        FROM Bookings b
+        INNER JOIN inserted i ON b.BookingID = i.BookingID
+        WHERE i.Status = 'Matched' AND i.BookingID IS NOT NULL;
+    END
+END
+GO
+
+-- TRIGGER 2: Khi hủy/expired → HasOpponent = 0 (nếu chưa từng matched)
+CREATE OR ALTER TRIGGER TR_MatchRequests_AfterCancel
+ON MatchRequests
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF UPDATE(Status)
+    BEGIN
+        UPDATE b
+        SET b.HasOpponent = 0
+        FROM Bookings b
+        INNER JOIN inserted i ON b.BookingID = i.BookingID
+        WHERE i.Status IN ('Cancelled', 'Expired') 
+          AND i.OpponentUserID IS NULL;
+    END
+END
+GO
+
+-- TRIGGER 3: Khi mutual accept → tự động tạo lịch sử cho cả 2 bên
+CREATE OR ALTER TRIGGER TR_MatchParticipants_AfterMutualAccept
+ON MatchParticipants
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF UPDATE(StatusFromB)
+    BEGIN
+        INSERT INTO PlayerMatchHistory (UserID, MatchRequestID, Role, FinalStatus, OpponentUserID, CreatedAt, UpdatedAt)
+        SELECT 
+            mr.CreatedBy, i.MatchRequestID, 'Creator', 'Matched', i.UserID, GETDATE(), GETDATE()
+        FROM inserted i
+        INNER JOIN MatchRequests mr ON i.MatchRequestID = mr.MatchRequestID
+        WHERE i.StatusFromB = 'Accepted' AND i.StatusFromA = 'Accepted'
+          AND NOT EXISTS (SELECT 1 FROM PlayerMatchHistory h 
+                          WHERE h.MatchRequestID = i.MatchRequestID AND h.UserID = mr.CreatedBy)
+
+        UNION ALL
+
+        SELECT 
+            i.UserID, i.MatchRequestID, 'Joiner', 'Matched', mr.CreatedBy, GETDATE(), GETDATE()
+        FROM inserted i
+        INNER JOIN MatchRequests mr ON i.MatchRequestID = mr.MatchRequestID
+        WHERE i.StatusFromB = 'Accepted' AND i.StatusFromA = 'Accepted'
+          AND NOT EXISTS (SELECT 1 FROM PlayerMatchHistory h 
+                          WHERE h.MatchRequestID = i.MatchRequestID AND h.UserID = i.UserID);
+    END
+END
+GO
+-- 1) Gói booking theo tháng/quý
+CREATE TABLE BookingPackages (
+    BookingPackageID INT IDENTITY(1,1) PRIMARY KEY,        -- ID gói
+    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID),  -- Ai đặt gói
+    FieldID INT NOT NULL FOREIGN KEY REFERENCES Fields(FieldID), -- Sân áp dụng
+    PackageName NVARCHAR(255) NOT NULL,                     -- Tên gói (VD: Tháng 05/2025)
+    StartDate DATE NOT NULL,                                 -- Ngày bắt đầu gói
+    EndDate DATE NOT NULL,                                   -- Ngày kết thúc gói
+    TotalPrice DECIMAL(18,2) NOT NULL,                      -- Tổng tiền của cả gói
+    BookingStatus NVARCHAR(20) DEFAULT 'Pending',           -- Pending / Confirmed / Cancelled / Completed
+    PaymentStatus NVARCHAR(20) DEFAULT 'Pending',           -- Pending / Paid / Refunded
+    QRCode NVARCHAR(255) NULL,                               -- QR code giữ chỗ
+    QRExpiresAt DATETIME2 NULL,                              -- Hết hạn QR
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE()
+);
+
+-- 2) Buổi con trong gói
+CREATE TABLE PackageSessions (
+    PackageSessionID INT IDENTITY(1,1) PRIMARY KEY,         -- ID buổi con
+    BookingPackageID INT NOT NULL FOREIGN KEY REFERENCES BookingPackages(BookingPackageID), -- Gói cha
+    ScheduleID INT NOT NULL FOREIGN KEY REFERENCES FieldSchedules(ScheduleID), -- Slot / ngày cụ thể
+    SessionDate DATE NOT NULL,                               -- Ngày buổi chơi (copy từ FieldSchedules.Date)
+    PricePerSession DECIMAL(18,2) NOT NULL,                 -- Giá 1 buổi (lấy từ FieldPrices hoặc Field.PricePerHour)
+    SessionStatus NVARCHAR(20) DEFAULT 'Pending',           -- Pending / Confirmed / Cancelled / Completed
+    UserID INT NOT NULL FOREIGN KEY REFERENCES Users(UserID), -- Ai đặt (copy từ BookingPackage)
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE()
+);
+
+CREATE TABLE MonthlyPackagePayments (
+    PaymentID INT IDENTITY(1,1) PRIMARY KEY,                      
+    BookingPackageID INT NOT NULL 
+        CONSTRAINT FK_PackagePayments_BookingPackage
+        REFERENCES BookingPackages(BookingPackageID),
+    UserID INT NOT NULL 
+        CONSTRAINT FK_PackagePayments_User
+        REFERENCES Users(UserID),
+    Amount DECIMAL(10,2) NOT NULL,          -- Tổng tiền gói
+    TotalSlots INT NOT NULL,                 -- Tổng số buổi/sân trong gói
+    Method NVARCHAR(50) DEFAULT 'PayOS',     -- VNPay / Momo / PayOS...
+    TransactionCode NVARCHAR(100) NULL,     -- Mã giao dịch ngân hàng
+    Status NVARCHAR(20) DEFAULT 'Pending',  -- Pending / Success / Failed
+    PaidAt DATETIME2 NULL,                   -- Thời gian thanh toán
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE()
+);
+
+CREATE TABLE BookingPackageSessionDraft (
+    DraftId INT IDENTITY(1,1) PRIMARY KEY,
+    BookingPackageId INT NOT NULL, -- ID gói tháng
+    UserId INT NOT NULL,           -- người dùng tạo gói
+    FieldId INT NOT NULL,          -- sân/field liên quan
+    SlotId INT NOT NULL,           -- slot trong tuần mà user chọn
+    DayOfWeek TINYINT NOT NULL,    -- 0=Sunday, 1=Monday,..., 6=Saturday
+    Status NVARCHAR(20) NOT NULL DEFAULT 'Draft', -- Draft / Confirmed
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+    UpdatedAt DATETIME NULL
+);
