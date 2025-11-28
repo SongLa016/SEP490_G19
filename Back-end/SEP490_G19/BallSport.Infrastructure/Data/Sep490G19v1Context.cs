@@ -26,6 +26,8 @@ public partial class Sep490G19v1Context : DbContext
 
     public virtual DbSet<BookingPackage> BookingPackages { get; set; }
 
+    public virtual DbSet<BookingPackageSessionDraft> BookingPackageSessionDrafts { get; set; }
+
     public virtual DbSet<CancellationPolicy> CancellationPolicies { get; set; }
 
     public virtual DbSet<Comment> Comments { get; set; }
@@ -86,8 +88,7 @@ public partial class Sep490G19v1Context : DbContext
 
     public virtual DbSet<ViolationReport> ViolationReports { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    { }
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {}
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -239,6 +240,21 @@ public partial class Sep490G19v1Context : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__BookingPa__UserI__5A846E65");
+        });
+
+        modelBuilder.Entity<BookingPackageSessionDraft>(entity =>
+        {
+            entity.HasKey(e => e.DraftId).HasName("PK__BookingP__3E93D65B1D87DFDF");
+
+            entity.ToTable("BookingPackageSessionDraft");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValue("Draft");
+            entity.Property(e => e.UpdatedAt).HasColumnType("datetime");
         });
 
         modelBuilder.Entity<CancellationPolicy>(entity =>
