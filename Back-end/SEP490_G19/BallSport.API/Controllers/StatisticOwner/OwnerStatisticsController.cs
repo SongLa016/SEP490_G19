@@ -1,8 +1,9 @@
-﻿using BallSport.Application.Services.StatisticOwner;
+﻿using System.Security.Claims;
+using System.Threading.Tasks;
+using BallSport.Application.Services.OwnerStatistics;
+using BallSport.Application.Services.StatisticOwner;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
-using System.Threading.Tasks;
 
 namespace BallSport.API.Controllers
 {
@@ -12,10 +13,12 @@ namespace BallSport.API.Controllers
     public class OwnerStatisticsController : ControllerBase
     {
         private readonly OwnerRecentBookingService _recentBookingService;
+        private readonly OwnerTimeSlotStatisticService _service;
 
-        public OwnerStatisticsController(OwnerRecentBookingService recentBookingService)
+        public OwnerStatisticsController(OwnerRecentBookingService recentBookingService, OwnerTimeSlotStatisticService service)
         {
             _recentBookingService = recentBookingService;
+            _service = service;
         }
 
         [HttpGet("recent-bookings")]
@@ -30,6 +33,21 @@ namespace BallSport.API.Controllers
 
             var bookings = await _recentBookingService.GetRecentBookingsAsync(ownerId, top);
             return Ok(bookings);
+        }
+
+        [HttpGet("time-slot-performance")]
+        public async Task<IActionResult> GetTimeSlotPerformance()
+        {
+            var ownerIdClaim = User.FindFirst("UserID")?.Value;
+
+            if (string.IsNullOrEmpty(ownerIdClaim) || !int.TryParse(ownerIdClaim, out var ownerId))
+            {
+                return Unauthorized(new { message = "Không xác định được tài khoản Owner" });
+            }
+
+            var data = await _service.GetTimeSlotPerformanceAsync(ownerId);
+
+            return Ok(data);
         }
     }
 }
