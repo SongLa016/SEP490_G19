@@ -197,9 +197,9 @@ services.AddScoped<INotificationService, NotificationService>();
 services.AddScoped<IReportService, ReportService>();
 // --- Match Finding module ---
 
-services.AddScoped<IMatchRequestRepository, MatchRequestRepository>();
-services.AddScoped<IMatchParticipantRepository, MatchParticipantRepository>();
-//services.AddScoped<IMatchRequestService, MatchRequestService>();
+services.AddScoped<IMatchFindingRepository, MatchFindingRepository>();
+//services.AddScoped<IMatchParticipantRepository, MatchParticipantRepository>();
+services.AddScoped<IMatchFindingService, MatchFindingService>();
 
 // --- Settings ---
 services.Configure<CommunitySettings>(config.GetSection("CommunitySettings"));
