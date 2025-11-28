@@ -41,7 +41,7 @@ export default function AdminDashboard() {
      const [recentActivities, setRecentActivities] = useState([]);
 
      useEffect(() => {
-          // Mock data - trong thực tế sẽ gọi API
+  
           setStats({
                totalUsers: 1250,
                totalOwners: 45,
@@ -57,7 +57,7 @@ export default function AdminDashboard() {
                {
                     id: 1,
                     type: "user_registration",
-                    message: "Người dùng mới đăng ký: Nguyễn Văn A",
+                    message: "Người dùng mới đăng ký: Nguyễn Văn Duc",
                     time: "2 phút trước",
                     icon: Users
                },
@@ -65,7 +65,7 @@ export default function AdminDashboard() {
                     id: 2,
                     type: "violation_report",
                     message: "Báo cáo vi phạm mới từ User ID: 123",
-                    time: "15 phút trước",
+                    time: "30 phút trước",
                     icon: AlertTriangle
                },
                {
@@ -78,7 +78,7 @@ export default function AdminDashboard() {
                {
                     id: 4,
                     type: "field_added",
-                    message: "Sân mới được thêm: Sân bóng XYZ",
+                    message: "Sân mới được thêm: Sân bóng Đại Dương",
                     time: "2 giờ trước",
                     icon: Building2
                }
@@ -94,7 +94,7 @@ export default function AdminDashboard() {
 
      const statCards = [
           {
-               title: "Tổng người dùng",
+               title: "Tổng số người dùng",
                value: stats.totalUsers.toLocaleString(),
                icon: Users,
                color: "blue",
@@ -186,7 +186,7 @@ export default function AdminDashboard() {
 
      return (
           <div className="space-y-6">
-               {/* Header */}
+               /* Header */
                <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl p-6 border border-red-200/50">
                     <div className="flex items-center justify-between">
                          <div>
@@ -203,7 +203,7 @@ export default function AdminDashboard() {
                     </div>
                </div>
 
-               {/* Stats Grid */}
+              
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {statCards.map((stat, index) => {
                          const Icon = stat.icon;
@@ -228,7 +228,7 @@ export default function AdminDashboard() {
                     })}
                </div>
 
-               {/* Recent Activities */}
+             
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card className="rounded-2xl shadow-lg">
                          <CardHeader>
@@ -320,7 +320,7 @@ export default function AdminDashboard() {
                     </Card>
                </div>
 
-               {/* System Status */}
+               
                <Card>
                     <CardHeader>
                          <div className="flex items-center justify-between">
