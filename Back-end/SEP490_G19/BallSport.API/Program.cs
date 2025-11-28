@@ -4,6 +4,7 @@ using BallSport.Application.Services;
 using BallSport.Application.Services.AdminStatistics;
 using BallSport.Application.Services.Community;
 using BallSport.Application.Services.MatchFinding;
+using BallSport.Application.Services.OwnerStatistics;
 using BallSport.Application.Services.StatisticOwner;
 
 using BallSport.Infrastructure.Data;
@@ -12,6 +13,7 @@ using BallSport.Infrastructure.Repositories;
 using BallSport.Infrastructure.Repositories.AdminStatistics;
 using BallSport.Infrastructure.Repositories.Community;
 using BallSport.Infrastructure.Repositories.MatchFinding;
+using BallSport.Infrastructure.Repositories.OwnerStatistics;
 using BallSport.Infrastructure.Repositories.StatisticOwner;
 using BallSport.Infrastructure.Settings;
 using Banking.Application.Services;
@@ -111,8 +113,9 @@ services.AddScoped<IOwnerSummaryRepository, OwnerSummaryRepository>();
 services.AddScoped<OwnerSummaryService>();
 services.AddScoped<IOwnerFillRateRepository, OwnerFillRateRepository>();
 services.AddScoped<OwnerFillRateService>();
-services.AddScoped<IRecentActivityRepository, RecentActivityRepository>();
-services.AddScoped<AdminRecentActivityService>();
+services.AddScoped<OwnerTimeSlotStatisticRepository>();
+services.AddScoped<OwnerTimeSlotStatisticService>();
+
 
 // --- Statistic Admin ---
 services.AddScoped<IAdminUserStatisticRepository, AdminUserStatisticRepository>();
@@ -129,6 +132,8 @@ services.AddScoped<IReportStatisticRepository, ReportStatisticRepository>();
 services.AddScoped<ReportStatisticService>();
 services.AddScoped<IPostStatisticRepository, PostStatisticRepository>();
 services.AddScoped<IPostStatisticService, PostStatisticService>();
+services.AddScoped<IRecentActivityRepository, RecentActivityRepository>();
+services.AddScoped<AdminRecentActivityService>();
 services.AddScoped<IUserListRepository, UserListRepository>();
 services.AddScoped<IUserListService, UserListService>();
 
