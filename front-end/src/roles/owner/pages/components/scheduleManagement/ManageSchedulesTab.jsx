@@ -53,6 +53,18 @@ export default function ManageSchedulesTab({
      const getScheduleDate = (schedule) => {
           const scheduleDate = schedule.date || schedule.scheduleDate || schedule.ScheduleDate;
           if (typeof scheduleDate === 'string') {
+               // If it's a date string in YYYY-MM-DD format, parse it as local date to avoid timezone issues
+               if (/^\d{4}-\d{2}-\d{2}$/.test(scheduleDate)) {
+                    const [year, month, day] = scheduleDate.split('-').map(Number);
+                    return new Date(year, month - 1, day);
+               }
+               // If it's an ISO string, parse it
+               if (scheduleDate.includes('T')) {
+                    const datePart = scheduleDate.split('T')[0];
+                    const [year, month, day] = datePart.split('-').map(Number);
+                    return new Date(year, month - 1, day);
+               }
+               // Otherwise, try to parse as date
                return new Date(scheduleDate);
           } else if (scheduleDate && scheduleDate.year) {
                return new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day);
@@ -627,7 +639,7 @@ export default function ManageSchedulesTab({
                                              </div>
                                              <div className="p-4">
                                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                                       {group.schedules.map((schedule) => {
+                                                       {group.schedules.map((schedule, cardIndex) => {
                                                             const scheduleId = schedule.scheduleId || schedule.ScheduleID;
                                                             const fieldName = schedule.fieldName || schedule.FieldName || 'N/A';
                                                             const slotName = schedule.slotName || schedule.SlotName || 'N/A';
@@ -648,10 +660,16 @@ export default function ManageSchedulesTab({
                                                             if (startTime && endTime) {
                                                                  timeStr = `${formatTimeObj(startTime)} - ${formatTimeObj(endTime)}`;
                                                             }
+                                                            
+                                                            // Create unique key for grouped view
+                                                            const fieldId = schedule.fieldId ?? schedule.FieldID ?? schedule.fieldID;
+                                                            const slotId = schedule.slotId ?? schedule.SlotID ?? schedule.SlotId ?? schedule.slotID;
+                                                            const scheduleDateRaw = schedule.date || schedule.scheduleDate || schedule.ScheduleDate;
+                                                            const uniqueCardKey = `${scheduleId}-${fieldId}-${slotId}-${scheduleDateRaw}-${cardIndex}`;
 
                                                             return (
                                                                  <Card
-                                                                      key={scheduleId}
+                                                                      key={uniqueCardKey}
                                                                       className={`p-3 rounded-xl border-2 transition-all hover:shadow-lg ${isSelected
                                                                            ? 'border-teal-500 bg-teal-50'
                                                                            : 'border-gray-200 hover:border-teal-300'
@@ -807,19 +825,55 @@ export default function ManageSchedulesTab({
                                         </tr>
                                    </thead>
                                    <tbody>
-                                        {paginatedSchedules.map((schedule) => {
+                                        {paginatedSchedules.map((schedule, index) => {
                                              const scheduleId = schedule.scheduleId || schedule.ScheduleID;
                                              const fieldName = schedule.fieldName || schedule.FieldName || 'N/A';
                                              const slotName = schedule.slotName || schedule.SlotName || 'N/A';
-                                             const status = schedule.status || schedule.Status || 'Available';
-                                             const isSelected = selectedSchedules.has(scheduleId);
-
-                                             // Format date
+                                             
+                                             // Get fieldId, slotId, and scheduleDateRaw first (needed for multiple purposes)
+                                             const fieldId = schedule.fieldId ?? schedule.FieldID ?? schedule.fieldID;
+                                             const slotId = schedule.slotId ?? schedule.SlotID ?? schedule.SlotId ?? schedule.slotID;
+                                             const scheduleDateRaw = schedule.date || schedule.scheduleDate || schedule.ScheduleDate;
+                                             
+                                             // Format date for display
                                              let dateStr = 'N/A';
                                              const date = getScheduleDate(schedule);
                                              if (date) {
                                                   dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
                                              }
+                                             
+                                             // Create unique key combining scheduleId, fieldId, slotId, and date to avoid duplicate keys
+                                             const uniqueKey = `${scheduleId}-${fieldId}-${slotId}-${scheduleDateRaw}-${index}`;
+                                             
+                                             // Get base status from schedule
+                                             let status = schedule.status || schedule.Status || 'Available';
+                                             
+                                             // Calculate bookingDate for checking booking
+                                             let bookingDate = null;
+                                             if (typeof scheduleDateRaw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(scheduleDateRaw)) {
+                                                  const [year, month, day] = scheduleDateRaw.split('-').map(Number);
+                                                  bookingDate = new Date(year, month - 1, day);
+                                                  bookingDate.setHours(12, 0, 0, 0);
+                                             } else if (date) {
+                                                  bookingDate = new Date(date);
+                                                  bookingDate.setHours(12, 0, 0, 0);
+                                             }
+                                             
+                                             // Check if there's a booking for this schedule and update status to "Booked"
+                                             // This ensures that if a schedule has a booking, it shows as "Booked" even if the status in DB is "Available"
+                                             let bookingInfo = null;
+                                             if (getBookingInfo && status.toLowerCase() !== 'maintenance' && bookingDate && fieldId && slotId) {
+                                                  bookingInfo = getBookingInfo(Number(fieldId), bookingDate, Number(slotId));
+                                                  if (bookingInfo) {
+                                                       // If there's a booking, status must be "Booked"
+                                                       status = 'Booked';
+                                                  } else if (status.toLowerCase() === 'available') {
+                                                       // If no booking and current status is Available, keep it as Available (Trống)
+                                                       status = 'Available';
+                                                  }
+                                             }
+                                             
+                                             const isSelected = selectedSchedules.has(scheduleId);
 
                                              // Format time
                                              let timeStr = 'N/A';
@@ -829,20 +883,13 @@ export default function ManageSchedulesTab({
                                                   timeStr = `${formatTimeObj(startTime)} - ${formatTimeObj(endTime)}`;
                                              }
 
-                                             // Lấy thông tin booking nếu status là Booked
-                                             const fieldId = schedule.fieldId ?? schedule.FieldID ?? schedule.fieldID;
-                                             const slotId = schedule.slotId ?? schedule.SlotID ?? schedule.SlotId ?? schedule.slotID;
-                                             const bookingInfo = (status.toLowerCase() === 'booked' && getBookingInfo && date && fieldId && slotId)
-                                                  ? getBookingInfo(
-                                                       Number(fieldId),
-                                                       date,
-                                                       Number(slotId)
-                                                  )
-                                                  : null;
+                                             // bookingInfo đã được tính ở trên khi check status
+                                             // Nếu có booking, status đã được set thành 'Booked'
+                                             // Nếu không có booking và status là 'Available', giữ nguyên 'Available' (Trống)
 
                                              return (
                                                   <tr
-                                                       key={scheduleId}
+                                                       key={uniqueKey}
                                                        className={`border border-gray-200 hover:bg-gray-50 transition-colors text-center ${isSelected ? 'bg-teal-50' : ''} ${status.toLowerCase() === 'booked' && bookingInfo ? 'bg-blue-50/50' : ''}`}
                                                   >
                                                        <td className="p-2 text-center border-r border-gray-200">

@@ -508,7 +508,8 @@ export default function ScheduleManagement({ isDemo = false }) {
      const formatDateToLocalString = (date) => {
           if (!date) return '';
           const d = new Date(date);
-          // Use local date components to avoid timezone issues
+          // Use local date components for Date objects (like selectedDate)
+          // This ensures the date displayed matches what the user selected
           const year = d.getFullYear();
           const month = String(d.getMonth() + 1).padStart(2, '0');
           const day = String(d.getDate()).padStart(2, '0');
@@ -518,24 +519,64 @@ export default function ScheduleManagement({ isDemo = false }) {
      // Helper function to normalize date string from API (handles both ISO strings and date objects)
      const normalizeDateString = (dateValue) => {
           if (!dateValue) return '';
+          
+          // Handle string dates
           if (typeof dateValue === 'string') {
                // If it's already a date string (YYYY-MM-DD), return as is
                if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
                     return dateValue;
                }
-               // If it's an ISO string, extract date part
+               // If it's an ISO string, extract date part (before T or space)
                if (dateValue.includes('T')) {
                     return dateValue.split('T')[0];
                }
-               // Try to parse as date
-               return formatDateToLocalString(new Date(dateValue));
+               if (dateValue.includes(' ')) {
+                    return dateValue.split(' ')[0];
+               }
+               // Try to parse as date but use UTC to avoid timezone issues
+               try {
+                    const date = new Date(dateValue);
+                    if (!isNaN(date.getTime())) {
+                         // Use UTC to avoid timezone shift
+                         const year = date.getUTCFullYear();
+                         const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                         const day = String(date.getUTCDate()).padStart(2, '0');
+                         return `${year}-${month}-${day}`;
+                    }
+               } catch (e) {
+                    // If parsing fails, try formatDateToLocalString
+                    return formatDateToLocalString(new Date(dateValue));
+               }
           }
-          if (dateValue.year && dateValue.month && dateValue.day) {
-               // Date object with year, month, day
+          
+          // Handle date objects with year, month, day properties
+          if (dateValue && typeof dateValue === 'object' && dateValue.year && dateValue.month && dateValue.day) {
                return `${dateValue.year}-${String(dateValue.month).padStart(2, '0')}-${String(dateValue.day).padStart(2, '0')}`;
           }
-          // Try to parse as date
-          return formatDateToLocalString(new Date(dateValue));
+          
+          // Handle Date objects - use local date to match formatDateToLocalString
+          if (dateValue instanceof Date) {
+               const year = dateValue.getFullYear();
+               const month = String(dateValue.getMonth() + 1).padStart(2, '0');
+               const day = String(dateValue.getDate()).padStart(2, '0');
+               return `${year}-${month}-${day}`;
+          }
+          
+          // Fallback: try to parse as date
+          try {
+               const date = new Date(dateValue);
+               if (!isNaN(date.getTime())) {
+                    // For string dates that need parsing, use local date to match user's timezone
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+               }
+          } catch (e) {
+               // If all else fails, return empty string
+          }
+          
+          return '';
      };
 
 
@@ -1463,6 +1504,26 @@ export default function ScheduleManagement({ isDemo = false }) {
           const dateStr = formatDateToLocalString(date);
           console.log(`[getBookingInfo] Searching for booking: fieldId=${fieldId}, slotId=${slotId}, date=${dateStr}`);
           console.log(`[getBookingInfo] Total schedules: ${fieldSchedules.length}, Total bookings: ${bookings.length}`);
+          
+          // Debug: Show sample schedules and bookings
+          if (fieldSchedules.length > 0) {
+               const sampleSchedule = fieldSchedules[0];
+               console.log(`[getBookingInfo] Sample schedule:`, {
+                    fieldId: sampleSchedule.fieldId ?? sampleSchedule.FieldID,
+                    slotId: sampleSchedule.slotId ?? sampleSchedule.SlotID,
+                    date: sampleSchedule.date,
+                    scheduleId: sampleSchedule.scheduleId ?? sampleSchedule.ScheduleID
+               });
+          }
+          if (bookings.length > 0) {
+               const sampleBooking = bookings[0];
+               console.log(`[getBookingInfo] Sample booking:`, {
+                    scheduleId: sampleBooking.scheduleId || sampleBooking.scheduleID || sampleBooking.ScheduleID,
+                    fieldId: sampleBooking.fieldId || sampleBooking.fieldID || sampleBooking.FieldID,
+                    slotId: sampleBooking.slotId || sampleBooking.slotID || sampleBooking.SlotID,
+                    date: sampleBooking.date || sampleBooking.bookingDate
+               });
+          }
 
           // First, try to find booking directly by scheduleId
           // Find the schedule first
@@ -1475,7 +1536,13 @@ export default function ScheduleManagement({ isDemo = false }) {
                const dateMatch = scheduleDateStr === dateStr;
 
                if (fieldMatch && slotMatch && !dateMatch) {
-                    console.log(`[getBookingInfo] Schedule found but date mismatch: scheduleDate=${scheduleDateStr}, searchDate=${dateStr}`);
+                    console.log(`[getBookingInfo] Schedule found but date mismatch:`, {
+                         scheduleDateRaw: s.date,
+                         scheduleDateNormalized: scheduleDateStr,
+                         searchDate: dateStr,
+                         fieldId: scheduleFieldId,
+                         slotId: scheduleSlotId
+                    });
                }
 
                return fieldMatch && slotMatch && dateMatch;

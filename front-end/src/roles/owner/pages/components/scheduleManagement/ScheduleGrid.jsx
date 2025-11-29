@@ -35,7 +35,7 @@ export default function ScheduleGrid({
           ? fields
           : fields.filter(f => f.fieldId.toString() === selectedFieldForSchedule);
 
-     const renderScheduleCell = (schedule, field, slot, fieldMaintenance = false) => {
+     const renderScheduleCell = (schedule, field, slot, fieldMaintenance = false, slotIdForField = null) => {
           const status = schedule.status || schedule.Status || 'Available';
           const normalizedStatus = fieldMaintenance ? 'Maintenance' : status;
           const statusLower = normalizedStatus.toLowerCase();
@@ -47,12 +47,15 @@ export default function ScheduleGrid({
                ? 'bg-gradient-to-br from-orange-100 via-amber-100 to-orange-100 text-orange-900 border border-orange-200'
                : `${fieldColor} text-white`;
 
+          // Use slotIdForField if provided, otherwise fallback to slot.slotId
+          const actualSlotId = slotIdForField || slot.slotId || slot.SlotID || schedule.slotId || schedule.SlotID;
+
           return (
                <div
                     className={`${baseColorClasses} p-3 rounded-xl w-full text-sm font-medium cursor-pointer hover:opacity-90 hover:shadow-lg transition-all shadow-md`}
                     onClick={(e) => {
                          e.stopPropagation();
-                         const bookingInfo = getBookingInfo(Number(field.fieldId), selectedDate, slot.slotId || slot.SlotID);
+                         const bookingInfo = getBookingInfo(Number(field.fieldId), selectedDate, Number(actualSlotId));
 
                          let statusIcon = '📋';
                          let statusBadge = '';
@@ -384,7 +387,7 @@ export default function ScheduleGrid({
                                                                                      )
                                                                                 )
                                                                            ) : (
-                                                                                renderScheduleCell(fieldSchedule, field, slot, fieldMaintenance)
+                                                                                renderScheduleCell(fieldSchedule, field, slot, fieldMaintenance, slotIdForField)
                                                                            )}
                                                                       </TableCell>
                                                                  );
