@@ -158,37 +158,6 @@ export default function ProfileSettings({ user }) {
                                         </div>
                                    </div>
                               </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                   <div className="space-y-2">
-                                        <label className="block text-sm font-semibold text-teal-800">
-                                             Chủ đề giao diện
-                                        </label>
-                                        <Select defaultValue="light">
-                                             <SelectTrigger className="rounded-2xl border-teal-100 bg-white focus:border-teal-500 focus:ring-teal-500">
-                                                  <SelectValue placeholder="Chọn chủ đề" />
-                                             </SelectTrigger>
-                                             <SelectContent>
-                                                  <SelectItem value="light">Sáng</SelectItem>
-                                                  <SelectItem value="dark">Tối</SelectItem>
-                                                  <SelectItem value="auto">Tự động</SelectItem>
-                                             </SelectContent>
-                                        </Select>
-                                   </div>
-                                   <div className="space-y-2">
-                                        <label className="block text-sm font-semibold text-teal-800">
-                                             Chế độ hiển thị
-                                        </label>
-                                        <Select defaultValue="comfortable">
-                                             <SelectTrigger className="rounded-2xl border-teal-100 bg-white focus:border-teal-500 focus:ring-teal-500">
-                                                  <SelectValue placeholder="Chọn chế độ" />
-                                             </SelectTrigger>
-                                             <SelectContent>
-                                                  <SelectItem value="comfortable">Thoải mái</SelectItem>
-                                                  <SelectItem value="compact">Gọn gàng</SelectItem>
-                                             </SelectContent>
-                                        </Select>
-                                   </div>
-                              </div>
                          </CardContent>
                     </Card>
                </FadeIn>
@@ -212,105 +181,27 @@ export default function ProfileSettings({ user }) {
                                              {accountInfo.status || "Active"}
                                         </div>
                                    </div>
-                                   <div className="flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50/90 px-4 py-3">
-                                        <div className="flex items-center">
-                                             <Mail className="w-5 h-5 text-blue-600 mr-2" />
-                                             <span className="text-sm font-semibold text-blue-800">Email xác thực</span>
-                                        </div>
-                                        <div className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${accountInfo.emailVerified
-                                             ? 'text-green-600 bg-green-100'
-                                             : 'text-yellow-600 bg-yellow-100'
-                                             }`}>
-                                             {accountInfo.emailVerified ? "Đã xác thực" : "Chưa xác thực"}
+                                   <div className="rounded-2xl border border-gray-200 bg-gray-50/90 px-4 py-3">
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                             <div className="flex items-center text-gray-700">
+                                                  <Calendar className="w-5 h-5 text-gray-600 mr-2" />
+                                                  <span className="text-sm font-semibold">Thành viên từ</span>
+                                             </div>
+                                             <span className="text-sm text-gray-600">
+                                                  {new Date(accountInfo.createdAt).toLocaleDateString('vi-VN', {
+                                                       year: 'numeric',
+                                                       month: 'long',
+                                                       day: 'numeric'
+                                                  })}
+                                             </span>
                                         </div>
                                    </div>
                               </div>
-                              <div className="rounded-2xl border border-gray-200 bg-gray-50/90 px-4 py-3">
-                                   <div className="flex flex-wrap items-center justify-between gap-3">
-                                        <div className="flex items-center text-gray-700">
-                                             <Calendar className="w-5 h-5 text-gray-600 mr-2" />
-                                             <span className="text-sm font-semibold">Thành viên từ</span>
-                                        </div>
-                                        <span className="text-sm text-gray-600">
-                                             {new Date(accountInfo.createdAt).toLocaleDateString('vi-VN', {
-                                                  year: 'numeric',
-                                                  month: 'long',
-                                                  day: 'numeric'
-                                             })}
-                                        </span>
-                                   </div>
-                              </div>
+
                          </CardContent>
                     </Card>
                </FadeIn>
 
-               <FadeIn delay={220}>
-                    <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
-                         <CardHeader className="border-b border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
-                              <CardTitle className="flex items-center gap-2 text-teal-900">
-                                   <Activity className="w-5 h-5 text-teal-600" />
-                                   Hoạt động & thống kê
-                              </CardTitle>
-                         </CardHeader>
-                         <CardContent className="space-y-5 p-6">
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                   <div className="flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50/90 px-4 py-3">
-                                        <div className="flex items-center">
-                                             <Calendar className="w-5 h-5 text-blue-600 mr-2" />
-                                             <span className="text-sm font-semibold text-blue-800">Lần đăng nhập gần nhất</span>
-                                        </div>
-                                        <span className="text-xs font-semibold text-blue-600">
-                                             {new Date().toLocaleDateString('vi-VN')}
-                                        </span>
-                                   </div>
-                                   <div className="flex items-center justify-between rounded-2xl border border-green-200 bg-green-50/90 px-4 py-3">
-                                        <div className="flex items-center">
-                                             <Clock className="w-5 h-5 text-green-600 mr-2" />
-                                             <span className="text-sm font-semibold text-green-800">Thời gian online</span>
-                                        </div>
-                                        <span className="text-xs font-semibold text-green-600">
-                                             2h 30m
-                                        </span>
-                                   </div>
-                                   <div className="flex items-center justify-between rounded-2xl border border-purple-200 bg-purple-50/90 px-4 py-3">
-                                        <div className="flex items-center">
-                                             <Database className="w-5 h-5 text-purple-600 mr-2" />
-                                             <span className="text-sm font-semibold text-purple-800">Dung lượng đã dùng</span>
-                                        </div>
-                                        <span className="text-xs font-semibold text-purple-600">
-                                             15.2 MB
-                                        </span>
-                                   </div>
-                              </div>
-                              <div className="rounded-2xl border border-gray-200 bg-gray-50/90 p-4 space-y-4">
-                                   <div>
-                                        <div className="flex items-center justify-between text-sm font-semibold text-gray-700">
-                                             <span>Tổng số lần đăng nhập</span>
-                                             <span className="text-gray-600">127 lần</span>
-                                        </div>
-                                        <div className="mt-2 h-2 rounded-full bg-gray-200">
-                                             <div className="h-2 rounded-full bg-teal-500" style={{ width: '70%' }} />
-                                        </div>
-                                   </div>
-                                   <div>
-                                        <div className="flex items-center justify-between text-sm font-semibold text-gray-700">
-                                             <span>Số ngày hoạt động</span>
-                                             <span className="text-gray-600">45 ngày</span>
-                                        </div>
-                                        <div className="mt-2 h-2 rounded-full bg-gray-200">
-                                             <div className="h-2 rounded-full bg-teal-400" style={{ width: '45%' }} />
-                                        </div>
-                                   </div>
-                                   <div className="flex items-center justify-between text-sm font-semibold text-gray-700">
-                                        <span>Thời gian tạo tài khoản</span>
-                                        <span className="text-gray-600">
-                                             {Math.floor((new Date() - new Date(accountInfo.createdAt)) / (1000 * 60 * 60 * 24))} ngày trước
-                                        </span>
-                                   </div>
-                              </div>
-                         </CardContent>
-                    </Card>
-               </FadeIn>
 
                <FadeIn delay={260}>
                     <Card className="rounded-3xl border border-red-200/70 bg-white/95 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">

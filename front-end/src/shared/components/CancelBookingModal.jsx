@@ -63,13 +63,13 @@ export default function CancelBookingModal({
           >
                <div className="flex flex-col flex-1 min-h-0">
                     {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6 min-h-0" style={{
+                    <div className="flex-1 overflow-y-auto px-4 space-y-2 min-h-0" style={{
                          scrollbarWidth: 'thin',
                          scrollbarColor: '#cbd5e1 #f1f5f9'
                     }}>
                          {/* Booking Info */}
-                         <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                              <div className="grid grid-cols-2 gap-4 text-sm">
+                         <div className="bg-teal-50 rounded-2xl px-4 py-2 border border-teal-200 shadow-sm">
+                              <div className="grid grid-cols-2 gap-3 text-sm">
                                    <div>
                                         <p className="text-gray-500 mb-1">Sân</p>
                                         <p className="font-semibold text-gray-900">{booking.fieldName}</p>
@@ -84,7 +84,7 @@ export default function CancelBookingModal({
                                    </div>
                                    <div>
                                         <p className="text-gray-500 mb-1">Trạng thái</p>
-                                        <p className={`font-semibold ${isPending ? "text-yellow-600" : "text-green-600"}`}>
+                                        <p className={`font-semibold border border-green-200 rounded-2xl px-2 py-1 w-fit ${isPending ? "text-yellow-600" : "text-green-600"}`}>
                                              {isPending ? "Chờ xác nhận" : "Đã xác nhận"}
                                         </p>
                                    </div>
@@ -117,8 +117,8 @@ export default function CancelBookingModal({
 
                          {/* Cancellation Policy Table - Only show for confirmed bookings */}
                          {!isPending && (
-                              <div className="space-y-3">
-                                   <div className="flex items-center gap-2">
+                              <div className="space-y-2">
+                                   <div className="flex items-center gap-1">
                                         <Info className="w-5 h-5 text-blue-600" />
                                         <h3 className="text-lg font-bold text-gray-900">Chính sách hủy đặt sân</h3>
                                    </div>
@@ -126,7 +126,7 @@ export default function CancelBookingModal({
                                         <table className="w-full">
                                              <thead>
                                                   <tr className="bg-gradient-to-r from-teal-500 to-teal-600 text-white">
-                                                       <th className="px-4 py-3 text-left text-sm font-bold">Mốc thời gian sau Confirm</th>
+                                                       <th className="px-4 py-3 text-center text-sm font-bold">Mốc thời gian sau Confirm</th>
                                                        <th className="px-4 py-3 text-center text-sm font-bold">Mức hoàn cọc</th>
                                                        <th className="px-4 py-3 text-center text-sm font-bold">Mức phạt</th>
                                                   </tr>
@@ -142,11 +142,11 @@ export default function CancelBookingModal({
                                                                       ? "bg-yellow-50 border-yellow-300"
                                                                       : index % 2 === 0
                                                                            ? "bg-white"
-                                                                           : "bg-gray-50"
+                                                                           : "bg-gray-100"
                                                                       }`}
                                                             >
                                                                  <td className="px-4 py-3">
-                                                                      <div className="flex items-center gap-2">
+                                                                      <div className="flex items-center justify-center gap-2">
                                                                            {isCurrentRange && (
                                                                                 <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
                                                                            )}
@@ -176,13 +176,13 @@ export default function CancelBookingModal({
 
                          {/* Current Cancellation Info - Only show for confirmed bookings */}
                          {!isPending && (
-                              <div className={`rounded-xl p-4 border-2 ${cancellationInfo.refundRate === 100
+                              <div className={`rounded-2xl p-3 border-2 ${cancellationInfo.refundRate === 100
                                    ? "bg-green-50 border-green-300"
                                    : cancellationInfo.refundRate === 0
                                         ? "bg-red-50 border-red-300"
                                         : "bg-orange-50 border-orange-300"
                                    }`}>
-                                   <div className="flex items-start gap-3">
+                                   <div className="flex items-start gap-2">
                                         {cancellationInfo.refundRate === 100 ? (
                                              <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
                                         ) : (
@@ -192,10 +192,10 @@ export default function CancelBookingModal({
                                              <h4 className="font-bold text-gray-900 mb-2">
                                                   Áp dụng cho đặt sân này: {cancellationInfo.timeRange}
                                              </h4>
-                                             <div className="grid grid-cols-2 gap-4">
+                                             <div className="grid grid-cols-2 gap-3">
                                                   <div>
                                                        <p className="text-sm text-gray-600 mb-1">Số tiền được hoàn</p>
-                                                       <p className={`text-xl font-bold ${cancellationInfo.refundRate === 100 ? "text-green-600" : cancellationInfo.refundRate === 0 ? "text-gray-400" : "text-orange-600"}`}>
+                                                       <p className={`text-lg font-bold ${cancellationInfo.refundRate === 100 ? "text-green-600" : cancellationInfo.refundRate === 0 ? "text-gray-400" : "text-orange-600"}`}>
                                                             {formatCurrency(cancellationInfo.refundAmount)}
                                                        </p>
                                                        <p className="text-xs text-gray-500 mt-1">
@@ -204,7 +204,7 @@ export default function CancelBookingModal({
                                                   </div>
                                                   <div>
                                                        <p className="text-sm text-gray-600 mb-1">Số tiền bị phạt</p>
-                                                       <p className={`text-xl font-bold ${cancellationInfo.penaltyRate === 0 ? "text-green-600" : cancellationInfo.penaltyRate === 100 ? "text-red-600" : "text-orange-600"}`}>
+                                                       <p className={`text-lg font-bold ${cancellationInfo.penaltyRate === 0 ? "text-green-600" : cancellationInfo.penaltyRate === 100 ? "text-red-600" : "text-orange-600"}`}>
                                                             {formatCurrency(cancellationInfo.penaltyAmount)}
                                                        </p>
                                                        <p className="text-xs text-gray-500 mt-1">
@@ -219,7 +219,7 @@ export default function CancelBookingModal({
 
                          {/* Warning Message - Only for confirmed bookings */}
                          {!isPending && cancellationInfo.penaltyRate > 0 && (
-                              <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4">
+                              <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-3">
                                    <div className="flex items-start gap-3">
                                         <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                                         <div className="text-sm text-amber-800">
@@ -235,7 +235,7 @@ export default function CancelBookingModal({
 
                          {/* Reason input for confirmed bookings */}
                          {!isPending && (
-                              <div className="space-y-2">
+                              <div className="space-y-2 mb-2">
                                    <label className="block text-sm font-medium text-gray-700">
                                         Lý do hủy <span className="text-red-500">*</span>
                                    </label>
@@ -243,7 +243,7 @@ export default function CancelBookingModal({
                                         value={cancelReason}
                                         onChange={(e) => setCancelReason(e.target.value)}
                                         placeholder="Vui lòng nhập lý do hủy booking..."
-                                        className="w-full"
+                                        className="w-full rounded-2xl"
                                         disabled={isLoading}
                                    />
                                    <p className="text-xs text-gray-500">
@@ -255,7 +255,7 @@ export default function CancelBookingModal({
                     </div>
 
                     {/* Fixed Action Buttons */}
-                    <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-3 rounded-b-2xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                    <div className="flex-shrink-0 pt-5 bg-white flex justify-end gap-3 rounded-b-2xl">
                          <Button
                               variant="outline"
                               onClick={onClose}

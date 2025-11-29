@@ -268,12 +268,12 @@ export default function BankingManagement({ user }) {
           return accountNumber.substring(0, 4) + '*'.repeat(length - 8) + accountNumber.substring(length - 4);
      };
      return (
-          <div className="space-y-3">
+          <div className="space-y-2 border border-teal-200 bg-white shadow-lg rounded-3xl">
                {/* Header Section */}
-               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border border-teal-200 bg-white shadow-lg rounded-3xl">
+               <div className="flex flex-col sm:flex-row sm:items-center p-3 sm:justify-between">
                     <div className="flex-1">
                          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-                              <div className="p-3 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl shadow-md">
+                              <div className=" bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl shadow-md">
                                    <CreditCard className="w-6 h-6 text-white" />
                               </div>
                               Tài khoản ngân hàng
@@ -288,8 +288,8 @@ export default function BankingManagement({ user }) {
                               setEditingAccount(null);
                               setIsDialogOpen(true);
                          }}
-                         className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2 px-6 py-3 whitespace-nowrap"
-                         size="lg"
+                         className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-1 px-3 py-1 whitespace-nowrap"
+                         size="sm"
                     >
                          <Plus className="w-5 h-5" />
                          <span className="font-semibold">Thêm tài khoản</span>
@@ -319,10 +319,10 @@ export default function BankingManagement({ user }) {
                )}
 
                {/* Content Section */}
-               <Card className="border border-teal-200 bg-white shadow-lg rounded-3xl">
+               <Card className="">
                     <CardContent className="p-3">
                          {isLoading && !bankAccounts.length ? (
-                              <div className="flex flex-col items-center justify-center py-20">
+                              <div className="flex flex-col items-center justify-center py-10">
                                    <div className="relative">
                                         <Loader2 className="w-16 h-16 animate-spin text-teal-600" />
                                         <div className="absolute inset-0 w-16 h-16 border-4 border-teal-100 rounded-full"></div>
@@ -330,7 +330,7 @@ export default function BankingManagement({ user }) {
                                    <p className="text-gray-600 font-medium mt-6">Đang tải danh sách tài khoản...</p>
                               </div>
                          ) : bankAccounts.length === 0 ? (
-                              <div className="text-center py-20">
+                              <div className="text-center py-10">
                                    <div className="inline-flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-br from-teal-50 to-blue-50 mb-6 shadow-inner">
                                         <CreditCard className="w-14 h-14 text-teal-500" />
                                    </div>
@@ -352,19 +352,19 @@ export default function BankingManagement({ user }) {
                                    </Button>
                               </div>
                          ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                              <div className="grid grid-cols-2 gap-3">
                                    {bankAccounts.map((account, index) => {
                                         const accountId = account.bankAccountId || account.accountID;
                                         const bankMeta = findVietnamBankByCode(account.bankShortCode || account.bankName);
                                         return (
                                              <FadeIn key={accountId} delay={index * 100}>
                                                   <Card className="overflow-hidden border border-teal-200 hover:border-teal-300 hover:shadow-xl transition-all duration-300 rounded-2xl group bg-white">
-                                                       <div className={`p-5 ${account.isDefault ? 'bg-gradient-to-br from-teal-50/50 via-blue-50/50 to-teal-50/50' : 'bg-white'}`}>
+                                                       <div className={`p-3 ${account.isDefault ? 'bg-gradient-to-br from-teal-50 via-blue-100 to-teal-50' : 'bg-white'}`}>
                                                             {/* Bank Header */}
-                                                            <div className="flex items-start gap-3 mb-4">
+                                                            <div className="flex items-start gap-2 mb-2">
                                                                  {bankMeta?.logo ? (
                                                                       <div className="flex-shrink-0">
-                                                                           <div className="w-14 h-14 rounded-xl bg-white border border-teal-200 p-2 shadow-sm group-hover:shadow-md transition-shadow duration-300">
+                                                                           <div className="w-10 h-10 rounded-xl bg-white border border-teal-200 p-2 shadow-sm group-hover:shadow-md transition-shadow duration-300">
                                                                                 <img
                                                                                      src={bankMeta.logo}
                                                                                      alt={account.bankName}
@@ -373,30 +373,30 @@ export default function BankingManagement({ user }) {
                                                                            </div>
                                                                       </div>
                                                                  ) : (
-                                                                      <div className="flex-shrink-0 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-purple-100 to-purple-200 border border-purple-300 shadow-sm">
+                                                                      <div className="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-100 to-purple-200 border border-purple-300 shadow-sm">
                                                                            <Building2 className="w-7 h-7 text-purple-600" />
                                                                       </div>
                                                                  )}
                                                                  <div className="flex-1 min-w-0">
-                                                                      <div className="flex items-start justify-between gap-2 mb-1">
+                                                                      <div className="flex items-start justify-between gap-2">
                                                                            <h3 className="text-base font-bold text-gray-900 truncate">
                                                                                 {account.bankName}
                                                                            </h3>
                                                                            {account.isDefault && (
-                                                                                <span className="flex-shrink-0 px-2.5 py-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white text-xs font-bold rounded-full flex items-center gap-1 shadow-sm">
-                                                                                     <Star className="w-3 h-3 fill-current" />
+                                                                                <span className="flex-shrink-0 px-2.5 py-1 bg-white text-yellow-500 border border-yellow-200 text-xs font-medium rounded-full flex items-center gap-1 shadow-sm">
+                                                                                     <Star className="w-3 h-3 fill-current animate-pulse" />
                                                                                      Mặc định
                                                                                 </span>
                                                                            )}
                                                                       </div>
                                                                       {(account.bankShortCode || bankMeta?.code) && (
-                                                                           <p className="text-xs text-gray-600 flex items-center gap-1.5">
+                                                                           <p className="text-xs text-teal-600 flex items-center gap-1">
                                                                                 <span className="font-medium">Mã:</span>
-                                                                                <span className="px-2 py-0.5 bg-gray-100 rounded font-mono text-gray-700">
+                                                                                <span className="px-2 py-0.5 bg-teal-100 rounded font-mono text-teal-700">
                                                                                      {account.bankShortCode || bankMeta?.code}
                                                                                 </span>
                                                                                 {bankMeta?.bin && (
-                                                                                     <span className="text-gray-500">BIN {bankMeta.bin}</span>
+                                                                                     <span className="text-teal-500">BIN {bankMeta.bin}</span>
                                                                                 )}
                                                                            </p>
                                                                       )}
@@ -404,13 +404,13 @@ export default function BankingManagement({ user }) {
                                                             </div>
 
                                                             {/* Account Details */}
-                                                            <div className="space-y-2.5 mb-4">
-                                                                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                                                      <div className="flex-shrink-0 p-1.5 bg-blue-100 rounded-lg">
-                                                                           <Hash className="w-4 h-4 text-blue-600" />
+                                                            <div className="space-y-2 mb-2">
+                                                                 <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-2xl border border-blue-200">
+                                                                      <div className="flex-shrink-0 p-1 bg-blue-100 rounded-2xl">
+                                                                           <Hash className="w-5 h-5 text-blue-600" />
                                                                       </div>
                                                                       <div className="flex-1 min-w-0">
-                                                                           <p className="text-xs text-gray-500 font-medium mb-1">Số tài khoản</p>
+                                                                           <p className="text-xs text-blue-600 font-medium mb-1">Số tài khoản</p>
                                                                            <div className="flex items-center gap-2">
                                                                                 <p className="text-sm font-bold text-gray-900 font-mono">
                                                                                      {showAccountNumbers[accountId]
@@ -422,25 +422,25 @@ export default function BankingManagement({ user }) {
                                                                                      variant="ghost"
                                                                                      size="sm"
                                                                                      onClick={() => toggleAccountNumberVisibility(accountId)}
-                                                                                     className="h-5 w-5 p-0 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded"
+                                                                                     className="h-5 w-5 p-0 text-blue-400 hover:text-blue-600 hover:bg-blue-200 rounded"
                                                                                      title={showAccountNumbers[accountId] ? "Ẩn số tài khoản" : "Hiện số tài khoản"}
                                                                                 >
                                                                                      {showAccountNumbers[accountId] ? (
-                                                                                          <EyeOff className="w-3.5 h-3.5" />
+                                                                                          <EyeOff className="w-4 h-4" />
                                                                                      ) : (
-                                                                                          <Eye className="w-3.5 h-3.5" />
+                                                                                          <Eye className="w-4 h-4" />
                                                                                      )}
                                                                                 </Button>
                                                                            </div>
                                                                       </div>
                                                                  </div>
-                                                                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                                                      <div className="flex-shrink-0 p-1.5 bg-green-100 rounded-lg">
+                                                                 <div className="flex items-center gap-3 p-2 bg-green-50 rounded-2xl border border-green-200">
+                                                                      <div className="flex-shrink-0 p-1 bg-green-100 rounded-2xl">
                                                                            <User className="w-4 h-4 text-green-600" />
                                                                       </div>
                                                                       <div className="flex-1 min-w-0">
-                                                                           <p className="text-xs text-gray-500 font-medium mb-1">Chủ tài khoản</p>
-                                                                           <p className="text-sm font-semibold text-gray-900 truncate">
+                                                                           <p className="text-xs text-green-600 font-medium mb-1">Chủ tài khoản</p>
+                                                                           <p className="text-sm font-semibold text-green-900 truncate">
                                                                                 {account.accountHolder || account.accountHolderName}
                                                                            </p>
                                                                       </div>
@@ -448,15 +448,15 @@ export default function BankingManagement({ user }) {
                                                             </div>
 
                                                             {/* Actions */}
-                                                            <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                                                            <div className="flex items-center gap-2 pt-2 border-t border-teal-200">
                                                                  {!account.isDefault && (
                                                                       <Button
                                                                            variant="outline"
                                                                            size="sm"
                                                                            onClick={() => handleSetDefault(account)}
-                                                                           className="flex-1 text-xs border-yellow-300 text-yellow-700 hover:bg-yellow-50 hover:border-yellow-400 rounded-lg font-medium transition-all duration-200"
+                                                                           className="flex-1 text-xs border-yellow-300 text-yellow-700 hover:bg-yellow-50 hover:border-yellow-400 rounded-2xl font-medium transition-all duration-200"
                                                                       >
-                                                                           <Star className="w-3 h-3 mr-1.5" />
+                                                                           <Star className="w-4 h-4 mr-1" />
                                                                            Đặt mặc định
                                                                       </Button>
                                                                  )}
@@ -464,7 +464,7 @@ export default function BankingManagement({ user }) {
                                                                       variant="outline"
                                                                       size="sm"
                                                                       onClick={() => handleEdit(account)}
-                                                                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 hover:border-blue-300 rounded-lg transition-all duration-200"
+                                                                      className="text-blue-600 px-2 hover:text-blue-700 hover:bg-blue-50 border-blue-200 hover:border-blue-300 rounded-2xl transition-all duration-200"
                                                                       title="Chỉnh sửa"
                                                                  >
                                                                       <Edit3 className="w-4 h-4" />
@@ -473,7 +473,7 @@ export default function BankingManagement({ user }) {
                                                                       variant="outline"
                                                                       size="sm"
                                                                       onClick={() => handleDelete(account)}
-                                                                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300 rounded-lg transition-all duration-200"
+                                                                      className="text-red-600 px-2 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300 rounded-2xl transition-all duration-200"
                                                                       title="Xóa"
                                                                  >
                                                                       <Trash2 className="w-4 h-4" />

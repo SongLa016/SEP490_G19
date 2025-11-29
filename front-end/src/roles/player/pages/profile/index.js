@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import { User, Settings, BarChart3, Users, Calendar } from "lucide-react";
+import { User, Settings, Heart, BarChart3, Calendar } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Button, Container } from "../../../../shared/components/ui";
+import { Button } from "../../../../shared/components/ui";
 import UserProfile from "./UserProfile";
 import ProfileSettings from "./ProfileSettings";
 import ProfileStats from "./ProfileStats";
-import BankingManagement from "./BankingManagement";
 
 export default function ProfileIndex({ user }) {
   const [activeTab, setActiveTab] = useState("profile");
@@ -18,6 +17,7 @@ export default function ProfileIndex({ user }) {
       icon: Settings,
       component: ProfileSettings,
     },
+
     {
       id: "stats",
       label: "Thống kê",
@@ -56,8 +56,6 @@ export default function ProfileIndex({ user }) {
                           "Quản lý thông tin cá nhân của bạn"}
                         {activeTab === "settings" &&
                           "Cài đặt tài khoản và bảo mật"}
-                        {activeTab === "stats" &&
-                          "Xem thống kê hoạt động của bạn"}
                       </p>
                     </div>
                   </div>
@@ -69,15 +67,8 @@ export default function ProfileIndex({ user }) {
                       size="sm"
                       className="border-teal-300 text-teal-700 hover:bg-teal-50 hover:text-teal-900 rounded-xl"
                     >
-                      <Users className="w-4 h-4 mr-2" />
-                      Tìm đối thủ
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl"
-                    >
-                      <Calendar className="w-4 h-4 mr-2" />
-                      Đặt sân
+                      <Heart className="w-4 h-4 mr-2" />
+                      Yêu thích
                     </Button>
                   </div>
                 </div>
@@ -89,15 +80,8 @@ export default function ProfileIndex({ user }) {
                     size="sm"
                     className="flex-1 border-teal-300 text-teal-700 hover:bg-teal-50 hover:text-teal-900 rounded-xl"
                   >
-                    <Users className="w-4 h-4 mr-2" />
-                    Tìm đối thủ
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="flex-1 bg-teal-600 hover:bg-teal-700 text-white rounded-xl"
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Đặt sân
+                    <Heart className="w-4 h-4 mr-2" />
+                    Yêu thích
                   </Button>
                 </div>
               </div>

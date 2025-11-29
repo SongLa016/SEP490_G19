@@ -101,6 +101,9 @@ function MatchRequestCard({
     mr.address ||
     "Không rõ địa điểm";
 
+  // Check if request is rejected
+  const isRejected = statusLabel === "Rejected" || statusLabel === "Đã từ chối" || statusLabel === "rejected";
+
   // Check if this is the current user's request
   // Priority: use isMyRequest from API if available, otherwise compare ownerId
   const ownerIsCurrentUser =
@@ -218,9 +221,17 @@ function MatchRequestCard({
                   <UserCheck className="w-3 h-3" />
                   Mức độ: {levelLabel}
                 </Badge>
-                <Badge className="text-xs bg-teal-50 hover:bg-teal-100 text-teal-700 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Trạng thái: {statusLabel}
+                <Badge className={`text-xs flex items-center gap-1 ${
+                  isRejected 
+                    ? "bg-red-50 hover:bg-red-100 text-red-700" 
+                    : "bg-teal-50 hover:bg-teal-100 text-teal-700"
+                }`}>
+                  {isRejected ? (
+                    <AlertCircle className="w-3 h-3" />
+                  ) : (
+                    <CheckCircle2 className="w-3 h-3" />
+                  )}
+                  {isRejected ? "Bị từ chối" : `Trạng thái: ${statusLabel}`}
                 </Badge>
                 {mr.playerCount && (
                   <Badge className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 flex items-center gap-1">
@@ -255,6 +266,14 @@ function MatchRequestCard({
                 >
                   <UserCheck className="w-4 h-4" />
                   Yêu cầu của bạn
+                </Button>
+              ) : isRejected ? (
+                <Button
+                  disabled
+                  className="bg-red-200 !rounded-full py-2 text-sm text-red-700 cursor-not-allowed flex items-center gap-2 hover:bg-red-200"
+                >
+                  <AlertCircle className="w-4 h-4" />
+                  Bị từ chối
                 </Button>
               ) : hasSentJoinRequest ? (
                 <Button

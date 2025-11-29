@@ -17,13 +17,12 @@ import { useAuth } from "../../../../contexts/AuthContext";
 import { listMatchRequests } from "../../../../shared/index";
 import { createPost } from "../../../../shared/services/posts";
 import FindMatch from "./components/FindMatch";
-import TeamList from "./components/TeamList";
 import Swal from 'sweetalert2';
 
 export default function Community() {
      const locationRouter = useLocation();
      const { user, logout } = useAuth();
-     const [activeTab, setActiveTab] = useState("danh-cho-ban"); // danh-cho-ban | tim-doi-thu | tao-doi
+     const [activeTab, setActiveTab] = useState("danh-cho-ban"); // danh-cho-ban | tim-doi-thu
      const [filterLocation] = useState("");
      const [filterDate] = useState("");
      const [matchRequests, setMatchRequests] = useState([]);
@@ -78,11 +77,6 @@ export default function Community() {
                });
           }
      };
-
-     const handleOpenTeamCreation = () => {
-
-     };
-
 
      useEffect(() => {
           const st = locationRouter?.state || {};
@@ -164,10 +158,7 @@ export default function Community() {
                               <div className="flex justify-center gap-1 relative overflow-x-auto whitespace-nowrap px-1">
                                    {[
                                         { id: "danh-cho-ban", label: "Dành cho bạn" },
-                                        ...(user ? [
-                                             { id: "tim-doi-thu", label: "Tìm đối thủ" },
-                                             { id: "tao-doi", label: "Tạo đội" },
-                                        ] : []),
+                                        ...(user ? [{ id: "tim-doi-thu", label: "Tìm đối thủ" }] : []),
                                    ].map((tab, index) => (
                                         <motion.div
                                              key={tab.id}
@@ -285,17 +276,6 @@ export default function Community() {
                                    </motion.div>
                               )}
 
-                              {user && activeTab === "tao-doi" && (
-                                   <motion.div
-                                        key="tao-doi"
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -20 }}
-                                        transition={{ duration: 0.4, ease: "easeInOut" }}
-                                   >
-                                        <TeamList onOpenTeamCreation={handleOpenTeamCreation} />
-                                   </motion.div>
-                              )}
                          </AnimatePresence>
                     </div>
                </div>

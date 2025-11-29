@@ -504,6 +504,40 @@ export default function ScheduleManagement({ isDemo = false }) {
           return `${hours || '00'}:${minutes || '00'}`;
      };
 
+     // Helper function to format date to local date string (YYYY-MM-DD) without timezone issues
+     const formatDateToLocalString = (date) => {
+          if (!date) return '';
+          const d = new Date(date);
+          // Use local date components to avoid timezone issues
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+     };
+
+     // Helper function to normalize date string from API (handles both ISO strings and date objects)
+     const normalizeDateString = (dateValue) => {
+          if (!dateValue) return '';
+          if (typeof dateValue === 'string') {
+               // If it's already a date string (YYYY-MM-DD), return as is
+               if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+                    return dateValue;
+               }
+               // If it's an ISO string, extract date part
+               if (dateValue.includes('T')) {
+                    return dateValue.split('T')[0];
+               }
+               // Try to parse as date
+               return formatDateToLocalString(new Date(dateValue));
+          }
+          if (dateValue.year && dateValue.month && dateValue.day) {
+               // Date object with year, month, day
+               return `${dateValue.year}-${String(dateValue.month).padStart(2, '0')}-${String(dateValue.day).padStart(2, '0')}`;
+          }
+          // Try to parse as date
+          return formatDateToLocalString(new Date(dateValue));
+     };
+
 
      const isSchedulePast = (date, endTime) => {
           const now = new Date();
@@ -1041,7 +1075,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                     const date = new Date(yearNum, monthNum - 1, day);
                     // Only include future dates
                     if (date >= today) {
-                         dates.push(date.toISOString().split('T')[0]);
+                         dates.push(formatDateToLocalString(date));
                     }
                }
           } else if (scheduleType === 'quarter' && quarter && year) {
@@ -1055,7 +1089,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                          const date = new Date(yearNum, m - 1, day);
                          // Only include future dates
                          if (date >= today) {
-                              dates.push(date.toISOString().split('T')[0]);
+                              dates.push(formatDateToLocalString(date));
                          }
                     }
                }
@@ -1320,15 +1354,10 @@ export default function ScheduleManagement({ isDemo = false }) {
 
      // Get schedules for a specific time slot and date (all fields)
      const getSchedulesForTimeSlot = (slotId, date) => {
-          const dateStr = date.toISOString().split('T')[0];
+          const dateStr = formatDateToLocalString(date);
           const matchingSchedules = fieldSchedules.filter(schedule => {
                const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
-               let scheduleDateStr = '';
-               if (typeof schedule.date === 'string') {
-                    scheduleDateStr = schedule.date.split('T')[0];
-               } else if (schedule.date && schedule.date.year) {
-                    scheduleDateStr = `${schedule.date.year}-${String(schedule.date.month).padStart(2, '0')}-${String(schedule.date.day).padStart(2, '0')}`;
-               }
+               const scheduleDateStr = normalizeDateString(schedule.date);
                const matches = Number(scheduleSlotId) === Number(slotId) && scheduleDateStr === dateStr;
                if (matches) {
                     console.log(`Found schedule for slot ${slotId} on ${dateStr}:`, schedule);
@@ -1378,18 +1407,11 @@ export default function ScheduleManagement({ isDemo = false }) {
 
      // Check if schedule exists for field/date/slot
      const getScheduleForSlot = (fieldId, date, slotId) => {
-          const dateStr = date.toISOString().split('T')[0];
+          const dateStr = formatDateToLocalString(date);
           return fieldSchedules.find(schedule => {
                const scheduleFieldId = schedule.fieldId ?? schedule.FieldId;
                const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
-
-               // Parse schedule date
-               let scheduleDateStr = '';
-               if (typeof schedule.date === 'string') {
-                    scheduleDateStr = schedule.date.split('T')[0];
-               } else if (schedule.date && schedule.date.year) {
-                    scheduleDateStr = `${schedule.date.year}-${String(schedule.date.month).padStart(2, '0')}-${String(schedule.date.day).padStart(2, '0')}`;
-               }
+               const scheduleDateStr = normalizeDateString(schedule.date);
 
                return Number(scheduleFieldId) === Number(fieldId) &&
                     Number(scheduleSlotId) === Number(slotId) &&
@@ -1399,7 +1421,7 @@ export default function ScheduleManagement({ isDemo = false }) {
 
      // Check if slot is booked - wrapped in useCallback for useMemo dependency
      const isSlotBooked = useCallback((fieldId, date, slotId) => {
-          const dateStr = date.toISOString().split('T')[0];
+          const dateStr = formatDateToLocalString(date);
 
           // First check if there's a booking for this schedule
           const booking = bookings.find(b => {
@@ -1416,12 +1438,7 @@ export default function ScheduleManagement({ isDemo = false }) {
 
                const scheduleFieldId = schedule.fieldId ?? schedule.FieldId;
                const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
-               let scheduleDateStr = '';
-               if (typeof schedule.date === 'string') {
-                    scheduleDateStr = schedule.date.split('T')[0];
-               } else if (schedule.date && schedule.date.year) {
-                    scheduleDateStr = `${schedule.date.year}-${String(schedule.date.month).padStart(2, '0')}-${String(schedule.date.day).padStart(2, '0')}`;
-               }
+               const scheduleDateStr = normalizeDateString(schedule.date);
 
                return Number(scheduleFieldId) === Number(fieldId) &&
                     Number(scheduleSlotId) === Number(slotId) &&
@@ -1437,12 +1454,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           const schedule = fieldSchedules.find(s => {
                const scheduleFieldId = s.fieldId ?? s.FieldId;
                const scheduleSlotId = s.slotId ?? s.SlotId ?? s.SlotID;
-               let scheduleDateStr = '';
-               if (typeof s.date === 'string') {
-                    scheduleDateStr = s.date.split('T')[0];
-               } else if (s.date && s.date.year) {
-                    scheduleDateStr = `${s.date.year}-${String(s.date.month).padStart(2, '0')}-${String(s.date.day).padStart(2, '0')}`;
-               }
+               const scheduleDateStr = normalizeDateString(s.date);
                return Number(scheduleFieldId) === Number(fieldId) &&
                     Number(scheduleSlotId) === Number(slotId) &&
                     scheduleDateStr === dateStr;
@@ -1453,19 +1465,14 @@ export default function ScheduleManagement({ isDemo = false }) {
 
      // Get booking info
      const getBookingInfo = (fieldId, date, slotId) => {
-          const dateStr = date.toISOString().split('T')[0];
+          const dateStr = formatDateToLocalString(date);
 
           // First, try to find booking directly by scheduleId
           // Find the schedule first
           const schedule = fieldSchedules.find(s => {
                const scheduleFieldId = s.fieldId ?? s.FieldId;
                const scheduleSlotId = s.slotId ?? s.SlotId ?? s.SlotID;
-               let scheduleDateStr = '';
-               if (typeof s.date === 'string') {
-                    scheduleDateStr = s.date.split('T')[0];
-               } else if (s.date && s.date.year) {
-                    scheduleDateStr = `${s.date.year}-${String(s.date.month).padStart(2, '0')}-${String(s.date.day).padStart(2, '0')}`;
-               }
+               const scheduleDateStr = normalizeDateString(s.date);
                return Number(scheduleFieldId) === Number(fieldId) &&
                     Number(scheduleSlotId) === Number(slotId) &&
                     scheduleDateStr === dateStr;
@@ -1505,18 +1512,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           const directBooking = bookings.find(b => {
                const bookingFieldId = b.fieldId || b.fieldID || b.FieldID;
                const bookingSlotId = b.slotId || b.slotID || b.SlotID;
-               let bookingDateStr = '';
-
-               if (b.date) {
-                    if (typeof b.date === 'string') {
-                         bookingDateStr = b.date.split('T')[0];
-                    } else if (b.date.year) {
-                         bookingDateStr = `${b.date.year}-${String(b.date.month).padStart(2, '0')}-${String(b.date.day).padStart(2, '0')}`;
-                    }
-               } else if (b.bookingDate) {
-                    const bookingDate = new Date(b.bookingDate);
-                    bookingDateStr = bookingDate.toISOString().split('T')[0];
-               }
+               const bookingDateStr = normalizeDateString(b.date || b.bookingDate);
 
                const match = Number(bookingFieldId) === Number(fieldId) &&
                     Number(bookingSlotId) === Number(slotId) &&

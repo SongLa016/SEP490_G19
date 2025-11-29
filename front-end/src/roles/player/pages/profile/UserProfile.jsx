@@ -75,7 +75,7 @@ export default function UserProfile({ user }) {
                          skillLevel: profile.skillLevel || profile.SkillLevel || "",
                          bio: profile.bio || profile.Bio || "",
                     };
-                    
+
                     setProfileData(prev => ({
                          ...prev,
                          ...mappedProfile
@@ -650,8 +650,8 @@ export default function UserProfile({ user }) {
                                                                            <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Trạng thái tài khoản
                                                                            </p>
-                                                                           <span className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold ${formData.status === 'Active'
-                                                                                ? 'bg-green-300 text-green-700 border border-green-200'
+                                                                           <span className={`inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-sm font-semibold ${formData.status === 'Active'
+                                                                                ? 'bg-green-50 text-green-700 border border-green-200'
                                                                                 : 'bg-red-300 text-red-700 border border-red-200'
                                                                                 }`}>
                                                                                 <Shield className="w-4 h-4" />
