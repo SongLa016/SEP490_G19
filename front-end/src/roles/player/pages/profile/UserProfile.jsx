@@ -2,14 +2,13 @@ import { useState, useEffect } from "react";
 import { User, Mail, Phone, MapPin, Calendar, Users, Edit3, Save, X, Camera, Heart, Target, Shield, Clock, Star, CheckCircle, AlertCircle } from "lucide-react";
 import { Input, Button, Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Avatar, Textarea, LoadingSpinner, FadeIn, SlideIn, Section, Container } from "../../../../shared/components/ui";
 import { profileService } from "../../../../shared/index";
-import ErrorDisplay from "../../../../shared/components/ErrorDisplay";
+import Swal from "sweetalert2";
 import BankingManagement from "./BankingManagement";
 
 export default function UserProfile({ user }) {
      const [isEditing, setIsEditing] = useState(false);
      const [isLoading, setIsLoading] = useState(false);
-     const [error, setError] = useState('');
-     const [info, setInfo] = useState('');
+     const [avatarFile, setAvatarFile] = useState(null); // Lưu file avatar để gửi khi save
      const [profileData, setProfileData] = useState({
           // Basic user info from registration
           email: user?.email || "",
@@ -36,7 +35,9 @@ export default function UserProfile({ user }) {
 
      // Load profile data on component mount
      useEffect(() => {
-          if (user?.userID) {
+          // Kiểm tra token thay vì userId vì API lấy thông tin theo token
+          const token = localStorage.getItem("token");
+          if (token) {
                setIsLoading(true);
                loadProfileData();
           }
@@ -46,7 +47,7 @@ export default function UserProfile({ user }) {
                behavior: 'smooth'
           });
           // eslint-disable-next-line react-hooks/exhaustive-deps
-     }, [user?.userID]);
+     }, []);
 
      // Scroll to top when entering edit mode
      useEffect(() => {
@@ -59,15 +60,25 @@ export default function UserProfile({ user }) {
      }, [isEditing]);
 
      const loadProfileData = async () => {
-          if (!user?.userID) return;
+          // Kiểm tra token thay vì userId vì API lấy thông tin theo token
+          const token = localStorage.getItem("token");
+          if (!token) {
+               console.warn('No token found, cannot load profile');
+               return;
+          }
 
           try {
                setIsLoading(true);
-               const result = await profileService.getProfile(user.userID);
+               // Gọi API không cần userId, API sẽ lấy từ token
+               const result = await profileService.getProfile();
                if (result.ok && result.profile) {
                     const profile = result.profile;
-                    // Map profile data with proper field names
+                    // Map profile data với đầy đủ các field từ API
                     const mappedProfile = {
+                         fullName: profile.fullName || profile.FullName || user?.fullName || "",
+                         phone: profile.phone || profile.Phone || user?.phone || "",
+                         email: profile.email || profile.Email || user?.email || "",
+                         avatar: profile.avatar || profile.Avatar || user?.avatar || null,
                          dateOfBirth: profile.dateOfBirth || profile.DateOfBirth || "",
                          gender: profile.gender || profile.Gender || "",
                          address: profile.address || profile.Address || "",
@@ -84,9 +95,22 @@ export default function UserProfile({ user }) {
                          ...prev,
                          ...mappedProfile
                     }));
+               } else if (result.reason) {
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: result.reason,
+                         confirmButtonText: 'Đóng'
+                    });
                }
           } catch (error) {
                console.error('Error loading profile:', error);
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: error.message || 'Không thể tải thông tin profile',
+                    confirmButtonText: 'Đóng'
+               });
           } finally {
                setIsLoading(false);
           }
@@ -117,18 +141,27 @@ export default function UserProfile({ user }) {
      };
 
      const handleSave = async () => {
-          if (!user?.userID) {
-               setError('Không tìm thấy thông tin người dùng');
+          // Kiểm tra token thay vì userId
+          const token = localStorage.getItem("token");
+          if (!token) {
+               Swal.fire({
+                    icon: 'warning',
+                    title: 'Phiên đăng nhập đã hết hạn',
+                    text: 'Vui lòng đăng nhập lại',
+                    confirmButtonText: 'Đóng'
+               });
                return;
           }
 
           setIsLoading(true);
-          setError('');
-          setInfo('');
 
           try {
-               // Only send updatable fields to API
+               // Prepare data theo JSON structure của API
                const updateData = {
+                    fullName: formData.fullName || "",
+                    phone: formData.phone || "",
+                    avatar: avatarFile ? null : (formData.avatar && !formData.avatar.startsWith('data:') ? formData.avatar : null),
+                    email: formData.email || "",
                     dateOfBirth: formData.dateOfBirth || "",
                     gender: formData.gender || "",
                     address: formData.address || "",
@@ -137,28 +170,63 @@ export default function UserProfile({ user }) {
                     bio: formData.bio || "",
                };
 
-               const result = await profileService.updateProfile(user.userID, updateData);
+               // Gọi API update, truyền file avatar nếu có
+               const result = await profileService.updateProfile(null, updateData, avatarFile);
 
                if (!result.ok) {
-                    setError(result.reason || 'Cập nhật profile thất bại');
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Cập nhật thất bại',
+                         text: result.reason || 'Cập nhật profile thất bại',
+                         confirmButtonText: 'Đóng'
+                    });
                     setIsLoading(false);
                     return;
                }
 
-               // Update local state - only update the fields that were sent
-               setProfileData(prev => ({
-                    ...prev,
-                    ...updateData
-               }));
-               setInfo(result.message || 'Cập nhật profile thành công');
+               // Update avatar URL nếu có trong response
+               let updatedFormData = { ...formData };
+               // API trả về avatarUrl trong response
+               if (result.data?.avatarUrl) {
+                    updatedFormData.avatar = result.data.avatarUrl;
+               } else if (result.data?.avatar) {
+                    updatedFormData.avatar = result.data.avatar;
+               } else if (result.data?.data?.avatarUrl) {
+                    updatedFormData.avatar = result.data.data.avatarUrl;
+               } else if (result.data?.data?.avatar) {
+                    updatedFormData.avatar = result.data.data.avatar;
+               } else if (avatarFile) {
+                    // Nếu có file nhưng response không có URL, giữ preview tạm thời
+                    // (BE sẽ trả về URL trong lần load tiếp theo)
+               }
+
+               // Update local state
+               setProfileData(updatedFormData);
+               setFormData(updatedFormData);
+               setAvatarFile(null); // Clear file sau khi save thành công
                setIsEditing(false);
 
-               // Update user in localStorage - only update the fields that were sent
-               const updatedUser = { ...user, ...updateData };
+               // Update user in localStorage
+               const updatedUser = { ...user, ...updatedFormData };
                localStorage.setItem('user', JSON.stringify(updatedUser));
 
+               // Hiển thị thông báo thành công
+               Swal.fire({
+                    icon: 'success',
+                    title: 'Thành công',
+                    text: result.message || 'Cập nhật profile thành công',
+                    confirmButtonText: 'Đóng',
+                    timer: 2000,
+                    timerProgressBar: true
+               });
+
           } catch (error) {
-               setError(error.message || 'Có lỗi xảy ra khi cập nhật profile');
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: error.message || 'Có lỗi xảy ra khi cập nhật profile',
+                    confirmButtonText: 'Đóng'
+               });
                console.error('Profile update error:', error);
           } finally {
                setIsLoading(false);
@@ -167,21 +235,58 @@ export default function UserProfile({ user }) {
 
      const handleCancel = () => {
           setFormData({ ...profileData });
+          setAvatarFile(null); // Clear file khi cancel
           setIsEditing(false);
      };
 
      const handleAvatarUpload = (event) => {
           const file = event.target.files[0];
-          if (file) {
-               const reader = new FileReader();
-               reader.onload = (e) => {
-                    setFormData(prev => ({
-                         ...prev,
-                         avatar: e.target.result
-                    }));
-               };
-               reader.readAsDataURL(file);
+          if (!file) return;
+
+          // Validate file type
+          if (!file.type.startsWith('image/')) {
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'File phải là hình ảnh',
+                    confirmButtonText: 'Đóng'
+               });
+               return;
           }
+
+          // Validate file size (max 10MB)
+          const maxSize = 10 * 1024 * 1024; // 10MB
+          if (file.size > maxSize) {
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Kích thước file không được vượt quá 10MB',
+                    confirmButtonText: 'Đóng'
+               });
+               return;
+          }
+
+          // Lưu file để gửi khi save
+          setAvatarFile(file);
+
+          // Show preview immediately
+          const reader = new FileReader();
+          reader.onload = (e) => {
+               setFormData(prev => ({
+                    ...prev,
+                    avatar: e.target.result // Temporary preview
+               }));
+          };
+          reader.readAsDataURL(file);
+
+          Swal.fire({
+               icon: 'info',
+               title: 'Ảnh đã được chọn',
+               text: 'Nhấn "Lưu" để cập nhật profile',
+               confirmButtonText: 'Đóng',
+               timer: 2000,
+               timerProgressBar: true
+          });
      };
 
      const formatDate = (dateString) => {
@@ -207,23 +312,6 @@ export default function UserProfile({ user }) {
                               </div>
                          </SlideIn>
 
-                         {/* Error and Info Messages */}
-                         {error && (
-                              <ErrorDisplay
-                                   type="error"
-                                   title="Lỗi cập nhật"
-                                   message={error}
-                                   onClose={() => setError('')}
-                              />
-                         )}
-                         {info && (
-                              <ErrorDisplay
-                                   type="success"
-                                   title="Thành công"
-                                   message={info}
-                                   onClose={() => setInfo('')}
-                              />
-                         )}
                          <div className="flex gap-5 px-5 my-2">
                               {/* Profile Overview Card */}
                               <FadeIn delay={200}>
@@ -364,9 +452,18 @@ export default function UserProfile({ user }) {
                                                                            <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Họ và tên
                                                                            </p>
-                                                                           <p className="text-lg font-semibold text-teal-900 leading-tight">
-                                                                                {formData.fullName || "Chưa cập nhật"}
-                                                                           </p>
+                                                                           {isEditing ? (
+                                                                                <Input
+                                                                                     value={formData.fullName}
+                                                                                     onChange={(e) => handleInputChange('fullName', e.target.value)}
+                                                                                     placeholder="Nhập họ và tên"
+                                                                                     className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
+                                                                                />
+                                                                           ) : (
+                                                                                <p className="text-lg font-semibold text-teal-900 leading-tight">
+                                                                                     {formData.fullName || "Chưa cập nhật"}
+                                                                                </p>
+                                                                           )}
                                                                       </div>
                                                                  </div>
                                                             </div>

@@ -67,14 +67,6 @@ const handleApiError = (error) => {
     errorMessage = error.message || "Đã xảy ra lỗi không xác định.";
   }
 
-  console.error("API Error:", {
-    message: error.message,
-    code: error.code,
-    response: error.response?.data,
-    request: error.request,
-    config: error.config?.url,
-  });
-
   throw new Error(errorMessage);
 };
 
@@ -95,7 +87,6 @@ const formatTimeForAPI = (timeString) => {
   }
 
   // Invalid format, return default
-  console.warn("⚠️ Invalid time format:", timeString);
   return "00:00";
 };
 
@@ -111,7 +102,6 @@ const normalizeTimeSlot = (item) => {
 
   // Ensure required fields exist
   if (!slotId || !name) {
-    console.warn("Invalid time slot data (missing slotId or name):", item);
     return null;
   }
 
@@ -202,44 +192,40 @@ export async function fetchTimeSlots(fieldId = null, date = null) {
     // Build endpoint with optional date parameter
     let endpoint = "https://sep490-g19-zxph.onrender.com/api/TimeSlot";
     const params = {};
-    
+
     // Add date parameter if provided
     if (date) {
       params.date = date;
     }
-    
+
     // Build query string if params exist
-    const queryString = Object.keys(params).length > 0
-      ? '?' + new URLSearchParams(params).toString()
-      : '';
-    
+    const queryString =
+      Object.keys(params).length > 0
+        ? "?" + new URLSearchParams(params).toString()
+        : "";
+
     endpoint = endpoint + queryString;
     const response = await apiClient.get(endpoint);
 
     // Handle different response structures and normalize
     let data = response.data;
     if (Array.isArray(data)) {
-      console.log(`Success - received ${data.length} time slots`);
       return {
         success: true,
         data: data.map(normalizeTimeSlot).filter((slot) => slot !== null),
       };
     } else if (data && Array.isArray(data.data)) {
-      console.log(`Success - received ${data.data.length} time slots`);
       return {
         success: true,
         data: data.data.map(normalizeTimeSlot).filter((slot) => slot !== null),
       };
     } else {
-      console.log(`Success - empty data`);
       return {
         success: true,
         data: [],
       };
     }
   } catch (error) {
-    console.error("Error fetching time slots:", error);
-
     const errorMessage =
       error.response?.data?.message ||
       error.response?.data ||
@@ -257,7 +243,6 @@ export async function fetchTimeSlotsByField(fieldId) {
   try {
     // Use public endpoint: /TimeSlot/public/{fieldId}
     const endpoint = `/TimeSlot/public/${fieldId}`;
-    console.log(`Fetching time slots for field ${fieldId} from: ${endpoint}`);
 
     // Public endpoint may not require authentication, so use axios directly
     const response = await axios.get(`${API_BASE_URL}/api${endpoint}`, {
@@ -271,31 +256,22 @@ export async function fetchTimeSlotsByField(fieldId) {
     // Handle different response structures and normalize
     let data = response.data;
     if (Array.isArray(data)) {
-      console.log(
-        `Success - received ${data.length} time slots for field ${fieldId}`
-      );
       return {
         success: true,
         data: data.map(normalizeTimeSlot).filter((slot) => slot !== null),
       };
     } else if (data && Array.isArray(data.data)) {
-      console.log(
-        `Success - received ${data.data.length} time slots for field ${fieldId}`
-      );
       return {
         success: true,
         data: data.data.map(normalizeTimeSlot).filter((slot) => slot !== null),
       };
     } else {
-      console.log(`Success - empty data for field ${fieldId}`);
       return {
         success: true,
         data: [],
       };
     }
   } catch (error) {
-    console.error(`Error fetching time slots for field ${fieldId}:`, error);
-
     const errorMessage =
       error.response?.data?.message ||
       error.response?.data ||
@@ -432,8 +408,6 @@ export async function createTimeSlot(timeSlotData) {
       };
     }
   } catch (error) {
-    console.error("Error creating time slot:", error);
-
     // Parse error message from different response formats
     let errorMessage = "Không thể tạo slot thời gian";
 
@@ -518,15 +492,9 @@ export async function updateTimeSlot(slotId, timeSlotData) {
 
     for (const endpoint of endpoints) {
       try {
-        console.log(`Trying PUT endpoint: ${endpoint}/${slotId}`);
         response = await apiClient.put(`${endpoint}/${slotId}`, payload);
-        console.log(`Success with PUT endpoint: ${endpoint}`);
         break;
       } catch (err) {
-        console.log(
-          `Failed with PUT endpoint: ${endpoint}`,
-          err.response?.status
-        );
         lastError = err;
         // If it's not a 404, stop trying other endpoints
         if (err.response?.status !== 404) {
@@ -568,7 +536,6 @@ export async function updateTimeSlot(slotId, timeSlotData) {
       };
     }
   } catch (error) {
-    console.error("Error updating time slot:", error);
     const errorMessage =
       error.response?.data?.message ||
       error.response?.data ||
@@ -607,16 +574,10 @@ export async function deleteTimeSlot(slotId) {
 
     for (const endpoint of endpoints) {
       try {
-        console.log(`Trying DELETE endpoint: ${endpoint}/${slotId}`);
         await apiClient.delete(`${endpoint}/${slotId}`);
-        console.log(`Success with DELETE endpoint: ${endpoint}`);
         success = true;
         break;
       } catch (err) {
-        console.log(
-          `Failed with DELETE endpoint: ${endpoint}`,
-          err.response?.status
-        );
         lastError = err;
         // If it's not a 404, stop trying other endpoints
         if (err.response?.status !== 404) {
@@ -634,7 +595,6 @@ export async function deleteTimeSlot(slotId) {
       message: "Xóa slot thời gian thành công",
     };
   } catch (error) {
-    console.error("Error deleting time slot:", error);
     const errorMessage =
       error.response?.data?.message ||
       error.response?.data ||

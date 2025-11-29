@@ -86,7 +86,6 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
           { id: "bookings", label: "Quản lý booking", icon: ClipboardList, path: "/owner/bookings" },
           { id: "policies", label: "Chính sách hủy", icon: Shield, path: "/owner/policies" },
           { id: "deposit-policies", label: "Chính sách đặt cọc", icon: Wallet, path: "/owner/deposit-policies" },
-          { id: "promotions", label: "Khuyến mãi", icon: CalendarCog, path: "/owner/promotions" },
           { id: "notifications", label: "Thông báo", icon: Bell, path: "/owner/notifications" },
           { id: "bank-accounts", label: "Tài khoản ngân hàng", icon: CreditCard, path: "/owner/bank-accounts" },
      ];

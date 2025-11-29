@@ -792,7 +792,6 @@ export default function ScheduleManagement({ isDemo = false }) {
           const twoDaysAgo = new Date(now);
           twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
-          console.log(`[processExpiredSchedules] Processing ${schedules.length} schedules`);
 
           for (const schedule of schedules) {
                try {
@@ -826,38 +825,29 @@ export default function ScheduleManagement({ isDemo = false }) {
 
                          // If expired more than 2 days, delete it
                          if (scheduleEndDateTime < twoDaysAgo) {
-                              console.log(`[processExpiredSchedules] Deleting schedule ${scheduleId} (expired more than 2 days)`);
                               try {
                                    const deleteResult = await deleteFieldSchedule(scheduleId);
                                    if (deleteResult.success) {
-                                        console.log(`[processExpiredSchedules] Successfully deleted schedule ${scheduleId}`);
                                    } else {
-                                        console.warn(`[processExpiredSchedules] Failed to delete schedule ${scheduleId}:`, deleteResult.error);
                                    }
                               } catch (error) {
-                                   console.error(`[processExpiredSchedules] Error deleting schedule ${scheduleId}:`, error);
                               }
                          }
                          // If expired but less than 2 days, update to Maintenance if not already
                          else if (status !== 'maintenance') {
-                              console.log(`[processExpiredSchedules] Updating schedule ${scheduleId} to Maintenance (expired)`);
                               try {
                                    const updateResult = await updateFieldScheduleStatus(scheduleId, 'Maintenance');
                                    if (updateResult.success) {
-                                        console.log(`[processExpiredSchedules] Successfully updated schedule ${scheduleId} to Maintenance`);
                                         // Update the schedule in the array
                                         schedule.status = 'Maintenance';
                                         schedule.Status = 'Maintenance';
                                    } else {
-                                        console.warn(`[processExpiredSchedules] Failed to update schedule ${scheduleId}:`, updateResult.error);
                                    }
                               } catch (error) {
-                                   console.error(`[processExpiredSchedules] Error updating schedule ${scheduleId}:`, error);
                               }
                          }
                     }
                } catch (error) {
-                    console.error(`[processExpiredSchedules] Error processing schedule:`, error);
                }
           }
      }, []);
@@ -1465,21 +1455,37 @@ export default function ScheduleManagement({ isDemo = false }) {
 
      // Get booking info
      const getBookingInfo = (fieldId, date, slotId) => {
+          if (!fieldId || !date || !slotId) {
+               console.log(`[getBookingInfo] Missing parameters: fieldId=${fieldId}, date=${date}, slotId=${slotId}`);
+               return null;
+          }
+
           const dateStr = formatDateToLocalString(date);
+          console.log(`[getBookingInfo] Searching for booking: fieldId=${fieldId}, slotId=${slotId}, date=${dateStr}`);
+          console.log(`[getBookingInfo] Total schedules: ${fieldSchedules.length}, Total bookings: ${bookings.length}`);
 
           // First, try to find booking directly by scheduleId
           // Find the schedule first
           const schedule = fieldSchedules.find(s => {
-               const scheduleFieldId = s.fieldId ?? s.FieldId;
-               const scheduleSlotId = s.slotId ?? s.SlotId ?? s.SlotID;
+               const scheduleFieldId = s.fieldId ?? s.FieldId ?? s.fieldID;
+               const scheduleSlotId = s.slotId ?? s.SlotId ?? s.SlotID ?? s.slotID;
                const scheduleDateStr = normalizeDateString(s.date);
-               return Number(scheduleFieldId) === Number(fieldId) &&
-                    Number(scheduleSlotId) === Number(slotId) &&
-                    scheduleDateStr === dateStr;
+               const fieldMatch = Number(scheduleFieldId) === Number(fieldId);
+               const slotMatch = Number(scheduleSlotId) === Number(slotId);
+               const dateMatch = scheduleDateStr === dateStr;
+
+               if (fieldMatch && slotMatch && !dateMatch) {
+                    console.log(`[getBookingInfo] Schedule found but date mismatch: scheduleDate=${scheduleDateStr}, searchDate=${dateStr}`);
+               }
+
+               return fieldMatch && slotMatch && dateMatch;
           });
 
           if (schedule) {
+               console.log(`[getBookingInfo] Found schedule:`, schedule);
                const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
+               console.log(`[getBookingInfo] Looking for booking with scheduleId=${scheduleId}`);
+
                const booking = bookings.find(b => {
                     const bookingScheduleId = b.scheduleId || b.scheduleID || b.ScheduleID;
                     const match = bookingScheduleId && Number(bookingScheduleId) === Number(scheduleId);
@@ -1490,7 +1496,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                });
 
                if (booking) {
-
+                    console.log(`[getBookingInfo] Returning booking info from schedule match`);
                     return {
                          bookingId: booking.bookingId || booking.BookingID || booking.id,
                          customerName: booking.playerName || booking.PlayerName || booking.customerName || booking.fullName || booking.name || 'Khách hàng',
@@ -1504,19 +1510,30 @@ export default function ScheduleManagement({ isDemo = false }) {
                          address: booking.address || booking.complexName || booking.ComplexName || 'N/A',
                          bookingDate: booking.bookingDate || booking.BookingDate || booking.createdDate || booking.CreatedDate || 'N/A'
                     };
+               } else {
+                    console.log(`[getBookingInfo] No booking found for scheduleId=${scheduleId}`);
                }
+          } else {
+               console.log(`[getBookingInfo] No schedule found for fieldId=${fieldId}, slotId=${slotId}, date=${dateStr}`);
           }
 
           // Fallback: try to find booking by fieldId, slotId, and date directly
           // Some bookings might have these fields directly
+          console.log(`[getBookingInfo] Trying direct booking match...`);
           const directBooking = bookings.find(b => {
                const bookingFieldId = b.fieldId || b.fieldID || b.FieldID;
                const bookingSlotId = b.slotId || b.slotID || b.SlotID;
-               const bookingDateStr = normalizeDateString(b.date || b.bookingDate);
+               const bookingDateStr = normalizeDateString(b.date || b.bookingDate || b.Date || b.BookingDate);
 
-               const match = Number(bookingFieldId) === Number(fieldId) &&
-                    Number(bookingSlotId) === Number(slotId) &&
-                    bookingDateStr === dateStr;
+               const fieldMatch = Number(bookingFieldId) === Number(fieldId);
+               const slotMatch = Number(bookingSlotId) === Number(slotId);
+               const dateMatch = bookingDateStr === dateStr;
+
+               if (fieldMatch && slotMatch && !dateMatch) {
+                    console.log(`[getBookingInfo] Direct booking found but date mismatch: bookingDate=${bookingDateStr}, searchDate=${dateStr}`, b);
+               }
+
+               const match = fieldMatch && slotMatch && dateMatch;
 
                if (match) {
                     console.log(`[getBookingInfo] Found booking by direct match:`, b);
@@ -1834,6 +1851,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                               onRefresh={loadFieldSchedules}
                               onUpdateStatus={handleUpdateScheduleStatus}
                               onDeleteSchedule={handleDeleteSchedule}
+                              getBookingInfo={getBookingInfo}
                          />
                     )}
 

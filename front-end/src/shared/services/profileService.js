@@ -68,53 +68,88 @@ const handleApiError = (error) => {
 };
 
 export const profileService = {
-  // Update user profile
-  async updateProfile(userId, profileData) {
+  // Update user profile (lấy user từ token)
+  async updateProfile(userId, profileData, avatarFile = null) {
     try {
-      console.log(
-        "Update Profile API URL:",
-        "https://sep490-g19-zxph.onrender.com/api/UpdateProfile/update-profile"
-      );
-      console.log("Update Profile data:", {
-        userId,
-        profileData,
-      });
+      const API_URL =
+        "https://sep490-g19-zxph.onrender.com/api/UserProfile/profile/player";
 
-      // Format dateOfBirth to string if it's a Date object
-      let formattedDateOfBirth = profileData.dateOfBirth || "";
-      if (formattedDateOfBirth && formattedDateOfBirth instanceof Date) {
-        formattedDateOfBirth = formattedDateOfBirth.toISOString().split('T')[0];
-      } else if (formattedDateOfBirth && typeof formattedDateOfBirth === 'string') {
-        // Ensure date is in YYYY-MM-DD format
-        const date = new Date(formattedDateOfBirth);
-        if (!isNaN(date.getTime())) {
-          formattedDateOfBirth = date.toISOString().split('T')[0];
+      // Format dateOfBirth to YYYY-MM-DD format
+      let formattedDateOfBirth = "";
+      if (profileData.dateOfBirth) {
+        if (
+          typeof profileData.dateOfBirth === "string" &&
+          profileData.dateOfBirth.match(/^\d{4}-\d{2}-\d{2}$/)
+        ) {
+          formattedDateOfBirth = profileData.dateOfBirth;
+        } else {
+          const date = new Date(profileData.dateOfBirth);
+          if (!isNaN(date.getTime())) {
+            formattedDateOfBirth = date.toISOString().split("T")[0];
+          }
         }
       }
 
-      const requestPayload = {
-        userId: userId,
-        dateOfBirth: formattedDateOfBirth,
-        gender: profileData.gender || "",
-        address: profileData.address || "",
-        preferredPositions: profileData.preferredPositions || "",
-        skillLevel: profileData.skillLevel || "",
-        bio: profileData.bio || "",
-      };
+      // Luôn dùng FormData (multipart/form-data) theo API spec
+      const formData = new FormData();
 
-      console.log("Update Profile request payload:", requestPayload);
+      // Sử dụng PascalCase field names theo API spec (theo Swagger)
+      formData.append("FullName", profileData.fullName || "");
 
-      const response = await apiClient.post(
-        "https://sep490-g19-zxph.onrender.com/api/UpdateProfile/update-profile",
-        requestPayload
+      // Chỉ gửi Avatar nếu có file mới
+      if (avatarFile) {
+        formData.append("Avatar", avatarFile);
+      }
+      // Nếu không có file, không gửi Avatar field (backend sẽ giữ nguyên avatar cũ)
+
+      formData.append("DateOfBirth", formattedDateOfBirth || "");
+      formData.append("Gender", profileData.gender || "");
+      formData.append("Address", profileData.address || "");
+      formData.append(
+        "PreferredPositions",
+        profileData.preferredPositions || ""
+      );
+      formData.append("SkillLevel", profileData.skillLevel || "");
+      formData.append("Bio", profileData.bio || "");
+
+      // Phone và Email không cần gửi trong FormData (backend lấy từ token)
+
+      // Use separate client for multipart/form-data
+      const requestClient = axios.create({
+        timeout: 30000,
+        headers: {
+          "Content-Type": "multipart/form-data",
+          accept: "*/*",
+        },
+      });
+
+      requestClient.interceptors.request.use(
+        (config) => {
+          const token = localStorage.getItem("token");
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
+          return config;
+        },
+        (error) => {
+          return Promise.reject(error);
+        }
       );
 
-      console.log("Update Profile response:", response.data);
+      // Gọi PUT request
+      const response = await requestClient.put(API_URL, formData);
+
+      // Xử lý response - API trả về avatarUrl thay vì avatar
+      const responseData = response.data || {};
 
       return {
         ok: true,
-        data: response.data,
-        message: response.data.message || "Cập nhật profile thành công",
+        data: {
+          ...responseData,
+          // Map avatarUrl về avatar để tương thích với frontend
+          avatar: responseData.avatarUrl || responseData.avatar || null,
+        },
+        message: responseData.message || "Cập nhật profile thành công",
       };
     } catch (error) {
       handleApiError(error);
@@ -125,25 +160,39 @@ export const profileService = {
     }
   },
 
-  // Get user profile
+  // Get user profile (lấy theo token từ Authorization header)
   async getProfile(userId) {
     try {
-      console.log(
-        "Get Profile API URL:",
-        "https://sep490-g19-zxph.onrender.com/api/UpdateProfile/get-profile"
-      );
-      console.log("Get Profile userId:", userId);
-
+      // Lấy profile theo token, không cần userId trong URL
       const response = await apiClient.get(
-        `https://sep490-g19-zxph.onrender.com/api/UpdateProfile/get-profile/${userId}`
+        "https://sep490-g19-zxph.onrender.com/api/UserProfile/profile"
       );
 
-      console.log("Get Profile response:", response.data);
+      // Xử lý response data - có thể có nhiều format khác nhau
+      let profileData = null;
+      if (response.data) {
+        // Nếu response.data là object trực tiếp
+        if (response.data.fullName || response.data.email) {
+          profileData = response.data;
+        }
+        // Nếu response.data có nested profile
+        else if (response.data.profile) {
+          profileData = response.data.profile;
+        }
+        // Nếu response.data có nested data
+        else if (response.data.data) {
+          profileData = response.data.data;
+        }
+        // Nếu response.data là array và có phần tử đầu tiên
+        else if (Array.isArray(response.data) && response.data.length > 0) {
+          profileData = response.data[0];
+        }
+      }
 
       return {
         ok: true,
         data: response.data,
-        profile: response.data.profile || response.data.data,
+        profile: profileData || response.data,
       };
     } catch (error) {
       handleApiError(error);

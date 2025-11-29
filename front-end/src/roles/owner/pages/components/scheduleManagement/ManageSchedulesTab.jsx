@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Card, Button, Badge, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Pagination, usePagination, Input, Checkbox } from "../../../../../shared/components/ui";
-import { Plus, Calendar, Loader2, Trash2, Loader, Search, X, ChevronDown, ChevronUp, Grid3x3, Table2, Clock, MapPin } from "lucide-react";
+import { Plus, Calendar, Loader2, Trash2, Loader, Search, X, ChevronDown, ChevronUp, Grid3x3, Table2, Clock, MapPin, User, Phone } from "lucide-react";
 import Swal from "sweetalert2";
 
 export default function ManageSchedulesTab({
@@ -16,7 +16,8 @@ export default function ManageSchedulesTab({
      onAddSchedule,
      onRefresh,
      onUpdateStatus,
-     onDeleteSchedule
+     onDeleteSchedule,
+     getBookingInfo
 }) {
      const [searchTerm, setSearchTerm] = useState('');
      const [selectedSchedules, setSelectedSchedules] = useState(new Set());
@@ -30,13 +31,13 @@ export default function ManageSchedulesTab({
      const getStatusBadge = (status) => {
           const statusLower = status.toLowerCase();
           if (statusLower === 'available') {
-               return <Badge className="bg-green-100 text-green-800">Available</Badge>;
+               return <Badge className="bg-green-100 rounded-2xl hover:bg-green-200 cursor-pointer text-green-800">Available</Badge>;
           } else if (statusLower === 'booked') {
-               return <Badge className="bg-blue-100 text-blue-800">Booked</Badge>;
+               return <Badge className="bg-blue-100 rounded-2xl hover:bg-blue-200 cursor-pointer text-blue-800">Booked</Badge>;
           } else if (statusLower === 'maintenance') {
-               return <Badge className="bg-orange-100 text-orange-800">Maintenance</Badge>;
+               return <Badge className="bg-orange-100 rounded-2xl hover:bg-orange-200 cursor-pointer text-orange-800">Maintenance</Badge>;
           }
-          return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>;
+          return <Badge className="bg-gray-100 rounded-2xl hover:bg-gray-200 cursor-pointer text-gray-800">{status}</Badge>;
      };
 
      const formatTimeObj = (time) => {
@@ -801,6 +802,7 @@ export default function ManageSchedulesTab({
                                                        )}
                                                   </div>
                                              </th>
+                                             <th className="p-2 text-center font-bold text-gray-800">Thông tin Booking</th>
                                              <th className="p-2 text-center font-bold text-gray-800">Thao tác</th>
                                         </tr>
                                    </thead>
@@ -827,10 +829,21 @@ export default function ManageSchedulesTab({
                                                   timeStr = `${formatTimeObj(startTime)} - ${formatTimeObj(endTime)}`;
                                              }
 
+                                             // Lấy thông tin booking nếu status là Booked
+                                             const fieldId = schedule.fieldId ?? schedule.FieldID ?? schedule.fieldID;
+                                             const slotId = schedule.slotId ?? schedule.SlotID ?? schedule.SlotId ?? schedule.slotID;
+                                             const bookingInfo = (status.toLowerCase() === 'booked' && getBookingInfo && date && fieldId && slotId)
+                                                  ? getBookingInfo(
+                                                       Number(fieldId),
+                                                       date,
+                                                       Number(slotId)
+                                                  )
+                                                  : null;
+
                                              return (
                                                   <tr
                                                        key={scheduleId}
-                                                       className={`border border-gray-200 hover:bg-gray-50 transition-colors text-center ${isSelected ? 'bg-teal-50' : ''}`}
+                                                       className={`border border-gray-200 hover:bg-gray-50 transition-colors text-center ${isSelected ? 'bg-teal-50' : ''} ${status.toLowerCase() === 'booked' && bookingInfo ? 'bg-blue-50/50' : ''}`}
                                                   >
                                                        <td className="p-2 text-center border-r border-gray-200">
                                                             <Checkbox
@@ -843,26 +856,48 @@ export default function ManageSchedulesTab({
                                                        <td className="p-2 text-gray-700 border-r border-gray-200">{slotName}</td>
                                                        <td className="p-2 text-gray-700 font-mono text-sm border-r border-gray-200">{timeStr}</td>
                                                        <td className="p-2 text-center border-r border-gray-200">{getStatusBadge(status)}</td>
+                                                       <td className="p-2 text-center border-r border-gray-200">
+                                                            {bookingInfo ? (
+                                                                 <div className="flex flex-col items-start gap-1 px-2 py-1 bg-blue-50 rounded-lg border border-blue-200">
+                                                                      <div className="flex items-center gap-1 text-xs text-blue-900">
+                                                                           <User className="w-3 h-3" />
+                                                                           <span className="font-semibold">{bookingInfo.customerName || 'N/A'}</span>
+                                                                      </div>
+                                                                      <div className="flex items-center gap-1 text-xs text-blue-700">
+                                                                           <Phone className="w-3 h-3" />
+                                                                           <span>{bookingInfo.customerPhone || 'N/A'}</span>
+                                                                      </div>
+                                                                      {bookingInfo.bookingId && (
+                                                                           <div className="text-xs text-blue-600 font-medium">
+                                                                                Booking #{bookingInfo.bookingId}
+                                                                           </div>
+                                                                      )}
+                                                                 </div>
+                                                            ) : (
+                                                                 <span className="text-gray-400 text-xs">-</span>
+                                                            )}
+                                                       </td>
                                                        <td className="p-2 text-center">
                                                             <div className="flex items-center justify-center gap-2">
                                                                  <Select
                                                                       value={status}
                                                                       onValueChange={(newStatus) => onUpdateStatus(scheduleId, newStatus)}
+                                                                      className="rounded-2xl"
                                                                  >
                                                                       <SelectTrigger className="w-[140px] h-8 text-xs">
                                                                            <SelectValue />
                                                                       </SelectTrigger>
                                                                       <SelectContent>
-                                                                           <SelectItem value="Available">Available</SelectItem>
-                                                                           <SelectItem value="Booked">Booked</SelectItem>
-                                                                           <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                                                           <SelectItem value="Available" className="text-green-600">Available</SelectItem>
+                                                                           <SelectItem value="Booked" className="text-blue-600">Booked</SelectItem>
+                                                                           <SelectItem value="Maintenance" className="text-orange-600">Maintenance</SelectItem>
                                                                       </SelectContent>
                                                                  </Select>
                                                                  <Button
                                                                       onClick={() => onDeleteSchedule(scheduleId, `${fieldName} - ${slotName} - ${dateStr}`)}
                                                                       variant="outline"
                                                                       size="sm"
-                                                                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                                                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 rounded-2xl px-2"
                                                                  >
                                                                       <Trash2 className="w-4 h-4" />
                                                                  </Button>

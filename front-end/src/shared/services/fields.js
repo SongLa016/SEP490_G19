@@ -168,7 +168,6 @@ export async function fetchFieldComplexes() {
 
     // If response.data is null or undefined
     if (!data) {
-      console.warn("Response data is null or undefined, returning empty array");
       return [];
     }
 
@@ -202,10 +201,11 @@ export async function fetchFieldComplexes() {
     const mapped = data.map((complex) => {
       const rawId = complex.complexId ?? complex.ComplexID;
       const complexId = Number(rawId);
-      
+
       // Only use imageUrl from Cloudinary
-      const imageUrl = complex.imageUrl || complex.ImageUrl || complex.imageURL || null;
-      
+      const imageUrl =
+        complex.imageUrl || complex.ImageUrl || complex.imageURL || null;
+
       return {
         complexId: Number.isNaN(complexId) ? rawId : complexId,
         ownerId: complex.ownerId || complex.OwnerID,
@@ -233,15 +233,16 @@ export async function fetchFieldComplex(id) {
   try {
     const response = await apiClient.get(`/api/FieldComplex/${id}`);
     const data = response.data;
-    // Safely unwrap data. If data.data exists (even if null), use it. 
+    // Safely unwrap data. If data.data exists (even if null), use it.
     // Otherwise use data itself, but only if it doesn't look like a wrapper with 'success' property
-    const complex = (data && 'data' in data) ? data.data : data;
-    
+    const complex = data && "data" in data ? data.data : data;
+
     // Normalize complex data to include imageUrl
     if (complex) {
       // Only use imageUrl from Cloudinary
-      const imageUrl = complex.imageUrl || complex.ImageUrl || complex.imageURL || null;
-      
+      const imageUrl =
+        complex.imageUrl || complex.ImageUrl || complex.imageURL || null;
+
       return {
         ...complex,
         complexId: complex.complexId || complex.ComplexID,
@@ -258,7 +259,7 @@ export async function fetchFieldComplex(id) {
         lng: complex.lng || complex.Lng,
       };
     }
-    
+
     return complex;
   } catch (error) {
     handleApiError(error);
@@ -276,7 +277,7 @@ export async function updateFieldComplex(id, complexData) {
     }
 
     const data = response.data;
-    return (data && 'data' in data) ? data.data : data;
+    return data && "data" in data ? data.data : data;
   } catch (error) {
     handleApiError(error);
   }
@@ -298,7 +299,7 @@ export async function createField(fieldData) {
     if (fieldData instanceof FormData) {
       const response = await apiClient.post("/api/Field", fieldData);
       const data = response.data;
-      return (data && 'data' in data) ? data.data : data;
+      return data && "data" in data ? data.data : data;
     }
 
     // Otherwise, send as JSON (for backward compatibility)
@@ -322,7 +323,7 @@ export async function createField(fieldData) {
       { headers: buildMultipartHeaders() }
     );
     const data = response.data;
-    return (data && 'data' in data) ? data.data : data;
+    return data && "data" in data ? data.data : data;
   } catch (error) {
     handleApiError(error);
   }
@@ -334,11 +335,8 @@ export async function createField(fieldData) {
  */
 export async function fetchAllComplexesWithFields() {
   try {
-    console.log("Fetching all complexes with their fields...");
-
     // Bước 1: Lấy tất cả khu sân từ GET /api/FieldComplex
     const complexes = await fetchFieldComplexes();
-    console.log(`Found ${complexes.length} complexes`);
 
     // Bước 2: Với mỗi khu sân, lấy các sân nhỏ từ GET /api/Field/complex/{complexId}
     const complexesWithFields = await Promise.all(
@@ -351,10 +349,6 @@ export async function fetchAllComplexesWithFields() {
             fieldCount: fields?.length || 0,
           };
         } catch (error) {
-          console.error(
-            `Error fetching fields for complex ${complex.complexId}:`,
-            error
-          );
           return {
             ...complex,
             fields: [],
@@ -364,12 +358,8 @@ export async function fetchAllComplexesWithFields() {
       })
     );
 
-    console.log(
-      `Successfully fetched ${complexesWithFields.length} complexes with their fields`
-    );
     return complexesWithFields;
   } catch (error) {
-    console.error("Error fetching complexes with fields:", error);
     handleApiError(error);
   }
 }
@@ -377,27 +367,13 @@ export async function fetchAllComplexesWithFields() {
 export async function fetchFieldsByComplex(complexId) {
   try {
     const complexIdNum = Number(complexId);
-    console.log(
-      `Fetching fields for complex ${complexIdNum} from:`,
-      `${API_BASE_URL}/api/Field/complex/${complexIdNum}`
-    );
 
     // Use the correct endpoint from Swagger: GET /api/Field/complex/{complexId}
     const response = await apiClient.get(`/api/Field/complex/${complexIdNum}`);
-    console.log(`Fields for complex ${complexIdNum} response:`, response.data);
-    
-    // Debug: Log raw field data to check typeId
-    if (Array.isArray(response.data)) {
-      response.data.forEach(field => {
-        if (field.fieldId === 32 || field.FieldID === 32) {
-          console.log("🔍 [fetchFieldsByComplex] Raw field 32 from API:", field);
-        }
-      });
-    }
 
     // Handle response - can be array or object
     let data = response.data;
-    
+
     // Handle wrapper object
     if (data && !Array.isArray(data)) {
       if (Array.isArray(data.data)) {
@@ -427,26 +403,19 @@ export async function fetchFieldsByComplex(complexId) {
         : normalizedComplexId;
 
       // Try multiple variations of typeId field name (typeId is the correct one from API)
-      const rawTypeId = field.typeId ?? field.TypeID ?? field.typeID ?? field.TypeId ?? field.fieldTypeId ?? field.FieldTypeID;
-      
+      const rawTypeId =
+        field.typeId ??
+        field.TypeID ??
+        field.typeID ??
+        field.TypeId ??
+        field.fieldTypeId ??
+        field.FieldTypeID;
+
       // Normalize typeId - ensure it's a number if it exists
       let finalTypeId = null;
       if (rawTypeId != null && rawTypeId !== undefined && rawTypeId !== "") {
         const numTypeId = Number(rawTypeId);
         finalTypeId = !Number.isNaN(numTypeId) ? numTypeId : rawTypeId;
-      }
-      
-      // Debug log for fieldId 32
-      if (fieldId === 32) {
-        console.log("🔍 [fetchFieldsByComplex] Field 32 normalization:", {
-          rawField: field,
-          rawTypeId: rawTypeId,
-          finalTypeId: finalTypeId,
-          fieldTypeId: field.typeId,
-          fieldTypeID: field.TypeID,
-          fieldTypeName: field.typeName,
-          fieldTypeName: field.TypeName
-        });
       }
 
       // Only use URLs from Cloudinary
@@ -486,12 +455,7 @@ export async function fetchFieldsByComplex(complexId) {
             ? field.isAvailableForSelectedSlot
             : field.status === "Available" || field.Status === "Available",
       };
-      
-      // Debug: Log final normalized field for fieldId 32
-      if (fieldId === 32) {
-        console.log("✅ [fetchFieldsByComplex] Final normalized field 32:", normalizedField);
-      }
-      
+
       return normalizedField;
     });
   } catch (error) {
@@ -506,20 +470,26 @@ export async function fetchField(fieldId) {
   try {
     const response = await apiClient.get(`/api/Field/${fieldId}`);
     const data = response.data;
-    // Safely unwrap data. If data.data exists (even if null), use it. 
+    // Safely unwrap data. If data.data exists (even if null), use it.
     // Otherwise use data itself, but only if it doesn't look like a wrapper with 'success' property
-    const field = (data && 'data' in data) ? data.data : data;
-    
+    const field = data && "data" in data ? data.data : data;
+
     // Normalize field data to ensure typeId and complexId are preserved
     if (field) {
       return {
         ...field,
-        typeId: field.typeId ?? field.TypeID ?? field.typeID ?? field.TypeId ?? null,
+        typeId:
+          field.typeId ?? field.TypeID ?? field.typeID ?? field.TypeId ?? null,
         typeName: field.typeName ?? field.TypeName ?? "",
-        complexId: field.complexId ?? field.complexID ?? field.ComplexID ?? field.complex_id ?? null,
+        complexId:
+          field.complexId ??
+          field.complexID ??
+          field.ComplexID ??
+          field.complex_id ??
+          null,
       };
     }
-    
+
     return field;
   } catch (error) {
     handleApiError(error);
@@ -635,8 +605,6 @@ export async function fetchComplexes(params = {}) {
   try {
     const complexes = await fetchFieldComplexes();
 
-    console.log(`Fetched ${complexes.length} complexes from API`);
-
     // Fetch fields for each complex to get counts
     const complexesWithFields = await Promise.all(
       complexes.map(async (complex) => {
@@ -646,8 +614,8 @@ export async function fetchComplexes(params = {}) {
             complexId: complex.complexId,
             name: complex.name,
             address: complex.address,
-        // Only use URL from Cloudinary
-        imageUrl: complex.imageUrl,
+            // Only use URL from Cloudinary
+            imageUrl: complex.imageUrl,
             lat: complex.lat,
             lng: complex.lng,
             totalFields: fields.length,
@@ -664,16 +632,12 @@ export async function fetchComplexes(params = {}) {
             rating: 0, // API might not return rating
           };
         } catch (error) {
-          console.warn(
-            `Error fetching fields for complex ${complex.complexId}:`,
-            error?.message || error
-          );
           return {
             complexId: complex.complexId,
             name: complex.name,
             address: complex.address,
-        // Only use URL from Cloudinary
-        imageUrl: complex.imageUrl,
+            // Only use URL from Cloudinary
+            imageUrl: complex.imageUrl,
             lat: complex.lat,
             lng: complex.lng,
             totalFields: 0,
@@ -691,13 +655,8 @@ export async function fetchComplexes(params = {}) {
         item.address.toLowerCase().includes(query.toLowerCase())
     );
 
-    console.log(`Returning ${filtered.length} filtered complexes from API`);
     return filtered;
   } catch (error) {
-    console.error(
-      "Error fetching complexes from API:",
-      error?.message || error
-    );
     throw error;
   }
 }
@@ -722,10 +681,6 @@ export async function fetchFields(params = {}) {
         try {
           return await fetchFieldsByComplex(complex.complexId);
         } catch (error) {
-          console.error(
-            `Error fetching fields for complex ${complex.complexId}:`,
-            error
-          );
           return [];
         }
       });
@@ -741,11 +696,11 @@ export async function fetchFields(params = {}) {
       .map((f) => {
         const complex = complexMap.get(String(f.complexId));
         const status = f.status || "Available";
-        
+
         // Only use URLs from Cloudinary
         const mainImageUrl = f.mainImageUrl || f.MainImageUrl || null;
         const imageUrls = f.imageUrls || f.ImageUrls || [];
-        
+
         return {
           fieldId: f.fieldId,
           complexId: f.complexId,
@@ -777,7 +732,6 @@ export async function fetchFields(params = {}) {
           item.address.toLowerCase().includes(query.toLowerCase())
       );
   } catch (error) {
-    console.error("Error fetching fields from API:", error);
     throw error;
   }
 }
@@ -812,11 +766,9 @@ export async function fetchComplexDetail(complexId, { date, slotId } = {}) {
     // Fetch complex and fields in parallel for better performance
     const [complex, fields] = await Promise.all([
       fetchFieldComplex(complexId).catch((err) => {
-        console.warn("Error fetching complex:", err);
         return null;
       }),
       fetchFields({ complexId, date, slotId }).catch((err) => {
-        console.warn("Error fetching fields:", err);
         return [];
       }),
     ]);
@@ -828,15 +780,14 @@ export async function fetchComplexDetail(complexId, { date, slotId } = {}) {
             name: complex.name,
             address: complex.address,
             description: complex.description,
-        // Only use URL from Cloudinary
-        imageUrl: complex.imageUrl,
+            // Only use URL from Cloudinary
+            imageUrl: complex.imageUrl,
             rating: 0, // Should come from API
           }
         : null,
       fields: fields || [],
     };
   } catch (error) {
-    console.error("Error fetching complex detail:", error);
     throw new Error("Không thể tải thông tin khu sân. Vui lòng thử lại sau.");
   }
 }
@@ -864,7 +815,6 @@ export async function fetchFieldMeta(fieldId) {
         : null,
     };
   } catch (error) {
-    console.error("Error fetching field meta:", error);
     throw error;
   }
 }
@@ -877,7 +827,8 @@ export async function fetchFieldDetail(fieldId) {
     const complex = await fetchFieldComplex(field.complexId);
 
     // Normalize field type information - support multiple field name variations
-    const typeId = field.typeId || field.typeID || field.TypeID || field.TypeId || null;
+    const typeId =
+      field.typeId || field.typeID || field.TypeID || field.TypeId || null;
     const typeName = field.typeName || field.typeName || field.TypeName || "";
 
     // Only use URLs from Cloudinary
@@ -898,7 +849,8 @@ export async function fetchFieldDetail(fieldId) {
       // Only use URLs from Cloudinary
       mainImageUrl: mainImageUrl,
       imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
-      pricePerHour: field.pricePerHour || field.pricePerHour || field.PricePerHour || 0,
+      pricePerHour:
+        field.pricePerHour || field.pricePerHour || field.PricePerHour || 0,
       rating: field.rating || field.Rating || 0,
     };
   } catch (error) {

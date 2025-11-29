@@ -11,14 +11,14 @@ export default function FieldList({
      getFieldColor
 }) {
      return (
-          <Card className="p-4 shadow-lg bg-white rounded-xl">
+          <Card className="p-4 shadow-lg bg-white rounded-2xl">
                <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold text-gray-900 text-base">Danh sách sân</h3>
                     <button className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
                          <Plus className="w-4 h-4 text-gray-600 hover:text-teal-600" />
                     </button>
                </div>
-               <div className="space-y-2 max-h-[200px] overflow-y-auto">
+               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                     {fields.length === 0 ? (
                          <p className="text-sm text-gray-500 text-center py-4">Chưa có sân nào</p>
                     ) : (
@@ -31,7 +31,7 @@ export default function FieldList({
                                    return (
                                         <label
                                              key={field.fieldId}
-                                             className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 hover:border-teal-400 hover:bg-teal-50/50 transition-all cursor-pointer group"
+                                             className="flex items-center gap-3 p-2.5 rounded-2xl shadow-md border border-gray-200 hover:border-teal-400 hover:bg-teal-50/50 transition-all cursor-pointer group"
                                              onClick={(e) => {
                                                   e.preventDefault();
                                                   if (selectedFieldForSchedule === 'all') {
