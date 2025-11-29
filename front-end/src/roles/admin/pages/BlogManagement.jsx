@@ -61,7 +61,7 @@ export default function BlogManagement() {
                {
                     id: 2,
                     title: "Lợi ích của việc chơi bóng đá thường xuyên",
-                    content: "Bóng đá không chỉ là môn thể thao giải trí mà còn mang lại nhiều lợi ích cho sức khỏe. Bài viết này sẽ chia sẻ những lợi ích tuyệt vời của việc chơi bóng đá thường xuyên.",
+                    content: "Bóng đá không chỉ là môn thể thao giải trí mà còn mang lại rất nhiều lợi ích cho sức khỏe. Bài viết này sẽ chia sẻ những lợi ích tuyệt vời của việc chơi bóng đá thường xuyên.",
                     authorID: 1,
                     authorName: "Admin System",
                     status: "Published",
@@ -73,7 +73,7 @@ export default function BlogManagement() {
                {
                     id: 3,
                     title: "Các kỹ thuật cơ bản trong bóng đá",
-                    content: "Bài viết giới thiệu các kỹ thuật cơ bản mà mọi cầu thủ bóng đá cần nắm vững. Từ cách kiểm soát bóng đến các kỹ thuật sút bóng và chuyền bóng.",
+                    content: "Bài viết giới thiệu các kỹ thuật cơ bản mà mọi cầu thủ bóng đá cần nắm vững. Từ cách kiểm soát bóng đến các kỹ thuật sút bóng, rê bóng và chuyền bóng.",
                     authorID: 1,
                     authorName: "Admin System",
                     status: "Draft",
@@ -294,7 +294,7 @@ export default function BlogManagement() {
                                    Quản lý blog
                               </h1>
                               <p className="text-slate-600 mt-2 font-medium">
-                                   Tạo và quản lý các bài viết blog cho nền tảng
+                                   Tạo và quản lý các bài viết blog
                               </p>
                          </div>
                          <div className="flex space-x-3">
@@ -319,7 +319,7 @@ export default function BlogManagement() {
                               <div className="relative">
                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
                                    <Input
-                                        placeholder="Tìm kiếm theo tiêu đề hoặc nội dung..."
+                                        placeholder="Tìm kiếm theo tiêu đề hoặc nội dung"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="pl-10"
