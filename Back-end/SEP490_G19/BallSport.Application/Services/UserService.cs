@@ -253,48 +253,6 @@ namespace BallSport.Application.Services
 
         ////////////////////////////////// UPdate profile /////////////////////////
         ///
-        public void AddOrUpdateUserProfile(int userId, UserProfileDTO profileDto)
-        {
-            if (profileDto == null)
-                throw new ArgumentNullException(nameof(profileDto));
-
-            
-            var existingProfile = _userRepository.GetUserProfileByUserId(userId);
-
-            DateOnly? dob = null;
-            if (!string.IsNullOrEmpty(profileDto.DateOfBirth))
-                dob = DateOnly.Parse(profileDto.DateOfBirth);
-
-            if (existingProfile == null)
-            {
-               
-                var newProfile = new UserProfile
-                {
-                    UserId = userId,
-                    DateOfBirth = dob,
-                    Gender = profileDto.Gender,
-                    Address = profileDto.Address,
-                    PreferredPositions = profileDto.PreferredPositions,
-                    SkillLevel = profileDto.SkillLevel,
-                    Bio = profileDto.Bio
-                };
-
-                _userRepository.AddOrUpdateUserProfile(newProfile);
-            }
-            else
-            {
-                // Cập nhật
-                existingProfile.DateOfBirth = dob; // <-- cũng gán DateOnly?
-                existingProfile.Gender = profileDto.Gender;
-                existingProfile.Address = profileDto.Address;
-                existingProfile.PreferredPositions = profileDto.PreferredPositions;
-                existingProfile.SkillLevel = profileDto.SkillLevel;
-                existingProfile.Bio = profileDto.Bio;
-
-                _userRepository.AddOrUpdateUserProfile(existingProfile);
-            }
-        }
-
-
+       
     }
 }

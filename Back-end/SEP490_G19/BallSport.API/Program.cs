@@ -141,7 +141,9 @@ services.AddScoped<UserRepositories>();
 services.AddScoped<UserService>();
 services.AddScoped<JwtService>();
 services.AddScoped<OTPService>();
-builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+services.AddScoped<UserProfileService>();
+services.AddScoped<UserProfileRepository>();
+services.AddScoped<ICloudinaryService, CloudinaryService>();
 
 // --- Booking & Payment ---
 services.AddScoped<BookingService>();
