@@ -184,6 +184,8 @@ services.AddScoped<IFieldScheduleService, FieldScheduleService>();
 services.AddScoped<TimeSlotService>();
 services.AddScoped<ITopFieldRepository,TopFieldRepository>();
 services.AddScoped<ITopFieldService,TopFieldService>();
+services.AddScoped<IPlayerProfileRepository,PlayerProfileRepository>();
+services.AddScoped<IPlayerProfileService,PlayerProfileService>();
 // 1. Tăng giới hạn upload (100MB)
 services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = 100_000_000);
 services.Configure<IISServerOptions>(options => options.MaxRequestBodySize = 100_000_000);
