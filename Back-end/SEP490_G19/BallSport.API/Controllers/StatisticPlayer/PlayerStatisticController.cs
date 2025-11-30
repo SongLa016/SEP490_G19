@@ -10,10 +10,11 @@ namespace BallSport.API.Controllers.Player
     public class PlayerStatisticController : ControllerBase
     {
         private readonly PlayerStatisticService _statisticService;
-
-        public PlayerStatisticController(PlayerStatisticService statisticService)
+        private readonly PlayerRecentActivityService _recentActivityService;
+        public PlayerStatisticController(PlayerStatisticService statisticService, PlayerRecentActivityService recentActivityService)
         {
             _statisticService = statisticService;
+            _recentActivityService = recentActivityService;
         }
 
         [HttpGet("total-bookings")]
@@ -46,7 +47,6 @@ namespace BallSport.API.Controllers.Player
         }
 
         [HttpGet("stats/monthly")]
-        [Authorize(Roles = "Player")]
         public async Task<IActionResult> GetMonthlyStats()
         {
             var userId = int.Parse(User.FindFirst("UserID")!.Value);
@@ -56,5 +56,26 @@ namespace BallSport.API.Controllers.Player
             return Ok(stats);
         }
 
+        [HttpGet("average-rating")]
+        public async Task<IActionResult> GetAverageRating()
+        {
+            // Lấy UserId từ token
+            var userId = int.Parse(User.FindFirst("UserID")!.Value);
+
+            double avgRating = await _statisticService.GetAverageRatingAsync(userId);
+
+            return Ok(new { averageStars = avgRating });
+        }
+
+        [HttpGet("recent-activity")]
+        public async Task<IActionResult> GetRecentActivities([FromQuery] int top = 10)
+        {
+            // Lấy userId từ token
+            var userId = int.Parse(User.FindFirst("UserID")!.Value);
+
+            var activities = await _recentActivityService.GetRecentActivitiesAsync(userId, top);
+
+            return Ok(activities);
+        }
     }
 }

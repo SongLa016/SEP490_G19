@@ -86,7 +86,22 @@ namespace BallSport.API.Controllers.StatisticAdmin
             return Ok(users);
         }
 
+        [HttpGet("recent-activities")]
+        public async Task<IActionResult> GetRecentActivities()
+        {
+            var activities = await _recentActivityService.GetRecentActivitiesAsync(20);
 
+            // Map thời gian sang "x phút trước", "x giờ trước"
+            var now = DateTime.Now;
+            var result = activities.Select(a => new
+            {
+                a.ActivityType,
+                a.Description,
+                TimeAgo = FormatTimeAgo(a.CreatedAt, now)
+            });
+
+            return Ok(result);
+        }
         private string FormatTimeAgo(DateTime createdAt, DateTime now)
         {
             var span = now - createdAt;

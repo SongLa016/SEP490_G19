@@ -8,6 +8,7 @@ using BallSport.Application.Services.AdminStatistics;
 using BallSport.Application.Services.Community;
 using BallSport.Application.Services.MatchFinding;
 using BallSport.Application.Services.OwnerStatistics;
+using BallSport.Application.Services.RatingBooking;
 using BallSport.Application.Services.StatisticOwner;
 using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
@@ -16,6 +17,8 @@ using BallSport.Infrastructure.Repositories.AdminStatistics;
 using BallSport.Infrastructure.Repositories.Community;
 using BallSport.Infrastructure.Repositories.MatchFinding;
 using BallSport.Infrastructure.Repositories.OwnerStatistics;
+using BallSport.Infrastructure.Repositories.PlayerStatistics;
+using BallSport.Infrastructure.Repositories.RatingBooking;
 using BallSport.Infrastructure.Repositories.StatisticOwner;
 using BallSport.Infrastructure.Settings;
 using Banking.Application.Services;
@@ -137,8 +140,13 @@ services.AddScoped<IUserListRepository, UserListRepository>();
 services.AddScoped<IUserListService, UserListService>();
 
 //--- Statistic Player ---
-services.AddScoped<PlayerBookingRepository>();
+services.AddScoped<PlayRepository>();
 services.AddScoped<PlayerStatisticService>();
+services.AddScoped<IPlayerRecentActivityRepository, PlayerRecentActivityRepository>();
+services.AddScoped<PlayerRecentActivityService>();
+//--- Rating Booking ---
+services.AddScoped<RatingRepository>();
+services.AddScoped<RatingService>();
 
 // --- Core user / auth ---
 services.AddScoped<UserRepositories>();

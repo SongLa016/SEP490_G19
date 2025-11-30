@@ -68,6 +68,8 @@ public partial class Sep490G19v1Context : DbContext
 
     public virtual DbSet<PostLike> PostLikes { get; set; }
 
+    public virtual DbSet<Rating> Ratings { get; set; }
+
     public virtual DbSet<Report> Reports { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
@@ -738,6 +740,31 @@ public partial class Sep490G19v1Context : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_PostLikes_Users");
+        });
+
+        modelBuilder.Entity<Rating>(entity =>
+        {
+            entity.HasKey(e => e.RatingId).HasName("PK__Ratings__FCCDF87C72FD2FB9");
+
+            entity.Property(e => e.Comment).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.Booking).WithMany(p => p.Ratings)
+                .HasForeignKey(d => d.BookingId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Ratings__Booking__7908F585");
+
+            entity.HasOne(d => d.Field).WithMany(p => p.Ratings)
+                .HasForeignKey(d => d.FieldId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Ratings__FieldId__7AF13DF7");
+
+            entity.HasOne(d => d.User).WithMany(p => p.Ratings)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__Ratings__UserId__79FD19BE");
         });
 
         modelBuilder.Entity<Report>(entity =>

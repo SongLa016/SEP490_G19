@@ -3,11 +3,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BallSport.Infrastructure.Repositories
 {
-    public class PlayerBookingRepository
+    public class PlayRepository
     {
         private readonly Sep490G19v1Context _db;
 
-        public PlayerBookingRepository(Sep490G19v1Context db)
+        public PlayRepository(Sep490G19v1Context db)
         {
             _db = db;
         }
@@ -79,6 +79,18 @@ namespace BallSport.Infrastructure.Repositories
                 .ToList();
 
             return result;
+        }
+        public async Task<double> GetAverageStarsByUserAsync(int userId)
+        {
+            var ratings = await _db.Ratings
+                .Where(r => r.UserId == userId)
+                .Select(r => r.Stars)
+                .ToListAsync();
+
+            if (ratings.Count == 0)
+                return 0;
+
+            return ratings.Average();
         }
         public class MonthlyPlayerStatsDto
         {
