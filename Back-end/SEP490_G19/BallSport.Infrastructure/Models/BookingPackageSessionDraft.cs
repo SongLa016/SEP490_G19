@@ -22,4 +22,6 @@ public partial class BookingPackageSessionDraft
     public DateTime CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+    
+    public int? ScheduleId { get; set; }
 }

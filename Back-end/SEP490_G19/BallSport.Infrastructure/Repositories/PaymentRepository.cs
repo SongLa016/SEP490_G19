@@ -103,5 +103,86 @@ namespace BallSport.Infrastructure.Repositories
             return qrUrl;
         }
 
+
+        public async Task<string> GenerateVietQRForPackageAsync(int bookingPackageId, decimal amount)
+        {
+            var package = await _context.BookingPackages
+                .Include(bp => bp.Field)
+                    .ThenInclude(f => f.BankAccount)
+                .FirstOrDefaultAsync(bp => bp.BookingPackageId == bookingPackageId);
+
+            if (package == null)
+                throw new Exception("Không tìm thấy booking package.");
+
+            var bankAccount = package.Field?.BankAccount
+                ?? throw new Exception("Không tìm thấy tài khoản ngân hàng của sân.");
+
+            string bankShortCode = bankAccount.BankShortCode
+                ?? throw new Exception("Thiếu mã ngân hàng (BankShortCode).");
+            string accountNumber = bankAccount.AccountNumber
+                ?? throw new Exception("Thiếu số tài khoản.");
+            string accountHolder = bankAccount.AccountHolder
+                ?? throw new Exception("Thiếu tên chủ tài khoản.");
+
+            string addInfo = $"BookingPackage #{package.BookingPackageId}";
+
+            // ✅ Sửa định dạng tiền: luôn dùng dấu chấm
+            string amountString = amount.ToString("0.00", CultureInfo.InvariantCulture);
+
+            string qrUrl = $"https://img.vietqr.io/image/{bankShortCode}-{accountNumber}-compact2.jpg" +
+                           $"?amount={amountString}" +
+                           $"&addInfo={Uri.EscapeDataString(addInfo)}" +
+                           $"&accountName={Uri.EscapeDataString(accountHolder)}";
+
+            return qrUrl;
+        }
+
+
+
+        public async Task<string> GenerateRefundVietQRAsync(int userId, decimal refundAmount, string info = "")
+        {
+            var playerAccount = await _context.PlayerBankAccounts
+               .FirstOrDefaultAsync(a => a.UserId == userId && a.IsDefault == true)
+                ?? throw new Exception("Người chơi chưa có tài khoản ngân hàng.");
+
+            string addInfo = string.IsNullOrEmpty(info) ? $"Refund for User #{userId}" : info;
+
+            string amountString = refundAmount.ToString("0.##", CultureInfo.InvariantCulture);
+
+            string qrUrl = $"https://img.vietqr.io/image/{playerAccount.BankShortCode}-{playerAccount.AccountNumber}-compact2.jpg" +
+                           $"?amount={amountString}" +
+                           $"&addInfo={Uri.EscapeDataString(addInfo)}" +
+                           $"&accountName={Uri.EscapeDataString(playerAccount.AccountHolder)}";
+
+            return qrUrl;
+        }
+
+        public async Task<string> GenerateRefundQRForSessionAsync(int userId, decimal refundAmount, string info = "")
+        {
+            // Lấy tài khoản ưu tiên (IsDefault = true), nếu không có thì lấy cái đầu tiên
+            var playerAccount = await _context.PlayerBankAccounts
+                .FirstOrDefaultAsync(a => a.UserId == userId && a.IsDefault == true)
+                ?? await _context.PlayerBankAccounts.FirstOrDefaultAsync(a => a.UserId == userId);
+
+            if (playerAccount == null)
+                throw new Exception("Người chơi chưa có tài khoản ngân hàng.");
+
+            string addInfo = string.IsNullOrEmpty(info)
+                ? $"Refund for User #{userId}"
+                : info;
+
+            // Format số tiền chuẩn, luôn dùng dấu chấm
+            string amountString = refundAmount.ToString("0.##", CultureInfo.InvariantCulture);
+
+            string qrUrl = $"https://img.vietqr.io/image/{playerAccount.BankShortCode}-{playerAccount.AccountNumber}-compact2.jpg" +
+                           $"?amount={amountString}" +
+                           $"&addInfo={Uri.EscapeDataString(addInfo)}" +
+                           $"&accountName={Uri.EscapeDataString(playerAccount.AccountHolder)}";
+
+            return qrUrl;
+        }
+
+
+
     }
 }

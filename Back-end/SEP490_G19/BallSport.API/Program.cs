@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using BallSport.Application.CloudinarySettings;
@@ -35,10 +34,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 var services = builder.Services;
 var config = builder.Configuration;
+
 // ===================== CONFIGURE SETTINGS =====================
 builder.Services.Configure<CloudinarySettings>(
     builder.Configuration.GetSection("CloudinarySettings")
 );
+
 // ===================== CONTROLLERS + SWAGGER =====================
 services.AddControllers()
     .AddJsonOptions(options =>
@@ -91,7 +92,7 @@ services.AddCors(options =>
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials(); // cần bật nếu dùng cookie
+            .AllowCredentials();
     });
 });
 
@@ -101,6 +102,7 @@ services.AddDbContext<Sep490G19v1Context>(options =>
 
 // ===================== DEPENDENCY INJECTION =====================
 services.AddMemoryCache();
+
 // --- Statistic Owner ---
 services.AddScoped<IOwnerRecentBookingRepository, OwnerRecentBookingRepository>();
 services.AddScoped<OwnerRecentBookingService>();
@@ -114,7 +116,6 @@ services.AddScoped<IOwnerFillRateRepository, OwnerFillRateRepository>();
 services.AddScoped<OwnerFillRateService>();
 services.AddScoped<OwnerTimeSlotStatisticRepository>();
 services.AddScoped<OwnerTimeSlotStatisticService>();
-
 
 // --- Statistic Admin ---
 services.AddScoped<IAdminUserStatisticRepository, AdminUserStatisticRepository>();
@@ -157,6 +158,13 @@ services.AddScoped<BookingCancellationReRepository>();
 services.AddScoped<BookingCancellationReService>();
 services.AddScoped<PaymentRepository>();
 
+// === Phần mới từ nhánh Trung ===
+services.AddScoped<BookingPackageRepository>();
+services.AddScoped<MonthlyPackagePaymentRepo>();
+services.AddScoped<PackageSessionRepository>();
+services.AddScoped<BookingPackageSessionDraftRepository>();
+services.AddScoped<MonthlyBookingService>();
+
 // --- Bank accounts ---
 services.AddScoped<PlayerBankAccountRepository>();
 services.AddScoped<OwnerBankAccountRepository>();
@@ -182,15 +190,14 @@ services.AddScoped<IFieldPriceService, FieldPriceService>();
 services.AddScoped<IFieldScheduleRepository, FieldScheduleRepository>();
 services.AddScoped<IFieldScheduleService, FieldScheduleService>();
 services.AddScoped<TimeSlotService>();
-services.AddScoped<ITopFieldRepository,TopFieldRepository>();
-services.AddScoped<ITopFieldService,TopFieldService>();
-services.AddScoped<IPlayerProfileRepository,PlayerProfileRepository>();
-services.AddScoped<IPlayerProfileService,PlayerProfileService>();
+services.AddScoped<ITopFieldRepository, TopFieldRepository>();
+services.AddScoped<ITopFieldService, TopFieldService>();
+services.AddScoped<IPlayerProfileRepository, PlayerProfileRepository>();
+services.AddScoped<IPlayerProfileService, PlayerProfileService>();
+
 // 1. Tăng giới hạn upload (100MB)
 services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = 100_000_000);
 services.Configure<IISServerOptions>(options => options.MaxRequestBodySize = 100_000_000);
-
-
 
 // --- Community module ---
 services.AddScoped<IPostRepository, PostRepository>();
@@ -203,10 +210,9 @@ services.AddScoped<IPostService, PostService>();
 services.AddScoped<ICommentService, CommentService>();
 services.AddScoped<INotificationService, NotificationService>();
 services.AddScoped<IReportService, ReportService>();
-// --- Match Finding module ---
 
+// --- Match Finding module ---
 services.AddScoped<IMatchFindingRepository, MatchFindingRepository>();
-//services.AddScoped<IMatchParticipantRepository, MatchParticipantRepository>();
 services.AddScoped<IMatchFindingService, MatchFindingService>();
 
 // --- Settings ---
@@ -218,7 +224,8 @@ services.Configure<ReportSettings>(config.GetSection("ReportSettings"));
 var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
 services.AddSingleton(smtpSettings);
 services.AddTransient<EmailService>();
-/// ===================== CLOUDINARY =====================
+
+// ===================== CLOUDINARY =====================
 builder.Services.AddSingleton<Cloudinary>(sp =>
 {
     var settings = sp.GetRequiredService<IOptions<CloudinarySettings>>().Value;
@@ -253,8 +260,7 @@ services.AddAuthentication(options =>
         ValidAudience = config["JwtSettings:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(config["JwtSettings:SecretKey"])),
-
-         RoleClaimType = "Role"
+        RoleClaimType = "Role"
     };
 })
 .AddCookie(options =>
@@ -284,8 +290,7 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-// Nếu test local bằng HTTP → comment HTTPS redirect
-// app.UseHttpsRedirection();
+// app.UseHttpsRedirection(); // Nếu test local bằng HTTP → comment HTTPS redirect
 
 app.UseRouting();
 app.UseCors("AllowAll");

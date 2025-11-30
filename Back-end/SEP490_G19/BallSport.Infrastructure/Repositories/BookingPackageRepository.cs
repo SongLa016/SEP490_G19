@@ -48,17 +48,6 @@ namespace BallSport.Infrastructure.Repositories
                 .FirstOrDefaultAsync(p => p.BookingPackageId == packageId);
         }
 
-        /* public async Task<List<BookingPackage>> GetByUserIdAsync(int userId)
-         {
-             return await _context.BookingPackages
-                 .Include(p => p.Field)
-                     .ThenInclude(f => f.Complex)
-                 .Include(p => p.User)
-                 .Where(p => p.UserId == userId)
-                 .OrderByDescending(p => p.CreatedAt)
-                 .ToListAsync();
-         }*/
-
         public async Task<bool> UpdateStatusToConfirmedAsync(int packageId)
         {
             var package = await _context.BookingPackages.FindAsync(packageId);
@@ -92,6 +81,20 @@ namespace BallSport.Infrastructure.Repositories
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async Task UpdateTotalPriceAsync(int packageId, decimal totalPrice)
+        {
+            var package = await _context.BookingPackages.FindAsync(packageId);
+            if (package == null) return;
+
+            package.TotalPrice = totalPrice;
+            package.UpdatedAt = DateTime.Now;
+
+            await _context.SaveChangesAsync();
+        }
+
+
+     
 
 
     }
