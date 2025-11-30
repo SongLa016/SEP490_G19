@@ -1,5 +1,6 @@
 // Mocked booking/payment services with pending hold logic
 import axios from "axios";
+import { decodeTokenPayload, isTokenExpired } from "../utils/tokenManager";
 
 // In-memory pending holds (front-end only). Each item: { bookingId, fieldId, date, slotId, expiresAt }
 const pendingHolds = [];
@@ -128,7 +129,6 @@ export async function confirmPayment(bookingId, method) {
 
 // Check field availability (synchronous vs pending holds + confirmed)
 export async function checkFieldAvailability(fieldId, date, slotId) {
-  // Simulate network
   await new Promise((resolve) => setTimeout(resolve, 200));
   const available = !hasConflict({ fieldId, date, slotId });
   return {
@@ -188,10 +188,6 @@ export function validateBookingData(bookingData) {
   };
 }
 
-// ============================================
-// Real API endpoints for Booking
-// ============================================
-
 // Create axios instance with base configuration
 const apiClient = axios.create({
   timeout: 30000,
@@ -223,9 +219,57 @@ const handleApiError = (error) => {
     if (status === 404) {
       errorMessage = "API endpoint không tồn tại.";
     } else if (status === 500) {
-      errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau.";
+      // Try to extract more detailed error message from 500 errors
+      if (data) {
+        if (data.message) {
+          errorMessage = data.message;
+          // Check for inner exception details
+          if (data.innerException) {
+            errorMessage += ` (${data.innerException})`;
+          } else if (data.error && typeof data.error === "string") {
+            errorMessage = data.error;
+          } else if (typeof data === "string") {
+            errorMessage = data;
+          }
+        } else if (data.error) {
+          errorMessage =
+            typeof data.error === "string"
+              ? data.error
+              : JSON.stringify(data.error);
+        } else if (typeof data === "string") {
+          errorMessage = data;
+        } else {
+          errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau.";
+        }
+      } else {
+        errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau.";
+      }
+    } else if (status === 400) {
+      // Bad Request - try to get detailed error message
+      if (data) {
+        if (data.message) {
+          errorMessage = data.message;
+          if (data.innerException) {
+            errorMessage += ` (${data.innerException})`;
+          }
+        } else if (data.error) {
+          errorMessage =
+            typeof data.error === "string"
+              ? data.error
+              : JSON.stringify(data.error);
+        } else if (typeof data === "string") {
+          errorMessage = data;
+        } else {
+          errorMessage = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.";
+        }
+      } else {
+        errorMessage = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.";
+      }
     } else if (data && data.message) {
       errorMessage = data.message;
+      if (data.innerException) {
+        errorMessage += ` (${data.innerException})`;
+      }
     } else if (data && typeof data === "string") {
       errorMessage = data;
     } else {
@@ -250,6 +294,7 @@ const handleApiError = (error) => {
   console.error("API Error:", {
     message: error.message,
     code: error.code,
+    status: error.response?.status,
     response: error.response?.data,
     request: error.request,
     config: error.config?.url,
@@ -260,23 +305,101 @@ const handleApiError = (error) => {
 
 export async function createBooking(bookingData) {
   try {
+    // Check if user is authenticated (has token)
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Bạn cần đăng nhập để tạo booking. Vui lòng đăng nhập trước.",
+      };
+    }
+
+    // Check if token is expired
+    if (isTokenExpired(token)) {
+      return {
+        success: false,
+        error: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+      };
+    }
+
+    // Decode token to check user role
+    const tokenPayload = decodeTokenPayload(token);
+    if (!tokenPayload) {
+      return {
+        success: false,
+        error: "Token không hợp lệ. Vui lòng đăng nhập lại.",
+      };
+    }
+
+    // Check if user is a player (role check)
+    // Backend might use: Role, RoleID, RoleName, role, roleId, roleName
+    const userRole =
+      tokenPayload.Role ||
+      tokenPayload.role ||
+      tokenPayload.RoleName ||
+      tokenPayload.roleName;
+    const roleId =
+      tokenPayload.RoleID ||
+      tokenPayload.roleID ||
+      tokenPayload.RoleId ||
+      tokenPayload.roleId;
+
+    // RoleID 3 typically means Player in many systems, or check role name
+    const isPlayer =
+      roleId === 3 ||
+      userRole?.toLowerCase() === "player" ||
+      userRole?.toLowerCase() === "người chơi" ||
+      userRole === "Player";
+
+    if (!isPlayer) {
+      console.warn("⚠️ [GỬI GIỮ CHỖ - API] User role check failed:", {
+        userRole,
+        roleId,
+        tokenPayload,
+      });
+      return {
+        success: false,
+        error:
+          "Chỉ người chơi (Player) mới có thể tạo booking. Vui lòng đăng nhập bằng tài khoản người chơi.",
+      };
+    }
+
+
+    // Validate required fields
+    if (!bookingData.userId) {
+      return {
+        success: false,
+        error: "Thiếu thông tin người dùng (userId).",
+      };
+    }
+
+    // scheduleId can be 0 if backend will create it from fieldId, slotId, date
+    // But we still validate it's a number
+    if (
+      bookingData.scheduleId === undefined ||
+      bookingData.scheduleId === null
+    ) {
+      return {
+        success: false,
+        error: "Thiếu thông tin lịch trình (scheduleId).",
+      };
+    }
+
     const endpoint = "https://sep490-g19-zxph.onrender.com/api/Booking/create";
 
-    // Prepare payload
+    // Prepare payload according to API specification
     const payload = {
       userId: Number(bookingData.userId) || 0,
       scheduleId: Number(bookingData.scheduleId) || 0,
       totalPrice: Number(bookingData.totalPrice) || 0,
       depositAmount: Number(bookingData.depositAmount) || 0,
       hasOpponent: Boolean(bookingData.hasOpponent ?? false),
-      matchRequestId: bookingData.matchRequestId
-        ? Number(bookingData.matchRequestId)
-        : 0,
     };
 
-    console.log("Creating booking with payload:", payload);
 
     const response = await apiClient.post(endpoint, payload);
+
+    
 
     return {
       success: true,
@@ -285,6 +408,15 @@ export async function createBooking(bookingData) {
     };
   } catch (error) {
     console.error("Error creating booking:", error);
+
+    // Handle 401 Unauthorized (token expired or invalid)
+    if (error.response?.status === 401) {
+      return {
+        success: false,
+        error: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+      };
+    }
+
     const errorMessage = handleApiError(error);
     return {
       success: false,
@@ -294,45 +426,91 @@ export async function createBooking(bookingData) {
   }
 }
 
-/**
- * Confirm payment for a booking
- * @param {number|string} bookingId - Booking ID
- * @returns {Promise<Object>} Confirmation result
- */
-export async function confirmPaymentAPI(bookingId) {
+export async function confirmPaymentAPI(bookingId, depositAmount) {
   try {
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-payment/${bookingId}`;
+    // Check if user is authenticated (has token)
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Bạn cần đăng nhập để xác nhận thanh toán",
+      };
+    }
 
-    console.log(`Confirming payment for booking: ${bookingId}`);
+    // Ensure bookingId is a number and valid
+    const numericBookingId = Number(bookingId);
+    if (isNaN(numericBookingId) || numericBookingId <= 0) {
+      return {
+        success: false,
+        error: "Booking ID không hợp lệ",
+      };
+    }
 
-    const response = await apiClient.put(endpoint);
+    // Ensure depositAmount is a number
+    const numericDepositAmount = Number(depositAmount);
+    if (isNaN(numericDepositAmount) || numericDepositAmount <= 0) {
+      return {
+        success: false,
+        error: "Số tiền cọc không hợp lệ",
+      };
+    }
 
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-payment/${numericBookingId}`;
+
+    const payload = {
+      Amount: numericDepositAmount,
+    };
+
+    const response = await apiClient.put(endpoint, payload);
     return {
       success: true,
       data: response.data,
-      message: "Xác nhận thanh toán thành công",
+      message: response.data?.Message || "Xác nhận đặt cọc thành công",
     };
   } catch (error) {
-    console.error("Error confirming payment:", error);
+    console.error("❌ [XÁC NHẬN ĐẶT CỌC - API] Error:", error);
+    console.error("Error details:", {
+      message: error.message,
+      code: error.code,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+
+    // Kiểm tra nếu là lỗi CORS - có thể request đã thành công nhưng response bị chặn
+    const isCorsError =
+      error.code === "ERR_NETWORK" ||
+      error.message?.includes("CORS") ||
+      error.message?.includes("Network Error") ||
+      (!error.response && error.request);
+
     const errorMessage = handleApiError(error);
+
     return {
       success: false,
       error:
         errorMessage instanceof Error ? errorMessage.message : errorMessage,
+      isCorsError: isCorsError, // Đánh dấu là lỗi CORS để frontend xử lý đặc biệt
     };
   }
 }
 
-/**
- * Generate QR code for a booking
- * @param {number|string} bookingId - Booking ID
- * @returns {Promise<Object>} QR code data
- */
-export async function generateQRCode(bookingId) {
+export async function generateQRCode(bookingId, options = {}) {
   try {
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${bookingId}`;
+    const params = new URLSearchParams();
+    if (options.paymentType) {
+      params.set("paymentType", options.paymentType);
+    } else if (options.amountType) {
+      params.set("paymentType", options.amountType);
+    }
+    if (options.amount) {
+      params.set("amount", Number(options.amount));
+    }
 
-    console.log(`Generating QR code for booking: ${bookingId}`);
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${bookingId}${
+      params.toString() ? `?${params.toString()}` : ""
+    }`;
+
+  
 
     const response = await apiClient.get(endpoint);
 
@@ -353,17 +531,80 @@ export async function generateQRCode(bookingId) {
 }
 
 /**
- * Confirm booking by owner
- * @param {number|string} bookingId - Booking ID
- * @returns {Promise<Object>} Confirmation result
+ * Generate QR code for remaining amount (after deposit is paid)
+ * @param {number|string} bookingId - The booking ID
+ * @returns {Promise<{success: boolean, data?: Object, qrCodeUrl?: string, error?: string}>}
  */
+export async function generateQRCodeForRemaining(bookingId) {
+  try {
+    // Check if user is authenticated (has token)
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Bạn cần đăng nhập để tạo QR code",
+      };
+    }
+
+    // Ensure bookingId is a number and valid
+    const numericBookingId = Number(bookingId);
+    if (isNaN(numericBookingId) || numericBookingId <= 0) {
+      return {
+        success: false,
+        error: "Booking ID không hợp lệ",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${numericBookingId}`;
+
+
+    const response = await apiClient.get(endpoint);
+
+   
+
+    return {
+      success: true,
+      data: response.data,
+      qrCodeUrl: response.data?.qrCodeUrl || response.data?.qrCode || response.data?.qrCodeUrl || null,
+    };
+  } catch (error) {
+    console.error("❌ [TẠO QR CÒN LẠI - API] Error:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
 export async function confirmByOwner(bookingId) {
   try {
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-by-owner/${bookingId}`;
+    // Check if user is authenticated (has token)
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Bạn cần đăng nhập để xác nhận booking",
+      };
+    }
 
-    console.log(`Owner confirming booking: ${bookingId}`);
+    // Ensure bookingId is a number and valid
+    const numericBookingId = Number(bookingId);
+    if (isNaN(numericBookingId) || numericBookingId <= 0) {
+      return {
+        success: false,
+        error: "Booking ID không hợp lệ",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-by-owner/${numericBookingId}`;
+
+   
 
     const response = await apiClient.put(endpoint);
+
+   
 
     return {
       success: true,
@@ -371,12 +612,420 @@ export async function confirmByOwner(bookingId) {
       message: "Xác nhận booking thành công",
     };
   } catch (error) {
-    console.error("Error confirming booking by owner:", error);
+    console.error("❌ Error confirming booking by owner:", error);
+    console.error("Error details:", {
+      message: error.message,
+      code: error.code,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+
+    // Kiểm tra nếu là lỗi CORS - có thể request đã thành công nhưng response bị chặn
+    const isCorsError =
+      error.code === "ERR_NETWORK" ||
+      error.message?.includes("CORS") ||
+      error.message?.includes("Network Error") ||
+      (!error.response && error.request);
+
+    const errorMessage = handleApiError(error);
+
+    // Provide more specific error messages
+    if (error.response?.status === 400) {
+      return {
+        success: false,
+        error:
+          errorMessage ||
+          "Không thể xác nhận booking. Booking có thể đã được xác nhận hoặc không tồn tại.",
+        isCorsError: isCorsError,
+      };
+    }
+
+    if (error.response?.status === 404) {
+      return {
+        success: false,
+        error: "Không tìm thấy booking. Booking có thể đã bị xóa.",
+        isCorsError: isCorsError,
+      };
+    }
+
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+      isCorsError: isCorsError,
+    };
+  }
+}
+
+export async function fetchBookingsByPlayer(playerId) {
+  try {
+    if (playerId === undefined || playerId === null || playerId === "") {
+      return {
+        success: false,
+        error: "Thiếu thông tin người chơi. Không thể tải lịch sử đặt sân.",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/player/${playerId}`;
+   
+    const response = await apiClient.get(endpoint);
+
+    return {
+      success: true,
+      data: Array.isArray(response.data) ? response.data : [],
+    };
+  } catch (error) {
+    console.error("Error fetching bookings by player:", error);
     const errorMessage = handleApiError(error);
     return {
       success: false,
       error:
         errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+export async function fetchBookingsByOwner(ownerId) {
+  try {
+    if (ownerId === undefined || ownerId === null || ownerId === "") {
+      return {
+        success: false,
+        error: "Thiếu thông tin chủ sân. Không thể tải danh sách booking.",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/owner/${ownerId}`;
+   
+
+    const response = await apiClient.get(endpoint);
+
+    return {
+      success: true,
+      data: Array.isArray(response.data) ? response.data : [],
+    };
+  } catch (error) {
+    console.error("Error fetching bookings by owner:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+export async function cancelBooking(bookingId, reason) {
+  try {
+    if (!bookingId) {
+      return {
+        success: false,
+        error: "Booking ID is required",
+      };
+    }
+
+    if (!reason || !reason.trim()) {
+      return {
+        success: false,
+        error: "Lý do hủy là bắt buộc",
+      };
+    }
+
+    const endpoint =
+      "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe";
+
+    const payload = {
+      bookingId: Number(bookingId),
+      reason: String(reason).trim(),
+    };
+
+    // Use apiClient instead of axios to ensure token is automatically included
+    const response = await apiClient.post(endpoint, payload);
+
+    return {
+      success: true,
+      data: response.data,
+      message:
+        response.data?.message || "Đã gửi yêu cầu hủy booking thành công",
+      cancelReason: response.data?.cancelReason,
+      refundAmount: response.data?.refundAmount,
+      penaltyAmount: response.data?.penaltyAmount,
+      finalRefundAmount: response.data?.finalRefundAmount,
+      refundQR: response.data?.refundQR,
+    };
+  } catch (error) {
+    console.error("❌ [CANCEL BOOKING - API] Error:", error);
+
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+/**
+ * Fetch all booking cancellation requests
+ * Backend will return cancellation requests based on token (Owner sees requests for their fields, Player sees their own requests)
+ * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
+ */
+export async function fetchCancellationRequests() {
+  try {
+    const endpoint =
+      "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe";
+
+    
+    // Use apiClient instead of axios to ensure token is automatically included
+    const response = await apiClient.get(endpoint);
+
+   
+
+    return {
+      success: true,
+      data: Array.isArray(response.data)
+        ? response.data
+        : response.data?.data || [],
+    };
+  } catch (error) {
+    console.error("❌ [FETCH CANCELLATION REQUESTS - API] Error:", error);
+
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+/**
+ * Fetch a specific cancellation request by ID
+ * @param {number|string} cancellationId - The cancellation request ID
+ * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+ */
+export async function fetchCancellationRequestById(cancellationId) {
+  try {
+    if (!cancellationId) {
+      return {
+        success: false,
+        error: "Cancellation ID is required",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
+
+   
+
+    const response = await axios.get(endpoint, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+  
+
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Error fetching cancellation request:", error);
+
+    if (error.response) {
+      return {
+        success: false,
+        error:
+          error.response.data?.message || "Không thể tải chi tiết yêu cầu hủy",
+      };
+    }
+
+    return {
+      success: false,
+      error: error.message || "Có lỗi xảy ra khi tải chi tiết yêu cầu hủy",
+    };
+  }
+}
+
+/**
+ * Confirm a cancellation request
+ * @param {number} cancellationId - The cancellation request ID
+ * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+ */
+export async function confirmCancellation(cancellationId) {
+  try {
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/confirm/${cancellationId}`;
+
+  
+
+    const response = await axios.put(
+      endpoint,
+      {},
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+
+  
+
+    return {
+      success: true,
+      data: response.data,
+      message: "Đã xác nhận hủy booking",
+    };
+  } catch (error) {
+  
+
+    if (error.response) {
+      return {
+        success: false,
+        error: error.response.data?.message || "Không thể xác nhận hủy",
+      };
+    }
+
+    return {
+      success: false,
+      error: error.message || "Có lỗi xảy ra khi xác nhận hủy",
+    };
+  }
+}
+
+/**
+ * Delete a cancellation request
+ * @param {number} cancellationId - The cancellation request ID
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function deleteCancellationRequest(cancellationId) {
+  try {
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
+
+
+
+    await axios.delete(endpoint, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    return {
+      success: true,
+      message: "Đã xóa yêu cầu hủy",
+    };
+  } catch (error) {
+    console.error("Error deleting cancellation request:", error);
+
+    if (error.response) {
+      return {
+        success: false,
+        error: error.response.data?.message || "Không thể xóa yêu cầu hủy",
+      };
+    }
+
+    return {
+      success: false,
+      error: error.message || "Có lỗi xảy ra khi xóa yêu cầu hủy",
+    };
+  }
+}
+
+/**
+ * Update booking status
+ * @param {number|string} bookingId - The booking ID
+ * @param {string} status - New status (e.g., "Completed", "Cancelled")
+ * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+ */
+export async function updateBookingStatus(bookingId, status) {
+  try {
+    if (!bookingId) {
+      return {
+        success: false,
+        error: "Booking ID is required",
+      };
+    }
+
+    if (!status) {
+      return {
+        success: false,
+        error: "Status is required",
+      };
+    }
+
+    // Check if user is authenticated
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Bạn cần đăng nhập để cập nhật trạng thái booking",
+      };
+    }
+
+    const numericBookingId = Number(bookingId);
+    if (isNaN(numericBookingId) || numericBookingId <= 0) {
+      return {
+        success: false,
+        error: "Booking ID không hợp lệ",
+      };
+    }
+
+    // Try different endpoint variations for updating booking status
+    const endpoints = [
+      `https://sep490-g19-zxph.onrender.com/api/Booking/${numericBookingId}/status`,
+      `https://sep490-g19-zxph.onrender.com/api/Booking/update-status/${numericBookingId}`,
+      `https://sep490-g19-zxph.onrender.com/api/Booking/${numericBookingId}`,
+    ];
+
+    const payload = {
+      status: String(status),
+    };
+
+    let lastError = null;
+    for (const endpoint of endpoints) {
+      try {
+        // Try PUT first
+        const response = await apiClient.put(endpoint, payload);
+        return {
+          success: true,
+          data: response.data,
+          message: `Đã cập nhật trạng thái booking sang "${status}"`,
+        };
+      } catch (putError) {
+        lastError = putError;
+        // If PUT fails with 404 or 405, try PATCH
+        if (putError.response?.status === 404 || putError.response?.status === 405) {
+          try {
+            const response = await apiClient.patch(endpoint, payload);
+            return {
+              success: true,
+              data: response.data,
+              message: `Đã cập nhật trạng thái booking sang "${status}"`,
+            };
+          } catch (patchError) {
+            lastError = patchError;
+            continue;
+          }
+        }
+        // If it's not a 404/405, stop trying
+        if (putError.response?.status !== 404 && putError.response?.status !== 405) {
+          break;
+        }
+      }
+    }
+
+    // If all endpoints failed, return error
+    const errorMessage = handleApiError(lastError);
+    return {
+      success: false,
+      error: errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  } catch (error) {
+    console.error("Error updating booking status:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error: errorMessage instanceof Error ? errorMessage.message : errorMessage,
     };
   }
 }

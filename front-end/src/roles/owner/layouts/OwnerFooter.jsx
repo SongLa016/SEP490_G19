@@ -60,7 +60,6 @@ export default function OwnerFooter() {
                                    <li><Link to="/owner/fields" className="text-gray-300 hover:text-white transition-colors">Quản lý sân</Link></li>
                                    <li><Link to="/owner/bookings" className="text-gray-300 hover:text-white transition-colors">Quản lý booking</Link></li>
                                    <li><Link to="/owner/reports" className="text-gray-300 hover:text-white transition-colors">Báo cáo doanh thu</Link></li>
-                                   <li><Link to="/owner/promotions" className="text-gray-300 hover:text-white transition-colors">Khuyến mãi</Link></li>
                               </ul>
                          </div>
 

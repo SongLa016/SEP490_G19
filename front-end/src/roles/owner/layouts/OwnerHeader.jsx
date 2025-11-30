@@ -14,7 +14,6 @@ import {
      DollarSign,
      Clock,
      Shield,
-     Gift,
      CreditCard,
      Bell,
      TrendingUp,
@@ -36,7 +35,6 @@ export default function OwnerHeader({ user, onLoggedOut }) {
           { id: "schedule", label: "Quản lý lịch", icon: Clock, path: "/owner/schedule" },
           { id: "reports", label: "Báo cáo doanh thu", icon: TrendingUp, path: "/owner/reports" },
           { id: "policies", label: "Chính sách hủy", icon: Shield, path: "/owner/policies" },
-          { id: "promotions", label: "Khuyến mãi", icon: Gift, path: "/owner/promotions" },
           { id: "payments", label: "Theo dõi thanh toán", icon: CreditCard, path: "/owner/payments" },
           { id: "notifications", label: "Thông báo", icon: Bell, path: "/owner/notifications" },
      ];

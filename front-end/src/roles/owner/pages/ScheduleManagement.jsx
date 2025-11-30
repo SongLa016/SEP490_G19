@@ -3,48 +3,25 @@ import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import {
      Card,
-     Button,
-     Badge,
      Alert,
-     AlertDescription,
-     Modal,
-     Input,
-     Select,
-     SelectContent,
-     SelectItem,
-     SelectTrigger,
-     SelectValue
+     AlertDescription
 } from "../../../shared/components/ui";
 import {
      Clock,
      Calendar,
-     ChevronLeft,
-     ChevronRight,
      Loader2,
      Info,
      BarChart3,
-     Filter,
-     DollarSign,
-     Plus,
-     Timer,
-     Edit,
-     Trash2,
-     Save,
-     X
+     Timer
 } from "lucide-react";
 import { fetchAllComplexesWithFields } from "../../../shared/services/fields";
-import { fetchTimeSlots, createTimeSlot, updateTimeSlot, deleteTimeSlot } from "../../../shared/services/timeSlots";
+import { fetchTimeSlots, fetchTimeSlotsByField, createTimeSlot, updateTimeSlot, deleteTimeSlot } from "../../../shared/services/timeSlots";
 import { createFieldSchedule, fetchFieldSchedulesByField, fetchFieldSchedules, updateFieldScheduleStatus, deleteFieldSchedule } from "../../../shared/services/fieldSchedules";
+import { fetchBookingsByOwner } from "../../../shared/services/bookings";
+import { profileService } from "../../../shared/services/profileService";
 import Swal from "sweetalert2";
+import { DateSelector, MonthlyCalendar, FieldList, ComplexAndFieldSelector, ScheduleGrid, ScheduleModal, TimeSlotModal, TimeSlotsTab, ManageSchedulesTab, StatisticsCards } from "./components/scheduleManagement";
 
-// Components đã được tách ra - sẵn sàng để sử dụng khi cần
-// import {
-//      StatisticsCards,
-//      WeekNavigator,
-//      ScheduleTable,
-//      TimeSlotModal,
-//      FieldCard
-// } from "./ScheduleManagement";
 
 export default function ScheduleManagement({ isDemo = false }) {
      const { user, logout } = useAuth();
@@ -53,7 +30,7 @@ export default function ScheduleManagement({ isDemo = false }) {
      const [selectedComplex, setSelectedComplex] = useState(null);
      const [fields, setFields] = useState([]);
      const [timeSlots, setTimeSlots] = useState([]);
-     const [currentWeek, setCurrentWeek] = useState(new Date());
+     const [selectedDate, setSelectedDate] = useState(new Date()); // Selected date for daily view
      const [filterStatus, setFilterStatus] = useState('all'); // all, booked, available
      const [activeTab, setActiveTab] = useState('schedule'); // schedule, timeslots, manage-schedules
      const [showSlotModal, setShowSlotModal] = useState(false);
@@ -62,11 +39,13 @@ export default function ScheduleManagement({ isDemo = false }) {
           fieldId: '',
           slotName: '',
           startTime: '',
-          endTime: ''
+          endTime: '',
+          price: ''
      });
      const [slotFormErrors, setSlotFormErrors] = useState({});
      const [isSubmittingSlot, setIsSubmittingSlot] = useState(false);
      const [selectedQuickSlots, setSelectedQuickSlots] = useState([]);
+     const [modalTimeSlots, setModalTimeSlots] = useState([]); // Separate state for modal
      const [selectedFieldFilter, setSelectedFieldFilter] = useState('all'); // Filter for timeslots tab
      const [selectedFieldForSchedule, setSelectedFieldForSchedule] = useState('all'); // Filter for schedule tab
      const [fieldSchedules, setFieldSchedules] = useState([]); // Danh sách FieldSchedules
@@ -75,16 +54,60 @@ export default function ScheduleManagement({ isDemo = false }) {
      const [scheduleFilterStatus, setScheduleFilterStatus] = useState('all'); // Filter status cho bảng
      const [scheduleFilterDate, setScheduleFilterDate] = useState(''); // Filter date cho bảng
      const [showScheduleModal, setShowScheduleModal] = useState(false); // Modal thêm lịch trình
+     const [calendarMonth, setCalendarMonth] = useState(new Date()); // Month for calendar view
+     const [selectedFields, setSelectedFields] = useState(new Set()); // Selected fields for filtering
      const [scheduleFormData, setScheduleFormData] = useState({
           fieldId: '',
           slotId: '',
           date: '',
-          status: 'Available'
+          status: 'Available',
+          scheduleType: 'single',
+          month: '',
+          quarter: '',
+          year: ''
      });
      const [scheduleFormErrors, setScheduleFormErrors] = useState({});
      const [isSubmittingSchedule, setIsSubmittingSchedule] = useState(false);
-     // TODO: Add bookings state when API is ready
-     // const [bookings, setBookings] = useState([]);
+     const maintenanceFields = useMemo(
+          () => fields.filter(field => (field.status || field.Status || '').toLowerCase() === 'maintenance'),
+          [fields]
+     );
+     const maintenanceFieldIds = useMemo(() => {
+          const ids = new Set();
+          maintenanceFields.forEach(field => {
+               const numericId = Number(field.fieldId);
+               if (!Number.isNaN(numericId)) {
+                    ids.add(numericId);
+               }
+          });
+          return ids;
+     }, [maintenanceFields]);
+     const isFieldMaintenance = useCallback(
+          (fieldId) => {
+               if (fieldId === null || fieldId === undefined) return false;
+               const numericId = Number(fieldId);
+               if (Number.isNaN(numericId)) return false;
+               return maintenanceFieldIds.has(numericId);
+          },
+          [maintenanceFieldIds]
+     );
+     const hasActiveFields = useMemo(
+          () => fields.some(field => (field.status || field.Status || '').toLowerCase() !== 'maintenance'),
+          [fields]
+     );
+     const maintenanceNoticeText = useMemo(() => {
+          if (!maintenanceFields.length) return '';
+          const names = maintenanceFields
+               .map(field => field.name)
+               .filter(Boolean);
+          if (names.length <= 3) {
+               return names.join(', ');
+          }
+          return `${names.slice(0, 3).join(', ')} và ${names.length - 3} sân khác`;
+     }, [maintenanceFields]);
+     // Bookings state to track actual bookings
+     const [bookings, setBookings] = useState([]);
+     const [loadingBookings, setLoadingBookings] = useState(false);
 
      // Quick slot templates
      const quickSlotTemplates = [
@@ -99,18 +122,18 @@ export default function ScheduleManagement({ isDemo = false }) {
           { name: 'Slot 9', start: '18:00', end: '19:30' },
           { name: 'Slot 10', start: '19:30', end: '21:00' },
           { name: 'Slot 11', start: '21:00', end: '22:30' },
-          { name: 'Slot 12', start: '22:30', end: '00:00' },
+          { name: 'Slot 12', start: '22:30', end: '23:59' },
      ];
 
      // Get current user ID
      const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
 
-     // Check if a time slot already exists for a field
+     // Check if a time slot already exists for a field (using modal's separate state)
      const isSlotExistsForField = useCallback((fieldId, startTime, endTime) => {
           if (!fieldId) return false;
 
-          // Filter timeSlots by fieldId first, then check time overlap
-          return timeSlots.some(slot => {
+          // Filter modalTimeSlots by fieldId first, then check time overlap
+          return modalTimeSlots.some(slot => {
                // Check if this slot belongs to the specified field
                const slotFieldId = slot.fieldId ?? slot.FieldId;
                if (!slotFieldId || Number(slotFieldId) !== Number(fieldId)) {
@@ -122,25 +145,25 @@ export default function ScheduleManagement({ isDemo = false }) {
                const slotEnd = slot.endTime?.substring(0, 5) || '';
                return startTime < slotEnd && endTime > slotStart;
           });
-     }, [timeSlots]);
+     }, [modalTimeSlots]);
 
-     // Load timeslots for a specific field
+     // Load timeslots for a specific field (for modal only)
      const loadTimeSlotsForField = useCallback(async (fieldId) => {
           if (!fieldId) {
-               setTimeSlots([]);
+               setModalTimeSlots([]);
                return;
           }
 
           try {
-               const slotsResponse = await fetchTimeSlots(fieldId);
+               const slotsResponse = await fetchTimeSlotsByField(fieldId);
                if (slotsResponse.success) {
-                    setTimeSlots(slotsResponse.data || []);
+                    setModalTimeSlots(slotsResponse.data || []);
                } else {
-                    setTimeSlots([]);
+                    setModalTimeSlots([]);
                }
           } catch (error) {
-               console.error('Error loading timeslots for field:', error);
-               setTimeSlots([]);
+
+               setModalTimeSlots([]);
           }
      }, []);
 
@@ -153,7 +176,8 @@ export default function ScheduleManagement({ isDemo = false }) {
                     fieldId: fieldIdValue ? fieldIdValue.toString() : '',
                     slotName: slot.name || '',
                     startTime: slot.startTime?.substring(0, 5) || '',
-                    endTime: slot.endTime?.substring(0, 5) || ''
+                    endTime: slot.endTime?.substring(0, 5) || '',
+                    price: slot.price || slot.Price || ''
                });
                // Load timeslots for this field
                if (fieldIdValue) {
@@ -202,10 +226,12 @@ export default function ScheduleManagement({ isDemo = false }) {
                fieldId: '',
                slotName: '',
                startTime: '',
-               endTime: ''
+               endTime: '',
+               price: ''
           });
           setSlotFormErrors({});
           setSelectedQuickSlots([]);
+          setModalTimeSlots([]); // Clear modal slots
      };
 
      const validateSlotForm = () => {
@@ -215,6 +241,9 @@ export default function ScheduleManagement({ isDemo = false }) {
           if (selectedQuickSlots.length > 0) {
                if (!slotFormData.fieldId) {
                     errors.fieldId = 'Vui lòng chọn sân';
+               }
+               if (!slotFormData.price || Number(slotFormData.price) <= 0) {
+                    errors.price = 'Vui lòng nhập giá hợp lệ';
                }
                setSlotFormErrors(errors);
                return Object.keys(errors).length === 0;
@@ -242,6 +271,10 @@ export default function ScheduleManagement({ isDemo = false }) {
                }
           }
 
+          if (!slotFormData.price || Number(slotFormData.price) <= 0) {
+               errors.price = 'Vui lòng nhập giá hợp lệ';
+          }
+
           setSlotFormErrors(errors);
           return Object.keys(errors).length === 0;
      };
@@ -263,6 +296,16 @@ export default function ScheduleManagement({ isDemo = false }) {
                     title: 'Lỗi',
                     text: 'Sân này không thuộc quyền quản lý của bạn',
                     confirmButtonColor: '#ef4444'
+               });
+               return;
+          }
+
+          if (!editingSlot && isFieldMaintenance(fieldId)) {
+               await Swal.fire({
+                    icon: 'info',
+                    title: 'Sân đang bảo trì',
+                    text: 'Vui lòng đổi trạng thái sân sang "Available" trước khi thêm Time Slot mới.',
+                    confirmButtonColor: '#f97316'
                });
                return;
           }
@@ -295,7 +338,8 @@ export default function ScheduleManagement({ isDemo = false }) {
                                    fieldId: fieldId,
                                    slotName: uniqueSlotName,
                                    startTime: quickSlot.start,
-                                   endTime: quickSlot.end
+                                   endTime: quickSlot.end,
+                                   price: Number(slotFormData.price)
                               });
 
                               if (result.success) {
@@ -370,14 +414,16 @@ export default function ScheduleManagement({ isDemo = false }) {
                          fieldId: fieldId,
                          slotName: slotFormData.slotName,
                          startTime: slotFormData.startTime,
-                         endTime: slotFormData.endTime
+                         endTime: slotFormData.endTime,
+                         price: Number(slotFormData.price)
                     });
                } else {
                     result = await createTimeSlot({
                          fieldId: fieldId,
                          slotName: slotFormData.slotName,
                          startTime: slotFormData.startTime,
-                         endTime: slotFormData.endTime
+                         endTime: slotFormData.endTime,
+                         price: Number(slotFormData.price)
                     });
                }
 
@@ -458,6 +504,93 @@ export default function ScheduleManagement({ isDemo = false }) {
           return `${hours || '00'}:${minutes || '00'}`;
      };
 
+     // Helper function to format date to local date string (YYYY-MM-DD) without timezone issues
+     const formatDateToLocalString = (date) => {
+          if (!date) return '';
+          const d = new Date(date);
+          // Use local date components for Date objects (like selectedDate)
+          // This ensures the date displayed matches what the user selected
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+     };
+
+     // Helper function to normalize date string from API (handles both ISO strings and date objects)
+     const normalizeDateString = (dateValue) => {
+          if (!dateValue) return '';
+          
+          // Handle string dates
+          if (typeof dateValue === 'string') {
+               // If it's already a date string (YYYY-MM-DD), return as is
+               if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+                    return dateValue;
+               }
+               // If it's an ISO string, extract date part (before T or space)
+               if (dateValue.includes('T')) {
+                    return dateValue.split('T')[0];
+               }
+               if (dateValue.includes(' ')) {
+                    return dateValue.split(' ')[0];
+               }
+               // Try to parse as date but use UTC to avoid timezone issues
+               try {
+                    const date = new Date(dateValue);
+                    if (!isNaN(date.getTime())) {
+                         // Use UTC to avoid timezone shift
+                         const year = date.getUTCFullYear();
+                         const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                         const day = String(date.getUTCDate()).padStart(2, '0');
+                         return `${year}-${month}-${day}`;
+                    }
+               } catch (e) {
+                    // If parsing fails, try formatDateToLocalString
+                    return formatDateToLocalString(new Date(dateValue));
+               }
+          }
+          
+          // Handle date objects with year, month, day properties
+          if (dateValue && typeof dateValue === 'object' && dateValue.year && dateValue.month && dateValue.day) {
+               return `${dateValue.year}-${String(dateValue.month).padStart(2, '0')}-${String(dateValue.day).padStart(2, '0')}`;
+          }
+          
+          // Handle Date objects - use local date to match formatDateToLocalString
+          if (dateValue instanceof Date) {
+               const year = dateValue.getFullYear();
+               const month = String(dateValue.getMonth() + 1).padStart(2, '0');
+               const day = String(dateValue.getDate()).padStart(2, '0');
+               return `${year}-${month}-${day}`;
+          }
+          
+          // Fallback: try to parse as date
+          try {
+               const date = new Date(dateValue);
+               if (!isNaN(date.getTime())) {
+                    // For string dates that need parsing, use local date to match user's timezone
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+               }
+          } catch (e) {
+               // If all else fails, return empty string
+          }
+          
+          return '';
+     };
+
+
+     const isSchedulePast = (date, endTime) => {
+          const now = new Date();
+          const scheduleDate = new Date(date);
+
+          // Parse end time
+          const [hours, minutes] = (endTime || '00:00').split(':');
+          scheduleDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+          return scheduleDate < now;
+     };
+
      // Load data
      const loadData = useCallback(async () => {
           try {
@@ -479,17 +612,8 @@ export default function ScheduleManagement({ isDemo = false }) {
                     setFields(ownerComplexes[0].fields || []);
                }
 
-               // Fetch time slots
-               const slotsResponse = await fetchTimeSlots();
-               if (slotsResponse.success) {
-                    setTimeSlots(slotsResponse.data || []);
-               }
-
-               // Fetch field schedules
-               const schedulesResponse = await fetchFieldSchedules();
-               if (schedulesResponse.success) {
-                    setFieldSchedules(schedulesResponse.data || []);
-               }
+               // Fetch time slots will be handled by loadTimeSlotsForTable
+               // Fetch field schedules will be handled by loadSchedulesForTable
           } catch (error) {
                console.error('Error loading data:', error);
                Swal.fire({
@@ -503,9 +627,295 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      }, [currentUserId, selectedComplex]);
 
+     // Load time slots for table based on selected field
+     const loadTimeSlotsForTable = useCallback(async () => {
+          try {
+               if (!selectedComplex || !fields.length) {
+                    setTimeSlots([]);
+                    return;
+               }
+
+               // If specific field is selected, fetch only that field's time slots
+               if (selectedFieldForSchedule !== 'all') {
+                    const fieldId = Number(selectedFieldForSchedule);
+                    console.log(`Loading time slots for field ${fieldId}`);
+                    const slotsResponse = await fetchTimeSlotsByField(fieldId);
+                    console.log(`Received ${slotsResponse.data?.length || 0} slots for field ${fieldId}:`, slotsResponse.data);
+                    if (slotsResponse.success && slotsResponse.data) {
+                         const enrichedSlots = (slotsResponse.data || []).map(slot => ({
+                              ...slot,
+                              slotIdsByField: {
+                                   [fieldId]: slot.slotId || slot.SlotID
+                              }
+                         }));
+                         setTimeSlots(enrichedSlots);
+                    } else {
+                         setTimeSlots([]);
+                    }
+               } else {
+                    // If "all" is selected, fetch time slots for ALL fields in the complex
+                    console.log(`Loading time slots for all fields:`, fields.map(f => f.fieldId));
+                    const allSlots = [];
+                    const fetchPromises = fields.map(field =>
+                         fetchTimeSlotsByField(field.fieldId)
+                    );
+
+                    const results = await Promise.all(fetchPromises);
+                    results.forEach((result, index) => {
+                         const fieldId = fields[index].fieldId;
+                         console.log(`Field ${fieldId}: received ${result.data?.length || 0} slots`, result.data);
+                         if (result.success && result.data && Array.isArray(result.data)) {
+                              const slotsWithField = result.data.map(slot => ({
+                                   ...slot,
+                                   fieldId: slot.fieldId || slot.FieldId || fieldId
+                              }));
+                              allSlots.push(...slotsWithField);
+                         }
+                    });
+
+
+                    // Deduplicate slots by time range (startTime-endTime)
+                    // Keep one slot per unique time range for display
+                    const uniqueSlotsByTime = new Map();
+                    allSlots.forEach((slot) => {
+                         const startTime = slot.startTime || slot.StartTime || '';
+                         const endTime = slot.endTime || slot.EndTime || '';
+                         const timeKey = `${startTime}-${endTime}`;
+                         const slotId = slot.slotId || slot.SlotID;
+                         const fieldId = slot.fieldId || slot.FieldId || slot.FieldID;
+
+                         if (!uniqueSlotsByTime.has(timeKey)) {
+                              uniqueSlotsByTime.set(timeKey, {
+                                   ...slot,
+                                   slotIdsByField: fieldId ? { [fieldId]: slotId } : {},
+                                   timeKey
+                              });
+                         } else if (fieldId) {
+                              const existing = uniqueSlotsByTime.get(timeKey);
+                              existing.slotIdsByField[fieldId] = slotId;
+                         }
+                    });
+
+                    // Convert back to array and sort by start time
+                    const uniqueSlots = Array.from(uniqueSlotsByTime.values()).sort((a, b) => {
+                         const timeA = a.startTime || a.StartTime || '00:00';
+                         const timeB = b.startTime || b.StartTime || '00:00';
+                         return timeA.localeCompare(timeB);
+                    });
+
+                    console.log(`Total unique slots after deduplication: ${uniqueSlots.length}`, uniqueSlots);
+                    setTimeSlots(uniqueSlots);
+               }
+          } catch (error) {
+               console.error('Error loading time slots for table:', error);
+               // Fallback: try to fetch all time slots
+               try {
+                    const allSlotsResponse = await fetchTimeSlots();
+                    if (allSlotsResponse.success) {
+                         setTimeSlots(allSlotsResponse.data || []);
+                    } else {
+                         setTimeSlots([]);
+                    }
+               } catch (fallbackError) {
+                    console.error('Error loading all time slots:', fallbackError);
+                    setTimeSlots([]);
+               }
+          }
+     }, [selectedComplex, fields, selectedFieldForSchedule]);
+
+     // Load bookings for owner
+     const loadBookings = useCallback(async () => {
+          try {
+               setLoadingBookings(true);
+               if (!currentUserId) {
+                    setBookings([]);
+                    return;
+               }
+
+               const result = await fetchBookingsByOwner(currentUserId);
+               if (result.success && result.data) {
+
+                    // Fetch user info for each booking to get customer details
+                    const bookingsWithUserInfo = await Promise.all(
+                         result.data.map(async (booking) => {
+                              const userId = booking.userId || booking.userID;
+                              if (userId) {
+                                   try {
+                                        const userResult = await profileService.getProfile(userId);
+
+                                        if (userResult.ok && userResult.data) {
+                                             const userData = userResult.profile || userResult.data || userResult.data.profile || userResult.data.data;
+
+                                             return {
+                                                  ...booking,
+                                                  customerName: userData?.fullName || userData?.name || userData?.userName || userData?.FullName || userData?.Name || 'Khách hàng',
+                                                  customerPhone: userData?.phoneNumber || userData?.phone || userData?.PhoneNumber || userData?.Phone || 'N/A',
+                                                  customerEmail: userData?.email || userData?.Email || 'N/A',
+                                             };
+                                        } else {
+                                        }
+                                   } catch (error) {
+                                   }
+                              } else {
+                              }
+                              return booking;
+                         })
+                    );
+
+
+                    setBookings(bookingsWithUserInfo || []);
+               } else {
+                    console.warn('Failed to load bookings:', result.error);
+                    setBookings([]);
+               }
+          } catch (error) {
+               console.error('Error loading bookings:', error);
+               setBookings([]);
+          } finally {
+               setLoadingBookings(false);
+          }
+     }, [currentUserId]);
+
+     // Load schedules for table based on selected field
+     const loadSchedulesForTable = useCallback(async () => {
+          try {
+               setLoadingSchedules(true);
+
+               if (!selectedComplex || !fields.length) {
+                    setFieldSchedules([]);
+                    return;
+               }
+
+               let allSchedules = [];
+
+               // If specific field is selected, fetch only that field's schedules
+               if (selectedFieldForSchedule !== 'all') {
+                    const fieldId = Number(selectedFieldForSchedule);
+                    const result = await fetchFieldSchedulesByField(fieldId);
+                    if (result.success && result.data) {
+                         allSchedules = result.data;
+                    }
+               } else {
+                    // If "all" is selected, fetch schedules for all fields in the complex
+                    const fieldIds = fields.map(f => f.fieldId);
+
+                    const fetchPromises = fieldIds.map(fieldId =>
+                         fetchFieldSchedulesByField(fieldId)
+                    );
+
+                    const results = await Promise.all(fetchPromises);
+                    results.forEach((result, index) => {
+                         const fieldId = fieldIds[index];
+
+                         if (result.success && result.data && Array.isArray(result.data)) {
+                              allSchedules = [...allSchedules, ...result.data];
+                         }
+                    });
+               }
+
+               // Process expired schedules: auto-update to Maintenance and auto-delete after 2 days
+               await processExpiredSchedules(allSchedules);
+
+               setFieldSchedules(allSchedules);
+          } catch (error) {
+
+               setFieldSchedules([]);
+          } finally {
+               setLoadingSchedules(false);
+          }
+     }, [selectedComplex, fields, selectedFieldForSchedule]);
+
+     // Process expired schedules: auto-update to Maintenance and auto-delete after 2 days
+     const processExpiredSchedules = useCallback(async (schedules) => {
+          if (!schedules || schedules.length === 0) return;
+
+          const now = new Date();
+          const twoDaysAgo = new Date(now);
+          twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+
+          for (const schedule of schedules) {
+               try {
+                    const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
+                    if (!scheduleId) continue;
+
+                    // Get schedule date and end time
+                    let scheduleDate = null;
+                    if (typeof schedule.date === 'string') {
+                         scheduleDate = new Date(schedule.date);
+                    } else if (schedule.date && schedule.date.year) {
+                         scheduleDate = new Date(schedule.date.year, schedule.date.month - 1, schedule.date.day);
+                    }
+
+                    if (!scheduleDate) continue;
+
+                    // Get end time
+                    let endTime = schedule.endTime || schedule.EndTime || '23:59:59';
+                    if (typeof endTime === 'object' && endTime.hour !== undefined) {
+                         endTime = `${String(endTime.hour).padStart(2, '0')}:${String(endTime.minute).padStart(2, '0')}:00`;
+                    }
+
+                    // Parse end time
+                    const [hours, minutes] = endTime.split(':').map(Number);
+                    const scheduleEndDateTime = new Date(scheduleDate);
+                    scheduleEndDateTime.setHours(hours || 23, minutes || 59, 0, 0);
+
+                    // Check if schedule has expired
+                    if (scheduleEndDateTime < now) {
+                         const status = (schedule.status || schedule.Status || '').toLowerCase();
+
+                         // If expired more than 2 days, delete it
+                         if (scheduleEndDateTime < twoDaysAgo) {
+                              try {
+                                   const deleteResult = await deleteFieldSchedule(scheduleId);
+                                   if (deleteResult.success) {
+                                   } else {
+                                   }
+                              } catch (error) {
+                              }
+                         }
+                         // If expired but less than 2 days, update to Maintenance if not already
+                         else if (status !== 'maintenance') {
+                              try {
+                                   const updateResult = await updateFieldScheduleStatus(scheduleId, 'Maintenance');
+                                   if (updateResult.success) {
+                                        // Update the schedule in the array
+                                        schedule.status = 'Maintenance';
+                                        schedule.Status = 'Maintenance';
+                                   } else {
+                                   }
+                              } catch (error) {
+                              }
+                         }
+                    }
+               } catch (error) {
+               }
+          }
+     }, []);
+
      useEffect(() => {
           loadData();
      }, [loadData]);
+
+     // Load bookings when user is available
+     useEffect(() => {
+          if (currentUserId) {
+               loadBookings();
+          }
+     }, [currentUserId, loadBookings]);
+
+
+     // Load time slots and schedules when complex, fields, or selectedFieldForSchedule changes
+     useEffect(() => {
+          if (selectedComplex && fields.length > 0) {
+               loadTimeSlotsForTable();
+               loadSchedulesForTable();
+               // Also reload bookings to ensure we have the latest booking data
+               if (currentUserId) {
+                    loadBookings();
+               }
+          }
+     }, [selectedComplex, fields, selectedFieldForSchedule, loadTimeSlotsForTable, loadSchedulesForTable, currentUserId, loadBookings]);
 
      // Load FieldSchedules
      const loadFieldSchedules = useCallback(async () => {
@@ -531,6 +941,10 @@ export default function ScheduleManagement({ isDemo = false }) {
                               fieldIds.includes(s.fieldId || s.FieldID)
                          );
                     }
+
+                    // Process expired schedules: auto-update to Maintenance and auto-delete after 2 days
+                    await processExpiredSchedules(schedules);
+
                     setFieldSchedules(schedules);
                } else {
                     setFieldSchedules([]);
@@ -541,13 +955,44 @@ export default function ScheduleManagement({ isDemo = false }) {
           } finally {
                setLoadingSchedules(false);
           }
-     }, [scheduleFilterField, selectedComplex]);
+     }, [scheduleFilterField, selectedComplex, processExpiredSchedules]);
 
      useEffect(() => {
           if (activeTab === 'manage-schedules') {
                loadFieldSchedules();
           }
      }, [activeTab, loadFieldSchedules, scheduleFilterField]);
+
+     // Load all time slots when entering timeslots tab
+     useEffect(() => {
+          if (activeTab === 'timeslots' && selectedComplex && fields.length > 0) {
+               // Load all slots for all fields
+               const loadAllSlots = async () => {
+                    try {
+                         console.log('Loading all slots for timeslots tab');
+                         const allSlots = [];
+                         const fetchPromises = fields.map(field =>
+                              fetchTimeSlotsByField(field.fieldId)
+                         );
+
+                         const results = await Promise.all(fetchPromises);
+                         results.forEach((result, index) => {
+                              const fieldId = fields[index].fieldId;
+                              console.log(`Field ${fieldId}: received ${result.data?.length || 0} slots for timeslots tab`);
+                              if (result.success && result.data && Array.isArray(result.data)) {
+                                   allSlots.push(...result.data);
+                              }
+                         });
+
+                         console.log(`Total slots for timeslots tab: ${allSlots.length}`);
+                         setTimeSlots(allSlots);
+                    } catch (error) {
+                         console.error('Error loading slots for timeslots tab:', error);
+                    }
+               };
+               loadAllSlots();
+          }
+     }, [activeTab, selectedComplex, fields]);
 
      // Handle update schedule status
      const handleUpdateScheduleStatus = async (scheduleId, newStatus) => {
@@ -581,16 +1026,55 @@ export default function ScheduleManagement({ isDemo = false }) {
      };
 
      // Handle open schedule modal
-     const handleOpenScheduleModal = () => {
+     const openScheduleModal = useCallback((defaults = {}) => {
           setScheduleFormData({
-               fieldId: scheduleFilterField !== 'all' ? scheduleFilterField : '',
+               fieldId: '',
                slotId: '',
                date: '',
-               status: 'Available'
+               status: 'Available',
+               scheduleType: 'single',
+               month: '',
+               quarter: '',
+               year: '',
+               ...defaults
           });
           setScheduleFormErrors({});
           setShowScheduleModal(true);
-     };
+     }, []);
+
+     const handleOpenScheduleModal = useCallback(() => {
+          const defaultFieldId = scheduleFilterField !== 'all' && !isFieldMaintenance(Number(scheduleFilterField))
+               ? scheduleFilterField
+               : '';
+          openScheduleModal({
+               fieldId: defaultFieldId,
+               slotId: '',
+               date: '',
+               status: 'Available',
+               scheduleType: 'single',
+               month: '',
+               quarter: '',
+               year: ''
+          });
+     }, [scheduleFilterField, isFieldMaintenance, openScheduleModal]);
+
+     const handleQuickScheduleRequest = useCallback((fieldId, slotId, date) => {
+          if (isFieldMaintenance(fieldId)) {
+               Swal.fire({
+                    icon: 'info',
+                    title: 'Sân đang bảo trì',
+                    text: 'Không thể tạo lịch trình cho sân đang bảo trì. Vui lòng đổi trạng thái sân trước khi tiếp tục.',
+                    confirmButtonColor: '#f97316'
+               });
+               return;
+          }
+
+          openScheduleModal({
+               fieldId: fieldId?.toString() || '',
+               slotId: slotId?.toString() || '',
+               date: date || ''
+          });
+     }, [isFieldMaintenance, openScheduleModal]);
 
      // Handle close schedule modal
      const handleCloseScheduleModal = () => {
@@ -599,9 +1083,51 @@ export default function ScheduleManagement({ isDemo = false }) {
                fieldId: '',
                slotId: '',
                date: '',
-               status: 'Available'
+               status: 'Available',
+               scheduleType: 'single',
+               month: '',
+               quarter: '',
+               year: ''
           });
           setScheduleFormErrors({});
+     };
+
+     // Helper function to get all dates for month/quarter
+     const getAllDatesForPeriod = (scheduleType, month, quarter, year) => {
+          const dates = [];
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          if (scheduleType === 'month' && month && year) {
+               const yearNum = Number(year);
+               const monthNum = Number(month);
+               const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+
+               for (let day = 1; day <= daysInMonth; day++) {
+                    const date = new Date(yearNum, monthNum - 1, day);
+                    // Only include future dates
+                    if (date >= today) {
+                         dates.push(formatDateToLocalString(date));
+                    }
+               }
+          } else if (scheduleType === 'quarter' && quarter && year) {
+               const yearNum = Number(year);
+               const quarterNum = Number(quarter);
+               const startMonth = (quarterNum - 1) * 3 + 1;
+
+               for (let m = startMonth; m < startMonth + 3; m++) {
+                    const daysInMonth = new Date(yearNum, m, 0).getDate();
+                    for (let day = 1; day <= daysInMonth; day++) {
+                         const date = new Date(yearNum, m - 1, day);
+                         // Only include future dates
+                         if (date >= today) {
+                              dates.push(formatDateToLocalString(date));
+                         }
+                    }
+               }
+          }
+
+          return dates;
      };
 
      // Handle submit schedule
@@ -612,66 +1138,155 @@ export default function ScheduleManagement({ isDemo = false }) {
           const errors = {};
           if (!scheduleFormData.fieldId) errors.fieldId = 'Vui lòng chọn sân';
           if (!scheduleFormData.slotId) errors.slotId = 'Vui lòng chọn slot';
-          if (!scheduleFormData.date) errors.date = 'Vui lòng chọn ngày';
+
+          if (scheduleFormData.scheduleType === 'single') {
+               if (!scheduleFormData.date) errors.date = 'Vui lòng chọn ngày';
+          } else if (scheduleFormData.scheduleType === 'month') {
+               if (!scheduleFormData.month) errors.month = 'Vui lòng chọn tháng';
+               if (!scheduleFormData.year) errors.year = 'Vui lòng chọn năm';
+          } else if (scheduleFormData.scheduleType === 'quarter') {
+               if (!scheduleFormData.quarter) errors.quarter = 'Vui lòng chọn quý';
+               if (!scheduleFormData.year) errors.year = 'Vui lòng chọn năm';
+          }
 
           if (Object.keys(errors).length > 0) {
                setScheduleFormErrors(errors);
                return;
           }
 
+          // Tìm field và slot để lấy thông tin
+          const field = fields.find(f => f.fieldId.toString() === scheduleFormData.fieldId);
+          const slot = timeSlots.find(s => {
+               const slotId = s.slotId || s.SlotID;
+               return slotId.toString() === scheduleFormData.slotId;
+          });
+
+          if (!field || !slot) {
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Không tìm thấy thông tin sân hoặc slot',
+                    confirmButtonColor: '#ef4444'
+               });
+               return;
+          }
+
+          if (isFieldMaintenance(field.fieldId)) {
+               await Swal.fire({
+                    icon: 'info',
+                    title: 'Sân đang bảo trì',
+                    text: 'Không thể tạo lịch trình mới cho sân đang ở trạng thái bảo trì. Vui lòng đổi trạng thái trước khi tiếp tục.',
+                    confirmButtonColor: '#f97316'
+               });
+               return;
+          }
+
           setIsSubmittingSchedule(true);
           try {
-               // Tìm field và slot để lấy thông tin
-               const field = fields.find(f => f.fieldId.toString() === scheduleFormData.fieldId);
-               const slot = timeSlots.find(s => {
-                    const slotId = s.slotId || s.SlotID;
-                    return slotId.toString() === scheduleFormData.slotId;
-               });
-
-               if (!field || !slot) {
-                    await Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: 'Không tìm thấy thông tin sân hoặc slot',
-                         confirmButtonColor: '#ef4444'
-                    });
-                    return;
-               }
-
                // Lấy thông tin time từ slot
                const slotStartTime = slot.startTime || slot.StartTime || '00:00';
                const slotEndTime = slot.endTime || slot.EndTime || '00:00';
                const slotName = slot.slotName || slot.SlotName || slot.name || "";
 
-               // Tạo schedule với đầy đủ thông tin
-               const result = await createFieldSchedule({
-                    scheduleId: 0, // Luôn là 0 khi tạo mới
-                    fieldId: Number(scheduleFormData.fieldId),
-                    fieldName: String(field.name || ""),
-                    slotId: Number(scheduleFormData.slotId),
-                    slotName: String(slotName),
-                    date: scheduleFormData.date, // Format: "YYYY-MM-DD"
-                    startTime: slotStartTime, // Format: "HH:MM" hoặc "HH:MM:SS"
-                    endTime: slotEndTime, // Format: "HH:MM" hoặc "HH:MM:SS"
-                    status: String(scheduleFormData.status || "Available")
-               });
+               // Determine dates to create schedules for
+               let datesToCreate = [];
+               if (scheduleFormData.scheduleType === 'single') {
+                    datesToCreate = [scheduleFormData.date];
+               } else if (scheduleFormData.scheduleType === 'month') {
+                    datesToCreate = getAllDatesForPeriod('month', scheduleFormData.month, null, scheduleFormData.year);
+               } else if (scheduleFormData.scheduleType === 'quarter') {
+                    datesToCreate = getAllDatesForPeriod('quarter', null, scheduleFormData.quarter, scheduleFormData.year);
+               }
 
-               if (result.success) {
+               if (datesToCreate.length === 0) {
+                    await Swal.fire({
+                         icon: 'warning',
+                         title: 'Không có ngày hợp lệ',
+                         text: 'Tất cả các ngày trong khoảng thời gian đã chọn đều là quá khứ. Vui lòng chọn khoảng thời gian khác.',
+                         confirmButtonColor: '#f59e0b'
+                    });
+                    setIsSubmittingSchedule(false);
+                    return;
+               }
+
+               // Create schedules for all dates
+               let successCount = 0;
+               let errorCount = 0;
+               const errors = [];
+
+               for (const dateStr of datesToCreate) {
+                    try {
+                         const result = await createFieldSchedule({
+                              scheduleId: 0, // Luôn là 0 khi tạo mới
+                              fieldId: Number(scheduleFormData.fieldId),
+                              fieldName: String(field.name || ""),
+                              slotId: Number(scheduleFormData.slotId),
+                              slotName: String(slotName),
+                              date: dateStr, // Format: "YYYY-MM-DD"
+                              startTime: slotStartTime, // Format: "HH:MM" hoặc "HH:MM:SS"
+                              endTime: slotEndTime, // Format: "HH:MM" hoặc "HH:MM:SS"
+                              status: String(scheduleFormData.status || "Available")
+                         });
+
+                         if (result.success) {
+                              successCount++;
+                         } else {
+                              errorCount++;
+                              errors.push(`${dateStr}: ${result.error || 'Lỗi không xác định'}`);
+                         }
+
+                         // Add small delay between requests to avoid overwhelming the server
+                         await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                         errorCount++;
+                         errors.push(`${dateStr}: ${error.message || 'Lỗi không xác định'}`);
+                         console.error(`Error creating schedule for ${dateStr}:`, error);
+                    }
+               }
+
+               // Show result
+               if (errorCount === 0) {
                     await Swal.fire({
                          icon: 'success',
                          title: 'Tạo lịch trình thành công!',
-                         text: `Đã tạo lịch trình cho ${field.name} - ${slot.slotName || slot.SlotName || slot.name}`,
-                         confirmButtonColor: '#10b981'
+                         text: `Đã tạo ${successCount} lịch trình cho ${field.name} - ${slot.slotName || slot.SlotName || slot.name}`,
+                         confirmButtonColor: '#10b981',
+                         timer: 2000
                     });
                     handleCloseScheduleModal();
                     await loadFieldSchedules();
                } else {
+                    const errorList = errors.slice(0, 5); // Chỉ hiển thị 5 lỗi đầu
+                    const moreErrors = errors.length > 5 ? `<p class="text-xs text-gray-500 mt-2">...và ${errors.length - 5} lỗi khác</p>` : '';
+
                     await Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: result.error || 'Không thể tạo lịch trình',
-                         confirmButtonColor: '#ef4444'
+                         icon: errorCount === datesToCreate.length ? 'error' : 'warning',
+                         title: errorCount === datesToCreate.length ? 'Tạo lịch trình thất bại' : 'Tạo một phần thành công',
+                         html: `
+                              <div class="text-left">
+                                   <div class="mb-3 p-3 bg-gray-50 rounded">
+                                        <p class="font-semibold">Kết quả:</p>
+                                        <p class="text-green-600">✓ Thành công: ${successCount}</p>
+                                        <p class="text-red-600">✗ Thất bại: ${errorCount}</p>
+                                   </div>
+                                   ${errorList.length > 0 ? `
+                                        <div class="mt-2">
+                                             <p class="font-semibold text-sm mb-1">Chi tiết lỗi:</p>
+                                             <div class="text-xs space-y-1 max-h-40 overflow-y-auto">
+                                                  ${errorList.map(err => `<p class="text-red-600">• ${err}</p>`).join('')}
+                                             </div>
+                                             ${moreErrors}
+                                        </div>
+                                   ` : ''}
+                              </div>
+                         `,
+                         confirmButtonColor: errorCount === datesToCreate.length ? '#ef4444' : '#f59e0b',
+                         width: '600px'
                     });
+                    if (successCount > 0) {
+                         handleCloseScheduleModal();
+                         await loadFieldSchedules();
+                    }
                }
           } catch (error) {
                console.error('Error creating schedule:', error);
@@ -711,19 +1326,35 @@ export default function ScheduleManagement({ isDemo = false }) {
                          });
                          await loadFieldSchedules();
                     } else {
+                         // Check if error is related to booking
+                         const errorMessage = deleteResult.error || '';
+                         const isBookingError = errorMessage.toLowerCase().includes('booking') || 
+                                               errorMessage.toLowerCase().includes('đặt sân') ||
+                                               errorMessage.toLowerCase().includes('entity changes') ||
+                                               errorMessage.toLowerCase().includes('foreign key') ||
+                                               errorMessage.toLowerCase().includes('constraint');
+                         
                          await Swal.fire({
                               icon: 'error',
                               title: 'Lỗi',
-                              text: deleteResult.error || 'Không thể xóa lịch trình',
+                              text: isBookingError ? 'Bạn không thể xóa vì đang có lịch đặt sân này' : (deleteResult.error || 'Không thể xóa lịch trình'),
                               confirmButtonColor: '#ef4444'
                          });
                     }
                } catch (error) {
                     console.error('Error deleting schedule:', error);
+                    // Check if error is related to booking
+                    const errorMessage = error.message || error.response?.data?.message || '';
+                    const isBookingError = errorMessage.toLowerCase().includes('booking') || 
+                                         errorMessage.toLowerCase().includes('đặt sân') ||
+                                         errorMessage.toLowerCase().includes('entity changes') ||
+                                         errorMessage.toLowerCase().includes('foreign key') ||
+                                         errorMessage.toLowerCase().includes('constraint');
+                    
                     await Swal.fire({
                          icon: 'error',
                          title: 'Lỗi',
-                         text: error.message || 'Có lỗi xảy ra',
+                         text: isBookingError ? 'Bạn không thể xóa vì đang có lịch đặt sân này' : (error.message || 'Có lỗi xảy ra'),
                          confirmButtonColor: '#ef4444'
                     });
                }
@@ -732,7 +1363,7 @@ export default function ScheduleManagement({ isDemo = false }) {
 
      // Get week dates
      const getWeekDates = () => {
-          const start = new Date(currentWeek);
+          const start = new Date(selectedDate);
           start.setDate(start.getDate() - start.getDay() + 1); // Monday
 
           const dates = [];
@@ -746,40 +1377,75 @@ export default function ScheduleManagement({ isDemo = false }) {
 
      const weekDates = getWeekDates();
 
-     // Navigate week
-     const goToPreviousWeek = () => {
-          const newDate = new Date(currentWeek);
-          newDate.setDate(newDate.getDate() - 7);
-          setCurrentWeek(newDate);
+     // Check if slot time has passed
+     const isSlotTimePassed = (date, slot) => {
+          const now = new Date();
+          const slotDate = new Date(date);
+
+          // Get slot end time
+          const endTimeStr = slot.EndTime || slot.endTime || '23:59:59';
+          const [hours, minutes] = endTimeStr.split(':').map(Number);
+          slotDate.setHours(hours || 23, minutes || 59, 59, 999);
+          return slotDate < now;
      };
 
-     const goToNextWeek = () => {
-          const newDate = new Date(currentWeek);
-          newDate.setDate(newDate.getDate() + 7);
-          setCurrentWeek(newDate);
+     // Get color for field
+     const getFieldColor = (fieldId) => {
+          const colors = [
+               'border-blue-500 border-l-4 text-blue-500', 'border-teal-500 border-l-4 text-teal-500', 'border-green-500 border-l-4 text-green-500', 'border-yellow-500 border-l-4 text-yellow-500',
+               'border-orange-500 border-l-4 text-orange-500', 'border-red-500 border-l-4 text-red-500', 'border-pink-500 border-l-4 text-pink-500', 'border-purple-500 border-l-4 text-purple-500',
+               'border-indigo-500 border-l-4 text-indigo-500', 'border-cyan-500 border-l-4 text-cyan-500', 'border-emerald-500 border-l-4 text-emerald-500', 'border-lime-500 border-l-4 text-lime-500 '
+          ];
+          const index = Number(fieldId) % colors.length;
+          return colors[index];
      };
 
-     const goToToday = () => {
-          setCurrentWeek(new Date());
+     // Get schedules for a specific time slot and date (all fields)
+     const getSchedulesForTimeSlot = (slotId, date) => {
+          const dateStr = formatDateToLocalString(date);
+          const matchingSchedules = fieldSchedules.filter(schedule => {
+               const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
+               const scheduleDateStr = normalizeDateString(schedule.date);
+               const matches = Number(scheduleSlotId) === Number(slotId) && scheduleDateStr === dateStr;
+               if (matches) {
+                    console.log(`Found schedule for slot ${slotId} on ${dateStr}:`, schedule);
+               }
+               return matches;
+          });
+
+          // Update schedule status to "Booked" if there's a booking for it
+          const enrichedSchedules = matchingSchedules.map(schedule => {
+               const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
+               const booking = bookings.find(b => {
+                    const bookingScheduleId = b.scheduleId || b.scheduleID || b.ScheduleID;
+                    return bookingScheduleId && Number(bookingScheduleId) === Number(scheduleId);
+               });
+
+               if (booking) {
+                    // Return schedule with Booked status
+                    return {
+                         ...schedule,
+                         status: 'Booked'
+                    };
+               }
+               return schedule;
+          });
+
+          return enrichedSchedules;
      };
 
-     // Format date
-     const formatDate = (date) => {
-          return `${date.getDate()}/${date.getMonth() + 1}`;
-     };
 
-     const getDayName = (date) => {
-          const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-          return days[date.getDay()];
-     };
+     // Update calendar month when selectedDate changes
+     useEffect(() => {
+          const selectedMonth = selectedDate.getMonth();
+          const selectedYear = selectedDate.getFullYear();
+          const currentMonth = calendarMonth.getMonth();
+          const currentYear = calendarMonth.getFullYear();
 
-     // Check if date is today
-     const isToday = (date) => {
-          const today = new Date();
-          return date.getDate() === today.getDate() &&
-               date.getMonth() === today.getMonth() &&
-               date.getFullYear() === today.getFullYear();
-     };
+          if (selectedMonth !== currentMonth || selectedYear !== currentYear) {
+               setCalendarMonth(new Date(selectedDate));
+          }
+     }, [selectedDate, calendarMonth]);
 
      // Handle complex change
      const handleComplexChange = (complex) => {
@@ -789,18 +1455,11 @@ export default function ScheduleManagement({ isDemo = false }) {
 
      // Check if schedule exists for field/date/slot
      const getScheduleForSlot = (fieldId, date, slotId) => {
-          const dateStr = date.toISOString().split('T')[0];
+          const dateStr = formatDateToLocalString(date);
           return fieldSchedules.find(schedule => {
                const scheduleFieldId = schedule.fieldId ?? schedule.FieldId;
                const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
-
-               // Parse schedule date
-               let scheduleDateStr = '';
-               if (typeof schedule.date === 'string') {
-                    scheduleDateStr = schedule.date.split('T')[0];
-               } else if (schedule.date && schedule.date.year) {
-                    scheduleDateStr = `${schedule.date.year}-${String(schedule.date.month).padStart(2, '0')}-${String(schedule.date.day).padStart(2, '0')}`;
-               }
+               const scheduleDateStr = normalizeDateString(schedule.date);
 
                return Number(scheduleFieldId) === Number(fieldId) &&
                     Number(scheduleSlotId) === Number(slotId) &&
@@ -808,31 +1467,185 @@ export default function ScheduleManagement({ isDemo = false }) {
           });
      };
 
-     // Check if slot is booked
-     const isSlotBooked = (fieldId, date, slotId) => {
-          const schedule = getScheduleForSlot(fieldId, date, slotId);
+     // Check if slot is booked - wrapped in useCallback for useMemo dependency
+     const isSlotBooked = useCallback((fieldId, date, slotId) => {
+          const dateStr = formatDateToLocalString(date);
+
+          // First check if there's a booking for this schedule
+          const booking = bookings.find(b => {
+               const bookingScheduleId = b.scheduleId || b.scheduleID || b.ScheduleID;
+               if (!bookingScheduleId) return false;
+
+               // Find the schedule for this booking
+               const schedule = fieldSchedules.find(s => {
+                    const scheduleId = s.scheduleId ?? s.ScheduleID ?? s.id;
+                    return Number(scheduleId) === Number(bookingScheduleId);
+               });
+
+               if (!schedule) return false;
+
+               const scheduleFieldId = schedule.fieldId ?? schedule.FieldId;
+               const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
+               const scheduleDateStr = normalizeDateString(schedule.date);
+
+               return Number(scheduleFieldId) === Number(fieldId) &&
+                    Number(scheduleSlotId) === Number(slotId) &&
+                    scheduleDateStr === dateStr;
+          });
+
+          // If there's a booking, consider it booked
+          if (booking) {
+               return true;
+          }
+
+          // Otherwise check schedule status
+          const schedule = fieldSchedules.find(s => {
+               const scheduleFieldId = s.fieldId ?? s.FieldId;
+               const scheduleSlotId = s.slotId ?? s.SlotId ?? s.SlotID;
+               const scheduleDateStr = normalizeDateString(s.date);
+               return Number(scheduleFieldId) === Number(fieldId) &&
+                    Number(scheduleSlotId) === Number(slotId) &&
+                    scheduleDateStr === dateStr;
+          });
           // Nếu có schedule và status là "Booked" thì coi như đã đặt
           return schedule && (schedule.status === 'Booked' || schedule.status === 'booked');
-     };
+     }, [fieldSchedules, bookings]);
 
      // Get booking info
      const getBookingInfo = (fieldId, date, slotId) => {
-          const schedule = getScheduleForSlot(fieldId, date, slotId);
-          if (!schedule) return null;
+          if (!fieldId || !date || !slotId) {
+               console.log(`[getBookingInfo] Missing parameters: fieldId=${fieldId}, date=${date}, slotId=${slotId}`);
+               return null;
+          }
 
-          // TODO: Lấy thông tin booking thực tế từ API
-          return {
-               customerName: 'Khách hàng',
-               customerPhone: '0912345678',
-               status: schedule.status || 'Available'
-          };
+          const dateStr = formatDateToLocalString(date);
+          console.log(`[getBookingInfo] Searching for booking: fieldId=${fieldId}, slotId=${slotId}, date=${dateStr}`);
+          console.log(`[getBookingInfo] Total schedules: ${fieldSchedules.length}, Total bookings: ${bookings.length}`);
+          
+          // Debug: Show sample schedules and bookings
+          if (fieldSchedules.length > 0) {
+               const sampleSchedule = fieldSchedules[0];
+               console.log(`[getBookingInfo] Sample schedule:`, {
+                    fieldId: sampleSchedule.fieldId ?? sampleSchedule.FieldID,
+                    slotId: sampleSchedule.slotId ?? sampleSchedule.SlotID,
+                    date: sampleSchedule.date,
+                    scheduleId: sampleSchedule.scheduleId ?? sampleSchedule.ScheduleID
+               });
+          }
+          if (bookings.length > 0) {
+               const sampleBooking = bookings[0];
+               console.log(`[getBookingInfo] Sample booking:`, {
+                    scheduleId: sampleBooking.scheduleId || sampleBooking.scheduleID || sampleBooking.ScheduleID,
+                    fieldId: sampleBooking.fieldId || sampleBooking.fieldID || sampleBooking.FieldID,
+                    slotId: sampleBooking.slotId || sampleBooking.slotID || sampleBooking.SlotID,
+                    date: sampleBooking.date || sampleBooking.bookingDate
+               });
+          }
+
+          // First, try to find booking directly by scheduleId
+          // Find the schedule first
+          const schedule = fieldSchedules.find(s => {
+               const scheduleFieldId = s.fieldId ?? s.FieldId ?? s.fieldID;
+               const scheduleSlotId = s.slotId ?? s.SlotId ?? s.SlotID ?? s.slotID;
+               const scheduleDateStr = normalizeDateString(s.date);
+               const fieldMatch = Number(scheduleFieldId) === Number(fieldId);
+               const slotMatch = Number(scheduleSlotId) === Number(slotId);
+               const dateMatch = scheduleDateStr === dateStr;
+
+               if (fieldMatch && slotMatch && !dateMatch) {
+                    console.log(`[getBookingInfo] Schedule found but date mismatch:`, {
+                         scheduleDateRaw: s.date,
+                         scheduleDateNormalized: scheduleDateStr,
+                         searchDate: dateStr,
+                         fieldId: scheduleFieldId,
+                         slotId: scheduleSlotId
+                    });
+               }
+
+               return fieldMatch && slotMatch && dateMatch;
+          });
+
+          if (schedule) {
+               console.log(`[getBookingInfo] Found schedule:`, schedule);
+               const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
+               console.log(`[getBookingInfo] Looking for booking with scheduleId=${scheduleId}`);
+
+               const booking = bookings.find(b => {
+                    const bookingScheduleId = b.scheduleId || b.scheduleID || b.ScheduleID;
+                    const match = bookingScheduleId && Number(bookingScheduleId) === Number(scheduleId);
+                    if (match) {
+                         console.log(`[getBookingInfo] Found booking by scheduleId:`, b);
+                    }
+                    return match;
+               });
+
+               if (booking) {
+                    console.log(`[getBookingInfo] Returning booking info from schedule match`);
+                    return {
+                         bookingId: booking.bookingId || booking.BookingID || booking.id,
+                         customerName: booking.playerName || booking.PlayerName || booking.customerName || booking.fullName || booking.name || 'Khách hàng',
+                         customerPhone: booking.playerPhone || booking.PlayerPhone || booking.phone || booking.Phone || booking.phoneNumber || 'N/A',
+                         customerEmail: booking.customerEmail || booking.email || booking.Email || 'N/A',
+                         totalPrice: booking.totalPrice || booking.TotalPrice || 0,
+                         depositAmount: booking.depositAmount || booking.DepositAmount || 0,
+                         status: booking.status || booking.Status || 'Booked',
+                         paymentStatus: booking.paymentStatus || booking.PaymentStatus || 'N/A',
+                         hasOpponent: booking.hasOpponent || booking.HasOpponent || false,
+                         address: booking.address || booking.complexName || booking.ComplexName || 'N/A',
+                         bookingDate: booking.bookingDate || booking.BookingDate || booking.createdDate || booking.CreatedDate || 'N/A'
+                    };
+               } else {
+                    console.log(`[getBookingInfo] No booking found for scheduleId=${scheduleId}`);
+               }
+          } else {
+               console.log(`[getBookingInfo] No schedule found for fieldId=${fieldId}, slotId=${slotId}, date=${dateStr}`);
+          }
+
+          // Fallback: try to find booking by fieldId, slotId, and date directly
+          // Some bookings might have these fields directly
+          console.log(`[getBookingInfo] Trying direct booking match...`);
+          const directBooking = bookings.find(b => {
+               const bookingFieldId = b.fieldId || b.fieldID || b.FieldID;
+               const bookingSlotId = b.slotId || b.slotID || b.SlotID;
+               const bookingDateStr = normalizeDateString(b.date || b.bookingDate || b.Date || b.BookingDate);
+
+               const fieldMatch = Number(bookingFieldId) === Number(fieldId);
+               const slotMatch = Number(bookingSlotId) === Number(slotId);
+               const dateMatch = bookingDateStr === dateStr;
+
+               if (fieldMatch && slotMatch && !dateMatch) {
+                    console.log(`[getBookingInfo] Direct booking found but date mismatch: bookingDate=${bookingDateStr}, searchDate=${dateStr}`, b);
+               }
+
+               const match = fieldMatch && slotMatch && dateMatch;
+
+               if (match) {
+                    console.log(`[getBookingInfo] Found booking by direct match:`, b);
+               }
+               return match;
+          });
+
+          if (directBooking) {
+               console.log(`[getBookingInfo] Returning direct booking info:`, directBooking);
+               return {
+                    bookingId: directBooking.bookingId || directBooking.BookingID || directBooking.id,
+                    customerName: directBooking.playerName || directBooking.PlayerName || directBooking.customerName || directBooking.fullName || directBooking.name || 'Khách hàng',
+                    customerPhone: directBooking.playerPhone || directBooking.PlayerPhone || directBooking.phone || directBooking.Phone || directBooking.phoneNumber || 'N/A',
+                    customerEmail: directBooking.customerEmail || directBooking.email || directBooking.Email || 'N/A',
+                    totalPrice: directBooking.totalPrice || directBooking.TotalPrice || 0,
+                    depositAmount: directBooking.depositAmount || directBooking.DepositAmount || 0,
+                    status: directBooking.status || directBooking.Status || 'Booked',
+                    paymentStatus: directBooking.paymentStatus || directBooking.PaymentStatus || 'N/A',
+                    hasOpponent: directBooking.hasOpponent || directBooking.HasOpponent || false,
+                    address: directBooking.address || directBooking.complexName || directBooking.ComplexName || 'N/A',
+                    bookingDate: directBooking.bookingDate || directBooking.BookingDate || directBooking.createdDate || directBooking.CreatedDate || 'N/A'
+               };
+          }
+
+          console.log(`[getBookingInfo] No booking found for fieldId=${fieldId}, slotId=${slotId}, date=${dateStr}`);
+          return null;
      };
 
-     // Get field price for slot (TODO: Replace with real API data)
-     const getFieldPrice = (field, _slotId) => {
-          // Return field's base price per hour
-          return field.pricePerHour || 0;
-     };
 
      // Calculate statistics
      const statistics = useMemo(() => {
@@ -902,7 +1715,7 @@ export default function ScheduleManagement({ isDemo = false }) {
 
      return (
           <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
-               <div className="space-y-6">
+               <div className="space-y-4">
                     {/* Header */}
                     <div className="flex items-center justify-between flex-wrap gap-4">
                          <div>
@@ -969,148 +1782,44 @@ export default function ScheduleManagement({ isDemo = false }) {
                                         </AlertDescription>
                                    </Alert>
                               )}
+                              {maintenanceFields.length > 0 && (
+                                   <Alert className="border-orange-200 bg-orange-50">
+                                        <Info className="h-4 w-4 text-orange-600" />
+                                        <AlertDescription className="text-orange-900">
+                                             Có {maintenanceFields.length} sân đang ở trạng thái <strong>Bảo trì</strong>
+                                             {maintenanceNoticeText ? `: ${maintenanceNoticeText}` : ''}. Các Time Slot và lịch trình mới sẽ bị khóa cho đến khi bạn đổi trạng thái sân sang "Available".
+                                        </AlertDescription>
+                                   </Alert>
+                              )}
 
                               {/* Statistics Cards */}
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                   <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                                        <div className="flex items-center justify-between">
-                                             <div>
-                                                  <p className="text-sm font-medium text-blue-600">Tổng Slots</p>
-                                                  <p className="text-2xl font-bold text-blue-900">{statistics.totalSlots}</p>
-                                             </div>
-                                             <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-                                                  <BarChart3 className="w-5 h-5 text-white" />
-                                             </div>
-                                        </div>
-                                   </Card>
-
-                                   <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                                        <div className="flex items-center justify-between">
-                                             <div>
-                                                  <p className="text-sm font-medium text-green-600">Đã đặt</p>
-                                                  <p className="text-2xl font-bold text-green-900">{statistics.bookedSlots}</p>
-                                             </div>
-                                             <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                                                  <Calendar className="w-5 h-5 text-white" />
-                                             </div>
-                                        </div>
-                                   </Card>
-
-                                   <Card className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200">
-                                        <div className="flex items-center justify-between">
-                                             <div>
-                                                  <p className="text-sm font-medium text-gray-600">Còn trống</p>
-                                                  <p className="text-2xl font-bold text-gray-900">{statistics.availableSlots}</p>
-                                             </div>
-                                             <div className="w-10 h-10 bg-gray-500 rounded-lg flex items-center justify-center">
-                                                  <Clock className="w-5 h-5 text-white" />
-                                             </div>
-                                        </div>
-                                   </Card>
-
-                                   <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                                        <div className="flex items-center justify-between">
-                                             <div>
-                                                  <p className="text-sm font-medium text-purple-600">Tỷ lệ lấp đầy</p>
-                                                  <p className="text-2xl font-bold text-purple-900">{statistics.occupancyRate}%</p>
-                                             </div>
-                                             <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                                                  <BarChart3 className="w-5 h-5 text-white" />
-                                             </div>
-                                        </div>
-                                   </Card>
-                              </div>
+                              <StatisticsCards statistics={statistics} />
 
                               {/* Complex Selector & Filter */}
-                              <Card className="p-4">
-                                   <div className="flex items-center justify-between gap-4 flex-wrap">
-                                        <div className="flex items-center gap-4 flex-wrap">
-                                             <span className="font-medium text-gray-700">Khu sân:</span>
-                                             <Select
-                                                  value={selectedComplex?.complexId?.toString()}
-                                                  onValueChange={(value) => {
-                                                       const complex = complexes.find(c => c.complexId.toString() === value);
-                                                       if (complex) {
-                                                            handleComplexChange(complex);
-                                                            setSelectedFieldForSchedule('all'); // Reset field filter when changing complex
-                                                       }
-                                                  }}
-                                             >
-                                                  <SelectTrigger className="w-[250px]">
-                                                       <SelectValue placeholder="Chọn khu sân" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       {complexes.map((complex) => (
-                                                            <SelectItem key={complex.complexId} value={complex.complexId.toString()}>
-                                                                 {complex.name}
-                                                            </SelectItem>
-                                                       ))}
-                                                  </SelectContent>
-                                             </Select>
+                              <ComplexAndFieldSelector
+                                   complexes={complexes}
+                                   selectedComplex={selectedComplex}
+                                   onComplexChange={(complex) => {
+                                        handleComplexChange(complex);
+                                        setSelectedFieldForSchedule('all');
+                                   }}
+                                   fields={fields}
+                                   selectedFieldForSchedule={selectedFieldForSchedule}
+                                   onFieldChange={setSelectedFieldForSchedule}
+                                   filterStatus={filterStatus}
+                                   onFilterStatusChange={setFilterStatus}
+                              />
 
-                                             <span className="font-medium text-gray-700">Sân:</span>
-                                             <Select value={selectedFieldForSchedule} onValueChange={setSelectedFieldForSchedule}>
-                                                  <SelectTrigger className="w-[200px]">
-                                                       <SelectValue placeholder="Chọn sân" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="all">
-                                                            Tất cả ({fields.length} sân)
-                                                       </SelectItem>
-                                                       {fields.map((field) => (
-                                                            <SelectItem key={field.fieldId} value={field.fieldId.toString()}>
-                                                                 {field.name}
-                                                            </SelectItem>
-                                                       ))}
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                             <Filter className="w-4 h-4 text-gray-600" />
-                                             <span className="text-sm font-medium text-gray-700">Trạng thái:</span>
-                                             <Select value={filterStatus} onValueChange={setFilterStatus}>
-                                                  <SelectTrigger className="w-[150px]">
-                                                       <SelectValue placeholder="Chọn trạng thái" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="all">Tất cả</SelectItem>
-                                                       <SelectItem value="booked">Đã đặt</SelectItem>
-                                                       <SelectItem value="available">Còn trống</SelectItem>
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-                                   </div>
-                              </Card>
-
-                              {/* Week Navigator */}
-                              <Card className="p-4">
-                                   <div className="flex items-center justify-between">
-                                        <Button onClick={goToPreviousWeek} variant="outline" size="sm">
-                                             <ChevronLeft className="w-4 h-4 mr-1" />
-                                             Tuần trước
-                                        </Button>
-
-                                        <div className="flex items-center gap-4">
-                                             <Calendar className="w-5 h-5 text-teal-600" />
-                                             <span className="font-semibold text-gray-900">
-                                                  Tuần {Math.ceil((weekDates[0].getDate()) / 7)} - Tháng {weekDates[0].getMonth() + 1}, {weekDates[0].getFullYear()}
-                                             </span>
-                                             <Button onClick={goToToday} variant="outline" size="sm">
-                                                  Hôm nay
-                                             </Button>
-                                        </div>
-
-                                        <Button onClick={goToNextWeek} variant="outline" size="sm">
-                                             Tuần sau
-                                             <ChevronRight className="w-4 h-4 ml-1" />
-                                        </Button>
-                                   </div>
-                              </Card>
+                              {/* Date Selector */}
+                              <DateSelector
+                                   selectedDate={selectedDate}
+                                   onDateChange={setSelectedDate}
+                                   weekDates={weekDates}
+                              />
 
                               {/* Field Info - Show when specific field is selected */}
                               {selectedFieldForSchedule !== 'all' && (
-                                   <Alert className="border-teal-300 bg-gradient-to-r from-teal-50 to-blue-50">
+                                   <Alert className="border-teal-300 bg-gradient-to-r items-center from-teal-50 to-blue-50 rounded-2xl">
                                         <Info className="h-5 w-5 text-teal-600" />
                                         <AlertDescription className="text-teal-900 text-sm font-medium">
                                              Đang xem lịch trình của: <strong>{fields.find(f => f.fieldId.toString() === selectedFieldForSchedule)?.name}</strong>
@@ -1118,604 +1827,116 @@ export default function ScheduleManagement({ isDemo = false }) {
                                    </Alert>
                               )}
 
-                              {/* Timetable */}
-                              <Card className="p-6 overflow-x-auto shadow-lg">
-                                   <table className="w-full border-collapse">
-                                        <thead>
-                                             <tr>
-                                                  <th className="sticky left-0 z-10 border-2 border-gray-300 bg-gradient-to-br from-gray-100 to-gray-200 p-4 text-left font-bold text-gray-800 min-w-[140px] shadow-sm">
-                                                       <div className="flex items-center gap-2">
-                                                            <Clock className="w-4 h-4" />
-                                                            Khung giờ
-                                                       </div>
-                                                  </th>
-                                                  {weekDates.map((date, index) => {
-                                                       const today = isToday(date);
-                                                       return (
-                                                            <th
-                                                                 key={index}
-                                                                 className={`border-2 p-4 text-center font-bold min-w-[140px] ${today
-                                                                      ? 'bg-gradient-to-br from-teal-500 to-teal-600 text-white border-teal-700 shadow-lg'
-                                                                      : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-800 border-gray-300'
-                                                                      }`}
-                                                            >
-                                                                 <div className="flex flex-col items-center gap-1">
-                                                                      <div className={`text-lg font-bold ${today ? 'text-white' : 'text-gray-900'}`}>
-                                                                           {getDayName(date)}
-                                                                      </div>
-                                                                      <div className={`text-sm font-semibold ${today ? 'text-teal-100' : 'text-gray-600'}`}>
-                                                                           {formatDate(date)}
-                                                                      </div>
-                                                                      {today && (
-                                                                           <Badge className="bg-white text-teal-700 text-xs font-bold mt-1 px-2 py-0.5">
-                                                                                HÔM NAY
-                                                                           </Badge>
-                                                                      )}
-                                                                 </div>
-                                                            </th>
-                                                       );
-                                                  })}
-                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                             {fields.length === 0 ? (
-                                                  <tr>
-                                                       <td colSpan={8} className="border-2 border-gray-300 p-12 text-center text-gray-500">
-                                                            <Clock className="w-16 h-16 text-gray-300 mx-auto mb-3" />
-                                                            <p className="text-lg font-medium">Khu sân này chưa có sân nào</p>
-                                                       </td>
-                                                  </tr>
-                                             ) : (
-                                                  fields
-                                                       .filter(field => selectedFieldForSchedule === 'all' || field.fieldId.toString() === selectedFieldForSchedule)
-                                                       .map((field) => (
-                                                            <React.Fragment key={field.fieldId}>
-                                                                 {/* Field name row */}
-                                                                 <tr>
-                                                                      <td colSpan={8} className="border-2 border-teal-300 bg-gradient-to-r from-teal-100 to-teal-50 p-3 font-bold text-teal-900 text-base shadow-sm">
-                                                                           <div className="flex items-center gap-2">
-                                                                                <div className="w-2 h-2 bg-teal-600 rounded-full"></div>
-                                                                                {field.name}
-                                                                           </div>
-                                                                      </td>
-                                                                 </tr>
+                              {/* Single Day Grid Timetable - Improved Design */}
+                              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                                   {/* Main Schedule Grid */}
+                                   <div className="lg:col-span-3">
+                                        <ScheduleGrid
+                                             timeSlots={timeSlots}
+                                             selectedDate={selectedDate}
+                                             fieldSchedules={fieldSchedules}
+                                             fields={fields}
+                                             selectedFieldForSchedule={selectedFieldForSchedule}
+                                             filterStatus={filterStatus}
+                                             isSlotTimePassed={isSlotTimePassed}
+                                             getSchedulesForTimeSlot={getSchedulesForTimeSlot}
+                                             getFieldColor={getFieldColor}
+                                             formatTime={formatTime}
+                                             getBookingInfo={getBookingInfo}
+                                             isFieldMaintenance={isFieldMaintenance}
+                                             onRequestAddSchedule={handleQuickScheduleRequest}
+                                        />
+                                   </div>
 
-                                                                 {/* Time slots rows */}
-                                                                 {timeSlots.map((slot, slotIndex) => {
-                                                                      const slotId = slot.slotId || slot.SlotID;
-                                                                      const price = getFieldPrice(field, slotId);
+                                   {/* Sidebar with Calendar and Field List */}
+                                   <div className="lg:col-span-1 space-y-4">
+                                        <MonthlyCalendar
+                                             calendarMonth={calendarMonth}
+                                             onMonthChange={setCalendarMonth}
+                                             selectedDate={selectedDate}
+                                             onDateSelect={(date) => {
+                                                  setSelectedDate(date);
+                                                  setCalendarMonth(new Date(date));
+                                             }}
+                                             weekDates={weekDates}
+                                        />
 
-                                                                      return (
-                                                                           <tr key={`${field.fieldId}-${slotId}`} className={slotIndex % 2 === 0 ? 'bg-gray-50/50' : 'bg-white'}>
-                                                                                <td className="sticky left-0 z-10 border-2 border-gray-300 p-3 text-sm bg-white shadow-sm">
-                                                                                     <div className="flex items-start gap-2">
-                                                                                          <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
-                                                                                               {(slot.SlotName || slot.slotName || slot.name || '').replace('Slot ', '')}
-                                                                                          </div>
-                                                                                          <div className="flex-1">
-                                                                                               <div className="font-bold text-gray-900">{slot.SlotName || slot.slotName || slot.name || 'N/A'}</div>
-                                                                                               <div className="text-xs text-gray-600 font-medium mt-0.5 flex items-center gap-1">
-                                                                                                    <Clock className="w-3 h-3" />
-                                                                                                    {formatTime(slot.StartTime || slot.startTime)} - {formatTime(slot.EndTime || slot.endTime)}
-                                                                                               </div>
-                                                                                               {price > 0 && (
-                                                                                                    <div className="text-xs text-teal-700 font-bold flex items-center gap-1 mt-1 bg-teal-50 px-2 py-0.5 rounded">
-                                                                                                         <DollarSign className="w-3 h-3" />
-                                                                                                         {price.toLocaleString('vi-VN')}đ
-                                                                                                    </div>
-                                                                                               )}
-                                                                                          </div>
-                                                                                     </div>
-                                                                                </td>
-                                                                                {weekDates.map((date, dateIndex) => {
-                                                                                     const schedule = getScheduleForSlot(field.fieldId, date, slotId);
-                                                                                     const status = schedule?.status || 'empty';
-                                                                                     const booked = status === 'Booked' || status === 'booked';
-                                                                                     const available = status === 'Available' || status === 'available';
-                                                                                     const maintenance = status === 'Maintenance' || status === 'maintenance';
-                                                                                     const hasSchedule = !!schedule;
-                                                                                     const bookingInfo = booked ? getBookingInfo(field.fieldId, date, slotId) : null;
-                                                                                     const today = isToday(date);
-
-                                                                                     // Apply filter
-                                                                                     const shouldShow =
-                                                                                          filterStatus === 'all' ||
-                                                                                          (filterStatus === 'booked' && booked) ||
-                                                                                          (filterStatus === 'available' && (available || !hasSchedule));
-
-                                                                                     if (!shouldShow) {
-                                                                                          return (
-                                                                                               <td
-                                                                                                    key={dateIndex}
-                                                                                                    className={`border-2 p-3 text-center text-sm ${today ? 'bg-teal-50/30 border-teal-200' : 'bg-gray-100 border-gray-300'
-                                                                                                         }`}
-                                                                                               >
-                                                                                                    <span className="text-gray-300 text-lg">-</span>
-                                                                                               </td>
-                                                                                          );
-                                                                                     }
-
-                                                                                     // Determine cell color based on status
-                                                                                     let cellClass = 'bg-white border-gray-300'; // Default: no schedule
-                                                                                     if (maintenance) {
-                                                                                          cellClass = today ? 'bg-gradient-to-br from-yellow-100 to-yellow-50 border-yellow-300' : 'bg-yellow-50 border-gray-300';
-                                                                                     } else if (booked) {
-                                                                                          cellClass = today ? 'bg-gradient-to-br from-blue-100 to-blue-50 border-blue-300' : 'bg-blue-50 border-gray-300';
-                                                                                     } else if (available) {
-                                                                                          cellClass = today ? 'bg-gradient-to-br from-green-100 to-green-50 border-green-300' : 'bg-green-50 border-gray-300';
-                                                                                     }
-
-                                                                                     return (
-                                                                                          <td
-                                                                                               key={dateIndex}
-                                                                                               className={`border-2 p-3 text-center text-sm cursor-pointer transition-all duration-200 hover:shadow-sm ${cellClass}`}
-                                                                                               onClick={() => {
-                                                                                                    if (booked && bookingInfo) {
-                                                                                                         Swal.fire({
-                                                                                                              title: 'Thông tin đặt sân',
-                                                                                                              html: `
-                                                                                                    <div class="text-left space-y-2">
-                                                                                                         <p><strong>Sân:</strong> ${field.name}</p>
-                                                                                                         <p><strong>Slot:</strong> ${slot.SlotName || slot.slotName || slot.name || 'N/A'} (${formatTime(slot.StartTime || slot.startTime)} - ${formatTime(slot.EndTime || slot.endTime)})</p>
-                                                                                                         <p><strong>Ngày:</strong> ${date.toLocaleDateString('vi-VN')}</p>
-                                                                                                         <p><strong>Khách hàng:</strong> ${bookingInfo.customerName}</p>
-                                                                                                         <p><strong>SĐT:</strong> ${bookingInfo.customerPhone}</p>
-                                                                                                         <p><strong>Giá:</strong> ${price.toLocaleString('vi-VN')}đ</p>
-                                                                                                         <p><strong>Trạng thái:</strong> <span class="text-green-600">${bookingInfo.status}</span></p>
-                                                                                                    </div>
-                                                                                               `,
-                                                                                                              icon: 'info',
-                                                                                                              confirmButtonColor: '#0d9488'
-                                                                                                         });
-                                                                                                    }
-                                                                                               }}
-                                                                                          >
-                                                                                               {!hasSchedule ? (
-                                                                                                    <div className="text-gray-400 text-xs">
-                                                                                                         Chưa setup
-                                                                                                    </div>
-                                                                                               ) : maintenance ? (
-                                                                                                    <div className="space-y-1">
-                                                                                                         <Badge className="text-xs font-bold bg-yellow-600 text-white">
-                                                                                                              🔧 Bảo trì
-                                                                                                         </Badge>
-                                                                                                    </div>
-                                                                                               ) : booked ? (
-                                                                                                    <div className="space-y-1.5">
-                                                                                                         <Badge className="text-xs font-bold bg-blue-600 text-white">
-                                                                                                              ✓ Đã đặt
-                                                                                                         </Badge>
-                                                                                                         {bookingInfo && (
-                                                                                                              <div className="text-xs text-gray-700 font-medium truncate bg-white/60 px-2 py-1 rounded">
-                                                                                                                   {bookingInfo.customerName}
-                                                                                                              </div>
-                                                                                                         )}
-                                                                                                    </div>
-                                                                                               ) : (
-                                                                                                    <div className="flex flex-col items-center gap-1">
-                                                                                                         <span className={`text-2xl ${today ? 'text-teal-300' : 'text-gray-300'}`}>○</span>
-                                                                                                         <span className={`text-xs font-medium ${today ? 'text-teal-600' : 'text-gray-400'}`}>
-                                                                                                              Trống
-                                                                                                         </span>
-                                                                                                    </div>
-                                                                                               )}
-                                                                                          </td>
-                                                                                     );
-                                                                                })}
-                                                                           </tr>
-                                                                      );
-                                                                 })}
-                                                            </React.Fragment>
-                                                       ))
-                                             )}
-                                        </tbody>
-                                   </table>
-                              </Card>
+                                        <FieldList
+                                             fields={fields}
+                                             selectedFieldForSchedule={selectedFieldForSchedule}
+                                             selectedFields={selectedFields}
+                                             onFieldToggle={(fieldIdStr) => {
+                                                  const newSet = new Set(selectedFields);
+                                                  if (newSet.has(fieldIdStr)) {
+                                                       newSet.delete(fieldIdStr);
+                                                  } else {
+                                                       newSet.add(fieldIdStr);
+                                                  }
+                                                  setSelectedFields(newSet);
+                                             }}
+                                             onFieldSelect={setSelectedFieldForSchedule}
+                                             getFieldColor={getFieldColor}
+                                        />
+                                   </div>
+                              </div>
                          </>
                     )}
 
                     {/* Time Slots Management Tab */}
                     {activeTab === 'timeslots' && (
-                         <>
-                              <div className="flex items-center justify-between flex-wrap gap-4">
-                                   <div>
-                                        <h3 className="text-lg font-semibold text-gray-900">Quản lý Time Slots</h3>
-                                        <p className="text-gray-600">Xem thời gian hoạt động của từng sân</p>
-                                   </div>
-                                   <Button
-                                        onClick={() => handleOpenSlotModal()}
-                                        className="bg-teal-600 hover:bg-teal-700 text-white"
-                                   >
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        Thêm Time Slot
-                                   </Button>
-                              </div>
-
-                              {/* Field Filter */}
-                              <Card className="p-4">
-                                   <div className="flex items-center gap-4 flex-wrap">
-                                        <span className="font-medium text-gray-700">Lọc theo sân:</span>
-                                        <Select value={selectedFieldFilter} onValueChange={setSelectedFieldFilter}>
-                                             <SelectTrigger className="w-[280px]">
-                                                  <SelectValue placeholder="Chọn sân" />
-                                             </SelectTrigger>
-                                             <SelectContent>
-                                                  <SelectItem value="all">Tất cả các sân ({fields.length})</SelectItem>
-                                                  {fields.map((field) => (
-                                                       <SelectItem key={field.fieldId} value={field.fieldId.toString()}>
-                                                            {field.name} - {field.complexName}
-                                                       </SelectItem>
-                                                  ))}
-                                             </SelectContent>
-                                        </Select>
-                                   </div>
-                              </Card>
-
-                              <Alert className="border-blue-200 bg-blue-50">
-                                   <Info className="h-4 w-4 text-blue-600" />
-                                   <AlertDescription className="text-blue-800 text-sm">
-                                        Mỗi sân có thể có các khung giờ hoạt động riêng. Sau khi tạo, bạn có thể gán giá cho từng slot ở trang "Giá theo slot".
-                                   </AlertDescription>
-                              </Alert>
-
-                              {/* Display fields with their time slots */}
-                              {fields.length === 0 ? (
-                                   <Card className="p-12">
-                                        <div className="text-center">
-                                             <Timer className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                                             <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có sân nào</h3>
-                                             <p className="text-gray-500">Vui lòng thêm sân trước khi quản lý time slots</p>
-                                        </div>
-                                   </Card>
-                              ) : (
-                                   <div className="space-y-4">
-                                        {fields
-                                             .filter(field => selectedFieldFilter === 'all' || field.fieldId.toString() === selectedFieldFilter)
-                                             .map((field) => {
-                                                  // Get slots for this field and add fieldId to each slot
-                                                  const fieldSlots = timeSlots
-                                                       .filter(slot => {
-                                                            // Filter by slot.fieldId if available, otherwise show all
-                                                            return !slot.fieldId || slot.fieldId === field.fieldId || slot.FieldId === field.fieldId;
-                                                       })
-                                                       .map(slot => ({
-                                                            ...slot,
-                                                            fieldId: slot.fieldId || slot.FieldId || field.fieldId
-                                                       }));
-
-                                                  return (
-                                                       <Card key={field.fieldId} className="p-6">
-                                                            {/* Field Header */}
-                                                            <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
-                                                                 <div className="flex items-center gap-4">
-                                                                      <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-blue-600 rounded-xl flex items-center justify-center">
-                                                                           <Timer className="w-6 h-6 text-white" />
-                                                                      </div>
-                                                                      <div>
-                                                                           <h4 className="text-lg font-semibold text-gray-900">{field.name}</h4>
-                                                                           <p className="text-sm text-gray-500">{field.complexName}</p>
-                                                                      </div>
-                                                                 </div>
-                                                                 <div className="flex items-center gap-2">
-                                                                      <Badge className="bg-teal-100 text-teal-800">
-                                                                           {fieldSlots.length} slots
-                                                                      </Badge>
-                                                                      <Button
-                                                                           onClick={() => {
-                                                                                setSlotFormData({ ...slotFormData, fieldId: field.fieldId.toString() });
-                                                                                handleOpenSlotModal();
-                                                                           }}
-                                                                           variant="outline"
-                                                                           size="sm"
-                                                                           className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 border-teal-200"
-                                                                      >
-                                                                           <Plus className="w-4 h-4 mr-1" />
-                                                                           Thêm slot
-                                                                      </Button>
-                                                                 </div>
-                                                            </div>
-
-                                                            {/* Time Slots List */}
-                                                            {fieldSlots.length === 0 ? (
-                                                                 <div className="text-center py-8 text-gray-500">
-                                                                      <Clock className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                                                                      <p className="text-sm">Sân này chưa có time slot nào</p>
-                                                                      <Button
-                                                                           onClick={() => {
-                                                                                setSlotFormData({ ...slotFormData, fieldId: field.fieldId.toString() });
-                                                                                handleOpenSlotModal();
-                                                                           }}
-                                                                           variant="outline"
-                                                                           size="sm"
-                                                                           className="mt-3"
-                                                                      >
-                                                                           <Plus className="w-4 h-4 mr-1" />
-                                                                           Thêm slot đầu tiên
-                                                                      </Button>
-                                                                 </div>
-                                                            ) : (
-                                                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                                                      {fieldSlots.map((slot) => {
-                                                                           const start = new Date(`2000-01-01T${slot.StartTime || slot.startTime || '00:00:00'}`);
-                                                                           const end = new Date(`2000-01-01T${slot.EndTime || slot.endTime || '00:00:00'}`);
-                                                                           const duration = (end - start) / (1000 * 60 * 60);
-
-                                                                           return (
-                                                                                <div
-                                                                                     key={slot.SlotID}
-                                                                                     className="bg-gradient-to-br from-teal-50 to-blue-50 p-4 rounded-lg border border-teal-200 hover:shadow-md transition-shadow"
-                                                                                >
-                                                                                     <div className="flex items-start justify-between mb-2">
-                                                                                          <div>
-                                                                                               <h5 className="font-semibold text-gray-900">{slot.SlotName || slot.slotName || slot.name || 'N/A'}</h5>
-                                                                                               <p className="text-sm text-gray-600 mt-1">
-                                                                                                    {formatTime(slot.StartTime || slot.startTime || '00:00:00')} - {formatTime(slot.EndTime || slot.endTime || '00:00:00')}
-                                                                                               </p>
-                                                                                          </div>
-                                                                                          <Badge className="bg-blue-100 text-blue-800 text-xs">
-                                                                                               {duration}h
-                                                                                          </Badge>
-                                                                                     </div>
-                                                                                     <div className="flex items-center gap-2 mt-3">
-                                                                                          <Button
-                                                                                               onClick={() => handleOpenSlotModal(slot)}
-                                                                                               variant="outline"
-                                                                                               size="sm"
-                                                                                               className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
-                                                                                          >
-                                                                                               <Edit className="w-3 h-3 mr-1" />
-                                                                                               Sửa
-                                                                                          </Button>
-                                                                                          <Button
-                                                                                               onClick={() => handleDeleteSlot(slot.SlotID)}
-                                                                                               variant="outline"
-                                                                                               size="sm"
-                                                                                               className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                                                                                          >
-                                                                                               <Trash2 className="w-3 h-3 mr-1" />
-                                                                                               Xóa
-                                                                                          </Button>
-                                                                                     </div>
-                                                                                </div>
-                                                                           );
-                                                                      })}
-                                                                 </div>
-                                                            )}
-                                                       </Card>
-                                                  );
-                                             })}
-                                   </div>
-                              )}
-                         </>
+                         <TimeSlotsTab
+                              fields={fields}
+                              selectedFieldFilter={selectedFieldFilter}
+                              onFieldFilterChange={setSelectedFieldFilter}
+                              timeSlots={timeSlots}
+                              formatTime={formatTime}
+                              onAddSlot={(fieldId) => {
+                                   if (!fieldId && !hasActiveFields) {
+                                        Swal.fire({
+                                             icon: 'info',
+                                             title: 'Không có sân khả dụng',
+                                             text: 'Tất cả các sân hiện đang ở trạng thái bảo trì. Vui lòng kích hoạt lại sân trước khi thêm Time Slot mới.',
+                                             confirmButtonColor: '#f97316'
+                                        });
+                                        return;
+                                   }
+                                   if (fieldId && isFieldMaintenance(fieldId)) {
+                                        Swal.fire({
+                                             icon: 'info',
+                                             title: 'Sân đang bảo trì',
+                                             text: 'Không thể thêm Time Slot mới cho sân đang bảo trì.',
+                                             confirmButtonColor: '#f97316'
+                                        });
+                                        return;
+                                   }
+                                   if (fieldId) {
+                                        setSlotFormData({ ...slotFormData, fieldId: fieldId.toString() });
+                                   }
+                                   handleOpenSlotModal();
+                              }}
+                              onEditSlot={handleOpenSlotModal}
+                              onDeleteSlot={handleDeleteSlot}
+                         />
                     )}
 
                     {/* Manage Schedules Tab - Bảng quản lý lịch trình */}
                     {activeTab === 'manage-schedules' && (
-                         <>
-                              <div className="flex items-center justify-between flex-wrap gap-4">
-                                   <div>
-                                        <h3 className="text-lg font-semibold text-gray-900">Quản lý Lịch trình</h3>
-                                        <p className="text-gray-600">Xem và quản lý tất cả lịch trình đã tạo</p>
-                                   </div>
-                                   <div className="flex items-center gap-2">
-                                        <Button
-                                             onClick={handleOpenScheduleModal}
-                                             className="bg-teal-600 hover:bg-teal-700 text-white"
-                                        >
-                                             <Plus className="w-4 h-4 mr-2" />
-                                             Thêm lịch trình
-                                        </Button>
-                                        <Button
-                                             onClick={loadFieldSchedules}
-                                             variant="outline"
-                                             className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 border-teal-200"
-                                        >
-                                             <Calendar className="w-4 h-4 mr-2" />
-                                             Làm mới
-                                        </Button>
-                                   </div>
-                              </div>
-
-                              {/* Filters */}
-                              <Card className="p-4">
-                                   <div className="flex items-center gap-4 flex-wrap">
-                                        <div className="flex items-center gap-2">
-                                             <span className="font-medium text-gray-700">Sân:</span>
-                                             <Select value={scheduleFilterField} onValueChange={setScheduleFilterField}>
-                                                  <SelectTrigger className="w-[200px]">
-                                                       <SelectValue placeholder="Chọn sân" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="all">Tất cả</SelectItem>
-                                                       {fields.map((field) => (
-                                                            <SelectItem key={field.fieldId} value={field.fieldId.toString()}>
-                                                                 {field.name}
-                                                            </SelectItem>
-                                                       ))}
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                             <span className="font-medium text-gray-700">Trạng thái:</span>
-                                             <Select value={scheduleFilterStatus} onValueChange={setScheduleFilterStatus}>
-                                                  <SelectTrigger className="w-[150px]">
-                                                       <SelectValue placeholder="Chọn trạng thái" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="all">Tất cả</SelectItem>
-                                                       <SelectItem value="Available">Available</SelectItem>
-                                                       <SelectItem value="Booked">Booked</SelectItem>
-                                                       <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                             <span className="font-medium text-gray-700">Ngày:</span>
-                                             <Input
-                                                  type="date"
-                                                  value={scheduleFilterDate}
-                                                  onChange={(e) => setScheduleFilterDate(e.target.value)}
-                                                  className="w-[180px]"
-                                             />
-                                        </div>
-                                   </div>
-                              </Card>
-
-                              {/* Table */}
-                              {loadingSchedules ? (
-                                   <Card className="p-12">
-                                        <div className="text-center">
-                                             <Loader2 className="w-8 h-8 text-teal-600 animate-spin mx-auto mb-4" />
-                                             <p className="text-gray-600">Đang tải dữ liệu...</p>
-                                        </div>
-                                   </Card>
-                              ) : fieldSchedules.length === 0 ? (
-                                   <Card className="p-12">
-                                        <div className="text-center">
-                                             <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                                             <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có lịch trình nào</h3>
-                                             <p className="text-gray-500">Tạo Time Slot để tự động tạo lịch trình</p>
-                                        </div>
-                                   </Card>
-                              ) : (
-                                   <Card className="overflow-hidden">
-                                        <div className="overflow-x-auto">
-                                             <table className="w-full border-collapse">
-                                                  <thead>
-                                                       <tr className="bg-gradient-to-r from-teal-50 to-blue-50 border-b-2 border-teal-200">
-                                                            <th className="p-4 text-left font-bold text-gray-800">ID</th>
-                                                            <th className="p-4 text-left font-bold text-gray-800">Sân</th>
-                                                            <th className="p-4 text-left font-bold text-gray-800">Slot</th>
-                                                            <th className="p-4 text-left font-bold text-gray-800">Ngày</th>
-                                                            <th className="p-4 text-left font-bold text-gray-800">Thời gian</th>
-                                                            <th className="p-4 text-left font-bold text-gray-800">Trạng thái</th>
-                                                            <th className="p-4 text-center font-bold text-gray-800">Thao tác</th>
-                                                       </tr>
-                                                  </thead>
-                                                  <tbody>
-                                                       {fieldSchedules
-                                                            .filter(schedule => {
-                                                                 // Filter by field
-                                                                 if (scheduleFilterField !== 'all') {
-                                                                      const fieldId = schedule.fieldId || schedule.FieldID;
-                                                                      if (Number(fieldId) !== Number(scheduleFilterField)) return false;
-                                                                 }
-
-                                                                 // Filter by status
-                                                                 if (scheduleFilterStatus !== 'all') {
-                                                                      const status = schedule.status || schedule.Status;
-                                                                      if (status !== scheduleFilterStatus) return false;
-                                                                 }
-
-                                                                 // Filter by date
-                                                                 if (scheduleFilterDate) {
-                                                                      const scheduleDate = schedule.date;
-                                                                      let dateStr = '';
-                                                                      if (typeof scheduleDate === 'string') {
-                                                                           dateStr = scheduleDate.split('T')[0];
-                                                                      } else if (scheduleDate && scheduleDate.year) {
-                                                                           dateStr = `${scheduleDate.year}-${String(scheduleDate.month).padStart(2, '0')}-${String(scheduleDate.day).padStart(2, '0')}`;
-                                                                      }
-                                                                      if (dateStr !== scheduleFilterDate) return false;
-                                                                 }
-
-                                                                 return true;
-                                                            })
-                                                            .map((schedule) => {
-                                                                 const scheduleId = schedule.scheduleId || schedule.ScheduleID;
-                                                                 const fieldName = schedule.fieldName || schedule.FieldName || 'N/A';
-                                                                 const slotName = schedule.slotName || schedule.SlotName || 'N/A';
-                                                                 const status = schedule.status || schedule.Status || 'Available';
-
-                                                                 // Format date
-                                                                 let dateStr = 'N/A';
-                                                                 const scheduleDate = schedule.date;
-                                                                 if (typeof scheduleDate === 'string') {
-                                                                      const date = new Date(scheduleDate);
-                                                                      dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
-                                                                 } else if (scheduleDate && scheduleDate.year) {
-                                                                      dateStr = `${scheduleDate.day}/${scheduleDate.month}/${scheduleDate.year}`;
-                                                                 }
-
-                                                                 // Format time
-                                                                 let timeStr = 'N/A';
-                                                                 const startTime = schedule.startTime || schedule.StartTime;
-                                                                 const endTime = schedule.endTime || schedule.EndTime;
-                                                                 if (startTime && endTime) {
-                                                                      const formatTimeObj = (time) => {
-                                                                           if (typeof time === 'string') {
-                                                                                return time.substring(0, 5);
-                                                                           } else if (time && time.hour !== undefined) {
-                                                                                return `${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}`;
-                                                                           }
-                                                                           return '00:00';
-                                                                      };
-                                                                      timeStr = `${formatTimeObj(startTime)} - ${formatTimeObj(endTime)}`;
-                                                                 }
-
-                                                                 const getStatusBadge = (status) => {
-                                                                      const statusLower = status.toLowerCase();
-                                                                      if (statusLower === 'available') {
-                                                                           return <Badge className="bg-green-100 text-green-800">Available</Badge>;
-                                                                      } else if (statusLower === 'booked') {
-                                                                           return <Badge className="bg-blue-100 text-blue-800">Booked</Badge>;
-                                                                      } else if (statusLower === 'maintenance') {
-                                                                           return <Badge className="bg-orange-100 text-orange-800">Maintenance</Badge>;
-                                                                      }
-                                                                      return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>;
-                                                                 };
-
-                                                                 return (
-                                                                      <tr key={scheduleId} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                                                                           <td className="p-4 text-gray-700 font-mono text-sm">#{scheduleId}</td>
-                                                                           <td className="p-4 text-gray-900 font-medium">{fieldName}</td>
-                                                                           <td className="p-4 text-gray-700">{slotName}</td>
-                                                                           <td className="p-4 text-gray-700">{dateStr}</td>
-                                                                           <td className="p-4 text-gray-700 font-mono text-sm">{timeStr}</td>
-                                                                           <td className="p-4">{getStatusBadge(status)}</td>
-                                                                           <td className="p-4">
-                                                                                <div className="flex items-center justify-center gap-2">
-                                                                                     <Select
-                                                                                          value={status}
-                                                                                          onValueChange={(newStatus) => handleUpdateScheduleStatus(scheduleId, newStatus)}
-                                                                                     >
-                                                                                          <SelectTrigger className="w-[140px] h-8 text-xs">
-                                                                                               <SelectValue />
-                                                                                          </SelectTrigger>
-                                                                                          <SelectContent>
-                                                                                               <SelectItem value="Available">Available</SelectItem>
-                                                                                               <SelectItem value="Booked">Booked</SelectItem>
-                                                                                               <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                                                                          </SelectContent>
-                                                                                     </Select>
-                                                                                     <Button
-                                                                                          onClick={() => handleDeleteSchedule(scheduleId, `${fieldName} - ${slotName} - ${dateStr}`)}
-                                                                                          variant="outline"
-                                                                                          size="sm"
-                                                                                          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                                                                                     >
-                                                                                          <Trash2 className="w-4 h-4" />
-                                                                                     </Button>
-                                                                                </div>
-                                                                           </td>
-                                                                      </tr>
-                                                                 );
-                                                            })}
-                                                  </tbody>
-                                             </table>
-                                        </div>
-
-                                        {/* Summary */}
-                                        <div className="p-4 bg-gray-50 border-t border-gray-200">
-                                             <p className="text-sm text-gray-600">
-                                                  Tổng cộng: <strong>{fieldSchedules.length}</strong> lịch trình
-                                             </p>
-                                        </div>
-                                   </Card>
-                              )}
-                         </>
+                         <ManageSchedulesTab
+                              fields={fields}
+                              scheduleFilterField={scheduleFilterField}
+                              onScheduleFilterFieldChange={setScheduleFilterField}
+                              scheduleFilterStatus={scheduleFilterStatus}
+                              onScheduleFilterStatusChange={setScheduleFilterStatus}
+                              scheduleFilterDate={scheduleFilterDate}
+                              onScheduleFilterDateChange={setScheduleFilterDate}
+                              loadingSchedules={loadingSchedules}
+                              fieldSchedules={fieldSchedules}
+                              onAddSchedule={handleOpenScheduleModal}
+                              onRefresh={loadFieldSchedules}
+                              onUpdateStatus={handleUpdateScheduleStatus}
+                              onDeleteSchedule={handleDeleteSchedule}
+                              getBookingInfo={getBookingInfo}
+                         />
                     )}
 
                     {/* Legend & Info - Only show in schedule tab */}
@@ -1727,19 +1948,19 @@ export default function ScheduleManagement({ isDemo = false }) {
                                              <Info className="w-5 h-5 text-teal-600" />
                                              Chú thích:
                                         </span>
-                                        <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-gray-300 shadow-sm">
+                                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg shadow-sm">
                                              <div className="w-6 h-6 bg-white border-2 border-gray-300 rounded flex items-center justify-center">
                                                   <span className="text-gray-300 text-lg">○</span>
                                              </div>
                                              <span className="text-sm font-medium text-gray-700">Trống</span>
                                         </div>
-                                        <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-green-300 shadow-sm">
+                                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg shadow-sm">
                                              <div className="w-6 h-6 bg-green-500 border-2 border-green-600 rounded flex items-center justify-center">
                                                   <span className="text-white text-xs font-bold">✓</span>
                                              </div>
                                              <span className="text-sm font-medium text-gray-700">Đã đặt</span>
                                         </div>
-                                        <div className="flex items-center gap-2 bg-gradient-to-br from-teal-500 to-teal-600 px-3 py-2 rounded-lg border-2 border-teal-700 shadow-md">
+                                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg  shadow-md">
                                              <Calendar className="w-5 h-5 text-white" />
                                              <span className="text-sm font-bold text-white">Cột hôm nay</span>
                                         </div>
@@ -1763,363 +1984,37 @@ export default function ScheduleManagement({ isDemo = false }) {
                     )}
 
                     {/* Time Slot Modal */}
-                    <Modal
+                    <TimeSlotModal
                          isOpen={showSlotModal}
                          onClose={handleCloseSlotModal}
-                         title={editingSlot ? 'Chỉnh sửa Time Slot' : 'Thêm Time Slot mới'}
-                         size="lg"
-                    >
-                         <form onSubmit={handleSubmitSlot} className="space-y-4">
-                              {/* Field Selection */}
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Chọn sân <span className="text-red-500">*</span>
-                                   </label>
-                                   {slotFormData.fieldId && (editingSlot || !editingSlot) ? (
-                                        editingSlot ? (
-                                             <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
-                                                  <span className="text-gray-900 font-medium">
-                                                       {fields.find(f => f.fieldId.toString() === slotFormData.fieldId || f.fieldId === parseInt(slotFormData.fieldId))?.name || 'Sân đã chọn'}
-                                                       <span className="text-gray-600 text-sm ml-1">
-                                                            ({fields.find(f => f.fieldId.toString() === slotFormData.fieldId || f.fieldId === parseInt(slotFormData.fieldId))?.complexName})
-                                                       </span>
-                                                  </span>
-                                             </div>
-                                        ) : (
-                                             <div className="w-full px-3 py-2 border border-teal-300 rounded-lg bg-teal-50">
-                                                  <div className="flex items-center justify-between">
-                                                       <span className="text-gray-900 font-medium">
-                                                            {fields.find(f => f.fieldId.toString() === slotFormData.fieldId)?.name || 'Sân đã chọn'}
-                                                            <span className="text-gray-600 text-sm ml-1">
-                                                                 ({fields.find(f => f.fieldId.toString() === slotFormData.fieldId)?.complexName})
-                                                            </span>
-                                                       </span>
-                                                       <button
-                                                            type="button"
-                                                            onClick={() => setSlotFormData({ ...slotFormData, fieldId: '' })}
-                                                            className="text-teal-600 hover:text-teal-700 text-sm underline"
-                                                       >
-                                                            Đổi sân
-                                                       </button>
-                                                  </div>
-                                             </div>
-                                        )
-                                   ) : (
-                                        <Select
-                                             value={slotFormData.fieldId}
-                                             onValueChange={(value) => {
-                                                  setSlotFormData({ ...slotFormData, fieldId: value });
-                                                  setSelectedQuickSlots([]); // Reset quick slots when field changes
-                                                  loadTimeSlotsForField(value); // Load timeslots for selected field
-                                             }}
-                                             disabled={editingSlot}
-                                        >
-                                             <SelectTrigger className={`w-full ${slotFormErrors.fieldId ? 'border-red-500' : ''}`}>
-                                                  <SelectValue placeholder="-- Chọn sân --" />
-                                             </SelectTrigger>
-                                             <SelectContent>
-                                                  {fields.map((field) => (
-                                                       <SelectItem key={field.fieldId} value={field.fieldId.toString()}>
-                                                            {field.name} ({field.complexName})
-                                                       </SelectItem>
-                                                  ))}
-                                             </SelectContent>
-                                        </Select>
-                                   )}
-                                   {slotFormErrors.fieldId && (
-                                        <p className="text-xs text-red-600 mt-1">{slotFormErrors.fieldId}</p>
-                                   )}
-                              </div>
-
-                              {/* Quick Slots - Only show when creating new and field is selected */}
-                              {!editingSlot && slotFormData.fieldId && (
-                                   <div className="bg-gradient-to-r from-teal-50 to-blue-50 p-4 rounded-lg border border-teal-200">
-                                        <div className="flex items-center justify-between mb-3">
-                                             <div>
-                                                  <h4 className="text-sm font-semibold text-gray-900">Chọn nhanh khung giờ</h4>
-                                                  <p className="text-xs text-gray-600">Click để chọn nhiều khung giờ cùng lúc</p>
-                                             </div>
-                                             {selectedQuickSlots.length > 0 && (
-                                                  <Badge className="bg-teal-100 text-teal-800">
-                                                       {selectedQuickSlots.length} đã chọn
-                                                  </Badge>
-                                             )}
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
-                                             {quickSlotTemplates.map((template, index) => {
-                                                  const isSelected = selectedQuickSlots.some(s => s.key === `${template.start}-${template.end}`);
-                                                  const isExists = isSlotExistsForField(slotFormData.fieldId, template.start, template.end);
-
-                                                  return (
-                                                       <button
-                                                            key={index}
-                                                            type="button"
-                                                            onClick={() => handleQuickSlotSelect(template)}
-                                                            disabled={isExists}
-                                                            className={`px-3 py-2.5 text-xs rounded-lg transition-all text-left ${isExists
-                                                                 ? 'bg-gray-200 text-gray-500 cursor-not-allowed border-2 border-gray-300'
-                                                                 : isSelected
-                                                                      ? 'bg-teal-100 border-2 border-teal-500 hover:bg-teal-200 text-teal-900'
-                                                                      : 'bg-white border-2 border-teal-200 hover:bg-teal-50 hover:border-teal-400'
-                                                                 }`}
-                                                       >
-                                                            <div className="font-semibold">{template.name}</div>
-                                                            <div className="text-xs mt-0.5">{template.start} - {template.end}</div>
-                                                            {isExists && (
-                                                                 <div className="text-xs text-gray-500 mt-1">Đã thêm</div>
-                                                            )}
-                                                       </button>
-                                                  );
-                                             })}
-                                        </div>
-                                   </div>
-                              )}
-
-                              {/* Manual Input - Only show when not using quick slots */}
-                              {selectedQuickSlots.length === 0 && (
-                                   <>
-                                        <div>
-                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                  Tên Slot <span className="text-red-500">*</span>
-                                             </label>
-                                             <Input
-                                                  value={slotFormData.slotName}
-                                                  onChange={(e) => setSlotFormData({ ...slotFormData, slotName: e.target.value })}
-                                                  placeholder="Ví dụ: Slot 1, Sáng sớm, ..."
-                                                  className={slotFormErrors.slotName ? 'border-red-500' : ''}
-                                             />
-                                             {slotFormErrors.slotName && (
-                                                  <p className="text-xs text-red-600 mt-1">{slotFormErrors.slotName}</p>
-                                             )}
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                             <div>
-                                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                       Giờ bắt đầu <span className="text-red-500">*</span>
-                                                  </label>
-                                                  <Input
-                                                       type="time"
-                                                       value={slotFormData.startTime}
-                                                       onChange={(e) => setSlotFormData({ ...slotFormData, startTime: e.target.value })}
-                                                       className={slotFormErrors.startTime ? 'border-red-500' : ''}
-                                                  />
-                                                  {slotFormErrors.startTime && (
-                                                       <p className="text-xs text-red-600 mt-1">{slotFormErrors.startTime}</p>
-                                                  )}
-                                             </div>
-
-                                             <div>
-                                                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                       Giờ kết thúc <span className="text-red-500">*</span>
-                                                  </label>
-                                                  <Input
-                                                       type="time"
-                                                       value={slotFormData.endTime}
-                                                       onChange={(e) => setSlotFormData({ ...slotFormData, endTime: e.target.value })}
-                                                       className={slotFormErrors.endTime ? 'border-red-500' : ''}
-                                                  />
-                                                  {slotFormErrors.endTime && (
-                                                       <p className="text-xs text-red-600 mt-1">{slotFormErrors.endTime}</p>
-                                                  )}
-                                             </div>
-                                        </div>
-                                   </>
-                              )}
-
-                              <div className="flex justify-end gap-2 pt-4">
-                                   <Button
-                                        type="button"
-                                        onClick={handleCloseSlotModal}
-                                        variant="outline"
-                                   >
-                                        <X className="w-4 h-4 mr-2" />
-                                        Hủy
-                                   </Button>
-                                   <Button
-                                        type="submit"
-                                        disabled={isSubmittingSlot}
-                                        className="bg-teal-600 hover:bg-teal-700"
-                                   >
-                                        {isSubmittingSlot ? (
-                                             <>
-                                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                  Đang lưu...
-                                             </>
-                                        ) : (
-                                             <>
-                                                  <Save className="w-4 h-4 mr-2" />
-                                                  {editingSlot ? 'Cập nhật' : selectedQuickSlots.length > 0 ? `Thêm ${selectedQuickSlots.length} slots` : 'Tạo mới'}
-                                             </>
-                                        )}
-                                   </Button>
-                              </div>
-                         </form>
-                    </Modal>
+                         editingSlot={editingSlot}
+                         slotFormData={slotFormData}
+                         setSlotFormData={setSlotFormData}
+                         slotFormErrors={slotFormErrors}
+                         fields={fields}
+                         selectedQuickSlots={selectedQuickSlots}
+                         setSelectedQuickSlots={setSelectedQuickSlots}
+                         quickSlotTemplates={quickSlotTemplates}
+                         isSlotExistsForField={isSlotExistsForField}
+                         handleQuickSlotSelect={handleQuickSlotSelect}
+                         isSubmittingSlot={isSubmittingSlot}
+                         onSubmit={handleSubmitSlot}
+                         loadTimeSlotsForField={loadTimeSlotsForField}
+                    />
 
                     {/* Schedule Modal - Thêm lịch trình */}
-                    <Modal
+                    <ScheduleModal
                          isOpen={showScheduleModal}
                          onClose={handleCloseScheduleModal}
-                         title="Thêm lịch trình mới"
-                         size="lg"
-                    >
-                         <form onSubmit={handleSubmitSchedule} className="space-y-4">
-                              {/* Field Selection */}
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Chọn sân <span className="text-red-500">*</span>
-                                   </label>
-                                   <Select
-                                        value={scheduleFormData.fieldId}
-                                        onValueChange={(value) => {
-                                             setScheduleFormData({ ...scheduleFormData, fieldId: value });
-                                        }}
-                                   >
-                                        <SelectTrigger className={`w-full ${scheduleFormErrors.fieldId ? 'border-red-500' : ''}`}>
-                                             <SelectValue placeholder="-- Chọn sân --" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             {fields.map((field) => (
-                                                  <SelectItem key={field.fieldId} value={field.fieldId.toString()}>
-                                                       {field.name} ({field.complexName})
-                                                  </SelectItem>
-                                             ))}
-                                        </SelectContent>
-                                   </Select>
-                                   {scheduleFormErrors.fieldId && (
-                                        <p className="text-xs text-red-600 mt-1">{scheduleFormErrors.fieldId}</p>
-                                   )}
-                              </div>
-
-                              {/* Slot Selection */}
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Chọn slot <span className="text-red-500">*</span>
-                                   </label>
-                                   <Select
-                                        value={scheduleFormData.slotId}
-                                        onValueChange={(value) => {
-                                             setScheduleFormData({ ...scheduleFormData, slotId: value });
-                                        }}
-                                        disabled={!scheduleFormData.fieldId}
-                                   >
-                                        <SelectTrigger className={`w-full ${scheduleFormErrors.slotId ? 'border-red-500' : ''}`}>
-                                             <SelectValue placeholder={scheduleFormData.fieldId ? "-- Chọn slot --" : "Vui lòng chọn sân trước"} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             {timeSlots
-                                                  .filter(slot => {
-                                                       // Filter slots by field if field is selected
-                                                       if (scheduleFormData.fieldId) {
-                                                            const slotFieldId = slot.fieldId || slot.FieldId;
-                                                            return !slotFieldId || slotFieldId.toString() === scheduleFormData.fieldId;
-                                                       }
-                                                       return true;
-                                                  })
-                                                  .map((slot) => {
-                                                       const slotId = slot.slotId || slot.SlotID;
-                                                       const slotName = slot.slotName || slot.SlotName || slot.name || 'N/A';
-                                                       const startTime = formatTime(slot.startTime || slot.StartTime || '00:00');
-                                                       const endTime = formatTime(slot.endTime || slot.EndTime || '00:00');
-
-                                                       return (
-                                                            <SelectItem key={slotId} value={slotId.toString()}>
-                                                                 {slotName} ({startTime} - {endTime})
-                                                            </SelectItem>
-                                                       );
-                                                  })}
-                                        </SelectContent>
-                                   </Select>
-                                   {scheduleFormErrors.slotId && (
-                                        <p className="text-xs text-red-600 mt-1">{scheduleFormErrors.slotId}</p>
-                                   )}
-                                   {!scheduleFormData.fieldId && (
-                                        <p className="text-xs text-gray-500 mt-1">Vui lòng chọn sân trước để xem danh sách slot</p>
-                                   )}
-                              </div>
-
-                              {/* Date Selection */}
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Chọn ngày <span className="text-red-500">*</span>
-                                   </label>
-                                   <Input
-                                        type="date"
-                                        value={scheduleFormData.date}
-                                        onChange={(e) => {
-                                             setScheduleFormData({ ...scheduleFormData, date: e.target.value });
-                                        }}
-                                        className={scheduleFormErrors.date ? 'border-red-500' : ''}
-                                        min={new Date().toISOString().split('T')[0]} // Không cho chọn ngày quá khứ
-                                   />
-                                   {scheduleFormErrors.date && (
-                                        <p className="text-xs text-red-600 mt-1">{scheduleFormErrors.date}</p>
-                                   )}
-                              </div>
-
-                              {/* Status Selection */}
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Trạng thái
-                                   </label>
-                                   <Select
-                                        value={scheduleFormData.status}
-                                        onValueChange={(value) => {
-                                             setScheduleFormData({ ...scheduleFormData, status: value });
-                                        }}
-                                   >
-                                        <SelectTrigger className="w-full">
-                                             <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             <SelectItem value="Available">Available</SelectItem>
-                                             <SelectItem value="Booked">Booked</SelectItem>
-                                             <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                        </SelectContent>
-                                   </Select>
-                              </div>
-
-                              {/* Info Alert */}
-                              {scheduleFormData.fieldId && scheduleFormData.slotId && scheduleFormData.date && (
-                                   <Alert className="border-blue-200 bg-blue-50">
-                                        <Info className="h-4 w-4 text-blue-600" />
-                                        <AlertDescription className="text-blue-800 text-sm">
-                                             Bạn đang tạo lịch trình cho ngày <strong>{new Date(scheduleFormData.date).toLocaleDateString('vi-VN')}</strong>
-                                        </AlertDescription>
-                                   </Alert>
-                              )}
-
-                              {/* Action Buttons */}
-                              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                                   <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={handleCloseScheduleModal}
-                                        disabled={isSubmittingSchedule}
-                                   >
-                                        Hủy
-                                   </Button>
-                                   <Button
-                                        type="submit"
-                                        className="bg-teal-600 hover:bg-teal-700 text-white"
-                                        disabled={isSubmittingSchedule}
-                                   >
-                                        {isSubmittingSchedule ? (
-                                             <>
-                                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                  Đang tạo...
-                                             </>
-                                        ) : (
-                                             <>
-                                                  <Save className="w-4 h-4 mr-2" />
-                                                  Tạo lịch trình
-                                             </>
-                                        )}
-                                   </Button>
-                              </div>
-                         </form>
-                    </Modal>
+                         scheduleFormData={scheduleFormData}
+                         onFormDataChange={setScheduleFormData}
+                         scheduleFormErrors={scheduleFormErrors}
+                         fields={fields}
+                         timeSlots={timeSlots}
+                         formatTime={formatTime}
+                         isSubmitting={isSubmittingSchedule}
+                         onSubmit={handleSubmitSchedule}
+                    />
                </div>
           </OwnerLayout >
      );

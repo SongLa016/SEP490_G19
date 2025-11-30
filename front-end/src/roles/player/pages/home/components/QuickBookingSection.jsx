@@ -4,69 +4,114 @@ import { MapPin, Star, Sparkles, LogIn, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ScrollReveal } from "../../../../../shared/components/ScrollReveal";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { fetchFieldComplexes, fetchFields } from "../../../../../shared/services/fields";
+import { fetchPromotionsByComplex } from "../../../../../shared/services/promotions";
 
 export const QuickBookingSection = ({ user }) => {
      const navigate = useNavigate();
+     const [nearbyFields, setNearbyFields] = useState([]);
+     const [topRatedFields, setTopRatedFields] = useState([]);
+     const [promotions, setPromotions] = useState([]);
+     const [loading, setLoading] = useState(true);
 
-     // Mock data for fields near user
-     const nearbyFields = [
-          {
-               id: 1,
-               name: "Sân bóng ABC",
-               location: "Quận Hoàn Kiếm, Hà Nội",
-               distance: "2.5 km",
-               price: "200,000 VNĐ",
-               rating: 4.8,
-               image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
-          },
-          {
-               id: 2,
-               name: "Sân bóng XYZ",
-               location: "Quận Ba Đình, Hà Nội",
-               distance: "3.1 km",
-               price: "180,000 VNĐ",
-               rating: 4.6,
-               image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
-          },
-     ];
+     useEffect(() => {
+          const loadData = async () => {
+               try {
+                    setLoading(true);
+                    // Fetch all complexes and fields
+                    let complexes = [];
+                    let allFields = [];
+                    
+                    try {
+                         complexes = await fetchFieldComplexes();
+                         if (!Array.isArray(complexes)) {
+                              complexes = [];
+                         }
+                         // Filter only Active complexes for Player
+                         complexes = complexes.filter(
+                              (complex) => (complex.status || complex.Status || "Active") === "Active"
+                         );
+                    } catch (error) {
+                         console.error("Error fetching complexes:", error);
+                         complexes = [];
+                    }
+                    
+                    try {
+                         allFields = await fetchFields();
+                         if (!Array.isArray(allFields)) {
+                              allFields = [];
+                         }
+                    } catch (error) {
+                         console.error("Error fetching fields:", error);
+                         allFields = [];
+                    }
 
-     // Mock data for top rated fields
-     const topRatedFields = [
-          {
-               id: 3,
-               name: "Sân bóng DEF",
-               location: "Quận Đống Đa, Hà Nội",
-               price: "220,000 VNĐ",
-               rating: 4.9,
-               image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
-          },
-          {
-               id: 4,
-               name: "Sân bóng GHI",
-               location: "Quận Cầu Giấy, Hà Nội",
-               price: "250,000 VNĐ",
-               rating: 4.7,
-               image: "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg",
-          },
-     ];
+                    // Get nearby fields (first 2 fields with addresses)
+                    const fieldsWithAddress = allFields
+                         .filter(f => f.address && f.mainImageUrl)
+                         .slice(0, 2)
+                         .map(field => ({
+                              id: field.fieldId,
+                              name: field.name,
+                              location: field.address,
+                              distance: "Gần bạn",
+                              price: `${(field.pricePerHour || field.priceForSelectedSlot || 0).toLocaleString('vi-VN')} VNĐ`,
+                              rating: field.rating || 4.5,
+                              mainImageUrl: field.mainImageUrl,
+                         }));
+                    setNearbyFields(fieldsWithAddress);
 
-     // Promotions for recurring (fixed schedule) bookings
-     const promotions = [
-          {
-               id: 1,
-               title: "Giảm 15% khi đặt cố định 4 tuần",
-               description: "Đặt lịch cố định mỗi tuần, áp dụng cho cùng khung giờ",
-               discount: "15%",
-               validUntil: "Áp dụng đến hết tháng này",
-          },
-          {
-               id: 2,
-               title: "Giảm 10% khi đặt cố định 8 buổi",
-               description: "Tiết kiệm khi đăng ký đặt dài hạn theo slot cố định",
-               discount: "10%",
-               validUntil: "Ưu đãi số lượng có hạn",
-          },
-     ];
+                    // Get top rated fields (next 2 fields, sorted by rating if available)
+                    const sortedFields = [...allFields]
+                         .filter(f => f.address && f.mainImageUrl)
+                         .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+                         .slice(0, 2)
+                         .map(field => ({
+                              id: field.fieldId,
+                              name: field.name,
+                              location: field.address,
+                              price: `${(field.pricePerHour || field.priceForSelectedSlot || 0).toLocaleString('vi-VN')} VNĐ`,
+                              rating: field.rating || 4.5,
+                              mainImageUrl: field.mainImageUrl,
+                         }));
+                    setTopRatedFields(sortedFields);
+
+                    // Fetch promotions from all complexes
+                    const promotionPromises = complexes.map(complex => 
+                         fetchPromotionsByComplex(complex.complexId).catch(() => [])
+                    );
+                    const allPromotions = await Promise.all(promotionPromises);
+                    const activePromotions = allPromotions
+                         .flat()
+                         .filter(promo => {
+                              const now = new Date();
+                              const startDate = new Date(promo.startDate);
+                              const endDate = new Date(promo.endDate);
+                              return promo.isActive && now >= startDate && now <= endDate;
+                         })
+                         .slice(0, 2)
+                         .map(promo => ({
+                              id: promo.promotionId,
+                              title: promo.name,
+                              description: promo.description || "Áp dụng cho các slot được chỉ định",
+                              discount: promo.type === "percentage" ? `${promo.value}%` : `${promo.value.toLocaleString('vi-VN')} VNĐ`,
+                              validUntil: `Áp dụng đến ${new Date(promo.endDate).toLocaleDateString('vi-VN')}`,
+                         }));
+                    setPromotions(activePromotions);
+               } catch (error) {
+                    console.error("Error loading data:", error);
+                    // Fallback to empty arrays on error
+                    setNearbyFields([]);
+                    setTopRatedFields([]);
+                    setPromotions([]);
+               } finally {
+                    setLoading(false);
+               }
+          };
+
+          loadData();
+     }, []);
 
      const containerVariants = {
           hidden: { opacity: 0 },
@@ -127,25 +172,34 @@ export const QuickBookingSection = ({ user }) => {
                                         <p className="text-gray-600 mb-4">Sân bóng được đề xuất theo vị trí của bạn</p>
 
                                         <div className="space-y-3">
-                                             {nearbyFields.map((field) => (
-                                                  <motion.div
-                                                       key={field.id}
-                                                       whileHover={{ scale: 1.02 }}
-                                                       className="flex items-center border border-teal-200 gap-3 p-3 bg-gray-50 rounded-2xl cursor-pointer hover:bg-teal-50 transition-colors"
-                                                       onClick={() => navigate(`/fields/${field.id}`)}
-                                                  >
-                                                       <img
-                                                            src={field.image}
-                                                            alt={field.name}
-                                                            className="w-16 h-16 rounded-lg object-cover"
-                                                       />
-                                                       <div className="flex-1 min-w-0">
-                                                            <h4 className="font-semibold text-gray-900 truncate">{field.name}</h4>
-                                                            <p className="text-sm text-gray-600 truncate">{field.location}</p>
-                                                            <p className="text-xs text-teal-600 font-medium">{field.distance} • {field.price}</p>
-                                                       </div>
-                                                  </motion.div>
-                                             ))}
+                                             {loading ? (
+                                                  <div className="text-center py-4 text-gray-500">Đang tải...</div>
+                                             ) : nearbyFields.length > 0 ? (
+                                                  nearbyFields.map((field) => (
+                                                       <motion.div
+                                                            key={field.id}
+                                                            whileHover={{ scale: 1.02 }}
+                                                            className="flex items-center border border-teal-200 gap-3 p-3 bg-gray-50 rounded-2xl cursor-pointer hover:bg-teal-50 transition-colors"
+                                                            onClick={() => navigate(`/fields/${field.id}`)}
+                                                       >
+                                                            <img
+                                                                 src={field.mainImageUrl || 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg'}
+                                                                 alt={field.name}
+                                                                 className="w-16 h-16 rounded-lg object-cover"
+                                                                 onError={(e) => {
+                                                                      e.target.src = 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg';
+                                                                 }}
+                                                            />
+                                                            <div className="flex-1 min-w-0">
+                                                                 <h4 className="font-semibold text-gray-900 truncate">{field.name}</h4>
+                                                                 <p className="text-sm text-gray-600 truncate">{field.location}</p>
+                                                                 <p className="text-xs text-teal-600 font-medium">{field.distance} • {field.price}</p>
+                                                            </div>
+                                                       </motion.div>
+                                                  ))
+                                             ) : (
+                                                  <div className="text-center py-4 text-gray-500">Chưa có sân gần bạn</div>
+                                             )}
                                         </div>
 
                                         <div className="mt-5">
@@ -172,27 +226,36 @@ export const QuickBookingSection = ({ user }) => {
                                         <p className="text-gray-600 mb-4">Những sân bóng được đánh giá cao nhất</p>
 
                                         <div className="space-y-3">
-                                             {topRatedFields.map((field) => (
-                                                  <motion.div
-                                                       key={field.id}
-                                                       whileHover={{ scale: 1.02 }}
-                                                       className="flex items-center border border-yellow-200 gap-3 p-3 bg-gray-50 rounded-2xl cursor-pointer hover:bg-yellow-50 transition-colors"
-                                                       onClick={() => navigate(`/fields/${field.id}`)}
-                                                  >
-                                                       <img
-                                                            src={field.image}
-                                                            alt={field.name}
-                                                            className="w-16 h-16 rounded-lg object-cover"
-                                                       />
-                                                       <div className="flex-1 min-w-0">
-                                                            <h4 className="font-semibold text-gray-900 truncate">{field.name}</h4>
-                                                            <p className="text-sm text-gray-600 truncate">{field.location}</p>
-                                                            <p className="text-xs text-yellow-700 font-medium">
-                                                                 ⭐ {field.rating} điểm • {field.price}
-                                                            </p>
-                                                       </div>
-                                                  </motion.div>
-                                             ))}
+                                             {loading ? (
+                                                  <div className="text-center py-4 text-gray-500">Đang tải...</div>
+                                             ) : topRatedFields.length > 0 ? (
+                                                  topRatedFields.map((field) => (
+                                                       <motion.div
+                                                            key={field.id}
+                                                            whileHover={{ scale: 1.02 }}
+                                                            className="flex items-center border border-yellow-200 gap-3 p-3 bg-gray-50 rounded-2xl cursor-pointer hover:bg-yellow-50 transition-colors"
+                                                            onClick={() => navigate(`/fields/${field.id}`)}
+                                                       >
+                                                            <img
+                                                                 src={field.mainImageUrl || 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg'}
+                                                                 alt={field.name}
+                                                                 className="w-16 h-16 rounded-lg object-cover"
+                                                                 onError={(e) => {
+                                                                      e.target.src = 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg';
+                                                                 }}
+                                                            />
+                                                            <div className="flex-1 min-w-0">
+                                                                 <h4 className="font-semibold text-gray-900 truncate">{field.name}</h4>
+                                                                 <p className="text-sm text-gray-600 truncate">{field.location}</p>
+                                                                 <p className="text-xs text-yellow-700 font-medium">
+                                                                      ⭐ {field.rating.toFixed(1)} điểm • {field.price}
+                                                                 </p>
+                                                            </div>
+                                                       </motion.div>
+                                                  ))
+                                             ) : (
+                                                  <div className="text-center py-4 text-gray-500">Chưa có sân đánh giá</div>
+                                             )}
                                         </div>
 
                                         <div className="mt-5">
@@ -223,24 +286,30 @@ export const QuickBookingSection = ({ user }) => {
                                              <p className="text-white/90 mb-6 text-sm">Đặt lịch cố định để nhận mức giảm giá hấp dẫn</p>
 
                                              <div className="space-y-4 mb-4">
-                                                  {promotions.map((promo) => (
-                                                       <motion.div
-                                                            key={promo.id}
-                                                            whileHover={{ scale: 1.05 }}
-                                                            className="p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30"
-                                                       >
-                                                            <div className="flex items-start justify-between mb-2">
-                                                                 <div>
-                                                                      <h4 className="font-bold text-base">{promo.title}</h4>
-                                                                      <p className="text-sm text-white/80">{promo.description}</p>
+                                                  {loading ? (
+                                                       <div className="text-center py-4 text-white/80">Đang tải...</div>
+                                                  ) : promotions.length > 0 ? (
+                                                       promotions.map((promo) => (
+                                                            <motion.div
+                                                                 key={promo.id}
+                                                                 whileHover={{ scale: 1.05 }}
+                                                                 className="p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30"
+                                                            >
+                                                                 <div className="flex items-start justify-between mb-2">
+                                                                      <div>
+                                                                           <h4 className="font-bold text-base">{promo.title}</h4>
+                                                                           <p className="text-sm text-white/80">{promo.description}</p>
+                                                                      </div>
+                                                                      <span className="px-3 py-1 bg-white text-purple-600 rounded-full font-bold text-sm">
+                                                                           -{promo.discount}
+                                                                      </span>
                                                                  </div>
-                                                                 <span className="px-3 py-1 bg-white text-purple-600 rounded-full font-bold text-sm">
-                                                                      -{promo.discount}
-                                                                 </span>
-                                                            </div>
-                                                            <p className="text-xs text-white/70">{promo.validUntil}</p>
-                                                       </motion.div>
-                                                  ))}
+                                                                 <p className="text-xs text-white/70">{promo.validUntil}</p>
+                                                            </motion.div>
+                                                       ))
+                                                  ) : (
+                                                       <div className="text-center py-4 text-white/80">Hiện chưa có ưu đãi</div>
+                                                  )}
                                              </div>
 
                                              <div className="mt-2">

@@ -1,479 +1,637 @@
-// Service for managing notifications
-// Mock data for notifications
+// Service layer for Notification APIs
+import axios from "axios";
+import { getStoredToken, isTokenExpired } from "../utils/tokenManager";
 
-const NOTIFICATIONS = [
-  {
-    NotificationID: 1,
-    OwnerID: 1,
-    ComplexID: 101,
-    Title: "Sân bị hỏng - Hủy đặt sân",
-    Message:
-      "Xin lỗi, sân số 1 bị hỏng hệ thống chiếu sáng. Chúng tôi sẽ hủy đặt sân của bạn và hoàn tiền 100%.",
-    Type: "cancellation", // cancellation, maintenance, update, promotion
-    Priority: "high", // low, medium, high, urgent
-    TargetAudience: "booking_users", // all_users, booking_users, specific_users
-    TargetBookingIds: [1001, 1002, 1003],
-    IsActive: true,
-    SentAt: "2024-01-15T10:30:00Z",
-    CreatedAt: "2024-01-15T10:00:00Z",
-    UpdatedAt: "2024-01-15T10:00:00Z",
-  },
-  {
-    NotificationID: 2,
-    OwnerID: 2,
-    ComplexID: 102,
-    Title: "Bảo trì định kỳ",
-    Message:
-      "Sân sẽ được bảo trì từ 14:00-16:00 ngày mai. Các slot trong thời gian này sẽ không khả dụng.",
-    Type: "maintenance",
-    Priority: "medium",
-    TargetAudience: "all_users",
-    TargetBookingIds: [],
-    IsActive: true,
-    SentAt: "2024-01-14T15:00:00Z",
-    CreatedAt: "2024-01-14T14:30:00Z",
-    UpdatedAt: "2024-01-14T14:30:00Z",
-  },
-  {
-    NotificationID: 3,
-    OwnerID: 1,
-    ComplexID: 101,
-    Title: "Khuyến mãi đặc biệt",
-    Message:
-      "Giảm giá 20% cho tất cả slot cuối tuần! Sử dụng mã WEEKEND20 để nhận ưu đãi.",
-    Type: "promotion",
-    Priority: "low",
-    TargetAudience: "all_users",
-    TargetBookingIds: [],
-    IsActive: true,
-    SentAt: "2024-01-13T09:00:00Z",
-    CreatedAt: "2024-01-13T08:30:00Z",
-    UpdatedAt: "2024-01-13T08:30:00Z",
-  },
-  {
-    NotificationID: 4,
-    OwnerID: 2,
-    ComplexID: 103,
-    Title: "Cập nhật giá dịch vụ",
-    Message:
-      "Từ ngày 1/2/2024, giá dịch vụ sẽ tăng 10%. Đặt sân trước ngày này để giữ giá cũ.",
-    Type: "update",
-    Priority: "medium",
-    TargetAudience: "all_users",
-    TargetBookingIds: [],
-    IsActive: true,
-    SentAt: "2024-01-12T11:00:00Z",
-    CreatedAt: "2024-01-12T10:30:00Z",
-    UpdatedAt: "2024-01-12T10:30:00Z",
-  },
-  {
-    NotificationID: 5,
-    OwnerID: 2,
-    ComplexID: 104,
-    Title: "Thời tiết xấu",
-    Message:
-      "Do thời tiết mưa to, sân có thể không sử dụng được. Vui lòng liên hệ để được hỗ trợ.",
-    Type: "cancellation",
-    Priority: "urgent",
-    TargetAudience: "booking_users",
-    TargetBookingIds: [2001, 2002],
-    IsActive: true,
-    SentAt: "2024-01-11T08:00:00Z",
-    CreatedAt: "2024-01-11T07:30:00Z",
-    UpdatedAt: "2024-01-11T07:30:00Z",
-  },
-  {
-    NotificationID: 6,
-    OwnerID: 1,
-    ComplexID: 101,
-    Title: "Cải thiện dịch vụ",
-    Message:
-      "Chúng tôi đã nâng cấp hệ thống đặt sân và cải thiện chất lượng dịch vụ. Cảm ơn bạn đã tin tưởng!",
-    Type: "update",
-    Priority: "low",
-    TargetAudience: "all_users",
-    TargetBookingIds: [],
-    IsActive: true,
-    SentAt: "2024-01-10T16:00:00Z",
-    CreatedAt: "2024-01-10T15:30:00Z",
-    UpdatedAt: "2024-01-10T15:30:00Z",
-  },
-  {
-    NotificationID: 7,
-    OwnerID: 2,
-    ComplexID: 102,
-    Title: "Khuyến mãi sinh nhật",
-    Message:
-      "Chúc mừng sinh nhật! Bạn được giảm giá 50% cho đặt sân trong tuần này. Sử dụng mã BIRTHDAY50.",
-    Type: "promotion",
-    Priority: "medium",
-    TargetAudience: "all_users",
-    TargetBookingIds: [],
-    IsActive: true,
-    SentAt: "2024-01-09T12:00:00Z",
-    CreatedAt: "2024-01-09T11:30:00Z",
-    UpdatedAt: "2024-01-09T11:30:00Z",
-  },
-  {
-    NotificationID: 8,
-    OwnerID: 2,
-    ComplexID: 105,
-    Title: "Sân tạm thời đóng cửa",
-    Message:
-      "Sân sẽ tạm thời đóng cửa từ ngày 20/1 đến 25/1 để sửa chữa. Chúng tôi sẽ liên hệ để hủy/hoãn đặt sân.",
-    Type: "cancellation",
-    Priority: "high",
-    TargetAudience: "booking_users",
-    TargetBookingIds: [3001, 3002, 3003],
-    IsActive: true,
-    SentAt: "2024-01-08T14:00:00Z",
-    CreatedAt: "2024-01-08T13:30:00Z",
-    UpdatedAt: "2024-01-08T13:30:00Z",
-  },
-];
+const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
-// User notifications (notifications received by users)
-const USER_NOTIFICATIONS = [
-  {
-    UserNotificationID: 1,
-    UserID: 1,
-    NotificationID: 1,
-    IsRead: false,
-    ReadAt: null,
-    ReceivedAt: "2024-01-15T10:30:00Z",
+// Create axios instance with base configuration
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 15000,
+  headers: {
+    "Content-Type": "application/json",
   },
-  {
-    UserNotificationID: 2,
-    UserID: 2,
-    NotificationID: 1,
-    IsRead: true,
-    ReadAt: "2024-01-15T11:00:00Z",
-    ReceivedAt: "2024-01-15T10:30:00Z",
+});
+
+// Add request interceptor to include auth token if available
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = getStoredToken();
+    if (token && !isTokenExpired(token)) {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else {
+    }
+    return config;
   },
-  {
-    UserNotificationID: 3,
-    UserID: 3,
-    NotificationID: 2,
-    IsRead: false,
-    ReadAt: null,
-    ReceivedAt: "2024-01-14T15:00:00Z",
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle errors
+apiClient.interceptors.response.use(
+  (response) => {
+    return response;
   },
-  {
-    UserNotificationID: 4,
-    UserID: 1,
-    NotificationID: 3,
-    IsRead: true,
-    ReadAt: "2024-01-13T10:00:00Z",
-    ReceivedAt: "2024-01-13T09:00:00Z",
-  },
-  {
-    UserNotificationID: 5,
-    UserID: 2,
-    NotificationID: 4,
-    IsRead: false,
-    ReadAt: null,
-    ReceivedAt: "2024-01-12T11:00:00Z",
-  },
-  {
-    UserNotificationID: 6,
-    UserID: 4,
-    NotificationID: 5,
-    IsRead: true,
-    ReadAt: "2024-01-11T09:00:00Z",
-    ReceivedAt: "2024-01-11T08:00:00Z",
-  },
-  {
-    UserNotificationID: 7,
-    UserID: 1,
-    NotificationID: 6,
-    IsRead: false,
-    ReadAt: null,
-    ReceivedAt: "2024-01-10T16:00:00Z",
-  },
-  {
-    UserNotificationID: 8,
-    UserID: 2,
-    NotificationID: 7,
-    IsRead: true,
-    ReadAt: "2024-01-09T13:00:00Z",
-    ReceivedAt: "2024-01-09T12:00:00Z",
-  },
-  {
-    UserNotificationID: 9,
-    UserID: 3,
-    NotificationID: 8,
-    IsRead: false,
-    ReadAt: null,
-    ReceivedAt: "2024-01-08T14:00:00Z",
-  },
-  {
-    UserNotificationID: 10,
-    UserID: 4,
-    NotificationID: 8,
-    IsRead: true,
-    ReadAt: "2024-01-08T15:00:00Z",
-    ReceivedAt: "2024-01-08T14:00:00Z",
-  },
-];
+  (error) => {
+    if (error.response) {
+      const { status, data } = error.response;
 
-// Helper functions
-function findNotification(notificationId) {
-  return NOTIFICATIONS.find((n) => n.NotificationID === Number(notificationId));
-}
+      if (status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+    } else if (error.request) {
+    } else {
+    }
+    return Promise.reject(error);
+  }
+);
 
-function findNotificationsByOwner(ownerId) {
-  return NOTIFICATIONS.filter((n) => n.OwnerID === Number(ownerId));
-}
+// Helper function to handle API errors
+const handleApiError = (error) => {
+  let errorMessage = "Có lỗi xảy ra khi gọi API";
 
-function findUserNotifications(userId) {
-  return USER_NOTIFICATIONS.filter((un) => un.UserID === Number(userId));
-}
+  if (error.response) {
+    const { status, statusText, data } = error.response;
 
-// API functions
-export async function fetchNotifications(ownerId) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 300));
+    if (status === 404) {
+      errorMessage = "Không tìm thấy thông báo";
+    } else if (status === 500) {
+      errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau.";
+    } else if (status === 400) {
+      errorMessage = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.";
+    } else if (status === 401) {
+      errorMessage = "Không có quyền truy cập. Vui lòng đăng nhập lại.";
+    } else if (status === 403) {
+      errorMessage = "Truy cập bị từ chối. Vui lòng kiểm tra quyền hạn.";
+    }
 
-  const notifications = findNotificationsByOwner(ownerId);
-  return notifications.map((notification) => ({
-    notificationId: notification.NotificationID,
-    ownerId: notification.OwnerID,
-    complexId: notification.ComplexID,
-    title: notification.Title,
-    message: notification.Message,
-    type: notification.Type,
-    priority: notification.Priority,
-    targetAudience: notification.TargetAudience,
-    targetBookingIds: notification.TargetBookingIds,
-    isActive: notification.IsActive,
-    sentAt: notification.SentAt,
-    createdAt: notification.CreatedAt,
-    updatedAt: notification.UpdatedAt,
-  }));
-}
+    if (data && (data.message || data.error || data.detail)) {
+      errorMessage = data.message || data.error || data.detail || errorMessage;
+    } else {
+      errorMessage = statusText || errorMessage;
+    }
+  } else if (error.request) {
+    errorMessage =
+      "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet.";
+  } else {
+    errorMessage = error.message || errorMessage;
+  }
 
-export async function fetchNotification(notificationId) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  throw new Error(errorMessage);
+};
 
-  const notification = findNotification(notificationId);
-  if (!notification) return null;
+/**
+ * GET /api/Notification
+ * Lấy danh sách thông báo (phân trang + lọc theo trạng thái)
+ * @param {Object} params - Query parameters
+ * @param {number} params.page - Page number (default: 1)
+ * @param {number} params.pageSize - Items per page (default: 10)
+ * @param {boolean} params.isRead - Filter by read status (optional)
+ * @returns {Promise<Object>} Response with notifications and pagination info
+ */
+export async function getNotifications(params = {}) {
+  try {
+    const { page = 1, pageSize = 10, isRead } = params;
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+    });
 
-  return {
-    notificationId: notification.NotificationID,
-    ownerId: notification.OwnerID,
-    complexId: notification.ComplexID,
-    title: notification.Title,
-    message: notification.Message,
-    type: notification.Type,
-    priority: notification.Priority,
-    targetAudience: notification.TargetAudience,
-    targetBookingIds: notification.TargetBookingIds,
-    isActive: notification.IsActive,
-    sentAt: notification.SentAt,
-    createdAt: notification.CreatedAt,
-    updatedAt: notification.UpdatedAt,
-  };
-}
+    if (isRead !== undefined) {
+      queryParams.append("isRead", isRead.toString());
+    }
 
-export async function fetchUserNotifications(userId) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 300));
+    const url = `/api/Notification?${queryParams.toString()}`;
 
-  const userNotifications = findUserNotifications(userId);
-  const notifications = userNotifications.map((un) => {
-    const notification = findNotification(un.NotificationID);
+    const response = await apiClient.get(url);
+
     return {
-      userNotificationId: un.UserNotificationID,
-      notificationId: notification.NotificationID,
-      title: notification.Title,
-      message: notification.Message,
-      type: notification.Type,
-      priority: notification.Priority,
-      isRead: un.IsRead,
-      readAt: un.ReadAt,
-      receivedAt: un.ReceivedAt,
-      sentAt: notification.SentAt,
+      ok: true,
+      data: response.data,
     };
-  });
-
-  return notifications.sort(
-    (a, b) => new Date(b.receivedAt) - new Date(a.receivedAt)
-  );
-}
-
-export async function createNotification(notificationData) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  const newNotification = {
-    NotificationID: NOTIFICATIONS.length + 1,
-    OwnerID: notificationData.ownerId,
-    ComplexID: notificationData.complexId,
-    Title: notificationData.title,
-    Message: notificationData.message,
-    Type: notificationData.type,
-    Priority: notificationData.priority,
-    TargetAudience: notificationData.targetAudience,
-    TargetBookingIds: notificationData.targetBookingIds || [],
-    IsActive: true,
-    SentAt: new Date().toISOString(),
-    CreatedAt: new Date().toISOString(),
-    UpdatedAt: new Date().toISOString(),
-  };
-
-  NOTIFICATIONS.push(newNotification);
-
-  // Simulate sending to users
-  if (notificationData.targetAudience === "all_users") {
-    // Send to all users (simulate)
-    console.log("Sending notification to all users:", newNotification.Title);
-  } else if (notificationData.targetAudience === "booking_users") {
-    // Send to specific booking users (simulate)
-    console.log(
-      "Sending notification to booking users:",
-      newNotification.Title
-    );
+  } catch (error) {
+    handleApiError(error);
+    return {
+      ok: false,
+      reason: error.message || "Không thể lấy danh sách thông báo",
+    };
   }
-
-  return {
-    notificationId: newNotification.NotificationID,
-    ownerId: newNotification.OwnerID,
-    complexId: newNotification.ComplexID,
-    title: newNotification.Title,
-    message: newNotification.Message,
-    type: newNotification.Type,
-    priority: newNotification.Priority,
-    targetAudience: newNotification.TargetAudience,
-    targetBookingIds: newNotification.TargetBookingIds,
-    isActive: newNotification.IsActive,
-    sentAt: newNotification.SentAt,
-    createdAt: newNotification.CreatedAt,
-    updatedAt: newNotification.UpdatedAt,
-  };
 }
 
-export async function updateNotification(notificationId, notificationData) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 500));
+/**
+ * GET /api/Notification/latest
+ * Lấy X thông báo mới nhất
+ * @param {number} count - Number of latest notifications to fetch (default: 10)
+ * @returns {Promise<Object>} Response with latest notifications
+ */
+export async function getLatestNotifications(count = 10) {
+  try {
+    const url = `/api/Notification/latest?count=${count}`;
 
-  const notificationIndex = NOTIFICATIONS.findIndex(
-    (n) => n.NotificationID === Number(notificationId)
-  );
-  if (notificationIndex === -1) {
-    throw new Error("Notification not found");
+    const response = await apiClient.get(url);
+
+    return {
+      ok: true,
+      data: response.data,
+    };
+  } catch (error) {
+    handleApiError(error);
+    return {
+      ok: false,
+      reason: error.message || "Không thể lấy thông báo mới nhất",
+    };
   }
-
-  const updatedNotification = {
-    ...NOTIFICATIONS[notificationIndex],
-    Title: notificationData.title,
-    Message: notificationData.message,
-    Type: notificationData.type,
-    Priority: notificationData.priority,
-    TargetAudience: notificationData.targetAudience,
-    TargetBookingIds: notificationData.targetBookingIds || [],
-    UpdatedAt: new Date().toISOString(),
-  };
-
-  NOTIFICATIONS[notificationIndex] = updatedNotification;
-
-  return {
-    notificationId: updatedNotification.NotificationID,
-    ownerId: updatedNotification.OwnerID,
-    complexId: updatedNotification.ComplexID,
-    title: updatedNotification.Title,
-    message: updatedNotification.Message,
-    type: updatedNotification.Type,
-    priority: updatedNotification.Priority,
-    targetAudience: updatedNotification.TargetAudience,
-    targetBookingIds: updatedNotification.TargetBookingIds,
-    isActive: updatedNotification.IsActive,
-    sentAt: updatedNotification.SentAt,
-    createdAt: updatedNotification.CreatedAt,
-    updatedAt: updatedNotification.UpdatedAt,
-  };
 }
 
-export async function deleteNotification(notificationId) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 300));
-
-  const notificationIndex = NOTIFICATIONS.findIndex(
-    (n) => n.NotificationID === Number(notificationId)
-  );
-  if (notificationIndex === -1) {
-    throw new Error("Notification not found");
-  }
-
-  NOTIFICATIONS.splice(notificationIndex, 1);
-
-  return { success: true };
-}
-
-export async function markNotificationAsRead(userNotificationId) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 200));
-
-  const userNotificationIndex = USER_NOTIFICATIONS.findIndex(
-    (un) => un.UserNotificationID === Number(userNotificationId)
-  );
-  if (userNotificationIndex === -1) {
-    throw new Error("User notification not found");
-  }
-
-  USER_NOTIFICATIONS[userNotificationIndex] = {
-    ...USER_NOTIFICATIONS[userNotificationIndex],
-    IsRead: true,
-    ReadAt: new Date().toISOString(),
-  };
-
-  return { success: true };
-}
-
-export async function markAllNotificationsAsRead(userId) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 300));
-
-  const userNotifications = findUserNotifications(userId);
-  userNotifications.forEach((un) => {
-    const index = USER_NOTIFICATIONS.findIndex(
-      (u) => u.UserNotificationID === un.UserNotificationID
-    );
-    if (index !== -1) {
-      USER_NOTIFICATIONS[index] = {
-        ...USER_NOTIFICATIONS[index],
-        IsRead: true,
-        ReadAt: new Date().toISOString(),
+/**
+ * GET /api/Notification/unread-count
+ * Đếm số thông báo chưa đọc
+ * @returns {Promise<Object>} Response with unread count
+ */
+export async function getUnreadCount() {
+  try {
+    // Check token before making request
+    const token = getStoredToken();
+    if (!token) {
+      return {
+        ok: false,
+        reason: "Bạn cần đăng nhập để xem thông báo",
+        count: 0,
       };
     }
-  });
 
-  return { success: true };
+    if (isTokenExpired(token)) {
+      return {
+        ok: false,
+        reason: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại",
+        count: 0,
+      };
+    }
+
+    const url = `/api/Notification/unread-count`;
+
+    const response = await apiClient.get(url);
+
+    // Handle different response formats
+    // Format 1: { success: true, data: { unreadCount: 4 } }
+    // Format 2: { count: 4 } or { unreadCount: 4 }
+    // Format 3: number directly
+    let count = 0;
+    if (typeof response.data === "number") {
+      // API trả về số trực tiếp
+      count = response.data;
+    } else if (response.data && typeof response.data === "object") {
+      // Check for nested data structure: { success: true, data: { unreadCount: 4 } }
+      if (response.data.data && typeof response.data.data === "object") {
+        count = response.data.data.unreadCount || response.data.data.count || 0;
+      } else {
+        // Direct object: { count: 4 } or { unreadCount: 4 }
+        count =
+          response.data.count ||
+          response.data.unreadCount ||
+          response.data.total ||
+          0;
+      }
+    } else {
+      count = 0;
+    }
+
+    return {
+      ok: true,
+      data: response.data,
+      count: Number(count) || 0,
+    };
+  } catch (error) {
+    // Handle 401 Unauthorized
+    if (error.response?.status === 401) {
+      return {
+        ok: false,
+        reason: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại",
+        count: 0,
+      };
+    }
+
+    handleApiError(error);
+    return {
+      ok: false,
+      reason: error.message || "Không thể lấy số thông báo chưa đọc",
+      count: 0,
+    };
+  }
 }
 
-// Get notification statistics
-export async function getNotificationStats(ownerId) {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 200));
+/**
+ * GET /api/Notification/type/{type}
+ * Lấy thông báo theo loại (Comment, Like, ReportResult, System, ...)
+ * @param {string} type - Notification type
+ * @param {Object} params - Optional query parameters (page, pageSize)
+ * @returns {Promise<Object>} Response with notifications of specified type
+ */
+export async function getNotificationsByType(type, params = {}) {
+  try {
+    const { page = 1, pageSize = 10 } = params;
+    const queryParams = new URLSearchParams({
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+    });
 
-  const notifications = findNotificationsByOwner(ownerId);
-  const stats = {
-    total: notifications.length,
-    sent: notifications.filter((n) => n.IsActive).length,
-    byType: {
-      cancellation: notifications.filter((n) => n.Type === "cancellation")
-        .length,
-      maintenance: notifications.filter((n) => n.Type === "maintenance").length,
-      update: notifications.filter((n) => n.Type === "update").length,
-      promotion: notifications.filter((n) => n.Type === "promotion").length,
+    const url = `/api/Notification/type/${type}?${queryParams.toString()}`;
+
+    const response = await apiClient.get(url);
+
+    let notifications = [];
+    if (Array.isArray(response.data)) {
+      notifications = response.data;
+    } else if (response.data?.notifications) {
+      notifications = response.data.notifications;
+    } else if (response.data?.data) {
+      notifications = Array.isArray(response.data.data)
+        ? response.data.data
+        : response.data.data.notifications || response.data.data.items || [];
+    } else if (response.data?.items) {
+      notifications = response.data.items;
+    } else if (response.data) {
+      notifications = response.data.results || [];
+    }
+
+    return {
+      ok: true,
+      data: notifications,
+      raw: response.data,
+    };
+  } catch (error) {
+    handleApiError(error);
+    return {
+      ok: false,
+      reason: error.message || "Không thể lấy thông báo theo loại",
+    };
+  }
+}
+
+/**
+ * POST /api/Notification
+ * Admin tạo thông báo thủ công
+ * CHỈ ADMIN MỚI CÓ THỂ GỌI API NÀY
+ * @param {Object} notificationData - Notification data
+ * @param {number} notificationData.userId - User ID (0 for system notification)
+ * @param {string} notificationData.type - Notification type (System, Comment, Like, ReportResult, ...)
+ * @param {number} notificationData.targetId - Target ID (0 if not applicable)
+ * @param {string} notificationData.message - Notification message
+ * @returns {Promise<Object>} Response with created notification
+ */
+export async function createNotification(notificationData) {
+  try {
+    // Kiểm tra token trước khi gọi API
+    const token = getStoredToken();
+    if (!token || isTokenExpired(token)) {
+      return {
+        ok: false,
+        reason: "Bạn cần đăng nhập để tạo thông báo",
+      };
+    }
+
+    const payload = {
+      userId: notificationData.userId || 0,
+      type: notificationData.type || "System",
+      targetId: notificationData.targetId || 0,
+      message: notificationData.message || "",
+    };
+
+    const response = await apiClient.post(`/api/Notification`, payload);
+
+    return {
+      ok: true,
+      data: response.data,
+      message: response.data.message || "Tạo thông báo thành công",
+    };
+  } catch (error) {
+    // Kiểm tra lỗi 403 (Forbidden) - không phải Admin
+    if (error.response?.status === 403) {
+      return {
+        ok: false,
+        reason: "Chỉ Admin mới có quyền tạo thông báo",
+      };
+    }
+
+    handleApiError(error);
+    return {
+      ok: false,
+      reason: error.message || "Không thể tạo thông báo",
+    };
+  }
+}
+
+/**
+ * POST /api/Notification/bulk
+ * Admin tạo thông báo hàng loạt
+ * CHỈ ADMIN MỚI CÓ THỂ GỌI API NÀY
+ * @param {Array<Object>} notifications - Array of notification data
+ * @returns {Promise<Object>} Response with created notifications
+ */
+export async function createBulkNotifications(notifications) {
+  try {
+    // Kiểm tra token trước khi gọi API
+    const token = getStoredToken();
+    if (!token || isTokenExpired(token)) {
+      return {
+        ok: false,
+        reason: "Bạn cần đăng nhập để tạo thông báo",
+      };
+    }
+
+    const payload = notifications.map((notif) => ({
+      userId: notif.userId || 0,
+      type: notif.type || "System",
+      targetId: notif.targetId || 0,
+      message: notif.message || "",
+    }));
+
+    const response = await apiClient.post(`/api/Notification/bulk`, payload);
+
+    return {
+      ok: true,
+      data: response.data,
+      message: response.data.message || "Tạo thông báo hàng loạt thành công",
+    };
+  } catch (error) {
+    // Kiểm tra lỗi 403 (Forbidden) - không phải Admin
+    if (error.response?.status === 403) {
+      return {
+        ok: false,
+        reason: "Chỉ Admin mới có quyền tạo thông báo hàng loạt",
+      };
+    }
+
+    handleApiError(error);
+    return {
+      ok: false,
+      reason: error.message || "Không thể tạo thông báo hàng loạt",
+    };
+  }
+}
+
+/**
+ * PUT /api/Notification/{id}/read
+ * Đánh dấu đã đọc 1 thông báo
+ * @param {number|string} id - Notification ID
+ * @returns {Promise<Object>} Response with success status
+ */
+export async function markNotificationAsRead(id) {
+  try {
+    const url = `/api/Notification/${id}/read`;
+
+    const response = await apiClient.put(url);
+
+    return {
+      ok: true,
+      data: response.data,
+      message: response.data.message || "Đánh dấu đã đọc thành công",
+    };
+  } catch (error) {
+    handleApiError(error);
+    return {
+      ok: false,
+      reason: error.message || "Không thể đánh dấu đã đọc",
+    };
+  }
+}
+
+/**
+ * PUT /api/Notification/mark-all-read
+ * Đánh dấu đã đọc toàn bộ thông báo
+ * @returns {Promise<Object>} Response with success status
+ */
+export async function markAllNotificationsAsRead() {
+  try {
+    const url = `/api/Notification/mark-all-read`;
+
+    const response = await apiClient.put(url);
+
+    return {
+      ok: true,
+      data: response.data,
+      message: response.data.message || "Đánh dấu tất cả đã đọc thành công",
+    };
+  } catch (error) {
+    handleApiError(error);
+    return {
+      ok: false,
+      reason: error.message || "Không thể đánh dấu tất cả đã đọc",
+    };
+  }
+}
+
+/**
+ * DELETE /api/Notification/{id}
+ * Xóa 1 thông báo
+ * @param {number|string} id - Notification ID
+ * @returns {Promise<Object>} Response with success status
+ */
+export async function deleteNotification(id) {
+  try {
+    const url = `/api/Notification/${id}`;
+
+    const response = await apiClient.delete(url);
+
+    return {
+      ok: true,
+      data: response.data,
+      message: response.data.message || "Xóa thông báo thành công",
+    };
+  } catch (error) {
+    handleApiError(error);
+    return {
+      ok: false,
+      reason: error.message || "Không thể xóa thông báo",
+    };
+  }
+}
+
+/**
+ * DELETE /api/Notification/delete-all
+ * Xóa toàn bộ thông báo của user
+ * @returns {Promise<Object>} Response with success status
+ */
+export async function deleteAllNotifications() {
+  try {
+    const response = await apiClient.delete(`/api/Notification/delete-all`);
+    return {
+      ok: true,
+      data: response.data,
+      message: response.data.message || "Xóa tất cả thông báo thành công",
+    };
+  } catch (error) {
+    handleApiError(error);
+    return {
+      ok: false,
+      reason: error.message || "Không thể xóa tất cả thông báo",
+    };
+  }
+}
+
+// Compatibility functions for backward compatibility with old code
+/**
+ * @deprecated Use getNotifications instead
+ * Fetch notifications for owner (compatibility function)
+ */
+export async function fetchNotifications(ownerId) {
+  try {
+    const result = await getNotifications({ page: 1, pageSize: 100 });
+    if (result.ok) {
+      const notifications = Array.isArray(result.data)
+        ? result.data
+        : result.data?.notifications || result.data?.data || [];
+      // Filter by owner if needed (API might handle this)
+      return notifications;
+    }
+    return [];
+  } catch (error) {
+    return [];
+  }
+}
+
+/**
+ * @deprecated Update functionality not available in new API
+ * This is a placeholder for backward compatibility
+ */
+export async function updateNotification(notificationId, notificationData) {
+  // Since update is not available, we'll delete and create new
+  try {
+    await deleteNotification(notificationId);
+    return await createNotification(notificationData);
+  } catch (error) {
+    handleApiError(error);
+    return {
+      ok: false,
+      reason: error.message || "Không thể cập nhật thông báo",
+    };
+  }
+}
+
+/**
+ * @deprecated Stats functionality not available in new API
+ * Calculate stats from notifications list
+ */
+export async function getNotificationStats(ownerId) {
+  try {
+    const result = await getNotifications({ page: 1, pageSize: 1000 });
+    if (result.ok) {
+      const notifications = Array.isArray(result.data)
+        ? result.data
+        : result.data?.notifications || result.data?.data || [];
+
+      const stats = {
+        total: notifications.length,
+        sent: notifications.filter((n) => n.isActive !== false).length,
+        byType: {
+          cancellation: notifications.filter((n) => n.type === "cancellation")
+            .length,
+          maintenance: notifications.filter((n) => n.type === "maintenance")
+            .length,
+          update: notifications.filter((n) => n.type === "update").length,
+          promotion: notifications.filter((n) => n.type === "promotion").length,
+          System: notifications.filter((n) => n.type === "System").length,
+          Comment: notifications.filter((n) => n.type === "Comment").length,
+          Like: notifications.filter((n) => n.type === "Like").length,
+          ReportResult: notifications.filter((n) => n.type === "ReportResult")
+            .length,
+        },
+        byPriority: {
+          low: notifications.filter((n) => n.priority === "low").length,
+          medium: notifications.filter((n) => n.priority === "medium").length,
+          high: notifications.filter((n) => n.priority === "high").length,
+          urgent: notifications.filter((n) => n.priority === "urgent").length,
+        },
+      };
+      return stats;
+    }
+    return {
+      total: 0,
+      sent: 0,
+      byType: {
+        cancellation: 0,
+        maintenance: 0,
+        update: 0,
+        promotion: 0,
+      },
+      byPriority: {
+        low: 0,
+        medium: 0,
+        high: 0,
+        urgent: 0,
+      },
+    };
+  } catch (error) {
+    return {
+      total: 0,
+      sent: 0,
+      byType: {
+        cancellation: 0,
+        maintenance: 0,
+        update: 0,
+        promotion: 0,
+      },
+      byPriority: {
+        low: 0,
+        medium: 0,
+        high: 0,
+        urgent: 0,
+      },
+    };
+  }
+}
+
+// Test helper functions - Expose to window for easy testing in console
+if (typeof window !== "undefined") {
+  window.notificationAPI = {
+    getNotifications,
+    getLatestNotifications,
+    getUnreadCount,
+    getNotificationsByType,
+    createNotification,
+    createBulkNotifications,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    deleteNotification,
+    deleteAllNotifications,
+    // Test helpers
+    testCreate: async () => {
+      return await createNotification({
+        userId: 0,
+        type: "System",
+        targetId: 0,
+        message: "Test notification from console",
+      });
     },
-    byPriority: {
-      low: notifications.filter((n) => n.Priority === "low").length,
-      medium: notifications.filter((n) => n.Priority === "medium").length,
-      high: notifications.filter((n) => n.Priority === "high").length,
-      urgent: notifications.filter((n) => n.Priority === "urgent").length,
+    testGetAll: async () => {
+      return await getNotifications({ page: 1, pageSize: 10 });
+    },
+    testGetLatest: async () => {
+      return await getLatestNotifications(5);
+    },
+    testUnreadCount: async () => {
+      return await getUnreadCount();
     },
   };
-
-  return stats;
 }
+
+// Export all functions as default object for convenience
+export default {
+  getNotifications,
+  getLatestNotifications,
+  getUnreadCount,
+  getNotificationsByType,
+  createNotification,
+  createBulkNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification,
+  deleteAllNotifications,
+  // Compatibility exports
+  fetchNotifications,
+  updateNotification,
+  getNotificationStats,
+};
