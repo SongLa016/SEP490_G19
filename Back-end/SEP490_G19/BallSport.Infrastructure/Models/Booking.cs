@@ -44,6 +44,7 @@ public partial class Booking
     public virtual ICollection<MatchRequest> MatchRequests { get; set; } = new List<MatchRequest>();
 
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
+    public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
 
     public virtual FieldSchedule Schedule { get; set; } = null!;
 
