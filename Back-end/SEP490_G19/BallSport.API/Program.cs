@@ -136,6 +136,10 @@ services.AddScoped<AdminRecentActivityService>();
 services.AddScoped<IUserListRepository, UserListRepository>();
 services.AddScoped<IUserListService, UserListService>();
 
+//--- Statistic Player ---
+services.AddScoped<PlayerBookingRepository>();
+services.AddScoped<PlayerStatisticService>();
+
 // --- Core user / auth ---
 services.AddScoped<UserRepositories>();
 services.AddScoped<UserService>();
@@ -174,12 +178,12 @@ services.AddScoped<FieldPriceService>();
 services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
 services.AddScoped<ITimeSlotService, TimeSlotService>();
 services.AddScoped<IFieldPriceRepository, FieldPriceRepository>();
-
 services.AddScoped<IFieldPriceService, FieldPriceService>();
-
 services.AddScoped<IFieldScheduleRepository, FieldScheduleRepository>();
 services.AddScoped<IFieldScheduleService, FieldScheduleService>();
 services.AddScoped<TimeSlotService>();
+services.AddScoped<ITopFieldRepository,TopFieldRepository>();
+services.AddScoped<ITopFieldService,TopFieldService>();
 // 1. Tăng giới hạn upload (100MB)
 services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = 100_000_000);
 services.Configure<IISServerOptions>(options => options.MaxRequestBodySize = 100_000_000);
