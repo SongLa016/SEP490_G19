@@ -1,13 +1,15 @@
 ﻿using BallSport.Application.DTOs.StatisticPlayer;
+using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
+using BallSport.Infrastructure.Repositories.RatingBooking;
 
 namespace BallSport.Application.Services
 {
     public class PlayerStatisticService
     {
-        private readonly PlayerBookingRepository _bookingRepo;
+        private readonly PlayRepository _bookingRepo;
 
-        public PlayerStatisticService(PlayerBookingRepository bookingRepo)
+        public PlayerStatisticService(PlayRepository bookingRepo)
         {
             _bookingRepo = bookingRepo;
         }
@@ -47,5 +49,9 @@ namespace BallSport.Application.Services
             }).ToList();
         }
 
+        public async Task<double> GetAverageRatingAsync(int userId)
+        {
+            return await _bookingRepo.GetAverageStarsByUserAsync(userId);
+        }
     }
 }

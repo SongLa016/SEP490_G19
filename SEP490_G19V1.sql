@@ -651,3 +651,17 @@ CREATE TABLE BookingPackageSessionDraft (
 
   ALTER TABLE Users
     ALTER COLUMN Avatar NVARCHAR(MAX) NULL;
+	---Bảng đánh giá sân sau khi booking = completed
+CREATE TABLE Ratings (
+    RatingId INT IDENTITY(1,1) PRIMARY KEY,
+    BookingId INT NOT NULL,
+    UserId INT NOT NULL,
+    FieldId INT NOT NULL,
+    Stars INT NOT NULL,          -- 1 đến 5 sao
+    Comment NVARCHAR(500) NULL,  -- nội dung đánh giá
+    CreatedAt DATETIME NOT NULL DEFAULT GETDATE(),
+
+    FOREIGN KEY (BookingId) REFERENCES Bookings(BookingId),
+    FOREIGN KEY (UserId) REFERENCES Users(UserId),
+    FOREIGN KEY (FieldId) REFERENCES Fields(FieldId)
+);

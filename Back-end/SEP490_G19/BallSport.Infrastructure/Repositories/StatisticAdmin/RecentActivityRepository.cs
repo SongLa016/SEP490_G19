@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BallSport.Infrastructure.Data;
-using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 using static BallSport.Infrastructure.Repositories.AdminStatistics.RecentActivityRepository;
 
@@ -68,7 +67,37 @@ namespace BallSport.Infrastructure.Repositories.AdminStatistics
                 })
                 .ToListAsync();
 
-            // 4. Sân mới
+            // 4. Booking đã hủy
+            var cancelledBookings = await _context.Bookings
+                .Include(b => b.User)
+                .Include(b => b.Schedule)
+                    .ThenInclude(s => s.Field)
+                .Where(b => b.BookingStatus == "Cancelled")
+                .OrderByDescending(b => b.CancelledAt)
+                .Take(top)
+                .Select(b => new RecentActivity
+                {
+                    ActivityType = "BookingCancelled",
+                    Description = $"Booking #{b.BookingId} của {b.User.FullName} đã hủy tại {b.Schedule.Field!.Name}",
+                    CreatedAt = b.CancelledAt ?? now
+                })
+                .ToListAsync();
+
+            // 5. Đánh giá
+            var ratings = await _context.Ratings
+                .Include(r => r.Field)
+                .Include(r => r.User)
+                .OrderByDescending(r => r.CreatedAt)
+                .Take(top)
+                .Select(r => new RecentActivity
+                {
+                    ActivityType = "Rating",
+                    Description = $"Người dùng {r.User.FullName} đánh giá sân {r.Field.Name} - {r.Stars} sao",
+                    CreatedAt = r.CreatedAt
+                })
+                .ToListAsync();
+
+            // 6. Sân mới
             var newFields = await _context.Fields
                 .OrderByDescending(f => f.CreatedAt)
                 .Take(top)
@@ -79,7 +108,8 @@ namespace BallSport.Infrastructure.Repositories.AdminStatistics
                     CreatedAt = f.CreatedAt ?? now
                 })
                 .ToListAsync();
-            // 5. Bài viết mới
+
+            // 7. Bài viết mới
             var newPosts = await _context.Posts
                 .Include(p => p.User)
                 .OrderByDescending(p => p.CreatedAt)
@@ -91,13 +121,16 @@ namespace BallSport.Infrastructure.Repositories.AdminStatistics
                     CreatedAt = p.CreatedAt ?? now
                 })
                 .ToListAsync();
+
             // Gộp tất cả
             var allActivities = newUsers
                 .Concat(newReports)
                 .Concat(confirmedBookings)
+                .Concat(cancelledBookings)
+                .Concat(ratings)
                 .Concat(newFields)
                 .Concat(newPosts)
-                .OrderByDescending(a => a.CreatedAt)
+                .OrderByDescending(a => a.CreatedAt) // Sắp xếp theo thời gian gần nhất
                 .Take(top)
                 .ToList();
 
