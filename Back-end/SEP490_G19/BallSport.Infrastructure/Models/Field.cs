@@ -48,6 +48,6 @@ public partial class Field
     public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
 
     public virtual ICollection<TimeSlot> TimeSlots { get; set; } = new List<TimeSlot>();
-
+    public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
     public virtual FieldType? Type { get; set; }
 }

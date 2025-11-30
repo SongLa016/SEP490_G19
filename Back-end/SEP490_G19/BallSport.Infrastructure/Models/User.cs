@@ -80,6 +80,6 @@ public partial class User
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
     public virtual ICollection<ViolationReport> ViolationReportReportedUsers { get; set; } = new List<ViolationReport>();
-
+    public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
     public virtual ICollection<ViolationReport> ViolationReportReporters { get; set; } = new List<ViolationReport>();
 }
