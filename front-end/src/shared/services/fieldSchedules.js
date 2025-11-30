@@ -669,9 +669,22 @@ export async function deleteFieldSchedule(scheduleId) {
       message: "Xóa lịch trình thành công",
     };
   } catch (error) {
+    // Check if error is related to booking/foreign key constraint
+    const errorMessage = handleApiError(error);
+    const isBookingError =
+      errorMessage.toLowerCase().includes("booking") ||
+      errorMessage.toLowerCase().includes("đặt sân") ||
+      errorMessage.toLowerCase().includes("entity changes") ||
+      errorMessage.toLowerCase().includes("foreign key") ||
+      errorMessage.toLowerCase().includes("constraint") ||
+      error.response?.data?.message?.toLowerCase().includes("entity changes") ||
+      error.response?.data?.message?.toLowerCase().includes("foreign key");
+
     return {
       success: false,
-      error: handleApiError(error),
+      error: isBookingError
+        ? "Bạn không thể xóa vì đang có lịch đặt sân này"
+        : errorMessage,
     };
   }
 }

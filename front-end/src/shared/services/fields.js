@@ -605,9 +605,14 @@ export async function fetchComplexes(params = {}) {
   try {
     const complexes = await fetchFieldComplexes();
 
+    // Filter only Active complexes for Player pages
+    const activeComplexes = complexes.filter(
+      (complex) => (complex.status || complex.Status || "Active") === "Active"
+    );
+
     // Fetch fields for each complex to get counts
     const complexesWithFields = await Promise.all(
-      complexes.map(async (complex) => {
+      activeComplexes.map(async (complex) => {
         try {
           const fields = await fetchFieldsByComplex(complex.complexId);
           return {
@@ -670,14 +675,29 @@ export async function fetchFields(params = {}) {
 
     if (complexId) {
       // Fetch fields for a specific complex
-      const fields = await fetchFieldsByComplex(complexId);
-      allFields = fields;
+      // First check if the complex is Active
+      const allComplexes = await fetchFieldComplexes();
+      const targetComplex = allComplexes.find(
+        (c) => c.complexId === complexId || c.ComplexID === complexId
+      );
+      
+      // Only fetch fields if complex is Active
+      if (targetComplex && (targetComplex.status || targetComplex.Status || "Active") === "Active") {
+        const fields = await fetchFieldsByComplex(complexId);
+        allFields = fields;
+      }
       // Fetch complexes for address mapping
       complexes = await fetchFieldComplexes();
     } else {
       // Fetch all fields from all complexes
       complexes = await fetchFieldComplexes();
-      const fieldsPromises = complexes.map(async (complex) => {
+      
+      // Filter only Active complexes for Player pages
+      const activeComplexes = complexes.filter(
+        (complex) => (complex.status || complex.Status || "Active") === "Active"
+      );
+      
+      const fieldsPromises = activeComplexes.map(async (complex) => {
         try {
           return await fetchFieldsByComplex(complex.complexId);
         } catch (error) {
@@ -688,10 +708,18 @@ export async function fetchFields(params = {}) {
       allFields = fieldsArrays.flat();
     }
 
-    // Get complex info for address mapping
-    const complexMap = new Map(complexes.map((c) => [String(c.complexId), c]));
+    // Get complex info for address mapping (only Active complexes)
+    const activeComplexes = complexes.filter(
+      (complex) => (complex.status || complex.Status || "Active") === "Active"
+    );
+    const complexMap = new Map(activeComplexes.map((c) => [String(c.complexId), c]));
 
     return allFields
+      .filter((f) => {
+        // Only include fields from Active complexes
+        const complex = complexMap.get(String(f.complexId));
+        return complex && (complex.status || complex.Status || "Active") === "Active";
+      })
       .filter((f) => !typeId || f.typeId === Number(typeId))
       .map((f) => {
         const complex = complexMap.get(String(f.complexId));
@@ -773,6 +801,14 @@ export async function fetchComplexDetail(complexId, { date, slotId } = {}) {
       }),
     ]);
 
+    // Check if complex is Active - if not, return null for Player pages
+    if (complex && (complex.status || complex.Status || "Active") !== "Active") {
+      return {
+        complex: null,
+        fields: [],
+      };
+    }
+
     return {
       complex: complex
         ? {
@@ -798,6 +834,11 @@ export async function fetchFieldMeta(fieldId) {
     if (!field) return { field: null, complex: null };
 
     const complex = await fetchFieldComplex(field.complexId);
+
+    // Check if complex is Active - if not, return null for Player pages
+    if (complex && (complex.status || complex.Status || "Active") !== "Active") {
+      return { field: null, complex: null };
+    }
 
     return {
       field: {
@@ -825,6 +866,11 @@ export async function fetchFieldDetail(fieldId) {
     if (!field) return null;
 
     const complex = await fetchFieldComplex(field.complexId);
+    
+    // Check if complex is Active - if not, return null for Player pages
+    if (complex && (complex.status || complex.Status || "Active") !== "Active") {
+      return null;
+    }
 
     // Normalize field type information - support multiple field name variations
     const typeId =

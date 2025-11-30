@@ -930,3 +930,102 @@ export async function deleteCancellationRequest(cancellationId) {
     };
   }
 }
+
+/**
+ * Update booking status
+ * @param {number|string} bookingId - The booking ID
+ * @param {string} status - New status (e.g., "Completed", "Cancelled")
+ * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+ */
+export async function updateBookingStatus(bookingId, status) {
+  try {
+    if (!bookingId) {
+      return {
+        success: false,
+        error: "Booking ID is required",
+      };
+    }
+
+    if (!status) {
+      return {
+        success: false,
+        error: "Status is required",
+      };
+    }
+
+    // Check if user is authenticated
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Bạn cần đăng nhập để cập nhật trạng thái booking",
+      };
+    }
+
+    const numericBookingId = Number(bookingId);
+    if (isNaN(numericBookingId) || numericBookingId <= 0) {
+      return {
+        success: false,
+        error: "Booking ID không hợp lệ",
+      };
+    }
+
+    // Try different endpoint variations for updating booking status
+    const endpoints = [
+      `https://sep490-g19-zxph.onrender.com/api/Booking/${numericBookingId}/status`,
+      `https://sep490-g19-zxph.onrender.com/api/Booking/update-status/${numericBookingId}`,
+      `https://sep490-g19-zxph.onrender.com/api/Booking/${numericBookingId}`,
+    ];
+
+    const payload = {
+      status: String(status),
+    };
+
+    let lastError = null;
+    for (const endpoint of endpoints) {
+      try {
+        // Try PUT first
+        const response = await apiClient.put(endpoint, payload);
+        return {
+          success: true,
+          data: response.data,
+          message: `Đã cập nhật trạng thái booking sang "${status}"`,
+        };
+      } catch (putError) {
+        lastError = putError;
+        // If PUT fails with 404 or 405, try PATCH
+        if (putError.response?.status === 404 || putError.response?.status === 405) {
+          try {
+            const response = await apiClient.patch(endpoint, payload);
+            return {
+              success: true,
+              data: response.data,
+              message: `Đã cập nhật trạng thái booking sang "${status}"`,
+            };
+          } catch (patchError) {
+            lastError = patchError;
+            continue;
+          }
+        }
+        // If it's not a 404/405, stop trying
+        if (putError.response?.status !== 404 && putError.response?.status !== 405) {
+          break;
+        }
+      }
+    }
+
+    // If all endpoints failed, return error
+    const errorMessage = handleApiError(lastError);
+    return {
+      success: false,
+      error: errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  } catch (error) {
+    console.error("Error updating booking status:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error: errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}

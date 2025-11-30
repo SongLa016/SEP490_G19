@@ -904,6 +904,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      }, [currentUserId, loadBookings]);
 
+
      // Load time slots and schedules when complex, fields, or selectedFieldForSchedule changes
      useEffect(() => {
           if (selectedComplex && fields.length > 0) {
@@ -1325,19 +1326,35 @@ export default function ScheduleManagement({ isDemo = false }) {
                          });
                          await loadFieldSchedules();
                     } else {
+                         // Check if error is related to booking
+                         const errorMessage = deleteResult.error || '';
+                         const isBookingError = errorMessage.toLowerCase().includes('booking') || 
+                                               errorMessage.toLowerCase().includes('đặt sân') ||
+                                               errorMessage.toLowerCase().includes('entity changes') ||
+                                               errorMessage.toLowerCase().includes('foreign key') ||
+                                               errorMessage.toLowerCase().includes('constraint');
+                         
                          await Swal.fire({
                               icon: 'error',
                               title: 'Lỗi',
-                              text: deleteResult.error || 'Không thể xóa lịch trình',
+                              text: isBookingError ? 'Bạn không thể xóa vì đang có lịch đặt sân này' : (deleteResult.error || 'Không thể xóa lịch trình'),
                               confirmButtonColor: '#ef4444'
                          });
                     }
                } catch (error) {
                     console.error('Error deleting schedule:', error);
+                    // Check if error is related to booking
+                    const errorMessage = error.message || error.response?.data?.message || '';
+                    const isBookingError = errorMessage.toLowerCase().includes('booking') || 
+                                         errorMessage.toLowerCase().includes('đặt sân') ||
+                                         errorMessage.toLowerCase().includes('entity changes') ||
+                                         errorMessage.toLowerCase().includes('foreign key') ||
+                                         errorMessage.toLowerCase().includes('constraint');
+                    
                     await Swal.fire({
                          icon: 'error',
                          title: 'Lỗi',
-                         text: error.message || 'Có lỗi xảy ra',
+                         text: isBookingError ? 'Bạn không thể xóa vì đang có lịch đặt sân này' : (error.message || 'Có lỗi xảy ra'),
                          confirmButtonColor: '#ef4444'
                     });
                }

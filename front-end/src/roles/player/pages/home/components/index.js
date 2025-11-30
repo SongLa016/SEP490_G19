@@ -8,6 +8,8 @@ export { QuickBookingSection } from "./QuickBookingSection";
 export { CommunityMatchmakingSection } from "./CommunityMatchmakingSection";
 export { UserReviewsSection } from "./UserReviewsSection";
 export { EventsSection } from "./EventsSection";
+export { PromotionsSection } from "./PromotionsSection";
+export { CancellationPoliciesSection } from "./CancellationPoliciesSection";
 export { MobileAppSection } from "./MobileAppSection";
 export { WhyChooseUsSection } from "./WhyChooseUsSection";
 export { NewsletterSection } from "./NewsletterSection";

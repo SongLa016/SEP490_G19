@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Section } from "../../../../shared/components/ui";
 import { useNavigate } from "react-router-dom";
 import Lenis from "lenis";
-import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, QuickBookingSection, CommunityMatchmakingSection, UserReviewsSection, EventsSection, MobileAppSection, WhyChooseUsSection, NewsletterSection, CTASection } from "./components";
+import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, QuickBookingSection, CommunityMatchmakingSection, UserReviewsSection, CancellationPoliciesSection, MobileAppSection, WhyChooseUsSection, NewsletterSection, CTASection } from "./components";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
 
 export default function HomePage({ user }) {
@@ -79,7 +79,7 @@ export default function HomePage({ user }) {
           { key: "overview-quick", element: <QuickBookingSection user={user} /> },
           { key: "overview-community", element: <CommunityMatchmakingSection /> },
           { key: "overview-reviews", element: <UserReviewsSection /> },
-          { key: "overview-events", element: <EventsSection /> }
+          { key: "overview-cancellation", element: <CancellationPoliciesSection /> }
      ];
 
      // ============================================

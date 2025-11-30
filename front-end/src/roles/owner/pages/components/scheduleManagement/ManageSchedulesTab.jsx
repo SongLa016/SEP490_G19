@@ -268,13 +268,29 @@ export default function ManageSchedulesTab({
                               successCount++;
                          } else {
                               errorCount++;
-                              errors.push(`ID ${scheduleId}: ${result.error || 'Lỗi không xác định'}`);
+                              // Check if error is related to booking
+                              const errorMessage = result.error || '';
+                              const isBookingError = errorMessage.toLowerCase().includes('booking') || 
+                                                   errorMessage.toLowerCase().includes('đặt sân') ||
+                                                   errorMessage.toLowerCase().includes('entity changes') ||
+                                                   errorMessage.toLowerCase().includes('foreign key') ||
+                                                   errorMessage.toLowerCase().includes('constraint');
+                              
+                              errors.push(`ID ${scheduleId}: ${isBookingError ? 'Bạn không thể xóa vì đang có lịch đặt sân này' : (result.error || 'Lỗi không xác định')}`);
                          }
                          // Small delay to avoid overwhelming server
                          await new Promise(resolve => setTimeout(resolve, 100));
                     } catch (error) {
                          errorCount++;
-                         errors.push(`ID ${scheduleId}: ${error.message || 'Lỗi không xác định'}`);
+                         // Check if error is related to booking
+                         const errorMessage = error.message || error.response?.data?.message || '';
+                         const isBookingError = errorMessage.toLowerCase().includes('booking') || 
+                                              errorMessage.toLowerCase().includes('đặt sân') ||
+                                              errorMessage.toLowerCase().includes('entity changes') ||
+                                              errorMessage.toLowerCase().includes('foreign key') ||
+                                              errorMessage.toLowerCase().includes('constraint');
+                         
+                         errors.push(`ID ${scheduleId}: ${isBookingError ? 'Bạn không thể xóa vì đang có lịch đặt sân này' : (error.message || 'Lỗi không xác định')}`);
                     }
                }
 
@@ -709,19 +725,50 @@ export default function ManageSchedulesTab({
                                                                            </div>
                                                                       </div>
                                                                       <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-200">
-                                                                           <Select
-                                                                                value={status}
-                                                                                onValueChange={(newStatus) => onUpdateStatus(scheduleId, newStatus)}
-                                                                           >
-                                                                                <SelectTrigger className="w-[120px] h-7 text-xs flex-1">
-                                                                                     <SelectValue />
-                                                                                </SelectTrigger>
-                                                                                <SelectContent>
-                                                                                     <SelectItem value="Available">Available</SelectItem>
-                                                                                     <SelectItem value="Booked">Booked</SelectItem>
-                                                                                     <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                                                                </SelectContent>
-                                                                           </Select>
+                                                                           {/* Check if there's a booking for this schedule */}
+                                                                           {(() => {
+                                                                                const fieldId = schedule.fieldId ?? schedule.FieldID ?? schedule.fieldID;
+                                                                                const slotId = schedule.slotId ?? schedule.SlotID ?? schedule.SlotId ?? schedule.slotID;
+                                                                                const scheduleDateRaw = schedule.date || schedule.scheduleDate || schedule.ScheduleDate;
+                                                                                let bookingDate = null;
+                                                                                if (typeof scheduleDateRaw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(scheduleDateRaw)) {
+                                                                                     const [year, month, day] = scheduleDateRaw.split('-').map(Number);
+                                                                                     bookingDate = new Date(year, month - 1, day);
+                                                                                     bookingDate.setHours(12, 0, 0, 0);
+                                                                                } else if (date) {
+                                                                                     bookingDate = new Date(date);
+                                                                                     bookingDate.setHours(12, 0, 0, 0);
+                                                                                }
+                                                                                const hasBooking = getBookingInfo && bookingDate && fieldId && slotId ? getBookingInfo(Number(fieldId), bookingDate, Number(slotId)) : null;
+                                                                                
+                                                                                return (
+                                                                                     <Select
+                                                                                          value={status}
+                                                                                          onValueChange={(newStatus) => {
+                                                                                               if (hasBooking) {
+                                                                                                    Swal.fire({
+                                                                                                         icon: 'warning',
+                                                                                                         title: 'Không thể thay đổi trạng thái',
+                                                                                                         text: 'Lịch trình này đã có booking. Không thể thay đổi trạng thái khi đã có booking.',
+                                                                                                         confirmButtonColor: '#f59e0b'
+                                                                                                    });
+                                                                                                    return;
+                                                                                               }
+                                                                                               onUpdateStatus(scheduleId, newStatus);
+                                                                                          }}
+                                                                                          disabled={!!hasBooking}
+                                                                                     >
+                                                                                          <SelectTrigger className={`w-[120px] h-7 text-xs flex-1 ${hasBooking ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                                                                               <SelectValue />
+                                                                                          </SelectTrigger>
+                                                                                          <SelectContent>
+                                                                                               <SelectItem value="Available">Available</SelectItem>
+                                                                                               <SelectItem value="Booked">Booked</SelectItem>
+                                                                                               <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                                                                          </SelectContent>
+                                                                                     </Select>
+                                                                                );
+                                                                           })()}
                                                                            <Button
                                                                                 onClick={() => onDeleteSchedule(scheduleId, `${fieldName} - ${slotName} - ${dateStr}`)}
                                                                                 variant="outline"
@@ -928,10 +975,22 @@ export default function ManageSchedulesTab({
                                                             <div className="flex items-center justify-center gap-2">
                                                                  <Select
                                                                       value={status}
-                                                                      onValueChange={(newStatus) => onUpdateStatus(scheduleId, newStatus)}
+                                                                      onValueChange={(newStatus) => {
+                                                                           if (bookingInfo) {
+                                                                                Swal.fire({
+                                                                                     icon: 'warning',
+                                                                                     title: 'Không thể thay đổi trạng thái',
+                                                                                     text: 'Lịch trình này đã có booking. Không thể thay đổi trạng thái khi đã có booking.',
+                                                                                     confirmButtonColor: '#f59e0b'
+                                                                                });
+                                                                                return;
+                                                                           }
+                                                                           onUpdateStatus(scheduleId, newStatus);
+                                                                      }}
+                                                                      disabled={!!bookingInfo}
                                                                       className="rounded-2xl"
                                                                  >
-                                                                      <SelectTrigger className="w-[140px] h-8 text-xs">
+                                                                      <SelectTrigger className={`w-[140px] h-8 text-xs ${bookingInfo ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                                                            <SelectValue />
                                                                       </SelectTrigger>
                                                                       <SelectContent>

@@ -21,11 +21,11 @@ import {
      QrCode
 } from "lucide-react";
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Card, Button, Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../../../shared/components/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Card, Button, Table, TableHeader, TableHead, TableRow, TableBody, TableCell, Pagination, usePagination } from "../../../shared/components/ui";
 import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import { DemoRestrictedModal } from "../../../shared";
-import { cancelBooking, fetchCancellationRequests, confirmCancellation, deleteCancellationRequest, fetchBookingsByOwner, confirmPaymentAPI, confirmByOwner, fetchCancellationRequestById } from "../../../shared/services/bookings";
+import { cancelBooking, fetchCancellationRequests, confirmCancellation, deleteCancellationRequest, fetchBookingsByOwner, confirmPaymentAPI, confirmByOwner, fetchCancellationRequestById, updateBookingStatus } from "../../../shared/services/bookings";
 import { profileService } from "../../../shared/services/profileService";
 import { fetchFieldScheduleById } from "../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
@@ -943,6 +943,7 @@ const BookingManagement = ({ isDemo = false }) => {
           // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [ownerId, activeTab]);
 
+
      // Load cancellations when tab changes
      useEffect(() => {
           if (activeTab === 'cancellations') {
@@ -997,6 +998,22 @@ const BookingManagement = ({ isDemo = false }) => {
                return matchesDate && matchesStatus && matchesField && matchesSearch;
           });
      }, [bookings, selectedDate, statusFilter, fieldFilter, searchTerm]);
+
+     // Pagination for bookings
+     const bookingsPagination = usePagination(filteredBookings, 10);
+
+     // Pagination for cancellation requests
+     const cancellationsPagination = usePagination(cancellationRequests, 10);
+
+     // Reset pagination when switching tabs
+     useEffect(() => {
+          if (activeTab === 'bookings' && bookingsPagination.currentPage !== 1) {
+               bookingsPagination.handlePageChange(1);
+          } else if (activeTab === 'cancellations' && cancellationsPagination.currentPage !== 1) {
+               cancellationsPagination.handlePageChange(1);
+          }
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, [activeTab]);
 
      const getStatusColor = (status) => {
           switch (status) {
@@ -1231,20 +1248,21 @@ const BookingManagement = ({ isDemo = false }) => {
                                              <p className="text-gray-600 mt-4">Đang tải danh sách booking...</p>
                                         </div>
                                    ) : (
-                                        <Table>
-                                             <TableHeader>
-                                                  <TableRow className="bg-teal-700">
-                                                       <TableHead className="text-white font-semibold">Khách hàng</TableHead>
-                                                       <TableHead className="text-white font-semibold">Sân & Thời gian</TableHead>
-                                                       <TableHead className="text-white font-semibold">Trạng thái</TableHead>
-                                                       <TableHead className="text-white font-semibold">Thanh toán</TableHead>
-                                                       <TableHead className="text-white font-semibold">Tiền cọc</TableHead>
-                                                       <TableHead className="text-white font-semibold">Số tiền</TableHead>
-                                                       <TableHead className="text-white font-semibold">Thao tác</TableHead>
-                                                  </TableRow>
-                                             </TableHeader>
-                                             <TableBody>
-                                                  {filteredBookings.map((booking) => (
+                                        <>
+                                             <Table>
+                                                  <TableHeader>
+                                                       <TableRow className="bg-teal-700">
+                                                            <TableHead className="text-white font-semibold">Khách hàng</TableHead>
+                                                            <TableHead className="text-white font-semibold">Sân & Thời gian</TableHead>
+                                                            <TableHead className="text-white font-semibold">Trạng thái</TableHead>
+                                                            <TableHead className="text-white font-semibold">Thanh toán</TableHead>
+                                                            <TableHead className="text-white font-semibold">Tiền cọc</TableHead>
+                                                            <TableHead className="text-white font-semibold">Số tiền</TableHead>
+                                                            <TableHead className="text-white font-semibold">Thao tác</TableHead>
+                                                       </TableRow>
+                                                  </TableHeader>
+                                                  <TableBody>
+                                                       {bookingsPagination.currentItems.map((booking) => (
                                                        <TableRow key={booking.id} className="hover:bg-teal-50/50 transition-colors">
                                                             <TableCell>
                                                                  <div className="space-y-1">
@@ -1338,8 +1356,20 @@ const BookingManagement = ({ isDemo = false }) => {
                                                             </TableCell>
                                                        </TableRow>
                                                   ))}
-                                             </TableBody>
-                                        </Table>
+                                                  </TableBody>
+                                             </Table>
+                                             {bookingsPagination.totalPages > 1 && (
+                                                  <div className="p-4">
+                                                       <Pagination
+                                                            currentPage={bookingsPagination.currentPage}
+                                                            totalPages={bookingsPagination.totalPages}
+                                                            onPageChange={bookingsPagination.handlePageChange}
+                                                            itemsPerPage={bookingsPagination.itemsPerPage}
+                                                            totalItems={bookingsPagination.totalItems}
+                                                       />
+                                                  </div>
+                                             )}
+                                        </>
                                    )}
 
                                    {!loadingBookings && filteredBookings.length === 0 && (
@@ -1626,20 +1656,21 @@ const BookingManagement = ({ isDemo = false }) => {
                                         <p className="text-gray-600">Không có yêu cầu hủy nào</p>
                                    </div>
                               ) : (
-                                   <div className="overflow-x-auto">
-                                        <Table className="rounded-2xl border border-teal-300">
-                                             <TableHeader>
-                                                  <TableRow>
-                                                       <TableHead>ID</TableHead>
-                                                       <TableHead>Booking ID</TableHead>
-                                                       <TableHead>Lý do</TableHead>
-                                                       <TableHead>Ngày tạo</TableHead>
-                                                       <TableHead>QR Hoàn tiền</TableHead>
-                                                       <TableHead className="text-center">Thao tác</TableHead>
-                                                  </TableRow>
-                                             </TableHeader>
-                                             <TableBody>
-                                                  {cancellationRequests.map((request) => (
+                                   <>
+                                        <div className="overflow-x-auto">
+                                             <Table className="rounded-2xl border border-teal-300">
+                                                  <TableHeader>
+                                                       <TableRow>
+                                                            <TableHead>ID</TableHead>
+                                                            <TableHead>Booking ID</TableHead>
+                                                            <TableHead>Lý do</TableHead>
+                                                            <TableHead>Ngày tạo</TableHead>
+                                                            <TableHead>QR Hoàn tiền</TableHead>
+                                                            <TableHead className="text-center">Thao tác</TableHead>
+                                                       </TableRow>
+                                                  </TableHeader>
+                                                  <TableBody>
+                                                       {cancellationsPagination.currentItems.map((request) => (
                                                        <TableRow key={request.requestId || request.id || request.cancellationId}>
                                                             <TableCell className="font-medium">
                                                                  #{request.requestId || request.id || request.cancellationId}
@@ -1738,9 +1769,21 @@ const BookingManagement = ({ isDemo = false }) => {
                                                             </TableCell>
                                                        </TableRow>
                                                   ))}
-                                             </TableBody>
-                                        </Table>
-                                   </div>
+                                                  </TableBody>
+                                             </Table>
+                                        </div>
+                                        {cancellationsPagination.totalPages > 1 && (
+                                             <div className="p-4">
+                                                  <Pagination
+                                                       currentPage={cancellationsPagination.currentPage}
+                                                       totalPages={cancellationsPagination.totalPages}
+                                                       onPageChange={cancellationsPagination.handlePageChange}
+                                                       itemsPerPage={cancellationsPagination.itemsPerPage}
+                                                       totalItems={cancellationsPagination.totalItems}
+                                                  />
+                                             </div>
+                                        )}
+                                   </>
                               )}
                          </Card>
                     )}

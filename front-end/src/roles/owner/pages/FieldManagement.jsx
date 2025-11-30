@@ -61,6 +61,7 @@ const FieldManagement = ({ isDemo = false }) => {
           image: "", // Preview URL (ObjectURL for File or URL string from Cloudinary)
           imageFile: null, // File object (new upload) or null
           imageUrl: null, // URL string from Cloudinary (existing image)
+          status: "Active", // Status: "Active" or "Deactive"
      });
      const [formData, setFormData] = useState({
           complexId: "",
@@ -402,7 +403,7 @@ const FieldManagement = ({ isDemo = false }) => {
                          updatePayload.append("Name", complexFormData.name);
                          updatePayload.append("Address", complexFormData.address);
                          updatePayload.append("Description", complexFormData.description || "");
-                         updatePayload.append("Status", "Active");
+                         updatePayload.append("Status", complexFormData.status || "Active"); // Preserve status
                          updatePayload.append("ImageFile", complexFormData.imageFile);
                          if (complexFormData.lat !== null && complexFormData.lat !== undefined) {
                               updatePayload.append("Lat", String(complexFormData.lat));
@@ -419,7 +420,7 @@ const FieldManagement = ({ isDemo = false }) => {
                               address: complexFormData.address,
                               description: complexFormData.description || "",
                               imageUrl: complexFormData.imageUrl || "", // Send existing URL
-                              status: "Active",
+                              status: complexFormData.status || "Active", // Preserve status
                          };
 
                          if (complexFormData.lat !== null && complexFormData.lat !== undefined) {
@@ -897,6 +898,7 @@ const FieldManagement = ({ isDemo = false }) => {
 
           // Load complex data with imageUrl from Cloudinary
           const complexImageUrl = complex.imageUrl || complex.ImageUrl || null;
+          const complexStatus = complex.status || complex.Status || "Active";
           
           setComplexFormData({
                name: complex.name || "",
@@ -908,6 +910,7 @@ const FieldManagement = ({ isDemo = false }) => {
                image: complexImageUrl || "",
                imageUrl: complexImageUrl, // Store URL for backend
                imageFile: null, // No new file selected
+               status: complexStatus, // Preserve current status
           });
           setEditingComplexId(complex.complexId || complex.ComplexID);
           setComplexImageUploading(false);
@@ -966,7 +969,8 @@ const FieldManagement = ({ isDemo = false }) => {
 
           const complexId = complex.complexId || complex.ComplexID;
           const currentStatus = complex.status || "Active";
-          const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
+          // API expects "Deactive" not "Inactive"
+          const newStatus = currentStatus === "Active" ? "Deactive" : "Active";
 
           // Optimistic update
           setComplexes(prevComplexes =>
@@ -978,32 +982,65 @@ const FieldManagement = ({ isDemo = false }) => {
           );
 
           try {
-               const updatePayload = {
-                    complexId: complexId,
-                    ownerId: complex.ownerId || complex.OwnerID,
-                    name: complex.name || complex.Name,
-                    address: complex.address || complex.Address,
-                    description: complex.description || complex.Description || "",
-                    image: complex.image || complex.Image || "",
-                    status: newStatus,
-               };
+               // API requires FormData format (multipart/form-data) based on API documentation
+               const imageUrl = complex.imageUrl || complex.ImageUrl || complex.image || complex.Image || "";
+               
+               const updatePayload = new FormData();
+               updatePayload.append("ComplexId", String(complexId));
+               updatePayload.append("OwnerId", String(complex.ownerId || complex.OwnerID));
+               updatePayload.append("Name", complex.name || complex.Name);
+               updatePayload.append("Address", complex.address || complex.Address);
+               updatePayload.append("Description", complex.description || complex.Description || "");
+               updatePayload.append("Status", newStatus);
+               updatePayload.append("CreatedAt", complex.createdAt || complex.CreatedAt || "");
+
+               // Try to fetch and include existing image as File object
+               // This ensures API receives ImageFile field which it might require
+               if (imageUrl) {
+                    try {
+                         const response = await fetch(imageUrl);
+                         if (response.ok) {
+                              const blob = await response.blob();
+                              const fileName = imageUrl.split('/').pop() || 'image.jpg';
+                              const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
+                              updatePayload.append("ImageFile", file);
+                         }
+                    } catch (fetchError) {
+                         console.warn('Could not fetch image for FormData:', fetchError);
+                         // Continue without ImageFile - backend might preserve existing image
+                    }
+               }
 
                if (complex.lat !== null && complex.lat !== undefined) {
-                    updatePayload.lat = complex.lat || complex.Lat;
+                    updatePayload.append("Lat", String(complex.lat || complex.Lat));
                }
                if (complex.lng !== null && complex.lng !== undefined) {
-                    updatePayload.lng = complex.lng || complex.Lng;
+                    updatePayload.append("Lng", String(complex.lng || complex.Lng));
                }
 
                await updateFieldComplex(complexId, updatePayload);
 
+               // Reload data to ensure UI is in sync
+               await loadData();
+
                await Swal.fire({
                     icon: 'success',
-                    title: newStatus === "Active" ? 'Đã kích hoạt!' : 'Đã vô hiệu hóa!',
-                    text: `Khu sân "${complex.name || complex.Name}" đã được ${newStatus === "Active" ? "kích hoạt" : "vô hiệu hóa"}.`,
+                    title: newStatus === "Active" ? 'Đã kích hoạt thành công!' : 'Đã vô hiệu hóa thành công!',
+                    html: `
+                         <div class="text-center">
+                              <p class="text-lg font-semibold text-gray-800 mb-2">
+                                   Khu sân: <span class="text-blue-600">"${complex.name || complex.Name}"</span>
+                              </p>
+                              <p class="text-gray-600">
+                                   Trạng thái đã được thay đổi thành <strong class="text-green-600">${newStatus === "Active" ? "Đang hoạt động" : "Đã vô hiệu hóa"}</strong>
+                              </p>
+                         </div>
+                    `,
+                    confirmButtonText: 'Đóng',
                     confirmButtonColor: '#10b981',
-                    timer: 2000,
-                    showConfirmButton: false
+                    timer: 3000,
+                    showConfirmButton: true,
+                    allowOutsideClick: true
                });
           } catch (error) {
                // Revert optimistic update on error
@@ -1016,10 +1053,20 @@ const FieldManagement = ({ isDemo = false }) => {
                );
 
                console.error('Error toggling complex status:', error);
+               console.error('Error details:', {
+                    complexId,
+                    currentStatus,
+                    newStatus,
+                    complex: complex
+               });
+               
+               const errorMessage = error.message || error.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái khu sân';
+               const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : '';
+               
                await Swal.fire({
                     icon: 'error',
                     title: 'Lỗi!',
-                    text: error.message || 'Có lỗi xảy ra khi cập nhật trạng thái khu sân',
+                    html: `<p>${errorMessage}</p>${errorDetails ? `<p class="text-xs mt-2 text-gray-500">Chi tiết: ${errorDetails}</p>` : ''}`,
                     confirmButtonColor: '#ef4444'
                });
           }
@@ -1039,6 +1086,7 @@ const FieldManagement = ({ isDemo = false }) => {
                image: "",
                imageFile: null,
                imageUrl: null,
+               status: "Active", // Reset to default
           });
           setComplexImageUploading(false);
           if (complexImageInputRef.current) {
@@ -1264,7 +1312,7 @@ const FieldManagement = ({ isDemo = false }) => {
                                                                       ? "bg-green-50 text-green-700 border-green-200"
                                                                       : "bg-gray-100 text-gray-600 border-gray-300"
                                                                       }`}>
-                                                                      {(complex.status || "Active") === "Active" ? "Đang hoạt động" : "Đã vô hiệu hóa"}
+                                                                      {(complex.status || "Active") === "Active" ? "Đang hoạt động" : (complex.status === "Deactive" ? "Đã vô hiệu hóa" : "Đã vô hiệu hóa")}
                                                                  </span>
                                                             </div>
                                                             {complex.address && (
