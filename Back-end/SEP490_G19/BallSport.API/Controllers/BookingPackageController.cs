@@ -50,10 +50,10 @@ namespace BallSport.API.Controllers
             });
         }
 
-        [HttpPost("complete/{packageId}")]
-        public async Task<IActionResult> Complete(int packageId)
+        [HttpPut("complete/{BookingPackageId}")]
+        public async Task<IActionResult> Complete(int BookingPackageId)
         {
-            var success = await _monthlyService.CompleteBookingPackageAsync(packageId);
+            var success = await _monthlyService.CompleteBookingPackageAsync(BookingPackageId);
 
             if (!success)
             {
@@ -69,13 +69,11 @@ namespace BallSport.API.Controllers
         {
             try
             {
-                // Gọi service để hủy slot, nhận QR trả về
-                string refundQrUrl = await _monthlyService.CancelPackageSessionAsync(sessionId);
-
+                var result = await _monthlyService.CancelPackageSessionAsync(sessionId);
                 return Ok(new
                 {
                     message = "Session cancelled successfully",
-                    refundQr = refundQrUrl
+                    data = result
                 });
             }
             catch (Exception ex)
@@ -86,6 +84,8 @@ namespace BallSport.API.Controllers
                 });
             }
         }
+
+
 
     }
 }

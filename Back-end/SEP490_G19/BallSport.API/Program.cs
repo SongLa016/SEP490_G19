@@ -124,8 +124,8 @@ services.AddScoped<PaymentRepository>();
 services.AddScoped<BookingPackageRepository>();
 services.AddScoped<MonthlyPackagePaymentRepo>();
 services.AddScoped<PackageSessionRepository>();
-
-
+services.AddScoped<BookingPackageSessionDraftRepository>();
+services.AddScoped<MonthlyBookingService>();
 
 
 // --- Bank accounts ---
