@@ -1,7 +1,6 @@
 ﻿// File: BallSport.Application/Services/MatchFinding/MatchFindingService.cs
 using BallSport.Application.Common.Extensions;
 using BallSport.Application.DTOs.MatchFinding;
-using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories.MatchFinding;
 using Microsoft.EntityFrameworkCore;

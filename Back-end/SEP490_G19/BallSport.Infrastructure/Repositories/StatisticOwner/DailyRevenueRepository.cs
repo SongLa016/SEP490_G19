@@ -1,5 +1,5 @@
 ﻿using System.Globalization;
-using BallSport.Infrastructure.Data;
+using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 using static BallSport.Infrastructure.Repositories.StatisticOwner.DailyRevenueRepository;
 

@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BallSport.Application.DTOs.RatingBooking;
-using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories.RatingBooking;
 using Microsoft.EntityFrameworkCore;

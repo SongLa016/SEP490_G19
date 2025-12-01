@@ -1,5 +1,5 @@
 ﻿// File: BallSport.Infrastructure/Repositories/MatchFinding/MatchFindingRepository.cs
-using BallSport.Infrastructure.Data;
+ 
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 

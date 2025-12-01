@@ -1,5 +1,5 @@
 ﻿// File: ReportRepository.cs – COPY TOÀN BỘ CÁI NÀY!
-using BallSport.Infrastructure.Data;
+ 
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 

@@ -9,7 +9,6 @@ using BallSport.Application.Services.MatchFinding;
 using BallSport.Application.Services.OwnerStatistics;
 using BallSport.Application.Services.RatingBooking;
 using BallSport.Application.Services.StatisticOwner;
-using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
 using BallSport.Infrastructure.Repositories.AdminStatistics;

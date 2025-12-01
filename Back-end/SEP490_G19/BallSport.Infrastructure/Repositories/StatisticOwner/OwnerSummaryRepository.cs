@@ -1,5 +1,5 @@
 ﻿using System.Threading.Tasks;
-using BallSport.Infrastructure.Data;
+using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace BallSport.Infrastructure.Repositories.StatisticOwner

@@ -1,5 +1,4 @@
-﻿using BallSport.Infrastructure.Data;
-using BallSport.Infrastructure.Models;
+﻿using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
