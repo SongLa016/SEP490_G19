@@ -20,7 +20,7 @@ import {
      deleteAllNotifications
 } from "../services/notifications";
 import { deletePost } from "../services/posts";
-import { deleteComment } from "../services/comments";
+import { deleteComment, fetchCommentById } from "../services/comments";
 import Swal from "sweetalert2";
 
 const NOTIFICATION_TYPES = [
@@ -31,6 +31,142 @@ const NOTIFICATION_TYPES = [
      { label: "Kết quả báo cáo", value: "ReportResult" },
      { label: "Nhắc đến", value: "Mention" },
 ];
+
+const COMMENT_NOTIFICATION_TYPES = new Set(["comment", "newcomment", "reply", "mention"]);
+
+const cleanString = (value) => (typeof value === "string" ? value.trim() : "");
+
+const getNotificationType = (notification) => cleanString(notification?.type || notification?.notificationType).toLowerCase();
+
+const isCommentNotification = (notification) => COMMENT_NOTIFICATION_TYPES.has(getNotificationType(notification));
+
+const getCommentIdFromNotification = (notification) => {
+     const candidates = [
+          notification?.commentId,
+          notification?.commentID,
+          notification?.CommentId,
+          notification?.CommentID,
+          notification?.targetCommentId,
+          notification?.targetCommentID,
+          notification?.TargetCommentId,
+          notification?.TargetCommentID,
+          notification?.relatedCommentId,
+          notification?.relatedCommentID,
+          notification?.Comment?.id,
+          notification?.comment?.id,
+          notification?.metadata?.commentId,
+          notification?.metadata?.CommentId,
+     ];
+
+     const fallbackTarget = notification?.targetId || notification?.targetID || notification?.TargetId || notification?.TargetID;
+     return (candidates.find((id) => id !== undefined && id !== null && id !== "") ?? fallbackTarget) || null;
+};
+
+const extractActorNameFromNotification = (notification) => {
+     const sources = [
+          notification?.actorName,
+          notification?.actorFullName,
+          notification?.actorUsername,
+          notification?.senderName,
+          notification?.senderFullName,
+          notification?.senderUsername,
+          notification?.triggerUserName,
+          notification?.triggerFullName,
+          notification?.triggeredByName,
+          notification?.createdByName,
+          notification?.metadata?.actorName,
+          notification?.metadata?.fullName,
+          notification?.metadata?.senderName,
+          notification?.metadata?.createdByName,
+          notification?.data?.actorName,
+          notification?.data?.fullName,
+          notification?.data?.senderName,
+          notification?.additionalData?.actorName,
+          notification?.additionalData?.fullName,
+          notification?.additionalData?.senderName,
+     ];
+
+     return cleanString(sources.find((value) => cleanString(value)) || "");
+};
+
+const formatNotificationMessage = (notification) => {
+     const actorName = cleanString(notification?.actorName);
+     const baseMessage = cleanString(notification?.message) || cleanString(notification?.title);
+
+     if (!actorName && !baseMessage) {
+          return "Bạn có thông báo mới";
+     }
+
+     if (!actorName) {
+          return baseMessage;
+     }
+
+     if (!baseMessage) {
+          return actorName;
+     }
+
+     return baseMessage.toLowerCase().includes(actorName.toLowerCase())
+          ? baseMessage
+          : `${actorName} ${baseMessage}`;
+};
+
+const enrichNotificationsWithActors = async (notifications) => {
+     if (!Array.isArray(notifications) || notifications.length === 0) {
+          return notifications || [];
+     }
+
+     const commentCache = new Map();
+
+     const enriched = await Promise.all(
+          notifications.map(async (notification) => {
+               const existingActor = extractActorNameFromNotification(notification);
+
+               if (existingActor) {
+                    return { ...notification, actorName: existingActor };
+               }
+
+               if (!isCommentNotification(notification)) {
+                    return notification;
+               }
+
+               const commentId = getCommentIdFromNotification(notification);
+               if (!commentId) {
+                    return notification;
+               }
+
+               try {
+                    let comment = commentCache.get(commentId);
+                    if (comment === undefined) {
+                         comment = await fetchCommentById(commentId);
+                         commentCache.set(commentId, comment || null);
+                    }
+
+                    if (!comment) {
+                         return notification;
+                    }
+
+                    const actorName =
+                         cleanString(comment.author?.name) ||
+                         cleanString(comment.author?.fullName) ||
+                         cleanString(comment.author?.username) ||
+                         cleanString(comment.fullName) ||
+                         cleanString(comment.userName);
+
+                    return {
+                         ...notification,
+                         actorName: actorName || notification.actorName,
+                         commentContent: comment.content || notification.commentContent,
+                         commentAuthorId: comment.author?.id || notification.commentAuthorId,
+                    };
+               } catch (error) {
+                    console.error("[NotificationsDisplay] Không thể tải bình luận cho thông báo:", commentId, error);
+                    return notification;
+               }
+          })
+     );
+
+     return enriched;
+};
 
 export default function NotificationsDisplay({ userId, className = "" }) {
      const [notifications, setNotifications] = useState([]);
@@ -93,7 +229,8 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                     }
                }
 
-               setNotifications(notificationsData);
+               const enrichedNotifications = await enrichNotificationsWithActors(notificationsData);
+               setNotifications(enrichedNotifications);
           } catch (error) {
                console.error('❌ [NotificationsDisplay] Error loading notifications:', error);
           } finally {
@@ -368,6 +505,7 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                               {displayedNotifications.map((notification) => {
                                    const notificationId = notification.id || notification.notificationId || notification.userNotificationId;
                                    const receivedAt = notification.receivedAt || notification.createdAt || notification.sentAt;
+                                   const messageText = formatNotificationMessage(notification);
                                    return (
                                         <div
                                              key={notificationId}
@@ -402,8 +540,13 @@ export default function NotificationsDisplay({ userId, className = "" }) {
 
                                                        <p className={`text-xs mb-2 ${notification.isRead ? "text-gray-600" : "text-blue-700"
                                                             }`}>
-                                                            {notification.message}
+                                                            {messageText}
                                                        </p>
+                                                       {notification.commentContent && (
+                                                            <p className="text-xs text-gray-500 italic mb-2 line-clamp-2">
+                                                                 “{notification.commentContent}”
+                                                            </p>
+                                                       )}
 
                                                        <div className="flex items-center justify-between">
                                                             <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -563,8 +706,9 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                     const notificationsData = Array.isArray(result.data)
                          ? result.data
                          : result.data?.notifications || result.data?.data || [];
-                    setNotifications(notificationsData);
-                    setUnreadCount(notificationsData.filter(n => !n.isRead).length);
+                    const enrichedNotifications = await enrichNotificationsWithActors(notificationsData);
+                    setNotifications(enrichedNotifications);
+                    setUnreadCount(enrichedNotifications.filter(n => !n.isRead).length);
                }
           } catch (error) {
                console.error('Error loading notifications:', error);
@@ -819,7 +963,7 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                                    const notificationId = notification.id || notification.notificationId || notification.userNotificationId;
                                    const receivedAt = notification.receivedAt || notification.createdAt || notification.sentAt;
                                    const isUnread = !notification.isRead;
-                                   const message = notification.message || notification.title || "Thông báo";
+                                   const message = formatNotificationMessage(notification);
 
                                    return (
                                         <div

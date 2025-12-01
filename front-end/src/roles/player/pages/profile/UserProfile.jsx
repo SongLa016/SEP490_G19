@@ -85,6 +85,8 @@ export default function UserProfile({ user }) {
                          preferredPositions: profile.preferredPositions || profile.PreferredPositions || "",
                          skillLevel: profile.skillLevel || profile.SkillLevel || "",
                          bio: profile.bio || profile.Bio || "",
+                         // Lấy ngày tạo tài khoản từ API (createdAt)
+                         createdAt: profile.createdAt || profile.CreatedAt || user?.createdAt || new Date().toISOString(),
                     };
 
                     setProfileData(prev => ({
@@ -290,7 +292,17 @@ export default function UserProfile({ user }) {
      };
 
      const formatDate = (dateString) => {
-          return new Date(dateString).toLocaleDateString('vi-VN');
+          if (!dateString) return "";
+
+          const date = new Date(dateString);
+          if (isNaN(date.getTime())) return "";
+
+          const day = String(date.getDate()).padStart(2, "0");
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const year = date.getFullYear();
+
+          // Định dạng dd-MM-yyyy
+          return `${day}-${month}-${year}`;
      };
 
      return (

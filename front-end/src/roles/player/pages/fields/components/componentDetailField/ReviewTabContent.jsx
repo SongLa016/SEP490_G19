@@ -1,5 +1,6 @@
 import { Star, MessageSquare, Send } from "lucide-react";
 import { FadeIn, Button, Textarea } from "../../../../../../shared/components/ui";
+import { useState } from "react";
 
 export default function ReviewTabContent({
      reviewStats,
@@ -13,8 +14,13 @@ export default function ReviewTabContent({
      setNewComment,
      setReviewPage,
      onShowToast,
-     onLoginPrompt
+     onLoginPrompt,
+     fieldId,
+     isLoadingRatings,
+     onRatingSubmit,
+     canWriteReview = true
 }) {
+     const [isSubmitting, setIsSubmitting] = useState(false);
      return (
           <FadeIn delay={100}>
                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -62,7 +68,13 @@ export default function ReviewTabContent({
                                    <MessageSquare className="w-5 h-5 text-teal-600" />
                                    <h4 className="font-semibold text-teal-800">Viết đánh giá</h4>
                               </div>
-                              {user ? (
+                              {!canWriteReview ? (
+                                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
+                                        Bạn không thể đánh giá nếu chưa đặt sân. Vui lòng vào mục
+                                        <span className="font-semibold"> "Lịch sử đặt sân" </span>
+                                        và đánh giá sau khi sân đã hoàn thành.
+                                   </div>
+                              ) : user ? (
                                    <>
                                         <div className="flex items-center gap-1 mb-3">
                                              {[...Array(5)].map((_, i) => (
@@ -81,14 +93,50 @@ export default function ReviewTabContent({
                                              />
                                              <Button
                                                   type="button"
-                                                  onClick={() => {
-                                                       onShowToast("Cảm ơn bạn! Đánh giá của bạn sẽ được xử lý.", 'success');
-                                                       setNewRating(0);
-                                                       setNewComment("");
+                                                  onClick={async () => {
+                                                       if (!fieldId) {
+                                                            onShowToast("Vui lòng chọn sân để đánh giá.", 'warning');
+                                                            return;
+                                                       }
+                                                       if (newRating === 0) {
+                                                            onShowToast("Vui lòng chọn số sao đánh giá.", 'warning');
+                                                            return;
+                                                       }
+                                                       if (!newComment.trim()) {
+                                                            onShowToast("Vui lòng nhập nhận xét.", 'warning');
+                                                            return;
+                                                       }
+                                                       setIsSubmitting(true);
+                                                       try {
+                                                            if (onRatingSubmit) {
+                                                                 await onRatingSubmit({
+                                                                      fieldId,
+                                                                      stars: newRating,
+                                                                      comment: newComment.trim()
+                                                                 });
+                                                            }
+                                                            onShowToast("Cảm ơn bạn! Đánh giá của bạn sẽ được xử lý.", 'success');
+                                                            setNewRating(0);
+                                                            setNewComment("");
+                                                       } catch (error) {
+                                                            onShowToast(error.message || "Không thể gửi đánh giá.", 'error');
+                                                       } finally {
+                                                            setIsSubmitting(false);
+                                                       }
                                                   }}
-                                                  className="absolute right-2 bottom-2 inline-flex items-center gap-1 bg-teal-600 hover:bg-teal-700 text-white text-sm px-3 py-1.5 rounded-lg"
+                                                  disabled={isSubmitting || !fieldId}
+                                                  className="absolute right-2 bottom-2 inline-flex items-center gap-1 bg-teal-600 hover:bg-teal-700 text-white text-sm px-3 py-1.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                              >
-                                                  <Send className="w-4 h-4" /> Gửi đánh giá
+                                                  {isSubmitting ? (
+                                                       <>
+                                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                            Đang gửi...
+                                                       </>
+                                                  ) : (
+                                                       <>
+                                                            <Send className="w-4 h-4" /> Gửi đánh giá
+                                                       </>
+                                                  )}
                                              </Button>
                                         </div>
                                    </>
@@ -105,7 +153,12 @@ export default function ReviewTabContent({
                                    </div>
                               )}
                          </div>
-                         {reviewStats.total > 0 && (
+                         {isLoadingRatings ? (
+                              <div className="text-center py-8">
+                                   <div className="inline-block w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                                   <p className="mt-2 text-sm text-gray-600">Đang tải đánh giá...</p>
+                              </div>
+                         ) : reviewStats.total > 0 ? (
                               <div className="space-y-4">
                                    {complexReviews.slice((reviewPage - 1) * reviewsPerPage, reviewPage * reviewsPerPage).map((review, idx) => (
                                         <div key={idx} className="border border-teal-100 rounded-xl p-4 shadow-sm">
@@ -146,6 +199,11 @@ export default function ReviewTabContent({
                                              </Button>
                                         </div>
                                    )}
+                              </div>
+                         ) : (
+                              <div className="text-center py-8 text-gray-500">
+                                   <MessageSquare className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                                   <p className="text-sm">Chưa có đánh giá nào cho sân này.</p>
                               </div>
                          )}
                     </div>

@@ -330,3 +330,27 @@ export async function fetchUserStatistics(params = {}) {
   }
 }
 
+// AdminStatistics - Recent Activities
+export async function fetchRecentActivities() {
+  try {
+    ensureAuthenticated();
+    const response = await apiClient.get(
+      "/api/admin/statistics/recent-activities"
+    );
+    return {
+      ok: true,
+      data: unwrapData(response),
+    };
+  } catch (error) {
+    const reason = extractErrorMessage(
+      error,
+      "Không thể lấy hoạt động gần đây."
+    );
+    console.error(
+      "[AdminStatisticsService] fetchRecentActivities failed:",
+      error
+    );
+    return { ok: false, reason };
+  }
+}
+

@@ -51,6 +51,7 @@ export * from "./services/promotions";
 export * from "./services/timeSlots";
 export * from "./services/fieldTypes";
 export * from "./services/posts";
+export * from "./services/ratings";
 export * from "./utils/authStore";
 export * from "./utils/bookingStore";
 export * from "./utils/cancellationCalculator";

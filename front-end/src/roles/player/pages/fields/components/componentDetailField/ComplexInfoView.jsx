@@ -10,6 +10,7 @@ export default function ComplexInfoView({
      cheapestSlot,
      priciestSlot,
      selectedSlotId,
+     reviewStats,
      onFieldSelect,
      onQuickBookField
 }) {
@@ -44,6 +45,21 @@ export default function ComplexInfoView({
      const handlePageClick = (page) => {
           setCurrentPage(page);
      };
+
+     const ratingSummary = (() => {
+          const total = reviewStats?.total ?? 0;
+          const average = total > 0 ? Number(reviewStats?.average || 0) : null;
+          if (average === null) {
+               return {
+                    displayValue: "Chưa có đánh giá",
+                    total: 0
+               };
+          }
+          return {
+               displayValue: `${average.toFixed(1)} / 5`,
+               total
+          };
+     })();
 
      return (
           <div className="grid grid-cols-1 gap-5">
@@ -86,7 +102,15 @@ export default function ComplexInfoView({
                               <div className="flex items-center gap-2">
                                    <Star className="w-4 h-4 text-yellow-500" />
                                    <span className="text-gray-700 font-medium">
-                                        Đánh giá: <b className="text-yellow-500">{complex?.rating || "Chưa có đánh giá"}</b> <p className="inline-block text-xs text-gray-500"> / 5</p>
+                                        Đánh giá:{" "}
+                                        <b className="text-yellow-500">
+                                             {ratingSummary.displayValue}
+                                        </b>
+                                        {ratingSummary.total > 0 && (
+                                             <span className="inline-block text-xs text-gray-500 ml-1">
+                                                  ({ratingSummary.total} đánh giá)
+                                             </span>
+                                        )}
                                    </span>
                               </div>
                               <div className="flex items-center gap-2">

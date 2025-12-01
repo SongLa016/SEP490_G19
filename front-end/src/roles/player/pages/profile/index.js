@@ -5,22 +5,29 @@ import { Button } from "../../../../shared/components/ui";
 import UserProfile from "./UserProfile";
 import ProfileSettings from "./ProfileSettings";
 import ProfileStats from "./ProfileStats";
+import { useTranslation } from "../../../../shared/hooks/useTranslation";
 
 export default function ProfileIndex({ user }) {
   const [activeTab, setActiveTab] = useState("profile");
+  const { t } = useTranslation();
 
   const tabs = [
-    { id: "profile", label: "Hồ sơ", icon: User, component: UserProfile },
+    {
+      id: "profile",
+      label: t("profilePage.tabs.profile"),
+      icon: User,
+      component: UserProfile,
+    },
     {
       id: "settings",
-      label: "Cài đặt",
+      label: t("profilePage.tabs.settings"),
       icon: Settings,
       component: ProfileSettings,
     },
 
     {
       id: "stats",
-      label: "Thống kê",
+      label: t("profilePage.tabs.stats"),
       icon: BarChart3,
       component: ProfileStats,
     },
@@ -49,13 +56,15 @@ export default function ProfileIndex({ user }) {
                     </div>
                     <div>
                       <h1 className="text-3xl font-bold text-gray-900">
-                        {activeTabData?.label || "Hồ sơ"}
+                        {activeTabData?.label || t("profilePage.tabs.profile")}
                       </h1>
                       <p className="text-gray-600 mt-1">
                         {activeTab === "profile" &&
-                          "Quản lý thông tin cá nhân của bạn"}
+                          t("profilePage.descriptions.profile")}
                         {activeTab === "settings" &&
-                          "Cài đặt tài khoản và bảo mật"}
+                          t("profilePage.descriptions.settings")}
+                        {activeTab === "stats" &&
+                          t("profilePage.descriptions.stats")}
                       </p>
                     </div>
                   </div>
@@ -68,7 +77,7 @@ export default function ProfileIndex({ user }) {
                       className="border-teal-300 text-teal-700 hover:bg-teal-50 hover:text-teal-900 rounded-xl"
                     >
                       <Heart className="w-4 h-4 mr-2" />
-                      Yêu thích
+                      {t("profilePage.favorite")}
                     </Button>
                   </div>
                 </div>
@@ -81,7 +90,7 @@ export default function ProfileIndex({ user }) {
                     className="flex-1 border-teal-300 text-teal-700 hover:bg-teal-50 hover:text-teal-900 rounded-xl"
                   >
                     <Heart className="w-4 h-4 mr-2" />
-                    Yêu thích
+                    {t("profilePage.favorite")}
                   </Button>
                 </div>
               </div>

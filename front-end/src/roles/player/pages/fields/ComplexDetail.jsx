@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { Container, Section, LoadingPage, LoadingSpinner } from "../../../../shared/components/ui";
 import { fetchComplexDetail, fetchTimeSlotsByField, fetchFieldDetail, fetchCancellationPolicyByComplex, fetchPromotionsByComplex, fetchPublicFieldSchedulesByField, fetchFieldTypes, fetchDepositPolicyByField } from "../../../../shared/index";
+import { fetchRatingsByComplex } from "../../../../shared/services/ratings";
 import { normalizeFieldType } from "../../../../shared/services/fieldTypes";
 import { useFieldSchedules } from "../../../../shared/hooks";
 import BookingModal from "../../../../shared/components/BookingModal";
@@ -191,6 +192,8 @@ export default function ComplexDetail({ user }) {
      const [newComment, setNewComment] = useState("");
      const [reviewPage, setReviewPage] = useState(1);
      const reviewsPerPage = 6;
+     const [fieldRatings, setFieldRatings] = useState([]); // legacy state (không dùng gửi từ tab nữa)
+     const [isLoadingRatings, setIsLoadingRatings] = useState(false);
 
      useEffect(() => {
           let ignore = false;
@@ -799,7 +802,44 @@ export default function ComplexDetail({ user }) {
           }
      }, [selectedFieldId, selectedField, fields]);
 
-     const complexReviews = useMemo(() => complex?.reviews || [], [complex?.reviews]);
+     // Lấy danh sách đánh giá cho cả khu sân qua API /api/ratings/complex/{complexId}
+     const complexIdForRatings = useMemo(() => {
+          if (complex?.complexId) return complex.complexId;
+          if (complex?.id) return complex.id;
+          // fallback: nếu đang ở route /complex/:id
+          return !isFieldRoute && id ? Number(id) : null;
+     }, [complex, id, isFieldRoute]);
+
+     useEffect(() => {
+          const loadComplexRatings = async () => {
+               if (!complexIdForRatings) {
+                    setFieldRatings([]);
+                    return;
+               }
+               setIsLoadingRatings(true);
+               try {
+                    const ratings = await fetchRatingsByComplex(complexIdForRatings);
+                    setFieldRatings(ratings || []);
+               } catch (error) {
+                    console.error("Error loading complex ratings:", error);
+                    setFieldRatings([]);
+               } finally {
+                    setIsLoadingRatings(false);
+               }
+          };
+          loadComplexRatings();
+     }, [complexIdForRatings]);
+
+     // Map ratings từ API sang format dùng cho ReviewTabContent
+     const complexReviews = useMemo(() => {
+          return fieldRatings.map(rating => ({
+               user: rating.userName || "Người dùng",
+               rating: rating.stars || 0,
+               comment: rating.comment || "",
+               date: rating.createdAt ? new Date(rating.createdAt).toLocaleDateString('vi-VN') : ""
+          }));
+     }, [fieldRatings]);
+     
      const reviewStats = useMemo(() => {
           const total = complexReviews.length || 0;
           const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
@@ -979,6 +1019,7 @@ export default function ComplexDetail({ user }) {
                                         fieldTypeMap={fieldTypeMap}
                                         selectedFieldCheapestSlot={selectedFieldCheapestSlot}
                                         selectedFieldPriciestSlot={selectedFieldPriciestSlot}
+                                        reviewStats={reviewStats}
                                         onBack={() => setSelectedFieldId(null)}
                                         onFieldSelect={(fieldId) => setSelectedFieldId(fieldId)}
                                         onQuickBookField={handleQuickBookField}
@@ -1000,6 +1041,9 @@ export default function ComplexDetail({ user }) {
                                         setReviewPage={setReviewPage}
                                         onShowToast={showToastMessage}
                                         onLoginPrompt={() => navigate('/login')}
+                                        fieldId={null}
+                                        isLoadingRatings={isLoadingRatings}
+                                        canWriteReview={false}
                                    />
                               )}
 

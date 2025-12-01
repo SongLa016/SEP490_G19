@@ -100,82 +100,70 @@ export default function BookingHistory({ user }) {
           // Brief loading indication for filter changes
      }, [statusFilter, sortBy, dateFrom, dateTo, currentPage]);
 
-     useEffect(() => {
-          let isMounted = true;
+     // Create a reusable loadBookings function
+     const loadBookings = React.useCallback(async () => {
+          if (!playerId) {
+               setBookings([]);
+               setGroupedBookings({});
+               return;
+          }
 
-          const loadBookings = async () => {
-               if (!playerId) {
-                    setBookings([]);
-                    setGroupedBookings({});
-                    return;
+          setIsLoadingBookings(true);
+          setBookingError("");
+          try {
+               const apiResult = await fetchBookingsByPlayer(playerId);
+               let bookingList = [];
+               if (apiResult.success) {
+                    bookingList = normalizeApiBookings(apiResult.data);
+               } else {
+                    bookingList = listBookingsByUser(String(playerId));
+                    setBookingError(apiResult.error || "Không thể tải dữ liệu đặt sân từ API. Đang hiển thị dữ liệu cục bộ (nếu có).");
                }
 
-               setIsLoadingBookings(true);
-               setBookingError("");
-               try {
-                    const apiResult = await fetchBookingsByPlayer(playerId);
-                    let bookingList = [];
-                    if (apiResult.success) {
-                         bookingList = normalizeApiBookings(apiResult.data);
-                    } else {
-                         bookingList = listBookingsByUser(String(playerId));
-                         setBookingError(apiResult.error || "Không thể tải dữ liệu đặt sân từ API. Đang hiển thị dữ liệu cục bộ (nếu có).");
-                    }
+               setBookings(bookingList);
+               setGroupedBookings(buildRecurringGroups(bookingList));
 
-                    if (!isMounted) return;
-                    setBookings(bookingList);
-                    setGroupedBookings(buildRecurringGroups(bookingList));
-
-                    // Fetch schedule data for each booking
-                    const schedulePromises = bookingList
-                         .filter(b => b.scheduleId)
-                         .map(async (booking) => {
-                              try {
-                                   const scheduleResult = await fetchFieldScheduleById(booking.scheduleId);
-                                   if (scheduleResult.success && scheduleResult.data) {
-                                        return {
-                                             scheduleId: booking.scheduleId,
-                                             data: scheduleResult.data
-                                        };
-                                   }
-                              } catch (error) {
-                                   console.error(`Error fetching schedule ${booking.scheduleId}:`, error);
+               // Fetch schedule data for each booking
+               const schedulePromises = bookingList
+                    .filter(b => b.scheduleId)
+                    .map(async (booking) => {
+                         try {
+                              const scheduleResult = await fetchFieldScheduleById(booking.scheduleId);
+                              if (scheduleResult.success && scheduleResult.data) {
+                                   return {
+                                        scheduleId: booking.scheduleId,
+                                        data: scheduleResult.data
+                                   };
                               }
-                              return null;
-                         });
-
-                    const scheduleResults = await Promise.all(schedulePromises);
-                    const scheduleMap = {};
-                    scheduleResults.forEach(result => {
-                         if (result && result.scheduleId) {
-                              scheduleMap[result.scheduleId] = result.data;
+                         } catch (error) {
+                              console.error(`Error fetching schedule ${booking.scheduleId}:`, error);
                          }
+                         return null;
                     });
 
-                    if (!isMounted) return;
-                    setScheduleDataMap(scheduleMap);
-
-               } catch (error) {
-
-                    const fallback = listBookingsByUser(String(playerId));
-                    if (isMounted) {
-                         setBookingError(error.message || "Không thể tải lịch sử đặt sân.");
-                         setBookings(fallback);
-                         setGroupedBookings(buildRecurringGroups(fallback));
+               const scheduleResults = await Promise.all(schedulePromises);
+               const scheduleMap = {};
+               scheduleResults.forEach(result => {
+                    if (result && result.scheduleId) {
+                         scheduleMap[result.scheduleId] = result.data;
                     }
-               } finally {
-                    if (isMounted) {
-                         setIsLoadingBookings(false);
-                    }
-               }
-          };
+               });
 
-          loadBookings();
+               setScheduleDataMap(scheduleMap);
 
-          return () => {
-               isMounted = false;
-          };
+          } catch (error) {
+               const fallback = listBookingsByUser(String(playerId));
+               setBookingError(error.message || "Không thể tải lịch sử đặt sân.");
+               setBookings(fallback);
+               setGroupedBookings(buildRecurringGroups(fallback));
+          } finally {
+               setIsLoadingBookings(false);
+          }
      }, [playerId]);
+
+     useEffect(() => {
+          loadBookings();
+     }, [loadBookings]);
 
      const loadMatchRequestsForBookings = React.useCallback(async () => {
           if (!bookings || bookings.length === 0) {
@@ -911,10 +899,12 @@ export default function BookingHistory({ user }) {
           setShowRatingModal(true);
      };
 
-     const handleRatingSuccess = (result) => {
+     const handleRatingSuccess = async (result) => {
           setShowRatingModal(false);
           setSelectedBooking(null);
           Swal.fire('Cảm ơn bạn!', 'Đánh giá của bạn đã được gửi thành công.', 'success');
+          // Reload bookings to refresh the UI
+          await loadBookings();
      };
 
 

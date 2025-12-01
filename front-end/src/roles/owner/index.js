@@ -11,6 +11,7 @@ export { default as PaymentTracking } from "./pages/PaymentTracking";
 export { default as NotificationsManagement } from "./pages/NotificationsManagement";
 export { default as TimeSlotManagement } from "./pages/TimeSlotManagement";
 export { default as BankAccountManagement } from "./pages/BankAccountManagement";
+export { default as ProfileSettings } from "./pages/ProfileSettings";
 
 // Demo exports
 export { default as OwnerDemoDashboard } from "./pages/OwnerDemoDashboard";

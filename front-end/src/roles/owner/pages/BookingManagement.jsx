@@ -26,10 +26,38 @@ import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import { DemoRestrictedModal } from "../../../shared";
 import { cancelBooking, fetchCancellationRequests, confirmCancellation, deleteCancellationRequest, fetchBookingsByOwner, confirmPaymentAPI, confirmByOwner, fetchCancellationRequestById, updateBookingStatus } from "../../../shared/services/bookings";
-import { profileService } from "../../../shared/services/profileService";
 import { fetchFieldScheduleById } from "../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
+import axios from "axios";
 
+// Helper function to fetch player profile by ID using PlayerProfile API
+const fetchPlayerProfile = async (playerId) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.get(
+      `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${playerId}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      }
+    );
+    // API returns: {fullName, phone, email, avatar, dateOfBirth, gender, address, preferredPositions, skillLevel}
+    const profileData = response.data || {};
+    return {
+      ok: true,
+      data: profileData,
+      profile: profileData,
+    };
+  } catch (error) {
+    console.error(`Failed to fetch player profile ${playerId}:`, error);
+    return {
+      ok: false,
+      reason: error.message || "Lấy thông tin khách hàng thất bại",
+    };
+  }
+};
 
 const BookingManagement = ({ isDemo = false }) => {
      const { user, logout } = useAuth();
@@ -720,8 +748,19 @@ const BookingManagement = ({ isDemo = false }) => {
                if (status.includes('cancel')) {
                     normalizedStatus = 'cancelled';
                } else if (status === 'confirmed' || (status.includes('confirm') && !status.includes('complete'))) {
-                    // Keep confirmed as confirmed - don't auto-convert to completed
-                    normalizedStatus = 'confirmed';
+                    // Check if booking time has passed - auto-convert to completed
+                    if (endTime && !isNaN(endTime.getTime())) {
+                         const now = new Date();
+                         if (endTime < now) {
+                              // Booking time has passed, auto-convert to completed
+                              normalizedStatus = 'completed';
+                         } else {
+                              normalizedStatus = 'confirmed';
+                         }
+                    } else {
+                         // No endTime available, keep as confirmed
+                         normalizedStatus = 'confirmed';
+                    }
                } else if (status === 'completed' || status.includes('complete')) {
                     // Backend says completed
                     normalizedStatus = 'completed';
@@ -781,8 +820,8 @@ const BookingManagement = ({ isDemo = false }) => {
                     bookingId: numericBookingId,
                     field: fieldName,
                     customer: item.customerName || item.customer || item.userName || "Khách hàng",
-                    phone: item.customerPhone || item.phone || "",
-                    email: item.customerEmail || item.email || "",
+                    phone: item.customerPhone || item.phone || item.Phone || "",
+                    email: item.customerEmail || item.email || item.Email || "",
                     date: bookingDate,
                     timeSlot: finalTimeSlot,
                     status: normalizedStatus,
@@ -836,22 +875,28 @@ const BookingManagement = ({ isDemo = false }) => {
                          result.data.map(async (booking) => {
                               let enrichedBooking = { ...booking };
 
-                              // Fetch user info
+                              // Fetch customer info using PlayerProfile API
                               if (booking.userId || booking.userID) {
                                    try {
                                         const userId = booking.userId || booking.userID;
-                                        const userResult = await profileService.getProfile(userId);
+                                        const userResult = await fetchPlayerProfile(userId);
                                         if (userResult.ok && userResult.data) {
                                              const userData = userResult.profile || userResult.data;
+                                             // API returns: {fullName, phone, email, ...}
+                                             const customerPhone = userData.phone || userData.Phone || userData.phoneNumber || userData.PhoneNumber || '';
                                              enrichedBooking = {
                                                   ...enrichedBooking,
-                                                  customerName: userData.fullName || userData.name || userData.userName,
-                                                  customerPhone: userData.phoneNumber || userData.phone,
-                                                  customerEmail: userData.email,
+                                                  customerName: userData.fullName || userData.name || userData.userName || userData.FullName || 'Khách hàng',
+                                                  customerPhone: customerPhone,
+                                                  customerEmail: userData.email || userData.Email || '',
                                              };
+                                             // Debug log to verify phone is being set
+                                             if (!customerPhone) {
+                                                  console.warn(`No phone found for user ${userId}:`, userData);
+                                             }
                                         }
                                    } catch (error) {
-                                        console.error(`Failed to fetch user ${booking.userId}:`, error);
+                                        console.error(`Failed to fetch customer profile ${booking.userId}:`, error);
                                    }
                               }
 
@@ -985,8 +1030,26 @@ const BookingManagement = ({ isDemo = false }) => {
           }
      };
 
+     // Auto-update booking status from confirmed to completed if time has passed
+     const bookingsWithAutoStatus = useMemo(() => {
+          return bookings.map(booking => {
+               // If booking is confirmed and endTime has passed, auto-update to completed
+               if (booking.status === 'confirmed' && booking.endTime) {
+                    try {
+                         const endTime = new Date(booking.endTime);
+                         if (!isNaN(endTime.getTime()) && endTime < new Date()) {
+                              return { ...booking, status: 'completed' };
+                         }
+                    } catch (error) {
+                         console.error('Error checking booking endTime:', error);
+                    }
+               }
+               return booking;
+          });
+     }, [bookings]);
+
      const filteredBookings = useMemo(() => {
-          return bookings.filter(booking => {
+          return bookingsWithAutoStatus.filter(booking => {
                const matchesDate = !selectedDate || booking.date === selectedDate;
                const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
                const matchesField = fieldFilter === "all" || booking.field === fieldFilter;
@@ -997,7 +1060,7 @@ const BookingManagement = ({ isDemo = false }) => {
 
                return matchesDate && matchesStatus && matchesField && matchesSearch;
           });
-     }, [bookings, selectedDate, statusFilter, fieldFilter, searchTerm]);
+     }, [bookingsWithAutoStatus, selectedDate, statusFilter, fieldFilter, searchTerm]);
 
      // Pagination for bookings
      const bookingsPagination = usePagination(filteredBookings, 10);

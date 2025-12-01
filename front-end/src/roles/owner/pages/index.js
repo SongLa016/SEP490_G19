@@ -3,6 +3,7 @@ export { default as FieldManagement } from "./FieldManagement";
 export { default as BookingManagement } from "./BookingManagement";
 export { default as PricingManagement } from "./PricingManagement";
 export { default as RevenueReports } from "./RevenueReports";
+export { default as ProfileSettings } from "./ProfileSettings";
 
 // Legacy exports for existing pages
 export { default as ScheduleManagement } from "./ScheduleManagement";

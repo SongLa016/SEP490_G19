@@ -174,6 +174,8 @@ export default function FieldSearch({ user }) {
                     if (preset.selectedPrice !== undefined) setSelectedPrice(preset.selectedPrice);
                     if (preset.selectedRating !== undefined) setSelectedRating(preset.selectedRating);
                     if (preset.sortBy !== undefined) setSortBy(preset.sortBy);
+                    if (preset.typeTab !== undefined) setTypeTab(preset.typeTab);
+                    if (preset.activeTab !== undefined) setActiveTab(preset.activeTab);
                     window.localStorage.removeItem("searchPreset");
                     setForceList(true);
                } else {

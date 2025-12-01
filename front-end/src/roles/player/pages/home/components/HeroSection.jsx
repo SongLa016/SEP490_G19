@@ -5,7 +5,16 @@ import { Search } from "lucide-react";
 import { Container, Section, Card, CardContent, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../shared/components/ui";
 
 
-export const HeroSection = ({ searchQuery, setSearchQuery, selectedLocation, setSelectedLocation, selectedPrice, setSelectedPrice, onSearch }) => {
+export const HeroSection = ({
+     searchQuery,
+     setSearchQuery,
+     selectedLocation,
+     setSelectedLocation,
+     selectedPrice,
+     setSelectedPrice,
+     onSearch,
+     locationOptions = []
+}) => {
 
      const [searchFocused, setSearchFocused] = useState(false);
      const heroRef = useRef(null);
@@ -175,15 +184,16 @@ export const HeroSection = ({ searchQuery, setSearchQuery, selectedLocation, set
                                                   </motion.div>
                                                   <hr className="w-[1px] h-10 bg-white" />
                                                   <Select value={getLocationValue()} onValueChange={handleLocationChange}>
-                                                       <SelectTrigger className="md:w-20 w-10 px-1 bg-transparent border-0 rounded-xl text-white focus:border-b-2 focus:border-teal-500 focus:outline-none focus:ring-0 focus-visible:border-b-2 focus-visible:border-teal-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
-                                                            <SelectValue placeholder="All Locations" />
+                                                       <SelectTrigger className="md:w-28 w-24 px-1 bg-transparent border-0 rounded-xl text-white focus:border-b-2 focus:border-teal-500 focus:outline-none focus:ring-0 focus-visible:border-b-2 focus-visible:border-teal-500 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
+                                                            <SelectValue placeholder="Tất cả khu vực" />
                                                        </SelectTrigger>
                                                        <SelectContent>
-                                                            <SelectItem value="all">All Locations</SelectItem>
-                                                            <SelectItem value="quan1">Quận Hoàn Kiếm</SelectItem>
-                                                            <SelectItem value="quan3">Quận Ba Đình</SelectItem>
-                                                            <SelectItem value="quan7">Quận Đống Đa</SelectItem>
-                                                            <SelectItem value="quan10">Quận Hoàn Kiếm0</SelectItem>
+                                                            <SelectItem value="all">Tất cả khu vực</SelectItem>
+                                                            {locationOptions.map((option) => (
+                                                                 <SelectItem key={option.value} value={option.value}>
+                                                                      {option.label}
+                                                                 </SelectItem>
+                                                            ))}
                                                        </SelectContent>
                                                   </Select>
                                                   <hr className="w-[1px] h-10 bg-white" />

@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate, BrowserRouter, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ModalProvider } from "./contexts/ModalContext";
+import { LanguageProvider } from "./contexts/LanguageContext";
 import MainLayout from "./shared/layouts/MainLayout";
 import AuthLayout from "./shared/layouts/AuthLayout";
 import AdminLayout from "./roles/admin/layouts/AdminLayout";
@@ -64,6 +65,9 @@ const FieldTypeManagement = lazy(() =>
 const BankAccountManagement = lazy(() =>
   import("./roles/owner/pages/BankAccountManagement")
 );
+const ProfileSettings = lazy(() =>
+  import("./roles/owner/pages/ProfileSettings")
+);
 
 // Lazy load other player pages
 const BookingHistory = lazy(() =>
@@ -97,6 +101,9 @@ const PostManagement = lazy(() =>
 );
 const SystemSettings = lazy(() =>
   import("./roles/admin/pages/SystemSettings")
+);
+const AdminProfileSettings = lazy(() =>
+  import("./roles/admin/pages/ProfileSettings")
 );
 
 // Demo Pages
@@ -482,6 +489,24 @@ function AppContent() {
           }
         />
         <Route
+          path="/owner/profile"
+          element={
+            user ? (
+              user.roleName === "Owner" ? (
+                <Suspense fallback={<LoadingFallback />}>
+                  <ProfileSettings />
+                </Suspense>
+              ) : user.roleName === "Admin" ? (
+                <Navigate to="/admin/profile" replace />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <RedirectToAuth />
+            )
+          }
+        />
+        <Route
           path="/search"
           element={
             <MainLayout>
@@ -626,6 +651,22 @@ function AppContent() {
             )
           }
         />
+        <Route
+          path="/admin/profile"
+          element={
+            user ? (
+              user.roleName === "Admin" ? (
+                <Suspense fallback={<LoadingFallback />}>
+                  <AdminProfileSettings />
+                </Suspense>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            ) : (
+              <RedirectToAuth />
+            )
+          }
+        />
         {/* Profile Routes */}
         <Route
           path="/profile"
@@ -649,11 +690,13 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <ModalProvider>
-        <AppContent />
-      </ModalProvider>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <ModalProvider>
+          <AppContent />
+        </ModalProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 

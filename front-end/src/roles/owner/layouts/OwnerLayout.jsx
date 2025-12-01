@@ -16,9 +16,10 @@ import {
      ChevronRight,
      Wallet,
      CreditCard,
-     Tag
+     Tag,
+     User
 } from "lucide-react";
-import { Button } from "../../../shared/components/ui";
+import { Button, Avatar, AvatarImage, AvatarFallback } from "../../../shared/components/ui";
 import logo from "../../../shared/components/assets/logo.png";
 import DemoAccountPromotionManager from "../../../shared/components/DemoAccountPromotionManager";
 import ScrollProgressBar from "../../../shared/components/ScrollProgressBar";
@@ -88,6 +89,7 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
           { id: "deposit-policies", label: "Chính sách đặt cọc", icon: Wallet, path: "/owner/deposit-policies" },
           { id: "notifications", label: "Thông báo", icon: Bell, path: "/owner/notifications" },
           { id: "bank-accounts", label: "Tài khoản ngân hàng", icon: CreditCard, path: "/owner/bank-accounts" },
+          { id: "profile", label: "Cài đặt hồ sơ", icon: User, path: "/owner/profile" },
      ];
 
      const handleNavigation = (path) => {
@@ -206,15 +208,20 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
                          {/* User Info */}
                          <div className="sticky bottom-0 p-4 border-t border-slate-200/50 bg-gradient-to-r from-slate-50 to-slate-100 backdrop-blur-sm z-10">
                               <div className="flex items-center">
-                                   <div className="w-10 h-10 bg-gradient-to-br from-slate-400 to-slate-600 rounded-xl flex items-center justify-center shadow-md">
-                                        <span className="text-sm font-bold text-white">
-                                             {currentUser?.name?.charAt(0) || 'O'}
-                                        </span>
-                                   </div>
+                                   <Avatar className="w-12 h-12 border-2 border-white shadow-lg ring-2 ring-teal-100">
+                                        <AvatarImage 
+                                             src={currentUser?.avatar} 
+                                             alt={currentUser?.name || currentUser?.fullName || 'User'}
+                                             className="object-cover"
+                                        />
+                                        <AvatarFallback className="bg-gradient-to-br from-teal-500 via-teal-600 to-emerald-600 text-white font-bold text-lg shadow-inner">
+                                             {currentUser?.name?.charAt(0)?.toUpperCase() || currentUser?.fullName?.charAt(0)?.toUpperCase() || 'O'}
+                                        </AvatarFallback>
+                                   </Avatar>
                                    {!sidebarCollapsed && (
-                                        <div className="ml-3 flex-1">
-                                             <p className="text-sm font-bold text-slate-900">{currentUser?.name}</p>
-                                             <p className="text-xs text-slate-500 font-medium">{currentUser?.email}</p>
+                                        <div className="ml-3 flex-1 min-w-0">
+                                             <p className="text-sm font-bold text-slate-900 truncate">{currentUser?.name || currentUser?.fullName || 'Owner'}</p>
+                                             <p className="text-xs text-slate-500 font-medium truncate">{currentUser?.email}</p>
                                         </div>
                                    )}
                                    {!isDemo && !sidebarCollapsed && (
@@ -222,7 +229,7 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
                                              onClick={onLoggedOut}
                                              variant="ghost"
                                              size="sm"
-                                             className="rounded-full hover:bg-red-50 hover:text-red-600 transition-all duration-300"
+                                             className="rounded-full hover:bg-red-50 hover:text-red-600 transition-all duration-300 ml-2"
                                         >
                                              <LogOut className="w-4 h-4" />
                                         </Button>

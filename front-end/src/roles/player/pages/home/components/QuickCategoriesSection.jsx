@@ -30,9 +30,9 @@ export const QuickCategoriesSection = ({ featuredFields }) => {
                               <div className="relative -mx-1 overflow-x-auto  scrollbar-none w-2/3">
                                    <div className="px-1 grid grid-cols-3 gap-5 max-w-3xl">
                                         {[
-                                             { id: "san5", label: "Sân 5 người", image: featuredFields[0]?.image, preset: { searchQuery: "Sân 5" } },
-                                             { id: "san7", label: "Sân 7 người", image: featuredFields[1]?.image, preset: { searchQuery: "Sân 7" } },
-                                             { id: "san11", label: "Sân 11 người", image: featuredFields[2]?.image, preset: { searchQuery: "Sân 11" } },
+                                             { id: "san5", label: "Sân 5 người", image: featuredFields[0]?.image, preset: { typeTab: "5vs5" } },
+                                             { id: "san7", label: "Sân 7 người", image: featuredFields[1]?.image, preset: { typeTab: "7vs7" } },
+                                             { id: "san11", label: "Sân 11 người", image: featuredFields[2]?.image, preset: { typeTab: "11vs11" } },
                                         ].map((c) => (
                                              <Button
                                                   key={c.id}
@@ -44,7 +44,11 @@ export const QuickCategoriesSection = ({ featuredFields }) => {
                                                   className="group text-left flex flex-col items-center justify-center w-full hover:scale-105 transition-all duration-300 hover:cursor-pointer m-1 p-0 h-auto bg-transparent border-0 hover:bg-transparent"
                                              >
                                                   <div className="relative rounded-xl overflow-hidden ring-1 ring-white/25 shadow-md">
-                                                       <img src={c.image} alt={c.label} className="h-28 w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                                       <img
+                                                            src={c.image || "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg"}
+                                                            alt={c.label}
+                                                            className="h-28 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                       />
                                                   </div>
                                                   <div className="mt-2 text-white font-semibold drop-shadow">{c.label}</div>
                                              </Button>

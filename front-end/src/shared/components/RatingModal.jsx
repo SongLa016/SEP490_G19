@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Star, MessageSquare, CheckCircle, AlertCircle, MapPin, Calendar, Clock } from "lucide-react";
 import { Button, Textarea, Modal } from "./ui/index";
-import { updateBooking } from "../utils/bookingStore";
+import { createRating } from "../services/ratings";
 
 export default function RatingModal({
      isOpen,
@@ -42,18 +42,24 @@ export default function RatingModal({
 
           setIsProcessing(true);
           try {
-               await updateBooking(booking.id, {
-                    rating,
-                    comment: comment.trim(),
-                    ratedAt: new Date().toISOString()
+               const bookingId = booking.id || booking.bookingId || booking.bookingID;
+               if (!bookingId) {
+                    throw new Error("Không tìm thấy ID đặt sân");
+               }
+
+               const result = await createRating({
+                    bookingId: bookingId,
+                    stars: rating,
+                    comment: comment.trim()
                });
 
                onSuccess({
-                    rating,
-                    comment: comment.trim()
+                    rating: result.stars,
+                    comment: result.comment,
+                    ratingId: result.id
                });
           } catch (error) {
-               console.error("Error updating rating:", error);
+               console.error("Error creating rating:", error);
                setErrors({ general: error.message || "Không thể gửi đánh giá" });
           } finally {
                setIsProcessing(false);

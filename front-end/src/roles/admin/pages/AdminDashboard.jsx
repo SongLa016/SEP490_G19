@@ -36,7 +36,8 @@ import {
      fetchPendingReportStatistics,
      fetchPostStatistics,
      fetchAllUserStatistics,
-     fetchUserStatistics
+     fetchUserStatistics,
+     fetchRecentActivities,
 } from "../../../shared/services/adminStatistics";
 
 export default function AdminDashboard() {
@@ -114,7 +115,8 @@ export default function AdminDashboard() {
                     pendingReportsResult,
                     postsResult,
                     allUsersResult,
-                    usersResult
+                    usersResult,
+                    recentActivitiesResult,
                ] = await Promise.all([
                     fetchOwnerStatistics(),
                     fetchBookingStatistics(),
@@ -124,7 +126,8 @@ export default function AdminDashboard() {
                     fetchPendingReportStatistics(),
                     fetchPostStatistics(),
                     fetchAllUserStatistics(),
-                    fetchUserStatistics()
+                    fetchUserStatistics(),
+                    fetchRecentActivities(),
                ]);
 
                // Cập nhật stats từ các API response
@@ -149,68 +152,46 @@ export default function AdminDashboard() {
 
                setStats(newStats);
 
-               // Tạo recent activities từ dữ liệu thực tế
-               const activities = [];
+               // Map recent activities từ API /api/admin/statistics/recent-activities
+               const mapActivityIcon = (type) => {
+                    const normalized = String(type || "").toLowerCase();
+                    if (normalized.includes("user")) return Users;
+                    if (normalized.includes("booking") || normalized.includes("reservation")) return ClipboardList;
+                    if (normalized.includes("field") || normalized.includes("pitch")) return Building2;
+                    if (normalized.includes("post") || normalized.includes("article")) return FileText;
+                    if (normalized.includes("report") || normalized.includes("violation")) return AlertTriangle;
+                    if (normalized.includes("system")) return Server;
+                    return Activity;
+               };
 
-               if (allUsersResult.ok && allUsersResult.data) {
-                    activities.push({
-                         id: 1,
-                         type: "user_registration",
-                         message: `Tổng số người dùng: ${newStats.totalUsers}`,
-                         time: "Vừa cập nhật",
-                         icon: Users
-                    });
+               let activities = [];
+               if (recentActivitiesResult.ok && Array.isArray(recentActivitiesResult.data)) {
+                    activities = recentActivitiesResult.data.map((item, index) => ({
+                         id: item.id || item.activityId || index + 1,
+                         type: item.type || item.activityType || "info",
+                         message:
+                              item.message ||
+                              item.description ||
+                              item.title ||
+                              `Hoạt động: ${item.activityType || item.type || ""}`,
+                         time: item.timeAgo || item.createdAt || item.timestamp || "Vừa cập nhật",
+                         icon: mapActivityIcon(item.type || item.activityType),
+                    }));
                }
 
-               if (pendingReportsResult.ok && pendingReportsResult.data && newStats.pendingReports > 0) {
-                    activities.push({
-                         id: 2,
-                         type: "violation_report",
-                         message: `Có ${newStats.pendingReports} báo cáo chờ xử lý`,
-                         time: "Vừa cập nhật",
-                         icon: AlertTriangle
-                    });
+               if (activities.length === 0) {
+                    activities = [
+                         {
+                              id: 1,
+                              type: "info",
+                              message: "Chưa có hoạt động gần đây.",
+                              time: "Vừa cập nhật",
+                              icon: Activity,
+                         },
+                    ];
                }
 
-               if (bookingsResult.ok && bookingsResult.data) {
-                    activities.push({
-                         id: 3,
-                         type: "booking_completed",
-                         message: `Tổng số booking: ${newStats.totalBookings}`,
-                         time: "Vừa cập nhật",
-                         icon: ClipboardList
-                    });
-               }
-
-               if (fieldsResult.ok && fieldsResult.data) {
-                    activities.push({
-                         id: 4,
-                         type: "field_added",
-                         message: `Sân hoạt động: ${newStats.activeFields}`,
-                         time: "Vừa cập nhật",
-                         icon: Building2
-                    });
-               }
-
-               if (postsResult.ok && postsResult.data && newStats.totalPosts > 0) {
-                    activities.push({
-                         id: 5,
-                         type: "post_created",
-                         message: `Tổng số bài post: ${newStats.totalPosts}`,
-                         time: "Vừa cập nhật",
-                         icon: FileText
-                    });
-               }
-
-               setRecentActivities(activities.length > 0 ? activities : [
-                    {
-                         id: 1,
-                         type: "info",
-                         message: "Đang tải dữ liệu...",
-                         time: "Vừa cập nhật",
-                         icon: Activity
-                    }
-               ]);
+               setRecentActivities(activities);
 
           } catch (err) {
                console.error("Error loading statistics:", err);

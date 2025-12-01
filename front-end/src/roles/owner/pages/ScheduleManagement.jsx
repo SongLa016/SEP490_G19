@@ -18,9 +18,38 @@ import { fetchAllComplexesWithFields } from "../../../shared/services/fields";
 import { fetchTimeSlots, fetchTimeSlotsByField, createTimeSlot, updateTimeSlot, deleteTimeSlot } from "../../../shared/services/timeSlots";
 import { createFieldSchedule, fetchFieldSchedulesByField, fetchFieldSchedules, updateFieldScheduleStatus, deleteFieldSchedule } from "../../../shared/services/fieldSchedules";
 import { fetchBookingsByOwner } from "../../../shared/services/bookings";
-import { profileService } from "../../../shared/services/profileService";
 import Swal from "sweetalert2";
+import axios from "axios";
 import { DateSelector, MonthlyCalendar, FieldList, ComplexAndFieldSelector, ScheduleGrid, ScheduleModal, TimeSlotModal, TimeSlotsTab, ManageSchedulesTab, StatisticsCards } from "./components/scheduleManagement";
+
+// Helper function to fetch player profile by ID using PlayerProfile API
+const fetchPlayerProfile = async (playerId) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.get(
+      `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${playerId}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      }
+    );
+    // API returns: {fullName, phone, email, avatar, dateOfBirth, gender, address, preferredPositions, skillLevel}
+    const profileData = response.data || {};
+    return {
+      ok: true,
+      data: profileData,
+      profile: profileData,
+    };
+  } catch (error) {
+    console.error(`Failed to fetch player profile ${playerId}:`, error);
+    return {
+      ok: false,
+      reason: error.message || "Lấy thông tin khách hàng thất bại",
+    };
+  }
+};
 
 
 export default function ScheduleManagement({ isDemo = false }) {
@@ -735,26 +764,27 @@ export default function ScheduleManagement({ isDemo = false }) {
                const result = await fetchBookingsByOwner(currentUserId);
                if (result.success && result.data) {
 
-                    // Fetch user info for each booking to get customer details
+                    // Fetch customer info for each booking using PlayerProfile API
                     const bookingsWithUserInfo = await Promise.all(
                          result.data.map(async (booking) => {
                               const userId = booking.userId || booking.userID;
                               if (userId) {
                                    try {
-                                        const userResult = await profileService.getProfile(userId);
+                                        const userResult = await fetchPlayerProfile(userId);
 
                                         if (userResult.ok && userResult.data) {
                                              const userData = userResult.profile || userResult.data || userResult.data.profile || userResult.data.data;
-
+                                             // API returns: {fullName, phone, email, ...}
                                              return {
                                                   ...booking,
                                                   customerName: userData?.fullName || userData?.name || userData?.userName || userData?.FullName || userData?.Name || 'Khách hàng',
-                                                  customerPhone: userData?.phoneNumber || userData?.phone || userData?.PhoneNumber || userData?.Phone || 'N/A',
-                                                  customerEmail: userData?.email || userData?.Email || 'N/A',
+                                                  customerPhone: userData?.phone || userData?.Phone || userData?.phoneNumber || userData?.PhoneNumber || '',
+                                                  customerEmail: userData?.email || userData?.Email || '',
                                              };
                                         } else {
                                         }
                                    } catch (error) {
+                                        console.error(`Failed to fetch customer profile ${userId}:`, error);
                                    }
                               } else {
                               }
@@ -1583,15 +1613,16 @@ export default function ScheduleManagement({ isDemo = false }) {
                     console.log(`[getBookingInfo] Returning booking info from schedule match`);
                     return {
                          bookingId: booking.bookingId || booking.BookingID || booking.id,
-                         customerName: booking.playerName || booking.PlayerName || booking.customerName || booking.fullName || booking.name || 'Khách hàng',
-                         customerPhone: booking.playerPhone || booking.PlayerPhone || booking.phone || booking.Phone || booking.phoneNumber || 'N/A',
-                         customerEmail: booking.customerEmail || booking.email || booking.Email || 'N/A',
+                         // Prioritize customerName, customerPhone, customerEmail from API response
+                         customerName: booking.customerName || booking.CustomerName || booking.playerName || booking.PlayerName || booking.fullName || booking.name || 'Khách hàng',
+                         customerPhone: booking.customerPhone || booking.CustomerPhone || booking.playerPhone || booking.PlayerPhone || booking.phone || booking.Phone || booking.phoneNumber || 'N/A',
+                         customerEmail: booking.customerEmail || booking.CustomerEmail || booking.email || booking.Email || 'N/A',
                          totalPrice: booking.totalPrice || booking.TotalPrice || 0,
                          depositAmount: booking.depositAmount || booking.DepositAmount || 0,
-                         status: booking.status || booking.Status || 'Booked',
+                         status: booking.status || booking.Status || booking.bookingStatus || booking.BookingStatus || 'Booked',
                          paymentStatus: booking.paymentStatus || booking.PaymentStatus || 'N/A',
                          hasOpponent: booking.hasOpponent || booking.HasOpponent || false,
-                         address: booking.address || booking.complexName || booking.ComplexName || 'N/A',
+                         address: booking.address || booking.complexName || booking.ComplexName || booking.fieldName || booking.FieldName || 'N/A',
                          bookingDate: booking.bookingDate || booking.BookingDate || booking.createdDate || booking.CreatedDate || 'N/A'
                     };
                } else {
@@ -1629,15 +1660,16 @@ export default function ScheduleManagement({ isDemo = false }) {
                console.log(`[getBookingInfo] Returning direct booking info:`, directBooking);
                return {
                     bookingId: directBooking.bookingId || directBooking.BookingID || directBooking.id,
-                    customerName: directBooking.playerName || directBooking.PlayerName || directBooking.customerName || directBooking.fullName || directBooking.name || 'Khách hàng',
-                    customerPhone: directBooking.playerPhone || directBooking.PlayerPhone || directBooking.phone || directBooking.Phone || directBooking.phoneNumber || 'N/A',
-                    customerEmail: directBooking.customerEmail || directBooking.email || directBooking.Email || 'N/A',
+                    // Prioritize customerName, customerPhone, customerEmail from API response
+                    customerName: directBooking.customerName || directBooking.CustomerName || directBooking.playerName || directBooking.PlayerName || directBooking.fullName || directBooking.name || 'Khách hàng',
+                    customerPhone: directBooking.customerPhone || directBooking.CustomerPhone || directBooking.playerPhone || directBooking.PlayerPhone || directBooking.phone || directBooking.Phone || directBooking.phoneNumber || 'N/A',
+                    customerEmail: directBooking.customerEmail || directBooking.CustomerEmail || directBooking.email || directBooking.Email || 'N/A',
                     totalPrice: directBooking.totalPrice || directBooking.TotalPrice || 0,
                     depositAmount: directBooking.depositAmount || directBooking.DepositAmount || 0,
-                    status: directBooking.status || directBooking.Status || 'Booked',
+                    status: directBooking.status || directBooking.Status || directBooking.bookingStatus || directBooking.BookingStatus || 'Booked',
                     paymentStatus: directBooking.paymentStatus || directBooking.PaymentStatus || 'N/A',
                     hasOpponent: directBooking.hasOpponent || directBooking.HasOpponent || false,
-                    address: directBooking.address || directBooking.complexName || directBooking.ComplexName || 'N/A',
+                    address: directBooking.address || directBooking.complexName || directBooking.ComplexName || directBooking.fieldName || directBooking.FieldName || 'N/A',
                     bookingDate: directBooking.bookingDate || directBooking.BookingDate || directBooking.createdDate || directBooking.CreatedDate || 'N/A'
                };
           }

@@ -904,3 +904,15 @@ export async function fetchFieldDetail(fieldId) {
     throw error;
   }
 }
+
+// Fetch top booking fields
+export async function fetchTopBookingFields() {
+  try {
+    const response = await apiClient.get("/api/TopField/top-field");
+    return response.data || [];
+  } catch (error) {
+    console.error("Error fetching top booking fields:", error);
+    handleApiError(error);
+    return [];
+  }
+}

@@ -202,4 +202,107 @@ export const profileService = {
       };
     }
   },
+
+  // Update owner/admin profile (PUT request to /api/UserProfile/profile/admin-owner)
+  async updateOwnerAdminProfile(profileData, avatarFile = null) {
+    try {
+      const API_URL =
+        "https://sep490-g19-zxph.onrender.com/api/UserProfile/profile/admin-owner";
+
+      // Format dateOfBirth to YYYY-MM-DD format if provided
+      let formattedDateOfBirth = "";
+      if (profileData.dateOfBirth) {
+        if (
+          typeof profileData.dateOfBirth === "string" &&
+          profileData.dateOfBirth.match(/^\d{4}-\d{2}-\d{2}$/)
+        ) {
+          formattedDateOfBirth = profileData.dateOfBirth;
+        } else {
+          const date = new Date(profileData.dateOfBirth);
+          if (!isNaN(date.getTime())) {
+            formattedDateOfBirth = date.toISOString().split("T")[0];
+          }
+        }
+      }
+
+      // Use FormData for multipart/form-data (supports file upload)
+      const formData = new FormData();
+
+      // Sử dụng PascalCase field names theo API spec
+      if (profileData.fullName !== undefined) {
+        formData.append("FullName", profileData.fullName || "");
+      }
+
+      // Chỉ gửi Avatar nếu có file mới
+      if (avatarFile) {
+        formData.append("Avatar", avatarFile);
+      }
+      // Nếu không có file, không gửi Avatar field (backend sẽ giữ nguyên avatar cũ)
+
+      if (profileData.dateOfBirth !== undefined) {
+        formData.append("DateOfBirth", formattedDateOfBirth || "");
+      }
+
+      if (profileData.gender !== undefined) {
+        formData.append("Gender", profileData.gender || "");
+      }
+
+      if (profileData.address !== undefined) {
+        formData.append("Address", profileData.address || "");
+      }
+
+      // Phone và Email thường không cần gửi trong FormData (backend lấy từ token)
+      // Nhưng nếu API yêu cầu, có thể thêm:
+      // if (profileData.phone !== undefined) {
+      //   formData.append("Phone", profileData.phone || "");
+      // }
+      // if (profileData.email !== undefined) {
+      //   formData.append("Email", profileData.email || "");
+      // }
+
+      // Use separate client for multipart/form-data
+      const requestClient = axios.create({
+        timeout: 30000,
+        headers: {
+          "Content-Type": "multipart/form-data",
+          accept: "*/*",
+        },
+      });
+
+      requestClient.interceptors.request.use(
+        (config) => {
+          const token = localStorage.getItem("token");
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
+          return config;
+        },
+        (error) => {
+          return Promise.reject(error);
+        }
+      );
+
+      // Gọi PUT request
+      const response = await requestClient.put(API_URL, formData);
+
+      // Xử lý response - API có thể trả về avatarUrl thay vì avatar
+      const responseData = response.data || {};
+
+      return {
+        ok: true,
+        data: {
+          ...responseData,
+          // Map avatarUrl về avatar để tương thích với frontend
+          avatar: responseData.avatarUrl || responseData.avatar || null,
+        },
+        message: responseData.message || "Cập nhật profile thành công",
+      };
+    } catch (error) {
+      handleApiError(error);
+      return {
+        ok: false,
+        reason: error.message || "Cập nhật profile thất bại",
+      };
+    }
+  },
 };

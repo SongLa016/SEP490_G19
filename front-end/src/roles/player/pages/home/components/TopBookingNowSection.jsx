@@ -18,7 +18,7 @@ export const TopBookingNowSection = ({ featuredFields, hoveredCardId, setHovered
                     <div className="relative z-10 py-10">
                          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                               <div className="text-center mb-10">
-                                   <h2 className="text-3xl md:text-4xl font-extrabold tracking-wide text-white uppercase">Top book now</h2>
+                                   <h2 className="text-3xl md:text-4xl font-extrabold tracking-wide text-white uppercase">Sân được đặt nhiều nhất</h2>
                               </div>
 
                               <div className={`grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 relative transition-colors`}>
@@ -36,7 +36,7 @@ export const TopBookingNowSection = ({ featuredFields, hoveredCardId, setHovered
                                         onClick={() => navigate("/search")}
                                         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border hover:border-teal-500 bg-teal-500 border-gray-300 hover:text-white hover:bg-teal-600 transition-colors hover:cursor-pointer"
                                    >
-                                        See all
+                                        Xem tất cả
                                         <ArrowRight className="w-4 h-4" />
                                    </Button>
                               </div>

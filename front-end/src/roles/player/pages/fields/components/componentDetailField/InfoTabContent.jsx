@@ -16,6 +16,7 @@ export default function InfoTabContent({
      depositPolicy,
      selectedFieldCheapestSlot,
      selectedFieldPriciestSlot,
+     reviewStats,
      fieldTypeMap = {},
      onBack,
      onFieldSelect,
@@ -55,6 +56,7 @@ export default function InfoTabContent({
                               cheapestSlot={cheapestSlot}
                               priciestSlot={priciestSlot}
                               selectedSlotId={selectedSlotId}
+                              reviewStats={reviewStats}
                               onFieldSelect={onFieldSelect}
                               onQuickBookField={onQuickBookField}
                          />

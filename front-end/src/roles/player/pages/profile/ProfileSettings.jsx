@@ -1,9 +1,14 @@
-import { useState } from "react";
-import { Settings, Shield, Bell, Trash2, AlertTriangle, Phone, Mail, User, Calendar, CheckCircle, AlertCircle, Clock, Activity, Database, Key } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Settings, Shield, Trash2, AlertTriangle, Phone, Mail, User, Calendar, CheckCircle, AlertCircle, Key } from "lucide-react";
 import { Container, Card, CardContent, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, FadeIn, SlideIn } from "../../../../shared/components/ui";
 import ErrorDisplay from "../../../../shared/components/ErrorDisplay";
+import { useTranslation } from "../../../../shared/hooks/useTranslation";
+import { useLanguage } from "../../../../contexts/LanguageContext";
+import { profileService } from "../../../../shared/index";
 
 export default function ProfileSettings({ user }) {
+     const { t } = useTranslation();
+     const { language, changeLanguage } = useLanguage();
      const [activeTab, setActiveTab] = useState("account");
      const [error, setError] = useState('');
      const [info, setInfo] = useState('');
@@ -21,9 +26,68 @@ export default function ProfileSettings({ user }) {
           createdAt: user?.createdAt || new Date().toISOString()
      });
 
+     const formatDate = (dateString) => {
+          if (!dateString) return "";
+
+          // Ưu tiên parse trực tiếp từ chuỗi YYYY-MM-DD để tránh lệch ngày theo múi giờ
+          const match = String(dateString).match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (match) {
+               const [, year, month, day] = match;
+               return `${day}-${month}-${year}`;
+          }
+
+          // Fallback: dùng Date nếu chuỗi không theo định dạng trên
+          const date = new Date(dateString);
+          if (isNaN(date.getTime())) return "";
+
+          const day = String(date.getDate()).padStart(2, "0");
+          const month = String(date.getMonth() + 1).padStart(2, "0");
+          const year = date.getFullYear();
+
+          return `${day}-${month}-${year}`;
+     };
+
+     // Load account info from API on mount
+     useEffect(() => {
+          const token = localStorage.getItem("token");
+          if (!token) return;
+
+          const loadAccountInfo = async () => {
+               try {
+                    const result = await profileService.getProfile();
+                    if (result.ok && result.profile) {
+                         const profile = result.profile;
+                         const mapped = {
+                              email: profile.email || profile.Email || accountInfo.email,
+                              phone: profile.phone || profile.Phone || accountInfo.phone,
+                              fullName: profile.fullName || profile.FullName || accountInfo.fullName,
+                              roleName: profile.roleName || profile.RoleName || accountInfo.roleName || "Player",
+                              emailVerified: profile.emailVerified ?? profile.EmailVerified ?? accountInfo.emailVerified,
+                              status: profile.status || profile.Status || accountInfo.status || "Active",
+                              createdAt: profile.createdAt || profile.CreatedAt || accountInfo.createdAt,
+                         };
+
+                         setAccountInfo((prev) => ({
+                              ...prev,
+                              ...mapped,
+                         }));
+                    } else if (result.reason) {
+                         setError(result.reason);
+                    }
+               } catch (err) {
+                    // eslint-disable-next-line no-console
+                    console.error("Error loading account info:", err);
+                    setError(err.message || "Không thể tải thông tin tài khoản");
+               }
+          };
+
+          loadAccountInfo();
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, []);
+
      const tabs = [
-          { id: "account", label: "Tài khoản", icon: Settings },
-          { id: "security", label: "Bảo mật", icon: Shield },
+          { id: "account", label: t("profileSettings.account"), icon: Settings },
+          { id: "security", label: t("profileSettings.security"), icon: Shield },
 
      ];
 
@@ -61,10 +125,10 @@ export default function ProfileSettings({ user }) {
                                    <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-100 text-teal-600">
                                         <User className="w-5 h-5" />
                                    </div>
-                                   Thông tin tài khoản
+                                   {t("profileSettings.accountInfo")}
                               </CardTitle>
                               <p className="text-sm text-teal-600">
-                                   Kiểm tra và điều chỉnh những dữ liệu cơ bản của tài khoản của bạn
+                                   {t("profileSettings.accountInfoSubtitle")}
                               </p>
                          </CardHeader>
                          <CardContent className="space-y-6 p-6">
@@ -72,7 +136,7 @@ export default function ProfileSettings({ user }) {
                                    <div className="space-y-2">
                                         <label className="flex items-center gap-2 text-sm font-semibold text-teal-800">
                                              <Mail className="w-4 h-4" />
-                                             Email đăng nhập
+                                             {t("profileSettings.email")}
                                         </label>
                                         <div className="relative">
                                              <Input
@@ -88,74 +152,46 @@ export default function ProfileSettings({ user }) {
                                                        {accountInfo.emailVerified ? (
                                                             <>
                                                                  <CheckCircle className="w-3 h-3 mr-1" />
-                                                                 Đã xác thực
+                                                                 {t("profileSettings.emailVerified")}
                                                             </>
                                                        ) : (
                                                             <>
                                                                  <AlertCircle className="w-3 h-3 mr-1" />
-                                                                 Chưa xác thực
+                                                                 {t("profileSettings.emailNotVerified")}
                                                             </>
                                                        )}
                                                   </div>
                                              </div>
                                         </div>
-                                        <p className="pl-1 text-xs text-teal-500">Email được cố định sau khi đăng ký</p>
+                                        <p className="pl-1 text-xs text-teal-500">{t("profileSettings.emailFixed")}</p>
                                    </div>
                                    <div className="space-y-2">
                                         <label className="flex items-center gap-2 text-sm font-semibold text-teal-800">
                                              <Phone className="w-4 h-4" />
-                                             Số điện thoại
+                                             {t("profileSettings.phone")}
                                         </label>
                                         <Input
-                                             value={accountInfo.phone || "Chưa cập nhật"}
+                                             value={accountInfo.phone || t("profileSettings.notUpdated")}
                                              disabled
                                              className="rounded-2xl border-teal-100 bg-white text-teal-900 focus:border-teal-500 focus:ring-teal-500"
                                         />
-                                        <p className="pl-1 text-xs text-teal-500">Cập nhật tại trang Hồ sơ cá nhân</p>
+                                        <p className="pl-1 text-xs text-teal-500">{t("profileSettings.phoneUpdate")}</p>
                                    </div>
                               </div>
-                              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                              <div className="grid grid-cols-1 xl:grid-cols-1 gap-6">
                                    <div className="space-y-2">
-                                        <label className="flex items-center gap-2 text-sm font-semibold text-teal-800">
-                                             <Calendar className="w-4 h-4" />
-                                             Ngày tạo tài khoản
+                                        <label className="block text-sm font-semibold text-teal-800">
+                                             {t("profileSettings.displayLanguage")}
                                         </label>
-                                        <Input
-                                             value={new Date(accountInfo.createdAt).toLocaleDateString('vi-VN')}
-                                             disabled
-                                             className="rounded-2xl border-teal-100 bg-white text-teal-900 focus:border-teal-500 focus:ring-teal-500"
-                                        />
-                                   </div>
-                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                             <label className="block text-sm font-semibold text-teal-800">
-                                                  Ngôn ngữ hiển thị
-                                             </label>
-                                             <Select defaultValue="vi">
-                                                  <SelectTrigger className="rounded-2xl border-teal-100 bg-white focus:border-teal-500 focus:ring-teal-500">
-                                                       <SelectValue placeholder="Chọn ngôn ngữ" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="vi">Tiếng Việt</SelectItem>
-                                                       <SelectItem value="en">English</SelectItem>
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-                                        <div className="space-y-2">
-                                             <label className="block text-sm font-semibold text-teal-800">
-                                                  Múi giờ
-                                             </label>
-                                             <Select defaultValue="Asia/Ho_Chi_Minh">
-                                                  <SelectTrigger className="rounded-2xl border-teal-100 bg-white focus:border-teal-500 focus:ring-teal-500">
-                                                       <SelectValue placeholder="Chọn múi giờ" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="Asia/Ho_Chi_Minh">GMT+7 (Việt Nam)</SelectItem>
-                                                       <SelectItem value="UTC">UTC</SelectItem>
-                                                       <SelectItem value="America/New_York">GMT-5 (New York)</SelectItem>
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
+                                        <Select value={language} onValueChange={changeLanguage}>
+                                             <SelectTrigger className="rounded-2xl border-teal-100 bg-white focus:border-teal-500 focus:ring-teal-500">
+                                                  <SelectValue placeholder={t("profileSettings.selectLanguage")} />
+                                             </SelectTrigger>
+                                             <SelectContent>
+                                                  <SelectItem value="vi">{t("profileSettings.vietnamese")}</SelectItem>
+                                                  <SelectItem value="en">{t("profileSettings.english")}</SelectItem>
+                                             </SelectContent>
+                                        </Select>
                                    </div>
                               </div>
                          </CardContent>
@@ -167,7 +203,7 @@ export default function ProfileSettings({ user }) {
                          <CardHeader className="border-b border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
                               <CardTitle className="flex items-center gap-2 text-teal-900">
                                    <Shield className="w-5 h-5 text-teal-600" />
-                                   Trạng thái tài khoản
+                                   {t("profileSettings.accountStatus")}
                               </CardTitle>
                          </CardHeader>
                          <CardContent className="space-y-4 p-6">
@@ -175,7 +211,7 @@ export default function ProfileSettings({ user }) {
                                    <div className="flex items-center justify-between rounded-2xl border border-green-200 bg-green-50/90 px-4 py-3">
                                         <div className="flex items-center">
                                              <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                                             <span className="text-sm font-semibold text-green-800">Tài khoản hoạt động</span>
+                                             <span className="text-sm font-semibold text-green-800">{t("profileSettings.accountActive")}</span>
                                         </div>
                                         <div className="text-xs font-semibold text-green-600">
                                              {accountInfo.status || "Active"}
@@ -185,14 +221,10 @@ export default function ProfileSettings({ user }) {
                                         <div className="flex flex-wrap items-center justify-between gap-3">
                                              <div className="flex items-center text-gray-700">
                                                   <Calendar className="w-5 h-5 text-gray-600 mr-2" />
-                                                  <span className="text-sm font-semibold">Thành viên từ</span>
+                                                  <span className="text-sm font-semibold">{t("profileSettings.memberSince")}</span>
                                              </div>
                                              <span className="text-sm text-gray-600">
-                                                  {new Date(accountInfo.createdAt).toLocaleDateString('vi-VN', {
-                                                       year: 'numeric',
-                                                       month: 'long',
-                                                       day: 'numeric'
-                                                  })}
+                                                  {formatDate(accountInfo.createdAt)}
                                              </span>
                                         </div>
                                    </div>
@@ -216,9 +248,9 @@ export default function ProfileSettings({ user }) {
                                    <div className="flex items-start gap-3">
                                         <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5" />
                                         <div>
-                                             <h4 className="text-base font-semibold text-red-700">Hành động nguy hiểm</h4>
+                                             <h4 className="text-base font-semibold text-red-700">{t("profileSettings.deleteAccountWarning")}</h4>
                                              <p className="mt-1 text-sm text-red-600">
-                                                  Xóa vĩnh viễn tài khoản và toàn bộ dữ liệu liên quan. Hành động này không thể hoàn tác.
+                                                  {t("profileSettings.deleteAccountDescription")}
                                              </p>
                                         </div>
                                    </div>
@@ -229,7 +261,7 @@ export default function ProfileSettings({ user }) {
                                    onClick={handleDeleteAccount}
                               >
                                    <Trash2 className="w-4 h-4 mr-2" />
-                                   Xóa tài khoản
+                                   {t("profileSettings.deleteAccount")}
                               </Button>
                          </CardContent>
                     </Card>
@@ -244,46 +276,46 @@ export default function ProfileSettings({ user }) {
                          <CardHeader className="border-b py-3 border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
                               <CardTitle className="flex text-2xl items-center gap-2 text-teal-900">
                                    <Key className="w-5 h-5 text-teal-600" />
-                                   Đổi mật khẩu
+                                   {t("profileSettings.changePassword")}
                               </CardTitle>
                               <p className="text-sm text-teal-600">
-                                   Tăng cường bảo mật bằng cách cập nhật mật khẩu định kỳ
+                                   {t("profileSettings.changePasswordSubtitle")}
                               </p>
                          </CardHeader>
                          <CardContent className="space-y-2 px-5 pt-2">
                               <div className="space-y-2">
                                    <label className="block text-sm font-semibold text-teal-800">
-                                        Mật khẩu hiện tại
+                                        {t("profileSettings.currentPassword")}
                                    </label>
                                    <Input
                                         type="password"
                                         value={passwordData.currentPassword}
                                         onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
-                                        placeholder="Nhập mật khẩu hiện tại"
+                                        placeholder={t("profileSettings.enterCurrentPassword")}
                                         className="rounded-2xl border-teal-100 focus:border-teal-500 focus:ring-teal-500"
                                    />
                               </div>
                               <div className="space-y-2">
                                    <label className="block text-sm font-semibold text-teal-800">
-                                        Mật khẩu mới
+                                        {t("profileSettings.newPassword")}
                                    </label>
                                    <Input
                                         type="password"
                                         value={passwordData.newPassword}
                                         onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-                                        placeholder="Nhập mật khẩu mới"
+                                        placeholder={t("profileSettings.enterNewPassword")}
                                         className="rounded-2xl border-teal-100 focus:border-teal-500 focus:ring-teal-500"
                                    />
                               </div>
                               <div className="space-y-2">
                                    <label className="block text-sm font-semibold text-teal-800">
-                                        Xác nhận mật khẩu mới
+                                        {t("profileSettings.confirmPassword")}
                                    </label>
                                    <Input
                                         type="password"
                                         value={passwordData.confirmPassword}
                                         onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
-                                        placeholder="Nhập lại mật khẩu mới"
+                                        placeholder={t("profileSettings.enterConfirmPassword")}
                                         className="rounded-2xl border-teal-100 focus:border-teal-500 focus:ring-teal-500"
                                    />
                               </div>
@@ -292,7 +324,7 @@ export default function ProfileSettings({ user }) {
                                    className="rounded-2xl bg-teal-500 hover:bg-teal-600"
                               >
                                    <Key className="w-4 h-4 mr-2" />
-                                   Đổi mật khẩu
+                                   {t("profileSettings.changePassword")}
                               </Button>
                          </CardContent>
                     </Card>
@@ -303,7 +335,7 @@ export default function ProfileSettings({ user }) {
                          <CardHeader className="border-b border-orange-100/70 bg-gradient-to-r from-orange-50 via-white to-white rounded-t-3xl">
                               <CardTitle className="flex items-center gap-2 text-orange-700">
                                    <Shield className="w-5 h-5" />
-                                   Khuyến nghị bảo mật
+                                   {t("profileSettings.securityRecommendations")}
                               </CardTitle>
                          </CardHeader>
                          <CardContent className="space-y-3 p-6">
@@ -311,8 +343,8 @@ export default function ProfileSettings({ user }) {
                               <div className="flex items-start gap-3 rounded-2xl border border-orange-100 bg-orange-50/80 px-4 py-3">
                                    <Key className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
                                    <div className="flex-1">
-                                        <p className="text-sm font-semibold text-orange-800">Đổi mật khẩu định kỳ</p>
-                                        <p className="mt-1 text-xs text-orange-600">Mật khẩu hiện tại đã được sử dụng 90 ngày</p>
+                                        <p className="text-sm font-semibold text-orange-800">{t("profileSettings.changePasswordRegularly")}</p>
+                                        <p className="mt-1 text-xs text-orange-600">{t("profileSettings.passwordUsedDays")}</p>
                                    </div>
                               </div>
                          </CardContent>
@@ -345,9 +377,9 @@ export default function ProfileSettings({ user }) {
                                    <div className="inline-flex items-center justify-center w-14 h-14 bg-white/80 border border-teal-100 rounded-3xl shadow-sm mb-3">
                                         <Settings className="w-8 h-8 text-teal-600" />
                                    </div>
-                                   <h1 className="text-3xl font-bold text-teal-900 mb-2">Cài đặt hồ sơ</h1>
+                                   <h1 className="text-3xl font-bold text-teal-900 mb-2">{t("profileSettings.title")}</h1>
                                    <p className="text-teal-600 text-base max-w-2xl mx-auto">
-                                        Tinh chỉnh thông tin tài khoản, bảo mật và trải nghiệm sử dụng của bạn
+                                        {t("profileSettings.subtitle")}
                                    </p>
                               </div>
                          </SlideIn>
@@ -357,7 +389,7 @@ export default function ProfileSettings({ user }) {
                               <FadeIn delay={140}>
                                    <ErrorDisplay
                                         type="error"
-                                        title="Lỗi"
+                                        title={t("common.error")}
                                         message={error}
                                         onClose={() => setError('')}
                                    />
@@ -367,7 +399,7 @@ export default function ProfileSettings({ user }) {
                               <FadeIn delay={140}>
                                    <ErrorDisplay
                                         type="success"
-                                        title="Thành công"
+                                        title={t("common.success")}
                                         message={info}
                                         onClose={() => setInfo('')}
                                    />
