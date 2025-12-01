@@ -8,6 +8,8 @@ namespace BallSport.Application.DTOs.RatingBooking
 {
     public class RatingDto
     {
+        public int UserId { get; set; }
+
         public string UserName { get; set; }
         public int Stars { get; set; }
         public string Comment { get; set; }

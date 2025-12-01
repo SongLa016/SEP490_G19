@@ -41,6 +41,13 @@ namespace BallSport.API.Controllers.RatingBooking
             var ratings = await _ratingService.GetRatingsOfFieldAsync(fieldId);
             return Ok(ratings);
         }
+
+        [HttpGet("complex/{complexId}")]
+        public async Task<IActionResult> GetRatingsByComplexId(int complexId)
+        {
+            var result = await _ratingService.GetRatingsByComplexIdAsync(complexId);
+            return Ok(result);
+        }
     }
 
 }

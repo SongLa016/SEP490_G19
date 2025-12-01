@@ -37,6 +37,40 @@ namespace BallSport.Infrastructure.Repositories.RatingBooking
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
         }
+
+        // Lấy tất cả đánh giá của toàn bộ sân thuộc một Complex
+        public async Task<List<FieldRatingDto>> GetRatingsByComplexIdAsync(int complexId)
+        {
+            var ratings = await _db.Ratings
+                .Include(r => r.Field)
+                .Include(r => r.User)
+                .Where(r => r.Field.ComplexId == complexId)
+                .Select(r => new FieldRatingDto
+                {
+                    FieldId = r.FieldId,
+                    FieldName = r.Field.Name,
+                    Stars = r.Stars,
+                    Comment = r.Comment,
+                    CreatedAt = r.CreatedAt,
+                    UserId = r.UserId,
+                    UserName = r.User.FullName
+                })
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+
+            return ratings;
+        }
+
     }
 
+    public class FieldRatingDto
+    {
+        public int FieldId { get; set; }
+        public string FieldName { get; set; }
+        public int UserId { get; set; }
+        public string UserName { get; set; }
+        public int Stars { get; set; }
+        public string? Comment { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
 }
