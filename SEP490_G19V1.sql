@@ -666,5 +666,3 @@ CREATE TABLE Ratings (
     FOREIGN KEY (FieldId) REFERENCES Fields(FieldId)
 );
 
-ALTER TABLE BookingPackageSessionDraft
-ADD ScheduleId INT NULL;
