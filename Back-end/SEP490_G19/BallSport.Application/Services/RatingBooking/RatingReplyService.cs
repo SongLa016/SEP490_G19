@@ -46,8 +46,8 @@ public class RatingReplyService
 
         return replies.Select(r => new RatingReplyDto
         {
-            ReplyId = r.ReplyId,
             RatingId = r.RatingId,
+            ReplyId = r.ReplyId,
             UserId = r.UserId,
             UserName = r.User.FullName,
             ReplyText = r.ReplyText,
