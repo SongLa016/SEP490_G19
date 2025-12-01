@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Calendar, MapPin, Receipt, Search, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ArrowUpDown, X, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon, Info, RefreshCw, Loader2, User, Phone } from "lucide-react";
-import { Section, Container, Card, CardContent, Input, Button, Badge, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, DatePicker, LoadingList, FadeIn, SlideIn, StaggerContainer, Modal } from "../../../../shared/components/ui";
+import { Calendar, MapPin, Receipt, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon, Info, RefreshCw, Loader2, User, Phone } from "lucide-react";
+import { Section, Container, Card, CardContent, Button, Badge, LoadingList, FadeIn, StaggerContainer, Modal } from "../../../../shared/components/ui";
 import { listBookingsByUser, updateBooking, fetchBookingsByPlayer, generateQRCode, confirmPaymentAPI } from "../../../../shared/index";
 import { cancelBooking as cancelBookingAPI } from "../../../../shared/services/bookings";
 import {
@@ -25,7 +25,6 @@ import Swal from 'sweetalert2';
 import {
      BookingStats,
      BookingFilters,
-     BookingCard
 } from './components';
 
 // Utils
@@ -33,7 +32,6 @@ import {
      formatPrice,
      formatTimeRemaining,
      stripRefundQrInfo,
-     formatDateWithDay,
      extractRequestId,
      extractParticipants,
      getRequestOwnerId,
@@ -47,9 +45,6 @@ import {
      getOwnerDecisionStatus,
      getOpponentDecisionStatus,
      shouldShowCancelButton,
-     isPendingUnpaidWithin2Hours,
-     shouldShowFindOpponentButton,
-     hasExistingMatchRequest,
      getRecurringStatus,
      normalizeApiBookings,
      buildRecurringGroups
@@ -77,6 +72,7 @@ export default function BookingHistory({ user }) {
      const [cancelBooking, setCancelBooking] = useState(null);
      const [isCancelling, setIsCancelling] = useState(false);
      const [selectedBooking, setSelectedBooking] = useState(null);
+     const [editingRating, setEditingRating] = useState(null); // { ratingId, stars, comment } when editing
      const [invoiceBooking, setInvoiceBooking] = useState(null);
      const [opponentData, setOpponentData] = useState(null);
      const [isLoadingBookings, setIsLoadingBookings] = useState(false);
@@ -776,7 +772,6 @@ export default function BookingHistory({ user }) {
                     const booking = selectedBooking || result.booking;
                     // Use booking.id as display key (consistent with loadMatchRequestsForBookings)
                     const bookingDisplayId = booking?.id;
-                    const bookingDatabaseId = booking?.bookingId;
                     const matchRequestBookingId = matchRequest.bookingId || matchRequest.bookingID || matchRequest.BookingID;
 
 
@@ -896,13 +891,50 @@ export default function BookingHistory({ user }) {
 
      const handleRating = (booking) => {
           setSelectedBooking(booking);
+          setEditingRating(null);
           setShowRatingModal(true);
      };
 
-     const handleRatingSuccess = async (result) => {
+     const handleEditRating = (booking) => {
+          const ratingInfo = {
+               ratingId: booking.ratingId,
+               stars: booking.ratingStars,
+               comment: booking.ratingComment
+          };
+          setSelectedBooking(booking);
+          setEditingRating(ratingInfo);
+          setShowRatingModal(true);
+     };
+
+     const handleDeleteRating = async (booking) => {
+          if (!booking || !booking.ratingId) return;
+          const confirm = await Swal.fire({
+               icon: 'warning',
+               title: 'Xóa đánh giá?',
+               text: 'Bạn chắc chắn muốn xóa đánh giá này?',
+               showCancelButton: true,
+               confirmButtonText: 'Xóa',
+               cancelButtonText: 'Hủy',
+               confirmButtonColor: '#dc2626'
+          });
+          if (!confirm.isConfirmed) return;
+
+          try {
+               const { deleteRating } = await import("../../../../shared/services/ratings");
+               await deleteRating(booking.ratingId);
+               Swal.fire('Đã xóa!', 'Đánh giá đã được xóa.', 'success');
+               await loadBookings();
+          } catch (error) {
+               console.error("Error deleting rating:", error);
+               Swal.fire('Lỗi', error.message || 'Không thể xóa đánh giá.', 'error');
+          }
+     };
+
+     const handleRatingSuccess = async () => {
           setShowRatingModal(false);
           setSelectedBooking(null);
-          Swal.fire('Cảm ơn bạn!', 'Đánh giá của bạn đã được gửi thành công.', 'success');
+          setEditingRating(null);
+          Swal.fire('Thành công!', 'Đánh giá của bạn đã được lưu.', 'success');
           // Reload bookings to refresh the UI
           await loadBookings();
      };
@@ -1955,12 +1987,24 @@ export default function BookingHistory({ user }) {
                                                                                                </Button>
                                                                                           )}
                                                                                           {booking.status === "completed" && (
-                                                                                               <Button
-                                                                                                    onClick={() => handleRating(booking)}
-                                                                                                    className="px-2 py-1 text-xs rounded-3xl bg-yellow-50 text-yellow-700 border hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 transition-colors"
-                                                                                               >
-                                                                                                    <Star className="w-3 h-3 mr-1" /> Đánh giá
-                                                                                               </Button>
+                                                                                               (() => {
+                                                                                                    const hasRating = !!(booking.ratingId || booking.ratingStars);
+                                                                                                    if (!hasRating) {
+                                                                                                         return (
+                                                                                                              <Button
+                                                                                                                   onClick={() => handleRating(booking)}
+                                                                                                                   className="px-2 py-1 text-xs rounded-3xl bg-yellow-50 text-yellow-700 border hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-300 transition-colors"
+                                                                                                              >
+                                                                                                                   <Star className="w-3 h-3 mr-1" /> Đánh giá
+                                                                                                              </Button>
+                                                                                                         );
+                                                                                                    }
+                                                                                                    return (
+                                                                                                         <span className="px-2 py-1 text-xs rounded-3xl bg-green-50 text-green-700 border border-green-300 font-medium">
+                                                                                                              Đã đánh giá
+                                                                                                         </span>
+                                                                                                    );
+                                                                                               })()
                                                                                           )}
                                                                                      </div>
                                                                                 </div>
@@ -2279,16 +2323,33 @@ export default function BookingHistory({ user }) {
                                                                            </Button>
                                                                       )}
                                                                       {b.status === "completed" && (
-                                                                           <Button
-                                                                                onClick={() => handleRating(b)}
-                                                                                className="px-3 py-2 text-sm bg-yellow-50 text-yellow-700 border-yellow-400 hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-600 transition-colors rounded-3xl"
-                                                                           >
-                                                                                <Star className="w-4 h-4 mr-2" />
-                                                                                Đánh giá
-                                                                           </Button>
+                                                                           (() => {
+                                                                                const hasRating = !!(b.ratingId || b.ratingStars);
+                                                                                if (!hasRating) {
+                                                                                     return (
+                                                                                          <Button
+                                                                                               onClick={() => handleRating(b)}
+                                                                                               className="px-3 py-2 text-sm bg-yellow-50 text-yellow-700 border-yellow-400 hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-600 transition-colors rounded-3xl"
+                                                                                          >
+                                                                                               <Star className="w-4 h-4 mr-2" />
+                                                                                               Đánh giá
+                                                                                          </Button>
+                                                                                     );
+                                                                                }
+                                                                                return (
+                                                                                     <span className="px-3 py-1.5 text-sm rounded-3xl bg-green-50 text-green-700 border border-green-300 font-medium">
+                                                                                          Đã đánh giá
+                                                                                     </span>
+                                                                                );
+                                                                           })()
                                                                       )}
                                                                       {/* MatchRequest actions */}
                                                                       {(() => {
+                                                                           // Ẩn toàn bộ khu vực yêu cầu ghép đội với các booking đã hoàn tất hoặc đã hủy
+                                                                           const bookingStatus = String(b.status || b.bookingStatus || "").toLowerCase();
+                                                                           const isCompletedOrCancelled = bookingStatus === "completed" || bookingStatus === "cancelled";
+                                                                           if (isCompletedOrCancelled) return null;
+
                                                                            const req = bookingIdToRequest[b.id];
                                                                            const fallbackRequestId = b.matchRequestId || b.matchRequestID || b.MatchRequestID;
                                                                            const hasRequest = hasExistingMatchRequest(b);
@@ -2805,8 +2866,13 @@ export default function BookingHistory({ user }) {
                     onClose={() => {
                          setShowRatingModal(false);
                          setSelectedBooking(null);
+                         setEditingRating(null);
                     }}
                     booking={selectedBooking}
+                    mode={editingRating ? "edit" : "create"}
+                    initialRating={editingRating?.stars || 0}
+                    initialComment={editingRating?.comment || ""}
+                    ratingId={editingRating?.ratingId || null}
                     onSuccess={handleRatingSuccess}
                />
 

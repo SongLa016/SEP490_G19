@@ -77,6 +77,7 @@ const BookingManagement = ({ isDemo = false }) => {
      const [selectedCancellation, setSelectedCancellation] = useState(null);
      const [isCancellationDetailModalOpen, setIsCancellationDetailModalOpen] = useState(false);
      const [loadingCancellationDetail, setLoadingCancellationDetail] = useState(false);
+     const [autoCompletedIds, setAutoCompletedIds] = useState({});
 
      // Get owner ID from user
      const ownerId = user?.userID || user?.UserID || user?.id || user?.userId;
@@ -747,23 +748,12 @@ const BookingManagement = ({ isDemo = false }) => {
                let normalizedStatus;
                if (status.includes('cancel')) {
                     normalizedStatus = 'cancelled';
-               } else if (status === 'confirmed' || (status.includes('confirm') && !status.includes('complete'))) {
-                    // Check if booking time has passed - auto-convert to completed
-                    if (endTime && !isNaN(endTime.getTime())) {
-                         const now = new Date();
-                         if (endTime < now) {
-                              // Booking time has passed, auto-convert to completed
-                              normalizedStatus = 'completed';
-                         } else {
-                              normalizedStatus = 'confirmed';
-                         }
-                    } else {
-                         // No endTime available, keep as confirmed
-                         normalizedStatus = 'confirmed';
-                    }
                } else if (status === 'completed' || status.includes('complete')) {
                     // Backend says completed
                     normalizedStatus = 'completed';
+               } else if (status === 'confirmed' || status.includes('confirm')) {
+                    // Luôn tin theo trạng thái từ BE, không tự chuyển sang completed trên FE
+                    normalizedStatus = 'confirmed';
                } else if (status.includes('pending')) {
                     normalizedStatus = 'pending';
                } else {
@@ -1030,26 +1020,8 @@ const BookingManagement = ({ isDemo = false }) => {
           }
      };
 
-     // Auto-update booking status from confirmed to completed if time has passed
-     const bookingsWithAutoStatus = useMemo(() => {
-          return bookings.map(booking => {
-               // If booking is confirmed and endTime has passed, auto-update to completed
-               if (booking.status === 'confirmed' && booking.endTime) {
-                    try {
-                         const endTime = new Date(booking.endTime);
-                         if (!isNaN(endTime.getTime()) && endTime < new Date()) {
-                              return { ...booking, status: 'completed' };
-                         }
-                    } catch (error) {
-                         console.error('Error checking booking endTime:', error);
-                    }
-               }
-               return booking;
-          });
-     }, [bookings]);
-
      const filteredBookings = useMemo(() => {
-          return bookingsWithAutoStatus.filter(booking => {
+          return bookings.filter(booking => {
                const matchesDate = !selectedDate || booking.date === selectedDate;
                const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
                const matchesField = fieldFilter === "all" || booking.field === fieldFilter;
@@ -1060,7 +1032,47 @@ const BookingManagement = ({ isDemo = false }) => {
 
                return matchesDate && matchesStatus && matchesField && matchesSearch;
           });
-     }, [bookingsWithAutoStatus, selectedDate, statusFilter, fieldFilter, searchTerm]);
+     }, [bookings, selectedDate, statusFilter, fieldFilter, searchTerm]);
+
+     // Auto gọi API confirmByOwner cho các booking đã xác nhận, đã thanh toán và đã qua thời gian
+     useEffect(() => {
+          if (!bookings || bookings.length === 0) return;
+
+          const bookingsToAutoComplete = bookings.filter((b) => {
+               const id = b.bookingId || b.id;
+               if (!id) return false;
+               if (autoCompletedIds[id]) return false;
+
+               const isConfirmed = b.status === "confirmed";
+               const isPaid = String(b.paymentStatus || "").toLowerCase() === "paid";
+
+               return isConfirmed && isPaid && isBookingPassed(b);
+          });
+
+          if (bookingsToAutoComplete.length === 0) return;
+
+          (async () => {
+               let hasChanges = false;
+               for (const booking of bookingsToAutoComplete) {
+                    const id = booking.bookingId || booking.id;
+                    try {
+                         const result = await confirmByOwner(id);
+                         if (result?.success) {
+                              hasChanges = true;
+                              setAutoCompletedIds((prev) => ({ ...prev, [id]: true }));
+                         } else {
+                              console.error("Không thể tự động hoàn thành booking", id, result?.error);
+                         }
+                    } catch (error) {
+                         console.error("Lỗi khi tự động hoàn thành booking", id, error);
+                    }
+               }
+
+               if (hasChanges) {
+                    await loadBookings();
+               }
+          })();
+     }, [bookings, autoCompletedIds, loadBookings]);
 
      // Pagination for bookings
      const bookingsPagination = usePagination(filteredBookings, 10);
@@ -1357,9 +1369,17 @@ const BookingManagement = ({ isDemo = false }) => {
                                                                  </div>
                                                             </TableCell>
                                                             <TableCell>
-                                                                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(booking.status)}`}>
-                                                                      {getStatusText(booking.status)}
-                                                                 </span>
+                                                                 {(() => {
+                                                                      const effectiveStatus =
+                                                                           booking.status === "confirmed" && isBookingPassed(booking)
+                                                                                ? "completed"
+                                                                                : booking.status;
+                                                                      return (
+                                                                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(effectiveStatus)}`}>
+                                                                                {getStatusText(effectiveStatus)}
+                                                                           </span>
+                                                                      );
+                                                                 })()}
                                                             </TableCell>
                                                             <TableCell>
                                                                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(booking.paymentStatus)}`}>

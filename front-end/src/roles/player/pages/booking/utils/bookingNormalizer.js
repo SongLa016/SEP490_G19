@@ -33,6 +33,9 @@ export const normalizeApiBookings = (items = []) =>
                cancelledAt: item.cancelledAt ?? item.CancelledAt ?? null,
                cancelledBy: item.cancelledBy ?? item.CancelledBy ?? null,
                cancelReason: item.cancelReason ?? item.CancelReason ?? null,
+               ratingId: item.ratingId ?? item.RatingId ?? item.ratingID ?? null,
+               ratingStars: item.stars ?? item.rating ?? item.Rating ?? null,
+               ratingComment: item.comment ?? item.Comment ?? null,
                // Display fields
                fieldName: item.fieldName || "Chưa rõ sân",
                address: item.complexName || item.fieldAddress || item.address || "",

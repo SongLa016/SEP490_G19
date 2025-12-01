@@ -76,6 +76,13 @@ const handleApiError = (error) => {
         errorMessage = `Dữ liệu không hợp lệ: ${errorMessages}`;
       } else if (data && data.message) {
         errorMessage = data.message;
+      } else if (typeof data === "string") {
+        // BE có thể trả về string thuần, ví dụ: "You have already rated this booking"
+        if (data === "You have already rated this booking") {
+          errorMessage = "Bạn đã đánh giá lịch đặt sân này rồi.";
+        } else {
+          errorMessage = data;
+        }
       } else {
         errorMessage = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.";
       }
@@ -129,15 +136,38 @@ const handleApiError = (error) => {
 function normalizeRating(rating) {
   if (!rating) return null;
 
+  const bookingStatusRaw =
+    rating.bookingStatus ||
+    rating.BookingStatus ||
+    rating.status ||
+    rating.Status ||
+    "";
+
+  const replies = Array.isArray(rating.replies)
+    ? rating.replies.map((reply) => ({
+        replyId: reply.replyId || reply.id || reply.ReplyID,
+        id: reply.replyId || reply.id || reply.ReplyID,
+        userId: reply.userId || reply.userID || reply.UserID,
+        userName: reply.userName || reply.UserName || "",
+        replyText: reply.replyText || reply.ReplyText || "",
+        createdAt: reply.createdAt || reply.CreatedAt || reply.created_at || "",
+      }))
+    : [];
+
   return {
     id: rating.id || rating.ratingId || rating.RatingID,
     ratingId: rating.id || rating.ratingId || rating.RatingID,
     bookingId: rating.bookingId || rating.bookingID || rating.BookingID,
     fieldId: rating.fieldId || rating.fieldID || rating.FieldID,
+    fieldName: rating.fieldName || rating.FieldName || "",
     stars: rating.stars || rating.Stars || rating.rating || rating.Rating || 0,
     comment: rating.comment || rating.Comment || "",
-    userName: rating.userName || rating.UserName || rating.user || rating.User || "Người dùng",
+    userName:
+      rating.userName || rating.UserName || rating.user || rating.User || "Người dùng",
     createdAt: rating.createdAt || rating.CreatedAt || rating.created_at || "",
+    userId: rating.userId || rating.userID || rating.UserID || null,
+    bookingStatus: bookingStatusRaw ? String(bookingStatusRaw) : "",
+    replies,
   };
 }
 
@@ -182,14 +212,119 @@ export async function createRating(ratingData) {
 
     const response = await apiClient.post("/api/ratings", payload);
     console.log("[createRating] Response:", response.data);
-    
-    // Unwrap data if it's wrapped in { success: true, data: ... }
+
+    // Unwrap data nếu BE trả về dạng { success: true, data: {...} }
     const responseData = response.data;
-    const resultData = (responseData && 'data' in responseData) ? responseData.data : responseData;
-    
+    let resultData;
+    if (responseData && typeof responseData === "object" && "data" in responseData) {
+      resultData = responseData.data;
+    } else {
+      // BE có thể trả về string "Rating submitted successfully" hoặc object rating trực tiếp
+      resultData = responseData;
+    }
+
+    // Nếu BE chỉ trả string, trả về rating tối thiểu dựa trên payload
+    if (typeof resultData === "string") {
+      return normalizeRating({
+        ratingId: undefined,
+        bookingId,
+        stars,
+        comment: payload.comment,
+        userName: "Bạn",
+        createdAt: new Date().toISOString(),
+      });
+    }
+
     return normalizeRating(resultData);
   } catch (error) {
     console.error("[createRating] Error details:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      error: error,
+    });
+    handleApiError(error);
+  }
+}
+
+/**
+ * PUT /api/ratings/{id} - Update an existing rating
+ * @param {number|string} ratingId - Rating ID
+ * @param {Object} ratingData - Rating data
+ * @param {number} ratingData.stars - Number of stars (1-5)
+ * @param {string} ratingData.comment - Comment text
+ * @returns {Promise<Object>} Updated rating
+ */
+export async function updateRating(ratingId, ratingData) {
+  try {
+    const token = getStoredToken();
+    if (!token || isTokenExpired(token)) {
+      throw new Error(
+        "Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại."
+      );
+    }
+
+    const id = Number(ratingId);
+    if (isNaN(id) || id <= 0) {
+      throw new Error("Rating ID không hợp lệ.");
+    }
+
+    const stars = Number(ratingData.stars);
+    // Cho phép 0..5 theo JSON của BE, vẫn validate kiểu dữ liệu
+    if (isNaN(stars) || stars < 0 || stars > 5) {
+      throw new Error("Số sao phải từ 0 đến 5.");
+    }
+
+    const payload = {
+      stars,
+      comment: ratingData.comment ?? "",
+    };
+
+    console.log("[updateRating] Sending payload:", payload);
+
+    const response = await apiClient.put(`/api/ratings/${id}`, payload);
+
+    const responseData = response.data;
+    const resultData =
+      responseData && "data" in responseData ? responseData.data : responseData;
+
+    return normalizeRating(resultData);
+  } catch (error) {
+    console.error("[updateRating] Error details:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      error: error,
+    });
+    handleApiError(error);
+  }
+}
+
+/**
+ * DELETE /api/ratings/{id} - Delete a rating
+ * @param {number|string} ratingId - Rating ID
+ * @returns {Promise<boolean>} true if deleted
+ */
+export async function deleteRating(ratingId) {
+  try {
+    const token = getStoredToken();
+    if (!token || isTokenExpired(token)) {
+      throw new Error(
+        "Token không tồn tại hoặc đã hết hạn. Vui lòng đăng nhập lại."
+      );
+    }
+
+    const id = Number(ratingId);
+    if (isNaN(id) || id <= 0) {
+      throw new Error("Rating ID không hợp lệ.");
+    }
+
+    await apiClient.delete(`/api/ratings/${id}`);
+    return true;
+  } catch (error) {
+    console.error("[deleteRating] Error details:", {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,

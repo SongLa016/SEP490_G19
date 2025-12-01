@@ -8,6 +8,8 @@ export default function BookingActions({ booking, user, handlers }) {
           handleContinuePayment,
           handleCancel,
           handleRating,
+          handleEditRating,
+          handleDeleteRating,
           handleFindOpponent,
           isPendingUnpaidWithin2Hours,
           shouldShowCancelButton,
@@ -16,6 +18,7 @@ export default function BookingActions({ booking, user, handlers }) {
      } = handlers;
 
      const canShowFindOpponent = shouldShowFindOpponentButton(booking) && !hasExistingMatchRequest(booking);
+     const hasRating = !!(booking.ratingId || booking.ratingStars);
 
      return (
           <div className="mt-4 pt-3 border-t border-teal-100 flex flex-wrap gap-2">
@@ -43,13 +46,36 @@ export default function BookingActions({ booking, user, handlers }) {
                          )}
 
                          {booking.status === "completed" && (
-                              <Button
-                                   onClick={() => handleRating(booking)}
-                                   className="px-3 py-2 text-sm bg-yellow-50 text-yellow-700 border-yellow-400 hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-600 transition-colors rounded-3xl"
-                              >
-                                   <Star className="w-4 h-4 mr-2" />
-                                   Đánh giá
-                              </Button>
+                              <>
+                                   {!hasRating && (
+                                        <Button
+                                             onClick={() => handleRating(booking)}
+                                             className="px-3 py-2 text-sm bg-yellow-50 text-yellow-700 border-yellow-400 hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-600 transition-colors rounded-3xl"
+                                        >
+                                             <Star className="w-4 h-4 mr-2" />
+                                             Đánh giá
+                                        </Button>
+                                   )}
+                                   {hasRating && (
+                                        <>
+                                             <Button
+                                                  onClick={() => handleEditRating(booking)}
+                                                  className="px-3 py-2 text-sm bg-yellow-50 text-yellow-700 border-yellow-400 hover:text-yellow-700 hover:bg-yellow-100 hover:border-yellow-600 transition-colors rounded-3xl"
+                                             >
+                                                  <Star className="w-4 h-4 mr-2" />
+                                                  Sửa đánh giá
+                                             </Button>
+                                             <Button
+                                                  variant="destructive"
+                                                  onClick={() => handleDeleteRating(booking)}
+                                                  className="px-3 py-2 text-sm rounded-3xl"
+                                             >
+                                                  <Trash2 className="w-4 h-4 mr-2" />
+                                                  Xóa đánh giá
+                                             </Button>
+                                        </>
+                                   )}
+                              </>
                          )}
 
                          {canShowFindOpponent && (

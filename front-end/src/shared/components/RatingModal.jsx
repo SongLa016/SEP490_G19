@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
 import { Star, MessageSquare, CheckCircle, AlertCircle, MapPin, Calendar, Clock } from "lucide-react";
 import { Button, Textarea, Modal } from "./ui/index";
-import { createRating } from "../services/ratings";
+import { createRating, updateRating } from "../services/ratings";
 
 export default function RatingModal({
      isOpen,
      onClose,
      booking,
-     onSuccess
+     onSuccess,
+     mode = "create", // "create" | "edit"
+     initialRating = 0,
+     initialComment = "",
+     ratingId = null
 }) {
      const [rating, setRating] = useState(0);
      const [hoveredRating, setHoveredRating] = useState(0);
@@ -15,15 +19,21 @@ export default function RatingModal({
      const [isProcessing, setIsProcessing] = useState(false);
      const [errors, setErrors] = useState({});
 
-     // Reset form when modal opens
+     // Reset / prefill form when modal opens
      useEffect(() => {
           if (isOpen) {
-               setRating(0);
-               setHoveredRating(0);
-               setComment("");
+               if (mode === "edit") {
+                    setRating(initialRating || 0);
+                    setHoveredRating(0);
+                    setComment(initialComment || "");
+               } else {
+                    setRating(0);
+                    setHoveredRating(0);
+                    setComment("");
+               }
                setErrors({});
           }
-     }, [isOpen]);
+     }, [isOpen, mode, initialRating, initialComment]);
 
      const handleSubmit = async () => {
           // Validation
@@ -42,24 +52,34 @@ export default function RatingModal({
 
           setIsProcessing(true);
           try {
-               const bookingId = booking.id || booking.bookingId || booking.bookingID;
-               if (!bookingId) {
-                    throw new Error("Không tìm thấy ID đặt sân");
+               let result;
+               if (mode === "edit" && ratingId) {
+                    result = await updateRating(ratingId, {
+                         stars: rating,
+                         comment: comment.trim()
+                    });
+               } else {
+                    const bookingId = booking.id || booking.bookingId || booking.bookingID;
+                    if (!bookingId) {
+                         throw new Error("Không tìm thấy ID đặt sân");
+                    }
+
+                    result = await createRating({
+                         bookingId: bookingId,
+                         stars: rating,
+                         comment: comment.trim()
+                    });
                }
 
-               const result = await createRating({
-                    bookingId: bookingId,
-                    stars: rating,
-                    comment: comment.trim()
-               });
-
-               onSuccess({
-                    rating: result.stars,
-                    comment: result.comment,
-                    ratingId: result.id
-               });
+               if (result) {
+                    onSuccess({
+                         rating: result.stars,
+                         comment: result.comment,
+                         ratingId: result.id
+                    });
+               }
           } catch (error) {
-               console.error("Error creating rating:", error);
+               console.error("Error submitting rating:", error);
                setErrors({ general: error.message || "Không thể gửi đánh giá" });
           } finally {
                setIsProcessing(false);
@@ -148,7 +168,7 @@ export default function RatingModal({
                     <div className="mb-3">
                          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
                               <Star className="w-4 h-4 text-yellow-500" />
-                              Đánh giá sao <span className="text-red-500">*</span>
+                              {mode === "edit" ? "Cập nhật đánh giá" : "Đánh giá sao"} <span className="text-red-500">*</span>
                          </label>
                          <div className="flex items-center gap-3">
                               <div className="flex gap-2">
@@ -172,7 +192,7 @@ export default function RatingModal({
                     <div className="mb-3">
                          <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                               <MessageSquare className="w-4 h-4 text-green-600" />
-                              Nhận xét <span className="text-red-500">*</span>
+                              {mode === "edit" ? "Cập nhật nhận xét" : "Nhận xét"} <span className="text-red-500">*</span>
                          </label>
                          <Textarea
                               value={comment}
@@ -224,7 +244,7 @@ export default function RatingModal({
                               ) : (
                                    <div className="flex items-center gap-2">
                                         <CheckCircle className="w-4 h-4" />
-                                        <span>Gửi đánh giá</span>
+                                        <span>{mode === "edit" ? "Cập nhật đánh giá" : "Gửi đánh giá"}</span>
                                    </div>
                               )}
                          </Button>

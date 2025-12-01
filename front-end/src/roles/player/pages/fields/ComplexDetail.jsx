@@ -831,12 +831,38 @@ export default function ComplexDetail({ user }) {
      }, [complexIdForRatings]);
 
      // Map ratings từ API sang format dùng cho ReviewTabContent
+     // JSON backend:
+     // {
+     //   "fieldId": 50,
+     //   "fieldName": "Sân A3 - BTN",
+     //   "userId": 2,
+     //   "userName": "DanhThuc",
+     //   "stars": 5,
+     //   "comment": "Khá ổn",
+     //   "createdAt": "2025-12-01T13:28:19.297",
+     //   "replies": [ { replyId, userId, userName, replyText, createdAt } ]
+     // }
      const complexReviews = useMemo(() => {
-          return fieldRatings.map(rating => ({
-               user: rating.userName || "Người dùng",
-               rating: rating.stars || 0,
-               comment: rating.comment || "",
-               date: rating.createdAt ? new Date(rating.createdAt).toLocaleDateString('vi-VN') : ""
+          return fieldRatings.map(raw => ({
+               id: raw.id || raw.ratingId || undefined,
+               ratingId: raw.id || raw.ratingId || undefined,
+               userId: raw.userId,
+               fieldId: raw.fieldId,
+               fieldName: raw.fieldName,
+               bookingStatus: raw.bookingStatus || "",
+               user: raw.userName || "Người dùng",
+               rating: raw.stars || 0,
+               comment: raw.comment || "",
+               date: raw.createdAt ? new Date(raw.createdAt).toLocaleDateString('vi-VN') : "",
+               replies: Array.isArray(raw.replies)
+                    ? raw.replies.map(reply => ({
+                         replyId: reply.replyId,
+                         userId: reply.userId,
+                         userName: reply.userName,
+                         replyText: reply.replyText,
+                         createdAt: reply.createdAt
+                    }))
+                    : []
           }));
      }, [fieldRatings]);
      
