@@ -61,6 +61,7 @@ namespace BallSport.Infrastructure.Repositories.RatingBooking
                 .OrderByDescending(r => r.CreatedAt)
                 .Select(r => new FieldRatingWithRepliesDto
                 {
+                    RatingId = r.RatingId,
                     FieldId = r.FieldId,
                     FieldName = r.Field.Name,
                     Stars = r.Stars,
@@ -95,6 +96,7 @@ namespace BallSport.Infrastructure.Repositories.RatingBooking
                 .OrderByDescending(r => r.CreatedAt)
                 .Select(r => new FieldRatingWithRepliesDto
                 {
+                    RatingId = r.RatingId,
                     FieldId = r.FieldId,
                     FieldName = r.Field.Name,
                     Stars = r.Stars,
@@ -119,6 +121,7 @@ namespace BallSport.Infrastructure.Repositories.RatingBooking
 
     public class FieldRatingWithRepliesDto
     {
+        public int RatingId { get; set; }
         public int FieldId { get; set; }
         public string FieldName { get; set; } = string.Empty;
         public int UserId { get; set; }
