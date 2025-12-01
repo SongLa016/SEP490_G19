@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System;
 using BallSport.Infrastructure.Models;
+using BallSport.Infrastructure.Data;
 
 namespace BallSport.Infrastructure.Repositories.StatisticOwner
 {

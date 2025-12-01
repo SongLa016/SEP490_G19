@@ -1,4 +1,4 @@
-﻿ 
+﻿using BallSport.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using BallSport.Infrastructure.Models;
 

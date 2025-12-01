@@ -2,6 +2,7 @@
  
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
+using BallSport.Infrastructure.Data;
 
 public interface IFieldScheduleRepository
 {
