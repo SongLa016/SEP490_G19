@@ -1,11 +1,11 @@
-﻿ 
-using BallSport.Infrastructure.Models;
+﻿using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BallSport.Infrastructure.Data;
 
 namespace BallSport.Infrastructure.Repositories
 {

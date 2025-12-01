@@ -1,4 +1,5 @@
-﻿using BallSport.Infrastructure.Models;
+﻿using BallSport.Infrastructure.Data;
+using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace BallSport.Infrastructure.Repositories

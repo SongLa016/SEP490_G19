@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using BallSport.Infrastructure.Data;
 
 namespace BallSport.Infrastructure.Repositories.AdminStatistics
 {

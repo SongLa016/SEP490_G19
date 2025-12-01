@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
+using BallSport.Infrastructure.Data;
 using static BallSport.Infrastructure.Repositories.StatisticOwner.DailyRevenueRepository;
 
 namespace BallSport.Infrastructure.Repositories.StatisticOwner

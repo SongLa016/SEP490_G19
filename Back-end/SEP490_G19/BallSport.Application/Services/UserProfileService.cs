@@ -1,5 +1,6 @@
 ﻿using BallSport.Application.DTOs;
 using BallSport.Application.DTOs.UserProfile;
+using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;

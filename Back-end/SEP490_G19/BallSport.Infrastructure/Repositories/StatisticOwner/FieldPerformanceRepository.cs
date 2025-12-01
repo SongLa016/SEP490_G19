@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BallSport.Infrastructure.Models;
+using BallSport.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using static BallSport.Infrastructure.Repositories.StatisticOwner.FieldPerformanceRepository;
 namespace BallSport.Infrastructure.Repositories.StatisticOwner

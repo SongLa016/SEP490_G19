@@ -1,8 +1,7 @@
 ﻿using BallSport.Infrastructure;
- 
+using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
-
 namespace BallSport.Infrastructure.Repositories
 {
     public class DepositPolicyRepository
