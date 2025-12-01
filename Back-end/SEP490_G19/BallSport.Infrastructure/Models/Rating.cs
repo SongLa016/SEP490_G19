@@ -24,4 +24,6 @@ public partial class Rating
     public virtual Field Field { get; set; } = null!;
 
     public virtual User User { get; set; } = null!;
+    public virtual ICollection<RatingReply> RatingReplies { get; set; } = new List<RatingReply>();
+
 }
