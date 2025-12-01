@@ -64,11 +64,18 @@ namespace BallSport.Application.Services.RatingBooking
 
             return ratings.Select(r => new RatingDto
             {
+                UserId = r.UserId,
                 UserName = r.User.FullName,
                 Stars = r.Stars,
                 Comment = r.Comment ?? "",
                 CreatedAt = r.CreatedAt
             }).ToList();
+        }
+
+        //Hiển thị đánh giá của Complex
+        public Task<List<FieldRatingDto>> GetRatingsByComplexIdAsync(int complexId)
+        {
+            return _ratingRepo.GetRatingsByComplexIdAsync(complexId);
         }
     }
 
