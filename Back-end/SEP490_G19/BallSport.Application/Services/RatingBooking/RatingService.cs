@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BallSport.Application.DTOs.RatingBooking;
+using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories.RatingBooking;
 using Microsoft.EntityFrameworkCore;
@@ -57,25 +58,26 @@ namespace BallSport.Application.Services.RatingBooking
             return "Rating submitted successfully";
         }
 
-        //Hiển thị đánh giá theo fieldID
-        public async Task<List<RatingDto>> GetRatingsOfFieldAsync(int fieldId)
+        public async Task<bool> UpdateRatingAsync(int id, int stars, string? comment)
         {
-            var ratings = await _ratingRepo.GetRatingsByFieldIdAsync(fieldId);
-
-            return ratings.Select(r => new RatingDto
-            {
-                UserId = r.UserId,
-                UserName = r.User.FullName,
-                Stars = r.Stars,
-                Comment = r.Comment ?? "",
-                CreatedAt = r.CreatedAt
-            }).ToList();
+            return await _ratingRepo.UpdateRatingAsync(id, stars, comment);
         }
 
-        //Hiển thị đánh giá của Complex
-        public Task<List<FieldRatingDto>> GetRatingsByComplexIdAsync(int complexId)
+        public async Task<bool> DeleteRatingAsync(int id)
         {
-            return _ratingRepo.GetRatingsByComplexIdAsync(complexId);
+            return await _ratingRepo.DeleteRatingAsync(id);
+        }
+
+        // Hiển thị đánh giá theo FieldID, có cả reply
+        public async Task<List<FieldRatingWithRepliesDto>> GetRatingsOfFieldAsync(int fieldId)
+        {
+            return await _ratingRepo.GetRatingsByFieldIdWithRepliesAsync(fieldId);
+        }
+
+        // Lấy tất cả đánh giá của các Field thuộc Complex, có cả reply
+        public async Task<List<FieldRatingWithRepliesDto>> GetRatingsByComplexIdAsync(int complexId)
+        {
+            return await _ratingRepo.GetRatingsByComplexIdWithRepliesAsync(complexId);
         }
     }
 

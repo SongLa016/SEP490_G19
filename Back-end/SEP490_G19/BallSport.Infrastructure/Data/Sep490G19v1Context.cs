@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace BallSport.Infrastructure.Models;
+namespace BallSport.Infrastructure.Data;
 
 public partial class Sep490G19v1Context : DbContext
 {
@@ -69,6 +70,8 @@ public partial class Sep490G19v1Context : DbContext
 
     public virtual DbSet<Rating> Ratings { get; set; }
 
+    public virtual DbSet<RatingReply> RatingReplies { get; set; }
+
     public virtual DbSet<Report> Reports { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
@@ -89,7 +92,9 @@ public partial class Sep490G19v1Context : DbContext
 
     public virtual DbSet<ViolationReport> ViolationReports { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) { }
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Server=tcp:ballsport-server.database.windows.net,1433;Initial Catalog=SEP490_G19V1;Persist Security Info=False;User ID=adminsql;Password=Admin@12345;MultipleActiveResultSets=True;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -762,6 +767,25 @@ public partial class Sep490G19v1Context : DbContext
                 .HasForeignKey(d => d.UserId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__Ratings__UserId__79FD19BE");
+        });
+
+        modelBuilder.Entity<RatingReply>(entity =>
+        {
+            entity.HasKey(e => e.ReplyId).HasName("PK__RatingRe__C25E4609ED8E95F6");
+
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+
+            entity.HasOne(d => d.Rating).WithMany(p => p.RatingReplies)
+                .HasForeignKey(d => d.RatingId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_RatingReplies_Rating");
+
+            entity.HasOne(d => d.User).WithMany(p => p.RatingReplies)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_RatingReplies_User");
         });
 
         modelBuilder.Entity<Report>(entity =>
