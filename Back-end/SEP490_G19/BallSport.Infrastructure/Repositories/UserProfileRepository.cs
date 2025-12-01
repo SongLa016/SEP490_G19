@@ -28,7 +28,8 @@ namespace BallSport.Infrastructure.Repositories
                     Address = u.UserProfile != null ? u.UserProfile.Address : null,
                     PreferredPositions = u.UserProfile != null ? u.UserProfile.PreferredPositions : null,
                     SkillLevel = u.UserProfile != null ? u.UserProfile.SkillLevel : null,
-                    Bio = u.UserProfile != null ? u.UserProfile.Bio : null
+                    Bio = u.UserProfile != null ? u.UserProfile.Bio : null,
+                    CreatedAt = u.CreatedAt
                 })
                 .FirstOrDefaultAsync();
         }
@@ -43,7 +44,8 @@ namespace BallSport.Infrastructure.Repositories
                     FullName = u.FullName,
                     Phone = u.Phone,
                     Avatar = u.Avatar,
-                    Email = u.Email
+                    Email = u.Email,
+                    CreatedAt = u.CreatedAt
                 })
                 .FirstOrDefaultAsync();
         }
@@ -97,8 +99,10 @@ namespace BallSport.Infrastructure.Repositories
             public string? Phone { get; set; }
             public string? Avatar { get; set; }
             public string Email { get; set; }
+            public DateTime? CreatedAt { get; set; }
+
         }
-        
+
         //profile Player
         public class UserFullProfileDto
         {
@@ -112,6 +116,7 @@ namespace BallSport.Infrastructure.Repositories
             public string? PreferredPositions { get; set; }
             public string? SkillLevel { get; set; }
             public string? Bio { get; set; }
+            public DateTime? CreatedAt { get; set; }
         }
 
         
