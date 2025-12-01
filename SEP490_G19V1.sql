@@ -665,3 +665,6 @@ CREATE TABLE Ratings (
     FOREIGN KEY (UserId) REFERENCES Users(UserId),
     FOREIGN KEY (FieldId) REFERENCES Fields(FieldId)
 );
+
+ALTER TABLE BookingPackageSessionDraft
+ADD ScheduleId INT NULL;
