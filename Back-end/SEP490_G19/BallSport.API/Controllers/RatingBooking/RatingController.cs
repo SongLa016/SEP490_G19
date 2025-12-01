@@ -35,6 +35,29 @@ namespace BallSport.API.Controllers.RatingBooking
             return Ok(result);
         }
 
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateRating(int id, [FromBody] UpdateRatingDto dto)
+        {
+            bool updated = await _ratingService.UpdateRatingAsync(id, dto.Stars, dto.Comment);
+
+            if (!updated)
+                return NotFound(new { message = "Không tìm thấy đánh giá" });
+
+            return Ok(new { message = "Cập nhật đánh giá thành công" });
+        }
+
+        // DELETE: api/rating/5
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteRating(int id)
+        {
+            bool deleted = await _ratingService.DeleteRatingAsync(id);
+
+            if (!deleted)
+                return NotFound(new { message = "Không tìm thấy đánh giá" });
+
+            return Ok(new { message = "Xóa đánh giá thành công" });
+        }
+
         [HttpGet("field/{fieldId}")]
         public async Task<IActionResult> GetRatingsByField(int fieldId)
         {
@@ -47,6 +70,12 @@ namespace BallSport.API.Controllers.RatingBooking
         {
             var result = await _ratingService.GetRatingsByComplexIdAsync(complexId);
             return Ok(result);
+        }
+
+        public class UpdateRatingDto
+        {
+            public int Stars { get; set; }
+            public string? Comment { get; set; }
         }
     }
 
