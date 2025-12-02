@@ -55,7 +55,7 @@ export default function GroupedViewSection({
                                    >
                                         <div className="relative overflow-hidden">
                                              {type === 'complex' ? (
-                                                  // Complex: use imageUrl as background
+
                                                   <div
                                                        className="w-full h-48 rounded-xl transition-transform duration-300 group-hover:scale-110 bg-cover bg-center"
                                                        style={{
@@ -75,25 +75,26 @@ export default function GroupedViewSection({
                                                        draggable={false}
                                                   />
                                              )}
-                                             <div className={`absolute top-3 ${type === 'field' && (title === 'Giá tốt' || title === 'Đánh giá cao') ? 'left-3' : 'right-3'} flex items-center gap-2`}>
-                                                  <Button
-                                                       type="button"
-                                                       onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                                       onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            if (!user && handleLoginRequired) {
-                                                                 handleLoginRequired('Bạn cần đăng nhập để sử dụng danh sách yêu thích.');
-                                                                 return;
-                                                            }
-                                                            if (type === 'field' && onToggleFavoriteField) onToggleFavoriteField(item.fieldId);
-                                                            if (type === 'complex' && onToggleFavoriteComplex) onToggleFavoriteComplex(item.complexId);
-                                                       }}
-                                                       className={`h-8 w-8 p-0 rounded-full shadow-sm transition-all duration-200 border hover:scale-110 hover:text-pink-600 ${item.isFavorite ? 'bg-teal-500 text-teal-50 border-teal-500' : 'bg-white text-teal-700 border-teal-200 hover:bg-teal-50'}`}
-                                                  >
-                                                       <Heart className="w-4 h-4" />
-                                                  </Button>
-                                             </div>
+                                             {type === 'field' && (
+                                                  <div className={`absolute top-3 ${title === 'Giá tốt' || title === 'Đánh giá cao' ? 'left-3' : 'right-3'} flex items-center gap-2`}>
+                                                       <Button
+                                                            type="button"
+                                                            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                                            onClick={(e) => {
+                                                                 e.preventDefault();
+                                                                 e.stopPropagation();
+                                                                 if (!user && handleLoginRequired) {
+                                                                      handleLoginRequired('Bạn cần đăng nhập để sử dụng danh sách yêu thích.');
+                                                                      return;
+                                                                 }
+                                                                 if (onToggleFavoriteField) onToggleFavoriteField(item.fieldId);
+                                                            }}
+                                                            className={`h-8 w-8 p-0 rounded-full shadow-sm transition-all duration-200 border hover:scale-110 hover:text-pink-600 ${item.isFavorite ? 'bg-teal-500 text-teal-50 border-teal-500' : 'bg-white text-teal-700 border-teal-200 hover:bg-teal-50'}`}
+                                                       >
+                                                            <Heart className="w-4 h-4" />
+                                                       </Button>
+                                                  </div>
+                                             )}
                                              {type === 'field' && (
                                                   <div className="absolute top-4 right-4 flex space-x-2">
                                                        <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1">
@@ -104,9 +105,16 @@ export default function GroupedViewSection({
                                              )}
                                         </div>
                                         <div className="px-2 py-3 flex-1 flex flex-col">
-                                             <div className="flex bg-teal-50  border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2">
-                                                  <MapPin className="w-4 h-4 mr-1" />
-                                                  <span className="text-xs font-semibold line-clamp-1">{item.address}</span>
+                                             <div className="flex bg-teal-50  border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2 gap-2">
+                                                  <span className="inline-flex items-center gap-1">
+                                                       <MapPin className="w-4 h-4" />
+                                                       <span className="text-xs font-semibold line-clamp-1">{item.address}</span>
+                                                  </span>
+                                                  {typeof item.distanceKm === 'number' && !Number.isNaN(item.distanceKm) && (
+                                                       <span className="text-xs font-semibold text-red-500 whitespace-nowrap">
+                                                            • {item.distanceKm.toFixed(1)} km
+                                                       </span>
+                                                  )}
                                              </div>
                                              <div className="flex items-center justify-between mb-3">
 

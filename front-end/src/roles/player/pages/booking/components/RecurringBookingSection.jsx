@@ -1,15 +1,18 @@
-import { Repeat, CalendarDays } from "lucide-react";
-import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../shared/components/ui";
+import { Repeat, CalendarDays, Clock } from "lucide-react";
+import { Button, DatePicker } from "../../../../../shared/components/ui";
 
 export default function RecurringBookingSection({
      isRecurring,
      setIsRecurring,
-     recurringWeeks,
-     setRecurringWeeks,
+     startDate,
+     setStartDate,
+     endDate,
+     setEndDate,
      selectedDays,
      handleDayToggle,
-     suggestedDays,
-     isSuggesting,
+     selectedSlotsByDay, // { dayOfWeek: slotId } - slot đã chọn cho mỗi thứ
+     onSlotSelect, // (dayOfWeek, slotId) => void
+     fieldSchedules = [], // Danh sách schedule để filter theo dayOfWeek
      onBookingDataChange,
      generateRecurringSessions
 }) {
@@ -23,15 +26,83 @@ export default function RecurringBookingSection({
           { value: 0, label: "CN", name: "Chủ nhật" }
      ];
 
-     const suggestedDayOptions = [
-          { value: 1, label: "T2" },
-          { value: 2, label: "T3" },
-          { value: 3, label: "T4" },
-          { value: 4, label: "T5" },
-          { value: 5, label: "T6" },
-          { value: 6, label: "T7" },
-          { value: 0, label: "CN" }
-     ];
+     // Lấy schedule cho một dayOfWeek cụ thể (unique theo slotId)
+     const getSchedulesForDay = (dayOfWeek) => {
+          if (!Array.isArray(fieldSchedules) || fieldSchedules.length === 0) {
+               return [];
+          }
+          
+          const filtered = fieldSchedules.filter(s => {
+               // Thử lấy dayOfWeek trực tiếp từ schedule
+               let scheduleDayOfWeek = s.dayOfWeek ?? s.DayOfWeek ?? s.weekday ?? s.Weekday;
+               
+               // Nếu không có, tính từ date
+               if (scheduleDayOfWeek === undefined || scheduleDayOfWeek === null) {
+                    const scheduleDate = s.date ?? s.Date ?? s.scheduleDate ?? s.ScheduleDate;
+                    if (scheduleDate) {
+                         try {
+                              const date = typeof scheduleDate === 'string' 
+                                   ? new Date(scheduleDate) 
+                                   : (scheduleDate.year && scheduleDate.month && scheduleDate.day
+                                        ? new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day)
+                                        : new Date(scheduleDate));
+                              if (!isNaN(date.getTime())) {
+                                   scheduleDayOfWeek = date.getDay(); // 0 = CN, 1 = T2, ..., 6 = T7
+                              }
+                         } catch (e) {
+                              // Silent fail
+                         }
+                    }
+               }
+               
+               return Number(scheduleDayOfWeek) === Number(dayOfWeek);
+          });
+          
+          // Deduplicate theo slotId để chỉ lấy unique slot cho mỗi thứ
+          // (vì có thể có nhiều schedule cho cùng slot nhưng khác ngày)
+          const seenSlotIds = new Set();
+          const uniqueSchedules = filtered.filter(s => {
+               const slotId = s.slotId ?? s.SlotId ?? s.slotID ?? s.SlotID;
+               if (seenSlotIds.has(String(slotId))) {
+                    return false;
+               }
+               seenSlotIds.add(String(slotId));
+               return true;
+          });
+          
+          return uniqueSchedules;
+     };
+
+     // Format time range
+     const formatTimeRange = (startTime, endTime) => {
+          if (!startTime || !endTime) return "";
+          return `${startTime} - ${endTime}`;
+     };
+
+     // Tính số buổi sẽ tạo
+     const calculateTotalSessions = () => {
+          if (!startDate || !endDate || selectedDays.length === 0) return 0;
+          try {
+               const start = new Date(startDate);
+               const end = new Date(endDate);
+               if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return 0;
+               
+               let count = 0;
+               const current = new Date(start);
+               while (current <= end) {
+                    const weekday = current.getDay(); // 0 = CN, 1 = T2, ..., 6 = T7
+                    if (selectedDays.includes(weekday)) {
+                         count++;
+                    }
+                    current.setDate(current.getDate() + 1);
+               }
+               return count;
+          } catch {
+               return 0;
+          }
+     };
+
+     const totalSessions = calculateTotalSessions();
 
      return (
           <div className="bg-teal-50 rounded-2xl shadow-sm border border-teal-200 p-4">
@@ -54,116 +125,162 @@ export default function RecurringBookingSection({
                     </label>
                </div>
                {isRecurring && (
-                    <div className="space-y-2 mt-2">
-                         <div>
-                              <label className="block text_sm font-medium text-gray-700 mb-2">
-                                   Số tuần đặt lịch
-                              </label>
-                              <Select
-                                   value={recurringWeeks.toString()}
-                                   onValueChange={(value) => {
-                                        const weeks = parseInt(value);
-                                        setRecurringWeeks(weeks);
-                                        onBookingDataChange("recurringWeeks", weeks);
-                                   }}
-                              >
-                                   <SelectTrigger className="w-full">
-                                        <SelectValue placeholder="Chọn số tuần" />
-                                   </SelectTrigger>
-                                   <SelectContent>
-                                        <SelectItem value="4">4 tuần</SelectItem>
-                                        <SelectItem value="8">8 tuần</SelectItem>
-                                        <SelectItem value="12">12 tuần</SelectItem>
-                                        <SelectItem value="16">16 tuần</SelectItem>
-                                        <SelectItem value="20">20 tuần</SelectItem>
-                                   </SelectContent>
-                              </Select>
-                         </div>
-
-                         <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
-                                   Chọn ngày trong tuần
-                              </label>
-                              <div className="grid grid-cols-7 gap-2">
-                                   {dayOptions.map((day) => (
-                                        <Button
-                                             key={day.value}
-                                             type="button"
-                                             onClick={() => handleDayToggle(day.value)}
-                                             variant={selectedDays.includes(day.value) ? "default" : "outline"}
-                                             size="sm"
-                                             className={`p-2 text-sm font-medium ${selectedDays.includes(day.value)
-                                                  ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600"
-                                                  : "bg-white text-gray-700 hover:text-teal-500 hover:bg-teal-50 border-teal-300"
-                                                  }`}
-                                             title={day.name}
-                                        >
-                                             {day.label}
-                                        </Button>
-                                   ))}
+                    <div className="space-y-4 mt-4">
+                         {/* Bước 1: Chọn khoảng thời gian */}
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Ngày bắt đầu
+                                   </label>
+                                   <DatePicker
+                                        value={startDate}
+                                        onChange={(date) => {
+                                             setStartDate(date);
+                                             onBookingDataChange("startDate", date);
+                                        }}
+                                        min={new Date().toISOString().split('T')[0]}
+                                   />
                               </div>
-                              {selectedDays.length === 0 && (
-                                   <p className="text-red-500 text-sm mt-1">Vui lòng chọn ít nhất một ngày</p>
-                              )}
-                              {/* Suggestions for other days */}
-                              {isRecurring && suggestedDays.length > 0 && (
-                                   <div className="mt-3">
-                                        <div className="text-xs text-gray-600 mb-1">Gợi ý ngày khác (phù hợp):</div>
-                                        <div className="flex flex-wrap gap-2">
-                                             {suggestedDayOptions
-                                                  .filter(d => suggestedDays.includes(d.value))
-                                                  .map(d => (
-                                                       <Button
-                                                            key={d.value}
-                                                            type="button"
-                                                            onClick={() => handleDayToggle(d.value)}
-                                                            className="px-2 py-1 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
-                                                       >
-                                                            + {d.label}
-                                                       </Button>
-                                                  ))}
-                                        </div>
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Ngày kết thúc
+                                   </label>
+                                   <DatePicker
+                                        value={endDate}
+                                        onChange={(date) => {
+                                             setEndDate(date);
+                                             onBookingDataChange("endDate", date);
+                                        }}
+                                        min={startDate || new Date().toISOString().split('T')[0]}
+                                   />
+                              </div>
+                         </div>
+
+                         {/* Bước 2: Chọn các thứ trong tuần */}
+                         {startDate && endDate && (
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Chọn ngày trong tuần
+                                   </label>
+                                   <div className="grid grid-cols-7 gap-2">
+                                        {dayOptions.map((day) => {
+                                             const isSelected = selectedDays.includes(day.value);
+                                             return (
+                                                  <Button
+                                                       key={day.value}
+                                                       type="button"
+                                                       onClick={() => handleDayToggle(day.value)}
+                                                       variant={isSelected ? "default" : "outline"}
+                                                       size="sm"
+                                                       className={`p-2 text-sm font-medium ${isSelected
+                                                            ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600"
+                                                            : "bg-white text-gray-700 hover:text-teal-500 hover:bg-teal-50 border-teal-300"
+                                                            }`}
+                                                       title={day.name}
+                                                  >
+                                                       {day.label}
+                                                  </Button>
+                                             );
+                                        })}
                                    </div>
-                              )}
-                              {isRecurring && isSuggesting && (
-                                   <div className="mt-2 text-xs text-gray-500">Đang gợi ý ngày phù hợp…</div>
-                              )}
-                         </div>
+                                   {selectedDays.length === 0 && (
+                                        <p className="text-red-500 text-sm mt-1">Vui lòng chọn ít nhất một ngày</p>
+                                   )}
+                              </div>
+                         )}
 
-                         <div className="text-sm text-teal-700">
-                              <CalendarDays className="w-4 h-4 inline mr-1" />
-                              Sẽ tạo {recurringWeeks * selectedDays.length} đặt sân cho {recurringWeeks} tuần liên tiếp
-                              {selectedDays.length > 0 && (
-                                   <span className="block mt-1">
-                                        ({selectedDays.length} ngày/tuần × {recurringWeeks} tuần = {recurringWeeks * selectedDays.length} buổi)
-                                   </span>
-                              )}
-                         </div>
+                         {/* Bước 3: Chọn slot cho từng thứ đã chọn */}
+                         {selectedDays.length > 0 && startDate && endDate && (
+                              <div className="space-y-3">
+                                   <label className="block text-sm font-medium text-gray-700">
+                                        Chọn khung giờ cho từng ngày
+                                   </label>
+                                   {selectedDays.map((dayOfWeek) => {
+                                        const dayOption = dayOptions.find(d => d.value === dayOfWeek);
+                                        const schedules = getSchedulesForDay(dayOfWeek);
+                                        const selectedSlotId = selectedSlotsByDay?.[dayOfWeek] || null;
 
-                         {isRecurring && selectedDays.length > 0 && recurringWeeks > 0 && typeof generateRecurringSessions === "function" && (
-                              (() => {
-                                   const sessions = generateRecurringSessions() || [];
-                                   if (sessions.length === 0) return null;
-                                   const first = sessions[0]?.date;
-                                   const last = sessions[sessions.length - 1]?.date;
-                                   const fmt = (d) => {
-                                        try {
-                                             const date = d instanceof Date ? d : new Date(d);
-                                             return date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
-                                        } catch {
-                                             return "--/--/----";
-                                        }
-                                   };
-                                   return (
-                                        <div className="mt-2 text-sm text-teal-800">
-                                             Khoảng thời gian: từ <span className="font-semibold">{fmt(first)}</span> đến <span className="font-semibold">{fmt(last)}</span>
-                                        </div>
-                                   );
-                              })()
+                                        return (
+                                             <div key={dayOfWeek} className="bg-white rounded-lg border border-teal-200 p-3">
+                                                  <div className="flex items-center gap-2 mb-2">
+                                                       <CalendarDays className="w-4 h-4 text-teal-600" />
+                                                       <span className="font-semibold text-teal-800">{dayOption?.name || `Thứ ${dayOfWeek}`}</span>
+                                                  </div>
+                                                  
+                                                  {schedules.length === 0 ? (
+                                                       <p className="text-sm text-gray-500 italic">Không có lịch trình cho {dayOption?.name}</p>
+                                                  ) : (
+                                                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                            {schedules.map((schedule) => {
+                                                                 const scheduleSlotId = schedule.slotId || schedule.SlotId || schedule.slotID || schedule.SlotID;
+                                                                 const scheduleId = schedule.scheduleId || schedule.ScheduleId || schedule.scheduleID || schedule.ScheduleID;
+                                                                 const startTime = schedule.startTime || schedule.StartTime || "";
+                                                                 const endTime = schedule.endTime || schedule.EndTime || "";
+                                                                 const status = schedule.status || schedule.Status || "Available";
+                                                                 const isSelected = String(selectedSlotId) === String(scheduleSlotId);
+                                                                 const isAvailable = status === "Available";
+
+                                                                 return (
+                                                                      <Button
+                                                                           key={scheduleId || scheduleSlotId}
+                                                                           type="button"
+                                                                           onClick={() => {
+                                                                                if (isAvailable) {
+                                                                                     onSlotSelect(dayOfWeek, isSelected ? null : scheduleSlotId);
+                                                                                }
+                                                                           }}
+                                                                           disabled={!isAvailable}
+                                                                           className={`text-xs py-2 px-3 rounded-lg transition-all ${
+                                                                                isSelected
+                                                                                     ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600"
+                                                                                     : isAvailable
+                                                                                          ? "bg-white text-gray-700 border border-teal-300 hover:bg-teal-50 hover:border-teal-500"
+                                                                                          : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                                                                           }`}
+                                                                      >
+                                                                           <div className="flex flex-col items-center gap-1">
+                                                                                <Clock className="w-3 h-3" />
+                                                                                <span className="font-medium">{formatTimeRange(startTime, endTime)}</span>
+                                                                                {!isAvailable && (
+                                                                                     <span className="text-[10px] text-red-500">Hết chỗ</span>
+                                                                                )}
+                                                                           </div>
+                                                                      </Button>
+                                                                 );
+                                                            })}
+                                                       </div>
+                                                  )}
+                                             </div>
+                                        );
+                                   })}
+                              </div>
+                         )}
+
+                         {/* Tóm tắt */}
+                         {totalSessions > 0 && (
+                              <div className="bg-teal-100 rounded-lg p-3 border border-teal-300">
+                                   <div className="flex items-center gap-2 text-teal-800">
+                                        <CalendarDays className="w-4 h-4" />
+                                        <span className="font-semibold">Tóm tắt:</span>
+                                   </div>
+                                   <div className="mt-2 text-sm text-teal-700">
+                                        <p>Sẽ tạo <span className="font-bold">{totalSessions}</span> buổi đặt sân</p>
+                                        {startDate && endDate && (
+                                             <p className="mt-1">
+                                                  Từ <span className="font-semibold">{new Date(startDate).toLocaleDateString("vi-VN")}</span> đến{" "}
+                                                  <span className="font-semibold">{new Date(endDate).toLocaleDateString("vi-VN")}</span>
+                                             </p>
+                                        )}
+                                        {selectedDays.length > 0 && (
+                                             <p className="mt-1">
+                                                  {selectedDays.length} ngày/tuần: {selectedDays.map(d => dayOptions.find(o => o.value === d)?.label).join(", ")}
+                                             </p>
+                                        )}
+                                   </div>
+                              </div>
                          )}
                     </div>
                )}
           </div>
      );
 }
-

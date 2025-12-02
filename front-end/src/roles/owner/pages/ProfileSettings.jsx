@@ -4,9 +4,11 @@ import { Input, Button, Card, CardContent, CardHeader, CardTitle, Avatar, Avatar
 import { profileService } from "../../../shared/index";
 import Swal from "sweetalert2";
 import { useAuth } from "../../../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export default function ProfileSettings({ isDemo = false }) {
-     const { user, updateUser } = useAuth();
+     const { user, updateUser, logout } = useAuth();
+     const navigate = useNavigate();
      const [isEditing, setIsEditing] = useState(false);
      const [isLoading, setIsLoading] = useState(false);
      const [avatarFile, setAvatarFile] = useState(null);
@@ -108,7 +110,11 @@ export default function ProfileSettings({ isDemo = false }) {
                     icon: 'warning',
                     title: 'Phiên đăng nhập đã hết hạn',
                     text: 'Vui lòng đăng nhập lại',
-                    confirmButtonText: 'Đóng'
+                    confirmButtonText: 'Đăng nhập lại'
+               }).then(() => {
+                    if (logout) logout();
+                    localStorage.removeItem("token");
+                    navigate("/login");
                });
                return;
           }

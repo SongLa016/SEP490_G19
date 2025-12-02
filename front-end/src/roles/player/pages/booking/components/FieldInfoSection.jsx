@@ -5,10 +5,28 @@ import { fetchFieldTypes, normalizeFieldType } from "../../../../../shared/servi
 export default function FieldInfoSection({
      bookingData,
      isRecurring,
-     recurringWeeks,
+     recurringWeeks, // Không dùng nữa, để tương thích
+     startDate,
+     endDate,
      selectedDays,
      generateRecurringSessions
 }) {
+     // Tính số tuần từ startDate và endDate
+     const calculateWeeks = () => {
+          if (!startDate || !endDate) return 0;
+          try {
+               const start = new Date(startDate);
+               const end = new Date(endDate);
+               if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return 0;
+               const diffTime = end - start;
+               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+               return Math.ceil(diffDays / 7);
+          } catch {
+               return 0;
+          }
+     };
+     
+     const weeksCount = isRecurring ? calculateWeeks() : 0;
      const dayNames = { 0: "CN", 1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7" };
      const [fieldTypeMap, setFieldTypeMap] = useState({});
 
@@ -166,7 +184,7 @@ export default function FieldInfoSection({
                                              <span className="mr-2">📅</span>
                                              Số tuần
                                         </span>
-                                        <span className="font-medium text-teal-600">{recurringWeeks} tuần</span>
+                                        <span className="font-medium text-teal-600">{weeksCount} tuần</span>
                                    </div>
                                    {selectedDays.length > 0 && (
                                         <div className="flex justify-between">
@@ -184,7 +202,7 @@ export default function FieldInfoSection({
                                              <span className="mr-2">🎯</span>
                                              Tổng số buổi
                                         </span>
-                                        <span className="font-medium text-teal-600">{bookingData.totalSessions || (recurringWeeks * selectedDays.length)} buổi</span>
+                                        <span className="font-medium text-teal-600">{bookingData.totalSessions || (weeksCount * selectedDays.length)} buổi</span>
                                    </div>
                                    {/* Preview danh sách buổi */}
                                    <div className="mt-3 bg-white/70 rounded-lg p-2 border border-teal-200">

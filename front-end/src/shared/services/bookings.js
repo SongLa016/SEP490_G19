@@ -429,7 +429,8 @@ export async function createBookingPackage(packageData) {
     if (!token) {
       return {
         success: false,
-        error: "Bạn cần đăng nhập để tạo gói đặt định kỳ. Vui lòng đăng nhập trước.",
+        error:
+          "Bạn cần đăng nhập để tạo gói đặt định kỳ. Vui lòng đăng nhập trước.",
       };
     }
 
@@ -614,7 +615,11 @@ export async function generateQRCodeForRemaining(bookingId) {
     return {
       success: true,
       data: response.data,
-      qrCodeUrl: response.data?.qrCodeUrl || response.data?.qrCode || response.data?.qrCodeUrl || null,
+      qrCodeUrl:
+        response.data?.qrCodeUrl ||
+        response.data?.qrCode ||
+        response.data?.qrCodeUrl ||
+        null,
     };
   } catch (error) {
     console.error("❌ [TẠO QR CÒN LẠI - API] Error:", error);
@@ -712,7 +717,7 @@ export async function fetchBookingsByPlayer(playerId) {
     }
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/player/${playerId}`;
-   
+
     const response = await apiClient.get(endpoint);
 
     return {
@@ -736,7 +741,8 @@ export async function fetchBookingPackagesByPlayer(playerId) {
     if (playerId === undefined || playerId === null || playerId === "") {
       return {
         success: false,
-        error: "Thiếu thông tin người chơi. Không thể tải lịch sử gói đặt sân cố định.",
+        error:
+          "Thiếu thông tin người chơi. Không thể tải lịch sử gói đặt sân cố định.",
       };
     }
 
@@ -793,7 +799,8 @@ export async function fetchBookingPackagesByOwner(ownerId) {
     if (ownerId === undefined || ownerId === null || ownerId === "") {
       return {
         success: false,
-        error: "Thiếu thông tin chủ sân. Không thể tải danh sách gói đặt sân cố định.",
+        error:
+          "Thiếu thông tin chủ sân. Không thể tải danh sách gói đặt sân cố định.",
       };
     }
 
@@ -1043,7 +1050,6 @@ export async function confirmCancellation(cancellationId) {
       message: "Đã xác nhận hủy booking",
     };
   } catch (error) {
-
     if (error.response) {
       return {
         success: false,
@@ -1157,7 +1163,10 @@ export async function updateBookingStatus(bookingId, status) {
       } catch (putError) {
         lastError = putError;
         // If PUT fails with 404 or 405, try PATCH
-        if (putError.response?.status === 404 || putError.response?.status === 405) {
+        if (
+          putError.response?.status === 404 ||
+          putError.response?.status === 405
+        ) {
           try {
             const response = await apiClient.patch(endpoint, payload);
             return {
@@ -1171,7 +1180,10 @@ export async function updateBookingStatus(bookingId, status) {
           }
         }
         // If it's not a 404/405, stop trying
-        if (putError.response?.status !== 404 && putError.response?.status !== 405) {
+        if (
+          putError.response?.status !== 404 &&
+          putError.response?.status !== 405
+        ) {
           break;
         }
       }
@@ -1181,14 +1193,16 @@ export async function updateBookingStatus(bookingId, status) {
     const errorMessage = handleApiError(lastError);
     return {
       success: false,
-      error: errorMessage instanceof Error ? errorMessage.message : errorMessage,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
     };
   } catch (error) {
     console.error("Error updating booking status:", error);
     const errorMessage = handleApiError(error);
     return {
       success: false,
-      error: errorMessage instanceof Error ? errorMessage.message : errorMessage,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
     };
   }
 }
