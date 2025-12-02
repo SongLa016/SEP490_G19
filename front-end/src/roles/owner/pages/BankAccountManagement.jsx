@@ -23,7 +23,25 @@ import {
      deleteOwnerBankAccount,
      setDefaultBankAccount
 } from "../../../shared/services/ownerBankAccount";
-import { VIETNAM_BANKS, findVietnamBankByCode } from "../../../shared/constants/vietnamBanks";
+
+// Common Vietnamese bank codes
+const BANK_CODES = [
+     { code: "VCB", name: "Vietcombank" },
+     { code: "TCB", name: "Techcombank" },
+     { code: "BID", name: "BIDV" },
+     { code: "CTG", name: "VietinBank" },
+     { code: "ACB", name: "ACB" },
+     { code: "VIB", name: "VIB" },
+     { code: "TPB", name: "TPBank" },
+     { code: "MSB", name: "MSB" },
+     { code: "VPB", name: "VPBank" },
+     { code: "HDB", name: "HDBank" },
+     { code: "SHB", name: "SHB" },
+     { code: "STB", name: "Sacombank" },
+     { code: "EIB", name: "Eximbank" },
+     { code: "OCB", name: "OCB" },
+     { code: "MBB", name: "MB Bank" },
+];
 
 export default function BankAccountManagement({ isDemo = false }) {
      const { user, logout } = useAuth();
@@ -40,7 +58,6 @@ export default function BankAccountManagement({ isDemo = false }) {
           isDefault: false
      });
      const [errors, setErrors] = useState({});
-     const selectedBankMeta = findVietnamBankByCode(formData.bankShortCode);
 
      const loadData = useCallback(async () => {
           try {
@@ -107,11 +124,11 @@ export default function BankAccountManagement({ isDemo = false }) {
      };
 
      const handleBankCodeChange = (code) => {
-          const bank = findVietnamBankByCode(code);
+          const bank = BANK_CODES.find(b => b.code === code);
           setFormData(prev => ({
                ...prev,
                bankShortCode: code,
-               bankName: bank?.name || bank?.shortName || prev.bankName
+               bankName: bank ? bank.name : ""
           }));
           if (errors.bankShortCode) {
                setErrors(prev => ({
@@ -263,66 +280,24 @@ export default function BankAccountManagement({ isDemo = false }) {
           });
 
           if (result.isConfirmed) {
-               // Show loading
-               Swal.fire({
-                    title: 'Đang xóa...',
-                    text: 'Vui lòng đợi trong giây lát',
-                    allowOutsideClick: false,
-                    allowEscapeKey: false,
-                    didOpen: () => {
-                         Swal.showLoading();
-                    }
-               });
-
                try {
                     await deleteOwnerBankAccount(account.bankAccountId);
                     await Swal.fire({
                          icon: 'success',
                          title: 'Đã xóa!',
-                         text: 'Tài khoản ngân hàng đã được xóa thành công.',
+                         text: 'Tài khoản ngân hàng đã được xóa.',
                          confirmButtonColor: '#10b981',
                          timer: 2000
                     });
                     loadData();
                } catch (error) {
                     console.error('Error deleting bank account:', error);
-
-                    // Determine error type for better user message
-                    let errorTitle = 'Không thể xóa tài khoản';
-                    let errorText = error.message || 'Không thể xóa tài khoản ngân hàng. Vui lòng thử lại sau.';
-                    let footer = '<small>Nếu vấn đề vẫn tiếp tục, vui lòng liên hệ hỗ trợ</small>';
-
-                    // Check if error is about account being used by fields
-                    if (error.message && (
-                         error.message.includes('đang được sử dụng') ||
-                         error.message.includes('sân') ||
-                         error.message.includes('gỡ liên kết')
-                    )) {
-                         errorTitle = 'Tài khoản đang được sử dụng';
-                         errorText = error.message;
-                         footer = '<small>Vui lòng vào Quản lý sân để gỡ liên kết tài khoản khỏi các sân trước khi xóa</small>';
-                    } else if (error.message && error.message.includes('401')) {
-                         errorTitle = 'Phiên đăng nhập hết hạn';
-                         errorText = 'Phiên đăng nhập của bạn đã hết hạn. Vui lòng đăng nhập lại.';
-                    } else if (error.message && error.message.includes('403')) {
-                         errorTitle = 'Không có quyền';
-                         errorText = 'Bạn không có quyền thực hiện thao tác này.';
-                    } else if (error.message && error.message.includes('404')) {
-                         errorTitle = 'Không tìm thấy';
-                         errorText = 'Tài khoản ngân hàng không tồn tại hoặc đã bị xóa.';
-                    } else {
-                         // For other errors (including 500), show the message from service
-                         errorTitle = 'Không thể xóa tài khoản';
-                         // errorText already contains the appropriate message from handleApiError
-                    }
-
-                    await Swal.fire({
+                    Swal.fire({
                          icon: 'error',
-                         title: errorTitle,
-                         text: errorText,
+                         title: 'Lỗi',
+                         text: error.message || 'Không thể xóa tài khoản ngân hàng',
                          confirmButtonText: 'Đóng',
-                         confirmButtonColor: '#ef4444',
-                         footer: footer
+                         confirmButtonColor: '#ef4444'
                     });
                }
           }
@@ -409,91 +384,76 @@ export default function BankAccountManagement({ isDemo = false }) {
                          </Card>
                     ) : (
                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                              {bankAccounts.map((account) => {
-                                   const bankMeta = findVietnamBankByCode(account.bankShortCode || account.bankName);
-                                   return (
-                                        <Card key={account.bankAccountId} className="overflow-hidden border border-purple-300 hover:shadow-2xl transition-all duration-300 rounded-2xl">
-                                             <div className={`p-5 ${account.isDefault ? 'bg-gradient-to-br from-teal-50 to-blue-50 ' : 'bg-white'}`}>
-                                                  <div className="flex items-start gap-3 mb-3">
-                                                       {bankMeta?.logo && (
-                                                            <img
-                                                                 src={bankMeta.logo}
-                                                                 alt={account.bankName}
-                                                                 className="w-12 h-12 rounded-xl bg-white object-contain border border-teal-200 shadow-md"
-                                                            />
-                                                       )}
-                                                       <div className="flex-1">
-                                                            <div className="flex relative items-center space-x-2 w-full">
-                                                                 <Building2 className="w-5 h-5 text-teal-600" />
-                                                                 <h3 className="text-base font-bold text-gray-900">{account.bankName}</h3>
-                                                                 {account.isDefault && (
-                                                                      <span className="px-2 py-1 absolute top-7 right-0 bg-yellow-100 text-yellow-700 border border-yellow-200 text-xs font-medium rounded-full flex items-center">
-                                                                           <Star className="w-3 h-3 mr-1 fill-current animate-pulse" />
-                                                                           Mặc định
-                                                                      </span>
-                                                                 )}
-                                                            </div>
-                                                            {(account.bankShortCode || bankMeta?.code) && (
-                                                                 <p className="text-xs flex items-center space-x-1 text-gray-700">
-                                                                      Mã: {account.bankShortCode || bankMeta?.code} {bankMeta?.bin && (
-                                                                           <p className="text-xs text-gray-500"> - BIN: {bankMeta.bin}</p>
-                                                                      )}
-                                                                 </p>
+                              {bankAccounts.map((account) => (
+                                   <Card key={account.bankAccountId} className="overflow-hidden hover:shadow-lg transition-all duration-300 rounded-2xl">
+                                        <div className={`p-6 ${account.isDefault ? 'bg-gradient-to-br from-teal-50 to-blue-50 border-2 border-teal-200' : 'bg-white'}`}>
+                                             <div className="flex items-start justify-between mb-4">
+                                                  <div className="flex-1">
+                                                       <div className="flex items-center space-x-2 mb-2">
+                                                            <Building2 className="w-5 h-5 text-teal-600" />
+                                                            <h3 className="text-lg font-bold text-gray-900">{account.bankName}</h3>
+                                                            {account.isDefault && (
+                                                                 <span className="px-2 py-1 bg-teal-100 text-teal-700 text-xs font-medium rounded-full flex items-center">
+                                                                      <Star className="w-3 h-3 mr-1 fill-current" />
+                                                                      Mặc định
+                                                                 </span>
                                                             )}
-
                                                        </div>
-                                                  </div>
-
-                                                  <div className="flex items-center justify-between mb-2 mx-auto space-x-2">
-                                                       <div className="flex items-center space-x-2">
-                                                            <Hash className="w-4 h-4 text-blue-600" />
-                                                            <div>
-                                                                 <p className="text-xs text-gray-500">Số tài khoản</p>
-                                                                 <p className="text-sm font-semibold text-blue-600">{account.accountNumber}</p>
-                                                            </div>
-                                                       </div>
-                                                       <div className="flex items-center space-x-2">
-                                                            <User className="w-4 h-4 text-blue-600" />
-                                                            <div>
-                                                                 <p className="text-xs text-gray-500">Chủ tài khoản</p>
-                                                                 <p className="text-sm font-medium text-blue-600">{account.accountHolder}</p>
-                                                            </div>
-                                                       </div>
-                                                  </div>
-
-                                                  <div className="flex items-center space-x-2 pt-4 border-t border-gray-200">
-                                                       {!account.isDefault && (
-                                                            <Button
-                                                                 variant="outline"
-                                                                 size="sm"
-                                                                 onClick={() => handleSetDefault(account)}
-                                                                 className="flex-1 text-xs border-teal-200 text-teal-600 hover:bg-teal-50 rounded-2xl hover:text-teal-700"
-                                                            >
-                                                                 <Star className="w-3 h-3 mr-1" />
-                                                                 Đặt mặc định
-                                                            </Button>
+                                                       {account.bankShortCode && (
+                                                            <p className="text-sm text-gray-500 mb-1">Mã: {account.bankShortCode}</p>
                                                        )}
-                                                       <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => handleEditAccount(account)}
-                                                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200 rounded-2xl"
-                                                       >
-                                                            <Edit className="w-4 h-4" />
-                                                       </Button>
-                                                       <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => handleDeleteAccount(account)}
-                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 rounded-2xl"
-                                                       >
-                                                            <Trash2 className="w-4 h-4" />
-                                                       </Button>
                                                   </div>
                                              </div>
-                                        </Card>
-                                   );
-                              })}
+
+                                             <div className="space-y-3 mb-4">
+                                                  <div className="flex items-center space-x-2">
+                                                       <Hash className="w-4 h-4 text-gray-400" />
+                                                       <div>
+                                                            <p className="text-xs text-gray-500">Số tài khoản</p>
+                                                            <p className="text-sm font-semibold text-gray-900">{account.accountNumber}</p>
+                                                       </div>
+                                                  </div>
+                                                  <div className="flex items-center space-x-2">
+                                                       <User className="w-4 h-4 text-gray-400" />
+                                                       <div>
+                                                            <p className="text-xs text-gray-500">Chủ tài khoản</p>
+                                                            <p className="text-sm font-medium text-gray-900">{account.accountHolder}</p>
+                                                       </div>
+                                                  </div>
+                                             </div>
+
+                                             <div className="flex items-center space-x-2 pt-4 border-t border-gray-200">
+                                                  {!account.isDefault && (
+                                                       <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => handleSetDefault(account)}
+                                                            className="flex-1 text-xs border-teal-200 text-teal-600 hover:bg-teal-50"
+                                                       >
+                                                            <Star className="w-3 h-3 mr-1" />
+                                                            Đặt mặc định
+                                                       </Button>
+                                                  )}
+                                                  <Button
+                                                       variant="outline"
+                                                       size="sm"
+                                                       onClick={() => handleEditAccount(account)}
+                                                       className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 border-blue-200"
+                                                  >
+                                                       <Edit className="w-4 h-4" />
+                                                  </Button>
+                                                  <Button
+                                                       variant="outline"
+                                                       size="sm"
+                                                       onClick={() => handleDeleteAccount(account)}
+                                                       className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                                  >
+                                                       <Trash2 className="w-4 h-4" />
+                                                  </Button>
+                                             </div>
+                                        </div>
+                                   </Card>
+                              ))}
                          </div>
                     )}
 
@@ -518,41 +478,13 @@ export default function BankAccountManagement({ isDemo = false }) {
                                         value={formData.bankShortCode}
                                         onValueChange={handleBankCodeChange}
                                    >
-                                        <SelectTrigger className={`${errors.bankShortCode ? "border-red-500" : ""} h-auto rounded-2xl `}>
-                                             {selectedBankMeta ? (
-                                                  <div className="flex items-center text-base font-medium">
-                                                       {selectedBankMeta.logo && (
-                                                            <img
-                                                                 src={selectedBankMeta.logo}
-                                                                 alt={selectedBankMeta.shortName}
-                                                                 className="w-10 h-10 object-contain"
-                                                            />
-                                                       )}
-                                                       <div>
-                                                            <p className="text-sm font-semibold text-gray-900">{selectedBankMeta.shortName}</p>
-                                                            <p className="text-xs text-gray-500">{selectedBankMeta.code} · BIN {selectedBankMeta.bin}</p>
-                                                       </div>
-                                                  </div>
-                                             ) : (
-                                                  <SelectValue placeholder="Chọn ngân hàng" />
-                                             )}
+                                        <SelectTrigger className={errors.bankShortCode ? 'border-red-500' : ''}>
+                                             <SelectValue placeholder="Chọn ngân hàng" />
                                         </SelectTrigger>
-                                        <SelectContent className="max-h-80 overflow-y-auto rounded-2xl">
-                                             {VIETNAM_BANKS.map((bank) => (
+                                        <SelectContent>
+                                             {BANK_CODES.map(bank => (
                                                   <SelectItem key={bank.code} value={bank.code}>
-                                                       <div className="flex items-center gap-2">
-                                                            {bank.logo && (
-                                                                 <img
-                                                                      src={bank.logo}
-                                                                      alt={bank.shortName}
-                                                                      className="w-8 h-8 object-contain rounded-md border border-gray-100 bg-white"
-                                                                 />
-                                                            )}
-                                                            <div className="text-left">
-                                                                 <p className="text-sm font-medium text-gray-900">{bank.name}</p>
-                                                                 <p className="text-xs text-gray-500">{bank.shortName} · {bank.code}</p>
-                                                            </div>
-                                                       </div>
+                                                       {bank.name} ({bank.code})
                                                   </SelectItem>
                                              ))}
                                         </SelectContent>
@@ -573,7 +505,6 @@ export default function BankAccountManagement({ isDemo = false }) {
                                         onChange={handleInputChange}
                                         placeholder="Nhập tên ngân hàng"
                                         required
-                                        disabled
                                         className={errors.bankName ? 'border-red-500' : ''}
                                    />
                                    {errors.bankName && (

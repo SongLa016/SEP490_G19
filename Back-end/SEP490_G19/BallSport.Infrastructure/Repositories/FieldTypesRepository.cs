@@ -1,37 +1,50 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BallSport.Infrastructure.Data;
+ 
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
+using BallSport.Infrastructure.Data;
 
-namespace BallSport.Infrastructure.Repositories
+public interface IFieldTypeRepository
 {
-    public class FieldTypesRepository
+    Task<List<FieldType>> GetAllAsync();
+    Task<FieldType?> GetByIdAsync(int typeId);
+    Task AddAsync(FieldType entity);
+    Task UpdateAsync(FieldType entity);
+    Task DeleteAsync(FieldType entity);
+}
+
+public class FieldTypeRepository : IFieldTypeRepository
+{
+    private readonly Sep490G19v1Context _context;
+
+    public FieldTypeRepository(Sep490G19v1Context context)
     {
-        private readonly Sep490G19v1Context _context;
-        public FieldTypesRepository(Sep490G19v1Context context)
-        {
-            _context = context;
-        }
-        public async Task<FieldType> AddFieldTypeAsync(FieldType fieldType)
-        {
-            _context.FieldTypes.Add(fieldType);
-            await _context.SaveChangesAsync();
-            return fieldType;
-        }
+        _context = context;
+    }
 
-        public async Task<FieldType?> GetFieldTypeByIdAsync(int typeId)
-        {
-            return await _context.FieldTypes
-                .FirstOrDefaultAsync(f => f.TypeId == typeId);
-        }
+    public async Task<List<FieldType>> GetAllAsync() =>
+        await _context.FieldTypes.ToListAsync();
 
-        public async Task<List<FieldType>> GetAllFieldTypesAsync()
-        {
-            return await _context.FieldTypes.ToListAsync();
-        }
+    public async Task<FieldType?> GetByIdAsync(int typeId) =>
+        await _context.FieldTypes
+            .Include(ft => ft.Fields) // cần để kiểm tra owner
+            .FirstOrDefaultAsync(ft => ft.TypeId == typeId);
+
+    public async Task AddAsync(FieldType entity)
+    {
+        await _context.FieldTypes.AddAsync(entity);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateAsync(FieldType entity)
+    {
+        _context.FieldTypes.Update(entity);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task DeleteAsync(FieldType entity)
+    {
+        _context.FieldTypes.Remove(entity);
+        await _context.SaveChangesAsync();
     }
 }

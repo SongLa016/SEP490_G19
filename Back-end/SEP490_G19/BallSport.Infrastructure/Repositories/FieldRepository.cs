@@ -1,6 +1,7 @@
-﻿using BallSport.Infrastructure.Data;
+﻿ 
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
+using BallSport.Infrastructure.Data;
 
 namespace BallSport.Infrastructure.Repositories
 {
@@ -18,26 +19,56 @@ namespace BallSport.Infrastructure.Repositories
         {
             _context.Fields.Add(field);
             await _context.SaveChangesAsync();
-            return field;
+
+            return await _context.Fields
+                .Include(f => f.FieldImages)
+                .FirstOrDefaultAsync(f => f.FieldId == field.FieldId)
+                ?? field;
         }
 
-        // Lấy tất cả sân trong khu sân
+        // ADD FIELD IMAGES - URL BASED
+        public async Task AddFieldImagesAsync(int fieldId, List<string> imageUrls)
+        {
+            if (imageUrls == null || imageUrls.Count == 0) return;
+
+            var fieldImages = imageUrls.Select(url => new FieldImage
+            {
+                FieldId = fieldId,
+                ImageUrl = url
+            }).ToList();
+
+            _context.FieldImages.AddRange(fieldImages);
+            await _context.SaveChangesAsync();
+        }
+
+        // GET FIELDS BY COMPLEX
         public async Task<List<Field>> GetFieldsByComplexIdAsync(int complexId)
         {
             return await _context.Fields
                 .Where(f => f.ComplexId == complexId)
                 .Include(f => f.Type)
                 .Include(f => f.Complex)
+                .Include(f => f.FieldImages)
                 .ToListAsync();
         }
 
-        //  Lấy 1 sân theo ID
+        // GET FIELD BY ID
         public async Task<Field?> GetFieldByIdAsync(int fieldId)
         {
             return await _context.Fields
                 .Include(f => f.Type)
                 .Include(f => f.Complex)
+                .Include(f => f.FieldImages)
                 .FirstOrDefaultAsync(f => f.FieldId == fieldId);
+        }
+
+        // GET FIELDS BY OWNER
+        public async Task<List<Field>> GetFieldsByOwnerIdAsync(int ownerId)
+        {
+            return await _context.Fields
+                .Where(f => f.BankAccount != null && f.BankAccount.OwnerId == ownerId)
+                .Include(f => f.FieldImages)
+                .ToListAsync();
         }
 
         // UPDATE
@@ -45,16 +76,27 @@ namespace BallSport.Infrastructure.Repositories
         {
             _context.Fields.Update(field);
             await _context.SaveChangesAsync();
-            return field;
+
+            return await _context.Fields
+                .Include(f => f.FieldImages)
+                .FirstOrDefaultAsync(f => f.FieldId == field.FieldId)
+                ?? field;
         }
 
         // DELETE
         public async Task<bool> DeleteFieldAsync(int fieldId)
         {
-            var field = await _context.Fields.FindAsync(fieldId);
+            var field = await _context.Fields
+                .Include(f => f.FieldImages)
+                .FirstOrDefaultAsync(f => f.FieldId == fieldId);
+
             if (field == null) return false;
 
+            if (field.FieldImages.Any())
+                _context.FieldImages.RemoveRange(field.FieldImages);
+
             _context.Fields.Remove(field);
+
             await _context.SaveChangesAsync();
             return true;
         }

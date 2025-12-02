@@ -7,7 +7,7 @@ public partial class MatchRequest
 {
     public int MatchRequestId { get; set; }
 
-    public int BookingId { get; set; }
+    public int? BookingId { get; set; }
 
     public int CreatedBy { get; set; }
 
@@ -17,13 +17,21 @@ public partial class MatchRequest
 
     public DateTime? CreatedAt { get; set; }
 
-    public virtual Booking Booking { get; set; } = null!;
+    public int? OpponentUserId { get; set; }
 
-    public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
+    public DateTime? MatchedAt { get; set; }
+
+    public DateTime? ExpiresAt { get; set; }
+
+    public int? PlayerCount { get; set; }
+
+    public virtual Booking? Booking { get; set; }
 
     public virtual User CreatedByNavigation { get; set; } = null!;
 
     public virtual ICollection<MatchParticipant> MatchParticipants { get; set; } = new List<MatchParticipant>();
+
+    public virtual User? OpponentUser { get; set; }
 
     public virtual ICollection<PlayerMatchHistory> PlayerMatchHistories { get; set; } = new List<PlayerMatchHistory>();
 }

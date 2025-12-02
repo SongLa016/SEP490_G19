@@ -1,56 +1,98 @@
 ﻿using BallSport.Application.DTOs;
 using BallSport.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BallSport.API.Controllers
+[ApiController]
+[Route("api/[controller]")]
+public class TimeSlotController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class TimeSlotController : ControllerBase
-    {
-        private readonly TimeSlotService _service;
+    private readonly ITimeSlotService _service;
 
-        public TimeSlotController(TimeSlotService service)
-        {
-            _service = service;
-        }
-        // Lấy tất cả các khung giờ
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
-        {
-            return Ok(await _service.GetAllAsync());
-        }
-        // Chọn 1 khung giờ
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
-        {
-            var slot = await _service.GetByIdAsync(id);
-            if (slot == null) return NotFound();
-            return Ok(slot);
-        }
-        // Thêm slot mới
-        [HttpPost]
-        public async Task<IActionResult> Create(TimeSlotDTO dto)
-        {
-            var created = await _service.AddAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = created.SlotId }, created);
-        }
-        // Sửa slot
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, TimeSlotDTO dto)
-        {
-            if (id != dto.SlotId) return BadRequest("ID không khớp");
-            var updated = await _service.UpdateAsync(dto);
-            if (updated == null) return NotFound();
-            return Ok(updated);
-        }
-        // Xóa slot
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var ok = await _service.DeleteAsync(id);
-            if (!ok) return NotFound();
-            return NoContent();
-        }
+    public TimeSlotController(ITimeSlotService service)
+    {
+        _service = service;
+    }
+
+    // Lấy OwnerId từ token
+    private int GetOwnerId()
+    {
+        var ownerIdClaim = User.FindFirst("UserID");
+        if (ownerIdClaim == null)
+            throw new UnauthorizedAccessException("Không tìm thấy OwnerId trong token.");
+        return int.Parse(ownerIdClaim.Value);
+    }
+
+    // ------------------------- PUBLIC ----------------------------
+    [HttpGet("public/{fieldId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPublicByField(int fieldId)
+    {
+        var slots = await _service.GetPublicByFieldIdAsync(fieldId);
+        return Ok(slots);
+    }
+
+    // ------------------------- OWNER CRUD ------------------------
+    [HttpGet]
+    [Authorize(Roles = "Owner")]
+    public async Task<IActionResult> GetAll()
+    {
+        var ownerId = GetOwnerId();
+        var slots = await _service.GetAllAsync(ownerId);
+        return Ok(slots);
+    }
+
+    [HttpGet("{id}")]
+    [Authorize(Roles = "Owner")]
+    public async Task<IActionResult> GetById(int id)
+    {
+        var ownerId = GetOwnerId();
+        var slot = await _service.GetByIdAsync(id, ownerId);
+        if (slot == null) return NotFound();
+        return Ok(slot);
+    }
+
+    [HttpGet("field/{fieldId}")]
+    [Authorize(Roles = "Owner")]
+    public async Task<IActionResult> GetByFieldId(int fieldId)
+    {
+        var ownerId = GetOwnerId();
+        var slots = await _service.GetByFieldIdAsync(fieldId, ownerId);
+        return Ok(slots);
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Owner")]
+    public async Task<IActionResult> Create([FromBody] TimeSlotDTO dto)
+    {
+        var ownerId = GetOwnerId();
+        var slot = await _service.CreateAsync(dto, ownerId);
+        return CreatedAtAction(nameof(GetById), new { id = slot.SlotId }, slot);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Owner")]
+    public async Task<IActionResult> Update(int id, [FromBody] TimeSlotDTO dto)
+    {
+        var ownerId = GetOwnerId();
+        var slot = await _service.UpdateAsync(id, dto, ownerId);
+
+        if (slot == null)
+            return NotFound(new { message = "Không tìm thấy slot." });
+
+        return Ok(slot);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Owner")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var ownerId = GetOwnerId();
+        var result = await _service.DeleteAsync(id, ownerId);
+
+        if (!result)
+            return NotFound();
+
+        return NoContent();
     }
 }

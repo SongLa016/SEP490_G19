@@ -11,6 +11,7 @@ export default function FieldListItem({ field, index, slotId, formatPrice, handl
           <FadeIn key={field.fieldId} delay={index * 50}>
                <div
                     onClick={(e) => {
+                         // If any child marked to stop navigation is clicked, do nothing
                          const blocker = (e.target instanceof Element) ? e.target.closest('[data-stop-propagation="true"]') : null;
                          if (blocker || e.defaultPrevented) {
                               return;
@@ -22,13 +23,10 @@ export default function FieldListItem({ field, index, slotId, formatPrice, handl
                     <div className="flex flex-col md:flex-row gap-3">
                          <div className="w-full md:w-80 lg:w-96 h-48 md:h-52 flex-shrink-0">
                               <img
-                                   src={field.mainImageUrl || 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg'}
+                                   src={field.image}
                                    alt={field.name}
                                    className="w-full h-full rounded-2xl object-cover transition-transform duration-300 hover:scale-105"
                                    draggable={false}
-                                   onError={(e) => {
-                                        e.target.src = 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg';
-                                   }}
                               />
                          </div>
                          <div className="flex-1 md:px-4 py-3">
@@ -100,7 +98,6 @@ export default function FieldListItem({ field, index, slotId, formatPrice, handl
                                                   e.preventDefault();
                                                   e.stopPropagation();
                                                   handleBook(field.fieldId);
-                                                  navigate(`/field/${field.fieldId}`);
                                              }}
                                              className="bg-teal-500 hover:bg-teal-600 text-white py-2 md:py-1 px-4 rounded-xl font-semibold transition-all duration-200 hover:scale-105 flex items-center gap-2 w-full md:w-auto justify-center"
                                         >

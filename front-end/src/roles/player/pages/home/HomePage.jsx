@@ -34,13 +34,40 @@ export default function HomePage({ user }) {
      // Giá trị: 0.22 = 22% đầu tiên của section dành cho phase intro
      // Trong phase này: zoom in từ xa vào overview artboard
      // Thay đổi: Tăng giá trị = phase intro dài hơn, giảm = ngắn hơn
-     const canvasPhaseDuration = 0.23;
+     const canvasPhaseDuration = 0.19;
 
      // canvasMinZoom: Zoom level bắt đầu của phase intro
      // Giá trị: 0.45 = zoom ra xa 45% (nhìn từ xa)
      // Trong phase intro: zoom từ 0.45 -> overviewZoom (0.9)
      // Thay đổi: Giảm = bắt đầu xa hơn, tăng = gần hơn
-     const canvasMinZoom = 0.3;
+     const canvasMinZoom = 0.45;
+
+     // ============================================
+     // STATE ĐIỀU KHIỂN ZOOM VÀ PAN
+     // ============================================
+
+     // zoom: Zoom level hiện tại của container
+     // Giá trị: 0.45 -> 1.5 (tùy phase)
+     // - Phase intro: 0.45 -> 0.9
+     // - Overview hold: 0.9
+     // - Overview focus: 0.9 -> 1.5
+     // - Component reveal: 1.0
+     // Thay đổi: setZoom() trong logic scroll
+     const [zoom, setZoom] = useState(canvasMinZoom);
+
+     // pan: Vị trí ngang (x) và dọc (y) của container
+     // pan.x: Offset ngang để căn giữa component đang focus
+     // - Overview: centerX - (componentWidth/2)
+     // - Component: centerX - itemCenter (tính toán dựa trên componentIndex)
+     // pan.y: Luôn = 0 (không di chuyển dọc)
+     // Thay đổi: setPan({ x: panX, y: 0 }) trong logic scroll
+     const [pan, setPan] = useState({ x: 0, y: 0 });
+
+     // isCanvasPhase: Có đang ở phase overview không?
+     // true: Đang ở phase intro/overview (hiển thị overview artboard)
+     // false: Đã qua phase overview (hiển thị components)
+     // Thay đổi: setIsCanvasPhase(true/false) trong logic scroll
+     const [isCanvasPhase, setIsCanvasPhase] = useState(true);
 
      // focusIndex: Index của component đang được focus
      // -1: Chưa focus component nào (đang ở overview)
@@ -65,15 +92,6 @@ export default function HomePage({ user }) {
      // lenisRef: Reference đến instance của Lenis (smooth scroll library)
      // Dùng để: Lắng nghe scroll events, lấy scroll position
      const lenisRef = useRef(null);
-
-     // Ref cho container ngang – nơi apply transform
-     const horizontalTrackRef = useRef(null);
-
-     // Không cần re-render vì zoom/pan, nên dùng ref để lưu giá trị hiện tại
-     const transformStateRef = useRef({
-          zoom: canvasMinZoom,
-          panX: 0,
-     });
 
      // ============================================
      // MẢNG COMPONENTS ĐƯỢC HIỂN THỊ
@@ -121,7 +139,7 @@ export default function HomePage({ user }) {
      // Giá trị: 0.9 = zoom 90% (nhỏ hơn một chút)
      // Dùng trong: Phase overview hold (giữ nguyên overview)
      // Thay đổi: Tăng = overview lớn hơn, giảm = nhỏ hơn
-     const overviewZoom = 0.95;
+     const overviewZoom = 0.9;
 
      // overviewFocusZoom: Zoom level khi focus vào overview (chuẩn bị chuyển sang components)
      // Giá trị: 1.5 = zoom 150% (phóng to)
@@ -242,31 +260,27 @@ export default function HomePage({ user }) {
      // 3. Mỗi phase điều khiển: zoom level, pan position (vị trí ngang), focusIndex (component nào đang active)
      // 4. Khi scroll, container di chuyển ngang (pan.x) để căn giữa component đang focus
      useEffect(() => {
-          if (!scrollSectionRef.current || !lenisRef.current || !horizontalTrackRef.current) return;
+          if (!scrollSectionRef.current || !lenisRef.current) return;
 
+          // ============================================
+          // THROTTLING: Tối ưu performance
+          // ============================================
+          // Giới hạn số lần update để đạt ~60fps mượt mà
+          // Thay vì update mỗi lần scroll, chỉ update mỗi 16ms (60fps)
           let rafId = null;
           let ticking = false;
           let lastUpdateTime = 0;
           const throttleMs = 16; // ~60fps
 
-          const applyTransform = () => {
-               const track = horizontalTrackRef.current;
-               if (!track) return;
-               const { zoom, panX } = transformStateRef.current;
-               track.style.transform = `translate3d(${panX}px, 0, 0) scale(${zoom})`;
-          };
-
-          const updateFocusIndex = (nextIndex) => {
-               setFocusIndex((prev) => (prev === nextIndex ? prev : nextIndex));
-          };
-
           const handleScroll = (e) => {
                const now = performance.now();
+               // Bỏ qua nếu chưa đủ thời gian (throttling)
                if (now - lastUpdateTime < throttleMs && ticking) {
-                    return;
+                    return; // Skip if too soon
                }
                lastUpdateTime = now;
 
+               // Sử dụng requestAnimationFrame để đồng bộ với repaint của browser
                if (!ticking) {
                     ticking = true;
                     rafId = requestAnimationFrame(() => {
@@ -276,20 +290,48 @@ export default function HomePage({ user }) {
                               return;
                          }
 
+                         // ============================================
+                         // TÍNH TOÁN VỊ TRÍ SCROLL
+                         // ============================================
+                         // Lấy các thông số về viewport và section
                          const windowHeight = window.innerHeight;
-                         const sectionHeight = scrollSection.offsetHeight;
-                         const sectionTop = scrollSection.offsetTop;
+                         const sectionHeight = scrollSection.offsetHeight; // Chiều cao section (400vh)
+                         const sectionTop = scrollSection.offsetTop; // Vị trí top của section
 
+                         // Lấy vị trí scroll hiện tại (từ Lenis hoặc window)
                          const currentScroll = e?.scroll ?? lenisRef.current?.scroll ?? window.scrollY ?? window.pageYOffset;
+
+                         // scrollStart: Vị trí bắt đầu section (khi section vừa vào viewport)
+                         // Section bắt đầu khi top của nó bằng bottom của viewport
                          const scrollStart = sectionTop - windowHeight;
 
+                         // ============================================
+                         // TÍNH TOÁN VỊ TRÍ NGANG (PAN)
+                         // ============================================
+                         // centerX: Tâm màn hình theo trục X (để căn giữa components)
                          const centerX = window.innerWidth / 2;
+
+                         // overviewPan: Vị trí ngang để căn giữa overview artboard
+                         // Căn giữa overview = center màn hình - nửa chiều rộng component
                          const overviewPan = centerX - (componentWidth / 2);
 
-                         const lastElementTransitionEnd = 0.8;
+                         // ============================================
+                         // XỬ LÝ EDGE CASE: Khi ở component cuối cùng
+                         // ============================================
+                         // Khi đã scroll đến component cuối, cho phép scroll tự nhiên sớm hơn
+                         // để tránh "nhảy" khi ra khỏi section
+                         const lastElementTransitionEnd = 0.80; // Kết thúc section ở 80% khi ở component cuối
+
+                         // Tính toán effectiveSectionEnd: Vị trí kết thúc thực tế của section
+                         // (có thể sớm hơn nếu đang ở component cuối)
                          let effectiveSectionEnd = scrollStart + sectionHeight;
                          let shouldTreatAsPastSection = false;
 
+                         // ============================================
+                         // KIỂM TRA: Có đang ở component cuối không?
+                         // ============================================
+                         // Nếu đang ở component cuối và đã scroll qua 80% section,
+                         // coi như đã qua section để tránh "nhảy" khi scroll tiếp
                          if (currentScroll >= scrollStart && currentScroll <= scrollStart + sectionHeight) {
                               const tempProgress = (currentScroll - scrollStart) / sectionHeight;
                               if (tempProgress > canvasPhaseDuration) {
@@ -298,6 +340,7 @@ export default function HomePage({ user }) {
                                         const tempNormalized = Math.max(0, Math.min(1, (tempHProgress - overviewFocusThreshold) / (1 - overviewFocusThreshold)));
                                         const tempComponentIndex = Math.min(Math.floor(tempNormalized * componentCount + 1e-6), componentCount - 1);
                                         if (tempComponentIndex === componentCount - 1 && tempProgress >= lastElementTransitionEnd) {
+                                             // Đang ở component cuối và đã scroll qua 80% -> coi như đã qua section
                                              effectiveSectionEnd = scrollStart + sectionHeight * lastElementTransitionEnd;
                                              shouldTreatAsPastSection = true;
                                         }
@@ -305,75 +348,152 @@ export default function HomePage({ user }) {
                               }
                          }
 
+                         // ============================================
+                         // TRƯỜNG HỢP 1: ĐÃ QUA SECTION (scroll xuống quá xa)
+                         // ============================================
+                         // Khi scroll xuống quá section, giữ nguyên trạng thái component cuối cùng
+                         // Để tránh "nhảy" khi scroll tiếp
                          if (shouldTreatAsPastSection || currentScroll > effectiveSectionEnd) {
+                              // Giữ nguyên component cuối cùng
+                              setZoom(detailZoom);
+
+                              // Tính vị trí ngang để căn giữa component cuối cùng
+                              // lastCenter = vị trí center của component cuối cùng
                               const lastCenter = (componentWidth / 2) + componentCount * (componentWidth + componentGap);
                               const panX = centerX - lastCenter;
 
-                              transformStateRef.current.zoom = detailZoom;
-                              transformStateRef.current.panX = panX;
-                              applyTransform();
-
-                              updateFocusIndex(componentCount - 1);
+                              setPan({ x: panX, y: 0 });
+                              setIsCanvasPhase(false);
+                              setFocusIndex(componentCount - 1); // Focus vào component cuối
                               ticking = false;
                               return;
                          }
 
+                         // ============================================
+                         // TRƯỜNG HỢP 2: ĐANG TRONG SECTION
+                         // ============================================
+                         // Tính progress: 0 (đầu section) -> 1 (cuối section)
                          if (currentScroll >= scrollStart && currentScroll <= effectiveSectionEnd) {
                               let progress = (currentScroll - scrollStart) / sectionHeight;
-                              progress = Math.max(0, Math.min(1, progress));
+                              progress = Math.max(0, Math.min(1, progress)); // Clamp 0-1
 
+                              // ============================================
+                              // PHASE 1: INTRO (0% -> 22% của section)
+                              // ============================================
+                              // Mục đích: Zoom in từ xa vào overview artboard
+                              // Hiệu ứng: Từ zoom nhỏ (0.45) -> zoom overview (0.9)
+                              // Chỉ hiển thị overview, chưa hiển thị components
                               if (progress <= canvasPhaseDuration) {
+                                   // Tính progress trong phase này (0 -> 1)
                                    const p = progress / canvasPhaseDuration;
+
+                                   // Easing function: cubic ease-out (tạo chuyển động mượt)
+                                   // 1 - (1-p)^3: bắt đầu nhanh, kết thúc chậm
                                    const eased = 1 - Math.pow(1 - p, 3);
 
-                                   const canvasZoom = canvasMinZoom + (overviewZoom - canvasMinZoom) * eased;
-                                   transformStateRef.current.zoom = canvasZoom;
-                                   transformStateRef.current.panX = overviewPan;
-                                   applyTransform();
+                                   setIsCanvasPhase(true); // Đang ở phase overview
 
-                                   updateFocusIndex(-1);
+                                   // Zoom từ canvasMinZoom (0.45) -> overviewZoom (0.9)
+                                   const canvasZoom = canvasMinZoom + (overviewZoom - canvasMinZoom) * eased;
+
+                                   setZoom(canvasZoom);
+                                   setPan({ x: overviewPan, y: 0 }); // Căn giữa overview
+                                   setFocusIndex(-1); // Chưa focus component nào
                                    ticking = false;
                                    return;
                               }
 
+                              // ============================================
+                              // PHASE 2+: TỪ OVERVIEW SANG COMPONENTS
+                              // ============================================
+                              setIsCanvasPhase(false); // Đã qua phase overview
+
+                              // hProgress: Progress trong phần còn lại (sau phase intro)
+                              // 0 = bắt đầu phase 2, 1 = kết thúc section
                               const hProgress = (progress - canvasPhaseDuration) / (1 - canvasPhaseDuration);
 
+                              // ============================================
+                              // PHASE 2A: OVERVIEW HOLD (0% -> 12% của hProgress)
+                              // ============================================
+                              // Mục đích: Giữ nguyên overview một chút để user nhìn rõ
+                              // Hiệu ứng: Giữ nguyên zoom overview, chưa zoom vào
                               if (hProgress <= overviewHoldThreshold) {
-                                   transformStateRef.current.zoom = overviewZoom;
-                                   transformStateRef.current.panX = overviewPan;
-                                   applyTransform();
-                                   updateFocusIndex(-1);
+                                   setZoom(overviewZoom); // Giữ nguyên zoom overview
+                                   setPan({ x: overviewPan, y: 0 }); // Căn giữa overview
+                                   setFocusIndex(-1); // Chưa focus component
                                    ticking = false;
                                    return;
                               }
 
+                              // ============================================
+                              // PHASE 2B: OVERVIEW FOCUS (12% -> 28% của hProgress)
+                              // ============================================
+                              // Mục đích: Zoom vào overview để chuẩn bị chuyển sang components
+                              // Hiệu ứng: Zoom từ overviewZoom (0.9) -> overviewFocusZoom (1.5)
                               if (hProgress <= overviewFocusThreshold) {
+                                   // Tính progress trong phase này
                                    const focusStageProgress = (hProgress - overviewHoldThreshold) / Math.max(overviewFocusThreshold - overviewHoldThreshold, 0.00001);
+
+                                   // Easing: cubic ease-out
                                    const easedFocus = 1 - Math.pow(1 - focusStageProgress, 3);
+
+                                   // Zoom từ overviewZoom -> overviewFocusZoom
                                    const zoomLevel = overviewZoom + (overviewFocusZoom - overviewZoom) * easedFocus;
 
-                                   transformStateRef.current.zoom = zoomLevel;
-                                   transformStateRef.current.panX = overviewPan;
-                                   applyTransform();
-                                   updateFocusIndex(-1);
+                                   setZoom(zoomLevel);
+                                   setPan({ x: overviewPan, y: 0 }); // Vẫn căn giữa overview
+                                   setFocusIndex(-1); // Chưa focus component
                                    ticking = false;
                                    return;
                               }
 
+                              // ============================================
+                              // PHASE 3: COMPONENT REVEAL (28% -> 100% của hProgress)
+                              // ============================================
+                              // Mục đích: Hiển thị từng component theo hàng ngang
+                              // Hiệu ứng: Scroll ngang qua các components, mỗi component được focus khi scroll
+
+                              // normalizedProgress: Progress trong phase component reveal (0 -> 1)
+                              // 0 = bắt đầu reveal component đầu tiên
+                              // 1 = đã reveal component cuối cùng
                               const normalizedProgress = Math.max(0, Math.min(1, (hProgress - overviewFocusThreshold) / (1 - overviewFocusThreshold)));
+
+                              // componentIndex: Index của component đang được focus (0 -> componentCount-1)
+                              // Ví dụ: 4 components, normalizedProgress = 0.5 -> componentIndex = 2
                               const componentIndex = Math.min(Math.floor(normalizedProgress * componentCount + 1e-6), componentCount - 1);
+
+                              // Zoom về detailZoom (1.0) để hiển thị component rõ nét
+                              setZoom(detailZoom);
+
+                              // ============================================
+                              // TÍNH TOÁN VỊ TRÍ NGANG ĐỂ CĂN GIỮA COMPONENT
+                              // ============================================
+                              // itemCenter: Vị trí center của component đang focus
+                              // Công thức: 
+                              //   - componentWidth/2: nửa chiều rộng component đầu tiên
+                              //   - (componentIndex + 1): +1 vì có overview ở đầu
+                              //   - (componentWidth + componentGap): khoảng cách giữa các components
+                              // Ví dụ: componentIndex = 1
+                              //   itemCenter = 640 + 2 * (1280 + 32) = 640 + 2624 = 3264
                               const itemCenter = (componentWidth / 2) + (componentIndex + 1) * (componentWidth + componentGap);
+
+                              // panX: Offset để căn giữa component trong viewport
+                              // Nếu itemCenter = 3264, centerX = 960 (màn hình 1920px)
+                              // panX = 960 - 3264 = -2304 (di chuyển container sang trái 2304px)
                               const panX = centerX - itemCenter;
 
-                              transformStateRef.current.zoom = detailZoom;
-                              transformStateRef.current.panX = panX;
-                              applyTransform();
-                              updateFocusIndex(componentIndex);
+                              setPan({ x: panX, y: 0 });
+                              setFocusIndex(componentIndex); // Focus vào component này
+
+                              // ============================================
+                              // TRƯỜNG HỢP 3: CHƯA VÀO SECTION (scroll lên trên)
+                              // ============================================
+                              // Khi scroll lên trên section, hiển thị lại overview
                          } else if (currentScroll < scrollStart) {
-                              transformStateRef.current.zoom = overviewZoom;
-                              transformStateRef.current.panX = overviewPan;
-                              applyTransform();
-                              updateFocusIndex(-1);
+                              setZoom(overviewZoom);
+                              setPan({ x: overviewPan, y: 0 });
+                              setIsCanvasPhase(true);
+                              setFocusIndex(-1);
                          }
 
                          ticking = false;
@@ -382,25 +502,33 @@ export default function HomePage({ user }) {
                }
           };
 
+          // ============================================
+          // ĐĂNG KÝ EVENT LISTENER
+          // ============================================
+          // Lắng nghe sự kiện scroll từ Lenis (smooth scroll library)
           const scrollHandler = (e) => {
                handleScroll(e);
           };
           lenisRef.current.on('scroll', scrollHandler);
 
+          // Gọi lần đầu để set trạng thái ban đầu khi component mount
           setTimeout(() => {
                const initialScroll = window.scrollY || window.pageYOffset || 0;
                handleScroll({ scroll: initialScroll });
           }, 100);
 
+          // ============================================
+          // CLEANUP: Dọn dẹp khi component unmount
+          // ============================================
           return () => {
                if (lenisRef.current) {
-                    lenisRef.current.off('scroll', scrollHandler);
+                    lenisRef.current.off('scroll', scrollHandler); // Gỡ event listener
                }
                if (rafId) {
-                    cancelAnimationFrame(rafId);
+                    cancelAnimationFrame(rafId); // Hủy animation frame
                }
           };
-     }, [canvasMinZoom, componentCount, componentGap, componentWidth, detailZoom, overviewHoldThreshold, overviewFocusThreshold, overviewZoom, overviewFocusZoom, canvasPhaseDuration]);
+     }, [componentCount, componentGap, componentWidth, detailZoom, overviewHoldThreshold, overviewFocusThreshold, overviewZoom, overviewFocusZoom, canvasPhaseDuration]);
 
      // Fetch top booking fields from API
      useEffect(() => {
@@ -610,11 +738,10 @@ export default function HomePage({ user }) {
                          >
                               {/* Horizontal Components Container */}
                               <div
-                                   ref={horizontalTrackRef}
                                    className="flex items-center gap-8"
                                    style={{
-                                        opacity: 1,
-                                        transform: 'translate3d(0, 0, 0) scale(1)',
+                                        opacity: isCanvasPhase ? 1 : 1,
+                                        transform: `translate3d(${pan.x}px, 0, 0) scale(${zoom})`,
                                         transformOrigin: 'center center',
                                         willChange: 'transform',
                                         backfaceVisibility: 'hidden',
@@ -673,10 +800,15 @@ export default function HomePage({ user }) {
 
                                    {detailComponents.map(({ key, element }, index) => {
                                         const current = focusIndex === index;
-                                        // Opacity và blur theo vị trí (bỏ hiệu ứng trượt từ dưới lên, chỉ giữ fade/scale)
+                                        // Opacity và blur theo vị trí
                                         const opacity = current ? 1 : 0;
                                         const blur = current ? 0 : 8;
-                                        const scale = current ? 1 : 0.95;
+
+                                        // Scale để tạo cảm giác phóng vào
+                                        const scale = current ? 1 : 0.92;
+
+                                        // Hiệu ứng trượt nhẹ
+                                        const translateY = current ? 0 : 80;
 
                                         return (
                                              <div
@@ -684,7 +816,7 @@ export default function HomePage({ user }) {
                                                   className="flex-shrink-0 w-full max-w-7xl"
                                                   style={{
                                                        opacity,
-                                                       transform: `scale(${scale})`,
+                                                       transform: `translate3d(0, ${translateY}px, 0) scale(${scale})`,
                                                        filter: `blur(${blur}px)`,
                                                        transition: "opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), filter 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
                                                        pointerEvents: current ? "auto" : "none",

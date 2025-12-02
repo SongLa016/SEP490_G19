@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../../contexts/AuthContext';
 //
@@ -12,16 +12,9 @@ export default function Auth() {
      const [tab, setTab] = useState('login'); // login | register
      const { login } = useAuth();
      const navigate = useNavigate();
-     const location = useLocation();
 
      const handleLoggedIn = (user) => {
           login(user);
-
-          const redirectedFrom = location.state?.from;
-          if (redirectedFrom && typeof redirectedFrom === "string") {
-               navigate(redirectedFrom, { replace: true });
-               return;
-          }
 
           // Redirect based on user role using Link
           if (user && user.roleName) {

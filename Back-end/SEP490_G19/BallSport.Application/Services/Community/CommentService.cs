@@ -1,4 +1,6 @@
-﻿using BallSport.Application.DTOs.Community;
+﻿// File: BallSport.Application.Services/Community/CommentService.cs
+using BallSport.Application.Common.Extensions; // THÊM DÒNG NÀY – BẮT BUỘC!
+using BallSport.Application.DTOs.Community;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories.Community;
 
@@ -22,55 +24,47 @@ namespace BallSport.Application.Services.Community
 
         public async Task<IEnumerable<CommentDTO>> GetCommentsByPostIdAsync(int postId)
         {
-            var comments = await _commentRepository.GetCommentsByPostIdAsync(postId);
+            var comments = await _commentRepository.GetCommentsByPostIdAsync(postId, "Active");
             return MapToCommentDTOs(comments);
         }
 
         public async Task<CommentDTO?> GetCommentByIdAsync(int commentId)
         {
             var comment = await _commentRepository.GetCommentByIdAsync(commentId);
-            if (comment == null)
-                return null;
-
-            return MapToCommentDTO(comment);
+            return comment == null ? null : MapToCommentDTO(comment);
         }
 
         public async Task<IEnumerable<CommentDTO>> GetRepliesByCommentIdAsync(int parentCommentId)
         {
-            var replies = await _commentRepository.GetRepliesByCommentIdAsync(parentCommentId);
+            var replies = await _commentRepository.GetRepliesByCommentIdAsync(parentCommentId, "Active");
             return MapToCommentDTOs(replies);
         }
 
-        public async Task<CommentDTO> CreateCommentAsync(CreateCommentDTO createCommentDto, int userId)
+        public async Task<CommentDTO> CreateCommentAsync(CreateCommentDTO dto, int userId)
         {
-            // Validate post exists
-            var post = await _postRepository.GetPostByIdAsync(createCommentDto.PostId);
-            if (post == null)
+            if (!await PostExistsAsync(dto.PostId))
                 throw new Exception("Bài viết không tồn tại");
 
-            // Validate parent comment nếu là reply
-            if (createCommentDto.ParentCommentId.HasValue)
+            if (dto.ParentCommentId.HasValue && dto.ParentCommentId.Value > 0)
             {
-                var parentComment = await _commentRepository.GetCommentByIdAsync(createCommentDto.ParentCommentId.Value);
-                if (parentComment == null)
-                    throw new Exception("Comment cha không tồn tại");
+                if (!await CommentExistsAsync(dto.ParentCommentId.Value))
+                    throw new Exception("Bình luận cha không tồn tại hoặc đã bị xóa");
             }
 
             var comment = new Comment
             {
-                PostId = createCommentDto.PostId,
+                PostId = dto.PostId,
                 UserId = userId,
-                ParentCommentId = createCommentDto.ParentCommentId,
-                Content = createCommentDto.Content
+                ParentCommentId = dto.ParentCommentId,
+                Content = dto.Content.Trim()
             };
 
             var createdComment = await _commentRepository.CreateCommentAsync(comment);
 
             // Gửi thông báo
-            if (createCommentDto.ParentCommentId.HasValue)
+            if (dto.ParentCommentId.HasValue)
             {
-                // Thông báo cho người được reply
-                var parentComment = await _commentRepository.GetCommentByIdAsync(createCommentDto.ParentCommentId.Value);
+                var parentComment = await _commentRepository.GetCommentByIdAsync(dto.ParentCommentId.Value);
                 if (parentComment != null && parentComment.UserId != userId)
                 {
                     await _notificationService.CreateNotificationAsync(new CreateNotificationDTO
@@ -78,21 +72,21 @@ namespace BallSport.Application.Services.Community
                         UserId = parentComment.UserId,
                         Type = "Reply",
                         TargetId = createdComment.CommentId,
-                        Message = $"đã trả lời bình luận của bạn"
+                        Message = "đã trả lời bình luận của bạn"
                     });
                 }
             }
             else
             {
-                // Thông báo cho chủ bài viết
-                if (post.UserId != userId)
+                var post = await _postRepository.GetPostByIdAsync(dto.PostId);
+                if (post != null && post.UserId != userId)
                 {
                     await _notificationService.CreateNotificationAsync(new CreateNotificationDTO
                     {
                         UserId = post.UserId,
                         Type = "NewComment",
                         TargetId = createdComment.CommentId,
-                        Message = $"đã bình luận bài viết của bạn"
+                        Message = "đã bình luận bài viết của bạn"
                     });
                 }
             }
@@ -100,37 +94,29 @@ namespace BallSport.Application.Services.Community
             return MapToCommentDTO(createdComment);
         }
 
-        public async Task<CommentDTO?> UpdateCommentAsync(int commentId, UpdateCommentDTO updateCommentDto, int userId)
+        public async Task<CommentDTO?> UpdateCommentAsync(int commentId, UpdateCommentDTO dto, int userId)
         {
-            var existingComment = await _commentRepository.GetCommentByIdAsync(commentId);
-            if (existingComment == null || existingComment.UserId != userId)
+            var comment = await _commentRepository.GetCommentByIdAsync(commentId);
+            if (comment == null || comment.UserId != userId || comment.Status != "Active")
                 return null;
 
-            existingComment.Content = updateCommentDto.Content ?? existingComment.Content;
-
-            var updatedComment = await _commentRepository.UpdateCommentAsync(existingComment);
-            if (updatedComment == null)
-                return null;
-
-            return MapToCommentDTO(updatedComment);
+            comment.Content = dto.Content.Trim();
+            var updated = await _commentRepository.UpdateCommentAsync(comment);
+            return updated == null ? null : MapToCommentDTO(updated);
         }
 
         public async Task<bool> DeleteCommentAsync(int commentId, int userId, bool isAdmin = false)
         {
             var comment = await _commentRepository.GetCommentByIdAsync(commentId);
-            if (comment == null)
-                return false;
+            if (comment == null) return false;
+            if (!isAdmin && comment.UserId != userId) return false;
 
-            // Kiểm tra quyền: phải là chủ comment hoặc admin
-            if (!isAdmin && comment.UserId != userId)
-                return false;
-
-            return await _commentRepository.DeleteCommentAsync(commentId);
+            return await _commentRepository.HardDeleteCommentAsync(commentId);
         }
 
         public async Task<IEnumerable<CommentDTO>> GetCommentsByUserIdAsync(int userId)
         {
-            var comments = await _commentRepository.GetCommentsByUserIdAsync(userId);
+            var comments = await _commentRepository.GetCommentsByUserIdAsync(userId, "Active");
             return MapToCommentDTOs(comments);
         }
 
@@ -145,7 +131,13 @@ namespace BallSport.Application.Services.Community
             return comment != null && comment.UserId == userId;
         }
 
-        // Helper methods
+        public async Task<bool> PostExistsAsync(int postId)
+            => await _postRepository.GetPostByIdAsync(postId) != null;
+
+        public async Task<bool> CommentExistsAsync(int commentId)
+            => await _commentRepository.CommentExistsAsync(commentId);
+
+        // CHỈ SỬA 1 DÒNG DUY NHẤT Ở ĐÂY – GIỜ VIỆT NAM ĐÚNG MÃI MÃI!
         private CommentDTO MapToCommentDTO(Comment comment)
         {
             return new CommentDTO
@@ -153,18 +145,16 @@ namespace BallSport.Application.Services.Community
                 CommentId = comment.CommentId,
                 PostId = comment.PostId,
                 UserId = comment.UserId,
-                UserName = comment.User?.FullName ?? "Unknown",
-                UserAvatar = comment.User?.Avatar != null ? Convert.ToBase64String(comment.User.Avatar) : null,
+                UserName = comment.User?.FullName ?? "Người dùng ẩn danh",
                 ParentCommentId = comment.ParentCommentId,
                 Content = comment.Content,
-                CreatedAt = comment.CreatedAt,
-                Status = comment.Status
+                // DÒNG THẦN THÁNH – FIX +07:00 HOÀN TOÀN!
+                CreatedAt = comment.CreatedAt?.ToVietnamTime() ?? DateTimeExtensions.VietnamNow,
+                Status = comment.Status ?? "Active"
             };
         }
 
         private IEnumerable<CommentDTO> MapToCommentDTOs(IEnumerable<Comment> comments)
-        {
-            return comments.Select(MapToCommentDTO).ToList();
-        }
+            => comments.Select(MapToCommentDTO);
     }
 }

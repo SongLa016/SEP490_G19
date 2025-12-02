@@ -24,14 +24,17 @@ namespace BallSport.Application.Services
         private readonly EmailService _emailService;
         private readonly OTPService _otpService;
         private readonly IMemoryCache _cache;
+        private readonly ICloudinaryService _cloudinaryService;
 
-        public UserService(UserRepositories userRepository, JwtService jwtService, EmailService emailService, OTPService otpService, IMemoryCache cache)
+        public UserService(UserRepositories userRepository, JwtService jwtService, EmailService emailService, OTPService otpService, IMemoryCache cache, ICloudinaryService cloudinaryService)
         {
             _userRepository = userRepository;
             _jwtService = jwtService;
             _emailService = emailService;
             _otpService = otpService;
             _cache = cache;
+            _cloudinaryService = cloudinaryService;
+
         }
 
 
@@ -156,8 +159,15 @@ namespace BallSport.Application.Services
 
         ////////////////////////////////////////////  Register //////////////////////////////////////////////////////////
 
+        
 
-        public async Task<bool> SendOtpForRegisterAsync(string fullName, string email, string phone, string password, string roleName, IFormFile avatar)
+        public async Task<bool> SendOtpForRegisterAsync(
+            string fullName,
+            string email,
+            string phone,
+            string password,
+            string roleName,
+            IFormFile avatar)
         {
             if (_userRepository.IsEmailExists(email))
                 throw new Exception("Email đã được sử dụng.");
@@ -169,36 +179,36 @@ namespace BallSport.Application.Services
             if (role == null)
                 throw new Exception("Vai trò không hợp lệ. Chỉ chấp nhận 'Owner' hoặc 'Player'.");
 
+            // Generate OTP
             var otp = _userRepository.GenerateOtp();
             _otpService.SaveOtp(email, otp, expireMinutes: 5);
 
-            byte[] avatarBytes = null;
+            // Upload avatar -> Cloudinary
+            string avatarUrl = null;
             if (avatar != null && avatar.Length > 0)
             {
-                using (var memoryStream = new MemoryStream())
-                {
-                    await avatar.CopyToAsync(memoryStream);
-                    avatarBytes = memoryStream.ToArray();
-                }
+                avatarUrl = await _cloudinaryService.UploadImageAsync(avatar);
             }
 
+            // Save pending register
             var pending = new PendingRegisterDTO
             {
                 FullName = fullName,
                 Email = email,
-                Phone = phone,              
+                Phone = phone,
                 Password = password,
                 RoleName = roleName,
-                Avatar = avatarBytes
-
+                AvatarUrl = avatarUrl
             };
 
             _cache.Set(email, pending, TimeSpan.FromMinutes(5));
 
+            // Send email OTP
             await _emailService.SendOtpEmailAsync(email, otp);
 
             return true;
         }
+
 
 
         public async Task<bool> VerifyOtpAndRegisterAsync(string otp)
@@ -219,7 +229,7 @@ namespace BallSport.Application.Services
                 Email = pending.Email,
                 Phone = pending.Phone,
                 PasswordHash = pending.Password, 
-                Avatar = pending.Avatar,
+                Avatar = pending.AvatarUrl,
                 CreatedAt = DateTime.Now,
                 Status = "Active"
             };
@@ -243,48 +253,6 @@ namespace BallSport.Application.Services
 
         ////////////////////////////////// UPdate profile /////////////////////////
         ///
-        public void AddOrUpdateUserProfile(int userId, UserProfileDTO profileDto)
-        {
-            if (profileDto == null)
-                throw new ArgumentNullException(nameof(profileDto));
-
-            
-            var existingProfile = _userRepository.GetUserProfileByUserId(userId);
-
-            DateOnly? dob = null;
-            if (!string.IsNullOrEmpty(profileDto.DateOfBirth))
-                dob = DateOnly.Parse(profileDto.DateOfBirth);
-
-            if (existingProfile == null)
-            {
-               
-                var newProfile = new UserProfile
-                {
-                    UserId = userId,
-                    DateOfBirth = dob,
-                    Gender = profileDto.Gender,
-                    Address = profileDto.Address,
-                    PreferredPositions = profileDto.PreferredPositions,
-                    SkillLevel = profileDto.SkillLevel,
-                    Bio = profileDto.Bio
-                };
-
-                _userRepository.AddOrUpdateUserProfile(newProfile);
-            }
-            else
-            {
-                // Cập nhật
-                existingProfile.DateOfBirth = dob; // <-- cũng gán DateOnly?
-                existingProfile.Gender = profileDto.Gender;
-                existingProfile.Address = profileDto.Address;
-                existingProfile.PreferredPositions = profileDto.PreferredPositions;
-                existingProfile.SkillLevel = profileDto.SkillLevel;
-                existingProfile.Bio = profileDto.Bio;
-
-                _userRepository.AddOrUpdateUserProfile(existingProfile);
-            }
-        }
-
-
+       
     }
 }

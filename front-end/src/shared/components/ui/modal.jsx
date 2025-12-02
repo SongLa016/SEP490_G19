@@ -27,13 +27,13 @@ const Modal = ({
           >
                <div
                     className={cn(
-                         "bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden relative flex flex-col",
+                         "bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden relative",
                          className
                     )}
                >
                     {/* Header */}
                     {title && (
-                         <div className="flex-shrink-0 py-2 px-3 bg-white border-b border-gray-200 flex items-center justify-between">
+                         <div className="p-3 sticky top-0 z-50 bg-white border-b border-gray-200 flex items-center justify-between">
                               <h2 className="text-lg font-bold text-gray-900">{title}</h2>
                               {showCloseButton && (
                                    <Button
@@ -48,8 +48,8 @@ const Modal = ({
                          </div>
                     )}
 
-                    {/* Content - Allow children to control their own scrolling */}
-                    <div className="flex-1 min-h-0 p-4 sm:p-5 overflow-y-auto">
+                    {/* Content */}
+                    <div className="p-4 overflow-y-auto">
                          {children}
                     </div>
                </div>

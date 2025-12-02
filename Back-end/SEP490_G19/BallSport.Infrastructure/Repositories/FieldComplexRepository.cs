@@ -1,5 +1,6 @@
 ﻿using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Data;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BallSport.Infrastructure.Repositories
@@ -13,7 +14,7 @@ namespace BallSport.Infrastructure.Repositories
             _context = context;
         }
 
-        // Thêm khu sân mới
+        // 🟢 Thêm khu sân mới
         public async Task<FieldComplex> AddComplexAsync(FieldComplex complex)
         {
             _context.FieldComplexes.Add(complex);
@@ -21,7 +22,7 @@ namespace BallSport.Infrastructure.Repositories
             return complex;
         }
 
-        //  Lấy 1 khu sân theo ID
+        // 🟢 Lấy 1 khu sân theo ID
         public async Task<FieldComplex?> GetComplexByIdAsync(int complexId)
         {
             return await _context.FieldComplexes
@@ -29,7 +30,7 @@ namespace BallSport.Infrastructure.Repositories
                 .FirstOrDefaultAsync(fc => fc.ComplexId == complexId);
         }
 
-        // Lấy tất cả khu sân
+        // 🟢 Lấy tất cả khu sân
         public async Task<List<FieldComplex>> GetAllComplexesAsync()
         {
             return await _context.FieldComplexes
@@ -37,7 +38,7 @@ namespace BallSport.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        // UPDATE 
+        // 🟢 Cập nhật khu sân
         public async Task<FieldComplex?> UpdateComplexAsync(FieldComplex complex)
         {
             var existing = await _context.FieldComplexes.FindAsync(complex.ComplexId);
@@ -47,13 +48,15 @@ namespace BallSport.Infrastructure.Repositories
             existing.Address = complex.Address;
             existing.OwnerId = complex.OwnerId;
             existing.Description = complex.Description;
+            existing.Status = complex.Status;
+            existing.ImageUrl = complex.ImageUrl; // 🔹 Cập nhật URL Cloudinary nếu có
 
             _context.FieldComplexes.Update(existing);
             await _context.SaveChangesAsync();
             return existing;
         }
 
-        // DELETE 
+        // 🟢 Xóa khu sân
         public async Task<bool> DeleteComplexAsync(int complexId)
         {
             var existing = await _context.FieldComplexes.FindAsync(complexId);

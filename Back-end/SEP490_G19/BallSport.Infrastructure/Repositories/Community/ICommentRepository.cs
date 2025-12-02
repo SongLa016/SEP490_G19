@@ -1,13 +1,14 @@
-﻿using BallSport.Infrastructure.Models;
+﻿// File: BallSport.Infrastructure.Repositories/Community/ICommentRepository.cs
+using BallSport.Infrastructure.Models;
 
 namespace BallSport.Infrastructure.Repositories.Community
 {
     public interface ICommentRepository
     {
-        // Lấy tất cả comment của bài viết
+        // Lấy tất cả comment của bài viết (có Include User, Likes, Replies nếu cần)
         Task<IEnumerable<Comment>> GetCommentsByPostIdAsync(int postId, string? status = "Active");
 
-        // Lấy comment theo ID
+        // Lấy comment theo ID (Include navigation nếu cần)
         Task<Comment?> GetCommentByIdAsync(int commentId);
 
         // Tạo comment mới
@@ -16,8 +17,8 @@ namespace BallSport.Infrastructure.Repositories.Community
         // Cập nhật comment
         Task<Comment?> UpdateCommentAsync(Comment comment);
 
-        // Xóa comment (soft delete)
-        Task<bool> DeleteCommentAsync(int commentId);
+        // XÓA THẬT COMMENT (Hard Delete) – DÙNG KHI BỊ BÁO CÁO HOẶC XÓA BÀI
+        Task<bool> HardDeleteCommentAsync(int commentId);
 
         // Lấy reply của comment (comment con)
         Task<IEnumerable<Comment>> GetRepliesByCommentIdAsync(int parentCommentId, string? status = "Active");
@@ -34,7 +35,10 @@ namespace BallSport.Infrastructure.Repositories.Community
         // Lấy comment của user
         Task<IEnumerable<Comment>> GetCommentsByUserIdAsync(int userId, string? status = "Active");
 
-        // Xóa tất cả comment của bài viết (cascade khi xóa post)
-        Task<bool> DeleteCommentsByPostIdAsync(int postId);
+        // XÓA TẤT CẢ COMMENT + LIKE + REPLY CỦA BÀI VIẾT (cascade hard delete)
+        Task<bool> HardDeleteCommentsByPostIdAsync(int postId);
+
+        // XÓA TẤT CẢ COMMENT CON (replies) CỦA 1 COMMENT (khi xóa comment cha)
+        Task<bool> HardDeleteRepliesByParentIdAsync(int parentCommentId);
     }
 }

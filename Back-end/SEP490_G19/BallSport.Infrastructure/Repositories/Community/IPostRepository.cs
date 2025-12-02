@@ -4,45 +4,36 @@ namespace BallSport.Infrastructure.Repositories.Community
 {
     public interface IPostRepository
     {
-        // Lấy tất cả bài viết (có phân trang)
+        // 1. DANH SÁCH BÀI VIẾT – CHỈ TRẢ VỀ BÀI ACTIVE (HOẶC PENDING/REJECTED KHI CẦN)
         Task<(IEnumerable<Post> Posts, int TotalCount)> GetAllPostsAsync(
             int pageNumber,
             int pageSize,
-            string? status = "Active",
+            string? status = "Active",  // "Active" | "Pending" | "Rejected" 
             int? fieldId = null,
             int? userId = null);
 
-        // Lấy bài viết theo ID
         Task<Post?> GetPostByIdAsync(int postId);
 
-        // Tạo bài viết mới
         Task<Post> CreatePostAsync(Post post);
-
-        // Cập nhật bài viết
         Task<Post?> UpdatePostAsync(Post post);
 
-        // Xóa bài viết (soft delete)
-        Task<bool> DeletePostAsync(int postId);
+        
+        Task<bool> HardDeletePostAsync(int postId); // XÓA THẬT – DÙNG CHO USER + ADMIN
 
-        // Lấy bài viết theo User
         Task<IEnumerable<Post>> GetPostsByUserIdAsync(int userId, string? status = "Active");
-
-        // Lấy bài viết theo Field
         Task<IEnumerable<Post>> GetPostsByFieldIdAsync(int fieldId, string? status = "Active");
-
-        // Đếm số lượng bài viết của user
         Task<int> CountPostsByUserIdAsync(int userId);
-
-        // Kiểm tra bài viết có tồn tại không
         Task<bool> PostExistsAsync(int postId);
-
-        // Lấy bài viết phổ biến nhất (nhiều like, comment)
         Task<IEnumerable<Post>> GetTrendingPostsAsync(int topCount = 10, int daysBack = 7);
 
-        // Search bài viết
         Task<(IEnumerable<Post> Posts, int TotalCount)> SearchPostsAsync(
-            string keyword,
-            int pageNumber,
-            int pageSize);
+            string keyword, int pageNumber, int pageSize);
+
+        
+        Task<bool> ReviewPostAsync(int postId, string newStatus); // "Active" hoặc "Rejected"
+        Task<bool> ModeratePostAsync(int postId, string newStatus); // "Hidden" hoặc "Rejected" (nếu còn dùng)
+        Task<bool> DeleteMyPostAsync(int postId, int userId); // GỌI HardDeletePostAsync bên trong
+        Task<(IEnumerable<Post> Posts, int TotalCount)> GetPendingPostsAsync(
+            int pageNumber = 1, int pageSize = 20);
     }
 }

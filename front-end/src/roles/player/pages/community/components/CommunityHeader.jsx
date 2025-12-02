@@ -4,12 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
 import { Search, User, LogOut, Settings, Home, MapPin, Calendar, Users, BarChart3, LogIn } from "lucide-react";
 import { Button } from "../../../../../shared/components/ui";
-import { NotificationBell, NotificationDropdown } from "../../../../../shared/components/NotificationsDisplay";
 import logo from "../../../../../shared/components/assets/logo.png";
 
 export default function CommunityHeader({ user, onLoggedOut }) {
      const [isProfileOpen, setIsProfileOpen] = useState(false);
-     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
      const navigate = useNavigate();
      const location = useLocation();
      const headerRef = useRef(null);
@@ -213,72 +211,55 @@ export default function CommunityHeader({ user, onLoggedOut }) {
                {/* User Profile Section */}
                <div className="mt-auto mb-4">
                     {user ? (
-                         <>
-                              {/* Notification Bell */}
-                              <div className="relative mb-4 ml-3">
-                                   <NotificationBell
-                                        userId={user.id}
-                                        onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                                   />
-                                   <NotificationDropdown
-                                        userId={user.id}
-                                        isOpen={isNotificationOpen}
-                                        onClose={() => setIsNotificationOpen(false)}
-                                        className="left-16 right-auto -top-72"
-                                   />
-                              </div>
+                         <div className="relative">
+                              <Button
+                                   onClick={() => setIsProfileOpen(!isProfileOpen)}
+                                   className="p-3 w-12 h-12 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors"
+                                   title={user.name || "Profile"}
+                              >
+                                   <User className="w-6 h-6 text-gray-700" />
+                              </Button>
 
-                              {/* User Profile */}
-                              <div className="relative">
-                                   <Button
-                                        onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                        className="p-3 w-12 h-12 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors"
-                                        title={user.name || "Profile"}
-                                   >
-                                        <User className="w-6 h-6 text-gray-700" />
-                                   </Button>
-
-                                   {/* Profile Dropdown */}
-                                   <AnimatePresence>
-                                        {isProfileOpen && (
-                                             <motion.div
-                                                  initial={{ opacity: 0, scale: 0.95, x: -10 }}
-                                                  animate={{ opacity: 1, scale: 1, x: 0 }}
-                                                  exit={{ opacity: 0, scale: 0.95, x: -10 }}
-                                                  transition={{ duration: 0.2 }}
-                                                  className="absolute left-16 bottom-0 w-fit bg-white rounded-xl shadow-lg py-1 z-50 border border-gray-200"
+                              {/* Profile Dropdown */}
+                              <AnimatePresence>
+                                   {isProfileOpen && (
+                                        <motion.div
+                                             initial={{ opacity: 0, scale: 0.95, x: -10 }}
+                                             animate={{ opacity: 1, scale: 1, x: 0 }}
+                                             exit={{ opacity: 0, scale: 0.95, x: -10 }}
+                                             transition={{ duration: 0.2 }}
+                                             className="absolute left-16 bottom-0 w-fit bg-white rounded-xl shadow-lg py-1 z-50 border border-gray-200"
+                                        >
+                                             <div className="p-2 border-b">
+                                                  <p className="text-sm flex items-center gap-2 font-medium text-gray-900">{user.fullName || `@${user.username}`}<span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.role)}`}>
+                                                       {getRoleDisplayName(user.role)}
+                                                  </span></p>
+                                                  {user.name && <p className="text-xs text-gray-500">@{user.username}</p>}
+                                             </div>
+                                             <Button
+                                                  onClick={() => {
+                                                       navigate("/profile");
+                                                       setIsProfileOpen(false);
+                                                  }}
+                                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-teal-100 hover:text-teal-800 p-0 h-auto bg-transparent border-0"
                                              >
-                                                  <div className="p-2 border-b">
-                                                       <p className="text-sm flex truncate items-center gap-2 font-medium text-gray-900">{user.fullName || `@${user.username}`}<span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.role)}`}>
-                                                            {getRoleDisplayName(user.role)}
-                                                       </span></p>
-                                                       {user.name && <p className="text-xs text-gray-500">@{user.username}</p>}
-                                                  </div>
-                                                  <Button
-                                                       onClick={() => {
-                                                            navigate("/profile");
-                                                            setIsProfileOpen(false);
-                                                       }}
-                                                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-teal-100 hover:text-teal-800 p-0 h-auto bg-transparent border-0"
-                                                  >
-                                                       <Settings className="w-4 h-4 mr-2" />
-                                                       Settings
-                                                  </Button>
-                                                  <Button
-                                                       onClick={() => {
-                                                            onLoggedOut();
-                                                            setIsProfileOpen(false);
-                                                       }}
-                                                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-teal-100 hover:text-teal-800 p-0 h-auto bg-transparent border-0"
-                                                  >
-                                                       <LogOut className="w-4 h-4 mr-2" />
-                                                       Logout
-                                                  </Button>
-                                             </motion.div>
-                                        )}
-                                   </AnimatePresence>
-                              </div>
-                         </>
+                                                  <Settings className="w-4 h-4 mr-2" />
+                                                  Settings
+                                             </Button>
+                                             <Button
+                                                  onClick={() => {
+                                                       onLoggedOut();
+                                                       setIsProfileOpen(false);
+                                                  }}
+                                                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-teal-100 hover:text-teal-800 p-0 h-auto bg-transparent border-0"
+                                             >
+                                                  <LogOut className="w-4 h-4 mr-2" />
+                                                  Logout
+                                             </Button>
+                                        </motion.div>
+                                   )}
+                              </AnimatePresence>
+                         </div>
                     ) : (
                          <Button
                               onClick={() => navigate("/auth")}

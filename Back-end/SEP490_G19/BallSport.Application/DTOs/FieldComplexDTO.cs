@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace BallSport.Application.DTOs
 {
@@ -18,14 +19,10 @@ namespace BallSport.Application.DTOs
 
         public string? Description { get; set; }
 
-        public byte[]? Image { get; set; }
-
+        public IFormFile? ImageFile { get; set; }
         public string? Status { get; set; }
 
         public DateTime? CreatedAt { get; set; }
-
-        public string? OwnerName { get; set; }
-
-        public List<FieldDTO>? Fields { get; set; }
+        
     }
 }

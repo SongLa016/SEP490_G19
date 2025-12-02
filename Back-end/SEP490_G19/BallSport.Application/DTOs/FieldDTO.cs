@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using System;
 
 namespace BallSport.Application.DTOs
 {
@@ -22,14 +19,21 @@ namespace BallSport.Application.DTOs
 
         public string? Description { get; set; }
 
-        public byte[]? Image { get; set; }
-
+        public IFormFile? MainImage { get; set; }          // file upload ảnh chính
+        public List<IFormFile>? ImageFiles { get; set; }
         public decimal? PricePerHour { get; set; }
 
         public string? Status { get; set; }
 
         public DateTime? CreatedAt { get; set; }
-        public string? ComplexName { get; set; }
-        public string? TypeName { get; set; }
+
+        // 🏦 Thông tin tài khoản ngân hàng (user nhập)
+        public string? BankName { get; set; }
+
+        public string? BankShortCode { get; set; }
+        public string? AccountNumber { get; set; }
+        public string? AccountHolder { get; set; }
+
+
     }
 }

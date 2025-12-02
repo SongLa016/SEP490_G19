@@ -1,6 +1,6 @@
 import { MapPin, User, EyeIcon } from "lucide-react";
 import { Card, CardContent, Button } from "../../../../../../shared/components/ui";
-import { LocalOfferOutlined, StadiumOutlined } from "@mui/icons-material";
+import { LocalOffer, LocalOfferOutlined, StadiumOutlined } from "@mui/icons-material";
 
 export default function FieldCardDetail({ field, selectedSlotId, onViewDetail, onQuickBook }) {
      return (
@@ -8,17 +8,14 @@ export default function FieldCardDetail({ field, selectedSlotId, onViewDetail, o
                <CardContent className="p-0">
                     <div className="relative overflow-hidden" onClick={onViewDetail}>
                          <img
-                              src={field.mainImageUrl || 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg'}
+                              src={field.image}
                               alt={field.name}
                               className="w-full h-48 object-cover transition-transform duration-300 ease-out group-hover:scale-110"
                               loading="lazy"
-                              onError={(e) => {
-                                   e.target.src = 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg';
-                              }}
                          />
                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                         <div className="absolute top-3 right-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-2 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1 shadow-lg border border-teal-400/30">
-                              <User className="w-4 h-4" />
+                         <div className="absolute top-3 right-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg border border-teal-400/30">
+                              <User className="w-3 h-3" />
                               {field.typeName}
                          </div>
                     </div>

@@ -95,14 +95,50 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                     return;
                }
 
-               // Đăng ký thành công
-               Swal.fire({
-                    icon: 'success',
-                    title: 'Đăng ký thành công!',
-                    text: result.message || 'Vui lòng kiểm tra email để lấy mã OTP xác thực tài khoản.',
-                    confirmButtonText: 'Đóng',
-                    confirmButtonColor: '#10b981'
-               });
+               // Nếu đăng ký với role Owner, tạo owner registration request
+               if (formData.roleName === 'Owner') {
+                    try {
+                         const { createOwnerRegistrationRequest } = await import('../services/ownerRegistrationRequests');
+                         await createOwnerRegistrationRequest({
+                              userId: result.user?.userID || Date.now(), // Fallback ID
+                              businessName: `${formData.fullName} - Sân bóng`,
+                              businessType: "Sports Complex",
+                              contactPerson: formData.fullName,
+                              email: formData.email,
+                              phone: formData.phone,
+                              address: "Địa chỉ sẽ được cập nhật sau",
+                              businessLicense: "Đang chờ cập nhật",
+                              taxCode: "Đang chờ cập nhật",
+                              description: "Yêu cầu đăng ký chủ sân từ hệ thống",
+                              documents: []
+                         });
+
+                         Swal.fire({
+                              icon: 'success',
+                              title: 'Đăng ký thành công!',
+                              text: 'Yêu cầu đăng ký chủ sân đã được gửi đến admin để duyệt. Vui lòng kiểm tra email để lấy mã OTP.',
+                              confirmButtonText: 'Đóng',
+                              confirmButtonColor: '#10b981'
+                         });
+                    } catch (ownerRequestError) {
+                         console.error('Error creating owner registration request:', ownerRequestError);
+                         Swal.fire({
+                              icon: 'warning',
+                              title: 'Đăng ký thành công!',
+                              text: 'Tuy nhiên, có lỗi khi tạo yêu cầu đăng ký chủ sân. Vui lòng liên hệ admin. Vui lòng kiểm tra email để lấy mã OTP.',
+                              confirmButtonText: 'Đóng',
+                              confirmButtonColor: '#f59e0b'
+                         });
+                    }
+               } else {
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đăng ký thành công!',
+                         text: result.message || 'Vui lòng kiểm tra email để lấy mã OTP',
+                         confirmButtonText: 'Đóng',
+                         confirmButtonColor: '#10b981'
+                    });
+               }
 
                setStep('otp');
           } catch (error) {

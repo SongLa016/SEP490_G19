@@ -8,7 +8,7 @@ namespace BallSport.API.Controllers.Community
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    [Authorize] // Tất cả endpoint đều yêu cầu đăng nhập (trừ khi có [AllowAnonymous])
     public class NotificationController : ControllerBase
     {
         private readonly INotificationService _notificationService;
@@ -18,7 +18,7 @@ namespace BallSport.API.Controllers.Community
             _notificationService = notificationService;
         }
 
-        // GET: api/Notification?pageNumber=1&pageSize=20&isRead=false
+        // GET: api/Notification
         [HttpGet]
         public async Task<IActionResult> GetNotifications(
             [FromQuery] int pageNumber = 1,
@@ -28,15 +28,11 @@ namespace BallSport.API.Controllers.Community
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var (notifications, totalCount) = await _notificationService.GetNotificationsByUserIdAsync(
-                    userId.Value,
-                    pageNumber,
-                    pageSize,
-                    isRead
-                );
+                    userId.Value, pageNumber, pageSize, isRead);
 
                 return Ok(new
                 {
@@ -45,8 +41,8 @@ namespace BallSport.API.Controllers.Community
                     pagination = new
                     {
                         currentPage = pageNumber,
-                        pageSize = pageSize,
-                        totalCount = totalCount,
+                        pageSize,
+                        totalCount,
                         totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
                     }
                 });
@@ -57,18 +53,17 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Notification/latest?topCount=10
+        // GET: api/Notification/latest
         [HttpGet("latest")]
         public async Task<IActionResult> GetLatestNotifications([FromQuery] int topCount = 10)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var notifications = await _notificationService.GetLatestNotificationsAsync(userId.Value, topCount);
-
                 return Ok(new { success = true, data = notifications });
             }
             catch (Exception ex)
@@ -84,11 +79,10 @@ namespace BallSport.API.Controllers.Community
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var count = await _notificationService.GetUnreadCountAsync(userId.Value);
-
                 return Ok(new { success = true, data = new { unreadCount = count } });
             }
             catch (Exception ex)
@@ -97,24 +91,21 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // GET: api/Notification/type/Like
+        // GET: api/Notification/type/{type}
         [HttpGet("type/{type}")]
         public async Task<IActionResult> GetNotificationsByType(string type)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var validTypes = new[] { "NewComment", "Reply", "Mention", "Like", "ReportResult", "System" };
                 if (!validTypes.Contains(type))
-                {
                     return BadRequest(new { success = false, message = $"Type phải là một trong: {string.Join(", ", validTypes)}" });
-                }
 
                 var notifications = await _notificationService.GetNotificationsByTypeAsync(userId.Value, type);
-
                 return Ok(new { success = true, data = notifications });
             }
             catch (Exception ex)
@@ -123,9 +114,9 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // POST: api/Notification
+        // POST: api/Notification (Admin only)
         [HttpPost]
-        [Authorize(Roles = "Admin")] // Chỉ Admin mới có quyền tạo thông báo thủ công
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateNotification([FromBody] CreateNotificationDTO createNotificationDto)
         {
             try
@@ -148,7 +139,7 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // POST: api/Notification/bulk
+        // POST: api/Notification/bulk (Admin only)
         [HttpPost("bulk")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateBulkNotifications([FromBody] IEnumerable<CreateNotificationDTO> notificationDtos)
@@ -159,11 +150,10 @@ namespace BallSport.API.Controllers.Community
                     return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
 
                 var success = await _notificationService.CreateBulkNotificationsAsync(notificationDtos);
-
                 if (!success)
-                    return BadRequest(new { success = false, message = "Không thể tạo thông báo" });
+                    return BadRequest(new { success = false, message = "Không thể tạo thông báo hàng loạt" });
 
-                return Ok(new { success = true, message = $"Đã tạo {notificationDtos.Count()} thông báo" });
+                return Ok(new { success = true, message = $"Đã tạo thành công {notificationDtos.Count()} thông báo" });
             }
             catch (Exception ex)
             {
@@ -171,18 +161,17 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // PUT: api/Notification/5/read
+        // PUT: api/Notification/{id}/read
         [HttpPut("{id}/read")]
         public async Task<IActionResult> MarkAsRead(int id)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var success = await _notificationService.MarkAsReadAsync(id, userId.Value);
-
                 if (!success)
                     return NotFound(new { success = false, message = "Không tìm thấy thông báo hoặc bạn không có quyền" });
 
@@ -201,14 +190,10 @@ namespace BallSport.API.Controllers.Community
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
-                var success = await _notificationService.MarkAllAsReadAsync(userId.Value);
-
-                if (!success)
-                    return BadRequest(new { success = false, message = "Không thể đánh dấu tất cả là đã đọc" });
-
+                await _notificationService.MarkAllAsReadAsync(userId.Value);
                 return Ok(new { success = true, message = "Đã đánh dấu tất cả thông báo là đã đọc" });
             }
             catch (Exception ex)
@@ -217,18 +202,17 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // DELETE: api/Notification/5
+        // DELETE: api/Notification/{id}
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteNotification(int id)
         {
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
                 var success = await _notificationService.DeleteNotificationAsync(id, userId.Value);
-
                 if (!success)
                     return NotFound(new { success = false, message = "Không tìm thấy thông báo hoặc bạn không có quyền xóa" });
 
@@ -247,14 +231,10 @@ namespace BallSport.API.Controllers.Community
             try
             {
                 var userId = GetCurrentUserId();
-                if (userId == null)
+                if (!userId.HasValue)
                     return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
-                var success = await _notificationService.DeleteAllNotificationsAsync(userId.Value);
-
-                if (!success)
-                    return BadRequest(new { success = false, message = "Không thể xóa thông báo" });
-
+                await _notificationService.DeleteAllNotificationsAsync(userId.Value);
                 return Ok(new { success = true, message = "Đã xóa tất cả thông báo" });
             }
             catch (Exception ex)
@@ -263,15 +243,11 @@ namespace BallSport.API.Controllers.Community
             }
         }
 
-        // Helper method
+        // SIÊU QUAN TRỌNG: ĐỌC ĐÚNG CLAIM "UserID" TRONG TOKEN
         private int? GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out int userId))
-            {
-                return userId;
-            }
-            return null;
+            var claim = User.FindFirst("UserID") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+            return int.TryParse(claim?.Value, out int userId) ? userId : null;
         }
     }
 }

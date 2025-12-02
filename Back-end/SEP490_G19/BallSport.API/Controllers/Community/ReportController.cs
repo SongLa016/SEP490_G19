@@ -18,289 +18,133 @@ namespace BallSport.API.Controllers.Community
             _reportService = reportService;
         }
 
-        // GET: api/Report?pageNumber=1&pageSize=20&status=Pending&targetType=Post
+        // GET: api/Report (Admin only) - Danh sách báo cáo + phân trang
         [HttpGet]
-        [Authorize(Roles = "Admin")] // Chỉ Admin mới xem được tất cả báo cáo
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllReports(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 20,
             [FromQuery] string? status = null,
             [FromQuery] string? targetType = null)
         {
-            try
+            var (reports, totalCount) = await _reportService.GetAllReportsAsync(pageNumber, pageSize, status, targetType);
+
+            return Ok(new
             {
-                var (reports, totalCount) = await _reportService.GetAllReportsAsync(
+                success = true,
+                data = reports,
+                pagination = new
+                {
                     pageNumber,
                     pageSize,
-                    status,
-                    targetType
-                );
-
-                return Ok(new
-                {
-                    success = true,
-                    data = reports,
-                    pagination = new
-                    {
-                        currentPage = pageNumber,
-                        pageSize = pageSize,
-                        totalCount = totalCount,
-                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+                    totalCount,
+                    totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                }
+            });
         }
 
-        // GET: api/Report/5
-        [HttpGet("{id}")]
+        // GET: api/Report/{id} (Admin only)
+        [HttpGet("{id:int}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetReportById(int id)
         {
-            try
-            {
-                var report = await _reportService.GetReportByIdAsync(id);
-
-                if (report == null)
-                    return NotFound(new { success = false, message = "Không tìm thấy báo cáo" });
-
-                return Ok(new { success = true, data = report });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            var report = await _reportService.GetReportByIdAsync(id);
+            return report == null
+                ? NotFound(new { success = false, message = "Không tìm thấy báo cáo" })
+                : Ok(new { success = true, data = report });
         }
 
-        // GET: api/Report/my-reports
+        // GET: api/Report/my-reports - Người dùng xem báo cáo của mình
         [HttpGet("my-reports")]
         public async Task<IActionResult> GetMyReports()
         {
-            try
-            {
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue) return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
 
-                var reports = await _reportService.GetReportsByReporterIdAsync(userId.Value);
-
-                return Ok(new { success = true, data = reports });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            var reports = await _reportService.GetReportsByReporterIdAsync(userId.Value);
+            return Ok(new { success = true, data = reports });
         }
 
-        // GET: api/Report/target?targetType=Post&targetId=5
-        [HttpGet("target")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetReportsByTarget(
-            [FromQuery] string targetType,
-            [FromQuery] int targetId)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(targetType) || (targetType != "Post" && targetType != "Comment"))
-                {
-                    return BadRequest(new { success = false, message = "TargetType phải là Post hoặc Comment" });
-                }
-
-                var reports = await _reportService.GetReportsByTargetAsync(targetType, targetId);
-
-                return Ok(new { success = true, data = reports });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
-        }
-
-        // GET: api/Report/pending?topCount=50
+        // GET: api/Report/pending (Admin only) - Báo cáo đang chờ xử lý
         [HttpGet("pending")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetPendingReports([FromQuery] int topCount = 50)
         {
-            try
-            {
-                var reports = await _reportService.GetPendingReportsAsync(topCount);
-
-                return Ok(new { success = true, data = reports });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            var reports = await _reportService.GetPendingReportsAsync(topCount);
+            return Ok(new { success = true, data = reports });
         }
 
-        // GET: api/Report/statistics?fromDate=2024-01-01&toDate=2024-12-31
+        // GET: api/Report/statistics (Admin only)
         [HttpGet("statistics")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> GetStatistics(
-            [FromQuery] DateTime? fromDate = null,
-            [FromQuery] DateTime? toDate = null)
+        public async Task<IActionResult> GetStatistics([FromQuery] DateTime? fromDate = null, [FromQuery] DateTime? toDate = null)
         {
-            try
-            {
-                var stats = await _reportService.GetReportStatisticsAsync(fromDate, toDate);
-
-                return Ok(new { success = true, data = stats });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            var stats = await _reportService.GetReportStatisticsAsync(fromDate, toDate);
+            return Ok(new { success = true, data = stats });
         }
 
-        // GET: api/Report/count?status=Pending
-        [HttpGet("count")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> CountReportsByStatus([FromQuery] string status)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(status))
-                {
-                    return BadRequest(new { success = false, message = "Status là bắt buộc" });
-                }
-
-                var count = await _reportService.CountReportsByStatusAsync(status);
-
-                return Ok(new { success = true, data = new { status, count } });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
-        }
-
-        // GET: api/Report/target-count?targetType=Post&targetId=5
-        [HttpGet("target-count")]
-        public async Task<IActionResult> CountReportsByTarget(
-            [FromQuery] string targetType,
-            [FromQuery] int targetId)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(targetType) || (targetType != "Post" && targetType != "Comment"))
-                {
-                    return BadRequest(new { success = false, message = "TargetType phải là Post hoặc Comment" });
-                }
-
-                var count = await _reportService.CountReportsByTargetAsync(targetType, targetId);
-
-                return Ok(new { success = true, data = new { targetType, targetId, count } });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
-        }
-
-        // POST: api/Report
+        // POST: api/Report - Người dùng gửi báo cáo
         [HttpPost]
-        public async Task<IActionResult> CreateReport([FromBody] CreateReportDTO createReportDto)
+        public async Task<IActionResult> CreateReport([FromBody] CreateReportDTO dto)
         {
-            try
+            if (!ModelState.IsValid)
+                return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue) return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
+
+            var report = await _reportService.CreateReportAsync(dto, userId.Value);
+            return CreatedAtAction(nameof(GetReportById), new { id = report.ReportId }, new
             {
-                if (!ModelState.IsValid)
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
-
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
-
-                // Kiểm tra đã báo cáo chưa
-                var hasReported = await _reportService.HasUserReportedAsync(
-                    userId.Value,
-                    createReportDto.TargetType,
-                    createReportDto.TargetId
-                );
-
-                if (hasReported)
-                {
-                    return BadRequest(new { success = false, message = "Bạn đã báo cáo nội dung này rồi" });
-                }
-
-                var report = await _reportService.CreateReportAsync(createReportDto, userId.Value);
-
-                return CreatedAtAction(nameof(GetReportById), new { id = report.ReportId }, new
-                {
-                    success = true,
-                    message = "Gửi báo cáo thành công. Chúng tôi sẽ xem xét và xử lý",
-                    data = report
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { success = false, message = ex.Message });
-            }
+                success = true,
+                message = "Gửi báo cáo thành công! Chúng tôi sẽ xem xét sớm nhất.",
+                data = report
+            });
         }
 
-        // PUT: api/Report/5/handle
-        [HttpPut("{id}/handle")]
+        // PUT: api/Report/{id}/handle (Admin only) - Xử lý báo cáo
+        [HttpPut("{id:int}/handle")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> HandleReport(int id, [FromBody] HandleReportDTO handleReportDto)
+        public async Task<IActionResult> HandleReport(int id, [FromBody] HandleReportDTO dto)
         {
-            try
+            if (!ModelState.IsValid)
+                return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+
+            var adminId = GetCurrentUserId()!.Value;
+            var report = await _reportService.HandleReportAsync(id, dto, adminId);
+
+            if (report == null)
+                return NotFound(new { success = false, message = "Không tìm thấy báo cáo" });
+
+            return Ok(new
             {
-                if (!ModelState.IsValid)
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
-
-                var adminId = GetCurrentUserId();
-                if (adminId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
-
-                var report = await _reportService.HandleReportAsync(id, handleReportDto, adminId.Value);
-
-                if (report == null)
-                    return NotFound(new { success = false, message = "Không tìm thấy báo cáo" });
-
-                return Ok(new
-                {
-                    success = true,
-                    message = $"Đã xử lý báo cáo: {handleReportDto.Status}",
-                    data = report
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+                success = true,
+                message = dto.Status == "Resolved"
+                    ? "Đã xóa nội dung vi phạm thành công!"
+                    : "Đã từ chối báo cáo.",
+                data = report
+            });
         }
 
-        // DELETE: api/Report/5
-        [HttpDelete("{id}")]
+        // DELETE: api/Report/{id} (Admin only)
+        [HttpDelete("{id:int}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteReport(int id)
         {
-            try
-            {
-                var success = await _reportService.DeleteReportAsync(id);
-
-                if (!success)
-                    return NotFound(new { success = false, message = "Không tìm thấy báo cáo" });
-
-                return Ok(new { success = true, message = "Xóa báo cáo thành công" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            var success = await _reportService.DeleteReportAsync(id);
+            return success
+                ? Ok(new { success = true, message = "Xóa báo cáo thành công" })
+                : NotFound(new { success = false, message = "Không tìm thấy báo cáo" });
         }
 
-        // Helper method
+        // Helper: Lấy UserId từ JWT Token
         private int? GetCurrentUserId()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out int userId))
-            {
-                return userId;
-            }
-            return null;
+            var claim = User.FindFirst("UserID")
+                     ?? User.FindFirst(ClaimTypes.NameIdentifier)
+                     ?? User.FindFirst("sub");
+
+            return int.TryParse(claim?.Value, out int id) ? id : null;
         }
     }
 }

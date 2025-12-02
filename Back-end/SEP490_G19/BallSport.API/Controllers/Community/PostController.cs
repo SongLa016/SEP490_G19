@@ -1,4 +1,5 @@
-﻿using BallSport.Application.DTOs.Community;
+﻿// File: BallSport.API/Controllers/Community/PostController.cs
+using BallSport.Application.DTOs.Community;
 using BallSport.Application.Services.Community;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ namespace BallSport.API.Controllers.Community
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Yêu cầu đăng nhập cho tất cả endpoints
+    [Authorize]
     public class PostController : ControllerBase
     {
         private readonly IPostService _postService;
@@ -18,9 +19,17 @@ namespace BallSport.API.Controllers.Community
             _postService = postService;
         }
 
-        // GET: api/Post?pageNumber=1&pageSize=10&status=Active&fieldId=5
+        private int? GetCurrentUserId()
+        {
+            var claim = User.FindFirst("UserID") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+            return int.TryParse(claim?.Value, out int userId) ? userId : null;
+        }
+
+        private bool IsAdmin => User.IsInRole("Admin");
+
+        // GET: api/Post
         [HttpGet]
-        [AllowAnonymous] // Cho phép xem bài viết không cần đăng nhập
+        [AllowAnonymous]
         public async Task<IActionResult> GetPosts(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 10,
@@ -28,333 +37,248 @@ namespace BallSport.API.Controllers.Community
             [FromQuery] int? fieldId = null,
             [FromQuery] int? userId = null)
         {
-            try
+            var filter = new PostFilterDTO
             {
-                var filter = new PostFilterDTO
-                {
-                    Status = status,
-                    FieldId = fieldId,
-                    UserId = userId
-                };
+                Status = status,
+                FieldId = fieldId,
+                UserId = userId
+            };
 
-                var (posts, totalCount) = await _postService.GetAllPostsAsync(pageNumber, pageSize, filter);
+            var (posts, totalCount) = await _postService.GetAllPostsAsync(pageNumber, pageSize, filter);
 
-                return Ok(new
-                {
-                    success = true,
-                    data = posts,
-                    pagination = new
-                    {
-                        currentPage = pageNumber,
-                        pageSize = pageSize,
-                        totalCount = totalCount,
-                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-                    }
-                });
-            }
-            catch (Exception ex)
+            return Ok(new
             {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+                success = true,
+                data = posts,
+                pagination = new
+                {
+                    currentPage = pageNumber,
+                    pageSize,
+                    totalCount,
+                    totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                }
+            });
         }
 
-        // GET: api/Post/5
+        // GET: api/Post/{id}
         [HttpGet("{id}")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetPostById(int id)
         {
-            try
-            {
-                var currentUserId = GetCurrentUserId();
-                var post = await _postService.GetPostByIdAsync(id, currentUserId);
+            var currentUserId = GetCurrentUserId();
+            var post = await _postService.GetPostByIdAsync(id, currentUserId);
 
-                if (post == null)
-                    return NotFound(new { success = false, message = "Không tìm thấy bài viết" });
+            if (post == null)
+                return NotFound(new { success = false, message = "Không tìm thấy bài viết" });
 
-                return Ok(new { success = true, data = post });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            // ẨN HOÀN TOÀN nếu đang Pending/Rejected mà không phải chủ hoặc admin
+            if ((post.IsPending || post.IsRejected) && !post.IsOwner && !IsAdmin)
+                return NotFound(new { success = false, message = "Không tìm thấy bài viết" });
+
+            return Ok(new { success = true, data = post });
         }
 
-        // GET: api/Post/trending?topCount=10
+        // GET: api/Post/trending
         [HttpGet("trending")]
         [AllowAnonymous]
         public async Task<IActionResult> GetTrendingPosts([FromQuery] int topCount = 10)
         {
-            try
-            {
-                var posts = await _postService.GetTrendingPostsAsync(topCount);
-                return Ok(new { success = true, data = posts });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            var posts = await _postService.GetTrendingPostsAsync(topCount);
+            return Ok(new { success = true, data = posts });
         }
 
-        // GET: api/Post/newsfeed?pageNumber=1&pageSize=10
+        // GET: api/Post/newsfeed
         [HttpGet("newsfeed")]
-        public async Task<IActionResult> GetNewsFeed(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetNewsFeed([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            try
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue) return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
+
+            var (posts, totalCount) = await _postService.GetNewsFeedAsync(userId.Value, pageNumber, pageSize);
+
+            return Ok(new
             {
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
-
-                var (posts, totalCount) = await _postService.GetNewsFeedAsync(userId.Value, pageNumber, pageSize);
-
-                return Ok(new
+                success = true,
+                data = posts,
+                pagination = new
                 {
-                    success = true,
-                    data = posts,
-                    pagination = new
-                    {
-                        currentPage = pageNumber,
-                        pageSize = pageSize,
-                        totalCount = totalCount,
-                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+                    currentPage = pageNumber,
+                    pageSize,
+                    totalCount,
+                    totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                }
+            });
         }
 
-        // GET: api/Post/search?keyword=bóng đá&pageNumber=1&pageSize=10
+        // GET: api/Post/search
         [HttpGet("search")]
         [AllowAnonymous]
-        public async Task<IActionResult> SearchPosts(
-            [FromQuery] string keyword,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> SearchPosts([FromQuery] string keyword, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
-            try
+            if (string.IsNullOrWhiteSpace(keyword))
+                return BadRequest(new { success = false, message = "Từ khóa không được để trống" });
+
+            var (posts, totalCount) = await _postService.SearchPostsAsync(keyword, pageNumber, pageSize);
+
+            return Ok(new
             {
-                if (string.IsNullOrWhiteSpace(keyword))
-                    return BadRequest(new { success = false, message = "Từ khóa tìm kiếm không được để trống" });
-
-                var (posts, totalCount) = await _postService.SearchPostsAsync(keyword, pageNumber, pageSize);
-
-                return Ok(new
+                success = true,
+                data = posts,
+                pagination = new
                 {
-                    success = true,
-                    data = posts,
-                    pagination = new
-                    {
-                        currentPage = pageNumber,
-                        pageSize = pageSize,
-                        totalCount = totalCount,
-                        totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+                    currentPage = pageNumber,
+                    pageSize,
+                    totalCount,
+                    totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                }
+            });
         }
 
-        // GET: api/Post/user/5
+        // GET: api/Post/user/{userId}
         [HttpGet("user/{userId}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetPostsByUser(int userId)
         {
-            try
-            {
-                var posts = await _postService.GetPostsByUserIdAsync(userId);
-                return Ok(new { success = true, data = posts });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            var posts = await _postService.GetPostsByUserIdAsync(userId);
+            return Ok(new { success = true, data = posts });
         }
 
-        // GET: api/Post/field/5
+        // GET: api/Post/field/{fieldId}
         [HttpGet("field/{fieldId}")]
         [AllowAnonymous]
         public async Task<IActionResult> GetPostsByField(int fieldId)
         {
-            try
-            {
-                var posts = await _postService.GetPostsByFieldIdAsync(fieldId);
-                return Ok(new { success = true, data = posts });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            var posts = await _postService.GetPostsByFieldIdAsync(fieldId);
+            return Ok(new { success = true, data = posts });
         }
 
         // POST: api/Post
         [HttpPost]
-        public async Task<IActionResult> CreatePost([FromBody] CreatePostDTO createPostDto)
+        public async Task<IActionResult> CreatePost([FromForm] CreatePostDTO dto)
         {
-            try
+            if (!ModelState.IsValid)
+                return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue) return Unauthorized();
+
+            var post = await _postService.CreatePostAsync(dto, userId.Value);
+
+            return CreatedAtAction(nameof(GetPostById), new { id = post.PostId }, new
             {
-                if (!ModelState.IsValid)
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
-
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
-
-                var post = await _postService.CreatePostAsync(createPostDto, userId.Value);
-
-                return CreatedAtAction(nameof(GetPostById), new { id = post.PostId }, new
-                {
-                    success = true,
-                    message = "Tạo bài viết thành công",
-                    data = post
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+                success = true,
+                message = "Tạo bài viết thành công! Đang chờ duyệt...",
+                data = post
+            });
         }
 
-        // PUT: api/Post/5
+        
+        // PUT: api/Post/{id} → CHO PHÉP UP ẢNH KHI SỬA
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdatePost(int id, [FromBody] UpdatePostDTO updatePostDto)
+        public async Task<IActionResult> UpdatePost(int id, [FromForm] UpdatePostDTO dto)
         {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
+            if (!ModelState.IsValid)
+                return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
 
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue) return Unauthorized();
 
-                var post = await _postService.UpdatePostAsync(id, updatePostDto, userId.Value);
+            var post = await _postService.UpdatePostAsync(id, dto, userId.Value);
+            if (post == null)
+                return NotFound(new { success = false, message = "Không tìm thấy bài viết hoặc bạn không có quyền chỉnh sửa" });
 
-                if (post == null)
-                    return NotFound(new { success = false, message = "Không tìm thấy bài viết hoặc bạn không có quyền chỉnh sửa" });
-
-                return Ok(new { success = true, message = "Cập nhật bài viết thành công", data = post });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            return Ok(new { success = true, message = "Cập nhật bài viết thành công", data = post });
         }
 
-        // DELETE: api/Post/5
+        // DELETE: api/Post/{id}/mine → User tự xóa (xóa thật)
+        [HttpDelete("{id}/mine")]
+        public async Task<IActionResult> DeleteMyPost(int id)
+        {
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue) return Unauthorized();
+
+            var success = await _postService.DeleteMyPostAsync(id, userId.Value);
+            if (!success)
+                return NotFound(new { success = false, message = "Không tìm thấy bài viết hoặc bạn không có quyền xóa" });
+
+            return Ok(new { success = true, message = "Đã xóa bài viết của bạn vĩnh viễn" });
+        }
+
+        // DELETE: api/Post/{id} → Admin xóa bất kỳ bài nào (xóa thật)
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeletePost(int id)
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeletePostByAdmin(int id)
         {
-            try
-            {
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
+            var success = await _postService.DeletePostByAdminAsync(id);
+            if (!success)
+                return NotFound(new { success = false, message = "Không tìm thấy bài viết" });
 
-                // Kiểm tra xem user có role Admin không
-                var isAdmin = User.IsInRole("Admin");
-
-                var success = await _postService.DeletePostAsync(id, userId.Value, isAdmin);
-
-                if (!success)
-                    return NotFound(new { success = false, message = "Không tìm thấy bài viết hoặc bạn không có quyền xóa" });
-
-                return Ok(new { success = true, message = "Xóa bài viết thành công" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            return Ok(new { success = true, message = "Đã xóa bài viết vĩnh viễn (Admin)" });
         }
 
-        // POST: api/Post/5/like
+        // POST: api/Post/{id}/like
         [HttpPost("{id}/like")]
         public async Task<IActionResult> LikePost(int id)
         {
-            try
-            {
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue) return Unauthorized();
 
-                var success = await _postService.LikePostAsync(id, userId.Value);
+            var success = await _postService.LikePostAsync(id, userId.Value);
+            if (!success) return BadRequest(new { success = false, message = "Bạn đã thích bài này rồi" });
 
-                if (!success)
-                    return BadRequest(new { success = false, message = "Bạn đã thích bài viết này rồi" });
-
-                return Ok(new { success = true, message = "Đã thích bài viết" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            return Ok(new { success = true, message = "Đã thích bài viết" });
         }
 
-        // DELETE: api/Post/5/unlike
-        [HttpDelete("{id}/unlike")]
+        // DELETE: api/Post/{id}/like
+        [HttpDelete("{id}/like")]
         public async Task<IActionResult> UnlikePost(int id)
         {
-            try
-            {
-                var userId = GetCurrentUserId();
-                if (userId == null)
-                    return Unauthorized(new { success = false, message = "Vui lòng đăng nhập" });
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue) return Unauthorized();
 
-                var success = await _postService.UnlikePostAsync(id, userId.Value);
-
-                if (!success)
-                    return BadRequest(new { success = false, message = "Bạn chưa thích bài viết này" });
-
-                return Ok(new { success = true, message = "Đã bỏ thích bài viết" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            await _postService.UnlikePostAsync(id, userId.Value);
+            return Ok(new { success = true, message = "Đã bỏ thích" });
         }
 
-        // PUT: api/Post/5/toggle-visibility
-        [HttpPut("{id}/toggle-visibility")]
-        [Authorize(Roles = "Admin")] // Chỉ Admin mới có quyền
-        public async Task<IActionResult> TogglePostVisibility(int id, [FromBody] string status)
+        // ADMIN: DUYỆT BÀI (Pending → Active / Rejected)
+        [HttpPut("{id}/review")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> ReviewPost(int id, [FromBody] ReviewPostRequest request)
         {
-            try
+            if (!new[] { "Active", "Rejected" }.Contains(request.Status))
+                return BadRequest(new { success = false, message = "Status phải là Active hoặc Rejected" });
+
+            var success = await _postService.ReviewPostAsync(id, request.Status);
+            if (!success) return NotFound(new { success = false, message = "Không tìm thấy bài viết" });
+
+            var msg = request.Status == "Active" ? "đã được duyệt" : "đã bị từ chối";
+            return Ok(new { success = true, message = $"Bài viết {msg}" });
+        }
+
+        // ADMIN: LẤY DANH SÁCH BÀI ĐANG CHỜ DUYỆT
+        [HttpGet("pending")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetPendingPosts([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 20)
+        {
+            var (posts, totalCount) = await _postService.GetPendingPostsAsync(pageNumber, pageSize);
+
+            return Ok(new
             {
-                if (string.IsNullOrWhiteSpace(status) ||
-                    (status != "Active" && status != "Hidden" && status != "Deleted"))
+                success = true,
+                data = posts,
+                pagination = new
                 {
-                    return BadRequest(new { success = false, message = "Status phải là Active, Hidden hoặc Deleted" });
+                    currentPage = pageNumber,
+                    pageSize,
+                    totalCount,
+                    totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
                 }
-
-                var success = await _postService.TogglePostVisibilityAsync(id, status);
-
-                if (!success)
-                    return NotFound(new { success = false, message = "Không tìm thấy bài viết" });
-
-                return Ok(new { success = true, message = $"Đã cập nhật trạng thái bài viết thành {status}" });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { success = false, message = "Lỗi server", error = ex.Message });
-            }
+            });
         }
+    }
 
-        // Helper method để lấy UserID từ JWT token
-        private int? GetCurrentUserId()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (int.TryParse(userIdClaim, out int userId))
-            {
-                return userId;
-            }
-            return null;
-        }
+    // Request DTO nhỏ gọn
+    public class ReviewPostRequest
+    {
+        public string Status { get; set; } = string.Empty; // "Active" | "Rejected"
     }
 }

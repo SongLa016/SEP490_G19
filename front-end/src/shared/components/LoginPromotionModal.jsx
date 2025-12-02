@@ -119,8 +119,8 @@ export const LoginPromotionModal = ({ user, onClose }) => {
                                                   transition={{ type: "spring", stiffness: 300 }}
                                              >
                                                   <Heart className="w-6 h-6 text-pink-600 mb-2" />
-                                                  <p className="text-xs font-semibold text-pink-900">Tìm đối thủ</p>
-                                                  <p className="text-xs text-pink-700 mt-1">Dễ dàng tìm đối thủ</p>
+                                                  <p className="text-xs font-semibold text-pink-900">Yêu thích</p>
+                                                  <p className="text-xs text-pink-700 mt-1">Lưu sân yêu thích</p>
                                              </motion.div>
 
                                              <motion.div
@@ -130,7 +130,7 @@ export const LoginPromotionModal = ({ user, onClose }) => {
                                              >
                                                   <Calendar className="w-6 h-6 text-blue-600 mb-2" />
                                                   <p className="text-xs font-semibold text-blue-900">Lịch sử đặt</p>
-                                                  <p className="text-xs text-blue-700 mt-1">Quản lý đặt sân</p>
+                                                  <p className="text-xs text-blue-700 mt-1">Quản lý đơn hàng</p>
                                              </motion.div>
 
                                              <motion.div
@@ -139,8 +139,8 @@ export const LoginPromotionModal = ({ user, onClose }) => {
                                                   transition={{ type: "spring", stiffness: 300 }}
                                              >
                                                   <Gift className="w-6 h-6 text-yellow-600 mb-2" />
-                                                  <p className="text-xs font-semibold text-yellow-900">Cộng đồng</p>
-                                                  <p className="text-xs text-yellow-700 mt-1">Chia sẻ trải nghiệm</p>
+                                                  <p className="text-xs font-semibold text-yellow-900">Thông báo</p>
+                                                  <p className="text-xs text-yellow-700 mt-1">Cập nhật mới nhất</p>
                                              </motion.div>
                                         </div>
 

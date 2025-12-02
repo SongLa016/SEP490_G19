@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Button, Card, Input, Modal, Table, Badge, Alert, AlertDescription, Pagination, usePagination } from '../../../shared/components/ui';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Button, Card, Input, Modal, Table, Badge, Alert, AlertDescription } from '../../../shared/components/ui';
 import {
      Plus,
      Edit,
@@ -19,16 +19,14 @@ import {
      CheckSquare,
      Square
 } from 'lucide-react';
-import { createTimeSlot, updateTimeSlot, deleteTimeSlot } from '../../../shared/services/timeSlots';
-import { useTimeSlots } from '../../../shared/hooks';
+import { fetchTimeSlots, createTimeSlot, updateTimeSlot, deleteTimeSlot } from '../../../shared/services/timeSlots';
 import { DemoRestrictedModal } from '../../../shared';
 import { useAuth } from '../../../contexts/AuthContext';
 import Swal from 'sweetalert2';
 
 export default function TimeSlotManagement({ isDemo = false }) {
-     // Use React Query hook for time slots with caching
-     const { data: timeSlots = [], isLoading: loading, refetch: loadData } = useTimeSlots();
-
+     const [timeSlots, setTimeSlots] = useState([]);
+     const [loading, setLoading] = useState(false);
      const [showModal, setShowModal] = useState(false);
      const [editingSlot, setEditingSlot] = useState(null);
      const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
@@ -36,8 +34,7 @@ export default function TimeSlotManagement({ isDemo = false }) {
      const [formData, setFormData] = useState({
           SlotName: '',
           StartTime: '',
-          EndTime: '',
-          FieldId: ''
+          EndTime: ''
      });
      const [formErrors, setFormErrors] = useState({});
      const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,15 +42,25 @@ export default function TimeSlotManagement({ isDemo = false }) {
      const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
      const { user, logout } = useAuth();
 
-     // Pagination for time slots (10 per page)
-     const {
-          currentPage,
-          totalPages,
-          currentItems: paginatedTimeSlots,
-          handlePageChange,
-          totalItems,
-          itemsPerPage,
-     } = usePagination(timeSlots, 10);
+     const loadData = useCallback(async () => {
+          setLoading(true);
+          try {
+               const result = await fetchTimeSlots();
+               if (result.success) {
+                    setTimeSlots(result.data);
+               } else {
+                    console.error('Error loading time slots:', result.error);
+               }
+          } catch (error) {
+               console.error('Error loading time slots:', error);
+          } finally {
+               setLoading(false);
+          }
+     }, []);
+
+     useEffect(() => {
+          loadData();
+     }, [loadData]);
 
      const handleOpenModal = (slot = null) => {
           if (isDemo) {
@@ -66,16 +73,14 @@ export default function TimeSlotManagement({ isDemo = false }) {
                setFormData({
                     SlotName: slot.SlotName,
                     StartTime: slot.StartTime.substring(0, 5), // Convert HH:MM:SS to HH:MM
-                    EndTime: slot.EndTime.substring(0, 5),
-                    FieldId: (slot.FieldId ?? slot.fieldId ?? '').toString()
+                    EndTime: slot.EndTime.substring(0, 5)
                });
           } else {
                setEditingSlot(null);
                setFormData({
                     SlotName: '',
                     StartTime: '',
-                    EndTime: '',
-                    FieldId: ''
+                    EndTime: ''
                });
           }
           setFormErrors({});
@@ -90,8 +95,7 @@ export default function TimeSlotManagement({ isDemo = false }) {
           setFormData({
                SlotName: '',
                StartTime: '',
-               EndTime: '',
-               FieldId: ''
+               EndTime: ''
           });
           setFormErrors({});
           setIsSubmitting(false);
@@ -104,12 +108,6 @@ export default function TimeSlotManagement({ isDemo = false }) {
 
           if (!formData.SlotName.trim()) {
                errors.SlotName = 'Vui lòng nhập tên slot';
-          }
-
-          if (!formData.FieldId) {
-               errors.FieldId = 'Vui lòng nhập Field ID';
-          } else if (Number.isNaN(Number(formData.FieldId))) {
-               errors.FieldId = 'Field ID phải là số hợp lệ';
           }
 
           if (!formData.StartTime) {
@@ -257,11 +255,6 @@ export default function TimeSlotManagement({ isDemo = false }) {
                return;
           }
 
-          if (!formData.FieldId) {
-               setFormErrors({ FieldId: 'Vui lòng nhập Field ID trước khi thêm hàng loạt' });
-               return;
-          }
-
           setIsSubmitting(true);
           setBatchProgress({ current: 0, total: selectedSlots.length });
           setFormErrors({});
@@ -278,8 +271,7 @@ export default function TimeSlotManagement({ isDemo = false }) {
                     const result = await createTimeSlot({
                          SlotName: slot.name,
                          StartTime: slot.start,
-                         EndTime: slot.end,
-                         FieldId: formData.FieldId
+                         EndTime: slot.end
                     });
 
                     if (result.success) {
@@ -592,22 +584,11 @@ export default function TimeSlotManagement({ isDemo = false }) {
                {/* Time Slots Table */}
                <Card className="p-6">
                     <Table
-                         data={paginatedTimeSlots}
+                         data={timeSlots}
                          columns={columns}
                          loading={loading}
                          emptyMessage="Chưa có slot thời gian nào"
                     />
-                    {timeSlots.length > 0 && (
-                         <div className="mt-4 pt-4 border-t">
-                              <Pagination
-                                   currentPage={currentPage}
-                                   totalPages={totalPages}
-                                   onPageChange={handlePageChange}
-                                   itemsPerPage={itemsPerPage}
-                                   totalItems={totalItems}
-                              />
-                         </div>
-                    )}
                </Card>
           </div>
      );
@@ -857,32 +838,6 @@ export default function TimeSlotManagement({ isDemo = false }) {
                                              <p className="mt-1 text-sm text-red-600 flex items-center">
                                                   <AlertCircle className="w-3 h-3 mr-1" />
                                                   {formErrors.SlotName}
-                                             </p>
-                                        )}
-                                   </div>
-
-                                   {/* Field ID */}
-                                   <div className="mt-4">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                             Sân áp dụng (Field ID) *
-                                        </label>
-                                        <Input
-                                             type="number"
-                                             value={formData.FieldId}
-                                             onChange={(e) => {
-                                                  setFormData({ ...formData, FieldId: e.target.value });
-                                                  if (formErrors.FieldId) {
-                                                       setFormErrors({ ...formErrors, FieldId: '' });
-                                                  }
-                                             }}
-                                             placeholder="Ví dụ: 49"
-                                             className={formErrors.FieldId ? 'border-red-500' : ''}
-                                             required={selectedSlots.length === 0}
-                                        />
-                                        {formErrors.FieldId && (
-                                             <p className="mt-1 text-sm text-red-600 flex items-center">
-                                                  <AlertCircle className="w-3 h-3 mr-1" />
-                                                  {formErrors.FieldId}
                                              </p>
                                         )}
                                    </div>

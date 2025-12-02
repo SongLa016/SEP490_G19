@@ -1,4 +1,6 @@
-﻿using BallSport.Application.DTOs.Community;
+﻿// File: BallSport.Application.Services/Community/ReportService.cs
+using BallSport.Application.Common.Extensions; // THÊM DÒNG NÀY – BẮT BUỘC!
+using BallSport.Application.DTOs.Community;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories.Community;
 
@@ -24,225 +26,146 @@ namespace BallSport.Application.Services.Community
         }
 
         public async Task<(IEnumerable<ReportDTO> Reports, int TotalCount)> GetAllReportsAsync(
-            int pageNumber,
-            int pageSize,
-            string? status = null,
-            string? targetType = null)
+            int pageNumber, int pageSize, string? status = null, string? targetType = null)
         {
-            var (reports, totalCount) = await _reportRepository.GetAllReportsAsync(
-                pageNumber,
-                pageSize,
-                status,
-                targetType
-            );
-
-            var reportDtos = MapToReportDTOs(reports);
-
-            return (reportDtos, totalCount);
+            var (reports, totalCount) = await _reportRepository.GetAllReportsAsync(pageNumber, pageSize, status, targetType);
+            return (MapToReportDTOs(reports), totalCount);
         }
 
         public async Task<ReportDTO?> GetReportByIdAsync(int reportId)
         {
             var report = await _reportRepository.GetReportByIdAsync(reportId);
-            if (report == null)
-                return null;
-
-            return MapToReportDTO(report);
+            return report == null ? null : MapToReportDTO(report);
         }
 
-        public async Task<ReportDTO> CreateReportAsync(CreateReportDTO createReportDto, int reporterId)
+        public async Task<ReportDTO> CreateReportAsync(CreateReportDTO dto, int reporterId)
         {
-            // Kiểm tra đã báo cáo chưa
-            var hasReported = await _reportRepository.HasUserReportedTargetAsync(
-                reporterId,
-                createReportDto.TargetType,
-                createReportDto.TargetId
-            );
-
+            var hasReported = await _reportRepository.HasUserReportedTargetAsync(reporterId, dto.TargetType, dto.TargetId);
             if (hasReported)
-                throw new Exception("Bạn đã báo cáo nội dung này rồi");
+                throw new InvalidOperationException("Bạn đã báo cáo nội dung này rồi.");
 
-            // Validate target tồn tại
-            if (createReportDto.TargetType == "Post")
+            if (dto.TargetType == "Post")
             {
-                var post = await _postRepository.GetPostByIdAsync(createReportDto.TargetId);
-                if (post == null)
-                    throw new Exception("Bài viết không tồn tại");
+                var post = await _postRepository.GetPostByIdAsync(dto.TargetId);
+                if (post == null) throw new InvalidOperationException("Bài viết không tồn tại.");
             }
-            else if (createReportDto.TargetType == "Comment")
+            else if (dto.TargetType == "Comment")
             {
-                var comment = await _commentRepository.GetCommentByIdAsync(createReportDto.TargetId);
-                if (comment == null)
-                    throw new Exception("Bình luận không tồn tại");
+                var comment = await _commentRepository.GetCommentByIdAsync(dto.TargetId);
+                if (comment == null) throw new InvalidOperationException("Bình luận không tồn tại.");
             }
             else
             {
-                throw new Exception("Loại báo cáo không hợp lệ");
+                throw new InvalidOperationException("Loại nội dung không hợp lệ.");
             }
 
             var report = new Report
             {
                 ReporterId = reporterId,
-                TargetType = createReportDto.TargetType,
-                TargetId = createReportDto.TargetId,
-                Reason = createReportDto.Reason
+                TargetType = dto.TargetType,
+                TargetId = dto.TargetId,
+                Reason = dto.Reason.Trim(),
+                CreatedAt = DateTime.UtcNow, // DB lưu UTC → đúng chuẩn
+                Status = "Pending"
             };
 
-            var createdReport = await _reportRepository.CreateReportAsync(report);
-            return MapToReportDTO(createdReport);
+            var created = await _reportRepository.CreateReportAsync(report);
+            return MapToReportDTO(created);
         }
 
-        public async Task<ReportDTO?> HandleReportAsync(int reportId, HandleReportDTO handleReportDto, int adminId)
+        public async Task<ReportDTO?> HandleReportAsync(int reportId, HandleReportDTO dto, int adminId)
         {
             var report = await _reportRepository.GetReportByIdAsync(reportId);
-            if (report == null)
-                return null;
+            if (report == null) return null;
 
-            // Cập nhật trạng thái báo cáo
-            var updatedReport = await _reportRepository.UpdateReportStatusAsync(
-                reportId,
-                handleReportDto.Status,
-                adminId
-            );
+            var updatedReport = await _reportRepository.UpdateReportStatusAsync(reportId, dto.Status, adminId);
+            if (updatedReport == null) return null;
 
-            if (updatedReport == null)
-                return null;
-
-            // Xử lý nội dung bị báo cáo
-            if (handleReportDto.Status == "Resolved")
+            if (dto.Status == "Resolved" && dto.Action == "Delete")
             {
-                if (handleReportDto.Action == "Hide")
-                {
-                    await HideReportedContent(report.TargetType, report.TargetId);
-                }
-                else if (handleReportDto.Action == "Delete")
-                {
-                    await DeleteReportedContent(report.TargetType, report.TargetId);
-                }
+                await DeleteReportedContent(report.TargetType, report.TargetId);
             }
 
-            // Gửi thông báo cho người báo cáo
+            string message = dto.Status == "Resolved"
+                ? "Báo cáo của bạn đã được chấp nhận. Nội dung vi phạm đã bị xóa vĩnh viễn."
+                : "Báo cáo của bạn đã được xem xét. Nội dung này không vi phạm quy định.";
+
+            if (!string.IsNullOrWhiteSpace(dto.AdminNote))
+                message += $" Ghi chú từ Admin: {dto.AdminNote}";
+
             await _notificationService.CreateNotificationAsync(new CreateNotificationDTO
             {
                 UserId = report.ReporterId,
                 Type = "ReportResult",
                 TargetId = reportId,
-                Message = $"Báo cáo của bạn đã được xử lý: {handleReportDto.Status}"
+                Message = message
             });
 
             return MapToReportDTO(updatedReport);
         }
 
-        public async Task<IEnumerable<ReportDTO>> GetReportsByReporterIdAsync(int reporterId)
+        private async Task DeleteReportedContent(string targetType, int targetId)
         {
-            var reports = await _reportRepository.GetReportsByReporterIdAsync(reporterId);
-            return MapToReportDTOs(reports);
+            if (targetType == "Post")
+                await _postRepository.HardDeletePostAsync(targetId);
+            else if (targetType == "Comment")
+                await _commentRepository.HardDeleteCommentAsync(targetId);
         }
+
+        public async Task<IEnumerable<ReportDTO>> GetReportsByReporterIdAsync(int reporterId)
+            => MapToReportDTOs(await _reportRepository.GetReportsByReporterIdAsync(reporterId));
 
         public async Task<IEnumerable<ReportDTO>> GetReportsByTargetAsync(string targetType, int targetId)
-        {
-            var reports = await _reportRepository.GetReportsByTargetAsync(targetType, targetId);
-            return MapToReportDTOs(reports);
-        }
+            => MapToReportDTOs(await _reportRepository.GetReportsByTargetAsync(targetType, targetId));
 
         public async Task<IEnumerable<ReportDTO>> GetPendingReportsAsync(int topCount = 50)
-        {
-            var reports = await _reportRepository.GetPendingReportsAsync(topCount);
-            return MapToReportDTOs(reports);
-        }
+            => MapToReportDTOs(await _reportRepository.GetPendingReportsAsync(topCount));
 
         public async Task<bool> DeleteReportAsync(int reportId)
-        {
-            return await _reportRepository.DeleteReportAsync(reportId);
-        }
+            => await _reportRepository.DeleteReportAsync(reportId);
 
         public async Task<bool> HasUserReportedAsync(int reporterId, string targetType, int targetId)
-        {
-            return await _reportRepository.HasUserReportedTargetAsync(reporterId, targetType, targetId);
-        }
+            => await _reportRepository.HasUserReportedTargetAsync(reporterId, targetType, targetId);
 
         public async Task<ReportStatsDTO> GetReportStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null)
         {
-            var statistics = await _reportRepository.GetReportStatisticsAsync(fromDate, toDate);
-
+            var stats = await _reportRepository.GetReportStatisticsAsync(fromDate, toDate);
             return new ReportStatsDTO
             {
-                TotalReports = statistics.GetValueOrDefault("TotalReports", 0),
-                PendingReports = statistics.GetValueOrDefault("PendingReports", 0),
-                ReviewedReports = statistics.GetValueOrDefault("ReviewedReports", 0),
-                ResolvedReports = statistics.GetValueOrDefault("ResolvedReports", 0),
-                PostReports = statistics.GetValueOrDefault("PostReports", 0),
-                CommentReports = statistics.GetValueOrDefault("CommentReports", 0),
+                TotalReports = stats.GetValueOrDefault("TotalReports", 0),
+                PendingReports = stats.GetValueOrDefault("PendingReports", 0),
+                ResolvedReports = stats.GetValueOrDefault("ResolvedReports", 0),
+                RejectedReports = stats.GetValueOrDefault("RejectedReports", 0),
+                PostReports = stats.GetValueOrDefault("PostReports", 0),
+                CommentReports = stats.GetValueOrDefault("CommentReports", 0),
                 FromDate = fromDate,
                 ToDate = toDate
             };
         }
 
         public async Task<int> CountReportsByStatusAsync(string status)
-        {
-            return await _reportRepository.CountReportsByStatusAsync(status);
-        }
+            => await _reportRepository.CountReportsByStatusAsync(status);
 
         public async Task<int> CountReportsByTargetAsync(string targetType, int targetId)
-        {
-            return await _reportRepository.CountReportsByTargetAsync(targetType, targetId);
-        }
+            => await _reportRepository.CountReportsByTargetAsync(targetType, targetId);
 
-        // Helper methods
-        private async Task HideReportedContent(string targetType, int targetId)
+        // CHỈ SỬA 1 DÒNG DUY NHẤT Ở ĐÂY – GIỜ VIỆT NAM ĐÚNG MÃI MÃI!
+        private ReportDTO MapToReportDTO(Report report) => new()
         {
-            if (targetType == "Post")
-            {
-                var post = await _postRepository.GetPostByIdAsync(targetId);
-                if (post != null)
-                {
-                    post.Status = "Hidden";
-                    await _postRepository.UpdatePostAsync(post);
-                }
-            }
-            else if (targetType == "Comment")
-            {
-                var comment = await _commentRepository.GetCommentByIdAsync(targetId);
-                if (comment != null)
-                {
-                    comment.Status = "Hidden";
-                    await _commentRepository.UpdateCommentAsync(comment);
-                }
-            }
-        }
-
-        private async Task DeleteReportedContent(string targetType, int targetId)
-        {
-            if (targetType == "Post")
-            {
-                await _postRepository.DeletePostAsync(targetId);
-            }
-            else if (targetType == "Comment")
-            {
-                await _commentRepository.DeleteCommentAsync(targetId);
-            }
-        }
-
-        private ReportDTO MapToReportDTO(Report report)
-        {
-            return new ReportDTO
-            {
-                ReportId = report.ReportId,
-                ReporterId = report.ReporterId,
-                ReporterName = report.Reporter?.FullName ?? "Unknown",
-                TargetType = report.TargetType,
-                TargetId = report.TargetId,
-                Reason = report.Reason,
-                Status = report.Status,
-                HandledBy = report.HandledBy,
-                HandledByName = report.HandledByNavigation?.FullName,
-                CreatedAt = report.CreatedAt
-            };
-        }
+            ReportId = report.ReportId,
+            ReporterId = report.ReporterId,
+            ReporterName = report.Reporter?.FullName ?? "Người dùng ẩn danh",
+            TargetType = report.TargetType,
+            TargetId = report.TargetId,
+            Reason = report.Reason,
+            Status = report.Status ?? "Pending",
+            HandledBy = report.HandledBy,
+            HandledByName = report.HandledByNavigation?.FullName ?? "-",
+            // DÒNG THẦN THÁNH – FIX +07:00 HOÀN TOÀN!
+            CreatedAt = report.CreatedAt?.ToVietnamTime() ?? DateTimeExtensions.VietnamNow
+        };
 
         private IEnumerable<ReportDTO> MapToReportDTOs(IEnumerable<Report> reports)
-        {
-            return reports.Select(MapToReportDTO).ToList();
-        }
+            => reports.Select(MapToReportDTO);
     }
 }
