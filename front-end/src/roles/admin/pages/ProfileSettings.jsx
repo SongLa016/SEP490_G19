@@ -14,7 +14,6 @@ import {
 } from "../../../shared/components/ui";
 import { profileService } from "../../../shared/index";
 import Swal from "sweetalert2";
-import AdminLayout from "../layouts/AdminLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 
 export default function AdminProfileSettings() {
@@ -254,153 +253,145 @@ export default function AdminProfileSettings() {
 
   if (isLoading && !profileData.fullName) {
     return (
-      <AdminLayout user={user}>
-        <div className="flex items-center justify-center min-h-screen">
-          <LoadingSpinner />
-        </div>
-      </AdminLayout>
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner />
+      </div>
     );
   }
 
   return (
-    <AdminLayout user={user}>
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Card className="shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-t-lg">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-2xl font-bold flex items-center gap-2">
-                <User className="w-6 h-6" />
-                Hồ sơ Admin
-              </CardTitle>
-              {!isEditing ? (
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <Card className="shadow-lg">
+        <CardHeader className="bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-t-lg">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-2xl font-bold flex items-center gap-2">
+              <User className="w-6 h-6" />
+              Hồ sơ Admin
+            </CardTitle>
+            {!isEditing ? (
+              <Button
+                onClick={() => setIsEditing(true)}
+                variant="outline"
+                className="bg-white text-red-600 hover:bg-red-50"
+              >
+                <Edit3 className="w-4 h-4 mr-2" />
+                Chỉnh sửa
+              </Button>
+            ) : (
+              <div className="flex gap-2">
                 <Button
-                  onClick={() => setIsEditing(true)}
+                  onClick={handleCancel}
                   variant="outline"
+                  className="bg-white text-gray-600 hover:bg-gray-50"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Hủy
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={isLoading}
                   className="bg-white text-red-600 hover:bg-red-50"
                 >
-                  <Edit3 className="w-4 h-4 mr-2" />
-                  Chỉnh sửa
+                  {isLoading ? (
+                    <LoadingSpinner className="w-4 h-4 mr-2" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Lưu
                 </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleCancel}
-                    variant="outline"
-                    className="bg-white text-gray-600 hover:bg-gray-50"
-                  >
-                    <X className="w-4 h-4 mr-2" />
-                    Hủy
-                  </Button>
-                  <Button
-                    onClick={handleSave}
-                    disabled={isLoading}
-                    className="bg-white text-red-600 hover:bg-red-50"
-                  >
-                    {isLoading ? (
-                      <LoadingSpinner className="w-4 h-4 mr-2" />
-                    ) : (
-                      <Save className="w-4 h-4 mr-2" />
-                    )}
-                    Lưu
-                  </Button>
-                </div>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-6">
+          {/* Avatar Section */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="relative">
+              <Avatar className="w-32 h-32 border-4 border-red-200">
+                <AvatarImage
+                  src={formData.avatar || profileData.avatar}
+                  alt="Avatar"
+                  className="object-cover"
+                />
+                <AvatarFallback className="bg-red-100 text-red-700 text-2xl font-bold">
+                  {formData.fullName?.charAt(0) ||
+                    profileData.fullName?.charAt(0) ||
+                    user?.fullName?.charAt(0) ||
+                    user?.name?.charAt(0) ||
+                    "A"}
+                </AvatarFallback>
+              </Avatar>
+              {isEditing && (
+                <label className="absolute bottom-0 right-0 bg-red-600 text-white rounded-full p-2 cursor-pointer hover:bg-red-700 transition shadow-lg">
+                  <Camera className="w-5 h-5" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                  />
+                </label>
               )}
             </div>
-          </CardHeader>
+            <p className="text-sm text-gray-500 mt-2">
+              {isEditing ? "Nhấn vào icon camera để thay đổi ảnh đại diện" : ""}
+            </p>
+          </div>
 
-          <CardContent className="p-6">
-            {/* Avatar Section */}
-            <div className="flex flex-col items-center mb-8">
-              <div className="relative">
-                <Avatar className="w-32 h-32 border-4 border-red-200">
-                  <AvatarImage
-                    src={formData.avatar || profileData.avatar}
-                    alt="Avatar"
-                    className="object-cover"
-                  />
-                  <AvatarFallback className="bg-red-100 text-red-700 text-2xl font-bold">
-                    {formData.fullName?.charAt(0) ||
-                      profileData.fullName?.charAt(0) ||
-                      user?.fullName?.charAt(0) ||
-                      user?.name?.charAt(0) ||
-                      "A"}
-                  </AvatarFallback>
-                </Avatar>
-                {isEditing && (
-                  <label className="absolute bottom-0 right-0 bg-red-600 text-white rounded-full p-2 cursor-pointer hover:bg-red-700 transition shadow-lg">
-                    <Camera className="w-5 h-5" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleAvatarUpload}
-                    />
-                  </label>
-                )}
-              </div>
-              <p className="text-sm text-gray-500 mt-2">
-                {isEditing
-                  ? "Nhấn vào icon camera để thay đổi ảnh đại diện"
-                  : ""}
+          {/* Profile Fields */}
+          <div className="space-y-6">
+            {/* Full Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <User className="w-4 h-4 inline mr-2" />
+                Họ và tên
+              </label>
+              {isEditing ? (
+                <Input
+                  value={formData.fullName}
+                  onChange={(e) =>
+                    handleInputChange("fullName", e.target.value)
+                  }
+                  placeholder="Nhập họ và tên"
+                  className="w-full"
+                />
+              ) : (
+                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                  {profileData.fullName || "Chưa cập nhật"}
+                </p>
+              )}
+            </div>
+
+            {/* Email (Read-only) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Mail className="w-4 h-4 inline mr-2" />
+                Email
+              </label>
+              <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                {profileData.email || "Chưa cập nhật"}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Email không thể thay đổi</p>
+            </div>
+
+            {/* Phone (Read-only) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Phone className="w-4 h-4 inline mr-2" />
+                Số điện thoại
+              </label>
+              <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                {profileData.phone || "Chưa cập nhật"}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Số điện thoại không thể thay đổi
               </p>
             </div>
-
-            {/* Profile Fields */}
-            <div className="space-y-6">
-              {/* Full Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <User className="w-4 h-4 inline mr-2" />
-                  Họ và tên
-                </label>
-                {isEditing ? (
-                  <Input
-                    value={formData.fullName}
-                    onChange={(e) =>
-                      handleInputChange("fullName", e.target.value)
-                    }
-                    placeholder="Nhập họ và tên"
-                    className="w-full"
-                  />
-                ) : (
-                  <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                    {profileData.fullName || "Chưa cập nhật"}
-                  </p>
-                )}
-              </div>
-
-              {/* Email (Read-only) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Mail className="w-4 h-4 inline mr-2" />
-                  Email
-                </label>
-                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                  {profileData.email || "Chưa cập nhật"}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Email không thể thay đổi
-                </p>
-              </div>
-
-              {/* Phone (Read-only) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Phone className="w-4 h-4 inline mr-2" />
-                  Số điện thoại
-                </label>
-                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                  {profileData.phone || "Chưa cập nhật"}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Số điện thoại không thể thay đổi
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </AdminLayout>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

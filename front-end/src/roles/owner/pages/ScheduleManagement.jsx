@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import {
      Card,
@@ -1657,17 +1656,14 @@ export default function ScheduleManagement({ isDemo = false }) {
 
      if (loading) {
           return (
-               <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
-                    <div className="flex items-center justify-center h-64">
-                         <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
-                    </div>
-               </OwnerLayout>
+               <div className="flex items-center justify-center h-64">
+                    <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+               </div>
           );
      }
 
      if (complexes.length === 0) {
           return (
-               <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
                     <div className="space-y-6">
                          <div className="flex items-center justify-between">
                               <div>
@@ -1684,12 +1680,10 @@ export default function ScheduleManagement({ isDemo = false }) {
                               </div>
                          </Card>
                     </div>
-               </OwnerLayout>
           );
      }
 
      return (
-          <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
                <div className="space-y-4">
                     {/* Header */}
                     <div className="flex items-center justify-between flex-wrap gap-4">
@@ -1991,6 +1985,5 @@ export default function ScheduleManagement({ isDemo = false }) {
                          onSubmit={handleSubmitSchedule}
                     />
                </div>
-          </OwnerLayout >
      );
 }

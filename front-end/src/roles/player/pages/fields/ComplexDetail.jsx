@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { Container, Section, LoadingPage, LoadingSpinner } from "../../../../shared/components/ui";
-import { fetchComplexDetail, fetchTimeSlotsByField, fetchFieldDetail, fetchCancellationPolicyByComplex, fetchPromotionsByComplex, fetchPublicFieldSchedulesByField, fetchFieldTypes, fetchDepositPolicyByField } from "../../../../shared/index";
+import { fetchComplexDetail, fetchTimeSlotsByField, fetchFieldDetail, fetchCancellationPolicyByComplex, fetchPromotionsByComplex, fetchPublicFieldSchedulesByField, fetchFieldTypes, fetchDepositPolicyByField, fetchFavoriteFields, toggleFavoriteField as toggleFavoriteFieldApi } from "../../../../shared/index";
 import { fetchRatingsByComplex, fetchRatingsByField } from "../../../../shared/services/ratings";
 import { normalizeFieldType } from "../../../../shared/services/fieldTypes";
 import { useFieldSchedules } from "../../../../shared/hooks";
@@ -92,6 +92,8 @@ export default function ComplexDetail({ user }) {
      // Booking modal state
      const [bookingModalData, setBookingModalData] = useState(null);
      const [bookingType, setBookingType] = useState("field"); // "field" | "complex" | "quick"
+     const [favoriteFieldIds, setFavoriteFieldIds] = useState(new Set());
+     const favoritesLoadedRef = useRef(false);
      const showToastMessage = (message, type = 'info') => {
           const config = {
                title: type === 'success' ? 'Thành công!' :
@@ -155,11 +157,23 @@ export default function ComplexDetail({ user }) {
           return source.filter(shouldDisplayField);
      }, [complexData.fields]);
 
-     const toggleFavoriteField = (fieldId) => {
+     const toggleFavoriteFieldLocal = (fieldId, nextIsFavorite) => {
+          const idNum = Number(fieldId);
           setComplexData(prev => ({
                ...prev,
-               fields: (prev.fields || []).map(f => Number(f.fieldId) === Number(fieldId) ? { ...f, isFavorite: !f.isFavorite } : f)
+               fields: (prev.fields || []).map(f =>
+                    Number(f.fieldId) === idNum ? { ...f, isFavorite: nextIsFavorite } : f
+               )
           }));
+          setFavoriteFieldIds(prev => {
+               const updated = new Set(prev);
+               if (nextIsFavorite) {
+                    updated.add(idNum);
+               } else {
+                    updated.delete(idNum);
+               }
+               return updated;
+          });
      };
 
      const toggleFavoriteComplex = (complexId) => {
@@ -171,12 +185,25 @@ export default function ComplexDetail({ user }) {
           }));
      };
 
-     const handleToggleFavoriteField = (fieldId) => {
+     const handleToggleFavoriteField = async (fieldId) => {
           if (!user) {
                showToastMessage("Vui lòng đăng nhập để sử dụng danh sách yêu thích.", 'warning');
                return;
           }
-          toggleFavoriteField(fieldId);
+          const idNum = Number(fieldId);
+          const current = favoriteFieldIds.has(idNum);
+          const nextIsFavorite = !current;
+
+          // Optimistic update
+          toggleFavoriteFieldLocal(fieldId, nextIsFavorite);
+
+          try {
+               await toggleFavoriteFieldApi(fieldId, current);
+          } catch (error) {
+               // Revert on error
+               toggleFavoriteFieldLocal(fieldId, current);
+               showToastMessage(error.message || "Không thể cập nhật danh sách yêu thích.", 'error');
+          }
      };
 
      const handleToggleFavoriteComplex = (complexId) => {
@@ -268,7 +295,16 @@ export default function ComplexDetail({ user }) {
                               };
                          }
 
-                         setComplexData(updatedComplexData);
+                         // Áp dụng cờ isFavorite từ favoriteFieldIds
+                         const complexWithFavorites = {
+                              ...updatedComplexData,
+                              fields: (updatedComplexData.fields || []).map(f => ({
+                                   ...f,
+                                   isFavorite: favoriteFieldIds.has(Number(f.fieldId)),
+                              })),
+                         };
+
+                         setComplexData(complexWithFavorites);
                          setCancellationPolicy(policyData);
                          setPromotions(Array.isArray(promotionsData) ? promotionsData : []);
                          setIsLoading(false);
@@ -291,6 +327,37 @@ export default function ComplexDetail({ user }) {
 
           return () => { ignore = true; clearTimeout(timer); };
      }, [id, selectedDate, selectedSlotId, selectedFieldId, isFieldRoute]);
+
+     // Load danh sách sân yêu thích khi người dùng đã đăng nhập
+     useEffect(() => {
+          const loadFavorites = async () => {
+               if (!user || favoritesLoadedRef.current) return;
+               try {
+                    const list = await fetchFavoriteFields();
+                    const ids = new Set(
+                         (list || [])
+                              .map(item => Number(item.fieldId))
+                              .filter(id => !Number.isNaN(id))
+                    );
+                    setFavoriteFieldIds(ids);
+                    favoritesLoadedRef.current = true;
+               } catch (error) {
+                    console.error("Error loading favorite fields in ComplexDetail:", error);
+               }
+          };
+          loadFavorites();
+     }, [user]);
+
+     // Khi favoriteFieldIds thay đổi, đồng bộ lại cờ isFavorite cho fields hiện tại
+     useEffect(() => {
+          setComplexData(prev => ({
+               ...prev,
+               fields: (prev.fields || []).map(f => ({
+                    ...f,
+                    isFavorite: favoriteFieldIds.has(Number(f.fieldId)),
+               })),
+          }));
+     }, [favoriteFieldIds]);
 
      // Separate effect to handle selectedFieldId changes - fetch TimeSlots, DepositPolicy, and FieldDetail for selected field
      useEffect(() => {

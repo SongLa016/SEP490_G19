@@ -30,6 +30,8 @@ export {
   checkFieldAvailability,
   validateBookingData,
   createBooking as createBookingAPI,
+  createBookingPackage,
+  fetchBookingPackagesByPlayer,
   confirmPaymentAPI,
   generateQRCode,
   confirmByOwner,
@@ -48,6 +50,7 @@ export * from "./services/fieldSchedules";
 export * from "./services/passwordResetService";
 export * from "./services/profileService";
 export * from "./services/promotions";
+export * from "./services/favorites";
 export * from "./services/timeSlots";
 export * from "./services/fieldTypes";
 export * from "./services/posts";

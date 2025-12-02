@@ -6,7 +6,7 @@ import { ScrollReveal } from "../../../../shared/components/ScrollReveal";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
 import { useNavigate } from "react-router-dom";
 import MapSearch from "./components/MapSearch";
-import { fetchComplexes, fetchFields, fetchTimeSlots, fetchPublicFieldSchedulesByDate, fetchPublicFieldSchedulesByField } from "../../../../shared/index";
+import { fetchComplexes, fetchFields, fetchTimeSlots, fetchPublicFieldSchedulesByDate, fetchPublicFieldSchedulesByField, fetchFavoriteFields, toggleFavoriteField } from "../../../../shared/index";
 import { fetchFieldTypes, normalizeFieldType } from "../../../../shared/services/fieldTypes";
 import { fetchRatingsByField } from "../../../../shared/services/ratings";
 import Swal from 'sweetalert2';
@@ -125,9 +125,11 @@ export default function FieldSearch({ user }) {
      const [fields, setFields] = useState([]);
      const [complexes, setComplexes] = useState([]);
      const [filteredFields, setFilteredFields] = useState([]);
+     const [favoriteFieldIds, setFavoriteFieldIds] = useState(new Set());
      const [isLoading, setIsLoading] = useState(false);
      const [userLocation, setUserLocation] = useState(null); // { lat, lng }
      const [fieldTypeMap, setFieldTypeMap] = useState({}); // Map typeId -> typeName
+     const favoritesLoadedRef = useRef(false);
 
      useEffect(() => {
           hasExistingDataRef.current = (fields.length > 0) || (complexes.length > 0);
@@ -204,6 +206,24 @@ export default function FieldSearch({ user }) {
                }
           } catch { }
      }, []);
+
+     // Load danh sách sân yêu thích khi đã có user đăng nhập
+     useEffect(() => {
+          const loadFavorites = async () => {
+               if (!user || favoritesLoadedRef.current) return;
+               try {
+                    const list = await fetchFavoriteFields();
+                    const ids = new Set(
+                         (list || []).map(item => Number(item.fieldId)).filter(id => !Number.isNaN(id))
+                    );
+                    setFavoriteFieldIds(ids);
+                    favoritesLoadedRef.current = true;
+               } catch (error) {
+                    console.error("Error loading favorite fields:", error);
+               }
+          };
+          loadFavorites();
+     }, [user]);
 
      // Load available slots from schedules when date changes
      useEffect(() => {
@@ -422,7 +442,13 @@ export default function FieldSearch({ user }) {
                                    })
                               );
                               
-                              setFields(fieldsWithRatings);
+                              // Apply favorite flags based on favoriteFieldIds
+                              const fieldsWithFavorites = fieldsWithRatings.map(f => ({
+                                   ...f,
+                                   isFavorite: favoriteFieldIds.has(Number(f.fieldId)),
+                              }));
+
+                              setFields(fieldsWithFavorites);
                          }
                     } catch (error) {
                          console.error("Error loading data:", error);
@@ -554,10 +580,20 @@ export default function FieldSearch({ user }) {
           } catch { }
      }, [viewMode, activeTab, page, entityTab, date, slotId, typeTab]);
 
-     const toggleFavorite = (fieldId) => {
+     const toggleFavoriteLocal = (fieldId, nextIsFavorite) => {
           setFields(prev => prev.map(field =>
-               field.fieldId === fieldId ? { ...field, isFavorite: !field.isFavorite } : field
+               field.fieldId === fieldId ? { ...field, isFavorite: nextIsFavorite } : field
           ));
+          setFavoriteFieldIds(prev => {
+               const updated = new Set(prev);
+               const idNum = Number(fieldId);
+               if (nextIsFavorite) {
+                    updated.add(idNum);
+               } else {
+                    updated.delete(idNum);
+               }
+               return updated;
+          });
      };
 
      const toggleFavoriteComplex = (complexId) => {
@@ -580,12 +616,24 @@ export default function FieldSearch({ user }) {
           Swal.fire(config);
      };
 
-     const handleToggleFavorite = (fieldId) => {
+     const handleToggleFavorite = async (fieldId) => {
           if (!user) {
                showToastMessage("Vui lòng đăng nhập để sử dụng danh sách yêu thích.", 'warning');
                return;
           }
-          toggleFavorite(fieldId);
+          const current = favoriteFieldIds.has(Number(fieldId));
+          const nextIsFavorite = !current;
+
+          // Optimistic update
+          toggleFavoriteLocal(fieldId, nextIsFavorite);
+
+          try {
+               await toggleFavoriteField(fieldId, current);
+          } catch (error) {
+               // Revert on error
+               toggleFavoriteLocal(fieldId, current);
+               showToastMessage(error.message || "Không thể cập nhật danh sách yêu thích.", 'error');
+          }
      };
 
      const handleToggleFavoriteComplex = (complexId) => {

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import { Card, Button, Input, Textarea, Modal } from "../../../shared/components/ui";
 import { DemoRestrictedModal } from "../../../shared";
@@ -237,16 +236,13 @@ export default function PromotionsManagement({ isDemo = false }) {
 
      if (loading) {
           return (
-               <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
-                    <div className="flex items-center justify-center h-64">
-                         <div className="text-gray-500">Đang tải...</div>
-                    </div>
-               </OwnerLayout>
+               <div className="flex items-center justify-center h-64">
+                    <div className="text-gray-500">Đang tải...</div>
+               </div>
           );
      }
 
      return (
-          <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
                <div className="space-y-6">
                     <div className="flex items-center justify-between">
                          <div>
@@ -587,7 +583,6 @@ export default function PromotionsManagement({ isDemo = false }) {
                          featureName="Khuyến mãi"
                     />
                </div>
-          </OwnerLayout>
      );
 }
 

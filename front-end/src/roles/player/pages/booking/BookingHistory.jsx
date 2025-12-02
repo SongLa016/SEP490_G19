@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Calendar, MapPin, Receipt, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon, Info, RefreshCw, Loader2, User, Phone } from "lucide-react";
 import { Section, Container, Card, CardContent, Button, Badge, LoadingList, FadeIn, StaggerContainer, Modal } from "../../../../shared/components/ui";
-import { listBookingsByUser, updateBooking, fetchBookingsByPlayer, generateQRCode, confirmPaymentAPI } from "../../../../shared/index";
+import { listBookingsByUser, updateBooking, fetchBookingsByPlayer, fetchBookingPackagesByPlayer, generateQRCode, confirmPaymentAPI } from "../../../../shared/index";
 import { cancelBooking as cancelBookingAPI } from "../../../../shared/services/bookings";
 import {
      fetchMatchRequestById,
@@ -85,7 +85,10 @@ export default function BookingHistory({ user }) {
      const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
      const [timeRemaining, setTimeRemaining] = useState({}); // Track time remaining for each booking
      const [scheduleDataMap, setScheduleDataMap] = useState({}); // Map scheduleId -> schedule data from API
-     const [activeTab, setActiveTab] = useState("bookings"); // "bookings" or "matchHistory"
+     const [activeTab, setActiveTab] = useState("bookings"); // "bookings" | "packages" | "matchHistory"
+     const [bookingPackages, setBookingPackages] = useState([]);
+     const [isLoadingPackages, setIsLoadingPackages] = useState(false);
+     const [packageError, setPackageError] = useState("");
      const playerId = user?.userID || user?.UserID || user?.id || user?.Id || user?.userId;
 
      // Scroll to top when filters or sorting change
@@ -158,9 +161,57 @@ export default function BookingHistory({ user }) {
           }
      }, [playerId]);
 
+     const loadBookingPackages = React.useCallback(async () => {
+          if (!playerId) {
+               setBookingPackages([]);
+               return;
+          }
+
+          setIsLoadingPackages(true);
+          setPackageError("");
+          try {
+               const apiResult = await fetchBookingPackagesByPlayer(playerId);
+               const rawList = apiResult.success ? (apiResult.data || []) : [];
+               const normalized = rawList.map((pkg) => ({
+                    id: pkg.bookingPackageId || pkg.id,
+                    bookingPackageId: pkg.bookingPackageId || pkg.id,
+                    userId: pkg.userId,
+                    fieldId: pkg.fieldId || pkg.fieldID,
+                    fieldName: pkg.fieldName || `Sân #${pkg.fieldId || pkg.fieldID || "?"}`,
+                    packageName: pkg.packageName || "Gói đặt sân cố định",
+                    startDate: pkg.startDate,
+                    endDate: pkg.endDate,
+                    totalPrice: Number(pkg.totalPrice) || 0,
+                    bookingStatus: pkg.bookingStatus || "",
+                    paymentStatus: pkg.paymentStatus || "",
+                    qrCodeUrl: pkg.qrcode || pkg.qrCode || pkg.QRCode || pkg.qrCodeUrl || null,
+                    qrExpiresAt: pkg.qrexpiresAt || pkg.qrExpiresAt || pkg.QRExpiresAt || null,
+                    createdAt: pkg.createdAt || pkg.CreatedAt || null,
+               }));
+
+               setBookingPackages(normalized);
+
+               if (!apiResult.success) {
+                    setPackageError(apiResult.error || "Không thể tải lịch sử gói đặt sân cố định.");
+               }
+          } catch (error) {
+               console.error("Error loading booking packages:", error);
+               setPackageError(error.message || "Không thể tải lịch sử gói đặt sân cố định.");
+               setBookingPackages([]);
+          } finally {
+               setIsLoadingPackages(false);
+          }
+     }, [playerId]);
+
      useEffect(() => {
           loadBookings();
      }, [loadBookings]);
+
+     useEffect(() => {
+          if (activeTab === "packages") {
+               loadBookingPackages();
+          }
+     }, [activeTab, loadBookingPackages]);
 
      const loadMatchRequestsForBookings = React.useCallback(async () => {
           if (!bookings || bookings.length === 0) {
@@ -1757,6 +1808,16 @@ export default function BookingHistory({ user }) {
                                              </span>
                                         )}
                                    </button>
+                                   <button
+                                        onClick={() => setActiveTab("packages")}
+                                        className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-all duration-300 ${activeTab === "packages"
+                                             ? "bg-teal-500 text-white border-b-2 border-teal-600"
+                                             : "text-gray-600 hover:text-teal-600 hover:bg-teal-50"
+                                             }`}
+                                   >
+                                        <Repeat className="w-4 h-4 inline mr-2" />
+                                        Sân cố định
+                                   </button>
                               </div>
 
                               {/* Results Summary - Only show for bookings tab */}
@@ -1779,6 +1840,19 @@ export default function BookingHistory({ user }) {
                                              </div>
                                              <div className="text-xs text-teal-600">
                                                   Hiển thị {Math.min(endIndex, totalSingleBookings)}/{totalSingleBookings} đặt đơn
+                                             </div>
+                                        </div>
+                                   </div>
+                              )}
+
+                              {activeTab === "packages" && (
+                                   <div className=" p-2 px-3 bg-teal-50 border border-teal-200 rounded-3xl">
+                                        <div className="flex items-center justify-between">
+                                             <div className="flex items-center gap-4 text-sm">
+                                                  <span className="text-teal-700 font-semibold flex items-center gap-1">
+                                                       <Repeat className="w-4 h-4" />
+                                                       Tổng gói sân cố định: <span className="text-teal-800 font-bold">{bookingPackages.length}</span>
+                                                  </span>
                                              </div>
                                         </div>
                                    </div>
@@ -2651,6 +2725,89 @@ export default function BookingHistory({ user }) {
                                         <div className="text-gray-900 font-medium">Không có kết quả phù hợp</div>
                                         <div className="text-gray-500 text-sm">Thử thay đổi từ khóa hoặc bộ lọc.</div>
                                    </div>
+                              )}
+                         </div>
+                    )}
+
+                    {/* Fixed-field packages tab */}
+                    {activeTab === "packages" && (
+                         <div className="mt-4 space-y-4">
+                              {packageError && (
+                                   <div className="mb-2 p-3 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
+                                        {packageError}
+                                   </div>
+                              )}
+                              {isLoadingPackages && (
+                                   <LoadingList count={3} />
+                              )}
+                              {!isLoadingPackages && bookingPackages.length === 0 && !packageError && (
+                                   <div className="p-4 rounded-2xl border border-dashed border-teal-200 bg-teal-50/40 text-center text-sm text-teal-700">
+                                        Bạn chưa có gói sân cố định nào.
+                                   </div>
+                              )}
+                              {!isLoadingPackages && bookingPackages.length > 0 && (
+                                   <StaggerContainer staggerDelay={40}>
+                                        {bookingPackages.map((pkg, index) => (
+                                             <FadeIn key={pkg.id || index} delay={index * 40}>
+                                                  <div className="p-5 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 to-emerald-50 hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
+                                                       <div className="flex justify-between items-start gap-4 flex-wrap">
+                                                            <div className="space-y-1">
+                                                                 <div className="flex items-center gap-2 flex-wrap">
+                                                                      <h3 className="text-lg font-bold text-teal-900">{pkg.packageName}</h3>
+                                                                      <Badge variant="outline" className="border-teal-400 bg-teal-100 text-teal-800 font-semibold px-2 py-0.5 flex items-center gap-1">
+                                                                           <Repeat className="w-3 h-3" />
+                                                                           Gói sân cố định
+                                                                      </Badge>
+                                                                 </div>
+                                                                 <div className="text-sm text-gray-700 flex items-center gap-2">
+                                                                      <MapPin className="w-4 h-4 text-teal-600" />
+                                                                      <span>{pkg.fieldName}</span>
+                                                                 </div>
+                                                                 <div className="text-xs text-gray-600">
+                                                                      Thời gian: <span className="font-semibold">{pkg.startDate}</span> - <span className="font-semibold">{pkg.endDate}</span>
+                                                                 </div>
+                                                                 <div className="flex items-center gap-3 text-xs mt-1 flex-wrap">
+                                                                      {pkg.bookingStatus && (
+                                                                           <Badge variant="secondary" className="bg-white text-gray-700 border-gray-200 flex items-center gap-1">
+                                                                                <Calendar className="w-3 h-3" />
+                                                                                Trạng thái: <span className="font-semibold">{pkg.bookingStatus}</span>
+                                                                           </Badge>
+                                                                      )}
+                                                                      {pkg.paymentStatus && (
+                                                                           <Badge variant="secondary" className="bg-white text-gray-700 border-gray-200 flex items-center gap-1">
+                                                                                <CreditCard className="w-3 h-3" />
+                                                                                Thanh toán: <span className="font-semibold">{pkg.paymentStatus}</span>
+                                                                           </Badge>
+                                                                      )}
+                                                                 </div>
+                                                            </div>
+                                                            <div className="flex flex-col items-end gap-2">
+                                                                 <div className="text-sm text-gray-700">
+                                                                      Tổng giá gói
+                                                                 </div>
+                                                                 <div className="text-xl font-bold text-emerald-700">
+                                                                      {formatPrice(pkg.totalPrice)}
+                                                                 </div>
+                                                                 {pkg.qrCodeUrl && (
+                                                                      <div className="mt-1 flex flex-col items-center text-xs text-gray-500">
+                                                                           <img
+                                                                                src={pkg.qrCodeUrl}
+                                                                                alt="QR gói sân cố định"
+                                                                                className="w-28 h-28 rounded-xl border border-teal-100 bg-white object-contain"
+                                                                           />
+                                                                           {pkg.qrExpiresAt && (
+                                                                                <span className="mt-1">
+                                                                                     QR hết hạn: {new Date(pkg.qrExpiresAt).toLocaleString("vi-VN")}
+                                                                                </span>
+                                                                           )}
+                                                                      </div>
+                                                                 )}
+                                                            </div>
+                                                       </div>
+                                                  </div>
+                                             </FadeIn>
+                                        ))}
+                                   </StaggerContainer>
                               )}
                          </div>
                     )}

@@ -133,9 +133,11 @@ function AppContent() {
             key={route.path}
             path={route.path}
             element={
-              <Suspense fallback={<LoadingFallback />}>
-                <route.element isDemo={true} />
-              </Suspense>
+              <OwnerLayout user={user} onLoggedOut={logout} isDemo={true}>
+                <Suspense fallback={<LoadingFallback />}>
+                  <route.element isDemo={true} />
+                </Suspense>
+              </OwnerLayout>
             }
           />
         ))}

@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { Button, Card, Pagination, usePagination } from "../../../shared/components/ui";
-import OwnerLayout from "../layouts/OwnerLayout";
 import { DemoRestrictedModal } from "../../../shared";
 import {
      createField,
@@ -1181,17 +1180,14 @@ const FieldManagement = ({ isDemo = false }) => {
 
      if (loading) {
           return (
-               <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
-                    <div className="flex items-center justify-center h-64">
-                         <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
-                         <span className="ml-2 text-gray-600">Đang tải...</span>
-                    </div>
-               </OwnerLayout>
+               <div className="flex items-center justify-center h-64">
+                    <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+                    <span className="ml-2 text-gray-600">Đang tải...</span>
+               </div>
           );
      }
 
      return (
-          <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
                <div className="space-y-8">
                     {/* Header */}
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -1535,7 +1531,6 @@ const FieldManagement = ({ isDemo = false }) => {
                          featureName="Quản lý sân"
                     />
                </div>
-          </OwnerLayout>
      );
 };
 

@@ -3,7 +3,6 @@ import { User, Mail, Phone, Edit3, Save, X, Camera } from "lucide-react";
 import { Input, Button, Card, CardContent, CardHeader, CardTitle, Avatar, AvatarImage, AvatarFallback, LoadingSpinner } from "../../../shared/components/ui";
 import { profileService } from "../../../shared/index";
 import Swal from "sweetalert2";
-import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 
 export default function ProfileSettings({ isDemo = false }) {
@@ -237,16 +236,13 @@ export default function ProfileSettings({ isDemo = false }) {
 
      if (isLoading && !profileData.fullName) {
           return (
-               <OwnerLayout user={user} isDemo={isDemo}>
-                    <div className="flex items-center justify-center min-h-screen">
-                         <LoadingSpinner />
-                    </div>
-               </OwnerLayout>
+               <div className="flex items-center justify-center min-h-screen">
+                    <LoadingSpinner />
+               </div>
           );
      }
 
      return (
-          <OwnerLayout user={user} isDemo={isDemo}>
                <div className="container mx-auto px-4 py-8 max-w-4xl">
                     <Card className="shadow-lg">
                          <CardHeader className="bg-gradient-to-r from-teal-600 to-teal-700 text-white rounded-t-lg">
@@ -371,7 +367,6 @@ export default function ProfileSettings({ isDemo = false }) {
                          </CardContent>
                     </Card>
                </div>
-          </OwnerLayout>
      );
 }
 

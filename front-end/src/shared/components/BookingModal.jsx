@@ -3,7 +3,13 @@ import { AlertCircle } from "lucide-react";
 import Swal from 'sweetalert2';
 import { Button, Modal } from "./ui";
 import { validateBookingData, checkFieldAvailability } from "../services/bookings";
-import { createBooking, createBookingAPI, fetchOwnerBankAccounts, fetchBankAccount } from "../index";
+import {
+     createBooking,
+     createBookingAPI,
+     createBookingPackage,
+     fetchOwnerBankAccounts,
+     fetchBankAccount
+} from "../index";
 import { createMatchRequest, createCommunityPost } from "../index";
 import EmailVerificationModal from "./EmailVerificationModal";
 import RecurringOpponentSelection from "./RecurringOpponentSelection";
@@ -41,7 +47,8 @@ export default function BookingModal({
      const [selectedDays, setSelectedDays] = useState([]);
      const [suggestedDays, setSuggestedDays] = useState([]); // weekdays 0..6
      const [isSuggesting, setIsSuggesting] = useState(false);
-     const PAYMENT_LOCK_DURATION_MS = 5 * 60 * 1000;
+     // Thời gian giữ QR/khóa bước thanh toán: 10 phút
+     const PAYMENT_LOCK_DURATION_MS = 10 * 60 * 1000;
      const [paymentLockExpiresAt, setPaymentLockExpiresAt] = useState(null);
      const [lockRemainingMs, setLockRemainingMs] = useState(0);
      const lockCountdownSeconds = lockRemainingMs > 0 ? Math.ceil(lockRemainingMs / 1000) : 0;
@@ -75,7 +82,8 @@ export default function BookingModal({
           }
      }, [isOpen]);
 
-     const DEFAULT_DEPOSIT_PERCENT = 0.3; // 30% fallback when policy missing
+     // Nếu sân chưa được owner cấu hình chính sách đặt cọc, mặc định không yêu cầu cọc (0%)
+     const DEFAULT_DEPOSIT_PERCENT = 0; // 0% fallback when policy missing
 
      // Calculate duration from slot times if available
      const calculateDuration = (startTime, endTime) => {
@@ -581,6 +589,87 @@ export default function BookingModal({
           }
           setIsProcessing(true);
           try {
+               // Nếu là đặt cố định: kiểm tra trước xem đủ số buổi có schedule trong khoảng chọn hay không
+               if (isRecurring) {
+                    try {
+                         const sessions = generateRecurringSessions() || [];
+                         if (!sessions.length) {
+                              setIsProcessing(false);
+                              await Swal.fire({
+                                   icon: 'warning',
+                                   title: 'Không thể đặt cố định',
+                                   text: 'Vui lòng chọn ngày bắt đầu, số tuần và các ngày trong tuần trước khi đặt cố định.',
+                                   confirmButtonColor: '#f59e0b'
+                              });
+                              return;
+                         }
+
+                         const schedules = Array.isArray(bookingData.fieldSchedules) ? bookingData.fieldSchedules : [];
+
+                         if (schedules.length > 0) {
+                              // Helper so sánh ngày giữa schedule.date và targetDate (yyyy-MM-dd)
+                              const compareDate = (scheduleDate, targetDate) => {
+                                   if (!scheduleDate || !targetDate) return false;
+                                   if (typeof scheduleDate === "string") {
+                                        const d = scheduleDate.split("T")[0];
+                                        return d === targetDate;
+                                   }
+                                   if (scheduleDate.year && scheduleDate.month && scheduleDate.day) {
+                                        const formatted = `${scheduleDate.year}-${String(scheduleDate.month).padStart(2, "0")}-${String(scheduleDate.day).padStart(2, "0")}`;
+                                        return formatted === targetDate;
+                                   }
+                                   try {
+                                        const d = new Date(scheduleDate);
+                                        return d.toISOString().split("T")[0] === targetDate;
+                                   } catch {
+                                        return false;
+                                   }
+                              };
+
+                              let hasScheduleCount = 0;
+                              sessions.forEach((s) => {
+                                   const targetDate = (s.date instanceof Date
+                                        ? s.date
+                                        : new Date(s.date));
+                                   const targetStr = targetDate.toISOString().split("T")[0];
+                                   const found = schedules.some((sch) => {
+                                        const scheduleSlotId = sch.slotId || sch.SlotId || sch.slotID || sch.SlotID;
+                                        const scheduleDate = sch.date || sch.Date;
+                                        return String(scheduleSlotId) === String(bookingData.slotId) &&
+                                             compareDate(scheduleDate, targetStr);
+                                   });
+                                   if (found) hasScheduleCount += 1;
+                              });
+
+                              console.log("[RECURRING SCHEDULE CHECK]", {
+                                   fieldId: bookingData.fieldId,
+                                   slotId: bookingData.slotId,
+                                   sessions,
+                                   schedulesCount: schedules.length,
+                                   hasScheduleCount,
+                                   totalSessions: sessions.length,
+                              });
+
+                              if (hasScheduleCount < sessions.length) {
+                                   setIsProcessing(false);
+                                   await Swal.fire({
+                                        icon: "warning",
+                                        title: "Không đủ lịch để đặt cố định",
+                                        html: `
+                                             <p class="mb-2">Chỉ có <strong>${hasScheduleCount}/${sessions.length}</strong> buổi có lịch được tạo sẵn trong khoảng bạn chọn.</p>
+                                             <p class="text-sm text-gray-600">Vui lòng liên hệ chủ sân để thêm lịch cho các ngày còn thiếu, hoặc rút ngắn khoảng đặt.</p>
+                                        `,
+                                        confirmButtonColor: "#f59e0b",
+                                   });
+                                   return;
+                              }
+                         }
+                    } catch (err) {
+                         console.warn("⚠️ [RECURRING] Error checking schedules for package:", err);
+                         // Nếu check bị lỗi vẫn tiếp tục, không chặn user
+                    }
+               }
+
                const booking = {
                     ...bookingData,
                     recurring: isRecurring ? {
@@ -608,7 +697,7 @@ export default function BookingModal({
                     return;
                }
 
-               // Gọi API tạo booking trực tiếp (không giữ tiền)
+               // Gọi API tạo booking/gói booking
                const userId = user?.id || user?.userId || user?.userID;
                if (!userId) {
                     setIsProcessing(false);
@@ -667,90 +756,177 @@ export default function BookingModal({
                     console.warn("⚠️ [GỬI GIỮ CHỖ] Không có fieldSchedules hoặc scheduleId, sẽ dùng 0 (backend tự tạo)");
                }
 
-               // Prepare payload for booking creation
-               const bookingPayload = {
-                    userId: userId,
-                    scheduleId: scheduleId, // Sử dụng scheduleId đã tìm được hoặc 0
-                    totalPrice: totalPrice,
-                    depositAmount: depositAmount,
-                    hasOpponent: Boolean(booking.hasOpponent)
-               };
+               // ----------------- ĐẶT LẺ: dùng Booking/create -----------------
+               if (!isRecurring) {
+                    const bookingPayload = {
+                         userId: userId,
+                         scheduleId: scheduleId, // Sử dụng scheduleId đã tìm được hoặc 0
+                         totalPrice: totalPrice,
+                         depositAmount: depositAmount,
+                         hasOpponent: Boolean(booking.hasOpponent)
+                    };
 
-               console.log("📤 [GỬI GIỮ CHỖ] Payload:", JSON.stringify(bookingPayload, null, 2));
-               console.log("📤 [GỬI GIỮ CHỖ] Payload (Object):", bookingPayload);
+                    console.log("📤 [GỬI GIỮ CHỖ] Payload:", JSON.stringify(bookingPayload, null, 2));
+                    console.log("📤 [GỬI GIỮ CHỖ] Payload (Object):", bookingPayload);
 
-               const apiResult = await createBookingAPI(bookingPayload);
-               console.log("✅ [GỬI GIỮ CHỖ] API Result (JSON):", JSON.stringify(apiResult, null, 2));
+                    const apiResult = await createBookingAPI(bookingPayload);
+                    console.log("✅ [GỬI GIỮ CHỖ] API Result (JSON):", JSON.stringify(apiResult, null, 2));
 
-               if (!apiResult.success) {
-                    console.error("❌ [GỬI GIỮ CHỖ] Error:", apiResult.error);
-                    setIsProcessing(false);
-                    await Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi đặt sân',
-                         text: apiResult.error || "Không thể tạo booking. Vui lòng thử lại.",
-                         confirmButtonColor: '#ef4444'
-                    });
-                    return;
-               }
-
-               // Lấy thông tin booking từ API response
-               const bookingId = apiResult.data?.bookingID || apiResult.data?.bookingId || apiResult.data?.id;
-               if (!bookingId) {
-                    setIsProcessing(false);
-                    await Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: "Không nhận được booking ID từ server.",
-                         confirmButtonColor: '#ef4444'
-                    });
-                    return;
-               }
-
-               const rawQrCode =
-                    apiResult.data?.qrCodeUrl ||
-                    apiResult.data?.qrCode ||
-                    apiResult.data?.QRCode ||
-                    apiResult.data?.qrImage ||
-                    apiResult.data?.depositQrCode ||
-                    null;
-               let normalizedQrCode = rawQrCode;
-               if (normalizedQrCode && typeof normalizedQrCode === "string") {
-                    const lower = normalizedQrCode.toLowerCase();
-                    const isHttp = lower.startsWith("http://") || lower.startsWith("https://");
-                    const isData = lower.startsWith("data:");
-                    if (!isHttp && !isData) {
-                         normalizedQrCode = `data:image/png;base64,${normalizedQrCode}`;
+                    if (!apiResult.success) {
+                         console.error("❌ [GỬI GIỮ CHỖ] Error:", apiResult.error);
+                         setIsProcessing(false);
+                         await Swal.fire({
+                              icon: 'error',
+                              title: 'Lỗi đặt sân',
+                              text: apiResult.error || "Không thể tạo booking. Vui lòng thử lại.",
+                              confirmButtonColor: '#ef4444'
+                         });
+                         return;
                     }
+
+                    // Lấy thông tin booking từ API response
+                    const bookingId = apiResult.data?.bookingID || apiResult.data?.bookingId || apiResult.data?.id;
+                    if (!bookingId) {
+                         setIsProcessing(false);
+                         await Swal.fire({
+                              icon: 'error',
+                              title: 'Lỗi',
+                              text: "Không nhận được booking ID từ server.",
+                              confirmButtonColor: '#ef4444'
+                         });
+                         return;
+                    }
+
+                    const rawQrCode =
+                         apiResult.data?.qrCodeUrl ||
+                         apiResult.data?.qrCode ||
+                         apiResult.data?.QRCode ||
+                         apiResult.data?.qrImage ||
+                         apiResult.data?.depositQrCode ||
+                         null;
+                    let normalizedQrCode = rawQrCode;
+                    if (normalizedQrCode && typeof normalizedQrCode === "string") {
+                         const lower = normalizedQrCode.toLowerCase();
+                         const isHttp = lower.startsWith("http://") || lower.startsWith("https://");
+                         const isData = lower.startsWith("data:");
+                         if (!isHttp && !isData) {
+                              normalizedQrCode = `data:image/png;base64,${normalizedQrCode}`;
+                         }
+                    }
+
+                    const qrExpiresAt = apiResult.data?.qrExpiresAt || apiResult.data?.QRExpiresAt || apiResult.data?.qrExpiry || null;
+                    const apiTotalPrice = Number(apiResult.data?.totalPrice ?? totalPrice ?? bookingData.totalPrice ?? 0);
+                    const apiDepositAmount = Number(apiResult.data?.depositAmount ?? depositAmount ?? bookingData.depositAmount ?? 0);
+                    const apiRemainingAmountRaw = apiResult.data?.remainingAmount ?? apiResult.data?.RemainingAmount;
+                    const apiRemainingAmount = typeof apiRemainingAmountRaw === "number"
+                         ? apiRemainingAmountRaw
+                         : Math.max(0, apiTotalPrice - apiDepositAmount);
+
+                    setBookingData(prev => ({
+                         ...prev,
+                         totalPrice: apiTotalPrice || prev.totalPrice,
+                         depositAmount: apiDepositAmount || prev.depositAmount,
+                         remainingAmount: apiRemainingAmount ?? prev.remainingAmount
+                    }));
+
+                    // Lưu thông tin booking cùng QR do backend trả về
+                    setBookingInfo({
+                         bookingId: bookingId,
+                         scheduleId: apiResult.data?.scheduleID || apiResult.data?.scheduleId,
+                         bookingStatus: apiResult.data?.bookingStatus || "Pending",
+                         paymentStatus: apiResult.data?.paymentStatus || "Pending",
+                         qrCodeUrl: normalizedQrCode,
+                         qrExpiresAt: qrExpiresAt,
+                         totalPrice: apiTotalPrice,
+                         depositAmount: apiDepositAmount,
+                         remainingAmount: apiRemainingAmount
+                    });
+               } else {
+                    // ----------------- ĐẶT ĐỊNH KỲ: dùng BookingPackage/create -----------------
+                    const start = new Date(booking.date);
+                    start.setHours(0, 0, 0, 0);
+                    const end = new Date(start);
+                    end.setDate(end.getDate() + recurringWeeks * 7 - 1);
+
+                    const packagePayload = {
+                         userId: userId,
+                         fieldId: booking.fieldId,
+                         packageName: booking.packageName || `Gói định kỳ ${booking.slotName || ""}`,
+                         startDate: start.toISOString().split("T")[0],
+                         endDate: end.toISOString().split("T")[0],
+                         totalPrice: booking.totalPrice || totalPrice,
+                         selectedSlots: (selectedDays || []).map(d => ({
+                              slotId: booking.slotId,
+                              dayOfWeek: d,
+                              fieldId: booking.fieldId,
+                              scheduleId: scheduleId || 0
+                         }))
+                    };
+
+                    console.log("📤 [BOOKING PACKAGE] Payload:", JSON.stringify(packagePayload, null, 2));
+
+                    const packageResult = await createBookingPackage(packagePayload);
+                    console.log("✅ [BOOKING PACKAGE] API Result (JSON):", JSON.stringify(packageResult, null, 2));
+
+                    if (!packageResult.success) {
+                         console.error("❌ [BOOKING PACKAGE] Error:", packageResult.error);
+                         setIsProcessing(false);
+                         await Swal.fire({
+                              icon: 'error',
+                              title: 'Lỗi đặt định kỳ',
+                              text: packageResult.error || "Không thể tạo gói đặt định kỳ. Vui lòng thử lại.",
+                              confirmButtonColor: '#ef4444'
+                         });
+                         return;
+                    }
+
+                    // Backend trả dạng: { message, data: { bookingPackageId, ..., qrcode, qrexpiresAt } }
+                    // createBookingPackage() đang gói trong { success, data: response.data }
+                    const data = (packageResult.data && packageResult.data.data)
+                         ? packageResult.data.data
+                         : (packageResult.data || {});
+                    const bookingPackageId = data.bookingPackageId || data.bookingId || data.id;
+
+                    const rawQrCode =
+                         data.qrcode ||
+                         data.qrCode ||
+                         data.QRCode ||
+                         data.qrCodeUrl ||
+                         null;
+                    let normalizedQrCode = rawQrCode;
+                    if (normalizedQrCode && typeof normalizedQrCode === "string") {
+                         const lower = normalizedQrCode.toLowerCase();
+                         const isHttp = lower.startsWith("http://") || lower.startsWith("https://");
+                         const isData = lower.startsWith("data:");
+                         if (!isHttp && !isData) {
+                              normalizedQrCode = `data:image/png;base64,${normalizedQrCode}`;
+                         }
+                    }
+
+                    const qrExpiresAt = data.qrexpiresAt || data.qrExpiresAt || data.QRExpiresAt || null;
+                    const apiTotalPrice = Number(data.totalPrice ?? packagePayload.totalPrice ?? bookingData.totalPrice ?? 0);
+                    const apiDepositAmount = Number(data.depositAmount ?? depositAmount ?? bookingData.depositAmount ?? 0);
+                    const apiRemainingAmount = Math.max(0, apiTotalPrice - apiDepositAmount);
+
+                    setBookingData(prev => ({
+                         ...prev,
+                         totalPrice: apiTotalPrice || prev.totalPrice,
+                         depositAmount: apiDepositAmount || prev.depositAmount,
+                         remainingAmount: apiRemainingAmount ?? prev.remainingAmount
+                    }));
+
+                    setBookingInfo({
+                         bookingId: bookingPackageId,
+                         scheduleId: scheduleId || 0,
+                         bookingStatus: data.bookingStatus || "Pending",
+                         paymentStatus: data.paymentStatus || "Pending",
+                         qrCodeUrl: normalizedQrCode,
+                         qrExpiresAt: qrExpiresAt,
+                         totalPrice: apiTotalPrice,
+                         depositAmount: apiDepositAmount,
+                         remainingAmount: apiRemainingAmount
+                    });
                }
-
-               const qrExpiresAt = apiResult.data?.qrExpiresAt || apiResult.data?.QRExpiresAt || apiResult.data?.qrExpiry || null;
-               const apiTotalPrice = Number(apiResult.data?.totalPrice ?? totalPrice ?? bookingData.totalPrice ?? 0);
-               const apiDepositAmount = Number(apiResult.data?.depositAmount ?? depositAmount ?? bookingData.depositAmount ?? 0);
-               const apiRemainingAmountRaw = apiResult.data?.remainingAmount ?? apiResult.data?.RemainingAmount;
-               const apiRemainingAmount = typeof apiRemainingAmountRaw === "number"
-                    ? apiRemainingAmountRaw
-                    : Math.max(0, apiTotalPrice - apiDepositAmount);
-
-               setBookingData(prev => ({
-                    ...prev,
-                    totalPrice: apiTotalPrice || prev.totalPrice,
-                    depositAmount: apiDepositAmount || prev.depositAmount,
-                    remainingAmount: apiRemainingAmount ?? prev.remainingAmount
-               }));
-
-               // Lưu thông tin booking cùng QR do backend trả về
-               setBookingInfo({
-                    bookingId: bookingId,
-                    scheduleId: apiResult.data?.scheduleID || apiResult.data?.scheduleId,
-                    bookingStatus: apiResult.data?.bookingStatus || "Pending",
-                    paymentStatus: apiResult.data?.paymentStatus || "Pending",
-                    qrCodeUrl: normalizedQrCode,
-                    qrExpiresAt: qrExpiresAt,
-                    totalPrice: apiTotalPrice,
-                    depositAmount: apiDepositAmount,
-                    remainingAmount: apiRemainingAmount
-               });
 
                // Chuyển sang bước thanh toán và khóa thao tác trong 5 phút hoặc đến khi hủy
                setStep("payment");

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import OwnerLayout from "../layouts/OwnerLayout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Card, Button } from "../../../shared/components/ui";
 import {
      DollarSign,
@@ -31,7 +30,6 @@ import {
 } from "../../../shared/services/ownerStatistics";
 
 export default function OwnerDashboard({ isDemo = false }) {
-     const { user, logout } = useAuth();
      const navigate = useNavigate();
      const [timeRange, setTimeRange] = useState("7d");
      const [loading, setLoading] = useState(!isDemo);
@@ -232,19 +230,19 @@ export default function OwnerDashboard({ isDemo = false }) {
 
      const getStatusColor = (status) => {
           switch (status) {
-               case 'confirmed': return 'bg-green-100 text-green-800';
-               case 'pending': return 'bg-yellow-100 text-yellow-800';
-               case 'cancelled': return 'bg-red-100 text-red-800';
-               default: return 'bg-gray-100 text-gray-800';
+               case 'Available': return 'bg-green-100 text-green-800';
+               case 'Pending': return 'bg-yellow-100 text-yellow-800';
+               case 'Maintenance': return 'bg-red-100 text-red-800';
+               default: return 'bg-teal-100 text-teal-800';
           }
      };
 
      const getStatusText = (status) => {
           switch (status) {
-               case 'confirmed': return 'Đã xác nhận';
-               case 'pending': return 'Chờ xác nhận';
-               case 'cancelled': return 'Đã hủy';
-               default: return 'Không xác định';
+               case 'Available': return 'Có sẵn';
+               case 'Pending': return 'Đang chờ';
+               case 'Maintenance': return 'Đang bảo trì';
+               default: return 'Không có';
           }
      };
 
@@ -340,301 +338,300 @@ export default function OwnerDashboard({ isDemo = false }) {
      const displayRecentBookings = isDemo ? demoRecentBookings : (recentBookings.length > 0 ? recentBookings : demoRecentBookings);
      const displayFieldPerformance = isDemo ? demoFieldPerformance : (fieldPerformance.length > 0 ? fieldPerformance : demoFieldPerformance);
 
+     console.log("displayRecentBookings", displayRecentBookings);
      return (
-          <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
-               <div className="space-y-6">
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                         <div>
-                              <h1 className="text-3xl font-bold text-gray-900">
-                                   {isDemo ? "Demo Dashboard" : "Tổng quan"}
-                              </h1>
-                              <p className="text-gray-600 mt-1">
-                                   {isDemo ? "Trải nghiệm hệ thống quản lý sân bóng" : "Tổng quan hoạt động kinh doanh"}
-                              </p>
-                         </div>
-                         <div className="flex items-center rounded-xl space-x-4">
-                              {!isDemo && (
-                                   <Select value={timeRange} onValueChange={setTimeRange}>
-                                        <SelectTrigger className="w-32">
-                                             <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             <SelectItem value="7d">7 ngày</SelectItem>
-                                             <SelectItem value="30d">30 ngày</SelectItem>
-                                             <SelectItem value="90d">90 ngày</SelectItem>
-                                             <SelectItem value="1y">1 năm</SelectItem>
-                                        </SelectContent>
-                                   </Select>
-                              )}
-                              {isDemo && (
-                                   <div className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-medium">
-                                        <Eye className="w-4 h-4 inline mr-1" />
-                                        Chế độ Demo
-                                   </div>
-                              )}
-                              {error && !isDemo && (
-                                   <div className="px-4 py-2 bg-red-100 text-red-800 rounded-lg text-sm font-medium">
-                                        <AlertCircle className="w-4 h-4 inline mr-1" />
-                                        {error}
-                                   </div>
-                              )}
-                         </div>
+          <div className="space-y-6">
+               {/* Header */}
+               <div className="flex items-center justify-between">
+                    <div>
+                         <h1 className="text-3xl font-bold text-teal-900">
+                              {isDemo ? "Demo Dashboard" : "Tổng quan"}
+                         </h1>
+                         <p className="text-teal-600 mt-1">
+                              {isDemo ? "Trải nghiệm hệ thống quản lý sân bóng" : "Tổng quan hoạt động kinh doanh"}
+                         </p>
                     </div>
-
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                         {cards.map((card, index) => {
-                              const Icon = card.icon;
-                              return (
-                                   <Card key={index} className={`p-6 rounded-2xl shadow-lg ${card.color}`}>
-                                        <div className="flex items-center justify-between">
-                                             <div>
-                                                  <div className="text-gray-600 text-sm mb-2">{card.title}</div>
-                                                  <div className={`text-2xl font-semibold ${card.textColor}`}>{card.value}</div>
-                                                  <div className="flex items-center mt-2">
-                                                       {card.change > 0 ? (
-                                                            <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
-                                                       ) : (
-                                                            <TrendingDown className="w-4 h-4 text-red-600 mr-1" />
-                                                       )}
-                                                       <span className={`text-sm ${card.change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                            {Math.abs(card.change)}%
-                                                       </span>
-                                                  </div>
-                                             </div>
-                                             <Icon className={`w-8 h-8 ${card.textColor} opacity-60`} />
-                                        </div>
-                                   </Card>
-                              );
-                         })}
-                    </div>
-
-                    {/* Charts and Analytics */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                         {/* Revenue Chart */}
-                         <Card className="p-6 rounded-2xl shadow-lg">
-                              <div className="flex items-center justify-between mb-6">
-                                   <h3 className="text-lg font-semibold text-gray-900">Doanh thu theo ngày</h3>
-                                   <div className="flex items-center space-x-2">
-                                        <BarChart3 className="w-5 h-5 text-gray-500" />
-                                        <span className="text-sm text-gray-600">7 ngày qua</span>
-                                   </div>
+                    <div className="flex items-center rounded-xl space-x-4">
+                         {!isDemo && (
+                              <Select value={timeRange} onValueChange={setTimeRange}>
+                                   <SelectTrigger className="w-32">
+                                        <SelectValue />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                        <SelectItem value="7d">7 ngày</SelectItem>
+                                        <SelectItem value="30d">30 ngày</SelectItem>
+                                        <SelectItem value="90d">90 ngày</SelectItem>
+                                        <SelectItem value="1y">1 năm</SelectItem>
+                                   </SelectContent>
+                              </Select>
+                         )}
+                         {isDemo && (
+                              <div className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-medium">
+                                   <Eye className="w-4 h-4 inline mr-1" />
+                                   Chế độ Demo
                               </div>
-                              <div className="space-y-4">
-                                   {loading && !isDemo ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                             <Activity className="w-8 h-8 animate-spin mx-auto mb-2" />
-                                             <p>Đang tải dữ liệu...</p>
-                                        </div>
-                                   ) : displayRevenueData.length === 0 ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                             <p>Chưa có dữ liệu doanh thu</p>
-                                        </div>
-                                   ) : (
-                                        displayRevenueData.map((item, index) => (
-                                             <div key={index} className="flex items-center justify-between">
-                                                  <span className="text-sm text-gray-600 min-w-[80px]">{formatDate(item.day || item.date)}</span>
-                                                  <div className="flex-1 mx-4">
-                                                       <div className="bg-gray-200 rounded-full h-2">
-                                                            <div
-                                                                 className="bg-teal-500 h-2 rounded-full transition-all duration-300"
-                                                                 style={{ width: `${(item.amount / Math.max(...revenueData.map(d => d.amount))) * 100}%` }}
-                                                            ></div>
-                                                       </div>
-                                                  </div>
-                                                  <span className="text-sm font-medium text-gray-900 w-20 text-right">
-                                                       {formatCurrency(item.amount)}
+                         )}
+                         {error && !isDemo && (
+                              <div className="px-4 py-2 bg-red-100 text-red-800 rounded-lg text-sm font-medium">
+                                   <AlertCircle className="w-4 h-4 inline mr-1" />
+                                   {error}
+                              </div>
+                         )}
+                    </div>
+               </div>
+
+               {/* Stats Cards */}
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {cards.map((card, index) => {
+                         const Icon = card.icon;
+                         return (
+                              <Card key={index} className={`p-6 rounded-2xl shadow-lg ${card.color}`}>
+                                   <div className="flex items-center justify-between">
+                                        <div>
+                                             <div className="text-teal-600 text-sm mb-2">{card.title}</div>
+                                             <div className={`text-2xl font-semibold ${card.textColor}`}>{card.value}</div>
+                                             <div className="flex items-center mt-2">
+                                                  {card.change > 0 ? (
+                                                       <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
+                                                  ) : (
+                                                       <TrendingDown className="w-4 h-4 text-red-600 mr-1" />
+                                                  )}
+                                                  <span className={`text-sm ${card.change > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                       {Math.abs(card.change)}%
                                                   </span>
                                              </div>
-                                        ))
-                                   )}
-                              </div>
-                         </Card>
-
-                         {/* Field Performance */}
-                         <Card className="p-6 rounded-2xl shadow-lg">
-                              <div className="flex items-center justify-between mb-6">
-                                   <h3 className="text-lg font-semibold text-gray-900">Hiệu suất sân</h3>
-                                   <div className="flex items-center space-x-2">
-                                        <PieChart className="w-5 h-5 text-gray-500" />
-                                        <span className="text-sm text-gray-600">Top 5</span>
+                                        </div>
+                                        <Icon className={`w-8 h-8 ${card.textColor} opacity-60`} />
                                    </div>
-                              </div>
-                              <div className="space-y-4">
-                                   {loading && !isDemo ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                             <Activity className="w-8 h-8 animate-spin mx-auto mb-2" />
-                                             <p>Đang tải dữ liệu...</p>
-                                        </div>
-                                   ) : displayFieldPerformance.length === 0 ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                             <p>Chưa có dữ liệu hiệu suất sân</p>
-                                        </div>
-                                   ) : (
-                                        displayFieldPerformance.map((field, index) => (
-                                             <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                                  <div className="flex items-center">
-                                                       <MapPin className="w-4 h-4 text-gray-500 mr-2" />
-                                                       <span className="font-medium text-gray-900">{field.name}</span>
-                                                  </div>
-                                                  <div className="flex items-center space-x-4 text-sm">
-                                                       <div className="text-center">
-                                                            <div className="font-medium text-gray-900">{field.bookings}</div>
-                                                            <div className="text-gray-500">Booking</div>
-                                                       </div>
-                                                       <div className="text-center">
-                                                            <div className="font-medium text-gray-900">{formatCurrency(field.revenue)}</div>
-                                                            <div className="text-gray-500">Doanh thu</div>
-                                                       </div>
-                                                       <div className="flex items-center">
-                                                            <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                                                            <span className="font-medium text-gray-900">{field.rating}</span>
-                                                       </div>
-                                                  </div>
-                                             </div>
-                                        ))
-                                   )}
-                              </div>
-                         </Card>
-                    </div>
-
-                    {/* Recent Activities and Quick Actions */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                         {/* Recent Bookings */}
-                         <Card className="p-6 rounded-2xl shadow-lg lg:col-span-2">
-                              <div className="flex items-center justify-between mb-6">
-                                   <h3 className="text-lg font-semibold text-gray-900">Booking gần đây</h3>
-                                   <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => navigate(isDemo ? "/demo/bookings" : "/owner/bookings")}
-                                   >
-                                        <Activity className="w-4 h-4 mr-2" />
-                                        Xem tất cả
-                                   </Button>
-                              </div>
-                              <div className="space-y-3">
-                                   {loading && !isDemo ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                             <Activity className="w-8 h-8 animate-spin mx-auto mb-2" />
-                                             <p>Đang tải dữ liệu...</p>
-                                        </div>
-                                   ) : displayRecentBookings.length === 0 ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                             <p>Chưa có booking nào</p>
-                                        </div>
-                                   ) : (
-                                        displayRecentBookings.slice(0, 6).map((booking) => (
-                                             <div key={booking.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                                                  <div className="flex items-center space-x-3">
-                                                       <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                                                            <Users className="w-5 h-5 text-gray-600" />
-                                                       </div>
-                                                       <div>
-                                                            <div className="font-medium text-gray-900">{booking.customer}</div>
-                                                            <div className="text-sm text-gray-600">{booking.field} • {booking.time}</div>
-                                                       </div>
-                                                  </div>
-                                                  <div className="flex items-center space-x-3">
-                                                       <span className="font-medium text-gray-900">{formatCurrency(booking.amount)}</span>
-                                                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                                                            {getStatusText(booking.status)}
-                                                       </span>
-                                                  </div>
-                                             </div>
-                                        ))
-                                   )}
-                              </div>
-                         </Card>
-
-                         {/* Quick Actions */}
-                         <Card className="p-5 rounded-2xl shadow-lg">
-                              <h3 className="text-lg font-semibold text-gray-900 mb-6">Thao tác nhanh</h3>
-                              <div className="space-y-3">
-                                   <Button
-                                        className="w-full justify-start rounded-2xl"
-                                        variant="outline"
-                                        onClick={() => navigate(isDemo ? "/demo/fields" : "/owner/fields")}
-                                   >
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        Thêm sân mới
-                                   </Button>
-                                   <Button
-                                        className="w-full justify-start rounded-2xl"
-                                        variant="outline"
-                                        onClick={() => navigate(isDemo ? "/demo/bookings" : "/owner/bookings")}
-                                   >
-                                        <Calendar className="w-4 h-4 mr-2" />
-                                        Xem booking
-                                   </Button>
-                                   <Button
-                                        className="w-full justify-start rounded-2xl"
-                                        variant="outline"
-                                        onClick={() => navigate(isDemo ? "/demo/fields" : "/owner/fields")}
-                                   >
-                                        <Building2 className="w-4 h-4 mr-2" />
-                                        Quản lý sân
-                                   </Button>
-                                   <Button
-                                        className="w-full justify-start rounded-2xl"
-                                        variant="outline"
-                                        onClick={() => navigate(isDemo ? "/demo/schedule" : "/owner/schedule")}
-                                   >
-                                        <Calendar className="w-4 h-4 mr-2" />
-                                        Lịch trình & Slots
-                                   </Button>
-                              </div>
-
-                              {/* System Status */}
-                              <div className="mt-6 pt-6 border-t border-gray-200">
-                                   <h4 className="font-medium text-gray-900 mb-3">Trạng thái hệ thống</h4>
-                                   <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                             <span className="text-sm text-gray-600">Sân hoạt động</span>
-                                             <div className="flex items-center">
-                                                  <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                                                  <span className="text-sm text-green-600">Bình thường</span>
-                                             </div>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                             <span className="text-sm text-gray-600">Hệ thống thanh toán</span>
-                                             <div className="flex items-center">
-                                                  <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                                                  <span className="text-sm text-green-600">Hoạt động</span>
-                                             </div>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                             <span className="text-sm text-gray-600">Thông báo</span>
-                                             <div className="flex items-center">
-                                                  <AlertCircle className="w-4 h-4 text-yellow-500 mr-1" />
-                                                  <span className="text-sm text-yellow-600">2 chưa đọc</span>
-                                             </div>
-                                        </div>
-                                   </div>
-                              </div>
-                         </Card>
-                    </div>
-
-                    {/* Demo Banner */}
-                    {isDemo && (
-                         <Card className="p-6 rounded-2xl shadow-lg bg-blue-50 border-blue-200">
-                              <div className="flex items-center">
-                                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                        <Eye className="w-4 h-4 text-blue-600" />
-                                   </div>
-                                   <div>
-                                        <h3 className="font-medium text-blue-900">Chế độ Demo</h3>
-                                        <p className="text-sm text-blue-700 mt-1">
-                                             Đây là dữ liệu mẫu để bạn trải nghiệm hệ thống.
-                                             <Link to="/register" className="underline ml-1 font-medium">Đăng ký ngay</Link> để sử dụng đầy đủ tính năng.
-                                        </p>
-                                   </div>
-                              </div>
-                         </Card>
-                    )}
+                              </Card>
+                         );
+                    })}
                </div>
-          </OwnerLayout>
+
+               {/* Charts and Analytics */}
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Revenue Chart */}
+                    <Card className="p-6 rounded-2xl shadow-lg">
+                         <div className="flex items-center justify-between mb-6">
+                              <h3 className="text-lg font-semibold text-teal-900">Doanh thu theo ngày</h3>
+                              <div className="flex items-center space-x-2">
+                                   <BarChart3 className="w-5 h-5 text-teal-500" />
+                                   <span className="text-sm text-teal-600">7 ngày qua</span>
+                              </div>
+                         </div>
+                         <div className="space-y-4">
+                              {loading && !isDemo ? (
+                                   <div className="text-center py-8 text-teal-500">
+                                        <Activity className="w-8 h-8 animate-spin mx-auto mb-2" />
+                                        <p>Đang tải dữ liệu...</p>
+                                   </div>
+                              ) : displayRevenueData.length === 0 ? (
+                                   <div className="text-center py-8 text-teal-500">
+                                        <p>Chưa có dữ liệu doanh thu</p>
+                                   </div>
+                              ) : (
+                                   displayRevenueData.map((item, index) => (
+                                        <div key={index} className="flex items-center justify-between">
+                                             <span className="text-sm text-teal-600 min-w-[80px]">{formatDate(item.day || item.date)}</span>
+                                             <div className="flex-1 mx-4">
+                                                  <div className="bg-teal-200 rounded-full h-2">
+                                                       <div
+                                                            className="bg-teal-500 h-2 rounded-full transition-all duration-300"
+                                                            style={{ width: `${(item.amount / Math.max(...revenueData.map(d => d.amount))) * 100}%` }}
+                                                       ></div>
+                                                  </div>
+                                             </div>
+                                             <span className="text-sm font-bold text-orange-600 w-20 text-right">
+                                                  {formatCurrency(item.amount)}
+                                             </span>
+                                        </div>
+                                   ))
+                              )}
+                         </div>
+                    </Card>
+
+                    {/* Field Performance */}
+                    <Card className="p-6 rounded-2xl shadow-lg">
+                         <div className="flex items-center justify-between mb-6">
+                              <h3 className="text-lg font-semibold text-teal-900">Hiệu suất sân</h3>
+                              <div className="flex items-center space-x-2">
+                                   <PieChart className="w-5 h-5 text-teal-500" />
+                                   <span className="text-sm text-teal-600">Top 5</span>
+                              </div>
+                         </div>
+                         <div className="space-y-4">
+                              {loading && !isDemo ? (
+                                   <div className="text-center py-8 text-teal-500">
+                                        <Activity className="w-8 h-8 animate-spin mx-auto mb-2" />
+                                        <p>Đang tải dữ liệu...</p>
+                                   </div>
+                              ) : displayFieldPerformance.length === 0 ? (
+                                   <div className="text-center py-8 text-teal-500">
+                                        <p>Chưa có dữ liệu hiệu suất sân</p>
+                                   </div>
+                              ) : (
+                                   displayFieldPerformance.map((field, index) => (
+                                        <div key={index} className="flex items-center justify-between p-3 bg-teal-50 rounded-lg">
+                                             <div className="flex items-center">
+                                                  <MapPin className="w-4 h-4 text-teal-500 mr-2" />
+                                                  <span className="font-medium text-teal-900">{field.name}</span>
+                                             </div>
+                                             <div className="flex items-center space-x-4 text-sm">
+                                                  <div className="text-center">
+                                                       <div className="font-medium text-teal-900">{field.bookings}</div>
+                                                       <div className="text-teal-500">Booking</div>
+                                                  </div>
+                                                  <div className="text-center">
+                                                       <div className="font-bold text-orange-600">{formatCurrency(field.revenue)}</div>
+                                                       <div className="text-teal-600">Doanh thu</div>
+                                                  </div>
+                                                  <div className="flex items-center">
+                                                       <Star className="w-4 h-4 text-yellow-500 mr-1" />
+                                                       <span className="font-medium text-teal-900">{field.rating}</span>
+                                                  </div>
+                                             </div>
+                                        </div>
+                                   ))
+                              )}
+                         </div>
+                    </Card>
+               </div>
+
+               {/* Recent Activities and Quick Actions */}
+               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Recent Bookings */}
+                    <Card className="p-6 rounded-2xl shadow-lg lg:col-span-2">
+                         <div className="flex items-center justify-between mb-6">
+                              <h3 className="text-lg font-semibold text-teal-900">Đặt sân gần đây</h3>
+                              <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={() => navigate(isDemo ? "/demo/bookings" : "/owner/bookings")}
+                              >
+                                   <Activity className="w-4 h-4 mr-2" />
+                                   Xem tất cả
+                              </Button>
+                         </div>
+                         <div className="space-y-3">
+                              {loading && !isDemo ? (
+                                   <div className="text-center py-8 text-teal-500">
+                                        <Activity className="w-8 h-8 animate-spin mx-auto mb-2" />
+                                        <p>Đang tải dữ liệu...</p>
+                                   </div>
+                              ) : displayRecentBookings.length === 0 ? (
+                                   <div className="text-center py-8 text-teal-500">
+                                        <p>Chưa có đặt sân nào</p>
+                                   </div>
+                              ) : (
+                                   displayRecentBookings.slice(0, 6).map((booking) => (
+                                        <div key={booking.id} className="flex items-center justify-between p-3 border border-teal-200 rounded-lg">
+                                             <div className="flex items-center space-x-3">
+                                                  <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
+                                                       <Users className="w-5 h-5 text-teal-600" />
+                                                  </div>
+                                                  <div>
+                                                       <div className="font-medium text-teal-900">{booking.customer}</div>
+                                                       <div className="text-sm text-teal-600">{booking.field} • {booking.time}</div>
+                                                  </div>
+                                             </div>
+                                             <div className="flex items-center space-x-3">
+                                                  <span className="font-bold text-orange-600">{formatCurrency(booking.amount)}</span>
+                                                  {/* <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                                                       {getStatusText(booking.status)}
+                                                  </span> */}
+                                             </div>
+                                        </div>
+                                   ))
+                              )}
+                         </div>
+                    </Card>
+
+                    {/* Quick Actions */}
+                    <Card className="p-5 rounded-2xl shadow-lg">
+                         <h3 className="text-lg font-semibold text-teal-900 mb-6">Thao tác nhanh</h3>
+                         <div className="space-y-3">
+                              <Button
+                                   className="w-full justify-start rounded-2xl"
+                                   variant="outline"
+                                   onClick={() => navigate(isDemo ? "/demo/fields" : "/owner/fields")}
+                              >
+                                   <Plus className="w-4 h-4 mr-2" />
+                                   Thêm sân mới
+                              </Button>
+                              <Button
+                                   className="w-full justify-start rounded-2xl"
+                                   variant="outline"
+                                   onClick={() => navigate(isDemo ? "/demo/bookings" : "/owner/bookings")}
+                              >
+                                   <Calendar className="w-4 h-4 mr-2" />
+                                   Xem booking
+                              </Button>
+                              <Button
+                                   className="w-full justify-start rounded-2xl"
+                                   variant="outline"
+                                   onClick={() => navigate(isDemo ? "/demo/fields" : "/owner/fields")}
+                              >
+                                   <Building2 className="w-4 h-4 mr-2" />
+                                   Quản lý sân
+                              </Button>
+                              <Button
+                                   className="w-full justify-start rounded-2xl"
+                                   variant="outline"
+                                   onClick={() => navigate(isDemo ? "/demo/schedule" : "/owner/schedule")}
+                              >
+                                   <Calendar className="w-4 h-4 mr-2" />
+                                   Lịch trình & Slots
+                              </Button>
+                         </div>
+
+                         {/* System Status */}
+                         <div className="mt-6 pt-6 border-t border-teal-200">
+                              <h4 className="font-medium text-teal-900 mb-3">Trạng thái hệ thống</h4>
+                              <div className="space-y-2">
+                                   <div className="flex items-center justify-between">
+                                        <span className="text-sm text-teal-600">Sân hoạt động</span>
+                                        <div className="flex items-center">
+                                             <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
+                                             <span className="text-sm text-green-600">Bình thường</span>
+                                        </div>
+                                   </div>
+                                   <div className="flex items-center justify-between">
+                                        <span className="text-sm text-teal-600">Hệ thống thanh toán</span>
+                                        <div className="flex items-center">
+                                             <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
+                                             <span className="text-sm text-green-600">Hoạt động</span>
+                                        </div>
+                                   </div>
+                                   <div className="flex items-center justify-between">
+                                        <span className="text-sm text-teal-600">Thông báo</span>
+                                        <div className="flex items-center">
+                                             <AlertCircle className="w-4 h-4 text-yellow-500 mr-1" />
+                                             <span className="text-sm text-yellow-600">2 chưa đọc</span>
+                                        </div>
+                                   </div>
+                              </div>
+                         </div>
+                    </Card>
+               </div>
+
+               {/* Demo Banner */}
+               {isDemo && (
+                    <Card className="p-6 rounded-2xl shadow-lg bg-blue-50 border-blue-200">
+                         <div className="flex items-center">
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                   <Eye className="w-4 h-4 text-blue-600" />
+                              </div>
+                              <div>
+                                   <h3 className="font-medium text-blue-900">Chế độ Demo</h3>
+                                   <p className="text-sm text-blue-700 mt-1">
+                                        Đây là dữ liệu mẫu để bạn trải nghiệm hệ thống.
+                                        <Link to="/register" className="underline ml-1 font-medium">Đăng ký ngay</Link> để sử dụng đầy đủ tính năng.
+                                   </p>
+                              </div>
+                         </div>
+                    </Card>
+               )}
+          </div>
      );
 }
 

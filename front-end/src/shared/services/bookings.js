@@ -422,6 +422,64 @@ export async function createBooking(bookingData) {
   }
 }
 
+// Tạo gói đặt sân định kỳ (BookingPackage)
+export async function createBookingPackage(packageData) {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Bạn cần đăng nhập để tạo gói đặt định kỳ. Vui lòng đăng nhập trước.",
+      };
+    }
+
+    // Kiểm tra token hết hạn
+    if (isTokenExpired(token)) {
+      return {
+        success: false,
+        error: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+      };
+    }
+
+    const endpoint =
+      "https://sep490-g19-zxph.onrender.com/api/BookingPackage/create";
+
+    // Chuẩn hoá payload theo spec backend
+    const payload = {
+      userId: Number(packageData.userId) || 0,
+      fieldId: Number(packageData.fieldId) || 0,
+      packageName: packageData.packageName || "Gói đặt định kỳ",
+      startDate: packageData.startDate, // ISO string
+      endDate: packageData.endDate, // ISO string
+      totalPrice: Number(packageData.totalPrice) || 0,
+      selectedSlots: Array.isArray(packageData.selectedSlots)
+        ? packageData.selectedSlots.map((s) => ({
+            slotId: Number(s.slotId) || 0,
+            dayOfWeek: Number(s.dayOfWeek) || 0,
+            fieldId: Number(s.fieldId) || Number(packageData.fieldId) || 0,
+            scheduleId: Number(s.scheduleId) || 0,
+          }))
+        : [],
+    };
+
+    const response = await apiClient.post(endpoint, payload);
+
+    return {
+      success: true,
+      data: response.data,
+      message: "Tạo gói đặt định kỳ thành công",
+    };
+  } catch (error) {
+    console.error("Error creating booking package:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
 export async function confirmPaymentAPI(bookingId, depositAmount) {
   try {
     // Check if user is authenticated (has token)
@@ -672,6 +730,35 @@ export async function fetchBookingsByPlayer(playerId) {
   }
 }
 
+// Lịch sử gói đặt sân cố định theo người chơi
+export async function fetchBookingPackagesByPlayer(playerId) {
+  try {
+    if (playerId === undefined || playerId === null || playerId === "") {
+      return {
+        success: false,
+        error: "Thiếu thông tin người chơi. Không thể tải lịch sử gói đặt sân cố định.",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/player/${playerId}`;
+
+    const response = await apiClient.get(endpoint);
+
+    return {
+      success: true,
+      data: Array.isArray(response.data) ? response.data : [],
+    };
+  } catch (error) {
+    console.error("Error fetching booking packages by player:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
 export async function fetchBookingsByOwner(ownerId) {
   try {
     if (ownerId === undefined || ownerId === null || ownerId === "") {
@@ -691,6 +778,110 @@ export async function fetchBookingsByOwner(ownerId) {
     };
   } catch (error) {
     console.error("Error fetching bookings by owner:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+// Owner: fetch all booking packages for fields owned by this owner
+export async function fetchBookingPackagesByOwner(ownerId) {
+  try {
+    if (ownerId === undefined || ownerId === null || ownerId === "") {
+      return {
+        success: false,
+        error: "Thiếu thông tin chủ sân. Không thể tải danh sách gói đặt sân cố định.",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/owner/${ownerId}`;
+
+    const response = await apiClient.get(endpoint);
+
+    return {
+      success: true,
+      data: Array.isArray(response.data) ? response.data : [],
+    };
+  } catch (error) {
+    console.error("Error fetching booking packages by owner:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+// Owner: confirm booking package (after verifying payment)
+export async function confirmBookingPackage(packageId) {
+  try {
+    const numericId = Number(packageId);
+    if (!numericId || Number.isNaN(numericId)) {
+      return { success: false, error: "BookingPackageId không hợp lệ." };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/confirm/${numericId}`;
+    const response = await apiClient.post(endpoint);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Error confirming booking package:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+// Owner: mark booking package as completed
+export async function completeBookingPackage(packageId) {
+  try {
+    const numericId = Number(packageId);
+    if (!numericId || Number.isNaN(numericId)) {
+      return { success: false, error: "BookingPackageId không hợp lệ." };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/complete/${numericId}`;
+    const response = await apiClient.put(endpoint);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Error completing booking package:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+// Owner: cancel a specific session inside a booking package
+export async function cancelBookingPackageSession(sessionId) {
+  try {
+    const numericId = Number(sessionId);
+    if (!numericId || Number.isNaN(numericId)) {
+      return { success: false, error: "SessionId không hợp lệ." };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/cancel-session/${numericId}`;
+    const response = await apiClient.post(endpoint);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Error cancelling booking package session:", error);
     const errorMessage = handleApiError(error);
     return {
       success: false,

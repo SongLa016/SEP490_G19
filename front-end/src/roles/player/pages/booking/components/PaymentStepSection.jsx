@@ -23,9 +23,15 @@ export default function PaymentStepSection({
           accountHolder: bookingData.accountHolder || bookingData.ownerName
      };
      const hasBankInfo = !!(fallbackAccount?.bankName || fallbackAccount?.accountNumber || fallbackAccount?.accountHolder);
-     const depositAmount = bookingData.depositAmount || bookingInfo?.depositAmount || 0;
-     const depositAvailable = depositAmount > 0;
-     const transferAmount = depositAmount;
+
+     // Với đặt sân cố định (isRecurring = true), không dùng logic cọc/giảm giá – chỉ thanh toán toàn bộ tổng giá
+     const isRecurringPackage = !!isRecurring;
+     const rawDepositAmount = bookingData.depositAmount || bookingInfo?.depositAmount || 0;
+     const depositAmount = isRecurringPackage ? 0 : rawDepositAmount;
+     const depositAvailable = !isRecurringPackage && depositAmount > 0;
+     const transferAmount = isRecurringPackage
+          ? (bookingInfo?.totalPrice || bookingData.totalPrice || 0)
+          : depositAmount;
      const formatCountdown = (seconds) => {
           const safeSeconds = Math.max(0, seconds || 0);
           const minutes = Math.floor(safeSeconds / 60);
@@ -48,7 +54,9 @@ export default function PaymentStepSection({
      };
      const totalSessions = bookingData.totalSessions || (isRecurring ? (recurringWeeks * selectedDays.length) : 1);
      const slotPrice = bookingData.price || 0;
-     const subtotal = bookingData.subtotal || (slotPrice * (totalSessions || 1));
+     const subtotal = isRecurringPackage
+          ? (bookingData.totalPrice || bookingInfo?.totalPrice || bookingData.subtotal || (slotPrice * (totalSessions || 1)))
+          : (bookingData.subtotal || (slotPrice * (totalSessions || 1)));
 
      return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -70,7 +78,14 @@ export default function PaymentStepSection({
 
                          <div className="space-y-2 text-sm">
                               <div className="text-gray-600 font-medium">Số tiền cần thanh toán</div>
-                              {depositAvailable ? (
+                              {isRecurringPackage ? (
+                                   <div className="flex items-center justify-between py-2 px-4 border rounded-2xl bg-emerald-50">
+                                        <span className="text-sm font-medium text-gray-700">Thanh toán toàn bộ gói đặt cố định</span>
+                                        <span className="text-xl font-bold text-emerald-700">
+                                             {formatPrice(transferAmount)}
+                                        </span>
+                                   </div>
+                              ) : depositAvailable ? (
                                    <>
                                         <div className="flex items-center justify-between py-2 px-4 border rounded-2xl bg-amber-50">
                                              <span className="text-sm font-medium text-gray-700">Thanh toán tiền cọc</span>
@@ -90,7 +105,7 @@ export default function PaymentStepSection({
                               )}
                          </div>
 
-                         {depositAvailable ? (
+                         {(isRecurringPackage || depositAvailable) ? (
                               bookingInfo?.qrCodeUrl ? (
                                    <div className="flex flex-col items-center text-center">
                                         <div className="p-2 bg-white border-4 border-teal-100 rounded-2xl shadow-lg mb-3">
@@ -136,13 +151,13 @@ export default function PaymentStepSection({
                                    </div>
                                    {depositAvailable && transferAmount > 0 && (
                                         <div className="pt-2 border-t border-blue-50">
-                                             <div className="flex justify-between">
-                                                  <span className="text-gray-600 font-medium">Số tiền cần thanh toán</span>
-                                                  <span className="font-bold text-lg text-blue-700">{formatPrice(transferAmount)}</span>
-                                             </div>
-                                             <div className="text-xs text-gray-500 mt-1">
-                                                  Nội dung chuyển khoản gợi ý: <span className="font-semibold">BOOKING-{bookingInfo?.bookingId || "XXXX"}</span>
-                                             </div>
+                                   <div className="flex justify-between">
+                                        <span className="text-gray-600 font-medium">Số tiền cần thanh toán</span>
+                                        <span className="font-bold text-lg text-blue-700">{formatPrice(transferAmount)}</span>
+                                   </div>
+                                   <div className="text-xs text-gray-500 mt-1">
+                                        Nội dung chuyển khoản gợi ý: <span className="font-semibold">BOOKING-{bookingInfo?.bookingId || "XXXX"}</span>
+                                   </div>
                                         </div>
                                    )}
                               </div>
@@ -223,31 +238,37 @@ export default function PaymentStepSection({
                                         <span className="font-medium text-teal-600">{formatPrice(subtotal)}</span>
                                    </div>
                               )}
-                              <div className="flex justify-between">
-                                   <span className="text-gray-600">Tạm tính</span>
-                                   <span className="font-medium text-teal-600">{formatPrice(subtotal)}</span>
-                              </div>
-                              {bookingData.discountPercent > 0 && (
-                                   <div className="flex text-emerald-600 justify-between">
-                                        <span className="font-medium">Giảm giá ({bookingData.discountPercent}%)</span>
-                                        <span className="font-medium">- {formatPrice(bookingData.discountAmount)}</span>
-                                   </div>
-                              )}
-                              {bookingData.depositAmount > 0 && (
-                                   <div className="flex text-yellow-600 justify-between">
-                                        <span className="font-medium">Tiền cọc ({Math.round((bookingData.depositPercent || 0) * 100)}%)</span>
-                                        <span className="font-medium">{formatPrice(bookingData.depositAmount)}</span>
-                                   </div>
-                              )}
-                              {bookingData.remainingAmount > 0 && (
-                                   <div className="flex text-blue-600 justify-between">
-                                        <span className="font-medium">Còn lại</span>
-                                        <span className="font-medium">{formatPrice(bookingData.remainingAmount)}</span>
-                                   </div>
+                              {!isRecurringPackage && (
+                                   <>
+                                        <div className="flex justify-between">
+                                             <span className="text-gray-600">Tạm tính</span>
+                                             <span className="font-medium text-teal-600">{formatPrice(subtotal)}</span>
+                                        </div>
+                                        {bookingData.discountPercent > 0 && (
+                                             <div className="flex text-emerald-600 justify-between">
+                                                  <span className="font-medium">Giảm giá ({bookingData.discountPercent}%)</span>
+                                                  <span className="font-medium">- {formatPrice(bookingData.discountAmount)}</span>
+                                             </div>
+                                        )}
+                                        {bookingData.depositAmount > 0 && (
+                                             <div className="flex text-yellow-600 justify-between">
+                                                  <span className="font-medium">Tiền cọc ({Math.round((bookingData.depositPercent || 0) * 100)}%)</span>
+                                                  <span className="font-medium">{formatPrice(bookingData.depositAmount)}</span>
+                                             </div>
+                                        )}
+                                        {bookingData.remainingAmount > 0 && (
+                                             <div className="flex text-blue-600 justify-between">
+                                                  <span className="font-medium">Còn lại</span>
+                                                  <span className="font-medium">{formatPrice(bookingData.remainingAmount)}</span>
+                                             </div>
+                                        )}
+                                   </>
                               )}
                               <div className="flex justify-between pt-2 border-t border-teal-200">
                                    <span className="font-semibold text-gray-900">Tổng cộng</span>
-                                   <span className="font-bold text-lg text-red-600">{formatPrice(bookingData.totalPrice)}</span>
+                                   <span className="font-bold text-lg text-red-600">
+                                        {formatPrice(isRecurringPackage ? subtotal : bookingData.totalPrice)}
+                                   </span>
                               </div>
                          </div>
                     </div>

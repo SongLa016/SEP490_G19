@@ -5,6 +5,7 @@ import { Button } from "../../../../shared/components/ui";
 import UserProfile from "./UserProfile";
 import ProfileSettings from "./ProfileSettings";
 import ProfileStats from "./ProfileStats";
+import FavoriteFields from "./FavoriteFields";
 import { useTranslation } from "../../../../shared/hooks/useTranslation";
 
 export default function ProfileIndex({ user }) {
@@ -30,6 +31,12 @@ export default function ProfileIndex({ user }) {
       label: t("profilePage.tabs.stats"),
       icon: BarChart3,
       component: ProfileStats,
+    },
+    {
+      id: "favorites",
+      label: t("profilePage.favorite"),
+      icon: Heart,
+      component: FavoriteFields,
     },
   ];
 
@@ -67,18 +74,6 @@ export default function ProfileIndex({ user }) {
                           t("profilePage.descriptions.stats")}
                       </p>
                     </div>
-                  </div>
-
-                  {/* Quick actions */}
-                  <div className="hidden lg:flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-teal-300 text-teal-700 hover:bg-teal-50 hover:text-teal-900 rounded-xl"
-                    >
-                      <Heart className="w-4 h-4 mr-2" />
-                      {t("profilePage.favorite")}
-                    </Button>
                   </div>
                 </div>
 

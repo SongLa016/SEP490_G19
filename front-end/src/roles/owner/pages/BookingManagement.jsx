@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
      Calendar,
      CheckCircle,
@@ -18,49 +18,62 @@ import {
      AlertCircle,
      CreditCard,
      CheckSquare,
-     QrCode
+     QrCode,
+     Repeat
 } from "lucide-react";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Card, Button, Table, TableHeader, TableHead, TableRow, TableBody, TableCell, Pagination, usePagination } from "../../../shared/components/ui";
-import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import { DemoRestrictedModal } from "../../../shared";
-import { cancelBooking, fetchCancellationRequests, confirmCancellation, deleteCancellationRequest, fetchBookingsByOwner, confirmPaymentAPI, confirmByOwner, fetchCancellationRequestById, updateBookingStatus } from "../../../shared/services/bookings";
+import {
+     cancelBooking,
+     fetchCancellationRequests,
+     confirmCancellation,
+     deleteCancellationRequest,
+     fetchBookingsByOwner,
+     fetchBookingPackagesByOwner,
+     confirmPaymentAPI,
+     confirmByOwner,
+     fetchCancellationRequestById,
+     updateBookingStatus,
+     confirmBookingPackage,
+     completeBookingPackage
+} from "../../../shared/services/bookings";
 import { fetchFieldScheduleById } from "../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
 import axios from "axios";
 
 // Helper function to fetch player profile by ID using PlayerProfile API
 const fetchPlayerProfile = async (playerId) => {
-  try {
-    const token = localStorage.getItem("token");
-    const response = await axios.get(
-      `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${playerId}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-      }
-    );
-    // API returns: {fullName, phone, email, avatar, dateOfBirth, gender, address, preferredPositions, skillLevel}
-    const profileData = response.data || {};
-    return {
-      ok: true,
-      data: profileData,
-      profile: profileData,
-    };
-  } catch (error) {
-    console.error(`Failed to fetch player profile ${playerId}:`, error);
-    return {
-      ok: false,
-      reason: error.message || "Lấy thông tin khách hàng thất bại",
-    };
-  }
+     try {
+          const token = localStorage.getItem("token");
+          const response = await axios.get(
+               `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${playerId}`,
+               {
+                    headers: {
+                         "Content-Type": "application/json",
+                         ...(token && { Authorization: `Bearer ${token}` }),
+                    },
+               }
+          );
+          // API returns: {fullName, phone, email, avatar, dateOfBirth, gender, address, preferredPositions, skillLevel}
+          const profileData = response.data || {};
+          return {
+               ok: true,
+               data: profileData,
+               profile: profileData,
+          };
+     } catch (error) {
+          console.error(`Failed to fetch player profile ${playerId}:`, error);
+          return {
+               ok: false,
+               reason: error.message || "Lấy thông tin khách hàng thất bại",
+          };
+     }
 };
 
 const BookingManagement = ({ isDemo = false }) => {
-     const { user, logout } = useAuth();
+     const { user } = useAuth();
      const [selectedDate, setSelectedDate] = useState("");
      const [statusFilter, setStatusFilter] = useState("all");
      const [fieldFilter, setFieldFilter] = useState("all");
@@ -68,7 +81,7 @@ const BookingManagement = ({ isDemo = false }) => {
      const [selectedBooking, setSelectedBooking] = useState(null);
      const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
      const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
-     const [activeTab, setActiveTab] = useState("bookings"); // bookings, cancellations
+     const [activeTab, setActiveTab] = useState("bookings"); // bookings, cancellations, packages
      const [cancellationRequests, setCancellationRequests] = useState([]);
      const [loadingCancellations, setLoadingCancellations] = useState(false);
      const [bookings, setBookings] = useState([]);
@@ -78,6 +91,9 @@ const BookingManagement = ({ isDemo = false }) => {
      const [isCancellationDetailModalOpen, setIsCancellationDetailModalOpen] = useState(false);
      const [loadingCancellationDetail, setLoadingCancellationDetail] = useState(false);
      const [autoCompletedIds, setAutoCompletedIds] = useState({});
+     const [bookingPackages, setBookingPackages] = useState([]);
+     const [loadingPackages, setLoadingPackages] = useState(false);
+     const [packageError, setPackageError] = useState("");
 
      // Get owner ID from user
      const ownerId = user?.userID || user?.UserID || user?.id || user?.userId;
@@ -104,6 +120,47 @@ const BookingManagement = ({ isDemo = false }) => {
           { value: "cancelled", label: "Đã hủy" },
           { value: "completed", label: "Hoàn thành" }
      ];
+
+     const loadBookingPackages = useCallback(async () => {
+          if (!ownerId) {
+               setBookingPackages([]);
+               return;
+          }
+          setLoadingPackages(true);
+          setPackageError("");
+          try {
+               const apiResult = await fetchBookingPackagesByOwner(ownerId);
+               const rawList = apiResult.success ? (apiResult.data || []) : [];
+               const normalized = rawList.map(pkg => ({
+                    id: pkg.bookingPackageId || pkg.id,
+                    bookingPackageId: pkg.bookingPackageId || pkg.id,
+                    fieldId: pkg.fieldId || pkg.fieldID,
+                    fieldName: pkg.fieldName || "",
+                    packageName: pkg.packageName || "Gói sân cố định",
+                    startDate: pkg.startDate,
+                    endDate: pkg.endDate,
+                    totalPrice: Number(pkg.totalPrice) || 0,
+                    bookingStatus: pkg.bookingStatus || "",
+                    paymentStatus: pkg.paymentStatus || "",
+                    qrCodeUrl: pkg.qrcode || pkg.qrCode || pkg.QRCode || pkg.qrCodeUrl || null,
+                    qrExpiresAt: pkg.qrexpiresAt || pkg.qrExpiresAt || pkg.QRExpiresAt || null,
+               }));
+               setBookingPackages(normalized);
+               if (!apiResult.success) {
+                    setPackageError(apiResult.error || "Không thể tải danh sách gói sân cố định.");
+               }
+          } catch (error) {
+               console.error("Error loading booking packages (owner):", error);
+               setPackageError(error.message || "Không thể tải danh sách gói sân cố định.");
+               setBookingPackages([]);
+          } finally {
+               setLoadingPackages(false);
+          }
+     }, [ownerId]);
+
+     useEffect(() => {
+          loadBookingPackages();
+     }, [loadBookingPackages]);
 
      const handleConfirmBooking = async (bookingId) => {
           if (isDemo) {
@@ -1135,7 +1192,7 @@ const BookingManagement = ({ isDemo = false }) => {
      };
 
      return (
-          <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
+          <>
                <div className="space-y-6">
                     {/* Header */}
                     <div className="flex justify-between items-center p-6 rounded-2xl">
@@ -1190,6 +1247,16 @@ const BookingManagement = ({ isDemo = false }) => {
                                              {cancellationRequests.length}
                                         </span>
                                    )}
+                              </button>
+                              <button
+                                   onClick={() => setActiveTab('packages')}
+                                   className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'packages'
+                                        ? 'border-teal-500 text-teal-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        }`}
+                              >
+                                   <Repeat className="w-4 h-4" />
+                                   <span>Sân cố định</span>
                               </button>
                          </nav>
                     </div>
@@ -1329,107 +1396,107 @@ const BookingManagement = ({ isDemo = false }) => {
                                                   </TableHeader>
                                                   <TableBody>
                                                        {bookingsPagination.currentItems.map((booking) => (
-                                                       <TableRow key={booking.id} className="hover:bg-teal-50/50 transition-colors">
-                                                            <TableCell>
-                                                                 <div className="space-y-1">
-                                                                      <div className="text-sm font-semibold text-gray-900">{booking.customer}</div>
-                                                                      <div className="text-xs text-teal-600 font-medium flex items-center">
-                                                                           <Phone className="w-3 h-3 mr-1" />
-                                                                           {booking.phone}
+                                                            <TableRow key={booking.id} className="hover:bg-teal-50/50 transition-colors">
+                                                                 <TableCell>
+                                                                      <div className="space-y-1">
+                                                                           <div className="text-sm font-semibold text-gray-900">{booking.customer}</div>
+                                                                           <div className="text-xs text-teal-600 font-medium flex items-center">
+                                                                                <Phone className="w-3 h-3 mr-1" />
+                                                                                {booking.phone}
+                                                                           </div>
+                                                                           <div className="text-xs text-gray-500 font-medium flex items-center">
+                                                                                <Mail className="w-3 h-3 mr-1" />
+                                                                                {booking.email}
+                                                                           </div>
                                                                       </div>
-                                                                      <div className="text-xs text-gray-500 font-medium flex items-center">
-                                                                           <Mail className="w-3 h-3 mr-1" />
-                                                                           {booking.email}
+                                                                 </TableCell>
+                                                                 <TableCell>
+                                                                      <div className="space-y-1">
+                                                                           <div className="text-sm font-semibold text-gray-900 flex items-center">
+                                                                                <MapPin className="w-3 h-3 mr-1 text-teal-600" />
+                                                                                {booking.field}
+                                                                           </div>
+                                                                           <div className="text-xs text-gray-600 flex items-center">
+                                                                                <Calendar className="w-3 h-3 mr-1" />
+                                                                                {formatDate(booking.date)}
+                                                                           </div>
+                                                                           <div className="text-xs text-gray-600 flex items-center">
+                                                                                <Clock className="w-3 h-3 mr-1" />
+                                                                                {booking.timeSlot}
+                                                                           </div>
                                                                       </div>
-                                                                 </div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                 <div className="space-y-1">
-                                                                      <div className="text-sm font-semibold text-gray-900 flex items-center">
-                                                                           <MapPin className="w-3 h-3 mr-1 text-teal-600" />
-                                                                           {booking.field}
-                                                                      </div>
-                                                                      <div className="text-xs text-gray-600 flex items-center">
-                                                                           <Calendar className="w-3 h-3 mr-1" />
-                                                                           {formatDate(booking.date)}
-                                                                      </div>
-                                                                      <div className="text-xs text-gray-600 flex items-center">
-                                                                           <Clock className="w-3 h-3 mr-1" />
-                                                                           {booking.timeSlot}
-                                                                      </div>
-                                                                 </div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                 {(() => {
-                                                                      const effectiveStatus =
-                                                                           booking.status === "confirmed" && isBookingPassed(booking)
-                                                                                ? "completed"
-                                                                                : booking.status;
-                                                                      return (
-                                                                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(effectiveStatus)}`}>
-                                                                                {getStatusText(effectiveStatus)}
-                                                                           </span>
-                                                                      );
-                                                                 })()}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(booking.paymentStatus)}`}>
-                                                                      {getPaymentStatusText(booking.paymentStatus)}
-                                                                 </span>
-                                                            </TableCell>
-                                                            <TableCell className="text-sm font-bold text-yellow-500">
-                                                                 {formatCurrency(booking.depositAmount)}
-                                                            </TableCell>
-                                                            <TableCell className="text-sm font-bold text-emerald-600">
-                                                                 {formatCurrency(booking.amount)}
-                                                            </TableCell>
-                                                            <TableCell className="text-sm font-medium">
-                                                                 <div className="flex items-center space-x-2">
-                                                                      <Button
-                                                                           variant="ghost"
-                                                                           size="sm"
-                                                                           onClick={() => handleViewDetails(booking)}
-                                                                           className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
-                                                                           title="Xem chi tiết"
-                                                                      >
-                                                                           <Eye className="w-4 h-4" />
-                                                                      </Button>
+                                                                 </TableCell>
+                                                                 <TableCell>
+                                                                      {(() => {
+                                                                           const effectiveStatus =
+                                                                                booking.status === "confirmed" && isBookingPassed(booking)
+                                                                                     ? "completed"
+                                                                                     : booking.status;
+                                                                           return (
+                                                                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(effectiveStatus)}`}>
+                                                                                     {getStatusText(effectiveStatus)}
+                                                                                </span>
+                                                                           );
+                                                                      })()}
+                                                                 </TableCell>
+                                                                 <TableCell>
+                                                                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(booking.paymentStatus)}`}>
+                                                                           {getPaymentStatusText(booking.paymentStatus)}
+                                                                      </span>
+                                                                 </TableCell>
+                                                                 <TableCell className="text-sm font-bold text-yellow-500">
+                                                                      {formatCurrency(booking.depositAmount)}
+                                                                 </TableCell>
+                                                                 <TableCell className="text-sm font-bold text-emerald-600">
+                                                                      {formatCurrency(booking.amount)}
+                                                                 </TableCell>
+                                                                 <TableCell className="text-sm font-medium">
+                                                                      <div className="flex items-center space-x-2">
+                                                                           <Button
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                onClick={() => handleViewDetails(booking)}
+                                                                                className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+                                                                                title="Xem chi tiết"
+                                                                           >
+                                                                                <Eye className="w-4 h-4" />
+                                                                           </Button>
 
-                                                                      {!isBookingPassed(booking) && (
-                                                                           <>
-                                                                                {(booking.status === 'pending' || (booking.status === 'confirmed' && booking.paymentStatus === 'paid')) && (
-                                                                                     <Button
-                                                                                          variant="ghost"
-                                                                                          size="sm"
-                                                                                          onClick={() => handleConfirmBooking(booking.bookingId || booking.id)}
-                                                                                          className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                                                          title={booking.status === 'pending' ? "Xác nhận thanh toán" : "Hoàn thành booking"}
-                                                                                     >
-                                                                                          <CheckCircle className="w-4 h-4" />
-                                                                                     </Button>
-                                                                                )}
-                                                                                {booking.status !== 'cancelled' && booking.status !== 'completed' && (
-                                                                                     <Button
-                                                                                          variant="ghost"
-                                                                                          size="sm"
-                                                                                          onClick={() => handleCancelBooking(booking.bookingId || booking.id)}
-                                                                                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                                                          title="Hủy booking"
-                                                                                     >
-                                                                                          <XCircle className="w-4 h-4" />
-                                                                                     </Button>
-                                                                                )}
-                                                                           </>
-                                                                      )}
-                                                                      {isBookingPassed(booking) && (
-                                                                           <span className="text-xs text-gray-500 italic" title="Lịch trình đã qua">
-                                                                                Đã qua
-                                                                           </span>
-                                                                      )}
-                                                                 </div>
-                                                            </TableCell>
-                                                       </TableRow>
-                                                  ))}
+                                                                           {!isBookingPassed(booking) && (
+                                                                                <>
+                                                                                     {(booking.status === 'pending' || (booking.status === 'confirmed' && booking.paymentStatus === 'paid')) && (
+                                                                                          <Button
+                                                                                               variant="ghost"
+                                                                                               size="sm"
+                                                                                               onClick={() => handleConfirmBooking(booking.bookingId || booking.id)}
+                                                                                               className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                                                               title={booking.status === 'pending' ? "Xác nhận thanh toán" : "Hoàn thành booking"}
+                                                                                          >
+                                                                                               <CheckCircle className="w-4 h-4" />
+                                                                                          </Button>
+                                                                                     )}
+                                                                                     {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                                                                                          <Button
+                                                                                               variant="ghost"
+                                                                                               size="sm"
+                                                                                               onClick={() => handleCancelBooking(booking.bookingId || booking.id)}
+                                                                                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                                                               title="Hủy booking"
+                                                                                          >
+                                                                                               <XCircle className="w-4 h-4" />
+                                                                                          </Button>
+                                                                                     )}
+                                                                                </>
+                                                                           )}
+                                                                           {isBookingPassed(booking) && (
+                                                                                <span className="text-xs text-gray-500 italic" title="Lịch trình đã qua">
+                                                                                     Đã qua
+                                                                                </span>
+                                                                           )}
+                                                                      </div>
+                                                                 </TableCell>
+                                                            </TableRow>
+                                                       ))}
                                                   </TableBody>
                                              </Table>
                                              {bookingsPagination.totalPages > 1 && (
@@ -1691,14 +1758,148 @@ const BookingManagement = ({ isDemo = false }) => {
                                         </div>
                                    )}
                               </Modal>
-
-                              {/* Demo Restricted Modal */}
-                              <DemoRestrictedModal
-                                   isOpen={showDemoRestrictedModal}
-                                   onClose={() => setShowDemoRestrictedModal(false)}
-                                   featureName="Quản lý booking"
-                              />
                          </>
+                    )}
+
+                    {/* Fixed Booking Packages Tab */}
+                    {activeTab === 'packages' && (
+                         <Card className="mt-6 p-6 rounded-2xl shadow-lg">
+                              <div className="flex items-center justify-between mb-4">
+                                   <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                        <Repeat className="w-5 h-5 text-teal-600" />
+                                        Gói sân cố định
+                                   </h3>
+                                   <Button
+                                        onClick={loadBookingPackages}
+                                        variant="outline"
+                                        className="rounded-xl"
+                                   >
+                                        <RefreshCw className="w-4 h-4 mr-2" />
+                                        Làm mới
+                                   </Button>
+                              </div>
+                              {packageError && (
+                                   <div className="mb-3 p-3 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
+                                        {packageError}
+                                   </div>
+                              )}
+                              {loadingPackages ? (
+                                   <div className="text-center py-8">
+                                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600 mx-auto"></div>
+                                        <p className="text-gray-600 mt-2">Đang tải gói sân cố định...</p>
+                                   </div>
+                              ) : bookingPackages.length === 0 ? (
+                                   <div className="text-center py-8 text-sm text-gray-600">
+                                        Chưa có gói sân cố định nào.
+                                   </div>
+                              ) : (
+                                   <div className="overflow-x-auto">
+                                        <Table className="rounded-2xl border border-teal-300">
+                                             <TableHeader>
+                                                  <TableRow>
+                                                       <TableHead>ID gói</TableHead>
+                                                       <TableHead>Tên gói</TableHead>
+                                                       <TableHead>Sân</TableHead>
+                                                       <TableHead>Thời gian</TableHead>
+                                                       <TableHead>Tổng giá</TableHead>
+                                                       <TableHead>Trạng thái</TableHead>
+                                                       <TableHead>Thanh toán</TableHead>
+                                                       <TableHead className="text-center">Thao tác</TableHead>
+                                                  </TableRow>
+                                             </TableHeader>
+                                             <TableBody>
+                                                  {bookingPackages.map(pkg => (
+                                                       <TableRow key={pkg.id}>
+                                                            <TableCell className="font-semibold text-teal-700">
+                                                                 #{pkg.bookingPackageId}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                 <div className="font-medium text-gray-900">{pkg.packageName}</div>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                 <div className="text-sm text-gray-700">{pkg.fieldName || `Sân #${pkg.fieldId}`}</div>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                 <div className="text-xs text-gray-700">
+                                                                      <div><span className="font-medium">Từ:</span> {pkg.startDate}</div>
+                                                                      <div><span className="font-medium">Đến:</span> {pkg.endDate}</div>
+                                                                 </div>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                 <span className="font-semibold text-emerald-700">
+                                                                      {pkg.totalPrice?.toLocaleString("vi-VN")}₫
+                                                                 </span>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                 <span className="text-sm font-medium">
+                                                                      {pkg.bookingStatus || "—"}
+                                                                 </span>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                 <span className="text-sm font-medium">
+                                                                      {pkg.paymentStatus || "—"}
+                                                                 </span>
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                 <div className="flex items-center justify-end gap-2">
+                                                                      <Button
+                                                                           size="sm"
+                                                                           variant="outline"
+                                                                           onClick={async () => {
+                                                                                const result = await Swal.fire({
+                                                                                     icon: "question",
+                                                                                     title: "Xác nhận gói định kỳ",
+                                                                                     text: "Xác nhận thanh toán cho gói sân cố định này?",
+                                                                                     showCancelButton: true,
+                                                                                     confirmButtonText: "Xác nhận",
+                                                                                     cancelButtonText: "Hủy",
+                                                                                });
+                                                                                if (!result.isConfirmed) return;
+                                                                                const resp = await confirmBookingPackage(pkg.bookingPackageId);
+                                                                                if (!resp.success) {
+                                                                                     await Swal.fire("Lỗi", resp.error || "Không thể xác nhận gói.", "error");
+                                                                                } else {
+                                                                                     await Swal.fire("Thành công", "Đã xác nhận gói sân cố định.", "success");
+                                                                                     loadBookingPackages();
+                                                                                }
+                                                                           }}
+                                                                      >
+                                                                           <CheckCircle className="w-4 h-4 mr-1" />
+                                                                           Xác nhận
+                                                                      </Button>
+                                                                      <Button
+                                                                           size="sm"
+                                                                           onClick={async () => {
+                                                                                const result = await Swal.fire({
+                                                                                     icon: "question",
+                                                                                     title: "Hoàn thành gói định kỳ",
+                                                                                     text: "Đánh dấu gói sân cố định này đã hoàn thành?",
+                                                                                     showCancelButton: true,
+                                                                                     confirmButtonText: "Hoàn thành",
+                                                                                     cancelButtonText: "Hủy",
+                                                                                });
+                                                                                if (!result.isConfirmed) return;
+                                                                                const resp = await completeBookingPackage(pkg.bookingPackageId);
+                                                                                if (!resp.success) {
+                                                                                     await Swal.fire("Lỗi", resp.error || "Không thể hoàn thành gói.", "error");
+                                                                                } else {
+                                                                                     await Swal.fire("Thành công", "Đã hoàn thành gói sân cố định.", "success");
+                                                                                     loadBookingPackages();
+                                                                                }
+                                                                           }}
+                                                                      >
+                                                                           <CheckSquare className="w-4 h-4 mr-1" />
+                                                                           Hoàn thành
+                                                                      </Button>
+                                                                 </div>
+                                                            </TableCell>
+                                                       </TableRow>
+                                                  ))}
+                                             </TableBody>
+                                        </Table>
+                                   </div>
+                              )}
+                         </Card>
                     )}
 
                     {/* Cancellations Tab */}
@@ -1745,104 +1946,104 @@ const BookingManagement = ({ isDemo = false }) => {
                                                   </TableHeader>
                                                   <TableBody>
                                                        {cancellationsPagination.currentItems.map((request) => (
-                                                       <TableRow key={request.requestId || request.id || request.cancellationId}>
-                                                            <TableCell className="font-medium">
-                                                                 #{request.requestId || request.id || request.cancellationId}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                 <span className="text-teal-600 font-semibold">
-                                                                      #{request.bookingId}
-                                                                 </span>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                 <div className="max-w-md">
-                                                                      <p className="text-sm text-gray-700 line-clamp-2">
-                                                                           {request.requestReason?.split('|')[0]?.trim() || request.reason || 'Không có lý do'}
-                                                                      </p>
-                                                                 </div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                 <div className="text-sm">
-                                                                      <p className="text-gray-900">
-                                                                           {(request.requestedAt || request.createdAt) ? new Date(request.requestedAt || request.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
-                                                                      </p>
-                                                                      <p className="text-gray-500 text-xs">
-                                                                           {(request.requestedAt || request.createdAt) ? new Date(request.requestedAt || request.createdAt).toLocaleTimeString('vi-VN') : ''}
-                                                                      </p>
-                                                                 </div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                 {(() => {
-                                                                      const qrMatch = request.requestReason?.match(/RefundQR:\s*(https?:\/\/[^\s]+)/);
-                                                                      const qrUrl = qrMatch ? qrMatch[1] : null;
-                                                                      return qrUrl ? (
-                                                                           <button
-                                                                                onClick={() => {
-                                                                                     Swal.fire({
-                                                                                          title: 'QR Code Hoàn tiền',
-                                                                                          html: `
+                                                            <TableRow key={request.requestId || request.id || request.cancellationId}>
+                                                                 <TableCell className="font-medium">
+                                                                      #{request.requestId || request.id || request.cancellationId}
+                                                                 </TableCell>
+                                                                 <TableCell>
+                                                                      <span className="text-teal-600 font-semibold">
+                                                                           #{request.bookingId}
+                                                                      </span>
+                                                                 </TableCell>
+                                                                 <TableCell>
+                                                                      <div className="max-w-md">
+                                                                           <p className="text-sm text-gray-700 line-clamp-2">
+                                                                                {request.requestReason?.split('|')[0]?.trim() || request.reason || 'Không có lý do'}
+                                                                           </p>
+                                                                      </div>
+                                                                 </TableCell>
+                                                                 <TableCell>
+                                                                      <div className="text-sm">
+                                                                           <p className="text-gray-900">
+                                                                                {(request.requestedAt || request.createdAt) ? new Date(request.requestedAt || request.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
+                                                                           </p>
+                                                                           <p className="text-gray-500 text-xs">
+                                                                                {(request.requestedAt || request.createdAt) ? new Date(request.requestedAt || request.createdAt).toLocaleTimeString('vi-VN') : ''}
+                                                                           </p>
+                                                                      </div>
+                                                                 </TableCell>
+                                                                 <TableCell>
+                                                                      {(() => {
+                                                                           const qrMatch = request.requestReason?.match(/RefundQR:\s*(https?:\/\/[^\s]+)/);
+                                                                           const qrUrl = qrMatch ? qrMatch[1] : null;
+                                                                           return qrUrl ? (
+                                                                                <button
+                                                                                     onClick={() => {
+                                                                                          Swal.fire({
+                                                                                               title: 'QR Code Hoàn tiền',
+                                                                                               html: `
                                                                                                <div class="flex flex-col items-center">
                                                                                                     <img src="${qrUrl}" alt="QR Code" class="max-w-full h-auto rounded-lg shadow-lg" style="max-height: 400px;" />
                                                                                                     <p class="text-sm text-gray-600 mt-3">Quét mã QR để hoàn tiền</p>
                                                                                                </div>
                                                                                           `,
-                                                                                          showConfirmButton: true,
-                                                                                          confirmButtonText: 'Đóng',
-                                                                                          width: '500px'
-                                                                                     });
-                                                                                }}
-                                                                                className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                                                                               showConfirmButton: true,
+                                                                                               confirmButtonText: 'Đóng',
+                                                                                               width: '500px'
+                                                                                          });
+                                                                                     }}
+                                                                                     className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                                                                >
+                                                                                     <QrCode className="w-4 h-4" />
+                                                                                     Xem QR
+                                                                                </button>
+                                                                           ) : (
+                                                                                <span className="text-xs text-gray-400">Không có</span>
+                                                                           );
+                                                                      })()}
+                                                                 </TableCell>
+                                                                 <TableCell className="text-right">
+                                                                      <div className="flex items-center justify-center gap-2">
+                                                                           <Button
+                                                                                onClick={() => handleViewCancellationDetails(request.requestId || request.id || request.cancellationId)}
+                                                                                size="sm"
+                                                                                variant="ghost"
+                                                                                className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 rounded-xl"
                                                                            >
-                                                                                <QrCode className="w-4 h-4" />
-                                                                                Xem QR
-                                                                           </button>
-                                                                      ) : (
-                                                                           <span className="text-xs text-gray-400">Không có</span>
-                                                                      );
-                                                                 })()}
-                                                            </TableCell>
-                                                            <TableCell className="text-right">
-                                                                 <div className="flex items-center justify-center gap-2">
-                                                                      <Button
-                                                                           onClick={() => handleViewCancellationDetails(request.requestId || request.id || request.cancellationId)}
-                                                                           size="sm"
-                                                                           variant="ghost"
-                                                                           className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 rounded-xl"
-                                                                      >
-                                                                           <Eye className="w-4 h-4 mr-1" />
+                                                                                <Eye className="w-4 h-4 mr-1" />
 
-                                                                      </Button>
-                                                                      {(request.requestStatus || request.status) === "Pending" && (
-                                                                           <Button
-                                                                                onClick={() => handleConfirmCancellation(request.requestId || request.id || request.cancellationId)}
-                                                                                size="sm"
-                                                                                className="bg-green-600 hover:bg-green-700 rounded-xl"
-                                                                           >
-                                                                                <CheckCircle className="w-4 h-4 mr-1" />
-                                                                                Xác nhận
                                                                            </Button>
-                                                                      )}
-                                                                      {(request.requestStatus || request.status) === "Pending" && (
-                                                                           <Button
-                                                                                onClick={() => handleDeleteCancellation(request.requestId || request.id || request.cancellationId)}
-                                                                                size="sm"
-                                                                                variant="outline"
-                                                                                className="border-red-300 text-red-600 hover:bg-red-50 rounded-xl"
-                                                                           >
-                                                                                <XCircle className="w-4 h-4 mr-1" />
-                                                                                Xóa
-                                                                           </Button>
-                                                                      )}
-                                                                      {(request.requestStatus || request.status) === "Confirmed" && (
-                                                                           <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 flex items-center gap-1">
-                                                                                <CheckCircle className="w-3 h-3" />
-                                                                                Đã xác nhận
-                                                                           </span>
-                                                                      )}
-                                                                 </div>
-                                                            </TableCell>
-                                                       </TableRow>
-                                                  ))}
+                                                                           {(request.requestStatus || request.status) === "Pending" && (
+                                                                                <Button
+                                                                                     onClick={() => handleConfirmCancellation(request.requestId || request.id || request.cancellationId)}
+                                                                                     size="sm"
+                                                                                     className="bg-green-600 hover:bg-green-700 rounded-xl"
+                                                                                >
+                                                                                     <CheckCircle className="w-4 h-4 mr-1" />
+                                                                                     Xác nhận
+                                                                                </Button>
+                                                                           )}
+                                                                           {(request.requestStatus || request.status) === "Pending" && (
+                                                                                <Button
+                                                                                     onClick={() => handleDeleteCancellation(request.requestId || request.id || request.cancellationId)}
+                                                                                     size="sm"
+                                                                                     variant="outline"
+                                                                                     className="border-red-300 text-red-600 hover:bg-red-50 rounded-xl"
+                                                                                >
+                                                                                     <XCircle className="w-4 h-4 mr-1" />
+                                                                                     Xóa
+                                                                                </Button>
+                                                                           )}
+                                                                           {(request.requestStatus || request.status) === "Confirmed" && (
+                                                                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 flex items-center gap-1">
+                                                                                     <CheckCircle className="w-3 h-3" />
+                                                                                     Đã xác nhận
+                                                                                </span>
+                                                                           )}
+                                                                      </div>
+                                                                 </TableCell>
+                                                            </TableRow>
+                                                       ))}
                                                   </TableBody>
                                              </Table>
                                         </div>
@@ -1861,10 +2062,17 @@ const BookingManagement = ({ isDemo = false }) => {
                               )}
                          </Card>
                     )}
-               </div>
+
+                    {/* Demo Restricted Modal */}
+                    <DemoRestrictedModal
+                         isOpen={showDemoRestrictedModal}
+                         onClose={() => setShowDemoRestrictedModal(false)}
+                         featureName="Quản lý booking"
+                    />
+               </div >
 
                {/* Cancellation Detail Modal - Outside conditional blocks */}
-               <Modal
+               < Modal
                     isOpen={isCancellationDetailModalOpen}
                     onClose={() => {
                          setIsCancellationDetailModalOpen(false);
@@ -1873,157 +2081,157 @@ const BookingManagement = ({ isDemo = false }) => {
                     title="Chi tiết yêu cầu hủy booking"
                     className="max-w-2xl rounded-2xl border border-red-200 shadow-lg h-[90vh] overflow-y-auto scrollbar-hide bg-gray-300"
                >
-                    {loadingCancellationDetail ? (
-                         <div className="text-center py-12">
-                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-                              <p className="text-gray-600 mt-4">Đang tải chi tiết...</p>
-                         </div>
-                    ) : selectedCancellation ? (
-                         <div className="space-y-6">
-                              {/* Cancellation Info */}
-                              <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-xl border border-red-200">
-                                   <h3 className="text-lg font-semibold text-red-800 mb-3 flex items-center">
-                                        <XCircle className="w-5 h-5 mr-2" />
-                                        Thông tin yêu cầu hủy
-                                   </h3>
-                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="bg-white p-3 rounded-lg border border-red-100">
-                                             <label className="text-sm font-semibold text-red-700 flex items-center mb-2">
-                                                  <FileText className="w-4 h-4 mr-1" />
-                                                  ID yêu cầu
-                                             </label>
-                                             <p className="text-sm font-semibold text-gray-900">
-                                                  #{selectedCancellation.requestId || selectedCancellation.id || selectedCancellation.cancellationId || 'N/A'}
-                                             </p>
-                                        </div>
-                                        <div className="bg-white p-3 rounded-lg border border-red-100">
-                                             <label className="text-sm font-semibold text-red-700 flex items-center mb-2">
-                                                  <Calendar className="w-4 h-4 mr-1" />
-                                                  Booking ID
-                                             </label>
-                                             <p className="text-sm font-semibold text-teal-600">
-                                                  #{selectedCancellation.bookingId || selectedCancellation.bookingID || 'N/A'}
-                                             </p>
-                                        </div>
-                                        <div className="bg-white p-3 rounded-lg border border-red-100">
-                                             <label className="text-sm font-semibold text-red-700 flex items-center mb-2">
-                                                  <Calendar className="w-4 h-4 mr-1" />
-                                                  Ngày tạo
-                                             </label>
-                                             <p className="text-sm font-semibold text-gray-900">
-                                                  {selectedCancellation.requestedAt || selectedCancellation.createdAt
-                                                       ? new Date(selectedCancellation.requestedAt || selectedCancellation.createdAt).toLocaleString('vi-VN')
-                                                       : 'N/A'}
-                                             </p>
-                                        </div>
-                                        <div className="bg-white p-3 rounded-lg border border-red-100">
-                                             <label className="text-sm font-semibold text-red-700 flex items-center mb-2">
-                                                  <AlertCircle className="w-4 h-4 mr-1" />
-                                                  Trạng thái
-                                             </label>
-                                             <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                                                  {selectedCancellation.requestStatus || selectedCancellation.status || 'Pending'}
-                                             </span>
-                                        </div>
-                                   </div>
+                    {
+                         loadingCancellationDetail ? (
+                              <div className="text-center py-12" >
+                                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+                                   <p className="text-gray-600 mt-4">Đang tải chi tiết...</p>
                               </div>
-
-                              {/* Reason */}
-                              <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-200">
-                                   <h3 className="text-lg font-semibold text-orange-800 mb-3 flex items-center">
-                                        <FileText className="w-5 h-5 mr-2" />
-                                        Lý do hủy
-                                   </h3>
-                                   <div className="bg-white p-4 rounded-lg border border-orange-100">
-                                        <p className="text-sm font-medium text-gray-900 leading-relaxed whitespace-pre-wrap">
-                                             {selectedCancellation.requestReason?.split('|')[0]?.trim() || selectedCancellation.reason || selectedCancellation.Reason || 'Không có lý do'}
-                                        </p>
-                                   </div>
-                              </div>
-
-                              {/* QR Code */}
-                              {(() => {
-                                   const qrMatch = selectedCancellation.requestReason?.match(/RefundQR:\s*(https?:\/\/[^\s]+)/);
-                                   const qrUrl = qrMatch ? qrMatch[1] : null;
-                                   return qrUrl ? (
-                                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
-                                             <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
-                                                  <QrCode className="w-5 h-5 mr-2" />
-                                                  QR Code Hoàn tiền
-                                             </h3>
-                                             <div className="bg-white p-4 rounded-lg border border-blue-100 flex flex-col items-center">
-                                                  <img
-                                                       src={qrUrl}
-                                                       alt="QR Code Hoàn tiền"
-                                                       className="max-w-full h-auto rounded-lg shadow-md"
-                                                       style={{ maxHeight: '300px' }}
-                                                  />
-                                                  <p className="text-sm text-gray-600 mt-3">Quét mã QR để hoàn tiền cho khách hàng</p>
+                         ) : selectedCancellation ? (
+                              <div className="space-y-6">
+                                   {/* Cancellation Info */}
+                                   <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-xl border border-red-200">
+                                        <h3 className="text-lg font-semibold text-red-800 mb-3 flex items-center">
+                                             <XCircle className="w-5 h-5 mr-2" />
+                                             Thông tin yêu cầu hủy
+                                        </h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                             <div className="bg-white p-3 rounded-lg border border-red-100">
+                                                  <label className="text-sm font-semibold text-red-700 flex items-center mb-2">
+                                                       <FileText className="w-4 h-4 mr-1" />
+                                                       ID yêu cầu
+                                                  </label>
+                                                  <p className="text-sm font-semibold text-gray-900">
+                                                       #{selectedCancellation.requestId || selectedCancellation.id || selectedCancellation.cancellationId || 'N/A'}
+                                                  </p>
+                                             </div>
+                                             <div className="bg-white p-3 rounded-lg border border-red-100">
+                                                  <label className="text-sm font-semibold text-red-700 flex items-center mb-2">
+                                                       <Calendar className="w-4 h-4 mr-1" />
+                                                       Booking ID
+                                                  </label>
+                                                  <p className="text-sm font-semibold text-teal-600">
+                                                       #{selectedCancellation.bookingId || selectedCancellation.bookingID || 'N/A'}
+                                                  </p>
+                                             </div>
+                                             <div className="bg-white p-3 rounded-lg border border-red-100">
+                                                  <label className="text-sm font-semibold text-red-700 flex items-center mb-2">
+                                                       <Calendar className="w-4 h-4 mr-1" />
+                                                       Ngày tạo
+                                                  </label>
+                                                  <p className="text-sm font-semibold text-gray-900">
+                                                       {selectedCancellation.requestedAt || selectedCancellation.createdAt
+                                                            ? new Date(selectedCancellation.requestedAt || selectedCancellation.createdAt).toLocaleString('vi-VN')
+                                                            : 'N/A'}
+                                                  </p>
+                                             </div>
+                                             <div className="bg-white p-3 rounded-lg border border-red-100">
+                                                  <label className="text-sm font-semibold text-red-700 flex items-center mb-2">
+                                                       <AlertCircle className="w-4 h-4 mr-1" />
+                                                       Trạng thái
+                                                  </label>
+                                                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
+                                                       {selectedCancellation.requestStatus || selectedCancellation.status || 'Pending'}
+                                                  </span>
                                              </div>
                                         </div>
-                                   ) : null;
-                              })()}
+                                   </div>
 
-                              {/* Actions */}
-                              <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-                                   {(selectedCancellation.requestStatus || selectedCancellation.status) === "Confirmed" && (
-                                        <div className="px-4 py-2 rounded-xl bg-green-50 border border-green-200 flex items-center gap-2">
-                                             <CheckCircle className="w-5 h-5 text-green-600" />
-                                             <span className="text-sm font-semibold text-green-700">
-                                                  Yêu cầu đã được xác nhận
-                                             </span>
+                                   {/* Reason */}
+                                   <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-200">
+                                        <h3 className="text-lg font-semibold text-orange-800 mb-3 flex items-center">
+                                             <FileText className="w-5 h-5 mr-2" />
+                                             Lý do hủy
+                                        </h3>
+                                        <div className="bg-white p-4 rounded-lg border border-orange-100">
+                                             <p className="text-sm font-medium text-gray-900 leading-relaxed whitespace-pre-wrap">
+                                                  {selectedCancellation.requestReason?.split('|')[0]?.trim() || selectedCancellation.reason || selectedCancellation.Reason || 'Không có lý do'}
+                                             </p>
                                         </div>
-                                   )}
-                                   <div className="flex space-x-3 ml-auto">
-                                        <Button
-                                             variant="outline"
-                                             onClick={() => {
-                                                  setIsCancellationDetailModalOpen(false);
-                                                  setSelectedCancellation(null);
-                                             }}
-                                             className="rounded-xl border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold"
-                                        >
-                                             Đóng
-                                        </Button>
-                                        {(selectedCancellation.requestStatus || selectedCancellation.status) === "Pending" && (
-                                             <>
-                                                  <Button
-                                                       onClick={async () => {
-                                                            setIsCancellationDetailModalOpen(false);
-                                                            await handleConfirmCancellation(selectedCancellation.requestId || selectedCancellation.id || selectedCancellation.cancellationId);
-                                                            setSelectedCancellation(null);
-                                                       }}
-                                                       className="rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold"
-                                                  >
-                                                       <CheckCircle className="w-4 h-4 mr-2" />
-                                                       Xác nhận hủy
-                                                  </Button>
-                                                  <Button
-                                                       variant="outline"
-                                                       onClick={async () => {
-                                                            setIsCancellationDetailModalOpen(false);
-                                                            await handleDeleteCancellation(selectedCancellation.requestId || selectedCancellation.id || selectedCancellation.cancellationId);
-                                                            setSelectedCancellation(null);
-                                                       }}
-                                                       className="rounded-xl border-red-300 text-red-600 hover:bg-red-50 font-semibold"
-                                                  >
-                                                       <XCircle className="w-4 h-4 mr-2" />
-                                                       Xóa yêu cầu
-                                                  </Button>
-                                             </>
+                                   </div>
+
+                                   {/* QR Code */}
+                                   {(() => {
+                                        const qrMatch = selectedCancellation.requestReason?.match(/RefundQR:\s*(https?:\/\/[^\s]+)/);
+                                        const qrUrl = qrMatch ? qrMatch[1] : null;
+                                        return qrUrl ? (
+                                             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+                                                  <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
+                                                       <QrCode className="w-5 h-5 mr-2" />
+                                                       QR Code Hoàn tiền
+                                                  </h3>
+                                                  <div className="bg-white p-4 rounded-lg border border-blue-100 flex flex-col items-center">
+                                                       <img
+                                                            src={qrUrl}
+                                                            alt="QR Code Hoàn tiền"
+                                                            className="max-w-full h-auto rounded-lg shadow-md"
+                                                            style={{ maxHeight: '300px' }}
+                                                       />
+                                                       <p className="text-sm text-gray-600 mt-3">Quét mã QR để hoàn tiền cho khách hàng</p>
+                                                  </div>
+                                             </div>
+                                        ) : null;
+                                   })()}
+
+                                   {/* Actions */}
+                                   <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                                        {(selectedCancellation.requestStatus || selectedCancellation.status) === "Confirmed" && (
+                                             <div className="px-4 py-2 rounded-xl bg-green-50 border border-green-200 flex items-center gap-2">
+                                                  <CheckCircle className="w-5 h-5 text-green-600" />
+                                                  <span className="text-sm font-semibold text-green-700">
+                                                       Yêu cầu đã được xác nhận
+                                                  </span>
+                                             </div>
                                         )}
+                                        <div className="flex space-x-3 ml-auto">
+                                             <Button
+                                                  variant="outline"
+                                                  onClick={() => {
+                                                       setIsCancellationDetailModalOpen(false);
+                                                       setSelectedCancellation(null);
+                                                  }}
+                                                  className="rounded-xl border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold"
+                                             >
+                                                  Đóng
+                                             </Button>
+                                             {(selectedCancellation.requestStatus || selectedCancellation.status) === "Pending" && (
+                                                  <>
+                                                       <Button
+                                                            onClick={async () => {
+                                                                 setIsCancellationDetailModalOpen(false);
+                                                                 await handleConfirmCancellation(selectedCancellation.requestId || selectedCancellation.id || selectedCancellation.cancellationId);
+                                                                 setSelectedCancellation(null);
+                                                            }}
+                                                            className="rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold"
+                                                       >
+                                                            <CheckCircle className="w-4 h-4 mr-2" />
+                                                            Xác nhận hủy
+                                                       </Button>
+                                                       <Button
+                                                            variant="outline"
+                                                            onClick={async () => {
+                                                                 setIsCancellationDetailModalOpen(false);
+                                                                 await handleDeleteCancellation(selectedCancellation.requestId || selectedCancellation.id || selectedCancellation.cancellationId);
+                                                                 setSelectedCancellation(null);
+                                                            }}
+                                                            className="rounded-xl border-red-300 text-red-600 hover:bg-red-50 font-semibold"
+                                                       >
+                                                            <XCircle className="w-4 h-4 mr-2" />
+                                                            Xóa yêu cầu
+                                                       </Button>
+                                                  </>
+                                             )}
+                                        </div>
                                    </div>
                               </div>
-                         </div>
-                    ) : (
-                         <div className="text-center py-12">
-                              <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                              <p className="text-gray-600">Không tìm thấy thông tin yêu cầu hủy</p>
-                         </div>
-                    )}
-               </Modal>
-
-          </OwnerLayout >
+                         ) : (
+                              <div className="text-center py-12">
+                                   <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                   <p className="text-gray-600">Không tìm thấy thông tin yêu cầu hủy</p>
+                              </div>
+                         )}
+               </Modal >
+          </>
      );
 };
 

@@ -16,7 +16,6 @@ import { Button } from "../../../shared/components/ui";
 import { Card } from "../../../shared/components/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../shared/components/ui";
 import { DatePicker } from "../../../shared/components/ui";
-import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import { DemoRestrictedModal } from "../../../shared";
 
@@ -132,8 +131,7 @@ const RevenueReports = ({ isDemo = false }) => {
      };
 
      return (
-          <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
-               <div className="space-y-6">
+          <div className="space-y-6">
                     {/* Header */}
                     <div className="flex justify-between items-center">
                          <div>
@@ -506,7 +504,6 @@ const RevenueReports = ({ isDemo = false }) => {
                          featureName="Báo cáo doanh thu"
                     />
                </div>
-          </OwnerLayout>
      );
 };
 
