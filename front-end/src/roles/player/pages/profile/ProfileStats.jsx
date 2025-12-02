@@ -124,8 +124,7 @@ export default function ProfileStats({ user }) {
 
                     // Ensure all numeric values are actually numbers
                     const safeTotalBookings = Number(allStats.totalBookings) || 0;
-                    // Làm tròn tổng giờ chơi về số nguyên gần nhất
-                    const safeTotalHours = Math.round(Number(allStats.totalHours) || 0);
+                    const safeTotalHours = Number(allStats.totalHours) || 0;
                     const safeAverageRating = Number(allStats.averageRating) || 0;
                     const safeTotalSpent = Number(allStats.totalSpent) || 0;
 

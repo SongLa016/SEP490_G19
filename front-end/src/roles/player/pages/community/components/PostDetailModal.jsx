@@ -28,28 +28,6 @@ const PostDetailModal = ({
      const [replyContent, setReplyContent] = useState({});
      const [fieldDetails, setFieldDetails] = useState(null);
 
-     // Helper: yêu cầu đăng nhập trước khi thực hiện thao tác
-     const requireLogin = (actionLabel = "sử dụng tính năng này") => {
-          if (user) return true;
-
-          Swal.fire({
-               icon: "info",
-               title: "Yêu cầu đăng nhập",
-               text: `Vui lòng đăng nhập để ${actionLabel}.`,
-               showCancelButton: true,
-               confirmButtonText: "Đăng nhập",
-               cancelButtonText: "Hủy",
-               confirmButtonColor: "#0ea5e9",
-               cancelButtonColor: "#6b7280",
-          }).then((result) => {
-               if (result.isConfirmed) {
-                    window.location.href = "/login";
-               }
-          });
-
-          return false;
-     };
-
      useEffect(() => {
           if (isOpen && post) {
                loadComments();
@@ -138,9 +116,6 @@ const PostDetailModal = ({
      };
 
      const handleCommentSubmit = async () => {
-          if (!user) {
-               if (!requireLogin("bình luận")) return;
-          }
           if (!commentContent.trim()) return;
 
           const success = await onCommentSubmit?.(post.PostID, commentContent);
@@ -238,9 +213,6 @@ const PostDetailModal = ({
      };
 
      const handleReplySubmit = async (commentId) => {
-          if (!user) {
-               if (!requireLogin("trả lời bình luận")) return;
-          }
           const content = replyContent[commentId];
           if (!content || !content.trim()) return;
 
@@ -268,9 +240,6 @@ const PostDetailModal = ({
      };
 
      const handleReportComment = async (commentId) => {
-          if (!user) {
-               if (!requireLogin("báo cáo bình luận")) return;
-          }
           const reportPrompt = await Swal.fire({
                title: 'Báo cáo bình luận',
                input: 'textarea',
@@ -441,10 +410,7 @@ const PostDetailModal = ({
                               <Button
                                    variant="ghost"
                                    size="sm"
-                                   onClick={() => {
-                                        if (!requireLogin("thích bài viết")) return;
-                                        onLike?.(post.PostID);
-                                   }}
+                                   onClick={() => onLike?.(post.PostID)}
                                    className={`flex items-center hover:text-red-500 rounded-2xl hover:bg-pink-50 gap-2 ${post.isLiked ? 'text-red-500' : 'text-gray-500'}`}
                               >
                                    <Heart className={`w-5 h-5 ${post.isLiked ? 'fill-current' : ''}`} />
@@ -453,10 +419,6 @@ const PostDetailModal = ({
                               <Button
                                    variant="ghost"
                                    size="sm"
-                                   onClick={() => {
-                                        // Nếu chưa đăng nhập, yêu cầu đăng nhập khi bấm "Bình luận"
-                                        if (!requireLogin("bình luận bài viết")) return;
-                                   }}
                                    className="flex items-center hover:text-blue-500 rounded-2xl hover:bg-blue-50 gap-2 text-gray-500"
                               >
                                    <MessageCircle className="w-5 h-5" />
@@ -465,26 +427,22 @@ const PostDetailModal = ({
                               <Button
                                    variant="ghost"
                                    size="sm"
-                                   onClick={() => {
-                                        if (!requireLogin("chia sẻ bài viết")) return;
-                                        onRepost?.(post.PostID);
-                                   }}
+                                   onClick={() => onRepost?.(post.PostID)}
                                    className={`flex items-center hover:text-yellow-500 rounded-2xl hover:bg-yellow-50 gap-2 ${post.isReposted ? 'text-green-500' : 'text-gray-500'}`}
                               >
                                    <Share className="w-5 h-5" />
                                    <span>Chia sẻ</span>
                               </Button>
-                              <Button
-                                   variant="ghost"
-                                   size="sm"
-                                   onClick={() => {
-                                        if (!requireLogin("lưu bài viết")) return;
-                                        onBookmark?.(post.PostID);
-                                   }}
-                                   className={`flex items-center gap-2 ${post.isBookmarked ? 'text-yellow-500' : 'text-gray-500'}`}
-                              >
-                                   <Bookmark className={`w-5 h-5 ${post.isBookmarked ? 'fill-current' : ''}`} />
-                              </Button>
+                              {user && (
+                                   <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => onBookmark?.(post.PostID)}
+                                        className={`flex items-center gap-2 ${post.isBookmarked ? 'text-yellow-500' : 'text-gray-500'}`}
+                                   >
+                                        <Bookmark className={`w-5 h-5 ${post.isBookmarked ? 'fill-current' : ''}`} />
+                                   </Button>
+                              )}
                          </div>
                     </div>
 

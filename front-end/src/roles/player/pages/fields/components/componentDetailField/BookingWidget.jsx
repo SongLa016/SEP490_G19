@@ -13,6 +13,8 @@ export default function BookingWidget({
      rangeStart,
      rangeEnd,
      daysOfWeek,
+     currentWeeks,
+     minRecurringWeeks,
      recurringSummary,
      selectedSlotPrice = 0,
      minPrice = 0,
@@ -57,56 +59,6 @@ export default function BookingWidget({
      // Use the provided schedules only when a field is selected
      const displaySchedules = selectedField ? fieldSchedules : [];
      const displaySchedulesLoading = selectedField ? isLoadingSchedules : false;
-
-     // Tính trạng thái còn chỗ cho slot đang chọn & cho cả ngày dựa trên fieldSchedules
-     const { hasScheduleForSelectedSlot, isSelectedSlotAvailable, anyAvailableToday } = (() => {
-          if (!selectedField || !Array.isArray(fieldSchedules)) {
-               return {
-                    hasScheduleForSelectedSlot: false,
-                    isSelectedSlotAvailable: false,
-                    anyAvailableToday: false
-               };
-          }
-
-          // Chỉ tính là còn chỗ nếu status = Available và CHƯA qua giờ
-          let anyAvailable = fieldSchedules.some((s) => {
-               const startTime = s.startTime || s.StartTime || "";
-               const status = s.status || s.Status || "Available";
-               const past = isSlotInPast(startTime);
-               return status === "Available" && !past;
-          });
-
-          if (!selectedSlotId) {
-               return {
-                    hasScheduleForSelectedSlot: false,
-                    isSelectedSlotAvailable: false,
-                    anyAvailableToday: anyAvailable
-               };
-          }
-
-          const slotIdStr = String(selectedSlotId);
-          const relatedSchedules = fieldSchedules.filter((s) => {
-               const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
-               const startTime = s.startTime || s.StartTime || "";
-               const status = s.status || s.Status || "Available";
-               const past = isSlotInPast(startTime);
-               // Chỉ coi là hợp lệ nếu chưa qua giờ
-               return String(scheduleSlotId) === slotIdStr && !past && status === "Available";
-          });
-          if (!relatedSchedules.length) {
-               return {
-                    hasScheduleForSelectedSlot: false,
-                    isSelectedSlotAvailable: false,
-                    anyAvailableToday: anyAvailable
-               };
-          }
-          const isAvailable = relatedSchedules.length > 0;
-          return {
-               hasScheduleForSelectedSlot: true,
-               isSelectedSlotAvailable: isAvailable,
-               anyAvailableToday: anyAvailable
-          };
-     })();
      return (
           <Card className="bg-gradient-to-br from-white via-teal-50/30 to-white border border-teal-200/50 shadow-xl rounded-2xl lg:sticky lg:top-24">
                <CardContent className="p-6">
@@ -168,6 +120,7 @@ export default function BookingWidget({
                                              </div>
                                         ) : Array.isArray(displaySchedules) && displaySchedules.length > 0 ? (
                                              displaySchedules
+                                                  .filter(schedule => schedule.status === "Available")
                                                   .map((schedule) => {
                                                        const scheduleSlotId = schedule.slotId || schedule.SlotId;
                                                        const scheduleId = schedule.scheduleId || schedule.ScheduleId;
@@ -188,8 +141,8 @@ export default function BookingWidget({
                                                             : "";
 
                                                        const isPastSlot = isSlotInPast(startTime);
-                                                       const normalizedStatus = schedule.status || schedule.Status || "Available";
-                                                       const isDisabled = normalizedStatus !== "Available" || isPastSlot;
+
+                                                       const isDisabled = schedule.status !== "Available" || isPastSlot;
 
                                                        return (
                                                             <Button
@@ -217,7 +170,7 @@ export default function BookingWidget({
                                                   })
                                         ) : (
                                              <div className="col-span-2 text-center text-gray-500 text-sm py-4">
-                                                  Không có lịch trình cho sân này trong ngày được chọn
+                                                  Không có lịch trình khả dụng cho ngày này
                                              </div>
                                         )}
                                    </div>
@@ -233,16 +186,7 @@ export default function BookingWidget({
                                    </div>
                                    <div className="bg-gradient-to-br from-teal-50/50 to-emerald-50/50 border border-teal-200/50 rounded-xl p-3 shadow-sm">
                                         <div className="text-gray-600 text-xs mb-1">Sân nhỏ còn trống</div>
-                                        <div className="text-teal-700 font-bold text-sm">
-                                             {selectedField
-                                                  ? (
-                                                       selectedSlotId
-                                                            ? (isSelectedSlotAvailable ? 1 : 0)
-                                                            : (anyAvailableToday ? 1 : 0)
-                                                  )
-                                                  : 1
-                                             }/1
-                                        </div>
+                                        <div className="text-teal-700 font-bold text-sm">{selectedSlotId ? (selectedField?.isAvailableForSelectedSlot ? 1 : 0) : 1}/1</div>
                                    </div>
                               </div>
                               <div className="p-4 border rounded-xl bg-gradient-to-br from-teal-50/70 via-emerald-50/50 to-teal-50/70 border-teal-200/50 shadow-sm">
@@ -321,23 +265,21 @@ export default function BookingWidget({
                                                   style={{ transitionDelay: isRecurring ? "200ms" : "0ms" }}
                                              >
                                                   <div className="text-sm text-gray-600 mb-1">Ngày trong tuần</div>
-                                                  {!rangeStart || !rangeEnd ? (
-                                                       <div className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200">
-                                                            Vui lòng chọn ngày bắt đầu và ngày kết thúc trước.
-                                                       </div>
-                                                  ) : (
-                                                       <div className="flex flex-wrap gap-2">
-                                                            {daysOfWeek.map(d => (
-                                                                 <Button
-                                                                      key={d.id}
-                                                                      type="button"
-                                                                      onClick={() => onToggleDay(d.id)}
-                                                                      className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${repeatDays.includes(d.id) ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white border-teal-600 shadow-md" : "bg-white text-teal-800 border-teal-200 hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 hover:border-teal-300"}`}
-                                                                 >
-                                                                      {d.label}
-                                                                 </Button>
-                                                            ))}
-                                                       </div>
+                                                  <div className="flex flex-wrap gap-2">
+                                                       {daysOfWeek.map(d => (
+                                                            <Button
+                                                                 key={d.id}
+                                                                 type="button"
+                                                                 disabled={currentWeeks < minRecurringWeeks}
+                                                                 onClick={() => onToggleDay(d.id)}
+                                                                 className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${currentWeeks < minRecurringWeeks ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed" : repeatDays.includes(d.id) ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white border-teal-600 shadow-md" : "bg-white text-teal-800 border-teal-200 hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 hover:border-teal-300"}`}
+                                                            >
+                                                                 {d.label}
+                                                            </Button>
+                                                       ))}
+                                                  </div>
+                                                  {currentWeeks < minRecurringWeeks && (
+                                                       <div className="mt-1 text-xs text-red-600 bg-red-50 px-2 py-1 rounded-lg border border-red-200">Cần chọn khoảng ngày tối thiểu {minRecurringWeeks} tuần để chọn thứ.</div>
                                                   )}
                                              </div>
                                              {repeatDays.length > 0 && (

@@ -22,37 +22,14 @@ export function usePosts(user, refreshTrigger) {
                          fetchedPosts = await fetchNewsfeedPosts();
                     } catch (error) {
                          console.warn("Failed to fetch newsfeed, trying all posts:", error);
-                         // Fallback: lấy danh sách bài viết public (Active)
-                         fetchedPosts = await fetchPosts({
-                              pageNumber: 1,
-                              pageSize: 20,
-                              status: "Active",
-                         });
+                         fetchedPosts = await fetchPosts();
                     }
                } else {
                     try {
                          fetchedPosts = await fetchTrendingPosts();
                     } catch (error) {
                          console.warn("Failed to fetch trending, trying all posts:", error);
-                         // Fallback: lấy danh sách bài viết public (Active)
-                         fetchedPosts = await fetchPosts({
-                              pageNumber: 1,
-                              pageSize: 20,
-                              status: "Active",
-                         });
-                    }
-               }
-
-               // Nếu API trending/newsfeed trả về rỗng, tiếp tục fallback sang danh sách bài viết Active
-               if (!Array.isArray(fetchedPosts) || fetchedPosts.length === 0) {
-                    try {
-                         fetchedPosts = await fetchPosts({
-                              pageNumber: 1,
-                              pageSize: 20,
-                              status: "Active",
-                         });
-                    } catch (fallbackError) {
-                         console.warn("Fallback fetchPosts failed:", fallbackError);
+                         fetchedPosts = await fetchPosts();
                     }
                }
 

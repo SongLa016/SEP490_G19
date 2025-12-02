@@ -39,7 +39,7 @@ import {
      confirmBookingPackage,
      completeBookingPackage
 } from "../../../shared/services/bookings";
-import { fetchFieldScheduleById, updateFieldScheduleStatus } from "../../../shared/services/fieldSchedules";
+import { fetchFieldScheduleById } from "../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
 import axios from "axios";
 
@@ -294,15 +294,6 @@ const BookingManagement = ({ isDemo = false }) => {
                     }
 
                     if (confirmResult.success) {
-                         // Nếu booking có scheduleId, cập nhật trạng thái lịch trình thành "Booked"
-                         if (booking?.scheduleId) {
-                              try {
-                                   await updateFieldScheduleStatus(booking.scheduleId, "Booked");
-                              } catch (err) {
-                                   console.warn("⚠️ Không thể cập nhật trạng thái lịch trình sau khi xác nhận booking:", err);
-                              }
-                         }
-
                          // Reload bookings to get updated status from backend
                          await loadBookings();
 
