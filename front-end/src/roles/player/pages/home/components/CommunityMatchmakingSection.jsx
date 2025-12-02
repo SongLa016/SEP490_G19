@@ -1,10 +1,10 @@
 import { Button, Card, Section } from "../../../../../shared/components/ui";
-import { Users, Search, Trophy, Clock, MapPin } from "lucide-react";
+import { Users, Search, Clock, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ScrollReveal } from "../../../../../shared/components/ScrollReveal";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { fetchMatchRequests } from "../../../../../shared/services/matchRequests";
+import { fetchMatchRequests } from "../../../../../shared/services/matchRequest";
 
 export const CommunityMatchmakingSection = () => {
      const navigate = useNavigate();
@@ -31,7 +31,7 @@ export const CommunityMatchmakingSection = () => {
                try {
                     setLoading(true);
                     const result = await fetchMatchRequests({ page: 1, size: 10 });
-                    
+
                     if (result.success && result.data && Array.isArray(result.data)) {
                          // Helper function to get booking info
                          const getBookingInfo = (request) => {
@@ -43,7 +43,7 @@ export const CommunityMatchmakingSection = () => {
                                    slotName: booking.slotName || booking.time || "",
                               };
                          };
-                         
+
                          // Map API data to component format
                          const mappedPosts = result.data
                               .filter(request => {
@@ -54,11 +54,11 @@ export const CommunityMatchmakingSection = () => {
                               .slice(0, 3) // Limit to 3 posts
                               .map((request) => {
                                    const bookingInfo = getBookingInfo(request);
-                                   
+
                                    // Parse date and time
                                    const matchDate = request.matchDate || request.MatchDate || bookingInfo.date;
                                    const slotName = bookingInfo.slotName || request.startTime || "";
-                                   
+
                                    let timeDisplay = "Chưa xác định";
                                    if (matchDate) {
                                         try {
@@ -67,7 +67,7 @@ export const CommunityMatchmakingSection = () => {
                                                   const dayNames = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
                                                   const dayName = dayNames[date.getDay()];
                                                   const dateStr = date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-                                                  
+
                                                   if (slotName) {
                                                        timeDisplay = `${dayName}, ${dateStr} - ${slotName}`;
                                                   } else {
@@ -78,32 +78,32 @@ export const CommunityMatchmakingSection = () => {
                                              timeDisplay = "Chưa xác định";
                                         }
                                    }
-                                   
+
                                    // Get location
-                                   const location = bookingInfo.fieldAddress || 
-                                                  request.location ||
-                                                  request.address ||
-                                                  request.complexName ||
-                                                  "Chưa xác định";
-                                   
+                                   const location = bookingInfo.fieldAddress ||
+                                        request.location ||
+                                        request.address ||
+                                        request.complexName ||
+                                        "Chưa xác định";
+
                                    // Get team/player name
-                                   const teamName = request.creatorTeamName || 
-                                                  request.homeTeamName ||
-                                                  request.hostTeamName ||
-                                                  request.ownerName ||
-                                                  request.createdByName ||
-                                                  request.owner?.name ||
-                                                  request.createdBy ||
-                                                  "Người chơi";
-                                   
+                                   const teamName = request.creatorTeamName ||
+                                        request.homeTeamName ||
+                                        request.hostTeamName ||
+                                        request.ownerName ||
+                                        request.createdByName ||
+                                        request.owner?.name ||
+                                        request.createdBy ||
+                                        "Người chơi";
+
                                    // Calculate players needed
                                    const maxPlayers = request.maxPlayers || request.MaxPlayers || request.maxParticipants || 0;
                                    const currentPlayers = request.currentPlayers || request.CurrentPlayers || request.currentParticipants || 0;
                                    const playersNeeded = Math.max(0, maxPlayers - currentPlayers);
-                                   
+
                                    // Determine type based on request
                                    const type = playersNeeded > 0 ? "recruit" : "match";
-                                   
+
                                    return {
                                         id: request.requestId || request.RequestID || request.id || request.matchRequestId,
                                         teamName: teamName,
@@ -115,7 +115,7 @@ export const CommunityMatchmakingSection = () => {
                                         requestId: request.requestId || request.RequestID || request.id || request.matchRequestId,
                                    };
                               });
-                         
+
                          setMatchPosts(mappedPosts);
                     } else {
                          setMatchPosts([]);

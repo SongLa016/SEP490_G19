@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Users, Star, MessageSquare, Calendar, MapPin, Clock, AlertCircle, UserPlus, Info } from "lucide-react";
 import { Button, Modal, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, Input } from "./ui/index";
-import { createMatchRequestAPI } from "../services/matchRequests";
+import { createMatchRequestAPI } from "../services/matchRequest";
 import { fetchFieldScheduleById } from "../services/fieldSchedules";
 import { Link } from "react-router-dom";
 

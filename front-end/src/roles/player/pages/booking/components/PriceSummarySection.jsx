@@ -1,12 +1,70 @@
 export default function PriceSummarySection({
      bookingData,
      isRecurring,
-     recurringWeeks,
+     recurringWeeks, // Không dùng nữa, để tương thích
      selectedDays,
+     selectedSlotsByDay,
+     fieldSchedules,
      formatPrice
 }) {
-     const totalSessions = bookingData.totalSessions || (isRecurring ? (recurringWeeks * selectedDays.length) : 1);
-     const slotPrice = bookingData.price || 0;
+     const totalSessions = bookingData.totalSessions || 0;
+
+     // Lấy giá từ TimeSlots hoặc schedule đã chọn cho từng thứ
+     const getSlotPrice = (slotId) => {
+          if (!slotId) {
+               console.log("[PriceSummarySection] No slotId provided");
+               return bookingData.price || 0;
+          }
+
+          // Ưu tiên lấy từ TimeSlots (có giá chính xác)
+          if (Array.isArray(bookingData?.fieldTimeSlots) && bookingData.fieldTimeSlots.length > 0) {
+               const timeSlot = bookingData.fieldTimeSlots.find(s =>
+                    String(s.slotId || s.SlotId || s.slotID || s.SlotID) === String(slotId)
+               );
+               if (timeSlot) {
+                    const price = timeSlot.price || timeSlot.Price || timeSlot.unitPrice || timeSlot.UnitPrice || 0;
+                    console.log(`[PriceSummarySection] Found price for slotId ${slotId} from TimeSlot:`, price, timeSlot);
+                    return price;
+               } else {
+                    console.log(`[PriceSummarySection] TimeSlot not found for slotId ${slotId}, available slots:`, bookingData.fieldTimeSlots.map(s => s.slotId || s.SlotId));
+               }
+          } else {
+               console.log("[PriceSummarySection] No fieldTimeSlots available:", bookingData?.fieldTimeSlots);
+          }
+
+          // Fallback: lấy từ fieldSchedules nếu có
+          if (Array.isArray(fieldSchedules)) {
+               const schedule = fieldSchedules.find(s =>
+                    String(s.slotId || s.SlotId || s.slotID || s.SlotID) === String(slotId)
+               );
+               if (schedule) {
+                    const price = schedule.price || schedule.Price || schedule.unitPrice || schedule.UnitPrice || 0;
+                    console.log(`[PriceSummarySection] Found price for slotId ${slotId} from Schedule:`, price);
+                    return price;
+               }
+          }
+
+          console.log(`[PriceSummarySection] Using default price for slotId ${slotId}:`, bookingData.price || 0);
+          return bookingData.price || 0;
+     };
+
+     // Tính giá trung bình từ các slot đã chọn
+     const calculateAveragePrice = () => {
+          if (!isRecurring || !selectedSlotsByDay || Object.keys(selectedSlotsByDay).length === 0) {
+               return bookingData.price || 0;
+          }
+
+          const prices = Object.values(selectedSlotsByDay)
+               .map(slotId => getSlotPrice(slotId))
+               .filter(price => price > 0);
+
+          if (prices.length === 0) return bookingData.price || 0;
+
+          // Lấy giá đầu tiên (hoặc có thể tính trung bình)
+          return prices[0];
+     };
+
+     const slotPrice = isRecurring ? calculateAveragePrice() : (bookingData.price || 0);
      // Với đặt sân cố định, không áp dụng giảm giá/cọc ở bước này – subtotal chính là tổng giá
      const subtotal = isRecurring
           ? (bookingData.totalPrice || bookingData.subtotal || (slotPrice * (totalSessions || 1)))
@@ -32,7 +90,7 @@ export default function PriceSummarySection({
                                    <span className="mr-2">🎯</span>
                                    Số buổi
                               </span>
-                              <span className="font-medium">{bookingData.totalSessions || (recurringWeeks * selectedDays.length)} buổi</span>
+                              <span className="font-medium">{totalSessions} buổi</span>
                          </div>
                     )}
                     {isRecurring && (
@@ -104,4 +162,3 @@ export default function PriceSummarySection({
           </div>
      );
 }
-
