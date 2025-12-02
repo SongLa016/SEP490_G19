@@ -50,25 +50,21 @@ export async function fetchPricing() {
 
     for (const endpoint of endpoints) {
       try {
-        console.log(`Trying GET endpoint: ${endpoint}`);
         const response = await apiClient.get(endpoint);
 
         let data = response.data;
         if (Array.isArray(data)) {
-          console.log(`Success with endpoint: ${endpoint}`);
           return {
             success: true,
             data: data.map(normalizePricing),
           };
         } else if (data && Array.isArray(data.data)) {
-          console.log(`Success with endpoint: ${endpoint}`);
           return {
             success: true,
             data: data.data.map(normalizePricing),
           };
         }
       } catch (err) {
-        console.log(`Failed with endpoint: ${endpoint}`, err.response?.status);
         lastError = err;
         if (err.response?.status !== 404) {
           break;
@@ -109,9 +105,6 @@ export async function createPricing(pricingData) {
       slotId: parseInt(pricingData.slotId),
       price: parseFloat(pricingData.price),
     };
-
-    console.log("Creating pricing with payload:", payload);
-
     const endpoints = [
       `${BASE_URL}/FieldPrice`,
       `${BASE_URL}/fieldPrice`,
@@ -124,9 +117,7 @@ export async function createPricing(pricingData) {
 
     for (const endpoint of endpoints) {
       try {
-        console.log(`Trying POST endpoint: ${endpoint}`, payload);
         response = await apiClient.post(endpoint, payload);
-        console.log(`Success with POST endpoint: ${endpoint}`, response.data);
         break;
       } catch (err) {
         console.error(
@@ -182,9 +173,6 @@ export async function updatePricing(priceId, pricingData) {
       slotId: parseInt(pricingData.slotId),
       price: parseFloat(pricingData.price),
     };
-
-    console.log("Updating pricing with payload:", payload);
-
     const endpoints = [
       `${BASE_URL}/FieldPrice`,
       `${BASE_URL}/fieldPrice`,
@@ -197,9 +185,7 @@ export async function updatePricing(priceId, pricingData) {
 
     for (const endpoint of endpoints) {
       try {
-        console.log(`Trying PUT endpoint: ${endpoint}/${priceId}`, payload);
         response = await apiClient.put(`${endpoint}/${priceId}`, payload);
-        console.log(`Success with PUT endpoint: ${endpoint}`, response.data);
         break;
       } catch (err) {
         console.error(
@@ -251,9 +237,7 @@ export async function deletePricing(priceId) {
 
     for (const endpoint of endpoints) {
       try {
-        console.log(`Trying DELETE endpoint: ${endpoint}/${priceId}`);
         await apiClient.delete(`${endpoint}/${priceId}`);
-        console.log(`Success with DELETE endpoint: ${endpoint}`);
         success = true;
         break;
       } catch (err) {

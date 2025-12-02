@@ -21,9 +21,6 @@ export function useFieldSchedules(fieldId, selectedDate, enabled = true) {
                     console.warn('⚠️ [useFieldSchedules] No schedules data or invalid response:', result);
                     return [];
                }
-
-               console.log('✅ [useFieldSchedules] Fetched schedules:', result.data.length, 'schedules');
-
                // Helper function to normalize date for comparison
                const normalizeDate = (dateValue) => {
                     if (!dateValue) return "";
@@ -43,9 +40,6 @@ export function useFieldSchedules(fieldId, selectedDate, enabled = true) {
                     const normalizedScheduleDate = normalizeDate(scheduleDate);
                     return normalizedScheduleDate === normalizedSelectedDate;
                });
-
-               console.log('✅ [useFieldSchedules] Filtered schedules for date', normalizedSelectedDate, ':', filteredSchedules.length, 'schedules');
-
                return filteredSchedules;
           },
           enabled: enabled && !!fieldId,

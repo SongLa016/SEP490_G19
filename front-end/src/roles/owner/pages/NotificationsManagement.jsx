@@ -148,27 +148,20 @@ export default function NotificationsManagement({ isDemo = false }) {
                     targetId: formData.complexId ? parseInt(formData.complexId) : 0,
                     message: `${formData.title}\n\n${formData.message}`
                };
-
-               console.log('📝 [NotificationsManagement] Submitting notification:', notificationData);
-
                if (editingNotification) {
-                    console.log('📝 [NotificationsManagement] Updating notification:', editingNotification.notificationId);
                     const result = await updateNotification(editingNotification.notificationId, notificationData);
                     if (!result.ok) {
                          console.error('❌ [NotificationsManagement] Error updating:', result.reason);
                          alert('Không thể cập nhật thông báo: ' + result.reason);
                          return;
                     }
-                    console.log('✅ [NotificationsManagement] Updated successfully:', result);
                } else {
-                    console.log('📝 [NotificationsManagement] Creating new notification');
                     const result = await createNotification(notificationData);
                     if (!result.ok) {
                          console.error('❌ [NotificationsManagement] Error creating:', result.reason);
                          alert('Không thể tạo thông báo: ' + result.reason);
                          return;
                     }
-                    console.log('✅ [NotificationsManagement] Created successfully:', result);
                }
 
                setShowModal(false);
@@ -503,5 +496,4 @@ export default function NotificationsManagement({ isDemo = false }) {
           </OwnerLayout >
      );
 }
-
 

@@ -97,7 +97,6 @@ export default function Community() {
           }
      }, [user, activeTab]);
 
-
      useEffect(() => {
           // Brief loading indication when switching tabs
           window.scrollTo({
@@ -146,7 +145,6 @@ export default function Community() {
                {/* Main Content */}
                <div className="ml-0 md:ml-8 lg:ml-16 px-3 md:px-4 flex justify-center">
                     <div className="max-w-2xl w-full">
-
 
                          {/* Tabs với Underline Slide Animation */}
                          <motion.div
@@ -198,7 +196,6 @@ export default function Community() {
                          </motion.div>
 
                          {/* Post Creation Area - Only for logged users */}
-
 
                          {/* Content based on active tab với Smooth Transitions */}
                          <AnimatePresence mode="wait">

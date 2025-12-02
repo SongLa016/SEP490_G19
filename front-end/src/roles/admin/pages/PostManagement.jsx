@@ -88,10 +88,7 @@ export default function PostManagement() {
                          params.status = statusFilter;
                     }
                     // Nếu statusFilter === "all", không thêm params.status để API trả về tất cả
-
-                    console.log("[PostManagement] Fetching posts with params:", params);
                     result = await fetchPosts(params);
-                    console.log("[PostManagement] Received posts:", result?.length || 0, "posts");
                     if (result && result.length > 0) {
                          console.log("[PostManagement] Sample post statuses:", result.slice(0, 5).map(p => ({
                               id: p?.PostID ?? p?.postId ?? p?.id,
@@ -191,14 +188,9 @@ export default function PostManagement() {
                     });
 
                     const postId = post.PostID || post.postId || post.id;
-                    console.log("[PostManagement] Reviewing post with ID:", postId);
-
                     const reviewResult = await reviewPost(postId);
-                    console.log("[PostManagement] Review result:", reviewResult);
-
                     // Gửi thông báo cho Player (người tạo bài viết)
                     const authorId = getPostAuthorId(post);
-                    console.log("[PostManagement] Author ID for notification:", authorId, "Post:", post);
                     if (authorId) {
                          try {
                               const postTitle = getPostTitle(post);
@@ -208,9 +200,7 @@ export default function PostManagement() {
                                    targetId: Number(postId),
                                    message: `Bài viết "${postTitle}" của bạn đã được duyệt và đã được xuất bản.`
                               };
-                              console.log("[PostManagement] Sending notification with payload:", notificationPayload);
                               const notifResult = await createNotification(notificationPayload);
-                              console.log("[PostManagement] Notification result:", notifResult);
                               if (!notifResult?.ok) {
                                    console.error("[PostManagement] Notification failed:", notifResult?.reason);
                               }
@@ -295,8 +285,6 @@ export default function PostManagement() {
                     });
 
                     const postId = post.PostID || post.postId || post.id;
-                    console.log("[PostManagement] Rejecting post with ID:", postId);
-
                     // Call reviewPost with status "Rejected"
                     const payload = {
                          status: "Rejected"
@@ -307,11 +295,8 @@ export default function PostManagement() {
                     }
 
                     const rejectResult = await reviewPost(postId, payload);
-                    console.log("[PostManagement] Reject result:", rejectResult);
-
                     // Gửi thông báo cho Player (người tạo bài viết)
                     const authorId = getPostAuthorId(post);
-                    console.log("[PostManagement] Author ID for rejection notification:", authorId, "Post:", post);
                     if (authorId) {
                          try {
                               const postTitle = getPostTitle(post);
@@ -324,9 +309,7 @@ export default function PostManagement() {
                                    targetId: Number(postId),
                                    message: `Bài viết "${postTitle}" của bạn đã bị từ chối.${rejectionReason}`
                               };
-                              console.log("[PostManagement] Sending rejection notification with payload:", notificationPayload);
                               const notifResult = await createNotification(notificationPayload);
-                              console.log("[PostManagement] Rejection notification result:", notifResult);
                               if (!notifResult?.ok) {
                                    console.error("[PostManagement] Rejection notification failed:", notifResult?.reason);
                               }

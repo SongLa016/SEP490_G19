@@ -53,13 +53,10 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://sep490-g19-z
 // API functions
 export async function fetchCancellationPolicies(ownerId) {
   try {
-    console.log(`Fetching cancellation policies for ownerId: ${ownerId}`);
     const url = ownerId
       ? `${API_BASE_URL}/api/CancellationPolicy/owner/${ownerId}`
       : `${API_BASE_URL}/api/CancellationPolicy`;
     const response = await apiClient.get(url);
-    console.log("Cancellation policies response:", response.data);
-
     // Handle both array and single object responses
     const policies = Array.isArray(response.data)
       ? response.data
@@ -87,11 +84,9 @@ export async function fetchCancellationPolicies(ownerId) {
 
 export async function fetchCancellationPolicy(policyId) {
   try {
-    console.log(`Fetching cancellation policy ${policyId}`);
     const response = await apiClient.get(
       `${API_BASE_URL}/api/CancellationPolicy/${policyId}`
     );
-    console.log("Cancellation policy response:", response.data);
     const policy = response.data;
     
     if (!policy) return null;
@@ -121,14 +116,10 @@ export async function fetchCancellationPolicy(policyId) {
 export async function fetchCancellationPolicyByComplex(complexId) {
   try {
     const complexIdNum = Number(complexId);
-    console.log(`Fetching cancellation policy for complexId: ${complexIdNum}`);
-
     // Use the specific endpoint for complex-based query
     const response = await apiClient.get(
       `${API_BASE_URL}/api/CancellationPolicy/complex/${complexIdNum}`
     );
-    console.log("Cancellation policy response:", response.data);
-
     // Handle both array and single object responses
     const policy = Array.isArray(response.data)
       ? response.data[0]
@@ -162,7 +153,6 @@ export async function fetchCancellationPolicyByComplex(complexId) {
 
 export async function createCancellationPolicy(policyData) {
   try {
-    console.log("Creating cancellation policy with data:", policyData);
     const payload = {
       ownerId: policyData.ownerId,
       complexId: policyData.complexId,
@@ -172,12 +162,10 @@ export async function createCancellationPolicy(policyData) {
       cancellationFeePercentage: policyData.cancellationFeePercentage,
       isActive: policyData.isActive !== undefined ? policyData.isActive : true,
     };
-    console.log("Sending payload:", payload);
     const response = await apiClient.post(
       `${API_BASE_URL}/api/CancellationPolicy`,
       payload
     );
-    console.log("Create cancellation policy response:", response.data);
     const policy = response.data;
     return {
       policyId: policy.policyId || policy.PolicyID || policy.policyID,
@@ -199,7 +187,6 @@ export async function createCancellationPolicy(policyData) {
 
 export async function updateCancellationPolicy(policyId, policyData) {
   try {
-    console.log(`Updating cancellation policy ${policyId} with data:`, policyData);
     const payload = {
       ownerId: policyData.ownerId,
       complexId: policyData.complexId,
@@ -209,12 +196,10 @@ export async function updateCancellationPolicy(policyId, policyData) {
       cancellationFeePercentage: policyData.cancellationFeePercentage,
       isActive: policyData.isActive !== undefined ? policyData.isActive : true,
     };
-    console.log("Sending payload:", payload);
     const response = await apiClient.put(
       `${API_BASE_URL}/api/CancellationPolicy/${policyId}`,
       payload
     );
-    console.log("Update cancellation policy response:", response.data);
     const policy = response.data;
     return {
       policyId: policy.policyId || policy.PolicyID || policy.policyID,
@@ -236,11 +221,9 @@ export async function updateCancellationPolicy(policyId, policyData) {
 
 export async function deleteCancellationPolicy(policyId) {
   try {
-    console.log(`Deleting cancellation policy ${policyId}`);
     const response = await apiClient.delete(
       `${API_BASE_URL}/api/CancellationPolicy/${policyId}`
     );
-    console.log("Delete cancellation policy response:", response.data);
     return { success: true, data: response.data };
   } catch (error) {
     console.error("Error deleting cancellation policy:", error);

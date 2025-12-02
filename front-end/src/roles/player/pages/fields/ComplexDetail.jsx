@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { Container, Section, LoadingPage, LoadingSpinner } from "../../../../shared/components/ui";
 import { fetchComplexDetail, fetchTimeSlotsByField, fetchFieldDetail, fetchCancellationPolicyByComplex, fetchPromotionsByComplex, fetchPublicFieldSchedulesByField, fetchFieldTypes, fetchDepositPolicyByField } from "../../../../shared/index";
-import { fetchRatingsByComplex } from "../../../../shared/services/ratings";
+import { fetchRatingsByComplex, fetchRatingsByField } from "../../../../shared/services/ratings";
 import { normalizeFieldType } from "../../../../shared/services/fieldTypes";
 import { useFieldSchedules } from "../../../../shared/hooks";
 import BookingModal from "../../../../shared/components/BookingModal";
@@ -138,7 +138,7 @@ export default function ComplexDetail({ user }) {
                               return acc;
                          }, {});
                          if (DEBUG_COMPLEX_DETAIL) {
-                              console.log("✅ [ComplexDetail] Loaded fieldTypeMap:", map);
+
                          }
                          setFieldTypeMap(map);
                     }
@@ -542,8 +542,6 @@ export default function ComplexDetail({ user }) {
           setRepeatDays((prev) => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
      };
 
-
-
      const handleQuickBookField = async (fieldId) => {
           if (!user) {
                showToastMessage("Bạn cần đăng nhập để đặt sân.", 'warning');
@@ -571,7 +569,7 @@ export default function ComplexDetail({ user }) {
                if (schedulesResult.success && Array.isArray(schedulesResult.data)) {
                     fieldSchedules = schedulesResult.data;
                     if (DEBUG_COMPLEX_DETAIL) {
-                         console.log(`Đã lấy ${fieldSchedules.length} lịch trình cho sân ${fieldId}`);
+
                     }
                }
           } catch (error) {
@@ -658,7 +656,7 @@ export default function ComplexDetail({ user }) {
                     scheduleId = scheduleForSlot.scheduleId || scheduleForSlot.ScheduleId ||
                          scheduleForSlot.scheduleID || scheduleForSlot.ScheduleID || 0;
                          if (DEBUG_COMPLEX_DETAIL) {
-                              console.log("✅ [ComplexDetail] Tìm thấy scheduleId:", scheduleId, "từ schedule:", scheduleForSlot);
+
                          }
                } else {
                     console.warn("⚠️ [ComplexDetail] Không tìm thấy scheduleId từ fieldSchedules cho slotId:", selectedSlotId, "date:", selectedDate);
@@ -739,11 +737,7 @@ export default function ComplexDetail({ user }) {
                     // If we have mappedName, use it (especially if currentTypeName is empty)
                     if (mappedName && mappedName.trim() !== "") {
                     if (DEBUG_COMPLEX_DETAIL) {
-                         console.log("✅ [ComplexDetail] Mapped typeName for field:", {
-                              fieldId: field.fieldId,
-                              typeId: typeId,
-                              mappedName: mappedName
-                         });
+
                     }
                          return { ...field, typeName: mappedName, typeId: typeId };
                     } else if (field.fieldId === 32) {
@@ -776,11 +770,7 @@ export default function ComplexDetail({ user }) {
                if (mappedName && mappedName.trim() !== "") {
                     resolvedTypeName = mappedName;
                     if (DEBUG_COMPLEX_DETAIL) {
-                         console.log("✅ [ComplexDetail] Resolved typeName in selectedFieldForDisplay:", {
-                              fieldId: selectedField.fieldId,
-                              typeId: typeId,
-                              resolvedTypeName: resolvedTypeName
-                         });
+
                     }
                }
           }
@@ -802,7 +792,9 @@ export default function ComplexDetail({ user }) {
           }
      }, [selectedFieldId, selectedField, fields]);
 
-     // Lấy danh sách đánh giá cho cả khu sân qua API /api/ratings/complex/{complexId}
+     // Lấy danh sách đánh giá:
+     // - Nếu đang xem sân nhỏ (selectedFieldId), dùng /api/ratings/field/{fieldId}
+     // - Nếu đang xem cả khu sân, dùng /api/ratings/complex/{complexId}
      const complexIdForRatings = useMemo(() => {
           if (complex?.complexId) return complex.complexId;
           if (complex?.id) return complex.id;
@@ -811,7 +803,23 @@ export default function ComplexDetail({ user }) {
      }, [complex, id, isFieldRoute]);
 
      useEffect(() => {
-          const loadComplexRatings = async () => {
+          const loadRatings = async () => {
+               // Nếu đang xem một field cụ thể, lấy ratings theo fieldId
+               if (selectedFieldId) {
+                    setIsLoadingRatings(true);
+                    try {
+                         const ratings = await fetchRatingsByField(selectedFieldId);
+                         setFieldRatings(ratings || []);
+                    } catch (error) {
+                         console.error("Error loading field ratings:", error);
+                         setFieldRatings([]);
+                    } finally {
+                         setIsLoadingRatings(false);
+                    }
+                    return;
+               }
+
+               // Nếu không có selectedFieldId, lấy ratings theo complexId
                if (!complexIdForRatings) {
                     setFieldRatings([]);
                     return;
@@ -827,8 +835,8 @@ export default function ComplexDetail({ user }) {
                     setIsLoadingRatings(false);
                }
           };
-          loadComplexRatings();
-     }, [complexIdForRatings]);
+          loadRatings();
+     }, [selectedFieldId, complexIdForRatings]);
 
      // Map ratings từ API sang format dùng cho ReviewTabContent
      // JSON backend:

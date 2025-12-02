@@ -29,10 +29,7 @@ const ReplyModal = ({
           String(currentUserId) === String(postAuthorId);
 
      // Get username - check all possible fields
-     console.log('[ReplyModal] User object for username:', user);
      const displayUsername = user?.userName || user?.username || user?.Username || user?.name || user?.fullName || user?.FullName || "User";
-     console.log('[ReplyModal] Display username:', displayUsername);
-
      return (
           <Modal
                isOpen={isOpen}
@@ -111,7 +108,6 @@ const ReplyModal = ({
                                    />
                               </div>
                          </div>
-
 
                          <div className="flex justify-between items-center pb-2">
                               <div className="text-sm text-gray-500">

@@ -37,14 +37,6 @@ export async function uploadImageToCloudinary(imageFile, folder = 'posts') {
     const formData = new FormData();
     formData.append('file', imageFile);
     formData.append('folder', folder);
-
-    console.log("[uploadImageToCloudinary] Uploading image:", {
-      fileName: imageFile.name,
-      fileSize: imageFile.size,
-      fileType: imageFile.type,
-      folder: folder
-    });
-
     // Upload to backend API endpoint that handles Cloudinary upload
     const response = await axios.post(
       `${API_BASE_URL}/api/Upload/image`,
@@ -80,8 +72,6 @@ export async function uploadImageToCloudinary(imageFile, folder = 'posts') {
     if (!imageUrl) {
       throw new Error("Không thể lấy URL ảnh từ server.");
     }
-
-    console.log("[uploadImageToCloudinary] Upload successful:", imageUrl);
     return imageUrl;
   } catch (error) {
     console.error("[uploadImageToCloudinary] Upload error:", error);
@@ -126,7 +116,6 @@ export async function deleteImageFromCloudinary(imageUrl) {
 
     // Only delete if it's a Cloudinary URL
     if (!imageUrl.includes('cloudinary.com') && !imageUrl.includes('res.cloudinary.com')) {
-      console.log("[deleteImageFromCloudinary] Not a Cloudinary URL, skipping delete:", imageUrl);
       return;
     }
 
@@ -145,9 +134,6 @@ export async function deleteImageFromCloudinary(imageUrl) {
       console.warn("[deleteImageFromCloudinary] Could not extract public_id from URL:", imageUrl);
       return;
     }
-
-    console.log("[deleteImageFromCloudinary] Deleting image:", { imageUrl, publicId });
-
     // Call backend API to delete from Cloudinary
     await axios.delete(
       `${API_BASE_URL}/api/Upload/image`,
@@ -159,8 +145,6 @@ export async function deleteImageFromCloudinary(imageUrl) {
         },
       }
     );
-
-    console.log("[deleteImageFromCloudinary] Delete successful");
   } catch (error) {
     console.error("[deleteImageFromCloudinary] Delete error:", error);
     // Don't throw error for delete operations - just log it

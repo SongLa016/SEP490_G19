@@ -344,4 +344,3 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
      );
 }
 
-

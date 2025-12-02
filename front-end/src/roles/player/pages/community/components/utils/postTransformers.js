@@ -36,7 +36,6 @@ export async function normalizeFieldData(post, fieldId = null) {
 
           if (complexId) {
                try {
-                    console.log(`[normalizeFieldData] Fetching complex ${complexId} for address...`);
                     const complex = await fetchFieldComplex(complexId);
                     if (complex) {
                          address = complex.address || complex.Address || "";
@@ -68,7 +67,6 @@ export async function normalizeFieldData(post, fieldId = null) {
      } else if (finalFieldId && finalFieldId !== 0) {
           // Try to fetch field information if only fieldId is provided
           try {
-               console.log(`[normalizeFieldData] Fetching field detail for fieldId: ${finalFieldId}`);
                const fieldData = await fetchField(finalFieldId);
 
                if (fieldData) {

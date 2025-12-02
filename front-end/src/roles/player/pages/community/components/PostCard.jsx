@@ -111,8 +111,6 @@ const PostCard = ({
                               <p className="text-gray-900 whitespace-pre-wrap">{post.Content}</p>
                          </div>
 
-
-
                          {/* Media - Clickable */}
                          {post.MediaURL && (
                               <div

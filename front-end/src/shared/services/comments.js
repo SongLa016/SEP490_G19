@@ -251,19 +251,7 @@ export async function createComment(commentData) {
         content: commentData.content || "",
       };
     }
-
-    console.log("[createComment] Sending payload:", payload);
-    console.log("[createComment] Payload types:", {
-      postId: typeof payload.postId,
-      parentCommentId: payload.parentCommentId
-        ? typeof payload.parentCommentId
-        : "not included",
-      content: typeof payload.content,
-    });
-
     const response = await apiClient.post("/api/Comment", payload);
-    console.log("[createComment] Response:", response.data);
-    
     // Unwrap data if it's wrapped in { success: true, data: ... }
     const responseData = response.data;
     const resultData = (responseData && 'data' in responseData) ? responseData.data : responseData;
@@ -290,15 +278,11 @@ export async function fetchCommentsByPost(postId) {
   try {
     const response = await apiClient.get(`/api/Comment/post/${postId}`);
     let data = response.data;
-
-    console.log('[fetchCommentsByPost] Raw response:', response.data);
-
     // Handle different response formats
     if (!data) {
       return [];
     }
     if (Array.isArray(data)) {
-      console.log('[fetchCommentsByPost] First raw comment:', data[0]);
       return data.map(normalizeComment);
     }
     if (data && typeof data === "object") {
@@ -316,7 +300,6 @@ export async function fetchCommentsByPost(postId) {
     }
 
     if (data.length > 0) {
-      console.log('[fetchCommentsByPost] First raw comment:', data[0]);
     }
     return data.map(normalizeComment);
   } catch (error) {
@@ -333,8 +316,6 @@ export async function fetchCommentById(id) {
   try {
     const response = await apiClient.get(`/api/Comment/${id}`);
     let rawData = response.data;
-    console.log("[fetchCommentById] Raw response data:", rawData);
-    
     // Xử lý response có thể có cấu trúc {success: true, data: {...}} hoặc trực tiếp là comment object
     let commentData = rawData;
     if (rawData && rawData.data) {
@@ -342,11 +323,7 @@ export async function fetchCommentById(id) {
     } else if (rawData && rawData.success && rawData.data) {
       commentData = rawData.data;
     }
-    
-    console.log("[fetchCommentById] Comment data to normalize:", commentData);
     const normalized = normalizeComment(commentData);
-    console.log("[fetchCommentById] Normalized comment:", normalized);
-    
     // Lưu raw data vào normalized để có thể truy cập sau
     if (normalized) {
       normalized.rawData = rawData;

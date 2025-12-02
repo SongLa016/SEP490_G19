@@ -1,112 +1,20 @@
-import React, { Suspense, lazy } from "react";
-import { Routes, Route, Navigate, BrowserRouter, useLocation } from "react-router-dom";
+import React, { Suspense } from "react";
+import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ModalProvider } from "./contexts/ModalContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { routeConfig, demoRoutes, LoadingFallback } from "./shared/config/routes";
+import RouteGuard from "./shared/components/RouteGuard";
 import MainLayout from "./shared/layouts/MainLayout";
-import AuthLayout from "./shared/layouts/AuthLayout";
+import OwnerLayout from "./roles/owner/layouts/OwnerLayout";
 import AdminLayout from "./roles/admin/layouts/AdminLayout";
-import FieldSearch from "./roles/player/pages/fields/FieldSearch";
-const LoadingFallback = () => (
-  <div className="min-h-screen flex items-center justify-center">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
-  </div>
-);
+import AuthLayout from "./shared/layouts/AuthLayout";
+import { getDefaultPathForRole } from "./shared/constants/roles";
 
-const RedirectToAuth = () => {
-  const location = useLocation();
-  const redirectPath = `${location.pathname}${location.search}${location.hash}`;
-  return <Navigate to="/auth" replace state={{ from: redirectPath }} />;
-};
-
-// Lazy load pages for better performance
-const LandingPage = lazy(() => import("./pages/LandingPage"));
-const HomePage = lazy(() => import("./roles/player/pages/home/HomePage"));
-const Dashboard = lazy(() =>
-  import("./roles/player/pages/dashboard/Dashboard")
-);
-
-// Lazy load owner pages
-const OwnerDashboard = lazy(() => import("./roles/owner/pages/OwnerDashboard"));
-const FieldManagement = lazy(() =>
-  import("./roles/owner/pages/FieldManagement")
-);
-const PricingManagement = lazy(() =>
-  import("./roles/owner/pages/PricingManagement")
-);
-const BookingManagement = lazy(() =>
-  import("./roles/owner/pages/BookingManagement")
-);
-const RevenueReports = lazy(() => import("./roles/owner/pages/RevenueReports"));
-const ScheduleManagement = lazy(() =>
-  import("./roles/owner/pages/ScheduleManagement")
-);
-const CancellationPolicies = lazy(() =>
-  import("./roles/owner/pages/CancellationPolicies")
-);
-const DepositPolicies = lazy(() =>
-  import("./roles/owner/pages/DepositPolicies")
-);
-const PromotionsManagement = lazy(() =>
-  import("./roles/owner/pages/PromotionsManagement")
-);
-const PaymentTracking = lazy(() =>
-  import("./roles/owner/pages/PaymentTracking")
-);
-const NotificationsManagement = lazy(() =>
-  import("./roles/owner/pages/NotificationsManagement")
-);
-const TimeSlotManagement = lazy(() =>
-  import("./roles/owner/pages/TimeSlotManagement")
-);
-const FieldTypeManagement = lazy(() =>
-  import("./roles/owner/pages/FieldTypeManagement")
-);
-const BankAccountManagement = lazy(() =>
-  import("./roles/owner/pages/BankAccountManagement")
-);
-const ProfileSettings = lazy(() =>
-  import("./roles/owner/pages/ProfileSettings")
-);
-
-// Lazy load other player pages
-const BookingHistory = lazy(() =>
-  import("./roles/player/pages/booking/BookingHistory")
-);
-const ComplexDetail = lazy(() =>
-  import("./roles/player/pages/fields/ComplexDetail")
-);
-const Community = lazy(() =>
-  import("./roles/player/pages/community/Community")
-);
-
-// Profile Pages
-const ProfileIndex = lazy(() => import("./roles/player/pages/profile"));
-
-// Admin Pages
-const AdminDashboard = lazy(() =>
-  import("./roles/admin/pages/AdminDashboard")
-);
-const UserManagement = lazy(() =>
-  import("./roles/admin/pages/UserManagement")
-);
-const SystemNotificationsManagement = lazy(() =>
-  import("./roles/admin/pages/SystemNotificationsManagement")
-);
-const ViolationReportsManagement = lazy(() =>
-  import("./roles/admin/pages/ViolationReportsManagement")
-);
-const PostManagement = lazy(() =>
-  import("./roles/admin/pages/PostManagement")
-);
-const SystemSettings = lazy(() =>
-  import("./roles/admin/pages/SystemSettings")
-);
-const AdminProfileSettings = lazy(() =>
-  import("./roles/admin/pages/ProfileSettings")
-);
-
-// Demo Pages
+/**
+ * App Component - Refactored với route configuration
+ * Code sạch hơn, dễ maintain và mở rộng
+ */
 
 function AppContent() {
   const { user, isLoading, logout } = useAuth();
@@ -119,564 +27,127 @@ function AppContent() {
     );
   }
 
+  // Helper function to render route element
+  const renderRouteElement = (route) => {
+    const { element: Element, layout, allowedRoles, requireAuth = true, public: isPublic = false, isDemo = false } = route;
+    const elementProps = isDemo ? { isDemo: true } : { user };
+
+    // Get layout component
+    let LayoutComponent = null;
+    if (layout === "MainLayout") LayoutComponent = MainLayout;
+    else if (layout === "OwnerLayout") LayoutComponent = OwnerLayout;
+    else if (layout === "AdminLayout") LayoutComponent = AdminLayout;
+    else if (layout === "AuthLayout") LayoutComponent = AuthLayout;
+
+    // Render element with layout
+    const renderElement = () => {
+      if (LayoutComponent) {
+        if (layout === "AuthLayout") {
+          return (
+            <LayoutComponent>
+              <Suspense fallback={<LoadingFallback />}>
+                <Element />
+              </Suspense>
+            </LayoutComponent>
+          );
+        }
+        return (
+          <LayoutComponent user={user} onLoggedOut={logout}>
+            <Suspense fallback={<LoadingFallback />}>
+              <Element {...elementProps} />
+            </Suspense>
+          </LayoutComponent>
+        );
+      }
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <Element {...elementProps} />
+        </Suspense>
+      );
+    };
+
+    // Public routes
+    if (isPublic) {
+      return user ? (
+        <Navigate to={getDefaultPathForRole(user)} replace />
+      ) : (
+        renderElement()
+      );
+    }
+
+    // Protected routes with RouteGuard
+    return (
+      <RouteGuard allowedRoles={allowedRoles} requireAuth={requireAuth}>
+        {renderElement()}
+      </RouteGuard>
+    );
+  };
+
   return (
     <BrowserRouter>
       <Routes>
-        {/* Landing Page */}
-        <Route
-          path="/"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <LandingPage />
-            </Suspense>
-          }
-        />
-
-        {/* Auth Routes */}
+        {/* Auth Routes - Public, redirect if logged in */}
         <Route
           path="/auth"
-          element={user ? <Navigate to="/dashboard" replace /> : <AuthLayout />}
+          element={
+            user ? (
+              <Navigate to={getDefaultPathForRole(user)} replace />
+            ) : (
+              <AuthLayout />
+            )
+          }
         />
         <Route
           path="/login"
-          element={user ? <Navigate to="/dashboard" replace /> : <AuthLayout />}
+          element={
+            user ? (
+              <Navigate to={getDefaultPathForRole(user)} replace />
+            ) : (
+              <AuthLayout />
+            )
+          }
         />
         <Route
           path="/register"
-          element={user ? <Navigate to="/dashboard" replace /> : <AuthLayout />}
-        />
-
-        {/* Main App Routes */}
-        <Route
-          path="/home"
           element={
-            <MainLayout>
-              <Suspense fallback={<LoadingFallback />}>
-                <HomePage user={user} />
-              </Suspense>
-            </MainLayout>
+            user ? (
+              <Navigate to={getDefaultPathForRole(user)} replace />
+            ) : (
+              <AuthLayout />
+            )
           }
         />
+
+        {/* Main Routes from config */}
+        {routeConfig.map((route) => (
+          <Route
+            key={route.path}
+            path={route.path}
+            element={renderRouteElement(route)}
+          />
+        ))}
+
+        {/* Demo Routes */}
+        {demoRoutes.map((route) => (
+          <Route
+            key={route.path}
+            path={route.path}
+            element={
+              <Suspense fallback={<LoadingFallback />}>
+                <route.element isDemo={true} />
+              </Suspense>
+            }
+          />
+        ))}
+
+        {/* Dashboard redirect based on role */}
         <Route
           path="/dashboard"
           element={
             user ? (
-              user.roleName === "Admin" ? (
-                <Navigate to="/admin" replace />
-              ) : user.roleName === "Owner" ? (
-                <Navigate to="/owner" replace />
-              ) : (
-                <Suspense fallback={<LoadingFallback />}>
-                  <Dashboard user={user} />
-                </Suspense>
-              )
+              <Navigate to={getDefaultPathForRole(user)} replace />
             ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/demo"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <OwnerDashboard isDemo={true} />
-            </Suspense>
-          }
-        />
-
-        <Route
-          path="/demo/fields"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <FieldManagement isDemo={true} />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/demo/timeslots"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <TimeSlotManagement isDemo={true} />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/demo/pricing"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <PricingManagement isDemo={true} />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/demo/bookings"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <BookingManagement isDemo={true} />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/demo/reports"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <RevenueReports isDemo={true} />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/demo/schedule"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <ScheduleManagement isDemo={true} />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/demo/policies"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <CancellationPolicies isDemo={true} />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/demo/deposit-policies"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <DepositPolicies isDemo={true} />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/demo/promotions"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <PromotionsManagement isDemo={true} />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/demo/payments"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <PaymentTracking isDemo={true} />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/demo/notifications"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <NotificationsManagement isDemo={true} />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/demo/bank-accounts"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <BankAccountManagement isDemo={true} />
-            </Suspense>
-          }
-        />
-        <Route
-          path="/owner"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <OwnerDashboard />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/owner/fields"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <FieldManagement />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/owner/field-types"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <FieldTypeManagement />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/owner/timeslots"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <TimeSlotManagement />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/owner/schedule"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <ScheduleManagement />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/owner/pricing"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <PricingManagement />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/owner/bookings"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <BookingManagement />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/owner/reports"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <RevenueReports />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/owner/policies"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <CancellationPolicies />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/owner/deposit-policies"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <DepositPolicies />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/owner/promotions"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <PromotionsManagement />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/owner/notifications"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <NotificationsManagement />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/owner/bank-accounts"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <BankAccountManagement />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/owner/profile"
-          element={
-            user ? (
-              user.roleName === "Owner" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <ProfileSettings />
-                </Suspense>
-              ) : user.roleName === "Admin" ? (
-                <Navigate to="/admin/profile" replace />
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/search"
-          element={
-            <MainLayout>
-              <FieldSearch user={user} />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/complex/:id"
-          exact
-          element={
-            <MainLayout>
-              <Suspense fallback={<LoadingFallback />}>
-                <ComplexDetail user={user} />
-              </Suspense>
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/field/:id"
-          element={
-            <MainLayout>
-              <Suspense fallback={<LoadingFallback />}>
-                <ComplexDetail user={user} />
-              </Suspense>
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/bookings"
-          element={
-            <MainLayout>
-              <Suspense fallback={<LoadingFallback />}>
-                <BookingHistory user={user} />
-              </Suspense>
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/community"
-          element={
-            <Suspense fallback={<LoadingFallback />}>
-              <Community />
-            </Suspense>
-          }
-        />
-
-        {/* Admin Routes */}
-        <Route
-          path="/admin"
-          element={
-            user ? (
-              user.roleName === "Admin" ? (
-                <AdminLayout user={user} onLoggedOut={logout}>
-                  <AdminDashboard />
-                </AdminLayout>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/admin/users"
-          element={
-            user ? (
-              user.roleName === "Admin" ? (
-                <AdminLayout user={user} onLoggedOut={logout}>
-                  <UserManagement />
-                </AdminLayout>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/admin/notifications"
-          element={
-            user ? (
-              user.roleName === "Admin" ? (
-                <AdminLayout user={user} onLoggedOut={logout}>
-                  <SystemNotificationsManagement />
-                </AdminLayout>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/admin/violations"
-          element={
-            user ? (
-              user.roleName === "Admin" ? (
-                <AdminLayout user={user} onLoggedOut={logout}>
-                  <ViolationReportsManagement />
-                </AdminLayout>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/admin/posts"
-          element={
-            user ? (
-              user.roleName === "Admin" ? (
-                <AdminLayout user={user} onLoggedOut={logout}>
-                  <PostManagement />
-                </AdminLayout>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/admin/system-settings"
-          element={
-            user ? (
-              user.roleName === "Admin" ? (
-                <AdminLayout user={user} onLoggedOut={logout}>
-                  <SystemSettings />
-                </AdminLayout>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        <Route
-          path="/admin/profile"
-          element={
-            user ? (
-              user.roleName === "Admin" ? (
-                <Suspense fallback={<LoadingFallback />}>
-                  <AdminProfileSettings />
-                </Suspense>
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            ) : (
-              <RedirectToAuth />
-            )
-          }
-        />
-        {/* Profile Routes */}
-        <Route
-          path="/profile"
-          element={
-            user ? (
-              <MainLayout>
-                <ProfileIndex user={user} />
-              </MainLayout>
-            ) : (
-              <RedirectToAuth />
+              <Navigate to="/auth" replace />
             )
           }
         />

@@ -86,18 +86,10 @@ export default function UserManagement() {
                setLoading(true);
                setError(null);
                const result = await fetchAllUserStatistics();
-
-               console.log("API Result:", result);
-
                if (result.ok && result.data) {
-                    console.log("Raw API Data:", result.data);
-
                     // Check if data is an array or needs to be extracted
                     const usersData = Array.isArray(result.data) ? result.data :
                          (result.data.users || result.data.data || []);
-
-                    console.log("Users Data Array:", usersData);
-
                     // Transform API data to match component structure
                     // API returns: { userId, fullName, email, phone, roleName }
                     const transformedUsers = usersData.map(user => ({
@@ -117,8 +109,6 @@ export default function UserManagement() {
                               skillLevel: user.skillLevel || user.profile?.skillLevel || "N/A"
                          }
                     }));
-
-                    console.log("Transformed Users:", transformedUsers);
                     console.log("Roles in data:", transformedUsers.map(u => u.role));
 
                     setUsers(transformedUsers);
@@ -173,7 +163,6 @@ export default function UserManagement() {
      const handleEditUser = (user) => {
           setSelectedUser(user);
           // Implement edit functionality
-          console.log("Edit user:", user);
      };
 
      const handleCreateUser = () => {

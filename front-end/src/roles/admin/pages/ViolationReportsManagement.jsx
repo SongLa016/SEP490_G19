@@ -213,7 +213,6 @@ export default function ViolationReportsManagement() {
                     message: message
                };
 
-               console.log("[ViolationReportsManagement] Sending notification to reporter:", notificationPayload);
                const notifResult = await createNotification(notificationPayload);
                if (!notifResult?.ok) {
                     console.error("[ViolationReportsManagement] Failed to send notification to reporter:", notifResult?.reason);
@@ -229,8 +228,6 @@ export default function ViolationReportsManagement() {
                const targetType = getTargetType(report);
                const targetId = report?.targetId ?? report?.TargetId ?? 0;
 
-               console.log("[ViolationReportsManagement] sendNotificationToReportedUser - targetType:", targetType, "targetId:", targetId, "action:", action, "reportedUserId:", reportedUserId);
-
                if (!targetId) {
                     console.warn("[ViolationReportsManagement] Cannot send notification: Target ID not found");
                     return;
@@ -238,13 +235,12 @@ export default function ViolationReportsManagement() {
 
                // Nếu không có reportedUserId được truyền vào, thử fetch lại
                if (!reportedUserId) {
-                    console.log("[ViolationReportsManagement] reportedUserId is null, fetching target to get userId...");
+
                     if (targetType === "Post") {
                          try {
-                              console.log("[ViolationReportsManagement] Fetching post with ID:", targetId);
+
                               const post = await fetchPostById(targetId);
-                              console.log("[ViolationReportsManagement] Fetched post:", post);
-                              
+
                               // Thử nhiều cách lấy userId
                               reportedUserId = post?.userId ?? 
                                              post?.userID ?? 
@@ -266,11 +262,9 @@ export default function ViolationReportsManagement() {
                          }
                     } else if (targetType === "Comment") {
                          try {
-                              console.log("[ViolationReportsManagement] Fetching comment with ID:", targetId);
+
                               const comment = await fetchCommentById(targetId);
-                              console.log("[ViolationReportsManagement] Fetched comment:", comment);
-                              console.log("[ViolationReportsManagement] Comment author:", comment?.author);
-                              
+
                               // Thử nhiều cách lấy userId từ comment
                               // Ưu tiên lấy từ rawCommentData (data gốc từ API)
                               reportedUserId = comment?.rawCommentData?.userId ??
@@ -304,20 +298,18 @@ export default function ViolationReportsManagement() {
                                              comment?.rawData?.author?.userID ??
                                              comment?.rawData?.author?.UserID ??
                                              null;
-                              
-                              console.log("[ViolationReportsManagement] Extracted userId from comment:", reportedUserId);
+
                               console.log("[ViolationReportsManagement] Comment keys:", Object.keys(comment || {}));
                               if (comment?.author) {
-                                   console.log("[ViolationReportsManagement] Author object:", comment.author);
+
                                    console.log("[ViolationReportsManagement] Author keys:", Object.keys(comment.author));
-                                   console.log("[ViolationReportsManagement] Author.id:", comment.author.id);
-                                   console.log("[ViolationReportsManagement] Author.userId:", comment.author.userId);
+
                               }
                               if (comment?.rawData) {
-                                   console.log("[ViolationReportsManagement] Raw data:", comment.rawData);
+
                                    console.log("[ViolationReportsManagement] Raw data keys:", Object.keys(comment.rawData));
                                    if (comment.rawData.author) {
-                                        console.log("[ViolationReportsManagement] Raw author:", comment.rawData.author);
+
                                         console.log("[ViolationReportsManagement] Raw author keys:", Object.keys(comment.rawData.author));
                                    }
                               }
@@ -326,7 +318,7 @@ export default function ViolationReportsManagement() {
                          }
                     }
                } else {
-                    console.log("[ViolationReportsManagement] Using pre-fetched reportedUserId:", reportedUserId);
+
                }
 
                if (!reportedUserId) {
@@ -352,13 +344,12 @@ export default function ViolationReportsManagement() {
                     message: message
                };
 
-               console.log("[ViolationReportsManagement] Sending notification to reported user:", notificationPayload);
                const notifResult = await createNotification(notificationPayload);
-               console.log("[ViolationReportsManagement] Notification result:", notifResult);
+
                if (!notifResult?.ok) {
                     console.error("[ViolationReportsManagement] Failed to send notification to reported user:", notifResult?.reason);
                } else {
-                    console.log("[ViolationReportsManagement] Successfully sent notification to reported user:", reportedUserId);
+
                }
           } catch (error) {
                console.error("[ViolationReportsManagement] Error sending notification to reported user:", error);
@@ -389,9 +380,9 @@ export default function ViolationReportsManagement() {
                if (targetId) {
                     try {
                          if (targetType === "Post") {
-                              console.log("[ViolationReportsManagement] Pre-fetching post before action:", targetId);
+
                               const post = await fetchPostById(targetId);
-                              console.log("[ViolationReportsManagement] Pre-fetched post:", post);
+
                               reportedUserId = post?.userId ?? 
                                              post?.userID ?? 
                                              post?.UserID ??
@@ -401,9 +392,9 @@ export default function ViolationReportsManagement() {
                                              post?.author?.UserID ??
                                              null;
                          } else if (targetType === "Comment") {
-                              console.log("[ViolationReportsManagement] Pre-fetching comment before action:", targetId);
+
                               const comment = await fetchCommentById(targetId);
-                              console.log("[ViolationReportsManagement] Pre-fetched comment:", comment);
+
                               reportedUserId = comment?.userId ?? 
                                              comment?.userID ?? 
                                              comment?.UserID ??
@@ -413,7 +404,7 @@ export default function ViolationReportsManagement() {
                                              comment?.author?.UserID ??
                                              null;
                          }
-                         console.log("[ViolationReportsManagement] Pre-fetched reportedUserId:", reportedUserId);
+
                     } catch (error) {
                          console.error("[ViolationReportsManagement] Error pre-fetching target:", error);
                     }
@@ -447,7 +438,7 @@ export default function ViolationReportsManagement() {
                // Nếu trạng thái là "Resolved" và hành động là "Hide" hoặc "Delete", gửi thông báo cho người bị báo cáo
                // Luôn gọi hàm này, để hàm tự xử lý việc fetch userId nếu cần
                if (actionStatus === "Resolved" && (actionDecision === "Hide" || actionDecision === "Delete")) {
-                    console.log("[ViolationReportsManagement] Sending notification to reported user with reportedUserId:", reportedUserId);
+
                     await sendNotificationToReportedUser(selectedReport, actionDecision, actionNote.trim(), reportedUserId);
                }
 

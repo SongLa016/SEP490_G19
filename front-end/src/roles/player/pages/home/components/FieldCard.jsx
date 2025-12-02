@@ -111,7 +111,7 @@ export const FieldCard = ({ field, index = 0, hoveredCardId, setHoveredCardId })
                          </div>
                          <div className="mt-3 flex items-center justify-between">
                               <div className="flex items-center gap-2 text-gray-700">
-                                   <span className="inline-flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border text-[11px]">Slot: <span className="font-semibold text-teal-700">{field.availableSlots}</span></span>
+                                   <span className="inline-flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border text-[11px]">Số lượng: <span className="font-semibold text-teal-700">{field.availableSlots}</span></span>
                               </div>
                               <Button
                                    onClick={() => navigate('/search')}

@@ -579,9 +579,6 @@ export default function BookingModal({
                });
                return;
           }
-
-          console.log("✅ [GỬI GIỮ CHỖ] User validated - is a player:", { userRole, roleId, userId: user?.id || user?.userId });
-
           setIsProcessing(true);
           try {
                const booking = {
@@ -663,13 +660,8 @@ export default function BookingModal({
                     if (matchingSchedule) {
                          scheduleId = matchingSchedule.scheduleId || matchingSchedule.ScheduleId ||
                               matchingSchedule.scheduleID || matchingSchedule.ScheduleID || 0;
-                         console.log("✅ [GỬI GIỮ CHỖ] Tìm thấy scheduleId từ fieldSchedules:", scheduleId);
-                         console.log("✅ [GỬI GIỮ CHỖ] Matching schedule:", matchingSchedule);
                     } else {
                          console.warn("⚠️ [GỬI GIỮ CHỖ] Không tìm thấy scheduleId từ fieldSchedules, sẽ dùng 0 (backend tự tạo)");
-                         console.log("⚠️ [GỬI GIỮ CHỖ] fieldSchedules:", booking.fieldSchedules);
-                         console.log("⚠️ [GỬI GIỮ CHỖ] slotId:", booking.slotId);
-                         console.log("⚠️ [GỬI GIỮ CHỖ] date:", booking.date);
                     }
                } else if (!scheduleId) {
                     console.warn("⚠️ [GỬI GIỮ CHỖ] Không có fieldSchedules hoặc scheduleId, sẽ dùng 0 (backend tự tạo)");
@@ -688,8 +680,6 @@ export default function BookingModal({
                console.log("📤 [GỬI GIỮ CHỖ] Payload (Object):", bookingPayload);
 
                const apiResult = await createBookingAPI(bookingPayload);
-
-               console.log("✅ [GỬI GIỮ CHỖ] API Result:", apiResult);
                console.log("✅ [GỬI GIỮ CHỖ] API Result (JSON):", JSON.stringify(apiResult, null, 2));
 
                if (!apiResult.success) {
@@ -706,7 +696,6 @@ export default function BookingModal({
 
                // Lấy thông tin booking từ API response
                const bookingId = apiResult.data?.bookingID || apiResult.data?.bookingId || apiResult.data?.id;
-               console.log("✅ [GỬI GIỮ CHỖ] Booking ID:", bookingId);
                if (!bookingId) {
                     setIsProcessing(false);
                     await Swal.fire({

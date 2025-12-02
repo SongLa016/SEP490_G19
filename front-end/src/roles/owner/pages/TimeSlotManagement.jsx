@@ -26,7 +26,6 @@ import OwnerLayout from '../layouts/OwnerLayout';
 import { useAuth } from '../../../contexts/AuthContext';
 import Swal from 'sweetalert2';
 
-
 export default function TimeSlotManagement({ isDemo = false }) {
      // Use React Query hook for time slots with caching
      const { data: timeSlots = [], isLoading: loading, refetch: loadData } = useTimeSlots();

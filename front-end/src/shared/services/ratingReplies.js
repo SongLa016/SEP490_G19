@@ -155,13 +155,35 @@ export async function createRatingReply({ userId, ratingId, replyText }) {
       ratingId: rId,
       replyText: replyText || "",
     };
-
-    console.log("[createRatingReply] Sending payload:", payload);
-
     const response = await apiClient.post(`/api/RatingReply/${userId}/add`, payload);
     const responseData = response.data;
-    const resultData =
-      responseData && "data" in responseData ? responseData.data : responseData;
+    
+    // Xử lý trường hợp backend trả về string hoặc object
+    let resultData;
+    if (!responseData) {
+      // Nếu không có data, tạo reply object tối thiểu
+      resultData = {
+        ratingId: rId,
+        userId: userId,
+        replyText: replyText || "",
+        createdAt: new Date().toISOString(),
+      };
+    } else if (typeof responseData === "string") {
+      // Nếu backend trả về string (ví dụ: "Reply added successfully")
+      // Tạo reply object tối thiểu dựa trên payload
+      resultData = {
+        ratingId: rId,
+        userId: userId,
+        replyText: replyText || "",
+        createdAt: new Date().toISOString(),
+      };
+    } else if (typeof responseData === "object" && "data" in responseData) {
+      // Nếu backend trả về object có property "data"
+      resultData = responseData.data;
+    } else {
+      // Nếu backend trả về object trực tiếp
+      resultData = responseData;
+    }
 
     return normalizeRatingReply(resultData);
   } catch (error) {
@@ -222,13 +244,33 @@ export async function updateRatingReply(replyId, replyText) {
     const payload = {
       replyText: replyText || "",
     };
-
-    console.log("[updateRatingReply] Sending payload:", payload);
-
     const response = await apiClient.put(`/api/RatingReply/${id}/update`, payload);
     const responseData = response.data;
-    const resultData =
-      responseData && "data" in responseData ? responseData.data : responseData;
+    
+    // Xử lý trường hợp backend trả về string hoặc object
+    let resultData;
+    if (!responseData) {
+      // Nếu không có data, tạo reply object tối thiểu
+      resultData = {
+        replyId: id,
+        replyText: replyText || "",
+        updatedAt: new Date().toISOString(),
+      };
+    } else if (typeof responseData === "string") {
+      // Nếu backend trả về string (ví dụ: "Reply updated successfully")
+      // Tạo reply object tối thiểu dựa trên payload
+      resultData = {
+        replyId: id,
+        replyText: replyText || "",
+        updatedAt: new Date().toISOString(),
+      };
+    } else if (typeof responseData === "object" && "data" in responseData) {
+      // Nếu backend trả về object có property "data"
+      resultData = responseData.data;
+    } else {
+      // Nếu backend trả về object trực tiếp
+      resultData = responseData;
+    }
 
     return normalizeRatingReply(resultData);
   } catch (error) {
@@ -258,5 +300,4 @@ export async function deleteRatingReply(replyId) {
     handleApiError(error);
   }
 }
-
 

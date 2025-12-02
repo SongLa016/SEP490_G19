@@ -4,7 +4,6 @@ import {
      Home,
      Building2,
      ClipboardList,
-     FileText,
      Shield,
      CalendarCog,
      Bell,
@@ -73,11 +72,6 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
           };
      }, [isDemo]);
 
-     const formatFieldNamesPreview = (names = []) => {
-          if (names.length === 0) return "";
-          if (names.length <= 2) return names.join(", ");
-          return `${names.slice(0, 2).join(", ")} +${names.length - 2}`;
-     };
 
      const navigationItems = [
           { id: "owner", label: "Tổng quan", icon: Home, path: "/owner" },

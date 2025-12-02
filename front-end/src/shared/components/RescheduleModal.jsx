@@ -36,9 +36,6 @@ export default function RescheduleModal({
                     setErrors({ slots: "Không tìm thấy thông tin sân" });
                     return;
                }
-
-               console.log(`Fetching available slots for field ${booking.fieldId} on ${date}`);
-
                const result = await fetchAvailableSchedulesByFieldAndDate(booking.fieldId, date);
 
                if (result.success) {
@@ -70,8 +67,6 @@ export default function RescheduleModal({
                          const timeB = b.startTime || '00:00';
                          return timeA.localeCompare(timeB);
                     });
-
-                    console.log(`Found ${slots.length} available slots:`, slots);
                     setAvailableSlots(slots);
                } else {
                     console.error("Error fetching schedules:", result.error);

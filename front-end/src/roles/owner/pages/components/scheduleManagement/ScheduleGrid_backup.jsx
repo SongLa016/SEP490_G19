@@ -81,12 +81,9 @@ export default function ScheduleGrid({
                                         endTime: slot?.endTime || slot?.EndTime || '00:00',
                                         status: 'Available'
                                    };
-
-                                   console.log('Creating schedule with payload:', schedulePayload);
                                    const result = await createFieldSchedule(schedulePayload);
 
                                    if (result.success) {
-                                        console.log('Schedule created successfully:', result);
                                         Swal.fire({
                                              icon: 'success',
                                              title: 'Thành công',
@@ -96,7 +93,6 @@ export default function ScheduleGrid({
                                         });
                                         // Add small delay before reloading to ensure API has updated
                                         setTimeout(() => {
-                                             console.log('Reloading schedules after creating new schedule');
                                              onScheduleAdded();
                                         }, 300);
                                    } else {

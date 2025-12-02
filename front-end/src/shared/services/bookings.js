@@ -364,7 +364,6 @@ export async function createBooking(bookingData) {
       };
     }
 
-
     // Validate required fields
     if (!bookingData.userId) {
       return {
@@ -396,10 +395,7 @@ export async function createBooking(bookingData) {
       hasOpponent: Boolean(bookingData.hasOpponent ?? false),
     };
 
-
     const response = await apiClient.post(endpoint, payload);
-
-    
 
     return {
       success: true,
@@ -510,8 +506,6 @@ export async function generateQRCode(bookingId, options = {}) {
       params.toString() ? `?${params.toString()}` : ""
     }`;
 
-  
-
     const response = await apiClient.get(endpoint);
 
     return {
@@ -557,10 +551,7 @@ export async function generateQRCodeForRemaining(bookingId) {
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${numericBookingId}`;
 
-
     const response = await apiClient.get(endpoint);
-
-   
 
     return {
       success: true,
@@ -600,11 +591,7 @@ export async function confirmByOwner(bookingId) {
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-by-owner/${numericBookingId}`;
 
-   
-
     const response = await apiClient.put(endpoint);
-
-   
 
     return {
       success: true,
@@ -695,7 +682,6 @@ export async function fetchBookingsByOwner(ownerId) {
     }
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/owner/${ownerId}`;
-   
 
     const response = await apiClient.get(endpoint);
 
@@ -774,11 +760,8 @@ export async function fetchCancellationRequests() {
     const endpoint =
       "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe";
 
-    
     // Use apiClient instead of axios to ensure token is automatically included
     const response = await apiClient.get(endpoint);
-
-   
 
     return {
       success: true,
@@ -814,16 +797,12 @@ export async function fetchCancellationRequestById(cancellationId) {
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
 
-   
-
     const response = await axios.get(endpoint, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
     });
-
-  
 
     return {
       success: true,
@@ -856,8 +835,6 @@ export async function confirmCancellation(cancellationId) {
   try {
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/confirm/${cancellationId}`;
 
-  
-
     const response = await axios.put(
       endpoint,
       {},
@@ -869,15 +846,12 @@ export async function confirmCancellation(cancellationId) {
       }
     );
 
-  
-
     return {
       success: true,
       data: response.data,
       message: "Đã xác nhận hủy booking",
     };
   } catch (error) {
-  
 
     if (error.response) {
       return {
@@ -901,8 +875,6 @@ export async function confirmCancellation(cancellationId) {
 export async function deleteCancellationRequest(cancellationId) {
   try {
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
-
-
 
     await axios.delete(endpoint, {
       headers: {

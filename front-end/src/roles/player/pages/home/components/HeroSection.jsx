@@ -4,7 +4,6 @@ import { gsap } from "gsap";
 import { Search } from "lucide-react";
 import { Container, Section, Card, CardContent, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../../../shared/components/ui";
 
-
 export const HeroSection = ({
      searchQuery,
      setSearchQuery,

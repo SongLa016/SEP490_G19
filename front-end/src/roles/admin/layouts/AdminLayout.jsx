@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
      Home,
      Users,
@@ -11,7 +11,6 @@ import {
      ChevronLeft,
      ChevronRight,
      Shield,
-     Settings,
      User,
 } from "lucide-react";
 import { Button } from "../../../shared/components/ui";

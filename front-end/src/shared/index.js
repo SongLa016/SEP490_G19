@@ -57,4 +57,22 @@ export * from "./utils/bookingStore";
 export * from "./utils/cancellationCalculator";
 export * from "./utils/communityStore";
 export * from "./utils/demoData";
-export * from "./utils/roleMapping";
+// Export roleMapping with specific exports to avoid conflicts with authStore
+// Note: hasRole and hasAnyRole are already exported from authStore, so we don't export them from roleMapping
+export { roleMapping } from "./utils/roleMapping";
+export {
+  getRoleById,
+  getRoleByName,
+  getRoleDisplayName,
+  getRoleColor,
+  isValidRoleId,
+  isValidRoleName,
+  getAllRoles,
+  ROLES,
+  isPlayer,
+  isOwner,
+  isAdmin,
+  getDefaultPathForRole,
+  // hasRole and hasAnyRole are NOT exported here to avoid conflict with authStore
+  // Use from authStore or import directly from constants/roles if needed
+} from "./utils/roleMapping";

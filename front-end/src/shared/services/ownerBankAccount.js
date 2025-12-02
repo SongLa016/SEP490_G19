@@ -170,8 +170,6 @@ const handleApiError = (error, operation = '') => {
 export async function fetchOwnerBankAccounts(ownerId) {
   try {
     const ownerIdNum = Number(ownerId);
-    console.log(`Fetching bank accounts for ownerId: ${ownerIdNum}`);
-
     // Try different endpoint variations
     const endpoints = [
       `/api/OwnerBankAccount/${ownerIdNum}`,
@@ -184,16 +182,9 @@ export async function fetchOwnerBankAccounts(ownerId) {
 
     for (const endpoint of endpoints) {
       try {
-        console.log(`Trying GET endpoint: ${endpoint}`);
         response = await apiClient.get(endpoint);
-        console.log(`Success with GET endpoint: ${endpoint}`);
-        console.log("Bank accounts response:", response.data);
         break;
       } catch (err) {
-        console.log(
-          `Failed with GET endpoint: ${endpoint}`,
-          err.response?.status
-        );
         lastError = err;
         // If it's not a 404, stop trying other endpoints
         if (err.response?.status !== 404) {
@@ -252,7 +243,6 @@ export async function fetchBankAccount(bankAccountId) {
 
 export async function createOwnerBankAccount(accountData) {
   try {
-    console.log("Creating bank account with data:", accountData);
     const payload = {
       ownerId: accountData.ownerId,
       bankName: accountData.bankName,
@@ -261,12 +251,10 @@ export async function createOwnerBankAccount(accountData) {
       accountHolder: accountData.accountHolder,
       isDefault: accountData.isDefault || false,
     };
-    console.log("Sending payload:", payload);
     const response = await apiClient.post(
       "/api/OwnerBankAccount",
       payload
     );
-    console.log("Create bank account response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error creating bank account:", error);
@@ -294,11 +282,9 @@ export async function updateOwnerBankAccount(bankAccountId, accountData) {
 
 export async function deleteOwnerBankAccount(bankAccountId) {
   try {
-    console.log(`Deleting bank account with ID: ${bankAccountId}`);
     const response = await apiClient.delete(
       `/api/OwnerBankAccount/${bankAccountId}`
     );
-    console.log("Delete bank account response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error deleting bank account:", error);

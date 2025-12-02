@@ -90,7 +90,6 @@ export default function FindOpponentModal({
                               setScheduleData(result.data);
                               const calculatedHours = calculateExpiresInHours(result.data);
                               setExpiresInHours(calculatedHours);
-                              console.log("📅 [FindOpponentModal] Loaded schedule data:", result.data);
                          } else {
                               console.warn("Could not fetch schedule data:", result.error);
                               // Default to "auto" mode (24h fallback)

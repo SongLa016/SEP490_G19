@@ -43,8 +43,6 @@ const PostDetailModal = ({
           try {
                // Fetch all fields using the same service as FieldSelectionModal
                const allFields = await fetchFields();
-               console.log('[PostDetailModal] All fields loaded, searching for fieldId:', fieldId);
-
                // Find the specific field by ID
                const field = allFields.find(f =>
                     f.fieldId === fieldId ||
@@ -54,7 +52,6 @@ const PostDetailModal = ({
                );
 
                if (field) {
-                    console.log('[PostDetailModal] Found field:', field);
                     setFieldDetails(field);
                } else {
                     console.warn('[PostDetailModal] Field not found with ID:', fieldId);
@@ -70,24 +67,17 @@ const PostDetailModal = ({
           setLoading(true);
           try {
                const fetchedComments = await fetchCommentsByPost(post.PostID);
-               console.log('[PostDetailModal] Fetched comments:', fetchedComments);
-
                // Fetch user info for each comment if author info is missing
                const commentsWithUserInfo = await Promise.all(
                     fetchedComments.map(async (comment) => {
                          // Check if author info is missing or empty (empty string counts as missing)
                          const hasAuthorInfo = comment.author?.name && comment.author.name.trim() !== '' &&
                               comment.author?.username && comment.author.username.trim() !== '';
-
-                         console.log('[PostDetailModal] Comment', comment.id, 'hasAuthorInfo:', hasAuthorInfo, 'author:', comment.author);
-
                          if (!hasAuthorInfo && comment.userId) {
                               try {
-                                   console.log('[PostDetailModal] Fetching user data for userId:', comment.userId);
                                    const userResponse = await fetch(`https://sep490-g19-zxph.onrender.com/api/User/${comment.userId}`);
                                    if (userResponse.ok) {
                                         const userData = await userResponse.json();
-                                        console.log('[PostDetailModal] Fetched user data for userId', comment.userId, ':', userData);
                                         return {
                                              ...comment,
                                              userName: userData.userName || userData.username || userData.Username || userData.fullName || userData.FullName,
@@ -108,8 +98,6 @@ const PostDetailModal = ({
                          return comment;
                     })
                );
-
-               console.log('[PostDetailModal] Comments with user info:', commentsWithUserInfo);
                setComments(commentsWithUserInfo || []);
           } catch (error) {
                console.error("Error loading comments:", error);

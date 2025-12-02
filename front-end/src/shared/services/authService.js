@@ -82,18 +82,6 @@ export const authService = {
       if (userData.avatar) {
         formData.append("Avatar", userData.avatar);
       }
-      console.log(
-        "Register API URL:",
-        "https://sep490-g19-zxph.onrender.com/api/Register/send-otp"
-      );
-      console.log("Register data:", {
-        email: userData.email,
-        fullName: userData.fullName,
-        roleName: userData.roleName,
-        phone: userData.phone,
-        hasAvatar: !!userData.avatar,
-      });
-
       const response = await apiClient.post(
         "https://sep490-g19-zxph.onrender.com/api/Register/send-otp",
         formData,
@@ -123,11 +111,6 @@ export const authService = {
   // Verify OTP
   async verifyOtp(email, otp) {
     try {
-      console.log(
-        "Verify OTP API URL:",
-        "https://sep490-g19-zxph.onrender.com/api/Register/verify-otp"
-      );
-
       const response = await apiClient.post(
         "https://sep490-g19-zxph.onrender.com/api/Register/verify-otp",
         {
@@ -153,14 +136,10 @@ export const authService = {
   // Get user role from database when JWT doesn't contain role info
   async getUserRoleFromDatabase(userID) {
     try {
-      console.log("🔍 Fetching role from database for UserID:", userID);
-
       // Call API to get user role information
       const response = await apiClient.get(
         `https://sep490-g19-zxph.onrender.com/api/Users/get-role/${userID}`
       );
-      console.log("🔍 Database role response:", response.data);
-
       return response.data;
     } catch (error) {
       console.error("❌ Error fetching role from database:", error);
@@ -172,15 +151,7 @@ export const authService = {
   async loginUser(credentials) {
     try {
       const loginUrl = "https://sep490-g19-zxph.onrender.com/api/Login/login";
-      console.log("Login API URL:", loginUrl);
-      console.log("Login data:", {
-        phone: credentials.phone,
-        hasPassword: !!credentials.password,
-      });
-
       // Test connection first
-      console.log("Testing connection to:", loginUrl);
-
       const response = await apiClient.post(
         "https://sep490-g19-zxph.onrender.com/api/Login/login",
         {
@@ -188,9 +159,6 @@ export const authService = {
           password: credentials.password,
         }
       );
-
-      console.log("Login response:", response.data);
-
       // Decode JWT token to get user info
       const token = response.data.token || response.data.accessToken;
       let userData = null;
@@ -199,11 +167,6 @@ export const authService = {
         try {
           // Decode JWT payload (without verification for now)
           const payload = JSON.parse(atob(token.split(".")[1]));
-          console.log("🔍 JWT Payload:", payload);
-          console.log("🔍 Raw Role from JWT:", payload.Role);
-          console.log("🔍 Raw RoleID from JWT:", payload.RoleID);
-          console.log("🔍 Raw RoleName from JWT:", payload.RoleName);
-
           // Extract role information from JWT token (backend format)
           let roleID, roleName;
 
@@ -246,16 +209,6 @@ export const authService = {
                 ? payload.EmailVerified
                 : true,
           };
-
-          console.log("🔍 Final UserData from JWT token:", userData);
-          console.log(
-            "✅ Role successfully extracted from token:",
-            roleID,
-            "→",
-            roleName
-          );
-
-          console.log("🔍 Final UserData:", userData);
         } catch (error) {
           console.error("Error decoding JWT token:", error);
           // Fallback to basic user data - only if JWT decode fails
@@ -290,12 +243,6 @@ export const authService = {
   // Google Login
   async loginWithGoogle(email, name) {
     try {
-      console.log(
-        "Google Login API URL:",
-        "https://sep490-g19-zxph.onrender.com/api/Login/login-google"
-      );
-      console.log("Google Login data:", { email, name });
-
       const response = await apiClient.post(
         "https://sep490-g19-zxph.onrender.com/api/Login/login-google",
         {
@@ -303,9 +250,6 @@ export const authService = {
           name: name,
         }
       );
-
-      console.log("Google Login response:", response.data);
-
       const token = response.data.token || response.data.accessToken;
       let userData = null;
 
@@ -357,18 +301,6 @@ export const authService = {
                 ? payload.EmailVerified
                 : false, // Google login might not be verified
           };
-
-          console.log(
-            "🔍 Google Login - Final UserData from JWT token:",
-            userData
-          );
-          console.log(
-            "✅ Google Login - Role successfully extracted from token:",
-            roleID,
-            "→",
-            roleName
-          );
-          console.log("Decoded user data from Google token:", userData);
         } catch (error) {
           console.error("Error decoding JWT token:", error);
           userData = {
@@ -399,11 +331,6 @@ export const authService = {
   // Resend OTP
   async resendOtp(email) {
     try {
-      console.log(
-        "Resend OTP API URL:",
-        "https://sep490-g19-zxph.onrender.com/api/Register/resend-otp"
-      );
-
       const response = await apiClient.post(
         "https://sep490-g19-zxph.onrender.com/api/Register/resend-otp",
         { email }

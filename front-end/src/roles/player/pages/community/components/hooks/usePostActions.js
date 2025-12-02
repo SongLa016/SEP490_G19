@@ -31,7 +31,6 @@ export function usePostActions(user, posts, setPosts) {
                if (imageFile) {
                     // Send File directly to API (API will upload to Cloudinary)
                     imageFiles = imageFile;
-                    console.log("[handlePostSubmit] Sending image file directly to API");
                } else if (editingPost) {
                     // When editing, handle different cases:
                     // - imageFile === null: Image was explicitly removed
@@ -121,14 +120,6 @@ export function usePostActions(user, posts, setPosts) {
                     }
                     // If no URL from API, and we uploaded a file, we can't show it immediately unless we use the local preview
                     // But for now, let's rely on API response. If API didn't return URL, it might be processing.
-                    
-                    console.log("[usePostActions] New post created:", {
-                         id: newPost.id,
-                         title: newPost.title,
-                         mediaUrl: mediaUrl,
-                         imageFiles: newPost.imageFiles
-                    });
-                    
                     const transformedPost = {
                          PostID: newPost.id || newPost.postId,
                          UserID: newPost.userId,
@@ -224,7 +215,6 @@ export function usePostActions(user, posts, setPosts) {
                     if (postToDelete?.MediaURL) {
                          try {
                               await deleteImageFromCloudinary(postToDelete.MediaURL);
-                              console.log("[handleDeletePost] Image deleted from Cloudinary");
                          } catch (deleteError) {
                               console.warn("[handleDeletePost] Failed to delete image from Cloudinary:", deleteError);
                               // Don't throw error - post is already deleted
@@ -253,7 +243,6 @@ export function usePostActions(user, posts, setPosts) {
                }
           }
      };
-
 
      return {
           editingPost,

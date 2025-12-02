@@ -8,7 +8,6 @@ import Login from '../../auth/Login';
 import Register from '../../auth/Register';
 import { ArrowLeft } from 'lucide-react';
 
-
 export default function Auth() {
      const [tab, setTab] = useState('login'); // login | register
      const { login } = useAuth();
@@ -16,9 +15,6 @@ export default function Auth() {
      const location = useLocation();
 
      const handleLoggedIn = (user) => {
-          console.log("User logged in:", user);
-          console.log("User role:", user?.roleName);
-
           login(user);
 
           const redirectedFrom = location.state?.from;
@@ -30,8 +26,6 @@ export default function Auth() {
           // Redirect based on user role using Link
           if (user && user.roleName) {
                const role = user.roleName.toLowerCase();
-               console.log("Redirecting based on role:", role);
-
                switch (role) {
                     case 'admin':
                          navigate('/admin');
@@ -46,7 +40,6 @@ export default function Auth() {
                }
           } else {
                // Fallback to home if no role (treat as Player)
-               console.log("No role found, redirecting to Player home");
                navigate('/home');
           }
      };
@@ -132,5 +125,4 @@ export default function Auth() {
           </div>
      );
 }
-
 

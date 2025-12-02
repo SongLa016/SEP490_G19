@@ -227,7 +227,6 @@ const RevenueReports = ({ isDemo = false }) => {
                                    </Select>
                               </div>
 
-
                          </div>
                          <div className="flex justify-end items-end mt-4">
                               <Button

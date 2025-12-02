@@ -144,7 +144,6 @@ export default function OwnerDashboard({ isDemo = false }) {
                // Cập nhật stats
                // Debug: Log API response để kiểm tra format
                if (totalBookingsResult.ok && totalBookingsResult.data) {
-                    console.log('[OwnerDashboard] Total Bookings API Response:', totalBookingsResult.data);
                }
 
                const newStats = {
@@ -638,5 +637,4 @@ export default function OwnerDashboard({ isDemo = false }) {
           </OwnerLayout>
      );
 }
-
 

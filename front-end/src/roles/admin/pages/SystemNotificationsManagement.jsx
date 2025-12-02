@@ -105,8 +105,6 @@ export default function SystemNotificationsManagement() {
      const loadNotifications = useCallback(async (options = {}) => {
           try {
                setLoading(true);
-               console.log("📋 [SystemNotificationsManagement] Loading notifications from API...");
-
                const targetType = options.type || typeFilter;
                let result;
 
@@ -115,19 +113,9 @@ export default function SystemNotificationsManagement() {
                } else {
                     result = await getNotifications({ page: 1, pageSize: 100 });
                }
-
-               console.log("📋 [SystemNotificationsManagement] API Response:", result);
-
                if (result.ok) {
                     // Parse response data - API có thể trả về nhiều format
                     const notificationsData = parseApiData(result.data ?? result.raw);
-
-                    console.log("✅ [SystemNotificationsManagement] Parsed notifications:", {
-                         count: notificationsData.length,
-                         sample: notificationsData[0],
-                         allData: notificationsData
-                    });
-
                     // Nếu không có data, thử dùng mock data để test UI
                     if (notificationsData.length === 0) {
                          console.warn("⚠️ [SystemNotificationsManagement] No notifications from API, using mock data for testing");
@@ -244,9 +232,6 @@ export default function SystemNotificationsManagement() {
                     targetId: newNotification.targetId || 0, // 0 if not applicable
                     message: newNotification.message.trim()
                };
-
-               console.log("📝 [SystemNotificationsManagement] Creating notification:", notificationData);
-
                const result = await createNotification(notificationData);
 
                if (result.ok) {
@@ -271,7 +256,6 @@ export default function SystemNotificationsManagement() {
           }
      };
 
-
      const handleDeleteNotification = async (notification) => {
           // Kiểm tra role Admin
           if (user?.roleName !== "Admin") {
@@ -288,8 +272,6 @@ export default function SystemNotificationsManagement() {
 
           try {
                setLoading(true);
-               console.log("🗑️ [SystemNotificationsManagement] Deleting notification:", notificationId);
-
                const result = await deleteNotification(notificationId);
 
                if (result.ok) {
@@ -330,7 +312,6 @@ export default function SystemNotificationsManagement() {
                setLoading(false);
           }
      };
-
 
      const handleViewNotification = (notification) => {
           setSelectedNotification(notification);
@@ -544,8 +525,6 @@ export default function SystemNotificationsManagement() {
                          </div>
                     </div>
                </div>
-
-
 
                {/* Filters */}
                <Card className="p-6 rounded-2xl shadow-lg">

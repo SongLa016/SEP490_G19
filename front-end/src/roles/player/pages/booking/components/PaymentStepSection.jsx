@@ -99,7 +99,6 @@ export default function PaymentStepSection({
                                                   alt="QR thanh toán"
                                                   className="w-72 h-[350px]"
                                                   onError={(e) => {
-                                                       console.log('❌ QR image failed to load');
                                                        e.target.src = bookingInfo.qrCodeUrl + '&force=' + Date.now();
                                                   }}
                                              />

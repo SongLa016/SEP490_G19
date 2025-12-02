@@ -93,11 +93,6 @@ export function getCurrentUserFromToken() {
 export function isPostOwner(post) {
   const currentUser = getCurrentUserFromToken();
   if (!currentUser || !post) {
-    console.log("[isPostOwner] Missing user or post:", {
-      hasUser: !!currentUser,
-      hasPost: !!post,
-      currentUserId: currentUser?.userId,
-    });
     return false;
   }
 
@@ -121,21 +116,6 @@ export function isPostOwner(post) {
     currentUserId &&
     (String(postUserId) === String(currentUserId) ||
       Number(postUserId) === Number(currentUserId));
-
-  console.log("[isPostOwner] Ownership check:", {
-    currentUserId,
-    currentUserIdType: typeof currentUserId,
-    postUserId,
-    postUserIdType: typeof postUserId,
-    post: {
-      userId: post.userId,
-      userID: post.userID,
-      UserID: post.UserID,
-      author: post.author,
-    },
-    isMatch,
-  });
-
   return isMatch;
 }
 
@@ -308,8 +288,6 @@ export async function createPost(postData) {
           formData.append("ImageFiles", file);
         }
       });
-
-      console.log("[createPost] Added ImageFiles:", files.length);
     }
 
     // Handle existing URLs (if provided as imageUrls or mediaUrl)
@@ -320,13 +298,6 @@ export async function createPost(postData) {
     } else if (postData.mediaUrl) {
       formData.append("MediaUrl", postData.mediaUrl);
     }
-
-    console.log("[createPost] Sending FormData:", {
-      Title: postData.title,
-      Content: postData.content,
-      FieldId: fieldId,
-    });
-
     const response = await apiClient.post("/api/Post", formData);
 
     // Handle response with data wrapper
@@ -395,7 +366,6 @@ export async function updatePost(id, postData) {
           formData.append("ImageFiles", file);
         }
       });
-      console.log("[updatePost] Added ImageFiles:", files.length);
     }
 
     // Handle existing URLs (if provided as imageUrls or mediaUrl)
@@ -406,13 +376,6 @@ export async function updatePost(id, postData) {
     } else if (postData.mediaUrl) {
       formData.append("MediaUrl", postData.mediaUrl);
     }
-
-    console.log("[updatePost] Sending FormData:", {
-      Title: postData.title,
-      Content: postData.content,
-      FieldId: fieldId,
-    });
-
     const response = await apiClient.put(`/api/Post/${id}`, formData);
 
     // Handle response with data wrapper
@@ -753,20 +716,11 @@ export async function reviewPost(id, payload = {}) {
     if (payload.note) {
       reviewPayload.note = payload.note;
     }
-
-    console.log(
-      `[reviewPost] Reviewing post ${postId} with payload:`,
-      reviewPayload
-    );
-
     // Call API with status payload
     const response = await apiClient.put(
       `/api/Post/${postId}/review`,
       reviewPayload
     );
-
-    console.log(`[reviewPost] Response:`, response.data);
-
     // Handle different response formats
     let responsePostData = null;
     if (response.data) {
@@ -853,9 +807,6 @@ export async function fetchPendingPosts(params = {}) {
  */
 function normalizePost(post) {
   if (!post) return null;
-
-  console.log("[normalizePost] Raw post from API:", post);
-
   // Normalize author information - check multiple possible formats
   let author = null;
   if (post.author) {
@@ -1006,15 +957,6 @@ function normalizePost(post) {
     author?.userID ||
     author?.UserID ||
     null;
-
-  console.log("[normalizePost] Normalized userId:", {
-    userId,
-    fromPost: post.userId || post.userID || post.UserID,
-    fromAuthor:
-      author?.id || author?.userId || author?.userID || author?.UserID,
-    author: author,
-  });
-
   // Normalize image files - handle imageUrls (from API response), imageFiles, and mediaUrl
   let imageFiles = [];
   let mediaUrl = null;
@@ -1088,7 +1030,5 @@ function normalizePost(post) {
     // Field information (normalized)
     field: field,
   };
-
-  console.log("[normalizePost] Final normalized post:", normalizedPost);
   return normalizedPost;
 }

@@ -191,4 +191,3 @@ export default function InvoiceModal({ isOpen, booking, onClose }) {
      );
 }
 
-

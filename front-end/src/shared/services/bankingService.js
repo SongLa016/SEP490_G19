@@ -140,9 +140,6 @@ export const bankingService = {
             ? accountData.isDefault
             : false,
       };
-
-      console.log("Creating bank account with data:", requestData);
-
       const response = await apiClient.post(
         "https://sep490-g19-zxph.onrender.com/api/PlayerBankAccount/create",
         requestData
@@ -179,9 +176,6 @@ export const bankingService = {
             ? accountData.isDefault
             : false,
       };
-
-      console.log("Updating bank account with data:", requestData);
-
       const response = await apiClient.put(
         `https://sep490-g19-zxph.onrender.com/api/PlayerBankAccount/update/${accountID}`,
         requestData

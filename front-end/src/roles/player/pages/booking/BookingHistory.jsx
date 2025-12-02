@@ -55,6 +55,7 @@ export default function BookingHistory({ user }) {
      const [bookings, setBookings] = useState([]);
      const [groupedBookings, setGroupedBookings] = useState({});
      const [showRecurringDetails, setShowRecurringDetails] = useState({});
+     const [expandedParticipants, setExpandedParticipants] = useState({});
      const [statusFilter, setStatusFilter] = useState("all");
      const [dateFrom, setDateFrom] = useState("");
      const [dateTo, setDateTo] = useState("");
@@ -188,7 +189,6 @@ export default function BookingHistory({ user }) {
                return requestId && booking.id;
           });
 
-
           if (bookingsWithRequestId.length > 0) {
                await Promise.all(
                     bookingsWithRequestId.map(async (booking) => {
@@ -202,7 +202,6 @@ export default function BookingHistory({ user }) {
                                    map[booking.id] = detailResp.data;
                                    joinsMap[requestId] = extractParticipants(detailResp.data);
 
-
                               }
                          } catch (error) {
                               console.warn("Error fetching match request by ID:", requestId, error);
@@ -215,7 +214,6 @@ export default function BookingHistory({ user }) {
                // Second pass: Fetch all match requests from database and match by bookingId
                const matchRequestsResp = await fetchMatchRequests({ page: 1, size: 1000 });
 
-
                if (matchRequestsResp.success && Array.isArray(matchRequestsResp.data)) {
                     // Create a map from bookingId to matchRequest (normalize to string for comparison)
                     const bookingIdToMatchRequestMap = {};
@@ -227,7 +225,6 @@ export default function BookingHistory({ user }) {
                               const normalizedId = String(matchRequestBookingId);
                               bookingIdToMatchRequestMap[normalizedId] = matchRequest;
 
-
                          } else {
 
                          }
@@ -235,12 +232,9 @@ export default function BookingHistory({ user }) {
 
                     await Promise.all(bookings.map(async (booking) => {
 
-
                          // Only compare booking.bookingId (database ID) with matchRequest.bookingId
                          // booking.id is just a display key, not the actual database ID
                          const bookingId = booking.bookingId ? String(booking.bookingId) : null;
-
-
 
                          // Try to find match request by bookingId
                          let matchRequest = null;
@@ -318,7 +312,6 @@ export default function BookingHistory({ user }) {
                                         joinsMap[requestId] = extractParticipants(matchRequest);
                                    }
 
-
                               }
                          } else if (bookingId) {
 
@@ -358,7 +351,6 @@ export default function BookingHistory({ user }) {
                                    map[booking.id] = detailResp.data;
                                    joinsMap[requestId] = extractParticipants(detailResp.data);
 
-
                               }
                          } catch (error) {
                               console.warn("Không thể tải kèo cho booking", bookingId, error);
@@ -375,7 +367,6 @@ export default function BookingHistory({ user }) {
                return merged;
           });
           setRequestJoins(prev => ({ ...prev, ...joinsMap }));
-
 
      }, [bookings]);
 
@@ -606,14 +597,11 @@ export default function BookingHistory({ user }) {
 
           try {
 
-
                const response = await rejectOrWithdrawParticipant(requestId, participantId);
 
                if (!response.success) {
                     throw new Error(response.error || "Không thể từ chối đội này.");
                }
-
-
 
                // Refresh the request to get updated participant list
                await refreshRequestForBooking(bookingKey, requestId);
@@ -774,7 +762,6 @@ export default function BookingHistory({ user }) {
                     const bookingDisplayId = booking?.id;
                     const matchRequestBookingId = matchRequest.bookingId || matchRequest.bookingID || matchRequest.BookingID;
 
-
                     if (requestId && bookingDisplayId) {
                          // Add to bookingIdToRequest map using booking.id (display key)
                          // This is consistent with how loadMatchRequestsForBookings maps
@@ -794,7 +781,6 @@ export default function BookingHistory({ user }) {
                                         }
                                    });
                               }
-
 
                               return updated;
                          });
@@ -938,8 +924,6 @@ export default function BookingHistory({ user }) {
           // Reload bookings to refresh the UI
           await loadBookings();
      };
-
-
 
      const handleViewInvoice = (bookingPayload) => {
           if (!bookingPayload) return;
@@ -1607,8 +1591,6 @@ export default function BookingHistory({ user }) {
                setIsCancelling(false);
           }
      };
-
-
 
      const handleCancelRecurring = (groupId) => {
           Swal.fire({
@@ -2437,8 +2419,6 @@ export default function BookingHistory({ user }) {
                                                             const req = bookingIdToRequest[b.id];
                                                             if (!req) return null;
 
-
-
                                                             const requestId = extractRequestId(req);
                                                             const participants = requestId
                                                                  ? (requestJoins[requestId] || extractParticipants(req))
@@ -2448,24 +2428,61 @@ export default function BookingHistory({ user }) {
                                                             if (!displayParticipants || displayParticipants.length === 0) return null;
                                                             const isRequestOwner = user && requestOwnerId && String(requestOwnerId) === String(user?.userID || user?.UserID || user?.id || user?.userId);
 
-
                                                             const badgeConfig = getRequestBadgeConfig(req);
                                                             const acceptedTeams = getAcceptedParticipants(req);
                                                             const requestLocked = isRequestLocked(req);
+                                                            const participantKey = `booking-${b.id}-request-${requestId || 'default'}`;
+                                                            const isExpanded = expandedParticipants[participantKey] || false;
+                                                            
+                                                            const toggleParticipants = () => {
+                                                                 setExpandedParticipants(prev => ({
+                                                                      ...prev,
+                                                                      [participantKey]: !prev[participantKey]
+                                                                 }));
+                                                            };
+                                                            
                                                             return (
                                                                  <div className="mt-3 p-3 rounded-xl border border-teal-100 bg-white/70">
-                                                                      <div className="flex flex-col gap-1 mb-3">
-                                                                           <div className="font-semibold text-teal-800">Đội tham gia</div>
-                                                                           <Badge variant="outline" className={`text-xs w-fit ${badgeConfig.className}`}>
-                                                                                {badgeConfig.text}
-                                                                           </Badge>
-                                                                           {requestLocked && acceptedTeams.length > 0 && (
-                                                                                <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-lg">
-                                                                                     Trận đấu đã được xác nhận với {acceptedTeams.length} đội.
+                                                                      <div className="flex items-center justify-between mb-3">
+                                                                           <div className="flex flex-col gap-1 flex-1">
+                                                                                <div className="flex items-center gap-2">
+                                                                                     <div className="font-semibold text-teal-800">Đội tham gia</div>
+                                                                                     <Badge variant="outline" className={`text-xs w-fit ${badgeConfig.className}`}>
+                                                                                          {badgeConfig.text}
+                                                                                     </Badge>
+                                                                                     {displayParticipants.length > 0 && (
+                                                                                          <span className="text-xs text-gray-500">({displayParticipants.length} đội)</span>
+                                                                                     )}
                                                                                 </div>
+                                                                                {requestLocked && acceptedTeams.length > 0 && (
+                                                                                     <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-lg">
+                                                                                          Trận đấu đã được xác nhận với {acceptedTeams.length} đội.
+                                                                                     </div>
+                                                                                )}
+                                                                           </div>
+                                                                           {displayParticipants.length > 0 && (
+                                                                                <Button
+                                                                                     variant="outline"
+                                                                                     size="sm"
+                                                                                     onClick={toggleParticipants}
+                                                                                     className="text-xs px-2 py-1 h-auto border-teal-200 text-teal-700 rounded-full"
+                                                                                >
+                                                                                     {isExpanded ? (
+                                                                                          <>
+                                                                                               <ChevronUp className="w-3 h-3 mr-1" />
+                                                                                               Thu gọn
+                                                                                          </>
+                                                                                     ) : (
+                                                                                          <>
+                                                                                               <ChevronDown className="w-3 h-3 mr-1" />
+                                                                                               Mở rộng
+                                                                                          </>
+                                                                                     )}
+                                                                                </Button>
                                                                            )}
                                                                       </div>
-                                                                      <div className="space-y-2">
+                                                                      {isExpanded && (
+                                                                           <div className="space-y-2">
                                                                            {displayParticipants.map((j) => {
                                                                                 const participantId = j.participantId || j.joinId || j.id;
                                                                                 const participantTeamName =
@@ -2478,17 +2495,6 @@ export default function BookingHistory({ user }) {
                                                                                 const needsOwnerAction = participantNeedsOwnerAction(j);
                                                                                 const isAccepted = isParticipantAcceptedByOwner(j);
                                                                                 const isRejected = isParticipantRejectedByOwner(j);
-
-                                                                                console.log("🔍 [Participant check]", {
-                                                                                     participantId: participantId,
-                                                                                     teamName: participantTeamName,
-                                                                                     statusFromA: j.statusFromA,
-                                                                                     statusFromB: j.statusFromB,
-                                                                                     needsOwnerAction: needsOwnerAction,
-                                                                                     isRequestOwner: isRequestOwner,
-                                                                                     willShowButtons: needsOwnerAction && isRequestOwner
-                                                                                });
-
                                                                                 return (
                                                                                      <div key={participantId || Math.random()} className="bg-white border border-gray-200 rounded-xl p-3 hover:shadow-sm transition-shadow">
                                                                                           <div className="flex items-start justify-between gap-3">
@@ -2590,7 +2596,8 @@ export default function BookingHistory({ user }) {
                                                                                      </div>
                                                                                 );
                                                                            })}
-                                                                      </div>
+                                                                           </div>
+                                                                      )}
                                                                  </div>
                                                             );
                                                        })()}
@@ -3072,5 +3079,4 @@ export default function BookingHistory({ user }) {
           </Section>
      );
 }
-
 

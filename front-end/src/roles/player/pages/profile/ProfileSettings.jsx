@@ -98,21 +98,18 @@ export default function ProfileSettings({ user }) {
           }));
      };
 
-
      const handleChangePassword = () => {
           if (passwordData.newPassword !== passwordData.confirmPassword) {
                alert("Mật khẩu mới không khớp!");
                return;
           }
           // API call to change password
-          console.log("Changing password...");
           setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
      };
 
      const handleDeleteAccount = () => {
           if (window.confirm("Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác!")) {
                // API call to delete account
-               console.log("Deleting account...");
           }
      };
 
@@ -234,7 +231,6 @@ export default function ProfileSettings({ user }) {
                     </Card>
                </FadeIn>
 
-
                <FadeIn delay={260}>
                     <Card className="rounded-3xl border border-red-200/70 bg-white/95 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
                          <CardHeader className="border-b border-red-100/70 bg-gradient-to-r from-red-50 via-white to-white rounded-t-3xl">
@@ -352,8 +348,6 @@ export default function ProfileSettings({ user }) {
                </FadeIn>
           </div>
      );
-
-
 
      const renderContent = () => {
           switch (activeTab) {

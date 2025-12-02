@@ -10,7 +10,6 @@ module.exports = function (app) {
       logLevel: "debug",
       onProxyReq: (proxyReq, req, res) => {
         // Forward original host header if needed
-        console.log("Proxying request:", req.method, req.url);
       },
       onError: (err, req, res) => {
         console.error("Proxy error:", err);

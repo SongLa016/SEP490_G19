@@ -31,14 +31,7 @@ api.interceptors.request.use(
  */
 export const fetchFieldTypes = async () => {
   try {
-    console.log(
-      "Fetching all field types from:",
-      `${API_BASE_URL}/api/FieldType`
-    );
     const response = await api.get(`${API_BASE_URL}/api/FieldType`);
-
-    console.log("Field types response:", response.data);
-
     return {
       success: true,
       data: response.data || [],
@@ -62,11 +55,7 @@ export const fetchFieldTypes = async () => {
  */
 export const fetchFieldTypeById = async (typeId) => {
   try {
-    console.log("Fetching field type by ID:", typeId);
     const response = await api.get(`/api/FieldType/${typeId}`);
-
-    console.log("Field type response:", response.data);
-
     return {
       success: true,
       data: response.data,

@@ -208,10 +208,7 @@ export async function createRating(ratingData) {
       comment: ratingData.comment || "",
     };
 
-    console.log("[createRating] Sending payload:", payload);
-
     const response = await apiClient.post("/api/ratings", payload);
-    console.log("[createRating] Response:", response.data);
 
     // Unwrap data nếu BE trả về dạng { success: true, data: {...} }
     const responseData = response.data;
@@ -281,8 +278,6 @@ export async function updateRating(ratingId, ratingData) {
       comment: ratingData.comment ?? "",
     };
 
-    console.log("[updateRating] Sending payload:", payload);
-
     const response = await apiClient.put(`/api/ratings/${id}`, payload);
 
     const responseData = response.data;
@@ -345,14 +340,11 @@ export async function fetchRatingsByField(fieldId) {
     const response = await apiClient.get(`/api/ratings/field/${fieldId}`);
     let data = response.data;
 
-    console.log('[fetchRatingsByField] Raw response:', response.data);
-
     // Handle different response formats
     if (!data) {
       return [];
     }
     if (Array.isArray(data)) {
-      console.log('[fetchRatingsByField] First raw rating:', data[0]);
       return data.map(normalizeRating);
     }
     if (data && typeof data === "object") {
@@ -370,7 +362,6 @@ export async function fetchRatingsByField(fieldId) {
     }
 
     if (data.length > 0) {
-      console.log('[fetchRatingsByField] First raw rating:', data[0]);
     }
     return data.map(normalizeRating);
   } catch (error) {
@@ -403,15 +394,12 @@ export async function fetchRatingsByComplex(complexId) {
     const response = await apiClient.get(`/api/ratings/complex/${complexId}`);
     let data = response.data;
 
-    console.log("[fetchRatingsByComplex] Raw response:", response.data);
-
     // BE trả về array đơn giản theo JSON bạn mô tả
     if (!data) {
       return [];
     }
     if (Array.isArray(data)) {
       if (data.length > 0) {
-        console.log("[fetchRatingsByComplex] First raw rating:", data[0]);
       }
       return data.map(normalizeRating);
     }

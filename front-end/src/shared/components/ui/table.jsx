@@ -40,4 +40,3 @@ export function TableFooter({ children }) {
      return <tfoot className="bg-slate-50 border-t border-slate-200">{children}</tfoot>;
 }
 
-

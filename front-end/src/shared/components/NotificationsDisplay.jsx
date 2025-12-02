@@ -209,7 +209,6 @@ export default function NotificationsDisplay({ userId, className = "" }) {
           const typeToLoad = typeOverride || activeType;
           try {
                setLoading(true);
-               console.log('📋 [NotificationsDisplay] Loading notifications...', { typeToLoad });
 
                let notificationsData = [];
 

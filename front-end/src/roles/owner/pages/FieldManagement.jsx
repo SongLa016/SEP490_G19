@@ -327,10 +327,6 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
-
-
-
-
      const triggerComplexImagePicker = () => {
           complexImageInputRef.current?.click();
      };
@@ -684,14 +680,6 @@ const FieldManagement = ({ isDemo = false }) => {
                          formDataToSend.append("ImageUrls", url);
                     });
                }
-
-               console.log("Submitting field with File objects:", {
-                    isEditing: isEditingField,
-                    hasNewMainImage: !!newMainImageFile,
-                    hasExistingMainImageUrl: !!existingMainImageUrl,
-                    newGalleryCount: newGalleryFiles.length,
-                    existingGalleryCount: existingGalleryUrls.length
-               });
 
                let createdField;
                if (isEditModalOpen && formData.fieldId) {

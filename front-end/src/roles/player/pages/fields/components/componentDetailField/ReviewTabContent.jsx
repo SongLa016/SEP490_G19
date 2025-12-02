@@ -21,7 +21,9 @@ export default function ReviewTabContent({
      fieldId,
      isLoadingRatings,
      onRatingSubmit,
-     canWriteReview = true
+     canWriteReview = true,
+     onRatingUpdated,
+     onRatingDeleted
 }) {
      const [isSubmitting, setIsSubmitting] = useState(false);
      const [activeReplyRatingId, setActiveReplyRatingId] = useState(null);
@@ -219,9 +221,10 @@ export default function ReviewTabContent({
                                                             <div className="flex items-center mt-1 gap-1">
                                                                  {[...Array(5)].map((_, i) => {
                                                                       const value = i + 1;
+                                                                      const currentRating = review.stars || review.rating || 0;
                                                                       const active = isEditingRating
                                                                            ? value <= (editingRatingStars || 0)
-                                                                           : value <= (review.rating || 0);
+                                                                           : value <= currentRating;
                                                                       return (
                                                                            <button
                                                                                 key={value}
@@ -264,7 +267,7 @@ export default function ReviewTabContent({
                                                                                           return;
                                                                                      }
                                                                                      setEditingRatingId(ratingKey);
-                                                                                     setEditingRatingStars(review.rating || 0);
+                                                                                     setEditingRatingStars(review.stars || review.rating || 0);
                                                                                      setEditingRatingComment(review.comment || "");
                                                                                 }}
                                                                            >
@@ -278,13 +281,22 @@ export default function ReviewTabContent({
                                                                                           onLoginPrompt?.();
                                                                                           return;
                                                                                      }
-                                                                                     if (!review.ratingId) return;
+                                                                                     const ratingIdToDelete = review.ratingId || review.id;
+                                                                                     if (!ratingIdToDelete) {
+                                                                                          onShowToast?.("Không tìm thấy ID đánh giá.", "error");
+                                                                                          return;
+                                                                                     }
                                                                                      if (!window.confirm("Bạn có chắc muốn xóa đánh giá này?")) return;
                                                                                      try {
                                                                                           setIsProcessingRating(true);
-                                                                                          await deleteRating(review.ratingId);
+                                                                                          await deleteRating(ratingIdToDelete);
                                                                                           onShowToast?.("Đã xóa đánh giá.", "success");
-                                                                                          window.location.reload();
+                                                                                          // Gọi callback để refresh nếu có, nếu không thì reload trang
+                                                                                          if (onRatingDeleted) {
+                                                                                               await onRatingDeleted();
+                                                                                          } else {
+                                                                                               window.location.reload();
+                                                                                          }
                                                                                      } catch (error) {
                                                                                           console.error("Error deleting rating:", error);
                                                                                           onShowToast?.(
@@ -329,22 +341,42 @@ export default function ReviewTabContent({
                                                                  <Button
                                                                       type="button"
                                                                       size="sm"
-                                                                      disabled={isProcessingRating}
+                                                                      disabled={isProcessingRating || editingRatingStars === 0 || !editingRatingComment.trim()}
                                                                       className="px-3 py-1 text-xs rounded-full bg-teal-600 hover:bg-teal-700 text-white"
                                                                       onClick={async () => {
-                                                                           if (!review.ratingId) return;
+                                                                           const ratingIdToUpdate = review.ratingId || review.id;
+                                                                           if (!ratingIdToUpdate) {
+                                                                                onShowToast?.("Không tìm thấy ID đánh giá.", "error");
+                                                                                return;
+                                                                           }
                                                                            if (!hasValidToken || !currentUserId) {
                                                                                 onLoginPrompt?.();
                                                                                 return;
                                                                            }
+                                                                           if (editingRatingStars === 0) {
+                                                                                onShowToast?.("Vui lòng chọn số sao đánh giá.", "warning");
+                                                                                return;
+                                                                           }
+                                                                           if (!editingRatingComment.trim()) {
+                                                                                onShowToast?.("Vui lòng nhập nhận xét.", "warning");
+                                                                                return;
+                                                                           }
                                                                            try {
                                                                                 setIsProcessingRating(true);
-                                                                                await updateRating(review.ratingId, {
+                                                                                await updateRating(ratingIdToUpdate, {
                                                                                      stars: editingRatingStars,
                                                                                      comment: editingRatingComment.trim(),
                                                                                 });
                                                                                 onShowToast?.("Đã cập nhật đánh giá.", "success");
-                                                                                window.location.reload();
+                                                                                setEditingRatingId(null);
+                                                                                setEditingRatingComment("");
+                                                                                setEditingRatingStars(0);
+                                                                                // Gọi callback để refresh nếu có, nếu không thì reload trang
+                                                                                if (onRatingUpdated) {
+                                                                                     await onRatingUpdated();
+                                                                                } else {
+                                                                                     window.location.reload();
+                                                                                }
                                                                            } catch (error) {
                                                                                 console.error("Error updating rating:", error);
                                                                                 onShowToast?.(
@@ -410,15 +442,26 @@ export default function ReviewTabContent({
                                                                                                          type="button"
                                                                                                          className="w-full text-left px-2 py-1 rounded hover:bg-red-50 text-red-600"
                                                                                                          onClick={async () => {
-                                                                                                              if (!reply.replyId) return;
+                                                                                                              const replyIdToDelete = reply.replyId || reply.id;
+                                                                                                              if (!replyIdToDelete) {
+                                                                                                                   onShowToast?.("Không tìm thấy ID trả lời.", "error");
+                                                                                                                   return;
+                                                                                                              }
                                                                                                               if (!hasValidToken || !currentUserId) {
                                                                                                                    onLoginPrompt?.();
                                                                                                                    return;
                                                                                                               }
+                                                                                                              if (!window.confirm("Bạn có chắc muốn xóa trả lời này?")) return;
                                                                                                               try {
                                                                                                                    setIsSubmitting(true);
-                                                                                                                   await deleteRatingReply(reply.replyId);
+                                                                                                                   await deleteRatingReply(replyIdToDelete);
                                                                                                                    onShowToast?.("Đã xóa trả lời.", "success");
+                                                                                                                   // Gọi callback để refresh nếu có, nếu không thì reload trang
+                                                                                                                   if (onRatingUpdated) {
+                                                                                                                        await onRatingUpdated();
+                                                                                                                   } else {
+                                                                                                                        window.location.reload();
+                                                                                                                   }
                                                                                                               } catch (error) {
                                                                                                                    console.error("Error deleting rating reply:", error);
                                                                                                                    onShowToast?.(
@@ -465,17 +508,31 @@ export default function ReviewTabContent({
                                                                                                disabled={isSubmitting || !editingReplyText.trim()}
                                                                                                className="px-3 py-1 text-xs rounded-full bg-teal-600 hover:bg-teal-700 text-white"
                                                                                                onClick={async () => {
-                                                                                                    if (!reply.replyId || !editingReplyText.trim()) return;
+                                                                                                    const replyIdToUpdate = reply.replyId || reply.id;
+                                                                                                    if (!replyIdToUpdate) {
+                                                                                                         onShowToast?.("Không tìm thấy ID trả lời.", "error");
+                                                                                                         return;
+                                                                                                    }
+                                                                                                    if (!editingReplyText.trim()) {
+                                                                                                         onShowToast?.("Vui lòng nhập nội dung trả lời.", "warning");
+                                                                                                         return;
+                                                                                                    }
                                                                                                     if (!hasValidToken || !currentUserId) {
                                                                                                          onLoginPrompt?.();
                                                                                                          return;
                                                                                                     }
                                                                                                     try {
                                                                                                          setIsSubmitting(true);
-                                                                                                         await updateRatingReply(reply.replyId, editingReplyText.trim());
+                                                                                                         await updateRatingReply(replyIdToUpdate, editingReplyText.trim());
                                                                                                          onShowToast?.("Đã cập nhật trả lời.", "success");
                                                                                                          setEditingReplyId(null);
                                                                                                          setEditingReplyText("");
+                                                                                                         // Gọi callback để refresh nếu có, nếu không thì reload trang
+                                                                                                         if (onRatingUpdated) {
+                                                                                                              await onRatingUpdated();
+                                                                                                         } else {
+                                                                                                              window.location.reload();
+                                                                                                         }
                                                                                                     } catch (error) {
                                                                                                          console.error("Error updating rating reply:", error);
                                                                                                          onShowToast?.(
@@ -553,14 +610,25 @@ export default function ReviewTabContent({
                                                                                                user?.id ||
                                                                                                user?.Id ||
                                                                                                user?.userId;
+                                                                                          const ratingIdForReply = review.ratingId || review.id;
+                                                                                          if (!ratingIdForReply) {
+                                                                                               onShowToast?.("Không tìm thấy ID đánh giá.", "error");
+                                                                                               return;
+                                                                                          }
                                                                                           await createRatingReply({
                                                                                                userId,
-                                                                                               ratingId: review.ratingId || review.id,
+                                                                                               ratingId: ratingIdForReply,
                                                                                                replyText: replyText.trim(),
                                                                                           });
                                                                                           onShowToast?.("Đã gửi trả lời đánh giá.", "success");
                                                                                           setActiveReplyRatingId(null);
                                                                                           setReplyText("");
+                                                                                          // Gọi callback để refresh nếu có, nếu không thì reload trang
+                                                                                          if (onRatingUpdated) {
+                                                                                               await onRatingUpdated();
+                                                                                          } else {
+                                                                                               window.location.reload();
+                                                                                          }
                                                                                      } catch (error) {
                                                                                           console.error("Error creating rating reply:", error);
                                                                                           onShowToast?.(

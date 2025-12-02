@@ -208,7 +208,6 @@ const BookingManagement = ({ isDemo = false }) => {
 
                     if (isConfirmedAndPaid) {
 
-
                          confirmResult = await confirmByOwner(numericBookingId);
 
                          if (confirmResult.success) {
@@ -224,11 +223,9 @@ const BookingManagement = ({ isDemo = false }) => {
                          // Booking pending -> gọi confirm-payment để xác nhận thanh toán
                          const amount = booking?.amount || 0;
 
-
                          confirmResult = await confirmPaymentAPI(numericBookingId, amount);
 
                          if (confirmResult.success) {
-
 
                               await Swal.fire({
                                    icon: 'success',
@@ -254,7 +251,6 @@ const BookingManagement = ({ isDemo = false }) => {
                          // Kiểm tra nếu là lỗi CORS - có thể request đã thành công
                          const isCorsError = confirmResult.isCorsError;
                          const errorMsg = confirmResult.error || (isConfirmedAndPaid ? 'Không thể hoàn thành booking' : 'Không thể xác nhận thanh toán');
-
 
                          // Nếu là lỗi CORS, reload dữ liệu để kiểm tra xem có thay đổi không
                          if (isCorsError) {
@@ -735,7 +731,6 @@ const BookingManagement = ({ isDemo = false }) => {
                     timeSlot = item.slotName || item.SlotName || item.timeSlot || '';
                }
 
-
                const rawStatus = item.bookingStatus || item.BookingStatus || item.status || item.Status || 'pending';
                const status = String(rawStatus).toLowerCase();
 
@@ -743,7 +738,6 @@ const BookingManagement = ({ isDemo = false }) => {
                if (index === 0 || item.bookingStatus || item.BookingStatus) {
 
                }
-
 
                let normalizedStatus;
                if (status.includes('cancel')) {
@@ -978,7 +972,6 @@ const BookingManagement = ({ isDemo = false }) => {
           // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [ownerId, activeTab]);
 
-
      // Load cancellations when tab changes
      useEffect(() => {
           if (activeTab === 'cancellations') {
@@ -1141,7 +1134,6 @@ const BookingManagement = ({ isDemo = false }) => {
           return new Date(dateString).toLocaleDateString('vi-VN');
      };
 
-
      return (
           <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
                <div className="space-y-6">
@@ -1279,7 +1271,6 @@ const BookingManagement = ({ isDemo = false }) => {
                                                   </SelectContent>
                                              </Select>
                                         </div>
-
 
                                    </div>
                                    <div className="flex items-center justify-end mt-4">

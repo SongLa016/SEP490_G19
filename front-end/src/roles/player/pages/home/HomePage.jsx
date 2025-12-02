@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Lenis from "lenis";
 import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, QuickBookingSection, CommunityMatchmakingSection, UserReviewsSection, CancellationPoliciesSection, MobileAppSection, WhyChooseUsSection, NewsletterSection, CTASection } from "./components";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
-import { fetchTopBookingFields } from "../../../../shared/services/fields";
+import { fetchTopBookingFields, fetchFieldComplex, fetchFieldDetail } from "../../../../shared/services/fields";
 
 const HOMEPAGE_LOCATION_OPTIONS = [
      { value: "quan1", label: "Quận Hoàn Kiếm", query: "Quận Hoàn Kiếm" },
@@ -408,17 +408,50 @@ export default function HomePage({ user }) {
                try {
                     setLoadingTopFields(true);
                     const data = await fetchTopBookingFields();
-                    // Map API response to component format
-                    const mappedFields = data.map((item) => ({
-                         id: item.fieldId,
-                         name: item.fieldName || "Sân bóng",
-                         location: "Đang cập nhật",
-                         price: "Liên hệ",
-                         rating: 4.5,
-                         mainImageUrl: item.imageUrl || null,
-                         amenities: [],
-                         availableSlots: item.totalBookings || 0
-                    }));
+                    
+                    // Lấy địa chỉ từ complex cho mỗi field
+                    const mappedFields = await Promise.all(
+                         data.map(async (item) => {
+                              let location = "Đang cập nhật";
+                              let complexId = item.complexId;
+                              
+                              // Nếu không có complexId trong response, lấy từ field detail
+                              if (!complexId && item.fieldId) {
+                                   try {
+                                        const fieldDetail = await fetchFieldDetail(item.fieldId);
+                                        if (fieldDetail && fieldDetail.complexId) {
+                                             complexId = fieldDetail.complexId;
+                                        }
+                                   } catch (error) {
+                                        console.error(`Error loading field detail ${item.fieldId}:`, error);
+                                   }
+                              }
+                              
+                              // Lấy địa chỉ từ complex
+                              if (complexId) {
+                                   try {
+                                        const complex = await fetchFieldComplex(complexId);
+                                        if (complex && complex.address) {
+                                             location = complex.address;
+                                        }
+                                   } catch (error) {
+                                        console.error(`Error loading complex ${complexId}:`, error);
+                                   }
+                              }
+                              
+                              return {
+                                   id: item.fieldId,
+                                   name: item.fieldName || "Sân bóng",
+                                   location: location,
+                                   price: "Liên hệ",
+                                   rating: 4.5,
+                                   mainImageUrl: item.imageUrl || null,
+                                   amenities: [],
+                                   availableSlots: item.totalBookings || 0
+                              };
+                         })
+                    );
+                    
                     setTopBookingFields(mappedFields);
                } catch (error) {
                     console.error("Error loading top booking fields:", error);

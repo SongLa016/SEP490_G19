@@ -31,9 +31,6 @@ export function useMultipleFieldSchedules(fieldIds = [], selectedDate, enabled =
                          console.warn(`⚠️ [useMultipleFieldSchedules] Failed to fetch schedules for fieldId: ${fieldIds[index]}`, result);
                     }
                });
-
-               console.log(`✅ [useMultipleFieldSchedules] Fetched ${allSchedules.length} total schedules for ${fieldIds.length} fields`);
-
                // Helper function to normalize date for comparison
                const normalizeDate = (dateValue) => {
                     if (!dateValue) return "";
@@ -53,9 +50,6 @@ export function useMultipleFieldSchedules(fieldIds = [], selectedDate, enabled =
                     const normalizedScheduleDate = normalizeDate(scheduleDate);
                     return normalizedScheduleDate === normalizedSelectedDate;
                });
-
-               console.log(`✅ [useMultipleFieldSchedules] Filtered schedules for date ${normalizedSelectedDate}: ${filteredSchedules.length} schedules`);
-
                return filteredSchedules;
           },
           enabled: enabled && Array.isArray(fieldIds) && fieldIds.length > 0,

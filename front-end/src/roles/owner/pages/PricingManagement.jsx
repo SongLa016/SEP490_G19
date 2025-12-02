@@ -54,8 +54,6 @@ const PricingManagement = ({ isDemo = false }) => {
      // Get current user ID
      const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
 
-
-
      // Load data from API
      const loadData = useCallback(async () => {
           try {

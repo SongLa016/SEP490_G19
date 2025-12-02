@@ -107,11 +107,6 @@ export default function FieldDetailView({
           if (typeId != null) {
                const mappedName = localFieldTypeMap[String(typeId)];
                if (mappedName && mappedName.trim() !== "") {
-                    console.log("✅ [FieldDetailView] Resolved typeName from map:", {
-                         fieldId: selectedField.fieldId,
-                         typeId: typeId,
-                         mappedName: mappedName
-                    });
                     return mappedName;
                }
           }

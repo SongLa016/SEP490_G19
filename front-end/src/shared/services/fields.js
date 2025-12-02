@@ -675,17 +675,16 @@ export async function fetchFields(params = {}) {
 
     if (complexId) {
       // Fetch fields for a specific complex
-      // First check if the complex is Active
-      const allComplexes = await fetchFieldComplexes();
-      const targetComplex = allComplexes.find(
-        (c) => c.complexId === complexId || c.ComplexID === complexId
-      );
-      
-      // Only fetch fields if complex is Active
-      if (targetComplex && (targetComplex.status || targetComplex.Status || "Active") === "Active") {
+      // Always try to fetch fields, regardless of complex status
+      // The status check will be done later when filtering
+      try {
         const fields = await fetchFieldsByComplex(complexId);
-        allFields = fields;
+        allFields = Array.isArray(fields) ? fields : [];
+      } catch (error) {
+        console.error(`[fetchFields] Error fetching fields for complex ${complexId}:`, error);
+        allFields = [];
       }
+      
       // Fetch complexes for address mapping
       complexes = await fetchFieldComplexes();
     } else {
@@ -801,16 +800,14 @@ export async function fetchComplexDetail(complexId, { date, slotId } = {}) {
       }),
     ]);
 
-    // Check if complex is Active - if not, return null for Player pages
-    if (complex && (complex.status || complex.Status || "Active") !== "Active") {
-      return {
-        complex: null,
-        fields: [],
-      };
-    }
-
+    // Normalize status check - case insensitive
+    const complexStatus = complex ? (complex.status || complex.Status || "").toString().toLowerCase() : "";
+    const isActive = complexStatus === "active" || complexStatus === "";
+    
+    // If complex is not Active, still return fields but mark complex as inactive
+    // This allows viewing fields even if complex status is not "Active"
     return {
-      complex: complex
+      complex: complex && isActive
         ? {
             complexId: complex.complexId,
             name: complex.name,
@@ -819,9 +816,20 @@ export async function fetchComplexDetail(complexId, { date, slotId } = {}) {
             // Only use URL from Cloudinary
             imageUrl: complex.imageUrl,
             rating: 0, // Should come from API
+            status: complex.status || complex.Status || "Active",
+          }
+        : complex
+        ? {
+            complexId: complex.complexId,
+            name: complex.name,
+            address: complex.address,
+            description: complex.description,
+            imageUrl: complex.imageUrl,
+            rating: 0,
+            status: complex.status || complex.Status || "Active",
           }
         : null,
-      fields: fields || [],
+      fields: Array.isArray(fields) ? fields : [],
     };
   } catch (error) {
     throw new Error("Không thể tải thông tin khu sân. Vui lòng thử lại sau.");

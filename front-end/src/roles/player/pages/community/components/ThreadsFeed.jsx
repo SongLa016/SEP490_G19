@@ -82,8 +82,7 @@ export default function ThreadsFeed({ refreshTrigger }) {
      );
 
      const handleOpenReply = (post) => {
-          console.log('[ThreadsFeed] Opening reply for post:', post);
-          console.log('[ThreadsFeed] Current user:', user);
+
           setSelectedPost(post);
           setShowReplyModal(true);
      };
@@ -94,7 +93,7 @@ export default function ThreadsFeed({ refreshTrigger }) {
      };
 
      const handleReplySubmit = async (content) => {
-          console.log("Replying to post:", selectedPost?.PostID, "Content:", content);
+
           if (selectedPost && content) {
                const success = await handleCreateComment(selectedPost.PostID, content);
                if (success) {

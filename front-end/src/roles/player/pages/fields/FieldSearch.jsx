@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import MapSearch from "./components/MapSearch";
 import { fetchComplexes, fetchFields, fetchTimeSlots, fetchPublicFieldSchedulesByDate, fetchPublicFieldSchedulesByField } from "../../../../shared/index";
 import { fetchFieldTypes, normalizeFieldType } from "../../../../shared/services/fieldTypes";
+import { fetchRatingsByField } from "../../../../shared/services/ratings";
 import Swal from 'sweetalert2';
 import SearchHeader from "./components/SearchHeader";
 import SearchFiltersBar from "./components/SearchFiltersBar";
@@ -147,7 +148,6 @@ export default function FieldSearch({ user }) {
                               }
                               return acc;
                          }, {});
-                         console.log("✅ [FieldSearch] Loaded fieldTypeMap:", map);
                          setFieldTypeMap(map);
                     }
                } catch (error) {
@@ -387,7 +387,42 @@ export default function FieldSearch({ user }) {
                                         return field;
                                    })
                                    : [];
-                              setFields(sanitizedFields);
+                              
+                              // Load ratings for all fields in parallel
+                              const fieldsWithRatings = await Promise.all(
+                                   sanitizedFields.map(async (field) => {
+                                        try {
+                                             const fieldId = field.fieldId || field.FieldID;
+                                             if (!fieldId) return field;
+                                             
+                                             const ratings = await fetchRatingsByField(fieldId);
+                                             if (Array.isArray(ratings) && ratings.length > 0) {
+                                                  // Calculate average rating
+                                                  const totalStars = ratings.reduce((sum, r) => sum + (r.stars || 0), 0);
+                                                  const averageRating = totalStars / ratings.length;
+                                                  return {
+                                                       ...field,
+                                                       rating: Number(averageRating.toFixed(1)),
+                                                       reviewCount: ratings.length
+                                                  };
+                                             }
+                                             return {
+                                                  ...field,
+                                                  rating: 0,
+                                                  reviewCount: 0
+                                             };
+                                        } catch (error) {
+                                             console.error(`Error loading ratings for field ${field.fieldId}:`, error);
+                                             return {
+                                                  ...field,
+                                                  rating: 0,
+                                                  reviewCount: 0
+                                             };
+                                        }
+                                   })
+                              );
+                              
+                              setFields(fieldsWithRatings);
                          }
                     } catch (error) {
                          console.error("Error loading data:", error);
@@ -744,9 +779,6 @@ export default function FieldSearch({ user }) {
      // Update fields distance based on their complex distance
      useEffect(() => {
           if (!userLocation || fields.length === 0 || complexes.length === 0) return;
-
-          console.log('📍 Calculating distances. User location:', userLocation);
-
           let missingCoordinatesCount = 0;
 
           setFields(prev => prev.map(f => {
@@ -754,7 +786,6 @@ export default function FieldSearch({ user }) {
                // If complex has distanceKm, use it; otherwise calculate from complex lat/lng
                if (cx) {
                     if (typeof cx.distanceKm === "number" && !isNaN(cx.distanceKm)) {
-                         console.log(`✓ Field ${f.name}: Using complex distanceKm = ${cx.distanceKm}km`);
                          return { ...f, distanceKm: cx.distanceKm };
                     }
                     // Calculate from complex coordinates if distanceKm not available
@@ -787,7 +818,6 @@ export default function FieldSearch({ user }) {
      // const nearGroup = [...filteredFields].sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0)).slice(0, 4);
      const bestPriceGroup = [...filteredFields].sort((a, b) => (a.priceForSelectedSlot || 0) - (b.priceForSelectedSlot || 0)).slice(0, 4);
      const topRatedGroup = [...filteredFields].sort((a, b) => b.rating - a.rating).slice(0, 4);
-
 
      return (
           <Section className="min-h-screen bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center">

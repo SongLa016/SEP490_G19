@@ -34,11 +34,9 @@ export function usePosts(user, refreshTrigger) {
                }
 
                // Transform API posts to match component format
-               console.log("[usePosts] Raw posts from API:", fetchedPosts);
                const transformedPosts = await Promise.all(
                     fetchedPosts.map(async (post) => {
                          const normalizedPost = await normalizePostData(post);
-                         console.log(`[usePosts] Transformed post ${normalizedPost.PostID}:`, normalizedPost);
                          return normalizedPost;
                     })
                );

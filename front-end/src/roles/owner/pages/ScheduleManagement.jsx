@@ -51,7 +51,6 @@ const fetchPlayerProfile = async (playerId) => {
   }
 };
 
-
 export default function ScheduleManagement({ isDemo = false }) {
      const { user, logout } = useAuth();
      const [loading, setLoading] = useState(true);
@@ -361,8 +360,6 @@ export default function ScheduleManagement({ isDemo = false }) {
                               const field = fields.find(f => f.fieldId === fieldId);
                               const fieldName = field?.name || `Field${fieldId}`;
                               const uniqueSlotName = `${quickSlot.name} - ${fieldName}`;
-
-                              console.log(`Creating slot: ${uniqueSlotName} for field ${fieldId}`);
                               const result = await createTimeSlot({
                                    fieldId: fieldId,
                                    slotName: uniqueSlotName,
@@ -373,7 +370,6 @@ export default function ScheduleManagement({ isDemo = false }) {
 
                               if (result.success) {
                                    successCount++;
-                                   console.log(`✓ Created: ${quickSlot.name}`);
                               } else {
                                    errorCount++;
                                    errors.push(`${quickSlot.name}: ${result.error}`);
@@ -608,7 +604,6 @@ export default function ScheduleManagement({ isDemo = false }) {
           return '';
      };
 
-
      const isSchedulePast = (date, endTime) => {
           const now = new Date();
           const scheduleDate = new Date(date);
@@ -667,9 +662,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                // If specific field is selected, fetch only that field's time slots
                if (selectedFieldForSchedule !== 'all') {
                     const fieldId = Number(selectedFieldForSchedule);
-                    console.log(`Loading time slots for field ${fieldId}`);
                     const slotsResponse = await fetchTimeSlotsByField(fieldId);
-                    console.log(`Received ${slotsResponse.data?.length || 0} slots for field ${fieldId}:`, slotsResponse.data);
                     if (slotsResponse.success && slotsResponse.data) {
                          const enrichedSlots = (slotsResponse.data || []).map(slot => ({
                               ...slot,
@@ -692,7 +685,6 @@ export default function ScheduleManagement({ isDemo = false }) {
                     const results = await Promise.all(fetchPromises);
                     results.forEach((result, index) => {
                          const fieldId = fields[index].fieldId;
-                         console.log(`Field ${fieldId}: received ${result.data?.length || 0} slots`, result.data);
                          if (result.success && result.data && Array.isArray(result.data)) {
                               const slotsWithField = result.data.map(slot => ({
                                    ...slot,
@@ -701,7 +693,6 @@ export default function ScheduleManagement({ isDemo = false }) {
                               allSlots.push(...slotsWithField);
                          }
                     });
-
 
                     // Deduplicate slots by time range (startTime-endTime)
                     // Keep one slot per unique time range for display
@@ -731,8 +722,6 @@ export default function ScheduleManagement({ isDemo = false }) {
                          const timeB = b.startTime || b.StartTime || '00:00';
                          return timeA.localeCompare(timeB);
                     });
-
-                    console.log(`Total unique slots after deduplication: ${uniqueSlots.length}`, uniqueSlots);
                     setTimeSlots(uniqueSlots);
                }
           } catch (error) {
@@ -791,7 +780,6 @@ export default function ScheduleManagement({ isDemo = false }) {
                               return booking;
                          })
                     );
-
 
                     setBookings(bookingsWithUserInfo || []);
                } else {
@@ -863,7 +851,6 @@ export default function ScheduleManagement({ isDemo = false }) {
           const twoDaysAgo = new Date(now);
           twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
-
           for (const schedule of schedules) {
                try {
                     const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
@@ -934,7 +921,6 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      }, [currentUserId, loadBookings]);
 
-
      // Load time slots and schedules when complex, fields, or selectedFieldForSchedule changes
      useEffect(() => {
           if (selectedComplex && fields.length > 0) {
@@ -999,7 +985,6 @@ export default function ScheduleManagement({ isDemo = false }) {
                // Load all slots for all fields
                const loadAllSlots = async () => {
                     try {
-                         console.log('Loading all slots for timeslots tab');
                          const allSlots = [];
                          const fetchPromises = fields.map(field =>
                               fetchTimeSlotsByField(field.fieldId)
@@ -1008,13 +993,10 @@ export default function ScheduleManagement({ isDemo = false }) {
                          const results = await Promise.all(fetchPromises);
                          results.forEach((result, index) => {
                               const fieldId = fields[index].fieldId;
-                              console.log(`Field ${fieldId}: received ${result.data?.length || 0} slots for timeslots tab`);
                               if (result.success && result.data && Array.isArray(result.data)) {
                                    allSlots.push(...result.data);
                               }
                          });
-
-                         console.log(`Total slots for timeslots tab: ${allSlots.length}`);
                          setTimeSlots(allSlots);
                     } catch (error) {
                          console.error('Error loading slots for timeslots tab:', error);
@@ -1438,7 +1420,6 @@ export default function ScheduleManagement({ isDemo = false }) {
                const scheduleDateStr = normalizeDateString(schedule.date);
                const matches = Number(scheduleSlotId) === Number(slotId) && scheduleDateStr === dateStr;
                if (matches) {
-                    console.log(`Found schedule for slot ${slotId} on ${dateStr}:`, schedule);
                }
                return matches;
           });
@@ -1463,7 +1444,6 @@ export default function ScheduleManagement({ isDemo = false }) {
 
           return enrichedSchedules;
      };
-
 
      // Update calendar month when selectedDate changes
      useEffect(() => {
@@ -1544,32 +1524,16 @@ export default function ScheduleManagement({ isDemo = false }) {
      // Get booking info
      const getBookingInfo = (fieldId, date, slotId) => {
           if (!fieldId || !date || !slotId) {
-               console.log(`[getBookingInfo] Missing parameters: fieldId=${fieldId}, date=${date}, slotId=${slotId}`);
                return null;
           }
 
           const dateStr = formatDateToLocalString(date);
-          console.log(`[getBookingInfo] Searching for booking: fieldId=${fieldId}, slotId=${slotId}, date=${dateStr}`);
-          console.log(`[getBookingInfo] Total schedules: ${fieldSchedules.length}, Total bookings: ${bookings.length}`);
-          
           // Debug: Show sample schedules and bookings
           if (fieldSchedules.length > 0) {
                const sampleSchedule = fieldSchedules[0];
-               console.log(`[getBookingInfo] Sample schedule:`, {
-                    fieldId: sampleSchedule.fieldId ?? sampleSchedule.FieldID,
-                    slotId: sampleSchedule.slotId ?? sampleSchedule.SlotID,
-                    date: sampleSchedule.date,
-                    scheduleId: sampleSchedule.scheduleId ?? sampleSchedule.ScheduleID
-               });
           }
           if (bookings.length > 0) {
                const sampleBooking = bookings[0];
-               console.log(`[getBookingInfo] Sample booking:`, {
-                    scheduleId: sampleBooking.scheduleId || sampleBooking.scheduleID || sampleBooking.ScheduleID,
-                    fieldId: sampleBooking.fieldId || sampleBooking.fieldID || sampleBooking.FieldID,
-                    slotId: sampleBooking.slotId || sampleBooking.slotID || sampleBooking.SlotID,
-                    date: sampleBooking.date || sampleBooking.bookingDate
-               });
           }
 
           // First, try to find booking directly by scheduleId
@@ -1583,34 +1547,22 @@ export default function ScheduleManagement({ isDemo = false }) {
                const dateMatch = scheduleDateStr === dateStr;
 
                if (fieldMatch && slotMatch && !dateMatch) {
-                    console.log(`[getBookingInfo] Schedule found but date mismatch:`, {
-                         scheduleDateRaw: s.date,
-                         scheduleDateNormalized: scheduleDateStr,
-                         searchDate: dateStr,
-                         fieldId: scheduleFieldId,
-                         slotId: scheduleSlotId
-                    });
                }
 
                return fieldMatch && slotMatch && dateMatch;
           });
 
           if (schedule) {
-               console.log(`[getBookingInfo] Found schedule:`, schedule);
                const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
-               console.log(`[getBookingInfo] Looking for booking with scheduleId=${scheduleId}`);
-
                const booking = bookings.find(b => {
                     const bookingScheduleId = b.scheduleId || b.scheduleID || b.ScheduleID;
                     const match = bookingScheduleId && Number(bookingScheduleId) === Number(scheduleId);
                     if (match) {
-                         console.log(`[getBookingInfo] Found booking by scheduleId:`, b);
                     }
                     return match;
                });
 
                if (booking) {
-                    console.log(`[getBookingInfo] Returning booking info from schedule match`);
                     return {
                          bookingId: booking.bookingId || booking.BookingID || booking.id,
                          // Prioritize customerName, customerPhone, customerEmail from API response
@@ -1626,15 +1578,12 @@ export default function ScheduleManagement({ isDemo = false }) {
                          bookingDate: booking.bookingDate || booking.BookingDate || booking.createdDate || booking.CreatedDate || 'N/A'
                     };
                } else {
-                    console.log(`[getBookingInfo] No booking found for scheduleId=${scheduleId}`);
                }
           } else {
-               console.log(`[getBookingInfo] No schedule found for fieldId=${fieldId}, slotId=${slotId}, date=${dateStr}`);
           }
 
           // Fallback: try to find booking by fieldId, slotId, and date directly
           // Some bookings might have these fields directly
-          console.log(`[getBookingInfo] Trying direct booking match...`);
           const directBooking = bookings.find(b => {
                const bookingFieldId = b.fieldId || b.fieldID || b.FieldID;
                const bookingSlotId = b.slotId || b.slotID || b.SlotID;
@@ -1645,19 +1594,16 @@ export default function ScheduleManagement({ isDemo = false }) {
                const dateMatch = bookingDateStr === dateStr;
 
                if (fieldMatch && slotMatch && !dateMatch) {
-                    console.log(`[getBookingInfo] Direct booking found but date mismatch: bookingDate=${bookingDateStr}, searchDate=${dateStr}`, b);
                }
 
                const match = fieldMatch && slotMatch && dateMatch;
 
                if (match) {
-                    console.log(`[getBookingInfo] Found booking by direct match:`, b);
                }
                return match;
           });
 
           if (directBooking) {
-               console.log(`[getBookingInfo] Returning direct booking info:`, directBooking);
                return {
                     bookingId: directBooking.bookingId || directBooking.BookingID || directBooking.id,
                     // Prioritize customerName, customerPhone, customerEmail from API response
@@ -1673,11 +1619,8 @@ export default function ScheduleManagement({ isDemo = false }) {
                     bookingDate: directBooking.bookingDate || directBooking.BookingDate || directBooking.createdDate || directBooking.CreatedDate || 'N/A'
                };
           }
-
-          console.log(`[getBookingInfo] No booking found for fieldId=${fieldId}, slotId=${slotId}, date=${dateStr}`);
           return null;
      };
-
 
      // Calculate statistics
      const statistics = useMemo(() => {
