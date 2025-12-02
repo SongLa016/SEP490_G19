@@ -34,6 +34,8 @@ public partial class Sep490G19v1Context : DbContext
 
     public virtual DbSet<DepositPolicy> DepositPolicies { get; set; }
 
+    public virtual DbSet<FavoriteField> FavoriteFields { get; set; }
+
     public virtual DbSet<Field> Fields { get; set; }
 
     public virtual DbSet<FieldComplex> FieldComplexes { get; set; }
@@ -91,11 +93,7 @@ public partial class Sep490G19v1Context : DbContext
     public virtual DbSet<UserRole> UserRoles { get; set; }
 
     public virtual DbSet<ViolationReport> ViolationReports { get; set; }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=tcp:ballsport-server.database.windows.net,1433;Initial Catalog=SEP490_G19V1;Persist Security Info=False;User ID=adminsql;Password=Admin@12345;MultipleActiveResultSets=True;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;");
-
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) { }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<BlogPost>(entity =>
@@ -326,6 +324,30 @@ public partial class Sep490G19v1Context : DbContext
                 .HasForeignKey(d => d.FieldId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__DepositPo__Field__1AD3FDA4");
+        });
+
+        modelBuilder.Entity<FavoriteField>(entity =>
+        {
+            entity.HasKey(e => e.FavoriteId).HasName("PK__Favorite__CE74FAD5F5F740EF");
+
+            entity.HasIndex(e => new { e.UserId, e.FieldId }, "UQ_User_Field").IsUnique();
+
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+
+            entity.HasOne(d => d.Complex).WithMany(p => p.FavoriteFields)
+                .HasForeignKey(d => d.ComplexId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Favorite_Complex");
+
+            entity.HasOne(d => d.Field).WithMany(p => p.FavoriteFields)
+                .HasForeignKey(d => d.FieldId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Favorite_Field");
+
+            entity.HasOne(d => d.User).WithMany(p => p.FavoriteFields)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Favorite_User");
         });
 
         modelBuilder.Entity<Field>(entity =>

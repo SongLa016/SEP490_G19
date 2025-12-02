@@ -82,6 +82,7 @@ public partial class User
     public virtual ICollection<ViolationReport> ViolationReportReportedUsers { get; set; } = new List<ViolationReport>();
     public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
     public virtual ICollection<RatingReply> RatingReplies { get; set; } = new List<RatingReply>();
+    public virtual ICollection<FavoriteField> FavoriteFields { get; set; } = new List<FavoriteField>();
 
     public virtual ICollection<ViolationReport> ViolationReportReporters { get; set; } = new List<ViolationReport>();
 }
