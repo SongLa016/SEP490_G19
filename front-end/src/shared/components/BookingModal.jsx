@@ -8,9 +8,7 @@ import {
      createBookingAPI,
      createBookingPackage,
      fetchOwnerBankAccounts,
-     fetchBankAccount,
-     fetchPublicFieldSchedulesByField,
-     fetchTimeSlotsByField
+     fetchBankAccount
 } from "../index";
 import { createMatchRequest, createCommunityPost } from "../index";
 import EmailVerificationModal from "./EmailVerificationModal";
@@ -45,10 +43,8 @@ export default function BookingModal({
      const [showEmailVerification, setShowEmailVerification] = useState(false);
      const [showOpponentSelection, setShowOpponentSelection] = useState(false);
      const [isRecurring, setIsRecurring] = useState(false);
-     const [recurringStartDate, setRecurringStartDate] = useState(null); // Thay recurringWeeks bằng startDate
-     const [recurringEndDate, setRecurringEndDate] = useState(null); // Thay recurringWeeks bằng endDate
+     const [recurringWeeks, setRecurringWeeks] = useState(4);
      const [selectedDays, setSelectedDays] = useState([]);
-     const [selectedSlotsByDay, setSelectedSlotsByDay] = useState({}); // { dayOfWeek: slotId } - slot đã chọn cho mỗi thứ
      const [suggestedDays, setSuggestedDays] = useState([]); // weekdays 0..6
      const [isSuggesting, setIsSuggesting] = useState(false);
      // Thời gian giữ QR/khóa bước thanh toán: 10 phút
@@ -188,35 +184,32 @@ export default function BookingModal({
           notes: "",
           requiresEmail: !resolvedUserEmail, // Require email if user doesn't have one
           isRecurring: false,
-          fieldSchedules: Array.isArray(fieldData?.fieldSchedules) ? fieldData.fieldSchedules : [],
-          fieldTimeSlots: Array.isArray(fieldData?.fieldTimeSlots) ? fieldData.fieldTimeSlots : []
+          recurringWeeks: 4,
+          recurringEndDate: null
      });
 
-     // Tạo danh sách các buổi định kỳ dự kiến từ startDate + endDate + các ngày trong tuần
+     // Tạo danh sách các buổi định kỳ dự kiến từ ngày bắt đầu + số tuần + các ngày trong tuần
      const generateRecurringSessions = () => {
-          if (!isRecurring || !recurringStartDate || !recurringEndDate || !Array.isArray(selectedDays) || selectedDays.length === 0) return [];
+          if (!isRecurring || !bookingData?.date || !Array.isArray(selectedDays) || selectedDays.length === 0 || !recurringWeeks) return [];
           try {
                const sessions = [];
-               const start = new Date(recurringStartDate);
+               const start = new Date(bookingData.date);
                start.setHours(0, 0, 0, 0);
-               const end = new Date(recurringEndDate);
-               end.setHours(23, 59, 59, 999);
+               const end = new Date(start);
+               end.setDate(end.getDate() + (recurringWeeks * 7) - 1);
 
                // Duyệt từ ngày bắt đầu đến ngày kết thúc, chọn ngày có weekday nằm trong selectedDays
                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                     const weekday = d.getDay(); // 0=CN..6=T7
                     if (selectedDays.includes(weekday)) {
-                         const selectedSlotId = selectedSlotsByDay?.[weekday];
-                         if (selectedSlotId) {
-                              sessions.push({
-                                   date: new Date(d),
-                                   dayOfWeek: weekday,
-                                   slotId: selectedSlotId
-                              });
-                         }
+                         sessions.push({
+                              date: new Date(d),
+                              slotName: bookingData.slotName || ""
+                         });
                     }
                }
-               return sessions;
+               // Đảm bảo số phần tử = selectedDays.length * recurringWeeks
+               return sessions.slice(0, selectedDays.length * recurringWeeks);
           } catch {
                return [];
           }
@@ -230,83 +223,11 @@ export default function BookingModal({
           if (totalSessions >= 4) return 5;
           return 0;
      };
-     // Tính giá cho từng slot dựa trên TimeSlots (chứa giá) hoặc fieldSchedules
-     const getSlotPrice = (slotId) => {
-          // Ưu tiên lấy từ TimeSlots (có giá chính xác)
-          if (Array.isArray(bookingData.fieldTimeSlots) && bookingData.fieldTimeSlots.length > 0) {
-               const timeSlot = bookingData.fieldTimeSlots.find(s => 
-                    String(s.slotId || s.SlotId || s.slotID || s.SlotID) === String(slotId)
-               );
-               if (timeSlot) {
-                    return timeSlot.price || timeSlot.Price || timeSlot.unitPrice || timeSlot.UnitPrice || 0;
-               }
-          }
-          
-          // Fallback: lấy từ fieldSchedules nếu có
-          if (Array.isArray(bookingData.fieldSchedules)) {
-               const schedule = bookingData.fieldSchedules.find(s => 
-                    String(s.slotId || s.SlotId || s.slotID || s.SlotID) === String(slotId)
-               );
-               if (schedule) {
-                    return schedule.price || schedule.Price || schedule.unitPrice || schedule.UnitPrice || 0;
-               }
-          }
-          
-          // Cuối cùng: dùng giá mặc định từ bookingData
-          return bookingData.price || 0;
-     };
-
      useEffect(() => {
-          if (!isRecurring) {
-               // Đặt lẻ: giữ logic cũ
-               const basePrice = bookingData.price || 0;
-               const subtotal = basePrice;
-               const deposit = computeDepositAmount(
-                    subtotal,
-                    bookingData.depositPercent,
-                    bookingData.minDeposit,
-                    bookingData.maxDeposit
-               );
-               const remaining = Math.max(0, subtotal - deposit);
-               setBookingData(prev => ({
-                    ...prev,
-                    subtotal,
-                    totalPrice: subtotal,
-                    depositAmount: deposit,
-                    remainingAmount: remaining,
-                    totalSessions: 1,
-                    discountPercent: 0,
-                    discountAmount: 0
-               }));
-               return;
-          }
-
-          // Đặt cố định: tính tổng giá từ các slot đã chọn
-          const sessions = generateRecurringSessions();
-          const totalSessions = sessions.length;
-          
-          if (totalSessions === 0) {
-               setBookingData(prev => ({
-                    ...prev,
-                    subtotal: 0,
-                    totalPrice: 0,
-                    depositAmount: 0,
-                    remainingAmount: 0,
-                    totalSessions: 0,
-                    discountPercent: 0,
-                    discountAmount: 0
-               }));
-               return;
-          }
-
-          // Tính tổng giá từ các slot đã chọn
-          let subtotal = 0;
-          sessions.forEach(session => {
-               const slotPrice = getSlotPrice(session.slotId);
-               subtotal += slotPrice;
-          });
-
-          const discountPercent = getRecurringDiscountPercent(totalSessions);
+          const basePrice = bookingData.price || 0;
+          const totalSessions = isRecurring ? (recurringWeeks * selectedDays.length) : 1;
+          const subtotal = basePrice * totalSessions;
+          const discountPercent = isRecurring ? getRecurringDiscountPercent(totalSessions) : 0;
           const discountAmount = Math.round(subtotal * (discountPercent / 100));
           const total = subtotal - discountAmount;
           const deposit = computeDepositAmount(
@@ -316,7 +237,6 @@ export default function BookingModal({
                bookingData.maxDeposit
           );
           const remaining = Math.max(0, total - deposit);
-          
           setBookingData(prev => ({
                ...prev,
                subtotal,
@@ -333,12 +253,9 @@ export default function BookingModal({
           bookingData.depositPercent,
           bookingData.minDeposit,
           bookingData.maxDeposit,
-          bookingData.fieldSchedules,
           isRecurring,
-          recurringStartDate,
-          recurringEndDate,
-          selectedDays,
-          selectedSlotsByDay
+          recurringWeeks,
+          selectedDays
      ]);
 
      // Cập nhật bookingData khi fieldData thay đổi
@@ -381,8 +298,7 @@ export default function BookingModal({
                     duration: computedDuration ?? prev.duration,
                     price: fieldData.price || prev.price,
                     totalPrice: fieldData.totalPrice || fieldData.price || prev.price,
-                    fieldSchedules: Array.isArray(fieldData.fieldSchedules) ? fieldData.fieldSchedules : (prev.fieldSchedules || []), // Đảm bảo fieldSchedules là array
-                    fieldTimeSlots: Array.isArray(fieldData.fieldTimeSlots) ? fieldData.fieldTimeSlots : (prev.fieldTimeSlots || []), // Thêm TimeSlots để lấy giá
+                    fieldSchedules: fieldData.fieldSchedules || prev.fieldSchedules, // Thêm fieldSchedules
                     depositPercent: nextDepositPercent,
                     minDeposit: depositConfig.min,
                     maxDeposit: depositConfig.max
@@ -392,14 +308,8 @@ export default function BookingModal({
                if (fieldData.isRecurringPreset !== undefined) {
                     setIsRecurring(!!fieldData.isRecurringPreset);
                }
-               // recurringWeeksPreset không còn dùng nữa, thay bằng startDate/endDate
-               // Có thể tính startDate/endDate từ recurringWeeksPreset nếu cần
                if (typeof fieldData.recurringWeeksPreset === 'number' && fieldData.recurringWeeksPreset > 0) {
-                    const today = new Date();
-                    const endDate = new Date(today);
-                    endDate.setDate(endDate.getDate() + (fieldData.recurringWeeksPreset * 7) - 1);
-                    setRecurringStartDate(today.toISOString().split('T')[0]);
-                    setRecurringEndDate(endDate.toISOString().split('T')[0]);
+                    setRecurringWeeks(fieldData.recurringWeeksPreset);
                }
                if (Array.isArray(fieldData.selectedDaysPreset)) {
                     setSelectedDays(fieldData.selectedDaysPreset);
@@ -435,120 +345,25 @@ export default function BookingModal({
                setLockRemainingMs(0);
                if (fieldData?.isRecurringPreset) {
                     setIsRecurring(true);
-                    // Ưu tiên dùng recurringStartDatePreset và recurringEndDatePreset nếu có
-                    if (fieldData.recurringStartDatePreset && fieldData.recurringEndDatePreset) {
-                         setRecurringStartDate(fieldData.recurringStartDatePreset);
-                         setRecurringEndDate(fieldData.recurringEndDatePreset);
-                    } else if (typeof fieldData.recurringWeeksPreset === 'number' && fieldData.recurringWeeksPreset > 0) {
-                         // Fallback: tính từ recurringWeeksPreset
-                         const today = new Date();
-                         const endDate = new Date(today);
-                         endDate.setDate(endDate.getDate() + (fieldData.recurringWeeksPreset * 7) - 1);
-                         setRecurringStartDate(today.toISOString().split('T')[0]);
-                         setRecurringEndDate(endDate.toISOString().split('T')[0]);
+                    if (typeof fieldData.recurringWeeksPreset === 'number' && fieldData.recurringWeeksPreset > 0) {
+                         setRecurringWeeks(fieldData.recurringWeeksPreset);
                     } else {
-                         // Mặc định 4 tuần
-                         const today = new Date();
-                         const endDate = new Date(today);
-                         endDate.setDate(endDate.getDate() + (4 * 7) - 1);
-                         setRecurringStartDate(today.toISOString().split('T')[0]);
-                         setRecurringEndDate(endDate.toISOString().split('T')[0]);
+                         setRecurringWeeks(4);
                     }
                     if (Array.isArray(fieldData.selectedDaysPreset)) {
                          setSelectedDays(fieldData.selectedDaysPreset);
                     } else {
                          setSelectedDays([]);
                     }
-                    setSelectedSlotsByDay({});
                } else {
                     setIsRecurring(false);
-                    setRecurringStartDate(null);
-                    setRecurringEndDate(null);
+                    setRecurringWeeks(4);
                     setSelectedDays([]);
-                    setSelectedSlotsByDay({});
                }
           } else {
                closeBookingModal();
           }
      }, [isOpen, fieldData, openBookingModal, closeBookingModal]);
-
-     // Fetch schedule khi chọn startDate/endDate và các thứ cho đặt cố định
-     useEffect(() => {
-          if (!isRecurring || !bookingData.fieldId || !recurringStartDate || !recurringEndDate || selectedDays.length === 0) {
-               return;
-          }
-
-          // Fetch cả schedule và TimeSlots (để lấy giá)
-          const fetchData = async () => {
-               try {
-                    const [schedulesResult, timeSlotsResult] = await Promise.all([
-                         fetchPublicFieldSchedulesByField(bookingData.fieldId),
-                         fetchTimeSlotsByField(bookingData.fieldId)
-                    ]);
-                    
-                    // Xử lý schedules
-                    if (schedulesResult.success && Array.isArray(schedulesResult.data)) {
-                         // Thêm dayOfWeek vào mỗi schedule nếu chưa có
-                         const schedulesWithDayOfWeek = schedulesResult.data.map(schedule => {
-                              if (schedule.dayOfWeek !== undefined && schedule.dayOfWeek !== null) {
-                                   return schedule;
-                              }
-                              
-                              // Tính dayOfWeek từ date
-                              const scheduleDate = schedule.date ?? schedule.Date ?? schedule.scheduleDate ?? schedule.ScheduleDate;
-                              if (scheduleDate) {
-                                   try {
-                                        const date = typeof scheduleDate === 'string' 
-                                             ? new Date(scheduleDate) 
-                                             : (scheduleDate.year && scheduleDate.month && scheduleDate.day
-                                                  ? new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day)
-                                                  : new Date(scheduleDate));
-                                        if (!isNaN(date.getTime())) {
-                                             return {
-                                                  ...schedule,
-                                                  dayOfWeek: date.getDay() // 0 = CN, 1 = T2, ..., 6 = T7
-                                             };
-                                        }
-                                   } catch (e) {
-                                        // Silent fail
-                                   }
-                              }
-                              
-                              return schedule;
-                         });
-                         
-                         setBookingData(prev => {
-                              // Chỉ update nếu fieldId thay đổi hoặc chưa có schedule
-                              if (!prev.fieldSchedules || prev.fieldSchedules.length === 0 || prev.fieldId !== bookingData.fieldId) {
-                                   return {
-                                        ...prev,
-                                        fieldSchedules: schedulesWithDayOfWeek
-                                   };
-                              }
-                              return prev;
-                         });
-                    }
-                    
-                    // Xử lý TimeSlots (để lấy giá)
-                    if (timeSlotsResult && Array.isArray(timeSlotsResult.data)) {
-                         setBookingData(prev => {
-                              // Chỉ update nếu fieldId thay đổi hoặc chưa có TimeSlots
-                              if (!prev.fieldTimeSlots || prev.fieldTimeSlots.length === 0 || prev.fieldId !== bookingData.fieldId) {
-                                   return {
-                                        ...prev,
-                                        fieldTimeSlots: timeSlotsResult.data
-                                   };
-                              }
-                              return prev;
-                         });
-                    }
-               } catch (error) {
-                    console.error("[BookingModal] Error fetching schedules/TimeSlots:", error);
-               }
-          };
-
-          fetchData();
-     }, [isRecurring, bookingData.fieldId, recurringStartDate, recurringEndDate, selectedDays]);
 
      useEffect(() => {
           if (step !== "payment") {
@@ -675,31 +490,11 @@ export default function BookingModal({
      };
 
      const handleDayToggle = (day) => {
-          setSelectedDays(prev => {
-               if (prev.includes(day)) {
-                    // Bỏ chọn: xóa slot đã chọn cho thứ này
-                    setSelectedSlotsByDay(prevSlots => {
-                         const newSlots = { ...prevSlots };
-                         delete newSlots[day];
-                         return newSlots;
-                    });
-                    return prev.filter(d => d !== day);
-               } else {
-                    return [...prev, day];
-               }
-          });
-     };
-
-     const handleSlotSelect = (dayOfWeek, slotId) => {
-          setSelectedSlotsByDay(prev => {
-               if (slotId === null) {
-                    const newSlots = { ...prev };
-                    delete newSlots[dayOfWeek];
-                    return newSlots;
-               } else {
-                    return { ...prev, [dayOfWeek]: slotId };
-               }
-          });
+          setSelectedDays(prev =>
+               prev.includes(day)
+                    ? prev.filter(d => d !== day)
+                    : [...prev, day]
+          );
      };
 
      // Suggest alternative weekdays for recurring schedule based on availability
@@ -710,16 +505,12 @@ export default function BookingModal({
                     setSuggestedDays([]);
                     if (!isRecurring) return;
                     const fieldId = bookingData.fieldId;
-                    if (!fieldId || !recurringStartDate || !recurringEndDate) return;
+                    const slotId = bookingData.slotId;
+                    const startDateStr = bookingData.date;
+                    if (!fieldId || !slotId || !startDateStr) return;
 
-                    const startDate = new Date(recurringStartDate);
-                    const endDate = new Date(recurringEndDate);
-                    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || startDate > endDate) return;
-                    
-                    // Tính số tuần từ startDate đến endDate
-                    const diffTime = endDate - startDate;
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    const weeks = Math.max(1, Math.ceil(diffDays / 7));
+                    const startDate = new Date(startDateStr + "T00:00:00");
+                    const weeks = Math.max(1, parseInt(recurringWeeks));
 
                     function formatDate(d) {
                          const y = d.getFullYear();
@@ -765,7 +556,7 @@ export default function BookingModal({
                }
           }
           computeSuggestions();
-     }, [isRecurring, bookingData.fieldId, bookingData.slotId, recurringStartDate, recurringEndDate, selectedDays]);
+     }, [isRecurring, bookingData.fieldId, bookingData.slotId, bookingData.date, recurringWeeks, selectedDays]);
 
      const handlePayment = async () => {
           if (!validateForm()) return;
@@ -807,7 +598,7 @@ export default function BookingModal({
                               await Swal.fire({
                                    icon: 'warning',
                                    title: 'Không thể đặt cố định',
-                                   text: 'Vui lòng chọn ngày bắt đầu, ngày kết thúc, các ngày trong tuần và khung giờ cho từng ngày trước khi đặt cố định.',
+                                   text: 'Vui lòng chọn ngày bắt đầu, số tuần và các ngày trong tuần trước khi đặt cố định.',
                                    confirmButtonColor: '#f59e0b'
                               });
                               return;
@@ -841,14 +632,10 @@ export default function BookingModal({
                                         ? s.date
                                         : new Date(s.date));
                                    const targetStr = targetDate.toISOString().split("T")[0];
-                                   const sessionSlotId = s.slotId || bookingData.slotId;
                                    const found = schedules.some((sch) => {
                                         const scheduleSlotId = sch.slotId || sch.SlotId || sch.slotID || sch.SlotID;
                                         const scheduleDate = sch.date || sch.Date;
-                                        const scheduleDayOfWeek = sch.dayOfWeek ?? sch.DayOfWeek ?? sch.weekday ?? sch.Weekday;
-                                        // Kiểm tra cả slotId và dayOfWeek
-                                        return String(scheduleSlotId) === String(sessionSlotId) &&
-                                             Number(scheduleDayOfWeek) === Number(s.dayOfWeek) &&
+                                        return String(scheduleSlotId) === String(bookingData.slotId) &&
                                              compareDate(scheduleDate, targetStr);
                                    });
                                    if (found) hasScheduleCount += 1;
@@ -886,8 +673,8 @@ export default function BookingModal({
                const booking = {
                     ...bookingData,
                     recurring: isRecurring ? {
-                         startDate: recurringStartDate,
-                         endDate: recurringEndDate
+                         weeks: recurringWeeks,
+                         endDate: new Date(Date.now() + recurringWeeks * 7 * 24 * 60 * 60 * 1000).toISOString()
                     } : null
                };
 
@@ -1056,71 +843,24 @@ export default function BookingModal({
                     });
                } else {
                     // ----------------- ĐẶT ĐỊNH KỲ: dùng BookingPackage/create -----------------
-                    if (!recurringStartDate || !recurringEndDate) {
-                         setIsProcessing(false);
-                         await Swal.fire({
-                              icon: 'warning',
-                              title: 'Thiếu thông tin',
-                              text: 'Vui lòng chọn ngày bắt đầu và ngày kết thúc cho gói đặt cố định.',
-                              confirmButtonColor: '#f59e0b'
-                         });
-                         return;
-                    }
-
-                    const start = new Date(recurringStartDate);
+                    const start = new Date(booking.date);
                     start.setHours(0, 0, 0, 0);
-                    const end = new Date(recurringEndDate);
-                    end.setHours(23, 59, 59, 999);
-
-                    // Tìm scheduleId cho từng dayOfWeek từ fieldSchedules
-                    const buildSelectedSlots = () => {
-                         return selectedDays
-                              .filter(dayOfWeek => selectedSlotsByDay?.[dayOfWeek]) // Chỉ lấy các thứ đã chọn slot
-                              .map(dayOfWeek => {
-                                   const slotId = selectedSlotsByDay[dayOfWeek];
-                                   // Tìm scheduleId từ fieldSchedules
-                                   let foundScheduleId = 0;
-                                   if (Array.isArray(booking.fieldSchedules)) {
-                                        const schedule = booking.fieldSchedules.find(s => {
-                                             const scheduleDayOfWeek = s.dayOfWeek ?? s.DayOfWeek ?? s.weekday ?? s.Weekday;
-                                             const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
-                                             return Number(scheduleDayOfWeek) === Number(dayOfWeek) &&
-                                                  String(scheduleSlotId) === String(slotId);
-                                        });
-                                        if (schedule) {
-                                             foundScheduleId = schedule.scheduleId || schedule.ScheduleId || schedule.scheduleID || schedule.ScheduleID || 0;
-                                        }
-                                   }
-                                   return {
-                                        slotId: Number(slotId) || 0,
-                                        dayOfWeek: Number(dayOfWeek) || 0,
-                                        fieldId: Number(booking.fieldId) || 0,
-                                        scheduleId: Number(foundScheduleId) || 0
-                                   };
-                              });
-                    };
-
-                    const selectedSlots = buildSelectedSlots();
-
-                    if (selectedSlots.length === 0) {
-                         setIsProcessing(false);
-                         await Swal.fire({
-                              icon: 'warning',
-                              title: 'Thiếu thông tin',
-                              text: 'Vui lòng chọn khung giờ cho ít nhất một ngày trong tuần.',
-                              confirmButtonColor: '#f59e0b'
-                         });
-                         return;
-                    }
+                    const end = new Date(start);
+                    end.setDate(end.getDate() + recurringWeeks * 7 - 1);
 
                     const packagePayload = {
                          userId: userId,
                          fieldId: booking.fieldId,
-                         packageName: booking.packageName || `Gói định kỳ`,
+                         packageName: booking.packageName || `Gói định kỳ ${booking.slotName || ""}`,
                          startDate: start.toISOString().split("T")[0],
                          endDate: end.toISOString().split("T")[0],
                          totalPrice: booking.totalPrice || totalPrice,
-                         selectedSlots: selectedSlots
+                         selectedSlots: (selectedDays || []).map(d => ({
+                              slotId: booking.slotId,
+                              dayOfWeek: d,
+                              fieldId: booking.fieldId,
+                              scheduleId: scheduleId || 0
+                         }))
                     };
 
                     console.log("📤 [BOOKING PACKAGE] Payload:", JSON.stringify(packagePayload, null, 2));
@@ -1395,9 +1135,7 @@ export default function BookingModal({
                                         <FieldInfoSection
                                              bookingData={bookingData}
                                              isRecurring={isRecurring}
-                                             recurringWeeks={0} // Không dùng nữa, để tương thích
-                                             startDate={recurringStartDate}
-                                             endDate={recurringEndDate}
+                                             recurringWeeks={recurringWeeks}
                                              selectedDays={selectedDays}
                                              generateRecurringSessions={generateRecurringSessions}
                                         />
@@ -1413,49 +1151,29 @@ export default function BookingModal({
                                         <RecurringBookingSection
                                              isRecurring={isRecurring}
                                              setIsRecurring={setIsRecurring}
-                                             startDate={recurringStartDate}
-                                             setStartDate={setRecurringStartDate}
-                                             endDate={recurringEndDate}
-                                             setEndDate={setRecurringEndDate}
+                                             recurringWeeks={recurringWeeks}
+                                             setRecurringWeeks={setRecurringWeeks}
                                              selectedDays={selectedDays}
                                              handleDayToggle={handleDayToggle}
-                                             selectedSlotsByDay={selectedSlotsByDay}
-                                             onSlotSelect={handleSlotSelect}
-                                             fieldSchedules={bookingData.fieldSchedules || []}
+                                             suggestedDays={suggestedDays}
+                                             isSuggesting={isSuggesting}
                                              generateRecurringSessions={generateRecurringSessions}
                                              onBookingDataChange={handleInputChange}
                                         />
                                         <PriceSummarySection
                                              bookingData={bookingData}
                                              isRecurring={isRecurring}
-                                             recurringWeeks={0} // Không dùng nữa, để tương thích
+                                             recurringWeeks={recurringWeeks}
                                              selectedDays={selectedDays}
-                                             selectedSlotsByDay={selectedSlotsByDay}
-                                             fieldSchedules={bookingData.fieldSchedules || []}
                                              formatPrice={formatPrice}
                                         />
                                         <Button
                                              onClick={handlePayment}
-                                             disabled={isProcessing || (isRecurring && (!recurringStartDate || !recurringEndDate || selectedDays.length === 0 || Object.keys(selectedSlotsByDay).length === 0))}
-                                             className={`w-full py-3 rounded-lg text-white font-semibold ${isProcessing || (isRecurring && (!recurringStartDate || !recurringEndDate || selectedDays.length === 0 || Object.keys(selectedSlotsByDay).length === 0)) ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
+                                             disabled={isProcessing || (isRecurring && (!bookingData.date || selectedDays.length === 0))}
+                                             className={`w-full py-3 rounded-lg text-white font-semibold ${isProcessing || (isRecurring && (!bookingData.date || selectedDays.length === 0)) ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
                                         >
                                              {isProcessing ? "Đang xử lý..." :
-                                                  isRecurring ? (() => {
-                                                       // Tính số tuần từ startDate và endDate
-                                                       if (recurringStartDate && recurringEndDate) {
-                                                            try {
-                                                                 const start = new Date(recurringStartDate);
-                                                                 const end = new Date(recurringEndDate);
-                                                                 const diffTime = end - start;
-                                                                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                                                 const weeks = Math.ceil(diffDays / 7);
-                                                                 return `Giữ chỗ ${weeks} tuần & tiếp tục thanh toán`;
-                                                            } catch {
-                                                                 return "Giữ chỗ định kỳ & tiếp tục thanh toán";
-                                                            }
-                                                       }
-                                                       return "Giữ chỗ định kỳ & tiếp tục thanh toán";
-                                                  })() :
+                                                  isRecurring ? `Giữ chỗ ${recurringWeeks} tuần & tiếp tục thanh toán` :
                                                        "Giữ chỗ & tiếp tục thanh toán"
                                              }
                                         </Button>
@@ -1471,7 +1189,7 @@ export default function BookingModal({
                                    ownerBankAccount={ownerBankAccount}
                                    bookingData={bookingData}
                                    isRecurring={isRecurring}
-                                   recurringWeeks={0} // Không dùng nữa, để tương thích
+                                   recurringWeeks={recurringWeeks}
                                    selectedDays={selectedDays}
                                    isProcessing={isProcessing}
                                    formatPrice={formatPrice}
@@ -1488,7 +1206,7 @@ export default function BookingModal({
                          step === "confirmation" && (
                               <ConfirmationStepSection
                                    isRecurring={isRecurring}
-                                   recurringWeeks={0} // Không dùng nữa, để tương thích
+                                   recurringWeeks={recurringWeeks}
                                    hasOpponent={hasOpponent}
                                    createdMatchRequest={createdMatchRequest}
                                    createdCommunityPost={createdCommunityPost}

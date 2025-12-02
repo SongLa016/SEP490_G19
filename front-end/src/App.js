@@ -1,5 +1,6 @@
 import React, { Suspense } from "react";
 import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ModalProvider } from "./contexts/ModalContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
@@ -10,6 +11,17 @@ import OwnerLayout from "./roles/owner/layouts/OwnerLayout";
 import AdminLayout from "./roles/admin/layouts/AdminLayout";
 import AuthLayout from "./shared/layouts/AuthLayout";
 import { getDefaultPathForRole } from "./shared/constants/roles";
+
+// Create a QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 /**
  * App Component - Refactored với route configuration
@@ -163,13 +175,15 @@ function AppContent() {
 
 function App() {
   return (
-    <LanguageProvider>
-      <AuthProvider>
-        <ModalProvider>
-          <AppContent />
-        </ModalProvider>
-      </AuthProvider>
-    </LanguageProvider>
+    <QueryClientProvider client={queryClient}>
+      <LanguageProvider>
+        <AuthProvider>
+          <ModalProvider>
+            <AppContent />
+          </ModalProvider>
+        </AuthProvider>
+      </LanguageProvider>
+    </QueryClientProvider>
   );
 }
 

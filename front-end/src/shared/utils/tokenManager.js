@@ -26,7 +26,7 @@ const safeAtob = (value) => {
   }
 };
 
-const decodeTokenPayload = (token) => {
+export const decodeTokenPayload = (token) => {
   if (!token) return null;
 
   const [, payload] = token.split(".");
@@ -103,4 +103,3 @@ export const getValidToken = () => {
 
   return token;
 };
-

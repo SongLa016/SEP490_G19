@@ -31,18 +31,18 @@ export default function RecurringBookingSection({
           if (!Array.isArray(fieldSchedules) || fieldSchedules.length === 0) {
                return [];
           }
-          
+
           const filtered = fieldSchedules.filter(s => {
                // Thử lấy dayOfWeek trực tiếp từ schedule
                let scheduleDayOfWeek = s.dayOfWeek ?? s.DayOfWeek ?? s.weekday ?? s.Weekday;
-               
+
                // Nếu không có, tính từ date
                if (scheduleDayOfWeek === undefined || scheduleDayOfWeek === null) {
                     const scheduleDate = s.date ?? s.Date ?? s.scheduleDate ?? s.ScheduleDate;
                     if (scheduleDate) {
                          try {
-                              const date = typeof scheduleDate === 'string' 
-                                   ? new Date(scheduleDate) 
+                              const date = typeof scheduleDate === 'string'
+                                   ? new Date(scheduleDate)
                                    : (scheduleDate.year && scheduleDate.month && scheduleDate.day
                                         ? new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day)
                                         : new Date(scheduleDate));
@@ -54,10 +54,10 @@ export default function RecurringBookingSection({
                          }
                     }
                }
-               
+
                return Number(scheduleDayOfWeek) === Number(dayOfWeek);
           });
-          
+
           // Deduplicate theo slotId để chỉ lấy unique slot cho mỗi thứ
           // (vì có thể có nhiều schedule cho cùng slot nhưng khác ngày)
           const seenSlotIds = new Set();
@@ -69,7 +69,7 @@ export default function RecurringBookingSection({
                seenSlotIds.add(String(slotId));
                return true;
           });
-          
+
           return uniqueSchedules;
      };
 
@@ -86,7 +86,7 @@ export default function RecurringBookingSection({
                const start = new Date(startDate);
                const end = new Date(endDate);
                if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return 0;
-               
+
                let count = 0;
                const current = new Date(start);
                while (current <= end) {
@@ -206,7 +206,7 @@ export default function RecurringBookingSection({
                                                        <CalendarDays className="w-4 h-4 text-teal-600" />
                                                        <span className="font-semibold text-teal-800">{dayOption?.name || `Thứ ${dayOfWeek}`}</span>
                                                   </div>
-                                                  
+
                                                   {schedules.length === 0 ? (
                                                        <p className="text-sm text-gray-500 italic">Không có lịch trình cho {dayOption?.name}</p>
                                                   ) : (
@@ -230,13 +230,12 @@ export default function RecurringBookingSection({
                                                                                 }
                                                                            }}
                                                                            disabled={!isAvailable}
-                                                                           className={`text-xs py-2 px-3 rounded-lg transition-all ${
-                                                                                isSelected
-                                                                                     ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600"
-                                                                                     : isAvailable
-                                                                                          ? "bg-white text-gray-700 border border-teal-300 hover:bg-teal-50 hover:border-teal-500"
-                                                                                          : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                                                                           }`}
+                                                                           className={`text-xs py-2 px-3 rounded-lg transition-all ${isSelected
+                                                                                ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600"
+                                                                                : isAvailable
+                                                                                     ? "bg-white text-gray-700 border border-teal-300 hover:bg-teal-50 hover:border-teal-500"
+                                                                                     : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                                                                                }`}
                                                                       >
                                                                            <div className="flex flex-col items-center gap-1">
                                                                                 <Clock className="w-3 h-3" />

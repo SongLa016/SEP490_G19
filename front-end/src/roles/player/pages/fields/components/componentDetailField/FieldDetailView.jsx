@@ -94,15 +94,15 @@ export default function FieldDetailView({
 
      const resolvedTypeName = (() => {
           if (!selectedField) return "";
-          
+
           const typeId = selectedField.typeId ?? selectedField.typeID ?? selectedField.TypeID ?? null;
           const currentTypeName = selectedField.typeName || "";
-          
+
           // Ưu tiên sử dụng typeName có sẵn (nếu không rỗng)
           if (currentTypeName && currentTypeName.trim() !== "") {
                return currentTypeName;
           }
-          
+
           // Nếu không có typeName, lấy từ localFieldTypeMap dựa vào typeId
           if (typeId != null) {
                const mappedName = localFieldTypeMap[String(typeId)];
@@ -110,7 +110,7 @@ export default function FieldDetailView({
                     return mappedName;
                }
           }
-          
+
           // Debug log để kiểm tra
           console.log("⚠️ [FieldDetailView] Could not resolve typeName:", {
                fieldId: selectedField.fieldId,
@@ -119,7 +119,7 @@ export default function FieldDetailView({
                localFieldTypeMap: localFieldTypeMap,
                mappedName: typeId != null ? localFieldTypeMap[String(typeId)] : null
           });
-          
+
           return "";
      })();
 
@@ -273,4 +273,3 @@ export default function FieldDetailView({
           </div>
      );
 }
-

@@ -13,7 +13,7 @@ import {
      rejectOrWithdrawParticipant,
      expireOldMatchRequests,
      fetchMyMatchHistory
-} from "../../../../shared/services/matchRequests";
+} from "../../../../shared/services/matchRequest";
 import FindOpponentModal from "../../../../shared/components/FindOpponentModal";
 import RecurringOpponentModal from "../../../../shared/components/RecurringOpponentModal";
 import RatingModal from "../../../../shared/components/RatingModal";
@@ -2507,14 +2507,14 @@ export default function BookingHistory({ user }) {
                                                             const requestLocked = isRequestLocked(req);
                                                             const participantKey = `booking-${b.id}-request-${requestId || 'default'}`;
                                                             const isExpanded = expandedParticipants[participantKey] || false;
-                                                            
+
                                                             const toggleParticipants = () => {
                                                                  setExpandedParticipants(prev => ({
                                                                       ...prev,
                                                                       [participantKey]: !prev[participantKey]
                                                                  }));
                                                             };
-                                                            
+
                                                             return (
                                                                  <div className="mt-3 p-3 rounded-xl border border-teal-100 bg-white/70">
                                                                       <div className="flex items-center justify-between mb-3">
@@ -2557,119 +2557,119 @@ export default function BookingHistory({ user }) {
                                                                       </div>
                                                                       {isExpanded && (
                                                                            <div className="space-y-2">
-                                                                           {displayParticipants.map((j) => {
-                                                                                const participantId = j.participantId || j.joinId || j.id;
-                                                                                const participantTeamName =
-                                                                                     j.teamName ||
-                                                                                     j.fullName ||
-                                                                                     j.participantName ||
-                                                                                     j.userName ||
-                                                                                     `User: ${j.userId || participantId}`;
-                                                                                const participantStatus = normalizeParticipantStatus(j);
-                                                                                const needsOwnerAction = participantNeedsOwnerAction(j);
-                                                                                const isAccepted = isParticipantAcceptedByOwner(j);
-                                                                                const isRejected = isParticipantRejectedByOwner(j);
-                                                                                return (
-                                                                                     <div key={participantId || Math.random()} className="bg-white border border-gray-200 rounded-xl p-3 hover:shadow-sm transition-shadow">
-                                                                                          <div className="flex items-start justify-between gap-3">
-                                                                                               <div className="flex-1 space-y-2">
-                                                                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                                                                         <span className="font-semibold text-gray-900">{participantTeamName}</span>
-                                                                                                         {j.playerCount && (
-                                                                                                              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                                                                                                                   {j.playerCount} người
+                                                                                {displayParticipants.map((j) => {
+                                                                                     const participantId = j.participantId || j.joinId || j.id;
+                                                                                     const participantTeamName =
+                                                                                          j.teamName ||
+                                                                                          j.fullName ||
+                                                                                          j.participantName ||
+                                                                                          j.userName ||
+                                                                                          `User: ${j.userId || participantId}`;
+                                                                                     const participantStatus = normalizeParticipantStatus(j);
+                                                                                     const needsOwnerAction = participantNeedsOwnerAction(j);
+                                                                                     const isAccepted = isParticipantAcceptedByOwner(j);
+                                                                                     const isRejected = isParticipantRejectedByOwner(j);
+                                                                                     return (
+                                                                                          <div key={participantId || Math.random()} className="bg-white border border-gray-200 rounded-xl p-3 hover:shadow-sm transition-shadow">
+                                                                                               <div className="flex items-start justify-between gap-3">
+                                                                                                    <div className="flex-1 space-y-2">
+                                                                                                         <div className="flex items-center gap-2 flex-wrap">
+                                                                                                              <span className="font-semibold text-gray-900">{participantTeamName}</span>
+                                                                                                              {j.playerCount && (
+                                                                                                                   <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                                                                                                        {j.playerCount} người
+                                                                                                                   </Badge>
+                                                                                                              )}
+                                                                                                              <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600 border-gray-200">
+                                                                                                                   {participantStatus}
+                                                                                                              </Badge>
+                                                                                                         </div>
+
+                                                                                                         {j.fullName && j.fullName !== participantTeamName && (
+                                                                                                              <div className="text-sm text-gray-600 flex items-center gap-1">
+                                                                                                                   <User className="w-3 h-3" />
+                                                                                                                   <span>{j.fullName}</span>
+                                                                                                              </div>
+                                                                                                         )}
+
+                                                                                                         {j.contactPhone && (
+                                                                                                              <div className="text-sm text-gray-600 flex items-center gap-1">
+                                                                                                                   <Phone className="w-3 h-3" />
+                                                                                                                   <span>{j.contactPhone}</span>
+                                                                                                              </div>
+                                                                                                         )}
+
+                                                                                                         {j.note && j.note.trim() && (
+                                                                                                              <div className="text-sm text-gray-600 flex items-start gap-1">
+                                                                                                                   <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                                                                                                   <span className="italic">{j.note}</span>
+                                                                                                              </div>
+                                                                                                         )}
+
+                                                                                                         <div className="text-xs text-gray-500">
+                                                                                                              Tham gia: {new Date(j.joinedAt).toLocaleString('vi-VN')}
+                                                                                                         </div>
+                                                                                                    </div>
+
+                                                                                                    <div className="flex my-auto items-end gap-2">
+                                                                                                         {needsOwnerAction && isRequestOwner && (() => {
+                                                                                                              const processingKey = `${requestId}-${participantId}`;
+                                                                                                              const isProcessing = processingParticipants[processingKey];
+                                                                                                              return (
+                                                                                                                   <>
+                                                                                                                        <Button
+                                                                                                                             className="px-3 py-1.5 rounded-2xl text-sm bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                                                                                                                             onClick={() => handleAcceptParticipant(b.id, requestId, j)}
+                                                                                                                             disabled={isProcessing}
+                                                                                                                        >
+                                                                                                                             {isProcessing ? (
+                                                                                                                                  <>
+                                                                                                                                       <Loader2 className="w-3 h-3 animate-spin" />
+                                                                                                                                       <span>Đang xử lý...</span>
+                                                                                                                                  </>
+                                                                                                                             ) : (
+                                                                                                                                  <>
+                                                                                                                                       <CheckCircle className="w-3 h-3" />
+                                                                                                                                       <span>Chấp nhận</span>
+                                                                                                                                  </>
+                                                                                                                             )}
+                                                                                                                        </Button>
+                                                                                                                        <Button
+                                                                                                                             variant="outline"
+                                                                                                                             className="px-3 py-1.5 text-sm border-red-300 text-red-600 hover:bg-red-50 rounded-2xl flex items-center gap-1"
+                                                                                                                             onClick={() => handleRejectParticipant(b.id, requestId, j)}
+                                                                                                                             disabled={isProcessing}
+                                                                                                                        >
+                                                                                                                             {isProcessing ? (
+                                                                                                                                  <>
+                                                                                                                                       <Loader2 className="w-3 h-3 animate-spin" />
+                                                                                                                                       <span>Đang xử lý...</span>
+                                                                                                                                  </>
+                                                                                                                             ) : (
+                                                                                                                                  <>
+                                                                                                                                       <XCircle className="w-3 h-3" />
+                                                                                                                                       <span>Từ chối</span>
+                                                                                                                                  </>
+                                                                                                                             )}
+                                                                                                                        </Button>
+                                                                                                                   </>
+                                                                                                              );
+                                                                                                         })()}
+                                                                                                         {isAccepted && (
+                                                                                                              <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
+                                                                                                                   Đã chấp nhận
                                                                                                               </Badge>
                                                                                                          )}
-                                                                                                         <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600 border-gray-200">
-                                                                                                              {participantStatus}
-                                                                                                         </Badge>
+                                                                                                         {isRejected && (
+                                                                                                              <Badge className="text-xs bg-red-100 text-red-700 border-red-300">
+                                                                                                                   Đã từ chối
+                                                                                                              </Badge>
+                                                                                                         )}
                                                                                                     </div>
-
-                                                                                                    {j.fullName && j.fullName !== participantTeamName && (
-                                                                                                         <div className="text-sm text-gray-600 flex items-center gap-1">
-                                                                                                              <User className="w-3 h-3" />
-                                                                                                              <span>{j.fullName}</span>
-                                                                                                         </div>
-                                                                                                    )}
-
-                                                                                                    {j.contactPhone && (
-                                                                                                         <div className="text-sm text-gray-600 flex items-center gap-1">
-                                                                                                              <Phone className="w-3 h-3" />
-                                                                                                              <span>{j.contactPhone}</span>
-                                                                                                         </div>
-                                                                                                    )}
-
-                                                                                                    {j.note && j.note.trim() && (
-                                                                                                         <div className="text-sm text-gray-600 flex items-start gap-1">
-                                                                                                              <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                                                                                              <span className="italic">{j.note}</span>
-                                                                                                         </div>
-                                                                                                    )}
-
-                                                                                                    <div className="text-xs text-gray-500">
-                                                                                                         Tham gia: {new Date(j.joinedAt).toLocaleString('vi-VN')}
-                                                                                                    </div>
-                                                                                               </div>
-
-                                                                                               <div className="flex my-auto items-end gap-2">
-                                                                                                    {needsOwnerAction && isRequestOwner && (() => {
-                                                                                                         const processingKey = `${requestId}-${participantId}`;
-                                                                                                         const isProcessing = processingParticipants[processingKey];
-                                                                                                         return (
-                                                                                                              <>
-                                                                                                                   <Button
-                                                                                                                        className="px-3 py-1.5 rounded-2xl text-sm bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
-                                                                                                                        onClick={() => handleAcceptParticipant(b.id, requestId, j)}
-                                                                                                                        disabled={isProcessing}
-                                                                                                                   >
-                                                                                                                        {isProcessing ? (
-                                                                                                                             <>
-                                                                                                                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                                                                                                                  <span>Đang xử lý...</span>
-                                                                                                                             </>
-                                                                                                                        ) : (
-                                                                                                                             <>
-                                                                                                                                  <CheckCircle className="w-3 h-3" />
-                                                                                                                                  <span>Chấp nhận</span>
-                                                                                                                             </>
-                                                                                                                        )}
-                                                                                                                   </Button>
-                                                                                                                   <Button
-                                                                                                                        variant="outline"
-                                                                                                                        className="px-3 py-1.5 text-sm border-red-300 text-red-600 hover:bg-red-50 rounded-2xl flex items-center gap-1"
-                                                                                                                        onClick={() => handleRejectParticipant(b.id, requestId, j)}
-                                                                                                                        disabled={isProcessing}
-                                                                                                                   >
-                                                                                                                        {isProcessing ? (
-                                                                                                                             <>
-                                                                                                                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                                                                                                                  <span>Đang xử lý...</span>
-                                                                                                                             </>
-                                                                                                                        ) : (
-                                                                                                                             <>
-                                                                                                                                  <XCircle className="w-3 h-3" />
-                                                                                                                                  <span>Từ chối</span>
-                                                                                                                             </>
-                                                                                                                        )}
-                                                                                                                   </Button>
-                                                                                                              </>
-                                                                                                         );
-                                                                                                    })()}
-                                                                                                    {isAccepted && (
-                                                                                                         <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
-                                                                                                              Đã chấp nhận
-                                                                                                         </Badge>
-                                                                                                    )}
-                                                                                                    {isRejected && (
-                                                                                                         <Badge className="text-xs bg-red-100 text-red-700 border-red-300">
-                                                                                                              Đã từ chối
-                                                                                                         </Badge>
-                                                                                                    )}
                                                                                                </div>
                                                                                           </div>
-                                                                                     </div>
-                                                                                );
-                                                                           })}
+                                                                                     );
+                                                                                })}
                                                                            </div>
                                                                       )}
                                                                  </div>

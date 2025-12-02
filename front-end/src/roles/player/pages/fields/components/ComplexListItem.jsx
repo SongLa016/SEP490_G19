@@ -3,7 +3,15 @@ import { MapPin, EyeIcon } from "lucide-react";
 import StadiumIcon from '@mui/icons-material/Stadium';
 import { Button, FadeIn } from "../../../../../shared/components/ui";
 
-export default function ComplexListItem({ complex, index, navigate, formatPrice }) {
+// Helper to get image URL for complex (only from Cloudinary)
+const getComplexImageUrl = (complex) => {
+     // Only use imageUrl from Cloudinary
+     const imageUrl = complex.imageUrl || complex.ImageUrl || null;
+
+     return imageUrl || "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg";
+};
+
+export default function ComplexListItem({ complex, index, navigate }) {
      return (
           <FadeIn key={complex.complexId} delay={index * 50}>
                <Link
@@ -13,9 +21,14 @@ export default function ComplexListItem({ complex, index, navigate, formatPrice 
                     className="bg-white px-5 py-4 rounded-3xl shadow-lg overflow-hidden border border-teal-100 cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.01]"
                >
                     <div className="flex">
-                         <div className="w-96 h-52 flex-shrink-0">
-                              <img src={complex.image} alt={complex.name} className="w-full h-full rounded-2xl object-cover transition-transform duration-300 hover:scale-105" draggable={false} />
-                         </div>
+                         <div
+                              className="w-96 h-52 flex-shrink-0 rounded-2xl overflow-hidden transform transition-transform duration-300 hover:scale-105"
+                              style={{
+                                   backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.35)), url(${getComplexImageUrl(complex)})`,
+                                   backgroundSize: "cover",
+                                   backgroundPosition: "center",
+                              }}
+                         />
                          <div className="flex-1 px-4 py-1">
                               <div className="flex justify-between items-start">
                                    <div className="flex bg-teal-50 border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-1">
@@ -48,4 +61,3 @@ export default function ComplexListItem({ complex, index, navigate, formatPrice 
           </FadeIn>
      );
 }
-

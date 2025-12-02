@@ -40,7 +40,7 @@ export {
   fetchCancellationRequestById,
   cancelBooking,
 } from "./services/bookings";
-export * from "./services/matchRequests";
+export * from "./services/matchRequest";
 export * from "./services/cancellationPolicies";
 export * from "./services/depositPolicies";
 export * from "./services/fields";

@@ -15,11 +15,9 @@ import {
 import { profileService } from "../../../shared/index";
 import Swal from "sweetalert2";
 import { useAuth } from "../../../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
 
 export default function AdminProfileSettings() {
-  const { user, updateUser, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user, updateUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null);
@@ -124,11 +122,7 @@ export default function AdminProfileSettings() {
         icon: "warning",
         title: "Phiên đăng nhập đã hết hạn",
         text: "Vui lòng đăng nhập lại",
-        confirmButtonText: "Đăng nhập lại",
-      }).then(() => {
-        if (logout) logout();
-        localStorage.removeItem("token");
-        navigate("/login");
+        confirmButtonText: "Đóng",
       });
       return;
     }

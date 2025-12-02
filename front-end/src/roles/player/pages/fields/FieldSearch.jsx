@@ -407,14 +407,14 @@ export default function FieldSearch({ user }) {
                                         return field;
                                    })
                                    : [];
-                              
+
                               // Load ratings for all fields in parallel
                               const fieldsWithRatings = await Promise.all(
                                    sanitizedFields.map(async (field) => {
                                         try {
                                              const fieldId = field.fieldId || field.FieldID;
                                              if (!fieldId) return field;
-                                             
+
                                              const ratings = await fetchRatingsByField(fieldId);
                                              if (Array.isArray(ratings) && ratings.length > 0) {
                                                   // Calculate average rating
@@ -441,7 +441,7 @@ export default function FieldSearch({ user }) {
                                         }
                                    })
                               );
-                              
+
                               // Apply favorite flags based on favoriteFieldIds
                               const fieldsWithFavorites = fieldsWithRatings.map(f => ({
                                    ...f,
@@ -1295,4 +1295,3 @@ export default function FieldSearch({ user }) {
           </Section >
      );
 }
-
