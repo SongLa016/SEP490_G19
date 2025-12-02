@@ -1,5 +1,6 @@
 ﻿using BallSport.Application.DTOs;
 using BallSport.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -85,6 +86,85 @@ namespace BallSport.API.Controllers
             }
         }
 
+        // ================= Player: lấy booking packages của player =================
+        [HttpGet("player/packages")]
+        [Authorize]
+        public async Task<IActionResult> GetMyBookingPackages()
+        {
+            try
+            {
+                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId");
+                if (userIdClaim == null) return Unauthorized(new { message = "UserId claim not found in token" });
+
+                int userId = int.Parse(userIdClaim.Value);
+                var data = await _monthlyService.GetBookingPackagesForPlayerAsync(userId);
+                return Ok(new { message = "Player booking packages", data });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // ================= Owner: lấy booking packages của các field owner quản lý =================
+        [HttpGet("owner/packages")]
+        [Authorize(Roles = "Owner")]
+        public async Task<IActionResult> GetOwnerBookingPackages()
+        {
+            try
+            {
+                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId");
+                if (userIdClaim == null) return Unauthorized(new { message = "UserId claim not found in token" });
+
+                int ownerId = int.Parse(userIdClaim.Value);
+                var data = await _monthlyService.GetBookingPackagesForOwnerAsync(ownerId);
+                return Ok(new { message = "Owner booking packages", data });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // ================= Player: lấy package sessions của player =================
+        [HttpGet("player/sessions")]
+        [Authorize]
+        public async Task<IActionResult> GetMyPackageSessions()
+        {
+            try
+            {
+                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId");
+                if (userIdClaim == null) return Unauthorized(new { message = "UserId claim not found in token" });
+
+                int userId = int.Parse(userIdClaim.Value);
+                var data = await _monthlyService.GetPackageSessionsForPlayerAsync(userId);
+                return Ok(new { message = "Player package sessions", data });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // ================= Owner: lấy package sessions thuộc các field owner quản lý =================
+        [HttpGet("owner/sessions")]
+        [Authorize(Roles = "Owner")]
+        public async Task<IActionResult> GetOwnerPackageSessions()
+        {
+            try
+            {
+                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId");
+                if (userIdClaim == null) return Unauthorized(new { message = "UserId claim not found in token" });
+
+                int ownerId = int.Parse(userIdClaim.Value);
+                var data = await _monthlyService.GetPackageSessionsForOwnerAsync(ownerId);
+                return Ok(new { message = "Owner package sessions", data });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
 
 
     }

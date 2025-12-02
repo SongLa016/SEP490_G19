@@ -74,5 +74,36 @@ namespace BallSport.Infrastructure.Repositories
             return await _context.FieldSchedules
                 .FirstOrDefaultAsync(s => s.ScheduleId == scheduleId);
         }
+
+        // Lấy sessions của player
+        public async Task<List<PackageSession>> GetSessionsByPlayerIdAsync(int userId)
+        {
+            return await _context.PackageSessions
+                .Include(s => s.BookingPackage)
+                    .ThenInclude(bp => bp.Field)
+                        .ThenInclude(f => f.Complex)
+                .Include(s => s.Schedule)
+                .Include(s => s.User)
+                .Where(s => s.UserId == userId)
+                .OrderBy(s => s.SessionDate)
+                .ToListAsync();
+        }
+
+        // Lấy sessions thuộc các field của owner
+        public async Task<List<PackageSession>> GetSessionsByOwnerIdAsync(int ownerId)
+        {
+            return await _context.PackageSessions
+                .Include(s => s.BookingPackage)
+                    .ThenInclude(bp => bp.Field)
+                        .ThenInclude(f => f.Complex)
+                .Include(s => s.Schedule)
+                .Include(s => s.User)
+                .Where(s => s.BookingPackage != null
+                            && s.BookingPackage.Field != null
+                            && s.BookingPackage.Field.Complex != null
+                            && s.BookingPackage.Field.Complex.OwnerId == ownerId)
+                .OrderBy(s => s.SessionDate)
+                .ToListAsync();
+        }
     }
 }
