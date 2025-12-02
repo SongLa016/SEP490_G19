@@ -95,7 +95,34 @@ namespace BallSport.Infrastructure.Repositories
         }
 
 
-     
+        // Lấy booking package cho owner (ownerId)
+        public async Task<List<BookingPackage>> GetByOwnerIdAsync(int ownerId)
+        {
+            return await _context.BookingPackages
+                .Include(p => p.Field)
+                    .ThenInclude(f => f.Complex)
+                .Include(p => p.User)
+                .Where(p => p.Field != null
+                            && p.Field.Complex != null
+                            && p.Field.Complex.OwnerId == ownerId)
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
+        }
+
+        // Lấy booking package cho player (userId)
+        public async Task<List<BookingPackage>> GetByPlayerIdAsync(int userId)
+        {
+            return await _context.BookingPackages
+                .Include(p => p.Field)
+                    .ThenInclude(f => f.Complex)
+                .Include(p => p.User)
+                .Where(p => p.UserId == userId)
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
+        }
+
+
+
 
 
     }

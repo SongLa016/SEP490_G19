@@ -295,6 +295,32 @@
         }
 
 
+        // Owner packages
+        public async Task<List<BookingPackage>> GetBookingPackagesForOwnerAsync(int ownerId)
+        {
+            return await _bookingRepo.GetByOwnerIdAsync(ownerId);
+        }
+
+        // Player packages
+        public async Task<List<BookingPackage>> GetBookingPackagesForPlayerAsync(int userId)
+        {
+            return await _bookingRepo.GetByPlayerIdAsync(userId);
+        }
+
+        // Player sessions
+        public async Task<List<PackageSession>> GetPackageSessionsForPlayerAsync(int userId)
+        {
+            return await _packageSessionRepo.GetSessionsByPlayerIdAsync(userId);
+
+        }
+
+        // Owner sessions
+        public async Task<List<PackageSession>> GetPackageSessionsForOwnerAsync(int ownerId)
+        {
+            return await _packageSessionRepo.GetSessionsByOwnerIdAsync(ownerId);
+        }
+
+
 
 
     }
