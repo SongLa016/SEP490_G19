@@ -22,6 +22,7 @@ public partial class FieldComplex
     public string? ImageUrl { get; set; }
 
     public virtual ICollection<Field> Fields { get; set; } = new List<Field>();
+    public virtual ICollection<FavoriteField> FavoriteFields { get; set; } = new List<FavoriteField>();
 
     public virtual User? Owner { get; set; }
 }

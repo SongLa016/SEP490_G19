@@ -49,5 +49,6 @@ public partial class Field
 
     public virtual ICollection<TimeSlot> TimeSlots { get; set; } = new List<TimeSlot>();
     public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+    public virtual ICollection<FavoriteField> FavoriteFields { get; set; } = new List<FavoriteField>();
     public virtual FieldType? Type { get; set; }
 }
