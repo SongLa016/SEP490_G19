@@ -6,7 +6,9 @@ import { ScrollReveal } from "../../../../shared/components/ScrollReveal";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
 import { useNavigate } from "react-router-dom";
 import MapSearch from "./components/MapSearch";
-import { fetchComplexes, fetchFields, fetchTimeSlots } from "../../../../shared/index";
+import { fetchComplexes, fetchFields, fetchTimeSlots, fetchPublicFieldSchedulesByDate, fetchPublicFieldSchedulesByField, fetchFavoriteFields, toggleFavoriteField } from "../../../../shared/index";
+import { fetchFieldTypes, normalizeFieldType } from "../../../../shared/services/fieldTypes";
+import { fetchRatingsByField } from "../../../../shared/services/ratings";
 import Swal from 'sweetalert2';
 import SearchHeader from "./components/SearchHeader";
 import SearchFiltersBar from "./components/SearchFiltersBar";
@@ -21,6 +23,48 @@ import FieldListItem from "./components/FieldListItem";
 import ComplexCard from "./components/ComplexCard";
 import ComplexListItem from "./components/ComplexListItem";
 import GroupedViewSection from "./components/GroupedViewSection";
+
+const normalizeStatus = (status) => (typeof status === "string" ? status.trim().toLowerCase() : "");
+const ALLOWED_FIELD_STATUSES = new Set(["available", "active"]);
+const FIELD_TYPE_ALIASES = {
+     "5vs5": ["5vs5", "5v5", "san5", "san5nguoi", "5nguoi"],
+     "7vs7": ["7vs7", "7v7", "san7", "san7nguoi", "7nguoi"],
+     "11vs11": ["11vs11", "11v11", "san11", "san11nguoi", "11nguoi"],
+};
+const normalizeTypeString = (value = "") => value
+     .toString()
+     .normalize("NFD")
+     .replace(/[\u0300-\u036f]/g, "")
+     .toLowerCase()
+     .replace(/[^a-z0-9]/g, "");
+const resolveFieldTypeName = (field, fieldTypeMap = {}) => {
+     if (!field) return "";
+     if (field.typeName && field.typeName.trim()) return field.typeName;
+     if (field.TypeName && field.TypeName.trim()) return field.TypeName;
+     const typeId = field.typeId ?? field.TypeID ?? field.typeID;
+     if (typeId != null) {
+          return fieldTypeMap[String(typeId)] || "";
+     }
+     return "";
+};
+const doesFieldMatchTypeTab = (field, desiredType, fieldTypeMap = {}) => {
+     if (desiredType === "all") return true;
+     const directName = resolveFieldTypeName(field, fieldTypeMap);
+     if (!directName) return false;
+     const normalizedName = normalizeTypeString(directName);
+     if (!normalizedName) return false;
+     const aliases = FIELD_TYPE_ALIASES[desiredType] || [];
+     if (aliases.length === 0) {
+          // fallback to exact match if we don't have aliases configured
+          return normalizedName === normalizeTypeString(desiredType);
+     }
+     return aliases.some(alias => normalizedName.includes(alias));
+};
+const isFieldDisplayable = (field) => {
+     const normalizedStatus = normalizeStatus(field?.status ?? field?.Status ?? "");
+     if (!normalizedStatus) return true;
+     return ALLOWED_FIELD_STATUSES.has(normalizedStatus);
+};
 
 export default function FieldSearch({ user }) {
      const navigate = useNavigate();
@@ -46,6 +90,8 @@ export default function FieldSearch({ user }) {
      const [slotId, setSlotId] = useState("");
      const [timeSlots, setTimeSlots] = useState([]);
      const heroRef = useRef(null);
+     const hasExistingDataRef = useRef(false);
+     const complexesRef = useRef([]);
 
      // Helper functions to convert between "all" and empty string
      const handleLocationChange = (value) => {
@@ -79,7 +125,40 @@ export default function FieldSearch({ user }) {
      const [fields, setFields] = useState([]);
      const [complexes, setComplexes] = useState([]);
      const [filteredFields, setFilteredFields] = useState([]);
+     const [favoriteFieldIds, setFavoriteFieldIds] = useState(new Set());
      const [isLoading, setIsLoading] = useState(false);
+     const [userLocation, setUserLocation] = useState(null); // { lat, lng }
+     const [fieldTypeMap, setFieldTypeMap] = useState({}); // Map typeId -> typeName
+     const favoritesLoadedRef = useRef(false);
+
+     useEffect(() => {
+          hasExistingDataRef.current = (fields.length > 0) || (complexes.length > 0);
+     }, [fields.length, complexes.length]);
+
+     // Load field types on mount
+     useEffect(() => {
+          let ignore = false;
+          async function loadFieldTypes() {
+               try {
+                    const result = await fetchFieldTypes();
+                    if (ignore) return;
+                    if (result.success && Array.isArray(result.data)) {
+                         const map = result.data.reduce((acc, raw) => {
+                              const normalized = normalizeFieldType(raw);
+                              if (normalized?.typeId) {
+                                   acc[String(normalized.typeId)] = normalized.typeName || "";
+                              }
+                              return acc;
+                         }, {});
+                         setFieldTypeMap(map);
+                    }
+               } catch (error) {
+                    console.error("Error loading field types:", error);
+               }
+          }
+          loadFieldTypes();
+          return () => { ignore = true; };
+     }, []);
 
      const didInitRef = useRef(false);
      useEffect(() => {
@@ -97,6 +176,8 @@ export default function FieldSearch({ user }) {
                     if (preset.selectedPrice !== undefined) setSelectedPrice(preset.selectedPrice);
                     if (preset.selectedRating !== undefined) setSelectedRating(preset.selectedRating);
                     if (preset.sortBy !== undefined) setSortBy(preset.sortBy);
+                    if (preset.typeTab !== undefined) setTypeTab(preset.typeTab);
+                    if (preset.activeTab !== undefined) setActiveTab(preset.activeTab);
                     window.localStorage.removeItem("searchPreset");
                     setForceList(true);
                } else {
@@ -126,68 +207,270 @@ export default function FieldSearch({ user }) {
           } catch { }
      }, []);
 
-     // Load time slots once
+     // Load danh sách sân yêu thích khi đã có user đăng nhập
+     useEffect(() => {
+          const loadFavorites = async () => {
+               if (!user || favoritesLoadedRef.current) return;
+               try {
+                    const list = await fetchFavoriteFields();
+                    const ids = new Set(
+                         (list || []).map(item => Number(item.fieldId)).filter(id => !Number.isNaN(id))
+                    );
+                    setFavoriteFieldIds(ids);
+                    favoritesLoadedRef.current = true;
+               } catch (error) {
+                    console.error("Error loading favorite fields:", error);
+               }
+          };
+          loadFavorites();
+     }, [user]);
+
+     // Load available slots from schedules when date changes
      useEffect(() => {
           let mounted = true;
-          fetchTimeSlots().then((response) => {
-               if (!mounted) return;
-               // Handle fetchTimeSlots response structure
-               const slots = response?.success && Array.isArray(response.data)
-                    ? response.data
-                    : [];
-               setTimeSlots(slots);
-          }).catch((error) => {
-               console.error("Error loading time slots:", error);
-               if (!mounted) return;
-               setTimeSlots([]);
-          });
+          const loadSlotsFromSchedules = async () => {
+               try {
+                    if (!date) {
+                         // If no date, fetch all time slots
+                         const response = await fetchTimeSlots();
+                         if (!mounted) return;
+                         const slots = response?.success && Array.isArray(response.data)
+                              ? response.data
+                              : [];
+                         setTimeSlots(slots);
+                         return;
+                    }
+
+                    // Normalize date format
+                    const normalizedDate = date.split('T')[0]; // Ensure YYYY-MM-DD format
+
+                    // Try to fetch schedules by date first
+                    let schedulesResponse = await fetchPublicFieldSchedulesByDate(normalizedDate);
+
+                    // If endpoint doesn't exist or returns empty, fetch from all fields
+                    if (!schedulesResponse?.success || !Array.isArray(schedulesResponse.data) || schedulesResponse.data.length === 0) {
+                         // Fetch all fields first to get fieldIds
+                         const fList = await fetchFields({ query: "", date: normalizedDate, slotId: "", sortBy: "relevance", useApi: true });
+
+                         if (!mounted) return;
+
+                         // Get unique fieldIds
+                         const fieldIds = new Set();
+                         if (Array.isArray(fList)) {
+                              fList.forEach(field => {
+                                   if (field.fieldId) fieldIds.add(field.fieldId);
+                              });
+                         }
+
+                         // Fetch schedules for all fields in parallel
+                         const schedulePromises = Array.from(fieldIds).map(fieldId =>
+                              fetchPublicFieldSchedulesByField(fieldId)
+                         );
+
+                         const scheduleResults = await Promise.all(schedulePromises);
+
+                         // Combine all schedules
+                         let allSchedules = [];
+                         scheduleResults.forEach(result => {
+                              if (result?.success && Array.isArray(result.data)) {
+                                   allSchedules = allSchedules.concat(result.data);
+                              }
+                         });
+
+                         // Filter schedules by date
+                         const filteredSchedules = allSchedules.filter(schedule => {
+                              const scheduleDate = schedule.date || schedule.Date;
+                              if (!scheduleDate) return false;
+                              const normalizedScheduleDate = typeof scheduleDate === 'string'
+                                   ? scheduleDate.split('T')[0]
+                                   : scheduleDate;
+                              return normalizedScheduleDate === normalizedDate;
+                         });
+
+                         schedulesResponse = {
+                              success: true,
+                              data: filteredSchedules
+                         };
+                    }
+
+                    if (!mounted) return;
+
+                    if (schedulesResponse?.success && Array.isArray(schedulesResponse.data) && schedulesResponse.data.length > 0) {
+                         // Extract unique slotIds from schedules
+                         const slotIdSet = new Set();
+                         const slotMap = new Map(); // Map slotId to slot info
+
+                         schedulesResponse.data.forEach(schedule => {
+                              const slotId = schedule.slotId || schedule.SlotId;
+                              if (slotId) {
+                                   slotIdSet.add(slotId);
+                                   // Store slot info if available in schedule
+                                   if (!slotMap.has(slotId) && (schedule.slotName || schedule.SlotName)) {
+                                        slotMap.set(slotId, {
+                                             slotId: slotId,
+                                             name: schedule.slotName || schedule.SlotName,
+                                             startTime: schedule.startTime || schedule.StartTime,
+                                             endTime: schedule.endTime || schedule.EndTime
+                                        });
+                                   }
+                              }
+                         });
+
+                         // If we have slot info from schedules, use it
+                         if (slotMap.size > 0) {
+                              const slots = Array.from(slotMap.values());
+                              setTimeSlots(slots);
+                         } else {
+                              // Otherwise, fetch all time slots and filter by available slotIds
+                              const allSlotsResponse = await fetchTimeSlots();
+                              if (!mounted) return;
+
+                              const allSlots = allSlotsResponse?.success && Array.isArray(allSlotsResponse.data)
+                                   ? allSlotsResponse.data
+                                   : [];
+
+                              // Filter slots that are available in schedules
+                              const availableSlots = allSlots.filter(slot =>
+                                   slotIdSet.has(slot.slotId || slot.SlotID)
+                              );
+
+                              setTimeSlots(availableSlots.length > 0 ? availableSlots : allSlots);
+                         }
+                    } else {
+                         // If no schedules found, fetch all time slots
+                         const response = await fetchTimeSlots();
+                         if (!mounted) return;
+                         const slots = response?.success && Array.isArray(response.data)
+                              ? response.data
+                              : [];
+                         setTimeSlots(slots);
+                    }
+               } catch (error) {
+                    console.error("Error loading slots from schedules:", error);
+                    if (!mounted) return;
+                    // Fallback to fetch all time slots
+                    try {
+                         const response = await fetchTimeSlots();
+                         if (!mounted) return;
+                         const slots = response?.success && Array.isArray(response.data)
+                              ? response.data
+                              : [];
+                         setTimeSlots(slots);
+                    } catch (fallbackError) {
+                         console.error("Error loading time slots (fallback):", fallbackError);
+                         setTimeSlots([]);
+                    }
+               }
+          };
+          loadSlotsFromSchedules();
           return () => { mounted = false; };
-     }, []);
+     }, [date]);
+
+     // Reset slotId when date changes to avoid invalid slot selection
+     useEffect(() => {
+          if (slotId) {
+               setSlotId("");
+          }
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, [date]);
 
      // Load data whenever key filters change (fetch both complexes and fields to support grouped view)
      useEffect(() => {
           let ignore = false;
-          const hasNoData = complexes.length === 0 && fields.length === 0;
+          const hasNoData = !hasExistingDataRef.current;
 
-          const loadData = async () => {
-               try {
-                    // Only show loading if we don't have any data yet
-                    if (hasNoData) {
-                         setIsLoading(true);
+          const debounceTimer = setTimeout(() => {
+               const loadData = async () => {
+                    try {
+                         // Only show loading if we don't have any data yet
+                         if (hasNoData) {
+                              setIsLoading(true);
+                         }
+                         // Start fetching immediately for better perceived performance
+                         const [cList, fList] = await Promise.all([
+                              fetchComplexes({ query: searchQuery, date, slotId, useApi: true }),
+                              fetchFields({ query: searchQuery, date, slotId, sortBy, useApi: true })
+                         ]);
+                         if (!ignore) {
+                              setComplexes(cList);
+                              complexesRef.current = cList;
+                              const sanitizedFields = Array.isArray(fList)
+                                   ? fList.filter(isFieldDisplayable).map(field => {
+                                        // Map typeId to typeName if not already present
+                                        const typeId = field.typeId ?? field.TypeID ?? field.typeID ?? null;
+                                        if (typeId != null && (!field.typeName || field.typeName.trim() === "")) {
+                                             const typeName = fieldTypeMap[String(typeId)];
+                                             if (typeName) {
+                                                  return { ...field, typeName, typeId };
+                                             }
+                                        }
+                                        return field;
+                                   })
+                                   : [];
+                              
+                              // Load ratings for all fields in parallel
+                              const fieldsWithRatings = await Promise.all(
+                                   sanitizedFields.map(async (field) => {
+                                        try {
+                                             const fieldId = field.fieldId || field.FieldID;
+                                             if (!fieldId) return field;
+                                             
+                                             const ratings = await fetchRatingsByField(fieldId);
+                                             if (Array.isArray(ratings) && ratings.length > 0) {
+                                                  // Calculate average rating
+                                                  const totalStars = ratings.reduce((sum, r) => sum + (r.stars || 0), 0);
+                                                  const averageRating = totalStars / ratings.length;
+                                                  return {
+                                                       ...field,
+                                                       rating: Number(averageRating.toFixed(1)),
+                                                       reviewCount: ratings.length
+                                                  };
+                                             }
+                                             return {
+                                                  ...field,
+                                                  rating: 0,
+                                                  reviewCount: 0
+                                             };
+                                        } catch (error) {
+                                             console.error(`Error loading ratings for field ${field.fieldId}:`, error);
+                                             return {
+                                                  ...field,
+                                                  rating: 0,
+                                                  reviewCount: 0
+                                             };
+                                        }
+                                   })
+                              );
+                              
+                              // Apply favorite flags based on favoriteFieldIds
+                              const fieldsWithFavorites = fieldsWithRatings.map(f => ({
+                                   ...f,
+                                   isFavorite: favoriteFieldIds.has(Number(f.fieldId)),
+                              }));
+
+                              setFields(fieldsWithFavorites);
+                         }
+                    } catch (error) {
+                         console.error("Error loading data:", error);
+                         if (!ignore) {
+                              setComplexes([]);
+                              setFields([]);
+                         }
+                    } finally {
+                         if (!ignore) {
+                              setIsLoading(false);
+                         }
                     }
-                    // Start fetching immediately for better perceived performance
-                    const [cList, fList] = await Promise.all([
-                         fetchComplexes({ query: searchQuery, date, slotId, useApi: true }),
-                         fetchFields({ query: searchQuery, date, slotId, sortBy, useApi: true })
-                    ]);
-                    if (!ignore) {
-                         setComplexes(cList);
-                         setFields(fList);
-                    }
-               } catch (error) {
-                    console.error("Error loading data:", error);
-                    if (!ignore) {
-                         setComplexes([]);
-                         setFields([]);
-                    }
-               } finally {
-                    if (!ignore) {
-                         setIsLoading(false);
-                    }
-               }
-          };
+               };
+               loadData();
+          }, 500); // ⏱️ Debounce 500ms
 
           // Use requestAnimationFrame to ensure smooth navigation before starting fetch
-          const rafId = requestAnimationFrame(() => {
-               loadData();
-          });
-
           return () => {
-               cancelAnimationFrame(rafId);
                ignore = true;
+               clearTimeout(debounceTimer);
           };
-          // eslint-disable-next-line react-hooks/exhaustive-deps
-     }, [searchQuery, date, slotId, sortBy]);
+     }, [searchQuery, date, slotId, sortBy, fieldTypeMap]);
 
      useEffect(() => {
           let filtered = Array.isArray(fields) ? [...fields] : [];
@@ -207,7 +490,7 @@ export default function FieldSearch({ user }) {
 
           // Filter by field type via tabs
           if (typeTab !== "all") {
-               filtered = filtered.filter(field => (field.typeName || "").toLowerCase() === typeTab.toLowerCase());
+               filtered = filtered.filter(field => doesFieldMatchTypeTab(field, typeTab, fieldTypeMap));
           }
 
           // Filter by price
@@ -273,10 +556,21 @@ export default function FieldSearch({ user }) {
                     break;
           }
 
-          setFilteredFields(filtered);
+          // Map typeId to typeName for filtered fields if needed
+          const fieldsWithTypeName = filtered.map(field => {
+               const typeId = field.typeId ?? field.TypeID ?? field.typeID ?? null;
+               if (typeId != null && (!field.typeName || field.typeName.trim() === "")) {
+                    const typeName = fieldTypeMap[String(typeId)];
+                    if (typeName) {
+                         return { ...field, typeName, typeId };
+                    }
+               }
+               return field;
+          });
+          setFilteredFields(fieldsWithTypeName);
 
           // Reset trang chỉ khi thực sự là thay đổi filter, không reset khi chỉ chuyển trang
-     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields]);
+     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields, fieldTypeMap]);
 
      // Persist preferences
      useEffect(() => {
@@ -286,10 +580,20 @@ export default function FieldSearch({ user }) {
           } catch { }
      }, [viewMode, activeTab, page, entityTab, date, slotId, typeTab]);
 
-     const toggleFavorite = (fieldId) => {
+     const toggleFavoriteLocal = (fieldId, nextIsFavorite) => {
           setFields(prev => prev.map(field =>
-               field.fieldId === fieldId ? { ...field, isFavorite: !field.isFavorite } : field
+               field.fieldId === fieldId ? { ...field, isFavorite: nextIsFavorite } : field
           ));
+          setFavoriteFieldIds(prev => {
+               const updated = new Set(prev);
+               const idNum = Number(fieldId);
+               if (nextIsFavorite) {
+                    updated.add(idNum);
+               } else {
+                    updated.delete(idNum);
+               }
+               return updated;
+          });
      };
 
      const toggleFavoriteComplex = (complexId) => {
@@ -312,12 +616,24 @@ export default function FieldSearch({ user }) {
           Swal.fire(config);
      };
 
-     const handleToggleFavorite = (fieldId) => {
+     const handleToggleFavorite = async (fieldId) => {
           if (!user) {
                showToastMessage("Vui lòng đăng nhập để sử dụng danh sách yêu thích.", 'warning');
                return;
           }
-          toggleFavorite(fieldId);
+          const current = favoriteFieldIds.has(Number(fieldId));
+          const nextIsFavorite = !current;
+
+          // Optimistic update
+          toggleFavoriteLocal(fieldId, nextIsFavorite);
+
+          try {
+               await toggleFavoriteField(fieldId, current);
+          } catch (error) {
+               // Revert on error
+               toggleFavoriteLocal(fieldId, current);
+               showToastMessage(error.message || "Không thể cập nhật danh sách yêu thích.", 'error');
+          }
      };
 
      const handleToggleFavoriteComplex = (complexId) => {
@@ -426,9 +742,31 @@ export default function FieldSearch({ user }) {
           }
      };
 
-     // Compute user distance for complexes (using geolocation if available) and propagate to fields
+     // Get user location once on mount
      useEffect(() => {
           let cancelled = false;
+          const fallbackLat = 21.0285; // Hà Nội center
+          const fallbackLng = 105.8542;
+          if (navigator.geolocation) {
+               navigator.geolocation.getCurrentPosition(
+                    pos => {
+                         if (!cancelled) setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                    },
+                    () => {
+                         if (!cancelled) setUserLocation({ lat: fallbackLat, lng: fallbackLng });
+                    },
+                    { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
+               );
+          } else {
+               if (!cancelled) setUserLocation({ lat: fallbackLat, lng: fallbackLng });
+          }
+          return () => { cancelled = true; };
+     }, []);
+
+     // Compute user distance for complexes and fields when location or data changes
+     useEffect(() => {
+          if (!userLocation) return;
+
           function haversineKm(lat1, lng1, lat2, lng2) {
                const R = 6371;
                const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -437,31 +775,97 @@ export default function FieldSearch({ user }) {
                const d = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
                return R * d;
           }
-          function updateDistances(lat, lng) {
-               setComplexes(prev => prev.map(c => (typeof c.lat === "number" && typeof c.lng === "number") ? { ...c, distanceKm: haversineKm(lat, lng, c.lat, c.lng) } : c));
-               setFields(prev => prev.map(f => {
-                    const cx = complexes.find(cc => cc.complexId === f.complexId);
-                    return cx && typeof cx.lat === "number" && typeof cx.lng === "number" ? { ...f, distanceKm: haversineKm(lat, lng, cx.lat, cx.lng) } : f;
-               }));
+
+          // Update complexes with distance
+          setComplexes(prev => {
+               if (prev.length === 0) return prev;
+               const updated = prev.map(c => {
+                    // Check if lat/lng exist and are valid numbers
+                    const lat = c.lat ?? c.latitude;
+                    const lng = c.lng ?? c.longitude;
+                    if (typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng)) {
+                         // Always recalculate when userLocation changes
+                         return { ...c, distanceKm: haversineKm(userLocation.lat, userLocation.lng, lat, lng) };
+                    }
+                    return c;
+               });
+               complexesRef.current = updated;
+               return updated;
+          });
+     }, [userLocation]);
+
+     // Recalculate distances when complexes data changes (new complexes loaded)
+     useEffect(() => {
+          if (!userLocation || complexes.length === 0) return;
+
+          function haversineKm(lat1, lng1, lat2, lng2) {
+               const R = 6371;
+               const dLat = (lat2 - lat1) * Math.PI / 180;
+               const dLng = (lng2 - lng1) * Math.PI / 180;
+               const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+               const d = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+               return R * d;
           }
-          const fallbackLat = 21.0285; // Hà Nội center
-          const fallbackLng = 105.8542;
-          if (navigator.geolocation) {
-               navigator.geolocation.getCurrentPosition(
-                    pos => { if (!cancelled) updateDistances(pos.coords.latitude, pos.coords.longitude); },
-                    () => { if (!cancelled) updateDistances(fallbackLat, fallbackLng); },
-                    { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
-               );
-          } else {
-               if (!cancelled) updateDistances(fallbackLat, fallbackLng);
+
+          setComplexes(prev => {
+               if (prev.length === 0) return prev;
+               return prev.map(c => {
+                    const lat = c.lat ?? c.latitude;
+                    const lng = c.lng ?? c.longitude;
+                    if (typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng)) {
+                         // Only calculate if distanceKm doesn't exist or is invalid
+                         if (typeof c.distanceKm !== "number" || isNaN(c.distanceKm)) {
+                              return { ...c, distanceKm: haversineKm(userLocation.lat, userLocation.lng, lat, lng) };
+                         }
+                    }
+                    return c;
+               });
+          });
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, [userLocation, complexes.length]);
+
+     // Update fields distance based on their complex distance
+     useEffect(() => {
+          if (!userLocation || fields.length === 0 || complexes.length === 0) return;
+          let missingCoordinatesCount = 0;
+
+          setFields(prev => prev.map(f => {
+               const cx = complexesRef.current.find(cc => cc.complexId === f.complexId) || complexes.find(cc => cc.complexId === f.complexId);
+               // If complex has distanceKm, use it; otherwise calculate from complex lat/lng
+               if (cx) {
+                    if (typeof cx.distanceKm === "number" && !isNaN(cx.distanceKm)) {
+                         return { ...f, distanceKm: cx.distanceKm };
+                    }
+                    // Calculate from complex coordinates if distanceKm not available
+                    const lat = cx.lat ?? cx.latitude;
+                    const lng = cx.lng ?? cx.longitude;
+                    if (typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng)) {
+                         const R = 6371;
+                         const dLat = (lat - userLocation.lat) * Math.PI / 180;
+                         const dLng = (lng - userLocation.lng) * Math.PI / 180;
+                         const a = Math.sin(dLat / 2) ** 2 + Math.cos(userLocation.lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+                         const d = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                         const distance = R * d;
+                         console.log(`✓ Field ${f.name}: Calculated distance = ${distance.toFixed(1)}km from coords (${lat}, ${lng})`);
+                         return { ...f, distanceKm: distance };
+                    } else {
+                         missingCoordinatesCount++;
+                    }
+               }
+               return f;
+          }));
+
+          if (missingCoordinatesCount > 0) {
+               console.warn(`⚠️ ${missingCoordinatesCount} field(s) have no coordinates.`);
+               console.info('💡 Solution: Add latitude/longitude to Complex table in database.');
+               console.info('   Example: UPDATE Complex SET latitude = 21.0285, longitude = 105.8542 WHERE complexId = 7');
           }
-          return () => { cancelled = true; };
-     }, [complexes]);
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+     }, [userLocation, complexes.length, fields.length]);
 
      // const nearGroup = [...filteredFields].sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0)).slice(0, 4);
      const bestPriceGroup = [...filteredFields].sort((a, b) => (a.priceForSelectedSlot || 0) - (b.priceForSelectedSlot || 0)).slice(0, 4);
      const topRatedGroup = [...filteredFields].sort((a, b) => b.rating - a.rating).slice(0, 4);
-
 
      return (
           <Section className="min-h-screen bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center">

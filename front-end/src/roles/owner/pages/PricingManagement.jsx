@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
      DollarSign,
      Clock,
@@ -11,12 +11,11 @@ import {
      FilterIcon,
      Loader2
 } from "lucide-react";
-import { Button, Card, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from "../../../shared/components/ui";
-import OwnerLayout from "../layouts/OwnerLayout";
+import { Button, Card, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Table, TableHeader, TableHead, TableRow, TableBody, TableCell, Pagination, usePagination } from "../../../shared/components/ui";
 import { useAuth } from "../../../contexts/AuthContext";
 import { DemoRestrictedModal } from "../../../shared";
 import { fetchAllComplexesWithFields } from "../../../shared/services/fields";
-import { fetchTimeSlots } from "../../../shared/services/timeSlots";
+import { useTimeSlots, useTimeSlotsByField } from "../../../shared/hooks";
 import { fetchPricing, createPricing, updatePricing, deletePricing } from "../../../shared/services/pricing";
 import Swal from "sweetalert2";
 
@@ -24,7 +23,6 @@ const PricingManagement = ({ isDemo = false }) => {
      const { user, logout } = useAuth();
      const [loading, setLoading] = useState(true);
      const [fields, setFields] = useState([]);
-     const [timeSlots, setTimeSlots] = useState([]);
      const [pricingData, setPricingData] = useState([]);
      const [selectedField, setSelectedField] = useState("all");
      const [selectedDate, setSelectedDate] = useState("");
@@ -45,10 +43,15 @@ const PricingManagement = ({ isDemo = false }) => {
           price: ""
      });
 
+     // Use React Query hooks for time slots (after formData is declared)
+     const { data: allTimeSlots = [] } = useTimeSlots();
+     const { data: fieldTimeSlots = [], isLoading: loadingFieldSlots } = useTimeSlotsByField(
+          formData.fieldId ? parseInt(formData.fieldId) : null,
+          !!formData.fieldId // Only fetch when fieldId is selected
+     );
+
      // Get current user ID
      const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
-
-
 
      // Load data from API
      const loadData = useCallback(async () => {
@@ -73,11 +76,7 @@ const PricingManagement = ({ isDemo = false }) => {
 
                setFields(allFields);
 
-               // Fetch time slots
-               const slotsResponse = await fetchTimeSlots();
-               if (slotsResponse.success) {
-                    setTimeSlots(slotsResponse.data || []);
-               }
+               // Time slots are now loaded via React Query hooks
 
                // Fetch pricing data
                const pricingResponse = await fetchPricing();
@@ -356,7 +355,7 @@ const PricingManagement = ({ isDemo = false }) => {
 
      // Helper to get slot name
      const getSlotName = (slotId) => {
-          const slot = timeSlots.find(s => (s.slotId || s.SlotID) === slotId);
+          const slot = allTimeSlots.find(s => (s.slotId || s.SlotID) === slotId);
           if (!slot) return `Slot ${slotId}`;
           const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
           const startTime = slot.startTime || slot.StartTime || "00:00";
@@ -371,6 +370,16 @@ const PricingManagement = ({ isDemo = false }) => {
           return matchesField && matchesKeyword;
      });
 
+     // Pagination for pricing (10 per page)
+     const {
+          currentPage,
+          totalPages,
+          currentItems: paginatedPricing,
+          handlePageChange,
+          totalItems,
+          itemsPerPage,
+     } = usePagination(filteredPricing, 10);
+
      const formatCurrency = (amount) => {
           return new Intl.NumberFormat('vi-VN', {
                style: 'currency',
@@ -380,16 +389,13 @@ const PricingManagement = ({ isDemo = false }) => {
 
      if (loading) {
           return (
-               <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
-                    <div className="flex items-center justify-center h-64">
-                         <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
-                    </div>
-               </OwnerLayout>
+               <div className="flex items-center justify-center h-64">
+                    <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+               </div>
           );
      }
 
      return (
-          <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
                <div className="space-y-6">
                     {/* Header */}
                     <div className="flex justify-between items-center">
@@ -485,7 +491,7 @@ const PricingManagement = ({ isDemo = false }) => {
                                    </TableRow>
                               </TableHeader>
                               <TableBody>
-                                   {filteredPricing.map((price) => (
+                                   {paginatedPricing.map((price) => (
                                         <TableRow key={price.priceId} className="hover:bg-slate-50">
                                              <TableCell className="text-sm font-medium text-gray-900">{getFieldName(price.fieldId)}</TableCell>
                                              <TableCell className="text-sm text-gray-900">{getSlotName(price.slotId)}</TableCell>
@@ -504,11 +510,21 @@ const PricingManagement = ({ isDemo = false }) => {
                                    ))}
                               </TableBody>
                          </Table>
-                         {filteredPricing.length === 0 && (
+                         {filteredPricing.length === 0 ? (
                               <div className="text-center py-12">
                                    <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                                    <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có giá nào</h3>
                                    <p className="text-gray-500">Hãy thêm giá cho các khung giờ của sân.</p>
+                              </div>
+                         ) : (
+                              <div className="p-4 border-t">
+                                   <Pagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        onPageChange={handlePageChange}
+                                        itemsPerPage={itemsPerPage}
+                                        totalItems={totalItems}
+                                   />
                               </div>
                          )}
                     </Card>
@@ -598,33 +614,37 @@ const PricingManagement = ({ isDemo = false }) => {
                                         <div className="border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
                                              Vui lòng chọn sân trước
                                         </div>
+                                   ) : loadingFieldSlots ? (
+                                        <div className="border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
+                                             <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
+                                             Đang tải khung giờ...
+                                        </div>
+                                   ) : fieldTimeSlots.length === 0 ? (
+                                        <div className="border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
+                                             Sân này chưa có khung giờ nào
+                                        </div>
                                    ) : (
                                         <>
                                              <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3">
-                                                  {timeSlots
-                                                       .filter(slot => {
-                                                            const slotFieldId = slot.fieldId || slot.FieldId;
-                                                            return !slotFieldId || slotFieldId === parseInt(formData.fieldId);
-                                                       })
-                                                       .map(slot => {
-                                                            const slotId = slot.slotId || slot.SlotID;
-                                                            const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
-                                                            const startTime = slot.startTime || slot.StartTime || "00:00";
-                                                            const endTime = slot.endTime || slot.EndTime || "00:00";
-                                                            return (
-                                                                 <label key={slotId} className="flex items-center space-x-2 cursor-pointer">
-                                                                      <input
-                                                                           type="checkbox"
-                                                                           checked={bulkFormData.selectedSlotIds.includes(slotId)}
-                                                                           onChange={() => handleBulkSlotToggle(slotId)}
-                                                                           className="rounded border-gray-300"
-                                                                      />
-                                                                      <span className="text-sm text-gray-700">
-                                                                           {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
-                                                                      </span>
-                                                                 </label>
-                                                            );
-                                                       })}
+                                                  {fieldTimeSlots.map(slot => {
+                                                       const slotId = slot.slotId || slot.SlotID;
+                                                       const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
+                                                       const startTime = slot.startTime || slot.StartTime || "00:00";
+                                                       const endTime = slot.endTime || slot.EndTime || "00:00";
+                                                       return (
+                                                            <label key={slotId} className="flex items-center space-x-2 cursor-pointer">
+                                                                 <input
+                                                                      type="checkbox"
+                                                                      checked={bulkFormData.selectedSlotIds.includes(slotId)}
+                                                                      onChange={() => handleBulkSlotToggle(slotId)}
+                                                                      className="rounded border-gray-300"
+                                                                 />
+                                                                 <span className="text-sm text-gray-700">
+                                                                      {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
+                                                                 </span>
+                                                            </label>
+                                                       );
+                                                  })}
                                              </div>
                                              <p className="text-xs text-gray-500 mt-1">
                                                   Đã chọn: {bulkFormData.selectedSlotIds.length} khung giờ
@@ -690,7 +710,9 @@ const PricingManagement = ({ isDemo = false }) => {
                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Sân *
                                    </label>
-                                   <Select value={formData.fieldId} onValueChange={(value) => setFormData(prev => ({ ...prev, fieldId: value }))}>
+                                   <Select value={formData.fieldId} onValueChange={(value) => {
+                                        setFormData(prev => ({ ...prev, fieldId: value, slotId: "" })); // Reset slotId when field changes
+                                   }}>
                                         <SelectTrigger>
                                              <SelectValue placeholder="Chọn sân" />
                                         </SelectTrigger>
@@ -708,24 +730,41 @@ const PricingManagement = ({ isDemo = false }) => {
                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Khung giờ *
                                    </label>
-                                   <Select value={formData.slotId} onValueChange={(value) => setFormData(prev => ({ ...prev, slotId: value }))}>
-                                        <SelectTrigger>
-                                             <SelectValue placeholder="Chọn khung giờ" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             {timeSlots.map(slot => {
-                                                  const slotId = slot.slotId || slot.SlotID;
-                                                  const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
-                                                  const startTime = slot.startTime || slot.StartTime || "00:00";
-                                                  const endTime = slot.endTime || slot.EndTime || "00:00";
-                                                  return (
-                                                       <SelectItem key={slotId} value={(slotId || "").toString()}>
-                                                            {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
-                                                       </SelectItem>
-                                                  );
-                                             })}
-                                        </SelectContent>
-                                   </Select>
+                                   {!formData.fieldId ? (
+                                        <div className="border border-gray-200 rounded-lg p-3 text-center text-gray-500 text-sm">
+                                             Vui lòng chọn sân trước
+                                        </div>
+                                   ) : loadingFieldSlots ? (
+                                        <div className="border border-gray-200 rounded-lg p-3 text-center text-gray-500 text-sm flex items-center justify-center">
+                                             <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                             Đang tải...
+                                        </div>
+                                   ) : (
+                                        <Select value={formData.slotId} onValueChange={(value) => setFormData(prev => ({ ...prev, slotId: value }))}>
+                                             <SelectTrigger>
+                                                  <SelectValue placeholder="Chọn khung giờ" />
+                                             </SelectTrigger>
+                                             <SelectContent>
+                                                  {fieldTimeSlots.length === 0 ? (
+                                                       <div className="p-2 text-center text-gray-500 text-sm">
+                                                            Sân này chưa có khung giờ nào
+                                                       </div>
+                                                  ) : (
+                                                       fieldTimeSlots.map(slot => {
+                                                            const slotId = slot.slotId || slot.SlotID;
+                                                            const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
+                                                            const startTime = slot.startTime || slot.StartTime || "00:00";
+                                                            const endTime = slot.endTime || slot.EndTime || "00:00";
+                                                            return (
+                                                                 <SelectItem key={slotId} value={(slotId || "").toString()}>
+                                                                      {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
+                                                                 </SelectItem>
+                                                            );
+                                                       })
+                                                  )}
+                                             </SelectContent>
+                                        </Select>
+                                   )}
                               </div>
 
                               <div>
@@ -809,24 +848,37 @@ const PricingManagement = ({ isDemo = false }) => {
                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Khung giờ *
                                    </label>
-                                   <Select value={formData.slotId} onValueChange={(value) => setFormData(prev => ({ ...prev, slotId: value }))}>
-                                        <SelectTrigger>
-                                             <SelectValue placeholder="Chọn khung giờ" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             {timeSlots.map(slot => {
-                                                  const slotId = slot.slotId || slot.SlotID;
-                                                  const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
-                                                  const startTime = slot.startTime || slot.StartTime || "00:00";
-                                                  const endTime = slot.endTime || slot.EndTime || "00:00";
-                                                  return (
-                                                       <SelectItem key={slotId} value={(slotId || "").toString()}>
-                                                            {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
-                                                       </SelectItem>
-                                                  );
-                                             })}
-                                        </SelectContent>
-                                   </Select>
+                                   {loadingFieldSlots ? (
+                                        <div className="border border-gray-200 rounded-lg p-3 text-center text-gray-500 text-sm flex items-center justify-center">
+                                             <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                             Đang tải...
+                                        </div>
+                                   ) : (
+                                        <Select value={formData.slotId} onValueChange={(value) => setFormData(prev => ({ ...prev, slotId: value }))}>
+                                             <SelectTrigger>
+                                                  <SelectValue placeholder="Chọn khung giờ" />
+                                             </SelectTrigger>
+                                             <SelectContent>
+                                                  {fieldTimeSlots.length === 0 ? (
+                                                       <div className="p-2 text-center text-gray-500 text-sm">
+                                                            Sân này chưa có khung giờ nào
+                                                       </div>
+                                                  ) : (
+                                                       fieldTimeSlots.map(slot => {
+                                                            const slotId = slot.slotId || slot.SlotID;
+                                                            const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
+                                                            const startTime = slot.startTime || slot.StartTime || "00:00";
+                                                            const endTime = slot.endTime || slot.EndTime || "00:00";
+                                                            return (
+                                                                 <SelectItem key={slotId} value={(slotId || "").toString()}>
+                                                                      {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
+                                                                 </SelectItem>
+                                                            );
+                                                       })
+                                                  )}
+                                             </SelectContent>
+                                        </Select>
+                                   )}
                               </div>
 
                               <div>
@@ -882,7 +934,6 @@ const PricingManagement = ({ isDemo = false }) => {
                          featureName="Quản lý giá sân"
                     />
                </div>
-          </OwnerLayout>
      );
 };
 

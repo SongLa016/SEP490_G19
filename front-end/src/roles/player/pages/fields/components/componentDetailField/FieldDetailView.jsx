@@ -1,5 +1,10 @@
+import { useEffect, useState } from "react";
 import { ArrowLeft, User, CheckCircle, XCircle, Tag, Ruler, Leaf, MapPin, Heart } from "lucide-react";
 import { Button } from "../../../../../../shared/components/ui";
+import CancellationPolicyDisplay from "../../../../../../shared/components/CancellationPolicyDisplay";
+import PromotionsDisplay from "../../../../../../shared/components/PromotionsDisplay";
+import DepositPolicyDisplay from "../../../../../../shared/components/DepositPolicyDisplay";
+import { fetchFieldTypes, normalizeFieldType } from "../../../../../../shared/services/fieldTypes";
 
 export default function FieldDetailView({
      selectedField,
@@ -7,11 +12,116 @@ export default function FieldDetailView({
      selectedSlotId,
      selectedFieldCheapestSlot,
      selectedFieldPriciestSlot,
+     cancellationPolicy,
+     promotions,
+     depositPolicy,
+     fieldTypeMap = {},
      onBack,
      onQuickBook,
      onToggleFavoriteField
 }) {
-     if (!selectedField) return null;
+     const [localFieldTypeMap, setLocalFieldTypeMap] = useState(fieldTypeMap);
+
+     // Load field types nếu fieldTypeMap rỗng hoặc không có typeId cần thiết
+     useEffect(() => {
+          // Always merge fieldTypeMap into localFieldTypeMap
+          if (fieldTypeMap && Object.keys(fieldTypeMap).length > 0) {
+               setLocalFieldTypeMap(prev => ({ ...prev, ...fieldTypeMap }));
+          }
+
+          const typeId = selectedField?.typeId ?? selectedField?.typeID ?? selectedField?.TypeID;
+          const hasTypeName = selectedField?.typeName;
+          const hasInMap = typeId && (fieldTypeMap[String(typeId)] || localFieldTypeMap[String(typeId)]);
+
+          // Nếu đã có typeName hoặc đã có trong map, không cần load
+          if (hasTypeName || hasInMap) {
+               return;
+          }
+
+          // Nếu fieldTypeMap rỗng hoặc không có typeId cần thiết, tự load
+          if ((Object.keys(fieldTypeMap).length === 0 && Object.keys(localFieldTypeMap).length === 0) || (typeId && !hasInMap)) {
+               let ignore = false;
+               async function loadFieldTypes() {
+                    try {
+                         const result = await fetchFieldTypes();
+                         if (ignore) return;
+                         const rawList = (() => {
+                              if (!result || !result.success) return [];
+                              if (Array.isArray(result.data)) return result.data;
+                              if (result.data && Array.isArray(result.data.data)) return result.data.data;
+                              if (result.data && Array.isArray(result.data.value)) return result.data.value;
+                              return [];
+                         })();
+                         if (rawList.length > 0) {
+                              const map = rawList.reduce((acc, raw) => {
+                                   const normalized = normalizeFieldType(raw);
+                                   if (normalized?.typeId) {
+                                        acc[String(normalized.typeId)] = normalized.typeName || "";
+                                   }
+                                   return acc;
+                              }, {});
+                              setLocalFieldTypeMap(prev => ({ ...prev, ...map }));
+                         }
+                    } catch (err) {
+                         console.warn("Unable to load field types:", err);
+                    }
+               }
+               loadFieldTypes();
+               return () => { ignore = true; };
+          }
+     }, [selectedField, fieldTypeMap]);
+
+     if (!selectedField) {
+          return (
+               <div className="space-y-4">
+                    <div>
+                         <Button
+                              type="button"
+                              variant="outline"
+                              className="border-teal-400/50 text-teal-700 hover:text-teal-800 rounded-2xl hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 hover:border-teal-400 shadow-sm transition-all"
+                              onClick={onBack}
+                         >
+                              <ArrowLeft className="w-4 h-4 mr-1" />
+                              <p className="text-xs hover:underline">Quay lại thông tin khu sân</p>
+                         </Button>
+                    </div>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                         <p className="text-yellow-800">Không tìm thấy thông tin sân. Vui lòng thử lại sau.</p>
+                    </div>
+               </div>
+          );
+     }
+
+     const resolvedTypeName = (() => {
+          if (!selectedField) return "";
+          
+          const typeId = selectedField.typeId ?? selectedField.typeID ?? selectedField.TypeID ?? null;
+          const currentTypeName = selectedField.typeName || "";
+          
+          // Ưu tiên sử dụng typeName có sẵn (nếu không rỗng)
+          if (currentTypeName && currentTypeName.trim() !== "") {
+               return currentTypeName;
+          }
+          
+          // Nếu không có typeName, lấy từ localFieldTypeMap dựa vào typeId
+          if (typeId != null) {
+               const mappedName = localFieldTypeMap[String(typeId)];
+               if (mappedName && mappedName.trim() !== "") {
+                    return mappedName;
+               }
+          }
+          
+          // Debug log để kiểm tra
+          console.log("⚠️ [FieldDetailView] Could not resolve typeName:", {
+               fieldId: selectedField.fieldId,
+               typeId: typeId,
+               typeName: currentTypeName,
+               localFieldTypeMap: localFieldTypeMap,
+               mappedName: typeId != null ? localFieldTypeMap[String(typeId)] : null
+          });
+          
+          return "";
+     })();
 
      return (
           <div className="space-y-4">
@@ -38,9 +148,9 @@ export default function FieldDetailView({
                          <div>
                               <div className="text-xl font-bold bg-gradient-to-r from-teal-700 to-emerald-700 bg-clip-text text-transparent">{selectedField.name}</div>
                               <div className="mt-2 flex flex-wrap gap-2">
-                                   {selectedField.typeName && (
+                                   {resolvedTypeName && (
                                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-teal-50 to-emerald-50 text-teal-700 border border-teal-200/50 shadow-sm">
-                                             <User className="w-3 h-3" /> Loại: {selectedField.typeName}
+                                             <User className="w-3 h-3" /> Loại: {resolvedTypeName}
                                         </span>
                                    )}
 
@@ -101,7 +211,7 @@ export default function FieldDetailView({
                                    </div>
                                    Loại sân
                               </span>
-                              <b className="text-teal-700 font-bold">{selectedField.typeName || "—"}</b>
+                              <b className="text-teal-700 font-bold">{resolvedTypeName || "—"}</b>
                          </div>
                          <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-white/80 via-blue-50/40 to-white/80 hover:bg-gradient-to-r hover:from-blue-50/60 hover:via-indigo-50/40 hover:to-blue-50/60 transition-all border border-blue-200/30 hover:border-blue-300/50 shadow-sm">
                               <span className="inline-flex items-center gap-2 text-gray-700 font-medium">
@@ -151,6 +261,15 @@ export default function FieldDetailView({
                          )}
                     </div>
                </div>
+
+               {/* Chính sách hủy */}
+               <CancellationPolicyDisplay policy={cancellationPolicy} />
+
+               {/* Chính sách đặt cọc */}
+               <DepositPolicyDisplay policy={depositPolicy} />
+
+               {/* Khuyến mãi */}
+               <PromotionsDisplay promotions={promotions} />
           </div>
      );
 }

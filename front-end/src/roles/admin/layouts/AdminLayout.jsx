@@ -11,8 +11,7 @@ import {
      ChevronLeft,
      ChevronRight,
      Shield,
-     Settings,
-     UserCheck
+     User,
 } from "lucide-react";
 import { Button } from "../../../shared/components/ui";
 import logo from "../../../shared/components/assets/logo.png";
@@ -24,14 +23,26 @@ export default function AdminLayout({ user, onLoggedOut, children }) {
      const location = useLocation();
      const navigate = useNavigate();
 
+     const handleLogout = () => {
+          if (onLoggedOut) {
+               onLoggedOut();
+               navigate('/');
+          }
+     };
+
+     const handleGoToProfile = () => {
+          navigate('/admin/profile');
+          setSidebarOpen(false);
+     };
+
      const navigationItems = [
           { id: "admin", label: "Tổng quan", icon: Home, path: "/admin" },
           { id: "users", label: "Quản lý người dùng", icon: Users, path: "/admin/users" },
-          { id: "owner-registration", label: "Duyệt đăng ký Owner", icon: UserCheck, path: "/admin/owner-registration" },
           { id: "notifications", label: "Thông báo hệ thống", icon: Bell, path: "/admin/notifications" },
           { id: "violations", label: "Báo cáo vi phạm", icon: AlertTriangle, path: "/admin/violations" },
-          { id: "blog", label: "Quản lý blog", icon: FileText, path: "/admin/blog" },
-          { id: "settings", label: "Cài đặt hệ thống", icon: Settings, path: "/admin/system-settings" },
+          { id: "posts", label: "Quản lý bài viết", icon: FileText, path: "/admin/posts" },
+          // Tab hồ sơ admin, dùng icon User thay vì Settings
+          { id: "profile", label: "Hồ sơ Admin", icon: User, path: "/admin/profile" },
      ];
 
      const handleNavigation = (path) => {
@@ -120,24 +131,32 @@ export default function AdminLayout({ user, onLoggedOut, children }) {
                          </nav>
 
                          {/* User Info */}
-                         <div className="sticky bottom-0 p-4 border-t border-slate-200/50 bg-gradient-to-r from-slate-50 to-slate-100 backdrop-blur-sm z-10">
+                         <div className="sticky bottom-0 p-2 border-t border-slate-200/50 bg-gradient-to-r from-slate-50 to-slate-100 backdrop-blur-sm z-10">
                               <div className="flex items-center">
-                                   <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
-                                        <span className="text-sm font-bold text-white">
-                                             {user?.name?.charAt(0) || 'A'}
-                                        </span>
-                                   </div>
-                                   {!sidebarCollapsed && (
-                                        <div className="ml-3 flex-1">
-                                             <p className="text-sm font-bold text-slate-900">{user?.name}</p>
-                                             <p className="text-xs text-slate-500 font-medium">{user?.email}</p>
+                                   <button
+                                        type="button"
+                                        onClick={handleGoToProfile}
+                                        className="flex items-center flex-1 text-left hover:bg-slate-100 rounded-xl py-1 transition-colors"
+                                   >
+                                        <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
+                                             <span className="text-sm font-bold text-white">
+                                                  {user?.fullName?.charAt(0) || user?.name?.charAt(0) || user?.email?.charAt(0) || 'A'}
+                                             </span>
                                         </div>
-                                   )}
+                                        {!sidebarCollapsed && (
+                                             <div className="ml-2 flex-1">
+                                                  <p className="text-[13px] font-bold text-slate-900">
+                                                       {user?.fullName || user?.name || user?.email}
+                                                  </p>
+                                                  <p className="text-[10px] text-slate-500 font-medium">{user?.email}</p>
+                                             </div>
+                                        )}
+                                   </button>
                                    <Button
-                                        onClick={onLoggedOut}
+                                        onClick={handleLogout}
                                         variant="ghost"
                                         size="sm"
-                                        className="rounded-full hover:bg-red-50 hover:text-red-600 transition-all duration-300 ml-auto"
+                                        className="rounded-full hover:bg-red-50 hover:text-red-600 transition-all duration-300 ml-2"
                                         title={sidebarCollapsed ? "Đăng xuất" : undefined}
                                    >
                                         <LogOut className="w-4 h-4" />

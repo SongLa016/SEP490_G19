@@ -1,50 +1,183 @@
 import { useState, useEffect } from "react";
-import { Trophy, Calendar, Star, Users, Target, TrendingUp, Award, Clock, BarChart3 } from "lucide-react";
+import { Trophy, Calendar, Star, Users, Target, TrendingUp, Award, Clock, BarChart3, Loader2 } from "lucide-react";
 import { Container, Card, CardContent, CardHeader, CardTitle, Button, Section } from "../../../../shared/components/ui";
+import { playerStatisticsService } from "../../../../shared/services/playerStatistics";
+import { profileService } from "../../../../shared/index";
+import { getStoredToken, isTokenExpired } from "../../../../shared/utils/tokenManager";
+import { useTranslation } from "../../../../shared/hooks/useTranslation";
 
 export default function ProfileStats({ user }) {
+     const { t } = useTranslation();
      const [stats, setStats] = useState({
           totalBookings: 0,
           totalHours: 0,
           averageRating: 0,
           totalSpent: 0,
-          favoritePosition: "Tiền đạo",
-          skillLevel: "Trung bình",
-          joinDate: "2024-01-15",
+          favoritePosition: "Chưa cập nhật",
+          skillLevel: "Chưa cập nhật",
+          joinDate: new Date().toISOString(),
           achievements: [],
           recentActivity: [],
           monthlyStats: []
      });
+     const [loading, setLoading] = useState(true);
+     const [error, setError] = useState(null);
+     const [profileData, setProfileData] = useState(null);
 
      useEffect(() => {
-          // Simulate loading stats data
-          setStats({
-               totalBookings: 24,
-               totalHours: 48,
-               averageRating: 4.2,
-               totalSpent: 2400000,
-               favoritePosition: "Tiền đạo",
-               skillLevel: "Trung bình",
-               joinDate: "2024-01-15",
-               achievements: [
-                    { id: 1, name: "Người chơi tích cực", description: "Đặt sân 10 lần trong tháng", icon: Trophy, earned: true },
-                    { id: 2, name: "Đánh giá cao", description: "Nhận đánh giá 5 sao", icon: Star, earned: true },
-                    { id: 3, name: "Thành viên lâu năm", description: "Tham gia 6 tháng", icon: Award, earned: false },
-                    { id: 4, name: "Tiết kiệm", description: "Tiết kiệm 500k trong tháng", icon: Target, earned: false }
-               ],
-               recentActivity: [
-                    { id: 1, type: "booking", message: "Đặt sân Sân ABC - 19:00 ngày 15/12", time: "2 giờ trước" },
-                    { id: 2, type: "rating", message: "Đánh giá sân XYZ 5 sao", time: "1 ngày trước" },
-                    { id: 3, type: "payment", message: "Thanh toán thành công 200,000 VNĐ", time: "2 ngày trước" },
-                    { id: 4, type: "achievement", message: "Nhận thành tích 'Người chơi tích cực'", time: "3 ngày trước" }
-               ],
-               monthlyStats: [
-                    { month: "Tháng 12", bookings: 8, hours: 16, spent: 800000 },
-                    { month: "Tháng 11", bookings: 6, hours: 12, spent: 600000 },
-                    { month: "Tháng 10", bookings: 10, hours: 20, spent: 1000000 }
-               ]
-          });
-     }, []);
+          const loadStats = async () => {
+               try {
+                    setLoading(true);
+                    setError(null);
+
+                    // Load profile data first
+                    let profile = null;
+                    let userData = null;
+                    try {
+                         const profileResult = await profileService.getProfile();
+                         if (profileResult.ok && profileResult.profile) {
+                              profile = profileResult.profile;
+                              setProfileData(profile);
+                         }
+                    } catch (profileError) {
+                         console.warn("Could not load profile:", profileError);
+                         // Continue even if profile fails
+                    }
+
+                    // Load user data from User table to get createdAt
+                    try {
+                         // Get userId from token payload
+                         const token = getStoredToken();
+                         let userId = null;
+                         
+                         if (token && !isTokenExpired(token)) {
+                              try {
+                                   // Decode token to get userId
+                                   const payload = JSON.parse(atob(token.split('.')[1]));
+                                   userId = payload.UserID || payload.userID || payload.userId || payload.id;
+                              } catch (decodeError) {
+                                   console.warn("Could not decode token:", decodeError);
+                              }
+                         }
+                         
+                         // Fallback to user prop or localStorage
+                         if (!userId) {
+                              const currentUser = user || JSON.parse(localStorage.getItem('user') || '{}');
+                              userId = currentUser?.userId || currentUser?.id || currentUser?.UserID;
+                         }
+                         
+                         if (userId) {
+                              const response = await fetch(
+                                   `https://sep490-g19-zxph.onrender.com/api/User/${userId}`,
+                                   {
+                                        headers: {
+                                             'Authorization': `Bearer ${token || localStorage.getItem('token')}`,
+                                             'Content-Type': 'application/json'
+                                        }
+                                   }
+                              );
+                              
+                              if (response.ok) {
+                                   userData = await response.json();
+                              }
+                         }
+                    } catch (userError) {
+                         console.warn("Could not load user data:", userError);
+                         // Continue even if user data fails
+                    }
+
+                    // Load all stats from API
+                    const allStats = await playerStatisticsService.getAllStats();
+
+                    // Transform monthly stats to match component format
+                    const transformedMonthlyStats = Array.isArray(allStats.monthlyStats)
+                         ? allStats.monthlyStats.map((stat, index) => {
+                              // Handle different possible response formats
+                              const monthName = stat.month || stat.monthName || `Tháng ${new Date().getMonth() - index + 1}`;
+                              // Ensure all values are numbers
+                              const bookings = Number(stat.bookings || stat.totalBookings || 0) || 0;
+                              const hours = Number(stat.hours || stat.totalHours || stat.totalPlaying || stat.totalPlayingHours || 0) || 0;
+                              const spent = Number(stat.spent || stat.totalSpent || stat.totalSpending || 0) || 0;
+                              
+                              return {
+                                   month: String(monthName), // Ensure month is a string
+                                   bookings: bookings,
+                                   hours: hours,
+                                   spent: spent
+                              };
+                         })
+                         : [];
+
+                    // Transform recent activity to match component format
+                    const transformedRecentActivity = Array.isArray(allStats.recentActivity)
+                         ? allStats.recentActivity.map((activity, index) => {
+                              // Handle different possible response formats
+                              // Ensure all values are primitives (string or number)
+                              return {
+                                   id: Number(activity.id) || index + 1,
+                                   type: String(activity.type || activity.activityType || "default"),
+                                   message: String(activity.message || activity.description || activity.content || "Hoạt động mới"),
+                                   time: String(activity.time || activity.timeAgo || activity.createdAt || "Vừa xong")
+                              };
+                         })
+                         : [];
+
+                    // Ensure all numeric values are actually numbers
+                    const safeTotalBookings = Number(allStats.totalBookings) || 0;
+                    // Làm tròn tổng giờ chơi về số nguyên gần nhất
+                    const safeTotalHours = Math.round(Number(allStats.totalHours) || 0);
+                    const safeAverageRating = Number(allStats.averageRating) || 0;
+                    const safeTotalSpent = Number(allStats.totalSpent) || 0;
+
+                    // Extract profile information
+                    const preferredPositions = profile?.preferredPositions || 
+                                               profile?.PreferredPositions || 
+                                               user?.preferredPositions || 
+                                               "Chưa cập nhật";
+                    const skillLevel = profile?.skillLevel || 
+                                      profile?.SkillLevel || 
+                                      user?.skillLevel || 
+                                      "Chưa cập nhật";
+                    
+                    // Get createdAt from User table (priority: userData > user > profile)
+                    const createdAt = userData?.createdAt || 
+                                     userData?.CreatedAt ||
+                                     userData?.created_at ||
+                                     user?.createdAt || 
+                                     user?.CreatedAt ||
+                                     user?.created_at ||
+                                     user?.joinDate || 
+                                     profile?.createdAt || 
+                                     profile?.CreatedAt || 
+                                     new Date().toISOString();
+
+                    setStats({
+                         totalBookings: safeTotalBookings,
+                         totalHours: safeTotalHours,
+                         averageRating: safeAverageRating,
+                         totalSpent: safeTotalSpent,
+                         favoritePosition: String(preferredPositions) || "Chưa cập nhật",
+                         skillLevel: String(skillLevel) || "Chưa cập nhật",
+                         joinDate: createdAt,
+                         achievements: [
+                              { id: 1, name: "Người chơi tích cực", description: "Đặt sân 10 lần trong tháng", icon: Trophy, earned: safeTotalBookings >= 10 },
+                              { id: 2, name: "Đánh giá cao", description: "Nhận đánh giá 5 sao", icon: Star, earned: safeAverageRating >= 4.5 },
+                              { id: 3, name: "Thành viên lâu năm", description: "Tham gia 6 tháng", icon: Award, earned: false },
+                              { id: 4, name: "Tiết kiệm", description: "Tiết kiệm 500k trong tháng", icon: Target, earned: false }
+                         ],
+                         recentActivity: transformedRecentActivity,
+                         monthlyStats: transformedMonthlyStats
+                    });
+               } catch (err) {
+                    console.error("Error loading stats:", err);
+                    setError(err.message || "Không thể tải thống kê. Vui lòng thử lại sau.");
+               } finally {
+                    setLoading(false);
+               }
+          };
+
+          loadStats();
+     }, [user]);
 
      const formatCurrency = (amount) => {
           return new Intl.NumberFormat('vi-VN', {
@@ -54,7 +187,37 @@ export default function ProfileStats({ user }) {
      };
 
      const formatDate = (dateString) => {
-          return new Date(dateString).toLocaleDateString('vi-VN');
+          if (!dateString) return t("profileStats.notUpdated");
+          try {
+               const date = new Date(dateString);
+               if (isNaN(date.getTime())) {
+                    return t("profileStats.notUpdated");
+               }
+               return date.toLocaleDateString('vi-VN');
+          } catch (error) {
+               console.error("Error formatting date:", error);
+               return "Chưa cập nhật";
+          }
+     };
+
+     const translateSkillLevel = (skillLevel) => {
+          if (!skillLevel || skillLevel === "Chưa cập nhật" || skillLevel === t("profileStats.notUpdated")) {
+               return t("profileStats.notUpdated");
+          }
+          
+          const skillLevelMap = {
+               "beginner": "Mới bắt đầu",
+               "intermediate": "Trung bình",
+               "advanced": "Nâng cao",
+               "professional": "Chuyên nghiệp",
+               "Mới bắt đầu": "Mới bắt đầu",
+               "Trung bình": "Trung bình",
+               "Nâng cao": "Nâng cao",
+               "Chuyên nghiệp": "Chuyên nghiệp"
+          };
+          
+          const lowerCaseLevel = String(skillLevel).toLowerCase().trim();
+          return skillLevelMap[lowerCaseLevel] || skillLevelMap[skillLevel] || String(skillLevel);
      };
 
      const getActivityIcon = (type) => {
@@ -87,6 +250,47 @@ export default function ProfileStats({ user }) {
           }
      };
 
+     if (loading) {
+          return (
+               <Section className="relative min-h-screen ">
+                    <div className="absolute inset-0 bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center border border-teal-600 rounded-3xl" />
+                    <Container>
+                         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+                              <div className="flex flex-col items-center justify-center min-h-[400px]">
+                                   <Loader2 className="w-12 h-12 text-teal-600 animate-spin mb-4" />
+                                   <p className="text-teal-600 text-lg">{t("profileStats.subtitle")}</p>
+                              </div>
+                         </div>
+                    </Container>
+               </Section>
+          );
+     }
+
+     if (error) {
+          return (
+               <Section className="relative min-h-screen ">
+                    <div className="absolute inset-0 bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center border border-teal-600 rounded-3xl" />
+                    <Container>
+                         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+                              <div className="flex flex-col items-center justify-center min-h-[400px]">
+                                   <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+                                        <h3 className="text-red-800 font-semibold mb-2">{t("common.error")}</h3>
+                                        <p className="text-red-600 text-sm mb-4">{error}</p>
+                                        <Button
+                                             onClick={() => window.location.reload()}
+                                             variant="outline"
+                                             className="w-full"
+                                        >
+                                             {t("common.retry") || t("common.confirm")}
+                                        </Button>
+                                   </div>
+                              </div>
+                         </div>
+                    </Container>
+               </Section>
+          );
+     }
+
      return (
           <Section className="relative min-h-screen ">
                <div className="absolute inset-0 bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center border border-teal-600 rounded-3xl" />
@@ -97,8 +301,8 @@ export default function ProfileStats({ user }) {
                               <div className="inline-flex items-center justify-center w-12 h-12 bg-teal-100 rounded-2xl mb-4">
                                    <BarChart3 className="w-8 h-8 text-teal-600" />
                               </div>
-                              <h1 className="text-3xl font-bold text-teal-900 mb-2">Thống kê cá nhân</h1>
-                              <p className="text-teal-600 text-base">Theo dõi hoạt động và thành tích của bạn</p>
+                              <h1 className="text-3xl font-bold text-teal-900 mb-2">{t("profileStats.title")}</h1>
+                              <p className="text-teal-600 text-base">{t("profileStats.subtitle")}</p>
                          </div>
 
                          <div className="space-y-8">
@@ -113,7 +317,7 @@ export default function ProfileStats({ user }) {
                                                             <Calendar className="w-6 h-6 text-green-600" />
                                                        </div>
                                                        <div>
-                                                            <p className="text-sm font-medium text-green-600">Tổng lượt đặt</p>
+                                                            <p className="text-sm font-medium text-green-600">{t("profileStats.totalBookings")}</p>
                                                             <p className="text-2xl font-bold text-green-900">{stats.totalBookings}</p>
                                                        </div>
                                                   </div>
@@ -127,7 +331,7 @@ export default function ProfileStats({ user }) {
                                                             <Clock className="w-6 h-6 text-green-600" />
                                                        </div>
                                                        <div>
-                                                            <p className="text-sm font-medium text-green-600">Tổng giờ chơi</p>
+                                                            <p className="text-sm font-medium text-green-600">{t("profileStats.totalHours")}</p>
                                                             <p className="text-2xl font-bold text-green-900">{stats.totalHours}h</p>
                                                        </div>
                                                   </div>
@@ -141,8 +345,10 @@ export default function ProfileStats({ user }) {
                                                             <Star className="w-6 h-6 text-red-600" />
                                                        </div>
                                                        <div>
-                                                            <p className="text-sm font-medium text-red-600">Đánh giá TB</p>
-                                                            <p className="text-2xl font-bold text-red-900">{stats.averageRating}</p>
+                                                            <p className="text-sm font-medium text-red-600">{t("profileStats.averageRating")}</p>
+                                                            <p className="text-2xl font-bold text-red-900">
+                                                                 {stats.averageRating > 0 ? stats.averageRating.toFixed(1) : '0.0'}
+                                                            </p>
                                                        </div>
                                                   </div>
                                              </CardContent>
@@ -155,7 +361,7 @@ export default function ProfileStats({ user }) {
                                                             <TrendingUp className="w-6 h-6 text-red-600" />
                                                        </div>
                                                        <div>
-                                                            <p className="text-sm font-medium text-red-600">Tổng chi tiêu</p>
+                                                            <p className="text-sm font-medium text-red-600">{t("profileStats.totalSpent")}</p>
                                                             <p className="text-2xl font-bold text-red-900">{formatCurrency(stats.totalSpent)}</p>
                                                        </div>
                                                   </div>
@@ -166,49 +372,61 @@ export default function ProfileStats({ user }) {
                                    {/* Monthly Stats Chart */}
                                    <Card>
                                         <CardHeader>
-                                             <CardTitle>Thống kê theo tháng</CardTitle>
+                                             <CardTitle>{t("profileStats.monthlyStats")}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
-                                             <div className="space-y-4">
-                                                  {stats.monthlyStats.map((month, index) => (
-                                                       <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                                                            <div>
-                                                                 <h4 className="font-medium">{month.month}</h4>
-                                                                 <p className="text-sm text-gray-600">
-                                                                      {month.bookings} lượt đặt • {month.hours}h chơi
-                                                                 </p>
+                                             {stats.monthlyStats.length > 0 ? (
+                                                  <div className="space-y-4">
+                                                       {stats.monthlyStats.map((month, index) => (
+                                                            <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                                                                 <div>
+                                                                      <h4 className="font-medium">{month.month}</h4>
+                                                                      <p className="text-sm text-gray-600">
+                                                                           {month.bookings} lượt đặt • {month.hours}h chơi
+                                                                      </p>
+                                                                 </div>
+                                                                 <div className="text-right">
+                                                                      <p className="font-semibold text-teal-600">{formatCurrency(month.spent)}</p>
+                                                                 </div>
                                                             </div>
-                                                            <div className="text-right">
-                                                                 <p className="font-semibold text-teal-600">{formatCurrency(month.spent)}</p>
-                                                            </div>
-                                                       </div>
-                                                  ))}
-                                             </div>
+                                                       ))}
+                                                  </div>
+                                             ) : (
+                                                  <div className="text-center py-8 text-gray-500">
+                                                       <p>{t("profileStats.noMonthlyStats")}</p>
+                                                  </div>
+                                             )}
                                         </CardContent>
                                    </Card>
 
                                    {/* Recent Activity */}
                                    <Card>
                                         <CardHeader>
-                                             <CardTitle>Hoạt động gần đây</CardTitle>
+                                             <CardTitle>{t("profileStats.recentActivity")}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
-                                             <div className="space-y-4">
-                                                  {stats.recentActivity.map((activity) => {
-                                                       const Icon = getActivityIcon(activity.type);
-                                                       return (
-                                                            <div key={activity.id} className="flex items-start space-x-3">
-                                                                 <div className={`p-2 rounded-full ${getActivityColor(activity.type)}`}>
-                                                                      <Icon className="w-4 h-4" />
+                                             {stats.recentActivity.length > 0 ? (
+                                                  <div className="space-y-4">
+                                                       {stats.recentActivity.map((activity) => {
+                                                            const Icon = getActivityIcon(activity.type);
+                                                            return (
+                                                                 <div key={activity.id} className="flex items-start space-x-3">
+                                                                      <div className={`p-2 rounded-full ${getActivityColor(activity.type)}`}>
+                                                                           <Icon className="w-4 h-4" />
+                                                                      </div>
+                                                                      <div className="flex-1 min-w-0">
+                                                                           <p className="text-sm text-gray-900">{activity.message}</p>
+                                                                           <p className="text-xs text-gray-500">{activity.time}</p>
+                                                                      </div>
                                                                  </div>
-                                                                 <div className="flex-1 min-w-0">
-                                                                      <p className="text-sm text-gray-900">{activity.message}</p>
-                                                                      <p className="text-xs text-gray-500">{activity.time}</p>
-                                                                 </div>
-                                                            </div>
-                                                       );
-                                                  })}
-                                             </div>
+                                                            );
+                                                       })}
+                                                  </div>
+                                             ) : (
+                                                  <div className="text-center py-8 text-gray-500">
+                                                       <p>{t("profileStats.noRecentActivity")}</p>
+                                                  </div>
+                                             )}
                                         </CardContent>
                                    </Card>
                               </div>
@@ -218,25 +436,25 @@ export default function ProfileStats({ user }) {
                                    {/* Profile Summary */}
                                    <Card>
                                         <CardHeader>
-                                             <CardTitle>Tóm tắt hồ sơ</CardTitle>
+                                             <CardTitle>{t("profileStats.profileSummary")}</CardTitle>
                                         </CardHeader>
                                         <CardContent className="space-y-4">
                                              <div>
-                                                  <label className="text-sm font-medium text-gray-600">Vị trí ưa thích</label>
+                                                  <label className="text-sm font-medium text-gray-600">{t("profileStats.favoritePosition")}</label>
                                                   <p className="text-gray-900">{stats.favoritePosition}</p>
                                              </div>
                                              <div>
-                                                  <label className="text-sm font-medium text-gray-600">Trình độ</label>
-                                                  <p className="text-gray-900">{stats.skillLevel}</p>
+                                                  <label className="text-sm font-medium text-gray-600">{t("profileStats.skillLevel")}</label>
+                                                  <p className="text-gray-900">{translateSkillLevel(stats.skillLevel)}</p>
                                              </div>
                                              <div>
-                                                  <label className="text-sm font-medium text-gray-600">Tham gia từ</label>
+                                                  <label className="text-sm font-medium text-gray-600">{t("profileStats.joinedFrom")}</label>
                                                   <p className="text-gray-900">{formatDate(stats.joinDate)}</p>
                                              </div>
                                              <div>
-                                                  <label className="text-sm font-medium text-gray-600">Thời gian hoạt động</label>
+                                                  <label className="text-sm font-medium text-gray-600">{t("profileStats.activeTime")}</label>
                                                   <p className="text-gray-900">
-                                                       {Math.floor((new Date() - new Date(stats.joinDate)) / (1000 * 60 * 60 * 24))} ngày
+                                                       {Math.floor((new Date() - new Date(stats.joinDate)) / (1000 * 60 * 60 * 24))} {t("profileStats.days")}
                                                   </p>
                                              </div>
                                         </CardContent>
@@ -245,7 +463,7 @@ export default function ProfileStats({ user }) {
                                    {/* Achievements */}
                                    <Card>
                                         <CardHeader>
-                                             <CardTitle>Thành tích</CardTitle>
+                                             <CardTitle>{t("profileStats.achievements")}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
                                              <div className="space-y-4">
@@ -289,20 +507,20 @@ export default function ProfileStats({ user }) {
                                    {/* Quick Actions */}
                                    <Card>
                                         <CardHeader>
-                                             <CardTitle>Hành động nhanh</CardTitle>
+                                             <CardTitle>{t("profileStats.quickActions")}</CardTitle>
                                         </CardHeader>
                                         <CardContent className="space-y-3">
                                              <Button className="w-full" variant="outline">
                                                   <Calendar className="w-4 h-4 mr-2" />
-                                                  Đặt sân mới
+                                                  {t("profileStats.newBooking")}
                                              </Button>
                                              <Button className="w-full" variant="outline">
                                                   <Users className="w-4 h-4 mr-2" />
-                                                  Tìm đối thủ
+                                                  {t("profileStats.findOpponent")}
                                              </Button>
                                              <Button className="w-full" variant="outline">
                                                   <Star className="w-4 h-4 mr-2" />
-                                                  Đánh giá sân
+                                                  {t("profileStats.rateField")}
                                              </Button>
                                         </CardContent>
                                    </Card>

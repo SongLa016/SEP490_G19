@@ -13,8 +13,11 @@ export default function InfoTabContent({
      bigComposeCount,
      cancellationPolicy,
      promotions,
+     depositPolicy,
      selectedFieldCheapestSlot,
      selectedFieldPriciestSlot,
+     reviewStats,
+     fieldTypeMap = {},
      onBack,
      onFieldSelect,
      onQuickBookField,
@@ -37,6 +40,10 @@ export default function InfoTabContent({
                               selectedSlotId={selectedSlotId}
                               selectedFieldCheapestSlot={selectedFieldCheapestSlot}
                               selectedFieldPriciestSlot={selectedFieldPriciestSlot}
+                              cancellationPolicy={cancellationPolicy}
+                              promotions={promotions}
+                              depositPolicy={depositPolicy}
+                              fieldTypeMap={fieldTypeMap}
                               onBack={onBack}
                               onQuickBook={() => onQuickBookField(selectedField.fieldId)}
                               onToggleFavoriteField={onToggleFavoriteField}
@@ -48,10 +55,8 @@ export default function InfoTabContent({
                               availableCount={availableCount}
                               cheapestSlot={cheapestSlot}
                               priciestSlot={priciestSlot}
-                              bigComposeCount={bigComposeCount}
-                              cancellationPolicy={cancellationPolicy}
-                              promotions={promotions}
                               selectedSlotId={selectedSlotId}
+                              reviewStats={reviewStats}
                               onFieldSelect={onFieldSelect}
                               onQuickBookField={onQuickBookField}
                          />

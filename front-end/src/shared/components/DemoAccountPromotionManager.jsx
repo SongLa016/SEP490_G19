@@ -182,13 +182,11 @@ function DemoAccountPrompt({ isVisible, onClose, onSignUp }) {
      );
 }
 
-
 export default function DemoAccountPromotionManager({ isDemo = false }) {
      const [showTopBanner, setShowTopBanner] = useState(isDemo);
      const [showAccountPrompt] = useState(isDemo);
 
      const handleSignUp = (source) => {
-          console.log(`User clicked sign up from ${source}`);
           // Track sign up attempts for analytics
      };
 

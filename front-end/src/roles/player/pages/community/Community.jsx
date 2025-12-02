@@ -14,14 +14,15 @@ import NewThreadModal from "./components/NewThreadModal";
 import ThreadsFeed from "./components/ThreadsFeed";
 import CommunityHeader from "./components/CommunityHeader";
 import { useAuth } from "../../../../contexts/AuthContext";
-import { seedCommunityPostsOnce, listMatchRequests } from "../../../../shared/index";
+import { listMatchRequests } from "../../../../shared/index";
+import { createPost } from "../../../../shared/services/posts";
 import FindMatch from "./components/FindMatch";
-import TeamList from "./components/TeamList";
+import Swal from 'sweetalert2';
 
 export default function Community() {
      const locationRouter = useLocation();
      const { user, logout } = useAuth();
-     const [activeTab, setActiveTab] = useState("danh-cho-ban"); // danh-cho-ban | tim-doi-thu | tao-doi
+     const [activeTab, setActiveTab] = useState("danh-cho-ban"); // danh-cho-ban | tim-doi-thu
      const [filterLocation] = useState("");
      const [filterDate] = useState("");
      const [matchRequests, setMatchRequests] = useState([]);
@@ -32,23 +33,51 @@ export default function Community() {
      const [newPostTitle, setNewPostTitle] = useState("");
      const [selectedField, setSelectedField] = useState(null);
      const [showLoginPrompt, setShowLoginPrompt] = useState(true); // Control visibility of login prompt
+     const [refreshTrigger, setRefreshTrigger] = useState(0); // Trigger to refresh ThreadsFeed
      const highlightRef = useRef(null);
      const matchEndRef = useRef(null);
      const pageSize = 10;
      const visibleMatchRequests = matchRequests.slice(0, matchPage * pageSize);
 
      // Function to handle post submission
-     const handlePostSubmit = (title, content, field) => {
-          console.log("Posting:", { title, content, field });
-          // Add your post submission logic here
+     const handlePostSubmit = async (title, content, field, imageFile) => {
+          if (!user || !content.trim()) return;
+
+          try {
+               await createPost({
+                    title: title || "",
+                    content: content,
+                    fieldId: field?.fieldId || 0,
+                    imageFiles: imageFile
+               });
+               // Trigger refresh in ThreadsFeed
+               setRefreshTrigger(prev => prev + 1);
+               setNewPostContent("");
+               setNewPostTitle("");
+               setSelectedField(null);
+               setShowNewThread(false);
+
+               // Show success message
+               Swal.fire({
+                    icon: 'success',
+                    title: 'Đã đăng!',
+                    text: 'Bài viết của bạn đã được đăng thành công',
+                    timer: 2000,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+               });
+          } catch (error) {
+               console.error("Error creating post:", error);
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: error.message || 'Không thể tạo bài viết. Vui lòng thử lại.',
+                    confirmButtonText: 'Đã hiểu'
+               });
+          }
      };
 
-     const handleOpenTeamCreation = () => {
-          // TODO: Hiển thị form tạo đội khi phần này được triển khai
-     };
-
-
-     // Accept navigation state to focus a specific post and tab
      useEffect(() => {
           const st = locationRouter?.state || {};
           if (st.tab) {
@@ -62,14 +91,12 @@ export default function Community() {
           if (st.highlightPostId) setHighlightPostId(st.highlightPostId);
      }, [locationRouter?.state, user]);
 
-     // Reset to "danh-cho-ban" tab if user logs out
      useEffect(() => {
           if (!user && activeTab !== "danh-cho-ban") {
                setActiveTab("danh-cho-ban");
           }
      }, [user, activeTab]);
 
-     // Scroll to top when tab changes
      useEffect(() => {
           // Brief loading indication when switching tabs
           window.scrollTo({
@@ -88,8 +115,7 @@ export default function Community() {
           }
      }, [highlightPostId]);
 
-     // Seed demo community posts on first load
-     useEffect(() => { seedCommunityPostsOnce(); }, []);
+     // Note: Posts are now loaded via API in ThreadsFeed component
 
      useEffect(() => {
           setMatchRequests(listMatchRequests({ status: "Open" }));
@@ -120,7 +146,6 @@ export default function Community() {
                <div className="ml-0 md:ml-8 lg:ml-16 px-3 md:px-4 flex justify-center">
                     <div className="max-w-2xl w-full">
 
-
                          {/* Tabs với Underline Slide Animation */}
                          <motion.div
                               className="py-2"
@@ -131,10 +156,7 @@ export default function Community() {
                               <div className="flex justify-center gap-1 relative overflow-x-auto whitespace-nowrap px-1">
                                    {[
                                         { id: "danh-cho-ban", label: "Dành cho bạn" },
-                                        ...(user ? [
-                                             { id: "tim-doi-thu", label: "Tìm đối thủ" },
-                                             { id: "tao-doi", label: "Tạo đội" },
-                                        ] : []),
+                                        ...(user ? [{ id: "tim-doi-thu", label: "Tìm đối thủ" }] : []),
                                    ].map((tab, index) => (
                                         <motion.div
                                              key={tab.id}
@@ -174,7 +196,6 @@ export default function Community() {
                          </motion.div>
 
                          {/* Post Creation Area - Only for logged users */}
-
 
                          {/* Content based on active tab với Smooth Transitions */}
                          <AnimatePresence mode="wait">
@@ -235,7 +256,7 @@ export default function Community() {
                                              animate={{ opacity: 1 }}
                                              transition={{ delay: 0.3, duration: 0.4 }}
                                         >
-                                             <ThreadsFeed />
+                                             <ThreadsFeed refreshTrigger={refreshTrigger} />
                                         </motion.div>
                                    </motion.div>
                               )}
@@ -252,17 +273,6 @@ export default function Community() {
                                    </motion.div>
                               )}
 
-                              {user && activeTab === "tao-doi" && (
-                                   <motion.div
-                                        key="tao-doi"
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -20 }}
-                                        transition={{ duration: 0.4, ease: "easeInOut" }}
-                                   >
-                                        <TeamList onOpenTeamCreation={handleOpenTeamCreation} />
-                                   </motion.div>
-                              )}
                          </AnimatePresence>
                     </div>
                </div>

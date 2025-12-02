@@ -51,12 +51,9 @@ const handleApiError = (error) => {
 // API functions
 export async function fetchDepositPolicies() {
   try {
-    console.log("Fetching all deposit policies");
     const response = await apiClient.get(
       "https://sep490-g19-zxph.onrender.com/api/DepositPolicy"
     );
-    console.log("Deposit policies response:", response.data);
-
     // Handle both array and single object responses
     const policies = Array.isArray(response.data)
       ? response.data
@@ -81,11 +78,9 @@ export async function fetchDepositPolicies() {
 
 export async function fetchDepositPolicy(policyId) {
   try {
-    console.log(`Fetching deposit policy ${policyId}`);
     const response = await apiClient.get(
       `https://sep490-g19-zxph.onrender.com/api/DepositPolicy/${policyId}`
     );
-    console.log("Deposit policy response:", response.data);
     const policy = response.data;
     return {
       depositPolicyId: policy.depositPolicyId,
@@ -105,14 +100,15 @@ export async function fetchDepositPolicy(policyId) {
 export async function fetchDepositPolicyByField(fieldId) {
   try {
     const fieldIdNum = Number(fieldId);
-    console.log(`Fetching deposit policy for fieldId: ${fieldIdNum}`);
-
+    if (!fieldIdNum || isNaN(fieldIdNum)) {
+      console.warn(`Invalid fieldId: ${fieldId}`);
+      return null;
+    }
     // Use the specific endpoint for field-based query
-    const response = await apiClient.get(
-      `https://sep490-g19-zxph.onrender.com/api/DepositPolicy/field/${fieldIdNum}`
-    );
-    console.log("Deposit policy response:", response.data);
-
+    const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+    const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
+    const endpoint = `${API_BASE_URL}/api/DepositPolicy/field/${fieldIdNum}`;
+    const response = await apiClient.get(endpoint);
     // Handle both array and single object responses
     const policy = Array.isArray(response.data)
       ? response.data[0]
@@ -122,40 +118,41 @@ export async function fetchDepositPolicyByField(fieldId) {
       return null;
     }
 
-    return {
-      depositPolicyId: policy.depositPolicyId,
-      fieldId: policy.fieldId,
-      fieldName: policy.fieldName || "",
-      depositPercent: policy.depositPercent,
-      minDeposit: policy.minDeposit,
-      maxDeposit: policy.maxDeposit,
-      createdAt: policy.createdAt,
+    const normalizedPolicy = {
+      depositPolicyId: policy.depositPolicyId || policy.depositPolicyID,
+      fieldId: policy.fieldId || policy.fieldID,
+      fieldName: policy.fieldName || policy.FieldName || "",
+      depositPercent: policy.depositPercent || policy.depositPercent || 0,
+      minDeposit: policy.minDeposit || policy.minDeposit || 0,
+      maxDeposit: policy.maxDeposit || policy.maxDeposit || 0,
+      createdAt: policy.createdAt || policy.CreatedAt,
     };
+    return normalizedPolicy;
   } catch (error) {
     console.error("Error fetching deposit policy by field:", error);
-    // Return null if not found (404), otherwise throw error
+    // Return null if not found (404), otherwise log and return null
     if (error.response?.status === 404) {
+      console.log(`Deposit policy not found for fieldId: ${fieldId} (404)`);
       return null;
     }
-    handleApiError(error);
+    // For other errors, log but don't throw - return null to allow page to continue
+    console.warn(`Failed to fetch deposit policy for fieldId ${fieldId}:`, error.message);
+    return null;
   }
 }
 
 export async function createDepositPolicy(policyData) {
   try {
-    console.log("Creating deposit policy with data:", policyData);
     const payload = {
       fieldId: policyData.fieldId,
       depositPercent: policyData.depositPercent,
       minDeposit: policyData.minDeposit || null,
       maxDeposit: policyData.maxDeposit || null,
     };
-    console.log("Sending payload:", payload);
     const response = await apiClient.post(
       "https://sep490-g19-zxph.onrender.com/api/DepositPolicy",
       payload
     );
-    console.log("Create deposit policy response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error creating deposit policy:", error);
@@ -165,19 +162,16 @@ export async function createDepositPolicy(policyData) {
 
 export async function updateDepositPolicy(policyId, policyData) {
   try {
-    console.log(`Updating deposit policy ${policyId} with data:`, policyData);
     const payload = {
       fieldId: policyData.fieldId,
       depositPercent: policyData.depositPercent,
       minDeposit: policyData.minDeposit || null,
       maxDeposit: policyData.maxDeposit || null,
     };
-    console.log("Sending payload:", payload);
     const response = await apiClient.put(
       `https://sep490-g19-zxph.onrender.com/api/DepositPolicy/${policyId}`,
       payload
     );
-    console.log("Update deposit policy response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error updating deposit policy:", error);
@@ -187,11 +181,9 @@ export async function updateDepositPolicy(policyId, policyData) {
 
 export async function deleteDepositPolicy(policyId) {
   try {
-    console.log(`Deleting deposit policy ${policyId}`);
     const response = await apiClient.delete(
       `https://sep490-g19-zxph.onrender.com/api/DepositPolicy/${policyId}`
     );
-    console.log("Delete deposit policy response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error deleting deposit policy:", error);

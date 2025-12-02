@@ -1,28 +1,42 @@
 import React, { useState } from "react";
-import { User, Settings, BarChart3, Users, Calendar } from "lucide-react";
+import { User, Settings, Heart, BarChart3, Calendar } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Button, Container } from "../../../../shared/components/ui";
+import { Button } from "../../../../shared/components/ui";
 import UserProfile from "./UserProfile";
 import ProfileSettings from "./ProfileSettings";
 import ProfileStats from "./ProfileStats";
-import BankingManagement from "./BankingManagement";
+import FavoriteFields from "./FavoriteFields";
+import { useTranslation } from "../../../../shared/hooks/useTranslation";
 
 export default function ProfileIndex({ user }) {
   const [activeTab, setActiveTab] = useState("profile");
+  const { t } = useTranslation();
 
   const tabs = [
-    { id: "profile", label: "Hồ sơ", icon: User, component: UserProfile },
+    {
+      id: "profile",
+      label: t("profilePage.tabs.profile"),
+      icon: User,
+      component: UserProfile,
+    },
     {
       id: "settings",
-      label: "Cài đặt",
+      label: t("profilePage.tabs.settings"),
       icon: Settings,
       component: ProfileSettings,
     },
+
     {
       id: "stats",
-      label: "Thống kê",
+      label: t("profilePage.tabs.stats"),
       icon: BarChart3,
       component: ProfileStats,
+    },
+    {
+      id: "favorites",
+      label: t("profilePage.favorite"),
+      icon: Heart,
+      component: FavoriteFields,
     },
   ];
 
@@ -49,36 +63,17 @@ export default function ProfileIndex({ user }) {
                     </div>
                     <div>
                       <h1 className="text-3xl font-bold text-gray-900">
-                        {activeTabData?.label || "Hồ sơ"}
+                        {activeTabData?.label || t("profilePage.tabs.profile")}
                       </h1>
                       <p className="text-gray-600 mt-1">
                         {activeTab === "profile" &&
-                          "Quản lý thông tin cá nhân của bạn"}
+                          t("profilePage.descriptions.profile")}
                         {activeTab === "settings" &&
-                          "Cài đặt tài khoản và bảo mật"}
+                          t("profilePage.descriptions.settings")}
                         {activeTab === "stats" &&
-                          "Xem thống kê hoạt động của bạn"}
+                          t("profilePage.descriptions.stats")}
                       </p>
                     </div>
-                  </div>
-
-                  {/* Quick actions */}
-                  <div className="hidden lg:flex items-center gap-3">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-teal-300 text-teal-700 hover:bg-teal-50 hover:text-teal-900 rounded-xl"
-                    >
-                      <Users className="w-4 h-4 mr-2" />
-                      Tìm đối thủ
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl"
-                    >
-                      <Calendar className="w-4 h-4 mr-2" />
-                      Đặt sân
-                    </Button>
                   </div>
                 </div>
 
@@ -89,15 +84,8 @@ export default function ProfileIndex({ user }) {
                     size="sm"
                     className="flex-1 border-teal-300 text-teal-700 hover:bg-teal-50 hover:text-teal-900 rounded-xl"
                   >
-                    <Users className="w-4 h-4 mr-2" />
-                    Tìm đối thủ
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="flex-1 bg-teal-600 hover:bg-teal-700 text-white rounded-xl"
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Đặt sân
+                    <Heart className="w-4 h-4 mr-2" />
+                    {t("profilePage.favorite")}
                   </Button>
                 </div>
               </div>

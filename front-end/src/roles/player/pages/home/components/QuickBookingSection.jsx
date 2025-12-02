@@ -6,6 +6,7 @@ import { ScrollReveal } from "../../../../../shared/components/ScrollReveal";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { fetchFieldComplexes, fetchFields } from "../../../../../shared/services/fields";
+import { fetchRatingsByComplex } from "../../../../../shared/services/ratings";
 import { fetchPromotionsByComplex } from "../../../../../shared/services/promotions";
 
 export const QuickBookingSection = ({ user }) => {
@@ -24,12 +25,12 @@ export const QuickBookingSection = ({ user }) => {
                     let allFields = [];
                     
                     try {
-                         complexes = await fetchFieldComplexes();
-                         if (!Array.isArray(complexes)) {
-                              complexes = [];
+                         let fetchedComplexes = await fetchFieldComplexes();
+                         if (!Array.isArray(fetchedComplexes)) {
+                              fetchedComplexes = [];
                          }
                          // Filter only Active complexes for Player
-                         complexes = complexes.filter(
+                         complexes = fetchedComplexes.filter(
                               (complex) => (complex.status || complex.Status || "Active") === "Active"
                          );
                     } catch (error) {
@@ -47,35 +48,61 @@ export const QuickBookingSection = ({ user }) => {
                          allFields = [];
                     }
 
-                    // Get nearby fields (first 2 fields with addresses)
-                    const fieldsWithAddress = allFields
-                         .filter(f => f.address && f.mainImageUrl)
-                         .slice(0, 2)
-                         .map(field => ({
-                              id: field.fieldId,
-                              name: field.name,
-                              location: field.address,
-                              distance: "Gần bạn",
-                              price: `${(field.pricePerHour || field.priceForSelectedSlot || 0).toLocaleString('vi-VN')} VNĐ`,
-                              rating: field.rating || 4.5,
-                              mainImageUrl: field.mainImageUrl,
-                         }));
-                    setNearbyFields(fieldsWithAddress);
+                    // Fetch rating statistics for each active complex (parallel)
+                    const ratingStats = await Promise.all(
+                         complexes.map(async (complex) => {
+                              try {
+                                   const ratings = await fetchRatingsByComplex(complex.complexId);
+                                   if (!Array.isArray(ratings) || ratings.length === 0) {
+                                        return { complexId: complex.complexId, averageRating: 0, reviewCount: 0 };
+                                   }
 
-                    // Get top rated fields (next 2 fields, sorted by rating if available)
-                    const sortedFields = [...allFields]
+                                   const totalStars = ratings.reduce(
+                                        (sum, rating) => sum + Number(rating.stars || rating.rating || 0),
+                                        0
+                                   );
+                                   return {
+                                        complexId: complex.complexId,
+                                        averageRating: totalStars / ratings.length,
+                                        reviewCount: ratings.length
+                                   };
+                              } catch (error) {
+                                   console.error("Error fetching ratings for complex:", complex.complexId, error);
+                                   return { complexId: complex.complexId, averageRating: 0, reviewCount: 0 };
+                              }
+                         })
+                    );
+
+                    const ratingMap = new Map(ratingStats.map((stat) => [stat.complexId, stat]));
+
+                    const fieldsWithMetadata = allFields
                          .filter(f => f.address && f.mainImageUrl)
-                         .sort((a, b) => (b.rating || 0) - (a.rating || 0))
-                         .slice(0, 2)
-                         .map(field => ({
-                              id: field.fieldId,
-                              name: field.name,
-                              location: field.address,
-                              price: `${(field.pricePerHour || field.priceForSelectedSlot || 0).toLocaleString('vi-VN')} VNĐ`,
-                              rating: field.rating || 4.5,
-                              mainImageUrl: field.mainImageUrl,
-                         }));
-                    setTopRatedFields(sortedFields);
+                         .map(field => {
+                              const ratingInfo = ratingMap.get(field.complexId) || { averageRating: 0, reviewCount: 0 };
+                              return {
+                                   id: field.fieldId,
+                                   name: field.name,
+                                   location: field.address,
+                                   distance: "Gần bạn",
+                                   price: `${(field.pricePerHour || field.priceForSelectedSlot || 0).toLocaleString('vi-VN')} VNĐ`,
+                                   rating: Number(ratingInfo.averageRating || 0),
+                                   reviewCount: ratingInfo.reviewCount || 0,
+                                   mainImageUrl: field.mainImageUrl,
+                              };
+                         });
+
+                    setNearbyFields(fieldsWithMetadata.slice(0, 2));
+
+                    const ratedFields = fieldsWithMetadata
+                         .filter(field => field.rating > 0)
+                         .sort((a, b) => {
+                              if (b.rating === a.rating) {
+                                   return (b.reviewCount || 0) - (a.reviewCount || 0);
+                              }
+                              return b.rating - a.rating;
+                         })
+                         .slice(0, 2);
+                    setTopRatedFields(ratedFields);
 
                     // Fetch promotions from all complexes
                     const promotionPromises = complexes.map(complex => 
@@ -180,7 +207,7 @@ export const QuickBookingSection = ({ user }) => {
                                                             key={field.id}
                                                             whileHover={{ scale: 1.02 }}
                                                             className="flex items-center border border-teal-200 gap-3 p-3 bg-gray-50 rounded-2xl cursor-pointer hover:bg-teal-50 transition-colors"
-                                                            onClick={() => navigate(`/fields/${field.id}`)}
+                                                            onClick={() => navigate(`/field/${field.id}`)}
                                                        >
                                                             <img
                                                                  src={field.mainImageUrl || 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg'}
@@ -229,30 +256,36 @@ export const QuickBookingSection = ({ user }) => {
                                              {loading ? (
                                                   <div className="text-center py-4 text-gray-500">Đang tải...</div>
                                              ) : topRatedFields.length > 0 ? (
-                                                  topRatedFields.map((field) => (
-                                                       <motion.div
-                                                            key={field.id}
-                                                            whileHover={{ scale: 1.02 }}
-                                                            className="flex items-center border border-yellow-200 gap-3 p-3 bg-gray-50 rounded-2xl cursor-pointer hover:bg-yellow-50 transition-colors"
-                                                            onClick={() => navigate(`/fields/${field.id}`)}
-                                                       >
-                                                            <img
-                                                                 src={field.mainImageUrl || 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg'}
-                                                                 alt={field.name}
-                                                                 className="w-16 h-16 rounded-lg object-cover"
-                                                                 onError={(e) => {
-                                                                      e.target.src = 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg';
-                                                                 }}
-                                                            />
-                                                            <div className="flex-1 min-w-0">
-                                                                 <h4 className="font-semibold text-gray-900 truncate">{field.name}</h4>
-                                                                 <p className="text-sm text-gray-600 truncate">{field.location}</p>
-                                                                 <p className="text-xs text-yellow-700 font-medium">
-                                                                      ⭐ {field.rating.toFixed(1)} điểm • {field.price}
-                                                                 </p>
-                                                            </div>
-                                                       </motion.div>
-                                                  ))
+                                                  topRatedFields.map((field) => {
+                                                       const hasRating = field.rating > 0;
+                                                       const ratingLabel = hasRating
+                                                            ? `⭐ ${field.rating.toFixed(1)} điểm • ${field.reviewCount || 0} đánh giá`
+                                                            : "Chưa có đánh giá";
+                                                       return (
+                                                            <motion.div
+                                                                 key={field.id}
+                                                                 whileHover={{ scale: 1.02 }}
+                                                                 className="flex items-center border border-yellow-200 gap-3 p-3 bg-gray-50 rounded-2xl cursor-pointer hover:bg-yellow-50 transition-colors"
+                                                                 onClick={() => navigate(`/field/${field.id}`)}
+                                                            >
+                                                                 <img
+                                                                      src={field.mainImageUrl || 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg'}
+                                                                      alt={field.name}
+                                                                      className="w-16 h-16 rounded-lg object-cover"
+                                                                      onError={(e) => {
+                                                                           e.target.src = 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg';
+                                                                      }}
+                                                                 />
+                                                                 <div className="flex-1 min-w-0">
+                                                                      <h4 className="font-semibold text-gray-900 truncate">{field.name}</h4>
+                                                                      <p className="text-sm text-gray-600 truncate">{field.location}</p>
+                                                                      <p className={`text-xs font-medium ${hasRating ? "text-yellow-700" : "text-gray-500"}`}>
+                                                                           {ratingLabel} • {field.price}
+                                                                      </p>
+                                                                 </div>
+                                                            </motion.div>
+                                                       );
+                                                  })
                                              ) : (
                                                   <div className="text-center py-4 text-gray-500">Chưa có sân đánh giá</div>
                                              )}

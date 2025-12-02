@@ -12,7 +12,7 @@ import {
      Building2,
      ClipboardList,
      AlertTriangle,
-     Bell,
+     FileText,
      TrendingUp,
      Calendar,
      Shield,
@@ -23,8 +23,22 @@ import {
      Settings,
      BarChart3,
      Clock,
-     CheckCircle
+     CheckCircle,
+     Bell,
 } from "lucide-react";
+import { decodeTokenPayload, getStoredToken } from "../../../shared/utils/tokenManager";
+import {
+     fetchOwnerStatistics,
+     fetchBookingStatistics,
+     fetchRevenueStatistics,
+     fetchFieldStatistics,
+     fetchReportStatistics,
+     fetchPendingReportStatistics,
+     fetchPostStatistics,
+     fetchAllUserStatistics,
+     fetchUserStatistics,
+     fetchRecentActivities,
+} from "../../../shared/services/adminStatistics";
 
 export default function AdminDashboard() {
      const [stats, setStats] = useState({
@@ -32,58 +46,160 @@ export default function AdminDashboard() {
           totalOwners: 0,
           totalBookings: 0,
           totalViolations: 0,
-          totalNotifications: 0,
+          totalPosts: 0,
           totalRevenue: 0,
           activeFields: 0,
           pendingReports: 0
      });
 
      const [recentActivities, setRecentActivities] = useState([]);
+     const [loading, setLoading] = useState(true);
+     const [error, setError] = useState(null);
 
      useEffect(() => {
-  
-          setStats({
-               totalUsers: 1250,
-               totalOwners: 45,
-               totalBookings: 3200,
-               totalViolations: 12,
-               totalNotifications: 8,
-               totalRevenue: 125000000,
-               activeFields: 180,
-               pendingReports: 5
-          });
-
-          setRecentActivities([
-               {
-                    id: 1,
-                    type: "user_registration",
-                    message: "Người dùng mới đăng ký: Nguyễn Văn Duc",
-                    time: "2 phút trước",
-                    icon: Users
-               },
-               {
-                    id: 2,
-                    type: "violation_report",
-                    message: "Báo cáo vi phạm mới từ User ID: 123",
-                    time: "30 phút trước",
-                    icon: AlertTriangle
-               },
-               {
-                    id: 3,
-                    type: "booking_completed",
-                    message: "Booking hoàn thành: Sân A1 - Slot 3",
-                    time: "1 giờ trước",
-                    icon: ClipboardList
-               },
-               {
-                    id: 4,
-                    type: "field_added",
-                    message: "Sân mới được thêm: Sân bóng Đại Dương",
-                    time: "2 giờ trước",
-                    icon: Building2
-               }
-          ]);
+          loadStatistics();
      }, []);
+
+     // Helper function để extract số từ API response
+     const extractNumber = (data, ...keys) => {
+          if (!data) return 0;
+          for (const key of keys) {
+               if (data[key] !== undefined && data[key] !== null) {
+                    return typeof data[key] === 'number' ? data[key] : parseInt(data[key]) || 0;
+               }
+          }
+          // Nếu data là số trực tiếp
+          if (typeof data === 'number') return data;
+          // Nếu data là mảng, trả về độ dài
+          if (Array.isArray(data)) return data.length;
+          return 0;
+     };
+
+     const loadStatistics = async () => {
+          try {
+               setLoading(true);
+               setError(null);
+
+               // Kiểm tra token và role admin
+               const token = getStoredToken();
+               if (!token) {
+                    setError("Bạn cần đăng nhập để xem thống kê.");
+                    setLoading(false);
+                    return;
+               }
+
+               const payload = decodeTokenPayload(token);
+               if (!payload) {
+                    setError("Token không hợp lệ.");
+                    setLoading(false);
+                    return;
+               }
+
+               // Kiểm tra role admin (roleID = 3 hoặc role = "Admin")
+               const userRole = payload.roleID || payload.role || payload.RoleID || payload.Role;
+               const isAdmin = userRole === 3 || userRole === "Admin" || userRole === "admin";
+
+               if (!isAdmin) {
+                    setError("Bạn không có quyền truy cập trang này. Chỉ Admin mới có thể xem thống kê.");
+                    setLoading(false);
+                    return;
+               }
+
+               // Gọi tất cả các API thống kê
+               const [
+                    ownersResult,
+                    bookingsResult,
+                    revenueResult,
+                    fieldsResult,
+                    reportsResult,
+                    pendingReportsResult,
+                    postsResult,
+                    allUsersResult,
+                    usersResult,
+                    recentActivitiesResult,
+               ] = await Promise.all([
+                    fetchOwnerStatistics(),
+                    fetchBookingStatistics(),
+                    fetchRevenueStatistics(),
+                    fetchFieldStatistics(),
+                    fetchReportStatistics(),
+                    fetchPendingReportStatistics(),
+                    fetchPostStatistics(),
+                    fetchAllUserStatistics(),
+                    fetchUserStatistics(),
+                    fetchRecentActivities(),
+               ]);
+
+               // Cập nhật stats từ các API response
+               const newStats = {
+                    totalUsers: extractNumber(usersResult.ok ? usersResult.data : null,
+                         'totalUsers', 'total', 'count', 'userCount', 'numberOfUsers'),
+                    totalOwners: extractNumber(ownersResult.ok ? ownersResult.data : null,
+                         'totalOwners', 'total', 'count', 'ownerCount', 'numberOfOwners'),
+                    totalBookings: extractNumber(bookingsResult.ok ? bookingsResult.data : null,
+                         'totalBookings', 'total', 'count', 'bookingCount', 'numberOfBookings'),
+                    totalViolations: extractNumber(reportsResult.ok ? reportsResult.data : null,
+                         'totalReports', 'total', 'count', 'reportCount', 'numberOfReports'),
+                    totalPosts: extractNumber(postsResult.ok ? postsResult.data : null,
+                         'totalPosts', 'total', 'count', 'postCount', 'numberOfPosts'),
+                    totalRevenue: extractNumber(revenueResult.ok ? revenueResult.data : null,
+                         'totalRevenue', 'revenue', 'amount', 'totalAmount', 'sum'),
+                    activeFields: extractNumber(fieldsResult.ok ? fieldsResult.data : null,
+                         'activeFields', 'total', 'count', 'fieldCount', 'numberOfFields', 'activeCount'),
+                    pendingReports: extractNumber(pendingReportsResult.ok ? pendingReportsResult.data : null,
+                         'pendingReports', 'total', 'count', 'pendingCount', 'numberOfPending')
+               };
+
+               setStats(newStats);
+
+               // Map recent activities từ API /api/admin/statistics/recent-activities
+               const mapActivityIcon = (type) => {
+                    const normalized = String(type || "").toLowerCase();
+                    if (normalized.includes("user")) return Users;
+                    if (normalized.includes("booking") || normalized.includes("reservation")) return ClipboardList;
+                    if (normalized.includes("field") || normalized.includes("pitch")) return Building2;
+                    if (normalized.includes("post") || normalized.includes("article")) return FileText;
+                    if (normalized.includes("report") || normalized.includes("violation")) return AlertTriangle;
+                    if (normalized.includes("system")) return Server;
+                    return Activity;
+               };
+
+               let activities = [];
+               if (recentActivitiesResult.ok && Array.isArray(recentActivitiesResult.data)) {
+                    activities = recentActivitiesResult.data.map((item, index) => ({
+                         id: item.id || item.activityId || index + 1,
+                         type: item.type || item.activityType || "info",
+                         message:
+                              item.message ||
+                              item.description ||
+                              item.title ||
+                              `Hoạt động: ${item.activityType || item.type || ""}`,
+                         time: item.timeAgo || item.createdAt || item.timestamp || "Vừa cập nhật",
+                         icon: mapActivityIcon(item.type || item.activityType),
+                    }));
+               }
+
+               if (activities.length === 0) {
+                    activities = [
+                         {
+                              id: 1,
+                              type: "info",
+                              message: "Chưa có hoạt động gần đây.",
+                              time: "Vừa cập nhật",
+                              icon: Activity,
+                         },
+                    ];
+               }
+
+               setRecentActivities(activities);
+
+          } catch (err) {
+               console.error("Error loading statistics:", err);
+               setError("Không thể tải dữ liệu thống kê. Vui lòng thử lại sau.");
+          } finally {
+               setLoading(false);
+          }
+     };
 
      const formatCurrency = (amount) => {
           return new Intl.NumberFormat('vi-VN', {
@@ -94,7 +210,7 @@ export default function AdminDashboard() {
 
      const statCards = [
           {
-               title: "Tổng số người dùng",
+               title: "Tổng người dùng",
                value: stats.totalUsers.toLocaleString(),
                icon: Users,
                color: "blue",
@@ -142,12 +258,12 @@ export default function AdminDashboard() {
                changeType: "negative"
           },
           {
-               title: "Thông báo chưa gửi",
-               value: stats.totalNotifications.toLocaleString(),
-               icon: Bell,
+               title: "Số lượng bài post",
+               value: stats.totalPosts.toLocaleString(),
+               icon: FileText,
                color: "indigo",
-               change: "+2",
-               changeType: "neutral"
+               change: "+5%",
+               changeType: "positive"
           },
           {
                title: "Báo cáo chờ xử lý",
@@ -186,24 +302,53 @@ export default function AdminDashboard() {
 
      return (
           <div className="space-y-6">
-               /* Header */
+               {/* Header */}
                <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl p-6 border border-red-200/50">
                     <div className="flex items-center justify-between">
                          <div>
                               <h1 className="text-3xl font-bold bg-gradient-to-r from-red-700 to-pink-700 bg-clip-text text-transparent">
-                                   Admin Dashboard.
+                                   Admin Dashboard
                               </h1>
                               <p className="text-slate-600 mt-2 font-medium">
-                                   Tổng quan hệ thống và quản lý toàn bộ nền tảng.
+                                   Tổng quan hệ thống và quản lý toàn bộ nền tảng
                               </p>
                          </div>
-                         <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
-                              <Shield className="w-8 h-8 text-white" />
+                         <div className="flex items-center space-x-4">
+                              <Button
+                                   onClick={loadStatistics}
+                                   disabled={loading}
+                                   variant="outline"
+                                   className="rounded-2xl"
+                              >
+                                   <Activity className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                                   {loading ? 'Đang tải...' : 'Làm mới'}
+                              </Button>
+                              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                   <Shield className="w-8 h-8 text-white" />
+                              </div>
                          </div>
                     </div>
                </div>
 
-              
+               {/* Error Message */}
+               {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center justify-between">
+                         <div className="flex items-center space-x-2">
+                              <AlertTriangle className="w-5 h-5 text-red-600" />
+                              <p className="text-red-700 font-medium">{error}</p>
+                         </div>
+                         <Button
+                              onClick={loadStatistics}
+                              variant="outline"
+                              size="sm"
+                              className="rounded-2xl"
+                         >
+                              Thử lại
+                         </Button>
+                    </div>
+               )}
+
+               {/* Stats Grid */}
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {statCards.map((stat, index) => {
                          const Icon = stat.icon;
@@ -213,13 +358,20 @@ export default function AdminDashboard() {
                                         <div className="flex items-center justify-between">
                                              <div className="flex-1">
                                                   <p className="text-sm font-medium text-slate-600 mb-1">{stat.title}</p>
-                                                  <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                                                  {loading ? (
+                                                       <div className="flex items-center space-x-2">
+                                                            <Activity className="w-5 h-5 text-slate-400 animate-spin" />
+                                                            <p className="text-2xl font-bold text-slate-400">...</p>
+                                                       </div>
+                                                  ) : (
+                                                       <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                                                  )}
                                                   <p className={`text-sm font-medium mt-1 ${getChangeColor(stat.changeType)}`}>
                                                        {stat.change} so với tháng trước
                                                   </p>
                                              </div>
                                              <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center shadow-lg">
-                                                  <Icon className={`w-6 h-6 ${getIconColor(stat.color)}`} />
+                                                  <Icon className={`w-6 h-6 ${getIconColor(stat.color)} ${loading ? 'opacity-50' : ''}`} />
                                              </div>
                                         </div>
                                    </CardContent>
@@ -228,7 +380,7 @@ export default function AdminDashboard() {
                     })}
                </div>
 
-             
+               {/* Recent Activities */}
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <Card className="rounded-2xl shadow-lg">
                          <CardHeader>
@@ -310,8 +462,8 @@ export default function AdminDashboard() {
                                         <div className="flex items-center space-x-3">
                                              <Building2 className="w-5 h-5 text-purple-600" />
                                              <div className="text-left">
-                                                  <p className="font-medium text-slate-900"> Quản lý sân </p>
-                                                  <p className="text-sm text-slate-600"> Kiểm tra và phê duyệt sân </p>
+                                                  <p className="font-medium text-slate-900">Quản lý sân</p>
+                                                  <p className="text-sm text-slate-600">Kiểm tra và phê duyệt sân</p>
                                              </div>
                                         </div>
                                    </Button>
@@ -320,7 +472,7 @@ export default function AdminDashboard() {
                     </Card>
                </div>
 
-               
+               {/* System Status */}
                <Card>
                     <CardHeader>
                          <div className="flex items-center justify-between">

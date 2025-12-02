@@ -364,7 +364,6 @@ export async function createBooking(bookingData) {
       };
     }
 
-
     // Validate required fields
     if (!bookingData.userId) {
       return {
@@ -396,10 +395,7 @@ export async function createBooking(bookingData) {
       hasOpponent: Boolean(bookingData.hasOpponent ?? false),
     };
 
-
     const response = await apiClient.post(endpoint, payload);
-
-    
 
     return {
       success: true,
@@ -417,6 +413,65 @@ export async function createBooking(bookingData) {
       };
     }
 
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+// Tạo gói đặt sân định kỳ (BookingPackage)
+export async function createBookingPackage(packageData) {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error:
+          "Bạn cần đăng nhập để tạo gói đặt định kỳ. Vui lòng đăng nhập trước.",
+      };
+    }
+
+    // Kiểm tra token hết hạn
+    if (isTokenExpired(token)) {
+      return {
+        success: false,
+        error: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+      };
+    }
+
+    const endpoint =
+      "https://sep490-g19-zxph.onrender.com/api/BookingPackage/create";
+
+    // Chuẩn hoá payload theo spec backend
+    const payload = {
+      userId: Number(packageData.userId) || 0,
+      fieldId: Number(packageData.fieldId) || 0,
+      packageName: packageData.packageName || "Gói đặt định kỳ",
+      startDate: packageData.startDate, // ISO string
+      endDate: packageData.endDate, // ISO string
+      totalPrice: Number(packageData.totalPrice) || 0,
+      selectedSlots: Array.isArray(packageData.selectedSlots)
+        ? packageData.selectedSlots.map((s) => ({
+            slotId: Number(s.slotId) || 0,
+            dayOfWeek: Number(s.dayOfWeek) || 0,
+            fieldId: Number(s.fieldId) || Number(packageData.fieldId) || 0,
+            scheduleId: Number(s.scheduleId) || 0,
+          }))
+        : [],
+    };
+
+    const response = await apiClient.post(endpoint, payload);
+
+    return {
+      success: true,
+      data: response.data,
+      message: "Tạo gói đặt định kỳ thành công",
+    };
+  } catch (error) {
+    console.error("Error creating booking package:", error);
     const errorMessage = handleApiError(error);
     return {
       success: false,
@@ -510,8 +565,6 @@ export async function generateQRCode(bookingId, options = {}) {
       params.toString() ? `?${params.toString()}` : ""
     }`;
 
-  
-
     const response = await apiClient.get(endpoint);
 
     return {
@@ -557,15 +610,16 @@ export async function generateQRCodeForRemaining(bookingId) {
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${numericBookingId}`;
 
-
     const response = await apiClient.get(endpoint);
-
-   
 
     return {
       success: true,
       data: response.data,
-      qrCodeUrl: response.data?.qrCodeUrl || response.data?.qrCode || response.data?.qrCodeUrl || null,
+      qrCodeUrl:
+        response.data?.qrCodeUrl ||
+        response.data?.qrCode ||
+        response.data?.qrCodeUrl ||
+        null,
     };
   } catch (error) {
     console.error("❌ [TẠO QR CÒN LẠI - API] Error:", error);
@@ -600,11 +654,7 @@ export async function confirmByOwner(bookingId) {
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-by-owner/${numericBookingId}`;
 
-   
-
     const response = await apiClient.put(endpoint);
-
-   
 
     return {
       success: true,
@@ -667,7 +717,7 @@ export async function fetchBookingsByPlayer(playerId) {
     }
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/player/${playerId}`;
-   
+
     const response = await apiClient.get(endpoint);
 
     return {
@@ -676,6 +726,36 @@ export async function fetchBookingsByPlayer(playerId) {
     };
   } catch (error) {
     console.error("Error fetching bookings by player:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+// Lịch sử gói đặt sân cố định theo người chơi
+export async function fetchBookingPackagesByPlayer(playerId) {
+  try {
+    if (playerId === undefined || playerId === null || playerId === "") {
+      return {
+        success: false,
+        error:
+          "Thiếu thông tin người chơi. Không thể tải lịch sử gói đặt sân cố định.",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/player/${playerId}`;
+
+    const response = await apiClient.get(endpoint);
+
+    return {
+      success: true,
+      data: Array.isArray(response.data) ? response.data : [],
+    };
+  } catch (error) {
+    console.error("Error fetching booking packages by player:", error);
     const errorMessage = handleApiError(error);
     return {
       success: false,
@@ -695,7 +775,6 @@ export async function fetchBookingsByOwner(ownerId) {
     }
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/owner/${ownerId}`;
-   
 
     const response = await apiClient.get(endpoint);
 
@@ -705,6 +784,111 @@ export async function fetchBookingsByOwner(ownerId) {
     };
   } catch (error) {
     console.error("Error fetching bookings by owner:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+// Owner: fetch all booking packages for fields owned by this owner
+export async function fetchBookingPackagesByOwner(ownerId) {
+  try {
+    if (ownerId === undefined || ownerId === null || ownerId === "") {
+      return {
+        success: false,
+        error:
+          "Thiếu thông tin chủ sân. Không thể tải danh sách gói đặt sân cố định.",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/owner/${ownerId}`;
+
+    const response = await apiClient.get(endpoint);
+
+    return {
+      success: true,
+      data: Array.isArray(response.data) ? response.data : [],
+    };
+  } catch (error) {
+    console.error("Error fetching booking packages by owner:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+// Owner: confirm booking package (after verifying payment)
+export async function confirmBookingPackage(packageId) {
+  try {
+    const numericId = Number(packageId);
+    if (!numericId || Number.isNaN(numericId)) {
+      return { success: false, error: "BookingPackageId không hợp lệ." };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/confirm/${numericId}`;
+    const response = await apiClient.post(endpoint);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Error confirming booking package:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+// Owner: mark booking package as completed
+export async function completeBookingPackage(packageId) {
+  try {
+    const numericId = Number(packageId);
+    if (!numericId || Number.isNaN(numericId)) {
+      return { success: false, error: "BookingPackageId không hợp lệ." };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/complete/${numericId}`;
+    const response = await apiClient.put(endpoint);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Error completing booking package:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+// Owner: cancel a specific session inside a booking package
+export async function cancelBookingPackageSession(sessionId) {
+  try {
+    const numericId = Number(sessionId);
+    if (!numericId || Number.isNaN(numericId)) {
+      return { success: false, error: "SessionId không hợp lệ." };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/cancel-session/${numericId}`;
+    const response = await apiClient.post(endpoint);
+    return {
+      success: true,
+      data: response.data,
+    };
+  } catch (error) {
+    console.error("Error cancelling booking package session:", error);
     const errorMessage = handleApiError(error);
     return {
       success: false,
@@ -774,11 +958,8 @@ export async function fetchCancellationRequests() {
     const endpoint =
       "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe";
 
-    
     // Use apiClient instead of axios to ensure token is automatically included
     const response = await apiClient.get(endpoint);
-
-   
 
     return {
       success: true,
@@ -814,16 +995,12 @@ export async function fetchCancellationRequestById(cancellationId) {
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
 
-   
-
     const response = await axios.get(endpoint, {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
     });
-
-  
 
     return {
       success: true,
@@ -856,8 +1033,6 @@ export async function confirmCancellation(cancellationId) {
   try {
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/confirm/${cancellationId}`;
 
-  
-
     const response = await axios.put(
       endpoint,
       {},
@@ -869,16 +1044,12 @@ export async function confirmCancellation(cancellationId) {
       }
     );
 
-  
-
     return {
       success: true,
       data: response.data,
       message: "Đã xác nhận hủy booking",
     };
   } catch (error) {
-  
-
     if (error.response) {
       return {
         success: false,
@@ -901,8 +1072,6 @@ export async function confirmCancellation(cancellationId) {
 export async function deleteCancellationRequest(cancellationId) {
   try {
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
-
-
 
     await axios.delete(endpoint, {
       headers: {
@@ -994,7 +1163,10 @@ export async function updateBookingStatus(bookingId, status) {
       } catch (putError) {
         lastError = putError;
         // If PUT fails with 404 or 405, try PATCH
-        if (putError.response?.status === 404 || putError.response?.status === 405) {
+        if (
+          putError.response?.status === 404 ||
+          putError.response?.status === 405
+        ) {
           try {
             const response = await apiClient.patch(endpoint, payload);
             return {
@@ -1008,7 +1180,10 @@ export async function updateBookingStatus(bookingId, status) {
           }
         }
         // If it's not a 404/405, stop trying
-        if (putError.response?.status !== 404 && putError.response?.status !== 405) {
+        if (
+          putError.response?.status !== 404 &&
+          putError.response?.status !== 405
+        ) {
           break;
         }
       }
@@ -1018,14 +1193,16 @@ export async function updateBookingStatus(bookingId, status) {
     const errorMessage = handleApiError(lastError);
     return {
       success: false,
-      error: errorMessage instanceof Error ? errorMessage.message : errorMessage,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
     };
   } catch (error) {
     console.error("Error updating booking status:", error);
     const errorMessage = handleApiError(error);
     return {
       success: false,
-      error: errorMessage instanceof Error ? errorMessage.message : errorMessage,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
     };
   }
 }

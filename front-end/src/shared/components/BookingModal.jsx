@@ -1,8 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AlertCircle } from "lucide-react";
+import Swal from 'sweetalert2';
 import { Button, Modal } from "./ui";
-import { validateBookingData, checkFieldAvailability, confirmPaymentAPI, generateQRCode } from "../services/bookings";
-import { createBooking, createBookingAPI, fetchOwnerBankAccounts } from "../index";
+import { validateBookingData, checkFieldAvailability } from "../services/bookings";
+import {
+     createBooking,
+     createBookingAPI,
+     createBookingPackage,
+     fetchOwnerBankAccounts,
+     fetchBankAccount,
+     fetchPublicFieldSchedulesByField,
+     fetchTimeSlotsByField
+} from "../index";
 import { createMatchRequest, createCommunityPost } from "../index";
 import EmailVerificationModal from "./EmailVerificationModal";
 import RecurringOpponentSelection from "./RecurringOpponentSelection";
@@ -27,7 +36,6 @@ export default function BookingModal({
      const [step, setStep] = useState("details"); // details | payment | confirmation
      const [isProcessing, setIsProcessing] = useState(false);
      const [errors, setErrors] = useState({});
-     const [paymentMethod, setPaymentMethod] = useState("");
      const [bookingInfo, setBookingInfo] = useState(null); // Lưu thông tin booking từ API
      const [ownerBankAccount, setOwnerBankAccount] = useState(null); // Thông tin ngân hàng owner
      const [createdMatchRequest, setCreatedMatchRequest] = useState(null);
@@ -37,10 +45,18 @@ export default function BookingModal({
      const [showEmailVerification, setShowEmailVerification] = useState(false);
      const [showOpponentSelection, setShowOpponentSelection] = useState(false);
      const [isRecurring, setIsRecurring] = useState(false);
-     const [recurringWeeks, setRecurringWeeks] = useState(4);
+     const [recurringStartDate, setRecurringStartDate] = useState(null); // Thay recurringWeeks bằng startDate
+     const [recurringEndDate, setRecurringEndDate] = useState(null); // Thay recurringWeeks bằng endDate
      const [selectedDays, setSelectedDays] = useState([]);
+     const [selectedSlotsByDay, setSelectedSlotsByDay] = useState({}); // { dayOfWeek: slotId } - slot đã chọn cho mỗi thứ
      const [suggestedDays, setSuggestedDays] = useState([]); // weekdays 0..6
      const [isSuggesting, setIsSuggesting] = useState(false);
+     // Thời gian giữ QR/khóa bước thanh toán: 10 phút
+     const PAYMENT_LOCK_DURATION_MS = 10 * 60 * 1000;
+     const [paymentLockExpiresAt, setPaymentLockExpiresAt] = useState(null);
+     const [lockRemainingMs, setLockRemainingMs] = useState(0);
+     const lockCountdownSeconds = lockRemainingMs > 0 ? Math.ceil(lockRemainingMs / 1000) : 0;
+     const isPaymentLockActive = step === "payment" && paymentLockExpiresAt !== null;
 
      // Prevent layout shift when modal opens by locking body scroll and compensating scrollbar width
      useEffect(() => {
@@ -70,53 +86,137 @@ export default function BookingModal({
           }
      }, [isOpen]);
 
+     // Nếu sân chưa được owner cấu hình chính sách đặt cọc, mặc định không yêu cầu cọc (0%)
+     const DEFAULT_DEPOSIT_PERCENT = 0; // 0% fallback when policy missing
+
+     // Calculate duration from slot times if available
+     const calculateDuration = (startTime, endTime) => {
+          if (!startTime || !endTime) return 1;
+          try {
+               const start = new Date(`2000-01-01T${startTime}`);
+               const end = new Date(`2000-01-01T${endTime}`);
+               const hours = (end - start) / (1000 * 60 * 60);
+               return hours > 0 ? hours : 1;
+          } catch {
+               return 1;
+          }
+     };
+
+     const normalizePercentValue = (value) => {
+          if (value === null || value === undefined || value === "") return null;
+          const numeric = Number(value);
+          if (Number.isNaN(numeric) || numeric < 0) return null;
+          return numeric > 1 ? numeric / 100 : numeric;
+     };
+
+     const normalizeMoneyValue = (value) => {
+          if (value === null || value === undefined || value === "") return 0;
+          const numeric = Number(value);
+          if (Number.isNaN(numeric) || numeric <= 0) return 0;
+          return Math.round(numeric);
+     };
+
+     const extractDepositConfig = (source) => {
+          if (!source) {
+               return { percent: null, min: 0, max: 0 };
+          }
+          const policy = source.depositPolicy || {};
+          const rawPercent = policy.depositPercent ?? source.depositPercent ?? null;
+          const rawMin = policy.minDeposit ?? source.minDeposit ?? null;
+          const rawMax = policy.maxDeposit ?? source.maxDeposit ?? null;
+          return {
+               percent: normalizePercentValue(rawPercent),
+               min: normalizeMoneyValue(rawMin),
+               max: normalizeMoneyValue(rawMax)
+          };
+     };
+
+     const computeDepositAmount = (baseAmount, percent, minDeposit = 0, maxDeposit = 0) => {
+          const normalizedBase = Number(baseAmount) || 0;
+          if (normalizedBase <= 0) return 0;
+          const normalizedPercent = typeof percent === "number" ? percent : DEFAULT_DEPOSIT_PERCENT;
+          let deposit = Math.round(normalizedBase * Math.max(0, normalizedPercent));
+          if (minDeposit && minDeposit > 0) {
+               deposit = Math.max(deposit, minDeposit);
+          }
+          if (maxDeposit && maxDeposit > 0) {
+               deposit = Math.min(deposit, maxDeposit);
+          }
+          return deposit;
+     };
+
+     const initialDuration = fieldData?.duration ||
+          (fieldData?.startTime && fieldData?.endTime
+               ? calculateDuration(fieldData.startTime, fieldData.endTime)
+               : 1);
+     const initialDepositConfig = extractDepositConfig(fieldData);
+     const initialDepositPercent = typeof initialDepositConfig.percent === "number"
+          ? initialDepositConfig.percent
+          : DEFAULT_DEPOSIT_PERCENT;
+     const resolvedUserName = user?.fullName || user?.FullName || user?.name || user?.Name || "";
+     const resolvedUserPhone = user?.phone || user?.Phone || user?.phoneNumber || user?.PhoneNumber || "";
+     const resolvedUserEmail = user?.email || user?.Email || user?.mail || user?.Mail || "";
+
      const [bookingData, setBookingData] = useState({
           fieldId: fieldData?.fieldId || null,
           fieldName: fieldData?.fieldName || "",
           fieldAddress: fieldData?.fieldAddress || "",
+          ownerName: fieldData?.ownerName || "",
+          bankAccountId: fieldData?.bankAccountId || fieldData?.BankAccountId || null,
+          bankName: fieldData?.bankName || "",
+          bankShortCode: fieldData?.bankShortCode || "",
+          accountNumber: fieldData?.accountNumber || "",
+          accountHolder: fieldData?.accountHolder || "",
           date: fieldData?.date || new Date().toISOString().split('T')[0],
           slotId: fieldData?.slotId || null,
           slotName: fieldData?.slotName || "",
-          duration: fieldData?.duration || 1,
+          startTime: fieldData?.startTime || fieldData?.StartTime || "",
+          endTime: fieldData?.endTime || fieldData?.EndTime || "",
+          duration: initialDuration,
           price: fieldData?.price || 0,
           totalPrice: fieldData?.price || 0,
-          depositPercent: 0.3,
+          depositPercent: initialDepositPercent,
           depositAmount: 0,
+          minDeposit: initialDepositConfig.min,
+          maxDeposit: initialDepositConfig.max,
           remainingAmount: 0,
           discountPercent: 0,
           discountAmount: 0,
-          customerName: user?.name || "",
-          customerPhone: user?.phone || "",
-          customerEmail: user?.email || "",
+          customerName: resolvedUserName,
+          customerPhone: resolvedUserPhone,
+          customerEmail: resolvedUserEmail,
           notes: "",
-          requiresEmail: !user?.email, // Require email if user doesn't have one
+          requiresEmail: !resolvedUserEmail, // Require email if user doesn't have one
           isRecurring: false,
-          recurringWeeks: 4,
-          recurringEndDate: null
+          fieldSchedules: Array.isArray(fieldData?.fieldSchedules) ? fieldData.fieldSchedules : [],
+          fieldTimeSlots: Array.isArray(fieldData?.fieldTimeSlots) ? fieldData.fieldTimeSlots : []
      });
 
-     // Tạo danh sách các buổi định kỳ dự kiến từ ngày bắt đầu + số tuần + các ngày trong tuần
+     // Tạo danh sách các buổi định kỳ dự kiến từ startDate + endDate + các ngày trong tuần
      const generateRecurringSessions = () => {
-          if (!isRecurring || !bookingData?.date || !Array.isArray(selectedDays) || selectedDays.length === 0 || !recurringWeeks) return [];
+          if (!isRecurring || !recurringStartDate || !recurringEndDate || !Array.isArray(selectedDays) || selectedDays.length === 0) return [];
           try {
                const sessions = [];
-               const start = new Date(bookingData.date);
+               const start = new Date(recurringStartDate);
                start.setHours(0, 0, 0, 0);
-               const end = new Date(start);
-               end.setDate(end.getDate() + (recurringWeeks * 7) - 1);
+               const end = new Date(recurringEndDate);
+               end.setHours(23, 59, 59, 999);
 
                // Duyệt từ ngày bắt đầu đến ngày kết thúc, chọn ngày có weekday nằm trong selectedDays
                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                     const weekday = d.getDay(); // 0=CN..6=T7
                     if (selectedDays.includes(weekday)) {
-                         sessions.push({
-                              date: new Date(d),
-                              slotName: bookingData.slotName || ""
-                         });
+                         const selectedSlotId = selectedSlotsByDay?.[weekday];
+                         if (selectedSlotId) {
+                              sessions.push({
+                                   date: new Date(d),
+                                   dayOfWeek: weekday,
+                                   slotId: selectedSlotId
+                              });
+                         }
                     }
                }
-               // Đảm bảo số phần tử = selectedDays.length * recurringWeeks
-               return sessions.slice(0, selectedDays.length * recurringWeeks);
+               return sessions;
           } catch {
                return [];
           }
@@ -130,17 +230,96 @@ export default function BookingModal({
           if (totalSessions >= 4) return 5;
           return 0;
      };
+     // Tính giá cho từng slot dựa trên TimeSlots (chứa giá) hoặc fieldSchedules
+     const getSlotPrice = (slotId) => {
+          // Ưu tiên lấy từ TimeSlots (có giá chính xác)
+          if (Array.isArray(bookingData.fieldTimeSlots) && bookingData.fieldTimeSlots.length > 0) {
+               const timeSlot = bookingData.fieldTimeSlots.find(s => 
+                    String(s.slotId || s.SlotId || s.slotID || s.SlotID) === String(slotId)
+               );
+               if (timeSlot) {
+                    return timeSlot.price || timeSlot.Price || timeSlot.unitPrice || timeSlot.UnitPrice || 0;
+               }
+          }
+          
+          // Fallback: lấy từ fieldSchedules nếu có
+          if (Array.isArray(bookingData.fieldSchedules)) {
+               const schedule = bookingData.fieldSchedules.find(s => 
+                    String(s.slotId || s.SlotId || s.slotID || s.SlotID) === String(slotId)
+               );
+               if (schedule) {
+                    return schedule.price || schedule.Price || schedule.unitPrice || schedule.UnitPrice || 0;
+               }
+          }
+          
+          // Cuối cùng: dùng giá mặc định từ bookingData
+          return bookingData.price || 0;
+     };
+
      useEffect(() => {
-          const basePrice = (bookingData.price || 0) * (bookingData.duration || 1);
-          const totalSessions = isRecurring ? (recurringWeeks * selectedDays.length) : 1;
-          const subtotal = basePrice * totalSessions;
-          const discountPercent = isRecurring ? getRecurringDiscountPercent(totalSessions) : 0;
+          if (!isRecurring) {
+               // Đặt lẻ: giữ logic cũ
+               const basePrice = bookingData.price || 0;
+               const subtotal = basePrice;
+               const deposit = computeDepositAmount(
+                    subtotal,
+                    bookingData.depositPercent,
+                    bookingData.minDeposit,
+                    bookingData.maxDeposit
+               );
+               const remaining = Math.max(0, subtotal - deposit);
+               setBookingData(prev => ({
+                    ...prev,
+                    subtotal,
+                    totalPrice: subtotal,
+                    depositAmount: deposit,
+                    remainingAmount: remaining,
+                    totalSessions: 1,
+                    discountPercent: 0,
+                    discountAmount: 0
+               }));
+               return;
+          }
+
+          // Đặt cố định: tính tổng giá từ các slot đã chọn
+          const sessions = generateRecurringSessions();
+          const totalSessions = sessions.length;
+          
+          if (totalSessions === 0) {
+               setBookingData(prev => ({
+                    ...prev,
+                    subtotal: 0,
+                    totalPrice: 0,
+                    depositAmount: 0,
+                    remainingAmount: 0,
+                    totalSessions: 0,
+                    discountPercent: 0,
+                    discountAmount: 0
+               }));
+               return;
+          }
+
+          // Tính tổng giá từ các slot đã chọn
+          let subtotal = 0;
+          sessions.forEach(session => {
+               const slotPrice = getSlotPrice(session.slotId);
+               subtotal += slotPrice;
+          });
+
+          const discountPercent = getRecurringDiscountPercent(totalSessions);
           const discountAmount = Math.round(subtotal * (discountPercent / 100));
           const total = subtotal - discountAmount;
-          const deposit = Math.round(total * (bookingData.depositPercent || 0));
+          const deposit = computeDepositAmount(
+               total,
+               bookingData.depositPercent,
+               bookingData.minDeposit,
+               bookingData.maxDeposit
+          );
           const remaining = Math.max(0, total - deposit);
+          
           setBookingData(prev => ({
                ...prev,
+               subtotal,
                totalPrice: total,
                depositAmount: deposit,
                remainingAmount: remaining,
@@ -148,30 +327,79 @@ export default function BookingModal({
                discountPercent,
                discountAmount
           }));
-     }, [bookingData.price, bookingData.duration, bookingData.depositPercent, isRecurring, recurringWeeks, selectedDays]);
+     }, [
+          bookingData.price,
+          bookingData.duration,
+          bookingData.depositPercent,
+          bookingData.minDeposit,
+          bookingData.maxDeposit,
+          bookingData.fieldSchedules,
+          isRecurring,
+          recurringStartDate,
+          recurringEndDate,
+          selectedDays,
+          selectedSlotsByDay
+     ]);
 
      // Cập nhật bookingData khi fieldData thay đổi
      useEffect(() => {
           if (fieldData) {
+               const providedStartTime = fieldData.startTime || fieldData.StartTime || "";
+               const providedEndTime = fieldData.endTime || fieldData.EndTime || "";
+               let computedDuration = null;
+               if (fieldData.duration != null) {
+                    const numericDuration = Number(fieldData.duration);
+                    if (!Number.isNaN(numericDuration) && numericDuration > 0) {
+                         computedDuration = numericDuration;
+                    }
+               }
+               if (computedDuration == null && providedStartTime && providedEndTime) {
+                    computedDuration = calculateDuration(providedStartTime, providedEndTime);
+               }
+               const depositConfig = extractDepositConfig(fieldData);
+               const nextDepositPercent = typeof depositConfig.percent === "number"
+                    ? depositConfig.percent
+                    : DEFAULT_DEPOSIT_PERCENT;
+
                setBookingData(prev => ({
                     ...prev,
                     fieldId: fieldData.fieldId || prev.fieldId,
                     fieldName: fieldData.fieldName || prev.fieldName,
                     fieldAddress: fieldData.fieldAddress || prev.fieldAddress,
+                    ownerName: fieldData.ownerName || prev.ownerName,
+                    bankAccountId: fieldData.bankAccountId || fieldData.BankAccountId || prev.bankAccountId,
+                    bankName: fieldData.bankName || prev.bankName,
+                    bankShortCode: fieldData.bankShortCode || prev.bankShortCode,
+                    accountNumber: fieldData.accountNumber || prev.accountNumber,
+                    accountHolder: fieldData.accountHolder || prev.accountHolder,
                     date: fieldData.date || prev.date,
                     slotId: fieldData.slotId || prev.slotId,
                     slotName: fieldData.slotName || prev.slotName,
-                    duration: fieldData.duration || prev.duration,
+                    scheduleId: fieldData.scheduleId || prev.scheduleId || 0, // Thêm scheduleId
+                    startTime: providedStartTime || prev.startTime || "",
+                    endTime: providedEndTime || prev.endTime || "",
+                    duration: computedDuration ?? prev.duration,
                     price: fieldData.price || prev.price,
-                    totalPrice: fieldData.totalPrice || fieldData.price || prev.price
+                    totalPrice: fieldData.totalPrice || fieldData.price || prev.price,
+                    fieldSchedules: Array.isArray(fieldData.fieldSchedules) ? fieldData.fieldSchedules : (prev.fieldSchedules || []), // Đảm bảo fieldSchedules là array
+                    fieldTimeSlots: Array.isArray(fieldData.fieldTimeSlots) ? fieldData.fieldTimeSlots : (prev.fieldTimeSlots || []), // Thêm TimeSlots để lấy giá
+                    depositPercent: nextDepositPercent,
+                    minDeposit: depositConfig.min,
+                    maxDeposit: depositConfig.max
                }));
 
                // Initialize recurring presets from caller (right panel)
                if (fieldData.isRecurringPreset !== undefined) {
                     setIsRecurring(!!fieldData.isRecurringPreset);
                }
+               // recurringWeeksPreset không còn dùng nữa, thay bằng startDate/endDate
+               // Có thể tính startDate/endDate từ recurringWeeksPreset nếu cần
                if (typeof fieldData.recurringWeeksPreset === 'number' && fieldData.recurringWeeksPreset > 0) {
-                    setRecurringWeeks(fieldData.recurringWeeksPreset);
+                    const today = new Date();
+                    const endDate = new Date(today);
+                    endDate.setDate(endDate.getDate() + (fieldData.recurringWeeksPreset * 7) - 1);
+                    setRecurringStartDate(today.toISOString().split('T')[0]);
+                    setRecurringEndDate(endDate.toISOString().split('T')[0]);
                }
                if (Array.isArray(fieldData.selectedDaysPreset)) {
                     setSelectedDays(fieldData.selectedDaysPreset);
@@ -179,60 +407,255 @@ export default function BookingModal({
           }
      }, [fieldData]);
 
+     useEffect(() => {
+          const nextName = user?.fullName || user?.FullName || user?.name || user?.Name || "";
+          const nextPhone = user?.phone || user?.Phone || user?.phoneNumber || user?.PhoneNumber || "";
+          const nextEmail = user?.email || user?.Email || user?.mail || user?.Mail || "";
+          if (!nextName && !nextPhone && !nextEmail) {
+               return;
+          }
+          setBookingData(prev => ({
+               ...prev,
+               customerName: prev.customerName || nextName,
+               customerPhone: prev.customerPhone || nextPhone,
+               customerEmail: prev.customerEmail || nextEmail,
+               requiresEmail: !(prev.customerEmail || nextEmail)
+          }));
+     }, [user]);
+
      // Reset khi modal mở/đóng, nhưng giữ preset định kỳ nếu được truyền vào
      useEffect(() => {
           if (isOpen) {
                openBookingModal();
                setStep("details");
                setErrors({});
-               setPaymentMethod("");
                setBookingInfo(null);
                setOwnerBankAccount(null);
+               setPaymentLockExpiresAt(null);
+               setLockRemainingMs(0);
                if (fieldData?.isRecurringPreset) {
                     setIsRecurring(true);
-                    if (typeof fieldData.recurringWeeksPreset === 'number' && fieldData.recurringWeeksPreset > 0) {
-                         setRecurringWeeks(fieldData.recurringWeeksPreset);
+                    // Ưu tiên dùng recurringStartDatePreset và recurringEndDatePreset nếu có
+                    if (fieldData.recurringStartDatePreset && fieldData.recurringEndDatePreset) {
+                         setRecurringStartDate(fieldData.recurringStartDatePreset);
+                         setRecurringEndDate(fieldData.recurringEndDatePreset);
+                    } else if (typeof fieldData.recurringWeeksPreset === 'number' && fieldData.recurringWeeksPreset > 0) {
+                         // Fallback: tính từ recurringWeeksPreset
+                         const today = new Date();
+                         const endDate = new Date(today);
+                         endDate.setDate(endDate.getDate() + (fieldData.recurringWeeksPreset * 7) - 1);
+                         setRecurringStartDate(today.toISOString().split('T')[0]);
+                         setRecurringEndDate(endDate.toISOString().split('T')[0]);
                     } else {
-                         setRecurringWeeks(4);
+                         // Mặc định 4 tuần
+                         const today = new Date();
+                         const endDate = new Date(today);
+                         endDate.setDate(endDate.getDate() + (4 * 7) - 1);
+                         setRecurringStartDate(today.toISOString().split('T')[0]);
+                         setRecurringEndDate(endDate.toISOString().split('T')[0]);
                     }
                     if (Array.isArray(fieldData.selectedDaysPreset)) {
                          setSelectedDays(fieldData.selectedDaysPreset);
                     } else {
                          setSelectedDays([]);
                     }
+                    setSelectedSlotsByDay({});
                } else {
                     setIsRecurring(false);
-                    setRecurringWeeks(4);
+                    setRecurringStartDate(null);
+                    setRecurringEndDate(null);
                     setSelectedDays([]);
+                    setSelectedSlotsByDay({});
                }
           } else {
                closeBookingModal();
           }
      }, [isOpen, fieldData, openBookingModal, closeBookingModal]);
 
-     // Lấy thông tin ngân hàng owner khi modal mở
+     // Fetch schedule khi chọn startDate/endDate và các thứ cho đặt cố định
+     useEffect(() => {
+          if (!isRecurring || !bookingData.fieldId || !recurringStartDate || !recurringEndDate || selectedDays.length === 0) {
+               return;
+          }
+
+          // Fetch cả schedule và TimeSlots (để lấy giá)
+          const fetchData = async () => {
+               try {
+                    const [schedulesResult, timeSlotsResult] = await Promise.all([
+                         fetchPublicFieldSchedulesByField(bookingData.fieldId),
+                         fetchTimeSlotsByField(bookingData.fieldId)
+                    ]);
+                    
+                    // Xử lý schedules
+                    if (schedulesResult.success && Array.isArray(schedulesResult.data)) {
+                         // Thêm dayOfWeek vào mỗi schedule nếu chưa có
+                         const schedulesWithDayOfWeek = schedulesResult.data.map(schedule => {
+                              if (schedule.dayOfWeek !== undefined && schedule.dayOfWeek !== null) {
+                                   return schedule;
+                              }
+                              
+                              // Tính dayOfWeek từ date
+                              const scheduleDate = schedule.date ?? schedule.Date ?? schedule.scheduleDate ?? schedule.ScheduleDate;
+                              if (scheduleDate) {
+                                   try {
+                                        const date = typeof scheduleDate === 'string' 
+                                             ? new Date(scheduleDate) 
+                                             : (scheduleDate.year && scheduleDate.month && scheduleDate.day
+                                                  ? new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day)
+                                                  : new Date(scheduleDate));
+                                        if (!isNaN(date.getTime())) {
+                                             return {
+                                                  ...schedule,
+                                                  dayOfWeek: date.getDay() // 0 = CN, 1 = T2, ..., 6 = T7
+                                             };
+                                        }
+                                   } catch (e) {
+                                        // Silent fail
+                                   }
+                              }
+                              
+                              return schedule;
+                         });
+                         
+                         setBookingData(prev => {
+                              // Chỉ update nếu fieldId thay đổi hoặc chưa có schedule
+                              if (!prev.fieldSchedules || prev.fieldSchedules.length === 0 || prev.fieldId !== bookingData.fieldId) {
+                                   return {
+                                        ...prev,
+                                        fieldSchedules: schedulesWithDayOfWeek
+                                   };
+                              }
+                              return prev;
+                         });
+                    }
+                    
+                    // Xử lý TimeSlots (để lấy giá)
+                    if (timeSlotsResult && Array.isArray(timeSlotsResult.data)) {
+                         setBookingData(prev => {
+                              // Chỉ update nếu fieldId thay đổi hoặc chưa có TimeSlots
+                              if (!prev.fieldTimeSlots || prev.fieldTimeSlots.length === 0 || prev.fieldId !== bookingData.fieldId) {
+                                   return {
+                                        ...prev,
+                                        fieldTimeSlots: timeSlotsResult.data
+                                   };
+                              }
+                              return prev;
+                         });
+                    }
+               } catch (error) {
+                    console.error("[BookingModal] Error fetching schedules/TimeSlots:", error);
+               }
+          };
+
+          fetchData();
+     }, [isRecurring, bookingData.fieldId, recurringStartDate, recurringEndDate, selectedDays]);
+
+     useEffect(() => {
+          if (step !== "payment") {
+               setPaymentLockExpiresAt(null);
+               setLockRemainingMs(0);
+               return;
+          }
+     }, [step]);
+
+     useEffect(() => {
+          if (!paymentLockExpiresAt || step !== "payment") {
+               setLockRemainingMs(0);
+               return;
+          }
+
+          const updateRemaining = () => {
+               const remaining = paymentLockExpiresAt - Date.now();
+               if (remaining <= 0) {
+                    setPaymentLockExpiresAt(null);
+                    setLockRemainingMs(0);
+               } else {
+                    setLockRemainingMs(remaining);
+               }
+          };
+
+          updateRemaining();
+          const timer = setInterval(updateRemaining, 1000);
+          return () => clearInterval(timer);
+     }, [paymentLockExpiresAt, step]);
+
+     useEffect(() => {
+          if (typeof window === "undefined") return;
+          const handleBeforeUnload = (event) => {
+               if (isPaymentLockActive) {
+                    event.preventDefault();
+                    event.returnValue = "Bạn đang trong quá trình thanh toán. Hãy sử dụng nút Hủy đặt sân nếu muốn thoát.";
+                    return event.returnValue;
+               }
+               return undefined;
+          };
+          window.addEventListener("beforeunload", handleBeforeUnload);
+          return () => {
+               window.removeEventListener("beforeunload", handleBeforeUnload);
+          };
+     }, [isPaymentLockActive]);
+
+     const buildFallbackAccount = (data) => {
+          if (!data) return null;
+          const shortCode = data.bankShortCode || "";
+          const baseName = data.bankName || "";
+          const composedName = baseName
+               ? (shortCode ? `${shortCode} - ${baseName}` : baseName)
+               : shortCode;
+          const accountNumber = data.accountNumber || "";
+          const accountHolder = data.accountHolder || data.ownerName || "";
+          if (!composedName && !accountNumber && !accountHolder) return null;
+          return {
+               bankAccountId: data.bankAccountId || data.BankAccountId || null,
+               ownerId: data.ownerId || data.ownerID || null,
+               bankName: composedName,
+               bankShortCode: shortCode,
+               accountNumber,
+               accountHolder
+          };
+     };
+
+     // Lấy thông tin ngân hàng dựa vào BankAccountID (ưu tiên) hoặc owner
      useEffect(() => {
           if (!isOpen || !fieldData) return;
+          let ignore = false;
 
-          const fetchOwnerBank = async () => {
+          const fetchBankInfo = async () => {
                try {
-                    // Lấy ownerId từ fieldData
-                    const ownerId = fieldData.ownerId || fieldData.ownerID;
+                    if (fieldData.bankAccountId || fieldData.BankAccountId) {
+                         const account = await fetchBankAccount(fieldData.bankAccountId || fieldData.BankAccountId);
+                         if (!ignore && account) {
+                              setOwnerBankAccount(account);
+                              return;
+                         }
+                    }
 
+                    const fallback = buildFallbackAccount(fieldData);
+                    if (fallback) {
+                         if (!ignore) setOwnerBankAccount(fallback);
+                         return;
+                    }
+
+                    const ownerId = fieldData.ownerId || fieldData.ownerID;
                     if (ownerId) {
                          const accounts = await fetchOwnerBankAccounts(ownerId);
-                         if (accounts && accounts.length > 0) {
-                              // Lấy tài khoản mặc định hoặc tài khoản đầu tiên
+                         if (!ignore && accounts && accounts.length > 0) {
                               const defaultAccount = accounts.find(acc => acc.isDefault) || accounts[0];
                               setOwnerBankAccount(defaultAccount);
+                              return;
                          }
                     }
                } catch (error) {
                     console.error("Error fetching owner bank account:", error);
+                    const fallback = buildFallbackAccount(fieldData);
+                    if (!ignore && fallback) {
+                         setOwnerBankAccount(fallback);
+                    }
                }
           };
 
-          fetchOwnerBank();
+          fetchBankInfo();
+          return () => { ignore = true; };
      }, [isOpen, fieldData]);
 
      const formatPrice = (price) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -252,11 +675,31 @@ export default function BookingModal({
      };
 
      const handleDayToggle = (day) => {
-          setSelectedDays(prev =>
-               prev.includes(day)
-                    ? prev.filter(d => d !== day)
-                    : [...prev, day]
-          );
+          setSelectedDays(prev => {
+               if (prev.includes(day)) {
+                    // Bỏ chọn: xóa slot đã chọn cho thứ này
+                    setSelectedSlotsByDay(prevSlots => {
+                         const newSlots = { ...prevSlots };
+                         delete newSlots[day];
+                         return newSlots;
+                    });
+                    return prev.filter(d => d !== day);
+               } else {
+                    return [...prev, day];
+               }
+          });
+     };
+
+     const handleSlotSelect = (dayOfWeek, slotId) => {
+          setSelectedSlotsByDay(prev => {
+               if (slotId === null) {
+                    const newSlots = { ...prev };
+                    delete newSlots[dayOfWeek];
+                    return newSlots;
+               } else {
+                    return { ...prev, [dayOfWeek]: slotId };
+               }
+          });
      };
 
      // Suggest alternative weekdays for recurring schedule based on availability
@@ -267,12 +710,16 @@ export default function BookingModal({
                     setSuggestedDays([]);
                     if (!isRecurring) return;
                     const fieldId = bookingData.fieldId;
-                    const slotId = bookingData.slotId;
-                    const startDateStr = bookingData.date;
-                    if (!fieldId || !slotId || !startDateStr) return;
+                    if (!fieldId || !recurringStartDate || !recurringEndDate) return;
 
-                    const startDate = new Date(startDateStr + "T00:00:00");
-                    const weeks = Math.max(1, parseInt(recurringWeeks));
+                    const startDate = new Date(recurringStartDate);
+                    const endDate = new Date(recurringEndDate);
+                    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime()) || startDate > endDate) return;
+                    
+                    // Tính số tuần từ startDate đến endDate
+                    const diffTime = endDate - startDate;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    const weeks = Math.max(1, Math.ceil(diffDays / 7));
 
                     function formatDate(d) {
                          const y = d.getFullYear();
@@ -318,18 +765,129 @@ export default function BookingModal({
                }
           }
           computeSuggestions();
-     }, [isRecurring, bookingData.fieldId, bookingData.slotId, bookingData.date, recurringWeeks, selectedDays]);
+     }, [isRecurring, bookingData.fieldId, bookingData.slotId, recurringStartDate, recurringEndDate, selectedDays]);
 
      const handlePayment = async () => {
           if (!validateForm()) return;
+          if (!user) {
+               await Swal.fire({
+                    icon: 'warning',
+                    title: 'Cần đăng nhập',
+                    text: "Bạn cần đăng nhập để tạo booking. Vui lòng đăng nhập trước.",
+                    confirmButtonColor: '#10b981'
+               });
+               return;
+          }
 
+          const userRole = user?.role || user?.Role || user?.roleName || user?.RoleName;
+          const roleId = user?.roleId || user?.roleID || user?.RoleId || user?.RoleID;
+          const isPlayer = roleId === 3 ||
+               userRole?.toLowerCase() === 'player' ||
+               userRole?.toLowerCase() === 'người chơi' ||
+               userRole === 'Player';
+
+          if (!isPlayer) {
+               console.warn("⚠️ [GỬI GIỮ CHỖ] User is not a player:", { userRole, roleId, user });
+               await Swal.fire({
+                    icon: 'warning',
+                    title: 'Không có quyền',
+                    text: "Chỉ người chơi (Player) mới có thể tạo booking. Vui lòng đăng nhập bằng tài khoản người chơi.",
+                    confirmButtonColor: '#10b981'
+               });
+               return;
+          }
           setIsProcessing(true);
           try {
+               // Nếu là đặt cố định: kiểm tra trước xem đủ số buổi có schedule trong khoảng chọn hay không
+               if (isRecurring) {
+                    try {
+                         const sessions = generateRecurringSessions() || [];
+                         if (!sessions.length) {
+                              setIsProcessing(false);
+                              await Swal.fire({
+                                   icon: 'warning',
+                                   title: 'Không thể đặt cố định',
+                                   text: 'Vui lòng chọn ngày bắt đầu, ngày kết thúc, các ngày trong tuần và khung giờ cho từng ngày trước khi đặt cố định.',
+                                   confirmButtonColor: '#f59e0b'
+                              });
+                              return;
+                         }
+
+                         const schedules = Array.isArray(bookingData.fieldSchedules) ? bookingData.fieldSchedules : [];
+
+                         if (schedules.length > 0) {
+                              // Helper so sánh ngày giữa schedule.date và targetDate (yyyy-MM-dd)
+                              const compareDate = (scheduleDate, targetDate) => {
+                                   if (!scheduleDate || !targetDate) return false;
+                                   if (typeof scheduleDate === "string") {
+                                        const d = scheduleDate.split("T")[0];
+                                        return d === targetDate;
+                                   }
+                                   if (scheduleDate.year && scheduleDate.month && scheduleDate.day) {
+                                        const formatted = `${scheduleDate.year}-${String(scheduleDate.month).padStart(2, "0")}-${String(scheduleDate.day).padStart(2, "0")}`;
+                                        return formatted === targetDate;
+                                   }
+                                   try {
+                                        const d = new Date(scheduleDate);
+                                        return d.toISOString().split("T")[0] === targetDate;
+                                   } catch {
+                                        return false;
+                                   }
+                              };
+
+                              let hasScheduleCount = 0;
+                              sessions.forEach((s) => {
+                                   const targetDate = (s.date instanceof Date
+                                        ? s.date
+                                        : new Date(s.date));
+                                   const targetStr = targetDate.toISOString().split("T")[0];
+                                   const sessionSlotId = s.slotId || bookingData.slotId;
+                                   const found = schedules.some((sch) => {
+                                        const scheduleSlotId = sch.slotId || sch.SlotId || sch.slotID || sch.SlotID;
+                                        const scheduleDate = sch.date || sch.Date;
+                                        const scheduleDayOfWeek = sch.dayOfWeek ?? sch.DayOfWeek ?? sch.weekday ?? sch.Weekday;
+                                        // Kiểm tra cả slotId và dayOfWeek
+                                        return String(scheduleSlotId) === String(sessionSlotId) &&
+                                             Number(scheduleDayOfWeek) === Number(s.dayOfWeek) &&
+                                             compareDate(scheduleDate, targetStr);
+                                   });
+                                   if (found) hasScheduleCount += 1;
+                              });
+
+                              console.log("[RECURRING SCHEDULE CHECK]", {
+                                   fieldId: bookingData.fieldId,
+                                   slotId: bookingData.slotId,
+                                   sessions,
+                                   schedulesCount: schedules.length,
+                                   hasScheduleCount,
+                                   totalSessions: sessions.length,
+                              });
+
+                              if (hasScheduleCount < sessions.length) {
+                                   setIsProcessing(false);
+                                   await Swal.fire({
+                                        icon: "warning",
+                                        title: "Không đủ lịch để đặt cố định",
+                                        html: `
+                                             <p class="mb-2">Chỉ có <strong>${hasScheduleCount}/${sessions.length}</strong> buổi có lịch được tạo sẵn trong khoảng bạn chọn.</p>
+                                             <p class="text-sm text-gray-600">Vui lòng liên hệ chủ sân để thêm lịch cho các ngày còn thiếu, hoặc rút ngắn khoảng đặt.</p>
+                                        `,
+                                        confirmButtonColor: "#f59e0b",
+                                   });
+                                   return;
+                              }
+                         }
+                    } catch (err) {
+                         console.warn("⚠️ [RECURRING] Error checking schedules for package:", err);
+                         // Nếu check bị lỗi vẫn tiếp tục, không chặn user
+                    }
+               }
+
                const booking = {
                     ...bookingData,
                     recurring: isRecurring ? {
-                         weeks: recurringWeeks,
-                         endDate: new Date(Date.now() + recurringWeeks * 7 * 24 * 60 * 60 * 1000).toISOString()
+                         startDate: recurringStartDate,
+                         endDate: recurringEndDate
                     } : null
                };
 
@@ -342,68 +900,297 @@ export default function BookingModal({
                // Check availability
                const avail = await checkFieldAvailability(booking.fieldId, booking.date, booking.slotId);
                if (!avail?.available) {
-                    setErrors({ general: avail?.message || "Sân đã có người đặt trong khung giờ này." });
                     setIsProcessing(false);
+                    await Swal.fire({
+                         icon: 'warning',
+                         title: 'Sân không khả dụng',
+                         text: avail?.message || "Sân đã có người đặt trong khung giờ này.",
+                         confirmButtonColor: '#f59e0b'
+                    });
                     return;
                }
 
-               // Gọi API tạo booking trực tiếp (không giữ tiền)
-               const userId = user?.id || user?.userId || user?.userID || 0;
+               // Gọi API tạo booking/gói booking
+               const userId = user?.id || user?.userId || user?.userID;
+               if (!userId) {
+                    setIsProcessing(false);
+                    await Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi xác thực',
+                         text: "Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.",
+                         confirmButtonColor: '#ef4444'
+                    });
+                    return;
+               }
 
                // Tính toán depositAmount nếu chưa có
                const totalPrice = booking.totalPrice || booking.price || 0;
-               const depositPercent = booking.depositPercent || 0.3;
-               const depositAmount = booking.depositAmount || Math.round(totalPrice * depositPercent);
+               const depositAmount = typeof booking.depositAmount === "number"
+                    ? booking.depositAmount
+                    : computeDepositAmount(
+                         totalPrice,
+                         booking.depositPercent,
+                         booking.minDeposit,
+                         booking.maxDeposit
+                    );
 
-               console.log("Creating booking with data:", {
-                    userId,
-                    scheduleId: 0, // Backend tự tạo từ fieldId, slotId, date
-                    totalPrice,
-                    depositAmount,
-                    hasOpponent: booking.hasOpponent || false
-               });
+               // Tìm scheduleId từ fieldSchedules dựa trên slotId và date
+               let scheduleId = booking.scheduleId || 0;
 
-               const apiResult = await createBookingAPI({
-                    userId: userId,
-                    scheduleId: 0, // Backend sẽ tự tạo scheduleId
-                    totalPrice: totalPrice,
-                    depositAmount: depositAmount,
-                    hasOpponent: booking.hasOpponent || false,
-                    matchRequestId: booking.matchRequestId || 0
-               });
+               if (!scheduleId && booking.fieldSchedules && Array.isArray(booking.fieldSchedules)) {
+                    // Helper function để so sánh date
+                    const compareDate = (scheduleDate, targetDate) => {
+                         if (!scheduleDate) return false;
+                         if (typeof scheduleDate === 'string') {
+                              return scheduleDate === targetDate || scheduleDate.split('T')[0] === targetDate;
+                         }
+                         if (scheduleDate.year && scheduleDate.month && scheduleDate.day) {
+                              const formattedDate = `${scheduleDate.year}-${String(scheduleDate.month).padStart(2, '0')}-${String(scheduleDate.day).padStart(2, '0')}`;
+                              return formattedDate === targetDate;
+                         }
+                         return false;
+                    };
 
-               if (!apiResult.success) {
-                    setErrors({ general: apiResult.error || "Không thể tạo booking. Vui lòng thử lại." });
-                    setIsProcessing(false);
-                    return;
+                    // Tìm schedule matching với slotId và date
+                    const matchingSchedule = booking.fieldSchedules.find(s => {
+                         const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
+                         const scheduleDate = s.date || s.Date;
+                         return String(scheduleSlotId) === String(booking.slotId) &&
+                              compareDate(scheduleDate, booking.date);
+                    });
+
+                    if (matchingSchedule) {
+                         scheduleId = matchingSchedule.scheduleId || matchingSchedule.ScheduleId ||
+                              matchingSchedule.scheduleID || matchingSchedule.ScheduleID || 0;
+                    } else {
+                         console.warn("⚠️ [GỬI GIỮ CHỖ] Không tìm thấy scheduleId từ fieldSchedules, sẽ dùng 0 (backend tự tạo)");
+                    }
+               } else if (!scheduleId) {
+                    console.warn("⚠️ [GỬI GIỮ CHỖ] Không có fieldSchedules hoặc scheduleId, sẽ dùng 0 (backend tự tạo)");
                }
 
-               // Lấy thông tin booking từ API response
-               const bookingId = apiResult.data?.bookingID || apiResult.data?.bookingId || apiResult.data?.id;
-               if (!bookingId) {
-                    setErrors({ general: "Không nhận được booking ID từ server." });
-                    setIsProcessing(false);
-                    return;
+               // ----------------- ĐẶT LẺ: dùng Booking/create -----------------
+               if (!isRecurring) {
+                    const bookingPayload = {
+                         userId: userId,
+                         scheduleId: scheduleId, // Sử dụng scheduleId đã tìm được hoặc 0
+                         totalPrice: totalPrice,
+                         depositAmount: depositAmount,
+                         hasOpponent: Boolean(booking.hasOpponent)
+                    };
+
+                    console.log("📤 [GỬI GIỮ CHỖ] Payload:", JSON.stringify(bookingPayload, null, 2));
+                    console.log("📤 [GỬI GIỮ CHỖ] Payload (Object):", bookingPayload);
+
+                    const apiResult = await createBookingAPI(bookingPayload);
+                    console.log("✅ [GỬI GIỮ CHỖ] API Result (JSON):", JSON.stringify(apiResult, null, 2));
+
+                    if (!apiResult.success) {
+                         console.error("❌ [GỬI GIỮ CHỖ] Error:", apiResult.error);
+                         setIsProcessing(false);
+                         await Swal.fire({
+                              icon: 'error',
+                              title: 'Lỗi đặt sân',
+                              text: apiResult.error || "Không thể tạo booking. Vui lòng thử lại.",
+                              confirmButtonColor: '#ef4444'
+                         });
+                         return;
+                    }
+
+                    // Lấy thông tin booking từ API response
+                    const bookingId = apiResult.data?.bookingID || apiResult.data?.bookingId || apiResult.data?.id;
+                    if (!bookingId) {
+                         setIsProcessing(false);
+                         await Swal.fire({
+                              icon: 'error',
+                              title: 'Lỗi',
+                              text: "Không nhận được booking ID từ server.",
+                              confirmButtonColor: '#ef4444'
+                         });
+                         return;
+                    }
+
+                    const rawQrCode =
+                         apiResult.data?.qrCodeUrl ||
+                         apiResult.data?.qrCode ||
+                         apiResult.data?.QRCode ||
+                         apiResult.data?.qrImage ||
+                         apiResult.data?.depositQrCode ||
+                         null;
+                    let normalizedQrCode = rawQrCode;
+                    if (normalizedQrCode && typeof normalizedQrCode === "string") {
+                         const lower = normalizedQrCode.toLowerCase();
+                         const isHttp = lower.startsWith("http://") || lower.startsWith("https://");
+                         const isData = lower.startsWith("data:");
+                         if (!isHttp && !isData) {
+                              normalizedQrCode = `data:image/png;base64,${normalizedQrCode}`;
+                         }
+                    }
+
+                    const qrExpiresAt = apiResult.data?.qrExpiresAt || apiResult.data?.QRExpiresAt || apiResult.data?.qrExpiry || null;
+                    const apiTotalPrice = Number(apiResult.data?.totalPrice ?? totalPrice ?? bookingData.totalPrice ?? 0);
+                    const apiDepositAmount = Number(apiResult.data?.depositAmount ?? depositAmount ?? bookingData.depositAmount ?? 0);
+                    const apiRemainingAmountRaw = apiResult.data?.remainingAmount ?? apiResult.data?.RemainingAmount;
+                    const apiRemainingAmount = typeof apiRemainingAmountRaw === "number"
+                         ? apiRemainingAmountRaw
+                         : Math.max(0, apiTotalPrice - apiDepositAmount);
+
+                    setBookingData(prev => ({
+                         ...prev,
+                         totalPrice: apiTotalPrice || prev.totalPrice,
+                         depositAmount: apiDepositAmount || prev.depositAmount,
+                         remainingAmount: apiRemainingAmount ?? prev.remainingAmount
+                    }));
+
+                    // Lưu thông tin booking cùng QR do backend trả về
+                    setBookingInfo({
+                         bookingId: bookingId,
+                         scheduleId: apiResult.data?.scheduleID || apiResult.data?.scheduleId,
+                         bookingStatus: apiResult.data?.bookingStatus || "Pending",
+                         paymentStatus: apiResult.data?.paymentStatus || "Pending",
+                         qrCodeUrl: normalizedQrCode,
+                         qrExpiresAt: qrExpiresAt,
+                         totalPrice: apiTotalPrice,
+                         depositAmount: apiDepositAmount,
+                         remainingAmount: apiRemainingAmount
+                    });
+               } else {
+                    // ----------------- ĐẶT ĐỊNH KỲ: dùng BookingPackage/create -----------------
+                    if (!recurringStartDate || !recurringEndDate) {
+                         setIsProcessing(false);
+                         await Swal.fire({
+                              icon: 'warning',
+                              title: 'Thiếu thông tin',
+                              text: 'Vui lòng chọn ngày bắt đầu và ngày kết thúc cho gói đặt cố định.',
+                              confirmButtonColor: '#f59e0b'
+                         });
+                         return;
+                    }
+
+                    const start = new Date(recurringStartDate);
+                    start.setHours(0, 0, 0, 0);
+                    const end = new Date(recurringEndDate);
+                    end.setHours(23, 59, 59, 999);
+
+                    // Tìm scheduleId cho từng dayOfWeek từ fieldSchedules
+                    const buildSelectedSlots = () => {
+                         return selectedDays
+                              .filter(dayOfWeek => selectedSlotsByDay?.[dayOfWeek]) // Chỉ lấy các thứ đã chọn slot
+                              .map(dayOfWeek => {
+                                   const slotId = selectedSlotsByDay[dayOfWeek];
+                                   // Tìm scheduleId từ fieldSchedules
+                                   let foundScheduleId = 0;
+                                   if (Array.isArray(booking.fieldSchedules)) {
+                                        const schedule = booking.fieldSchedules.find(s => {
+                                             const scheduleDayOfWeek = s.dayOfWeek ?? s.DayOfWeek ?? s.weekday ?? s.Weekday;
+                                             const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
+                                             return Number(scheduleDayOfWeek) === Number(dayOfWeek) &&
+                                                  String(scheduleSlotId) === String(slotId);
+                                        });
+                                        if (schedule) {
+                                             foundScheduleId = schedule.scheduleId || schedule.ScheduleId || schedule.scheduleID || schedule.ScheduleID || 0;
+                                        }
+                                   }
+                                   return {
+                                        slotId: Number(slotId) || 0,
+                                        dayOfWeek: Number(dayOfWeek) || 0,
+                                        fieldId: Number(booking.fieldId) || 0,
+                                        scheduleId: Number(foundScheduleId) || 0
+                                   };
+                              });
+                    };
+
+                    const selectedSlots = buildSelectedSlots();
+
+                    if (selectedSlots.length === 0) {
+                         setIsProcessing(false);
+                         await Swal.fire({
+                              icon: 'warning',
+                              title: 'Thiếu thông tin',
+                              text: 'Vui lòng chọn khung giờ cho ít nhất một ngày trong tuần.',
+                              confirmButtonColor: '#f59e0b'
+                         });
+                         return;
+                    }
+
+                    const packagePayload = {
+                         userId: userId,
+                         fieldId: booking.fieldId,
+                         packageName: booking.packageName || `Gói định kỳ`,
+                         startDate: start.toISOString().split("T")[0],
+                         endDate: end.toISOString().split("T")[0],
+                         totalPrice: booking.totalPrice || totalPrice,
+                         selectedSlots: selectedSlots
+                    };
+
+                    console.log("📤 [BOOKING PACKAGE] Payload:", JSON.stringify(packagePayload, null, 2));
+
+                    const packageResult = await createBookingPackage(packagePayload);
+                    console.log("✅ [BOOKING PACKAGE] API Result (JSON):", JSON.stringify(packageResult, null, 2));
+
+                    if (!packageResult.success) {
+                         console.error("❌ [BOOKING PACKAGE] Error:", packageResult.error);
+                         setIsProcessing(false);
+                         await Swal.fire({
+                              icon: 'error',
+                              title: 'Lỗi đặt định kỳ',
+                              text: packageResult.error || "Không thể tạo gói đặt định kỳ. Vui lòng thử lại.",
+                              confirmButtonColor: '#ef4444'
+                         });
+                         return;
+                    }
+
+                    // Backend trả dạng: { message, data: { bookingPackageId, ..., qrcode, qrexpiresAt } }
+                    // createBookingPackage() đang gói trong { success, data: response.data }
+                    const data = (packageResult.data && packageResult.data.data)
+                         ? packageResult.data.data
+                         : (packageResult.data || {});
+                    const bookingPackageId = data.bookingPackageId || data.bookingId || data.id;
+
+                    const rawQrCode =
+                         data.qrcode ||
+                         data.qrCode ||
+                         data.QRCode ||
+                         data.qrCodeUrl ||
+                         null;
+                    let normalizedQrCode = rawQrCode;
+                    if (normalizedQrCode && typeof normalizedQrCode === "string") {
+                         const lower = normalizedQrCode.toLowerCase();
+                         const isHttp = lower.startsWith("http://") || lower.startsWith("https://");
+                         const isData = lower.startsWith("data:");
+                         if (!isHttp && !isData) {
+                              normalizedQrCode = `data:image/png;base64,${normalizedQrCode}`;
+                         }
+                    }
+
+                    const qrExpiresAt = data.qrexpiresAt || data.qrExpiresAt || data.QRExpiresAt || null;
+                    const apiTotalPrice = Number(data.totalPrice ?? packagePayload.totalPrice ?? bookingData.totalPrice ?? 0);
+                    const apiDepositAmount = Number(data.depositAmount ?? depositAmount ?? bookingData.depositAmount ?? 0);
+                    const apiRemainingAmount = Math.max(0, apiTotalPrice - apiDepositAmount);
+
+                    setBookingData(prev => ({
+                         ...prev,
+                         totalPrice: apiTotalPrice || prev.totalPrice,
+                         depositAmount: apiDepositAmount || prev.depositAmount,
+                         remainingAmount: apiRemainingAmount ?? prev.remainingAmount
+                    }));
+
+                    setBookingInfo({
+                         bookingId: bookingPackageId,
+                         scheduleId: scheduleId || 0,
+                         bookingStatus: data.bookingStatus || "Pending",
+                         paymentStatus: data.paymentStatus || "Pending",
+                         qrCodeUrl: normalizedQrCode,
+                         qrExpiresAt: qrExpiresAt,
+                         totalPrice: apiTotalPrice,
+                         depositAmount: apiDepositAmount,
+                         remainingAmount: apiRemainingAmount
+                    });
                }
 
-               // Lấy QR code từ API
-               const qrResult = await generateQRCode(bookingId);
-               const qrCodeUrl = qrResult.success ? qrResult.qrCodeUrl : null;
-
-               // Lưu thông tin booking
-               setBookingInfo({
-                    bookingId: bookingId,
-                    scheduleId: apiResult.data?.scheduleID || apiResult.data?.scheduleId,
-                    bookingStatus: apiResult.data?.bookingStatus || "Pending",
-                    paymentStatus: apiResult.data?.paymentStatus || "Pending",
-                    qrCodeUrl: qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=BOOKING-${bookingId}`,
-                    qrExpiresAt: apiResult.data?.qrExpiresAt || new Date(Date.now() + 7 * 60 * 1000).toISOString(),
-                    totalPrice: totalPrice,
-                    depositAmount: depositAmount
-               });
-
-               // Chuyển sang bước thanh toán
+               // Chuyển sang bước thanh toán và khóa thao tác trong 5 phút hoặc đến khi hủy
                setStep("payment");
+               setPaymentLockExpiresAt(Date.now() + PAYMENT_LOCK_DURATION_MS);
           } catch (error) {
                console.error("Booking error:", error);
                const code = error?.code;
@@ -411,67 +1198,111 @@ export default function BookingModal({
                if (code === "DURATION_LIMIT") msg = "Thời lượng vượt giới hạn (tối đa 1 tiếng 30 phút).";
                if (code === "CONFLICT") msg = "Khung giờ đã có người khác giữ hoặc đặt. Chọn khung giờ khác.";
                if (code === "VALIDATION_ERROR") msg = error?.message || msg;
-               setErrors({ general: msg });
+               setIsProcessing(false);
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi đặt sân',
+                    text: msg,
+                    confirmButtonColor: '#ef4444'
+               });
           } finally {
                setIsProcessing(false);
           }
      };
+     const handleCancelBookingDuringPayment = async () => {
+          if (isProcessing) return;
+
+          const confirmResult = await Swal.fire({
+               title: 'Xác nhận hủy đặt sân',
+               text: 'Bạn có chắc muốn hủy đặt sân và đóng QR thanh toán không?',
+               icon: 'question',
+               showCancelButton: true,
+               confirmButtonText: 'Hủy đặt sân',
+               cancelButtonText: 'Không',
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280'
+          });
+
+          if (!confirmResult.isConfirmed) return;
+
+          setPaymentLockExpiresAt(null);
+          setLockRemainingMs(0);
+          setBookingInfo(null);
+          setStep("details");
+          onClose?.();
+
+          // Hiển thị thông báo hủy thành công
+          Swal.fire({
+               toast: true,
+               position: 'top-end',
+               icon: 'success',
+               title: 'Hủy thành công',
+               showConfirmButton: false,
+               timer: 2000,
+               timerProgressBar: true
+          });
+     };
+
+     const handleModalClose = useCallback(() => {
+          if (isPaymentLockActive) return;
+          onClose();
+     }, [isPaymentLockActive, onClose]);
 
      const handleConfirmPayment = async () => {
-          if (!paymentMethod) {
-               setErrors({ payment: "Vui lòng chọn phương thức thanh toán" });
+          if (!bookingInfo?.bookingId) {
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: "Không tìm thấy thông tin booking.",
+                    confirmButtonColor: '#ef4444'
+               });
                return;
           }
 
-          if (!bookingInfo?.bookingId) {
-               setErrors({ general: "Không tìm thấy thông tin booking." });
+          if (!bookingInfo?.qrCodeUrl) {
+               setErrors(prev => ({ ...prev, payment: "Đang tạo mã QR tiền cọc. Vui lòng đợi trong giây lát." }));
+               await Swal.fire({
+                    icon: 'info',
+                    title: 'Đang tạo QR',
+                    text: 'Vui lòng đợi hệ thống tạo mã QR tiền cọc trước khi xác nhận.',
+                    confirmButtonColor: '#10b981'
+               });
                return;
           }
 
           setIsProcessing(true);
           try {
-               // Gọi API xác nhận thanh toán
-               const apiResult = await confirmPaymentAPI(bookingInfo.bookingId);
-
-               if (!apiResult.success) {
-                    setErrors({ general: apiResult.error || "Không thể xác nhận thanh toán. Vui lòng thử lại." });
-                    setIsProcessing(false);
-                    return;
-               }
-
-               // Cập nhật thông tin booking
-               setBookingInfo(prev => ({
-                    ...prev,
-                    bookingStatus: apiResult.data?.bookingStatus || "Confirmed",
-                    paymentStatus: apiResult.data?.paymentStatus || "Paid"
-               }));
-
-               // Save to local storage
+               // Lưu lịch sử booking vào local storage để người chơi theo dõi
                createBooking({
                     userId: user?.id || user?.userId || "guest",
                     data: {
                          ...bookingData,
                          bookingId: bookingInfo.bookingId,
-                         status: "confirmed",
-                         paymentMethod,
+                         status: "pending",
+                         paymentMethod: "deposit",
                          createdAt: new Date().toISOString()
                     }
                });
 
-               // Handle opponent finding for recurring bookings
+               setBookingInfo(prev => ({
+                    ...prev,
+                    bookingStatus: prev?.bookingStatus || "Pending",
+                    paymentStatus: prev?.paymentStatus || "Pending"
+               }));
+
                if (isRecurring && generateRecurringSessions().length > 0) {
                     setShowOpponentSelection(true);
                } else {
-                    // For single bookings, proceed to confirmation
                     setStep("confirmation");
                }
           } catch (error) {
-               console.error("Payment error:", error);
-               const code = error?.code;
-               let msg = "Có lỗi xảy ra khi thanh toán. Vui lòng thử lại.";
-               if (code === "EXPIRED") msg = "Mã QR đã hết hạn. Vui lòng giữ chỗ lại.";
-               if (code === "HOLD_NOT_FOUND") msg = "Phiên thanh toán không hợp lệ hoặc đã hết hạn.";
-               setErrors({ general: msg });
+               console.error("Payment confirmation error:", error);
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi xác nhận',
+                    text: "Có lỗi xảy ra khi xử lý xác nhận. Vui lòng thử lại.",
+                    confirmButtonColor: '#ef4444'
+               });
           } finally {
                setIsProcessing(false);
           }
@@ -543,104 +1374,134 @@ export default function BookingModal({
      return (
           <Modal
                isOpen={isOpen}
-               onClose={onClose}
+               onClose={handleModalClose}
                title={bookingType === "complex" ? "Đặt Sân Lớn" : bookingType === "quick" ? "Đặt Nhanh" : "Đặt Sân"}
                className="max-w-6xl z-[100] w-full mx-4 max-h-[90vh] overflow-y-auto rounded-xl"
+               showCloseButton={!isPaymentLockActive}
+               closeOnOverlayClick={!isPaymentLockActive}
           >
-               <div className="p-2">
+               <div className="p-2 bg-cover bg-center bg-no-repeat bg-[url('https://mixivivu.com/section-background.png')]">
                     {errors.general && (
                          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
                               <AlertCircle className="w-5 h-5 text-red-500" />
                               <span className="text-red-700">{errors.general}</span>
                          </div>
                     )}
+                    {
+                         step === "details" && (
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                   {/* Left Column - Field Info + Contact Form */}
+                                   <div className="space-y-6">
+                                        <FieldInfoSection
+                                             bookingData={bookingData}
+                                             isRecurring={isRecurring}
+                                             recurringWeeks={0} // Không dùng nữa, để tương thích
+                                             startDate={recurringStartDate}
+                                             endDate={recurringEndDate}
+                                             selectedDays={selectedDays}
+                                             generateRecurringSessions={generateRecurringSessions}
+                                        />
+                                        <ContactFormSection
+                                             bookingData={bookingData}
+                                             errors={errors}
+                                             onInputChange={handleInputChange}
+                                        />
+                                   </div>
 
-                    {step === "details" && (
-                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                              {/* Left Column - Field Info + Contact Form */}
-                              <div className="space-y-6">
-                                   <FieldInfoSection
-                                        bookingData={bookingData}
-                                        isRecurring={isRecurring}
-                                        recurringWeeks={recurringWeeks}
-                                        selectedDays={selectedDays}
-                                        generateRecurringSessions={generateRecurringSessions}
-                                   />
-                                   <ContactFormSection
-                                        bookingData={bookingData}
-                                        errors={errors}
-                                        onInputChange={handleInputChange}
-                                   />
+                                   {/* Right Column - Recurring Options + Price Summary + Button */}
+                                   <div className="space-y-6">
+                                        <RecurringBookingSection
+                                             isRecurring={isRecurring}
+                                             setIsRecurring={setIsRecurring}
+                                             startDate={recurringStartDate}
+                                             setStartDate={setRecurringStartDate}
+                                             endDate={recurringEndDate}
+                                             setEndDate={setRecurringEndDate}
+                                             selectedDays={selectedDays}
+                                             handleDayToggle={handleDayToggle}
+                                             selectedSlotsByDay={selectedSlotsByDay}
+                                             onSlotSelect={handleSlotSelect}
+                                             fieldSchedules={bookingData.fieldSchedules || []}
+                                             generateRecurringSessions={generateRecurringSessions}
+                                             onBookingDataChange={handleInputChange}
+                                        />
+                                        <PriceSummarySection
+                                             bookingData={bookingData}
+                                             isRecurring={isRecurring}
+                                             recurringWeeks={0} // Không dùng nữa, để tương thích
+                                             selectedDays={selectedDays}
+                                             selectedSlotsByDay={selectedSlotsByDay}
+                                             fieldSchedules={bookingData.fieldSchedules || []}
+                                             formatPrice={formatPrice}
+                                        />
+                                        <Button
+                                             onClick={handlePayment}
+                                             disabled={isProcessing || (isRecurring && (!recurringStartDate || !recurringEndDate || selectedDays.length === 0 || Object.keys(selectedSlotsByDay).length === 0))}
+                                             className={`w-full py-3 rounded-lg text-white font-semibold ${isProcessing || (isRecurring && (!recurringStartDate || !recurringEndDate || selectedDays.length === 0 || Object.keys(selectedSlotsByDay).length === 0)) ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
+                                        >
+                                             {isProcessing ? "Đang xử lý..." :
+                                                  isRecurring ? (() => {
+                                                       // Tính số tuần từ startDate và endDate
+                                                       if (recurringStartDate && recurringEndDate) {
+                                                            try {
+                                                                 const start = new Date(recurringStartDate);
+                                                                 const end = new Date(recurringEndDate);
+                                                                 const diffTime = end - start;
+                                                                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                                                 const weeks = Math.ceil(diffDays / 7);
+                                                                 return `Giữ chỗ ${weeks} tuần & tiếp tục thanh toán`;
+                                                            } catch {
+                                                                 return "Giữ chỗ định kỳ & tiếp tục thanh toán";
+                                                            }
+                                                       }
+                                                       return "Giữ chỗ định kỳ & tiếp tục thanh toán";
+                                                  })() :
+                                                       "Giữ chỗ & tiếp tục thanh toán"
+                                             }
+                                        </Button>
+                                   </div>
                               </div>
+                         )
+                    }
 
-                              {/* Right Column - Recurring Options + Price Summary + Button */}
-                              <div className="space-y-6">
-                                   <RecurringBookingSection
-                                        isRecurring={isRecurring}
-                                        setIsRecurring={setIsRecurring}
-                                        recurringWeeks={recurringWeeks}
-                                        setRecurringWeeks={setRecurringWeeks}
-                                        selectedDays={selectedDays}
-                                        handleDayToggle={handleDayToggle}
-                                        suggestedDays={suggestedDays}
-                                        isSuggesting={isSuggesting}
-                                        generateRecurringSessions={generateRecurringSessions}
-                                        onBookingDataChange={handleInputChange}
-                                   />
-                                   <PriceSummarySection
-                                        bookingData={bookingData}
-                                        isRecurring={isRecurring}
-                                        recurringWeeks={recurringWeeks}
-                                        selectedDays={selectedDays}
-                                        formatPrice={formatPrice}
-                                   />
-                                   <Button
-                                        onClick={handlePayment}
-                                        disabled={isProcessing || (isRecurring && (!bookingData.date || selectedDays.length === 0))}
-                                        className={`w-full py-3 rounded-lg text-white font-semibold ${isProcessing || (isRecurring && (!bookingData.date || selectedDays.length === 0)) ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
-                                   >
-                                        {isProcessing ? "Đang xử lý..." :
-                                             isRecurring ? `Giữ chỗ ${recurringWeeks} tuần & tiếp tục thanh toán` :
-                                                  "Giữ chỗ & tiếp tục thanh toán"
-                                        }
-                                   </Button>
-                              </div>
-                         </div>
-                    )}
+                    {
+                         step === "payment" && (
+                              <PaymentStepSection
+                                   bookingInfo={bookingInfo}
+                                   ownerBankAccount={ownerBankAccount}
+                                   bookingData={bookingData}
+                                   isRecurring={isRecurring}
+                                   recurringWeeks={0} // Không dùng nữa, để tương thích
+                                   selectedDays={selectedDays}
+                                   isProcessing={isProcessing}
+                                   formatPrice={formatPrice}
+                                   errors={errors}
+                                   onConfirmPayment={handleConfirmPayment}
+                                   isPaymentLocked={isPaymentLockActive}
+                                   lockCountdownSeconds={lockCountdownSeconds}
+                                   onCancelBooking={handleCancelBookingDuringPayment}
+                              />
+                         )
+                    }
 
-                    {step === "payment" && (
-                         <PaymentStepSection
-                              bookingInfo={bookingInfo}
-                              ownerBankAccount={ownerBankAccount}
-                              paymentMethod={paymentMethod}
-                              setPaymentMethod={setPaymentMethod}
-                              bookingData={bookingData}
-                              isRecurring={isRecurring}
-                              recurringWeeks={recurringWeeks}
-                              selectedDays={selectedDays}
-                              errors={errors}
-                              isProcessing={isProcessing}
-                              formatPrice={formatPrice}
-                              onConfirmPayment={handleConfirmPayment}
-                         />
-                    )}
-
-                    {step === "confirmation" && (
-                         <ConfirmationStepSection
-                              isRecurring={isRecurring}
-                              recurringWeeks={recurringWeeks}
-                              hasOpponent={hasOpponent}
-                              createdMatchRequest={createdMatchRequest}
-                              createdCommunityPost={createdCommunityPost}
-                              onClose={onClose}
-                              onSuccess={onSuccess}
-                              navigate={navigate}
-                         />
-                    )}
-               </div>
+                    {
+                         step === "confirmation" && (
+                              <ConfirmationStepSection
+                                   isRecurring={isRecurring}
+                                   recurringWeeks={0} // Không dùng nữa, để tương thích
+                                   hasOpponent={hasOpponent}
+                                   createdMatchRequest={createdMatchRequest}
+                                   createdCommunityPost={createdCommunityPost}
+                                   onClose={onClose}
+                                   onSuccess={onSuccess}
+                                   navigate={navigate}
+                              />
+                         )
+                    }
+               </div >
 
                {/* Email Verification Modal */}
-               <EmailVerificationModal
+               < EmailVerificationModal
                     isOpen={showEmailVerification}
                     onClose={() => setShowEmailVerification(false)}
                     user={user}
@@ -649,14 +1510,16 @@ export default function BookingModal({
                />
 
                {/* Recurring Opponent Selection Modal */}
-               {showOpponentSelection && (
-                    <RecurringOpponentSelection
-                         isRecurring={isRecurring}
-                         recurringSessions={generateRecurringSessions()}
-                         onOpponentSelection={handleOpponentSelection}
-                         onClose={() => setShowOpponentSelection(false)}
-                    />
-               )}
-          </Modal>
+               {
+                    showOpponentSelection && (
+                         <RecurringOpponentSelection
+                              isRecurring={isRecurring}
+                              recurringSessions={generateRecurringSessions()}
+                              onOpponentSelection={handleOpponentSelection}
+                              onClose={() => setShowOpponentSelection(false)}
+                         />
+                    )
+               }
+          </Modal >
      );
 }

@@ -170,14 +170,12 @@ export async function fetchFieldSchedulesByField(fieldId) {
     ];
 
     let response = null;
-    let lastError = null;
 
     for (const endpoint of endpoints) {
       try {
         response = await apiClient.get(endpoint);
         break;
       } catch (err) {
-        lastError = err;
         // If it's not a 404, stop trying other endpoints
         if (err.response?.status !== 404) {
           break;
@@ -320,7 +318,6 @@ export async function fetchPublicFieldSchedulesByDate(date) {
       return config;
     });
 
-    let lastError = null;
     let schedulesArray = [];
 
     for (const endpoint of endpoints) {
@@ -343,7 +340,6 @@ export async function fetchPublicFieldSchedulesByDate(date) {
           };
         }
       } catch (err) {
-        lastError = err;
         if (err.response?.status !== 404) {
           break;
         }

@@ -1,10 +1,19 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import {
      clearPersistedAuth,
      getStoredToken,
      isTokenExpired,
      storeToken
 } from '../shared/utils/tokenManager';
+import {
+     isPlayer,
+     isOwner,
+     isAdmin,
+     hasRole,
+     hasAnyRole,
+     getDefaultPathForRole,
+     getRoleByName,
+} from '../shared/constants/roles';
 
 const AuthContext = createContext();
 
@@ -49,11 +58,29 @@ export const AuthProvider = ({ children }) => {
           setUser(null);
      };
 
+     const updateUser = (userData) => {
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+     };
+
+     // Memoized role helpers for better performance
+     const roleHelpers = useMemo(() => ({
+          isPlayer: () => isPlayer(user),
+          isOwner: () => isOwner(user),
+          isAdmin: () => isAdmin(user),
+          hasRole: (roleName) => hasRole(user, roleName),
+          hasAnyRole: (roleNames) => hasAnyRole(user, roleNames),
+          getDefaultPath: () => getDefaultPathForRole(user),
+          getRole: () => user ? getRoleByName(user.roleName) : null,
+     }), [user]);
+
      const value = {
           user,
           login,
           logout: logoutUser,
-          isLoading
+          updateUser,
+          isLoading,
+          ...roleHelpers, // Spread role helpers for convenience
      };
 
      return (

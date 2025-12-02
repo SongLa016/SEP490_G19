@@ -208,7 +208,6 @@ export default function CommunityHeader({ user, onLoggedOut }) {
                     })}
                </div>
 
-
                {/* User Profile Section */}
                <div className="mt-auto mb-4">
                     {user ? (

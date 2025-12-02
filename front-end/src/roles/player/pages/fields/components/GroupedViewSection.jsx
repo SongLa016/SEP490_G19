@@ -1,7 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { MapPin, Star, User, EyeIcon, Heart } from "lucide-react";
 import StadiumIcon from '@mui/icons-material/Stadium';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import { Button, SlideIn, StaggerContainer, FadeIn } from "../../../../../shared/components/ui";
 import { getImageProps } from "../../../../../shared/utils/imageUtils";
@@ -13,9 +12,7 @@ export default function GroupedViewSection({
      bgColor,
      borderColor,
      items,
-     type, // 'complex' or 'field'
-     navigate,
-     formatPrice,
+     type,
      handleBook,
      slotId,
      handleViewAll,
@@ -49,43 +46,55 @@ export default function GroupedViewSection({
                     <StaggerContainer staggerDelay={50} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
                          {items.map((item, index) => (
                               <FadeIn key={type === 'complex' ? item.complexId : item.fieldId} delay={index * 50}>
-                                   <Link
-                                        to={type === 'complex' ? `/complex/${item.complexId}` : `/field/${item.fieldId}`}
+                                   <div
                                         className="group pt-3 px-3 border border-teal-100 bg-white rounded-2xl shadow-lg overflow-hidden h-full flex flex-col cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:-translate-y-1"
-                                        onClick={(e) => {
-                                             // Prevent navigation if clicking on a button or its children
-                                             const clickedButton = e.target.closest('button');
-                                             if (clickedButton) {
-                                                  e.preventDefault();
-                                                  e.stopPropagation();
-                                             }
+                                        onClick={() => {
+                                             const targetUrl = type === 'complex' ? `/complex/${item.complexId}` : `/field/${item.fieldId}`;
+                                             nav(targetUrl);
                                         }}
                                    >
                                         <div className="relative overflow-hidden">
-                                             <img
-                                                  {...getImageProps(item.image, item.name)}
-                                                  className="w-full h-48 object-cover rounded-xl transition-transform duration-300 group-hover:scale-110"
-                                                  draggable={false}
-                                             />
-                                             <div className={`absolute top-3 ${type === 'field' && (title === 'Giá tốt' || title === 'Đánh giá cao') ? 'left-3' : 'right-3'} flex items-center gap-2`}>
-                                                  <Button
-                                                       type="button"
-                                                       onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                                       onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            if (!user && handleLoginRequired) {
-                                                                 handleLoginRequired('Bạn cần đăng nhập để sử dụng danh sách yêu thích.');
-                                                                 return;
-                                                            }
-                                                            if (type === 'field' && onToggleFavoriteField) onToggleFavoriteField(item.fieldId);
-                                                            if (type === 'complex' && onToggleFavoriteComplex) onToggleFavoriteComplex(item.complexId);
+                                             {type === 'complex' ? (
+
+                                                  <div
+                                                       className="w-full h-48 rounded-xl transition-transform duration-300 group-hover:scale-110 bg-cover bg-center"
+                                                       style={{
+                                                            backgroundImage: `linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.3)), url(${item.imageUrl || 'https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg'})`,
+                                                            backgroundSize: 'cover',
+                                                            backgroundPosition: 'center',
                                                        }}
-                                                       className={`h-8 w-8 p-0 rounded-full shadow-sm transition-all duration-200 border hover:scale-110 hover:text-pink-600 ${item.isFavorite ? 'bg-teal-500 text-teal-50 border-teal-500' : 'bg-white text-teal-700 border-teal-200 hover:bg-teal-50'}`}
-                                                  >
-                                                       <Heart className="w-4 h-4" />
-                                                  </Button>
-                                             </div>
+                                                  />
+                                             ) : (
+                                                  // Field: use mainImageUrl
+                                                  <img
+                                                       {...getImageProps(
+                                                            item.mainImageUrl || '',
+                                                            item.name
+                                                       )}
+                                                       className="w-full h-48 object-cover rounded-xl transition-transform duration-300 group-hover:scale-110"
+                                                       draggable={false}
+                                                  />
+                                             )}
+                                             {type === 'field' && (
+                                                  <div className={`absolute top-3 ${title === 'Giá tốt' || title === 'Đánh giá cao' ? 'left-3' : 'right-3'} flex items-center gap-2`}>
+                                                       <Button
+                                                            type="button"
+                                                            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                                            onClick={(e) => {
+                                                                 e.preventDefault();
+                                                                 e.stopPropagation();
+                                                                 if (!user && handleLoginRequired) {
+                                                                      handleLoginRequired('Bạn cần đăng nhập để sử dụng danh sách yêu thích.');
+                                                                      return;
+                                                                 }
+                                                                 if (onToggleFavoriteField) onToggleFavoriteField(item.fieldId);
+                                                            }}
+                                                            className={`h-8 w-8 p-0 rounded-full shadow-sm transition-all duration-200 border hover:scale-110 hover:text-pink-600 ${item.isFavorite ? 'bg-teal-500 text-teal-50 border-teal-500' : 'bg-white text-teal-700 border-teal-200 hover:bg-teal-50'}`}
+                                                       >
+                                                            <Heart className="w-4 h-4" />
+                                                       </Button>
+                                                  </div>
+                                             )}
                                              {type === 'field' && (
                                                   <div className="absolute top-4 right-4 flex space-x-2">
                                                        <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1">
@@ -96,9 +105,16 @@ export default function GroupedViewSection({
                                              )}
                                         </div>
                                         <div className="px-2 py-3 flex-1 flex flex-col">
-                                             <div className="flex bg-teal-50  border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2">
-                                                  <MapPin className="w-4 h-4 mr-1" />
-                                                  <span className="text-xs font-semibold line-clamp-1">{item.address}</span>
+                                             <div className="flex bg-teal-50  border border-teal-100 px-2 py-1 rounded-full w-fit items-center text-teal-700 mb-2 gap-2">
+                                                  <span className="inline-flex items-center gap-1">
+                                                       <MapPin className="w-4 h-4" />
+                                                       <span className="text-xs font-semibold line-clamp-1">{item.address}</span>
+                                                  </span>
+                                                  {typeof item.distanceKm === 'number' && !Number.isNaN(item.distanceKm) && (
+                                                       <span className="text-xs font-semibold text-red-500 whitespace-nowrap">
+                                                            • {item.distanceKm.toFixed(1)} km
+                                                       </span>
+                                                  )}
                                              </div>
                                              <div className="flex items-center justify-between mb-3">
 
@@ -167,6 +183,7 @@ export default function GroupedViewSection({
                                              <div className="mt-auto flex items-center justify-between">
 
                                                   {type === 'field' && (
+
                                                        <Button
                                                             type="button"
                                                             onMouseDown={(e) => {
@@ -177,21 +194,24 @@ export default function GroupedViewSection({
                                                                  e.preventDefault();
                                                                  e.stopPropagation();
                                                                  handleBook(item.fieldId);
+                                                                 nav(`/field/${item.fieldId}`)
                                                             }}
+
                                                             className="w-fit hover:scale-105 duration-200 bg-teal-500 hover:bg-teal-600 text-white px-2 py-1 rounded-full font-semibold transition-all flex items-center gap-2"
                                                        >
                                                             <EventSeatIcon className="w-2 h-2" />
                                                             Đặt sân
                                                        </Button>
+
                                                   )}
                                              </div>
                                         </div>
-                                   </Link>
+                                   </div>
                               </FadeIn>
                          ))}
                     </StaggerContainer>
                </div>
-          </SlideIn>
+          </SlideIn >
      );
 }
 

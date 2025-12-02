@@ -21,10 +21,8 @@ import {
 } from 'lucide-react';
 import { fetchTimeSlots, createTimeSlot, updateTimeSlot, deleteTimeSlot } from '../../../shared/services/timeSlots';
 import { DemoRestrictedModal } from '../../../shared';
-import OwnerLayout from '../layouts/OwnerLayout';
 import { useAuth } from '../../../contexts/AuthContext';
 import Swal from 'sweetalert2';
-
 
 export default function TimeSlotManagement({ isDemo = false }) {
      const [timeSlots, setTimeSlots] = useState([]);
@@ -652,8 +650,7 @@ export default function TimeSlotManagement({ isDemo = false }) {
      );
 
      return (
-          <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
-               <div className="space-y-6">
+          <div className="space-y-6">
                     {/* Header */}
                     <div className="flex items-center justify-between">
                          <div>
@@ -992,6 +989,5 @@ export default function TimeSlotManagement({ isDemo = false }) {
                          featureName="Quản Lý Slot Thời Gian"
                     />
                </div>
-          </OwnerLayout>
      );
 }

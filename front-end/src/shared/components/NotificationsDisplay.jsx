@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, Button, Badge } from "../components/ui/index";
 import {
      Bell,
@@ -7,40 +7,249 @@ import {
      X,
      Eye,
      EyeOff,
+     Trash2,
+     Filter
 } from "lucide-react";
 import {
-     fetchUserNotifications,
+     getLatestNotifications,
+     getUnreadCount,
+     getNotificationsByType,
      markNotificationAsRead,
-     markAllNotificationsAsRead
+     markAllNotificationsAsRead,
+     deleteNotification,
+     deleteAllNotifications
 } from "../services/notifications";
+import { deletePost } from "../services/posts";
+import { deleteComment, fetchCommentById } from "../services/comments";
+import Swal from "sweetalert2";
+
+const NOTIFICATION_TYPES = [
+     { label: "Tất cả", value: "all" },
+     { label: "Hệ thống", value: "System" },
+     { label: "Bình luận", value: "Comment" },
+     { label: "Lượt thích", value: "Like" },
+     { label: "Kết quả báo cáo", value: "ReportResult" },
+     { label: "Nhắc đến", value: "Mention" },
+];
+
+const COMMENT_NOTIFICATION_TYPES = new Set(["comment", "newcomment", "reply", "mention"]);
+
+const cleanString = (value) => (typeof value === "string" ? value.trim() : "");
+
+const getNotificationType = (notification) => cleanString(notification?.type || notification?.notificationType).toLowerCase();
+
+const isCommentNotification = (notification) => COMMENT_NOTIFICATION_TYPES.has(getNotificationType(notification));
+
+const getCommentIdFromNotification = (notification) => {
+     const candidates = [
+          notification?.commentId,
+          notification?.commentID,
+          notification?.CommentId,
+          notification?.CommentID,
+          notification?.targetCommentId,
+          notification?.targetCommentID,
+          notification?.TargetCommentId,
+          notification?.TargetCommentID,
+          notification?.relatedCommentId,
+          notification?.relatedCommentID,
+          notification?.Comment?.id,
+          notification?.comment?.id,
+          notification?.metadata?.commentId,
+          notification?.metadata?.CommentId,
+     ];
+
+     const fallbackTarget = notification?.targetId || notification?.targetID || notification?.TargetId || notification?.TargetID;
+     return (candidates.find((id) => id !== undefined && id !== null && id !== "") ?? fallbackTarget) || null;
+};
+
+const extractActorNameFromNotification = (notification) => {
+     const sources = [
+          notification?.actorName,
+          notification?.actorFullName,
+          notification?.actorUsername,
+          notification?.senderName,
+          notification?.senderFullName,
+          notification?.senderUsername,
+          notification?.triggerUserName,
+          notification?.triggerFullName,
+          notification?.triggeredByName,
+          notification?.createdByName,
+          notification?.metadata?.actorName,
+          notification?.metadata?.fullName,
+          notification?.metadata?.senderName,
+          notification?.metadata?.createdByName,
+          notification?.data?.actorName,
+          notification?.data?.fullName,
+          notification?.data?.senderName,
+          notification?.additionalData?.actorName,
+          notification?.additionalData?.fullName,
+          notification?.additionalData?.senderName,
+     ];
+
+     return cleanString(sources.find((value) => cleanString(value)) || "");
+};
+
+const formatNotificationMessage = (notification) => {
+     const actorName = cleanString(notification?.actorName);
+     const baseMessage = cleanString(notification?.message) || cleanString(notification?.title);
+
+     if (!actorName && !baseMessage) {
+          return "Bạn có thông báo mới";
+     }
+
+     if (!actorName) {
+          return baseMessage;
+     }
+
+     if (!baseMessage) {
+          return actorName;
+     }
+
+     return baseMessage.toLowerCase().includes(actorName.toLowerCase())
+          ? baseMessage
+          : `${actorName} ${baseMessage}`;
+};
+
+const enrichNotificationsWithActors = async (notifications) => {
+     if (!Array.isArray(notifications) || notifications.length === 0) {
+          return notifications || [];
+     }
+
+     const commentCache = new Map();
+
+     const enriched = await Promise.all(
+          notifications.map(async (notification) => {
+               const existingActor = extractActorNameFromNotification(notification);
+
+               if (existingActor) {
+                    return { ...notification, actorName: existingActor };
+               }
+
+               if (!isCommentNotification(notification)) {
+                    return notification;
+               }
+
+               const commentId = getCommentIdFromNotification(notification);
+               if (!commentId) {
+                    return notification;
+               }
+
+               try {
+                    let comment = commentCache.get(commentId);
+                    if (comment === undefined) {
+                         comment = await fetchCommentById(commentId);
+                         commentCache.set(commentId, comment || null);
+                    }
+
+                    if (!comment) {
+                         return notification;
+                    }
+
+                    const actorName =
+                         cleanString(comment.author?.name) ||
+                         cleanString(comment.author?.fullName) ||
+                         cleanString(comment.author?.username) ||
+                         cleanString(comment.fullName) ||
+                         cleanString(comment.userName);
+
+                    return {
+                         ...notification,
+                         actorName: actorName || notification.actorName,
+                         commentContent: comment.content || notification.commentContent,
+                         commentAuthorId: comment.author?.id || notification.commentAuthorId,
+                    };
+               } catch (error) {
+                    console.error("[NotificationsDisplay] Không thể tải bình luận cho thông báo:", commentId, error);
+                    return notification;
+               }
+          })
+     );
+
+     return enriched;
+};
 
 export default function NotificationsDisplay({ userId, className = "" }) {
      const [notifications, setNotifications] = useState([]);
      const [loading, setLoading] = useState(true);
      const [showAll, setShowAll] = useState(false);
      const [unreadCount, setUnreadCount] = useState(0);
+     const [activeType, setActiveType] = useState("all");
+     const [isDeleting, setIsDeleting] = useState(false);
 
-     useEffect(() => {
-          loadNotifications();
-     }, [userId]);
+     const parseNotifications = (payload) => {
+          if (Array.isArray(payload)) {
+               return payload;
+          }
+          if (payload?.notifications) {
+               return payload.notifications;
+          }
+          if (payload?.data) {
+               return Array.isArray(payload.data)
+                    ? payload.data
+                    : payload.data.notifications || payload.data.items || payload.data.results || [];
+          }
+          if (payload?.items) {
+               return payload.items;
+          }
+          return [];
+     };
 
-     const loadNotifications = async () => {
+     const fetchUnreadCount = useCallback(async () => {
+          try {
+               const countResult = await getUnreadCount();
+               if (countResult.ok) {
+                    setUnreadCount(countResult.count);
+               }
+          } catch (error) {
+               console.error('❌ [NotificationsDisplay] Error loading unread count:', error);
+          }
+     }, []);
+
+     const loadNotifications = useCallback(async (typeOverride) => {
+          const typeToLoad = typeOverride || activeType;
           try {
                setLoading(true);
-               const notificationsData = await fetchUserNotifications(userId);
-               setNotifications(notificationsData);
-               setUnreadCount(notificationsData.filter(n => !n.isRead).length);
+
+               let notificationsData = [];
+
+               if (typeToLoad === "all") {
+                    const latestResult = await getLatestNotifications(20);
+                    if (latestResult.ok) {
+                         notificationsData = parseNotifications(latestResult.data);
+                    } else {
+                         console.error('❌ [NotificationsDisplay] Failed to load:', latestResult.reason);
+                    }
+               } else {
+                    const typeResult = await getNotificationsByType(typeToLoad, { page: 1, pageSize: 20 });
+                    if (typeResult.ok) {
+                         notificationsData = parseNotifications(typeResult.data ?? typeResult.raw);
+                    } else {
+                         console.error('❌ [NotificationsDisplay] Failed to load by type:', typeResult.reason);
+                    }
+               }
+
+               const enrichedNotifications = await enrichNotificationsWithActors(notificationsData);
+               setNotifications(enrichedNotifications);
           } catch (error) {
-               console.error('Error loading notifications:', error);
+               console.error('❌ [NotificationsDisplay] Error loading notifications:', error);
           } finally {
                setLoading(false);
           }
-     };
+     }, [activeType]);
 
-     const handleMarkAsRead = async (userNotificationId) => {
+     useEffect(() => {
+          loadNotifications(activeType);
+          fetchUnreadCount();
+     }, [userId, activeType, loadNotifications, fetchUnreadCount]);
+
+     const handleMarkAsRead = async (notificationId) => {
           try {
-               await markNotificationAsRead(userNotificationId);
-               loadNotifications();
+               const result = await markNotificationAsRead(notificationId);
+               if (result.ok) {
+                    await Promise.all([loadNotifications(), fetchUnreadCount()]);
+               } else {
+                    console.error('Error marking notification as read:', result.reason);
+               }
           } catch (error) {
                console.error('Error marking notification as read:', error);
           }
@@ -48,11 +257,116 @@ export default function NotificationsDisplay({ userId, className = "" }) {
 
      const handleMarkAllAsRead = async () => {
           try {
-               await markAllNotificationsAsRead(userId);
-               loadNotifications();
+               const result = await markAllNotificationsAsRead();
+               if (result.ok) {
+                    await Promise.all([loadNotifications(), fetchUnreadCount()]);
+               } else {
+                    console.error('Error marking all notifications as read:', result.reason);
+               }
           } catch (error) {
                console.error('Error marking all notifications as read:', error);
           }
+     };
+
+     const handleDeleteNotification = async (notificationId, messagePreview = "") => {
+          if (!notificationId) return;
+          if (!window.confirm(`Bạn có chắc muốn xóa thông báo "${messagePreview || notificationId}"?`)) {
+               return;
+          }
+          try {
+               setIsDeleting(true);
+               const result = await deleteNotification(notificationId);
+               if (result.ok) {
+                    await Promise.all([loadNotifications(), fetchUnreadCount()]);
+               } else {
+                    alert(result.reason || "Không thể xóa thông báo");
+               }
+          } catch (error) {
+               console.error("Error deleting notification:", error);
+               alert("Có lỗi xảy ra khi xóa thông báo");
+          } finally {
+               setIsDeleting(false);
+          }
+     };
+
+     // Xử lý xóa nội dung bị báo cáo (bài viết/comment) - cho component chính
+     const handleDeleteReportedContentMain = async (notification) => {
+          const targetId = notification.targetId || notification.targetID || notification.TargetId;
+          const message = notification.message || "";
+          const notificationId = notification.id || notification.notificationId || notification.userNotificationId;
+          
+          // Xác định targetType từ message
+          const isPost = message.toLowerCase().includes("bài viết");
+          const isComment = message.toLowerCase().includes("bình luận");
+          
+          if (!targetId) {
+               alert('Không tìm thấy ID nội dung cần xóa.');
+               return;
+          }
+
+          if (!window.confirm(
+               isPost 
+                    ? 'Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.'
+                    : 'Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác.'
+          )) {
+               return;
+          }
+
+          try {
+               setIsDeleting(true);
+               if (isPost) {
+                    await deletePost(targetId);
+               } else if (isComment) {
+                    await deleteComment(targetId);
+               } else {
+                    throw new Error('Không xác định được loại nội dung cần xóa');
+               }
+
+               // Sau khi xóa thành công, đánh dấu thông báo là đã đọc để phản ánh đã xử lý
+               if (notificationId) {
+                    try {
+                         await markNotificationAsRead(notificationId);
+                    } catch (notifError) {
+                         console.error('Error marking notification as read:', notifError);
+                         // Tiếp tục dù có lỗi khi đánh dấu đã đọc
+                    }
+               }
+
+               alert(isPost ? 'Bài viết đã được xóa thành công.' : 'Bình luận đã được xóa thành công.');
+               await Promise.all([loadNotifications(), fetchUnreadCount()]);
+          } catch (error) {
+               console.error('Error deleting content:', error);
+               alert(error.message || 'Không thể xóa nội dung. Vui lòng thử lại.');
+          } finally {
+               setIsDeleting(false);
+          }
+     };
+
+     const handleDeleteAllNotifications = async () => {
+          if (!notifications.length) return;
+          if (!window.confirm("Bạn có chắc muốn xóa toàn bộ thông báo?")) {
+               return;
+          }
+          try {
+               setIsDeleting(true);
+               const result = await deleteAllNotifications();
+               if (result.ok) {
+                    await Promise.all([loadNotifications(), fetchUnreadCount()]);
+                    alert("Đã xóa toàn bộ thông báo");
+               } else {
+                    alert(result.reason || "Không thể xóa toàn bộ thông báo");
+               }
+          } catch (error) {
+               console.error("Error deleting all notifications:", error);
+               alert("Có lỗi xảy ra khi xóa toàn bộ thông báo");
+          } finally {
+               setIsDeleting(false);
+          }
+     };
+
+     const handleTypeChange = (type) => {
+          setActiveType(type);
+          setShowAll(false);
      };
 
      const getNotificationIcon = (type, priority) => {
@@ -60,7 +374,11 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                cancellation: "❌",
                maintenance: "🔧",
                update: "📢",
-               promotion: "🎉"
+               promotion: "🎉",
+               System: "📢",
+               Comment: "💬",
+               Like: "👍",
+               ReportResult: "📋"
           };
           return iconMap[type] || "📢";
      };
@@ -76,19 +394,18 @@ export default function NotificationsDisplay({ userId, className = "" }) {
      };
 
      const formatDate = (dateString) => {
-          const date = new Date(dateString);
-          const now = new Date();
-          const diffInHours = (now - date) / (1000 * 60 * 60);
+          if (!dateString) return "Vừa xong";
 
-          if (diffInHours < 1) {
-               return "Vừa xong";
-          } else if (diffInHours < 24) {
-               return `${Math.floor(diffInHours)} giờ trước`;
-          } else if (diffInHours < 48) {
-               return "Hôm qua";
-          } else {
-               return date.toLocaleDateString("vi-VN");
-          }
+          const date = new Date(dateString);
+          // Format: HH:mm:ss DD/MM/YYYY
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          const seconds = String(date.getSeconds()).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
+
+          return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
      };
 
      const displayedNotifications = showAll ? notifications : notifications.slice(0, 5);
@@ -118,6 +435,18 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                               )}
                          </div>
                          <div className="flex items-center gap-2">
+                              {notifications.length > 0 && (
+                                   <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleDeleteAllNotifications}
+                                        className="text-xs"
+                                        disabled={isDeleting}
+                                   >
+                                        <Trash2 className="w-3 h-3 mr-1" />
+                                        Xóa tất cả
+                                   </Button>
+                              )}
                               {unreadCount > 0 && (
                                    <Button
                                         variant="outline"
@@ -150,6 +479,21 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                          </div>
                     </div>
 
+                    <div className="flex flex-wrap gap-2">
+                         {NOTIFICATION_TYPES.map((type) => (
+                              <Button
+                                   key={type.value}
+                                   variant={activeType === type.value ? "default" : "outline"}
+                                   size="sm"
+                                   onClick={() => handleTypeChange(type.value)}
+                                   className={`text-xs ${activeType === type.value ? "bg-blue-600 text-white" : ""}`}
+                              >
+                                   {type.value === "all" && <Filter className="w-3 h-3 mr-1" />}
+                                   {type.label}
+                              </Button>
+                         ))}
+                    </div>
+
                     {notifications.length === 0 ? (
                          <div className="text-center py-8">
                               <Bell className="w-12 h-12 text-gray-400 mx-auto mb-2" />
@@ -157,63 +501,103 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                          </div>
                     ) : (
                          <div className="space-y-3">
-                              {displayedNotifications.map((notification) => (
-                                   <div
-                                        key={notification.userNotificationId}
-                                        className={`p-3 rounded-lg border ${notification.isRead
-                                             ? "bg-gray-50 border-gray-200"
-                                             : "bg-blue-50 border-blue-200"
-                                             }`}
-                                   >
-                                        <div className="flex items-start gap-3">
-                                             <span className="text-lg flex-shrink-0">
-                                                  {getNotificationIcon(notification.type, notification.priority)}
-                                             </span>
-                                             <div className="flex-1 min-w-0">
-                                                  <div className="flex items-start justify-between mb-1">
-                                                       <h4 className={`font-medium text-sm ${notification.isRead ? "text-gray-900" : "text-blue-900"
+                              {displayedNotifications.map((notification) => {
+                                   const notificationId = notification.id || notification.notificationId || notification.userNotificationId;
+                                   const receivedAt = notification.receivedAt || notification.createdAt || notification.sentAt;
+                                   const messageText = formatNotificationMessage(notification);
+                                   return (
+                                        <div
+                                             key={notificationId}
+                                             className={`p-3 rounded-lg border ${notification.isRead
+                                                  ? "bg-gray-50 border-gray-200"
+                                                  : "bg-blue-50 border-blue-200"
+                                                  }`}
+                                        >
+                                             <div className="flex items-start gap-3">
+                                                  <span className="text-lg flex-shrink-0">
+                                                       {getNotificationIcon(notification.type, notification.priority)}
+                                                  </span>
+                                                  <div className="flex-1 min-w-0">
+                                                       <div className="flex items-start justify-between mb-1">
+                                                            <h4 className={`font-medium text-sm ${notification.isRead ? "text-gray-900" : "text-blue-900"
+                                                                 }`}>
+                                                                 {notification.title || notification.message?.substring(0, 50) || "Thông báo"}
+                                                            </h4>
+                                                            <div className="flex items-center gap-1 ml-2">
+                                                                 {notification.priority && (
+                                                                      <Badge className={`text-xs ${getPriorityColor(notification.priority)}`}>
+                                                                           {notification.priority === 'urgent' ? 'Khẩn cấp' :
+                                                                                notification.priority === 'high' ? 'Cao' :
+                                                                                     notification.priority === 'medium' ? 'Trung bình' : 'Thấp'}
+                                                                      </Badge>
+                                                                 )}
+                                                                 {!notification.isRead && (
+                                                                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                                                                 )}
+                                                            </div>
+                                                       </div>
+
+                                                       <p className={`text-xs mb-2 ${notification.isRead ? "text-gray-600" : "text-blue-700"
                                                             }`}>
-                                                            {notification.title}
-                                                       </h4>
-                                                       <div className="flex items-center gap-1 ml-2">
-                                                            <Badge className={`text-xs ${getPriorityColor(notification.priority)}`}>
-                                                                 {notification.priority === 'urgent' ? 'Khẩn cấp' :
-                                                                      notification.priority === 'high' ? 'Cao' :
-                                                                           notification.priority === 'medium' ? 'Trung bình' : 'Thấp'}
-                                                            </Badge>
-                                                            {!notification.isRead && (
-                                                                 <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                                                            )}
-                                                       </div>
-                                                  </div>
-
-                                                  <p className={`text-xs mb-2 ${notification.isRead ? "text-gray-600" : "text-blue-700"
-                                                       }`}>
-                                                       {notification.message}
-                                                  </p>
-
-                                                  <div className="flex items-center justify-between">
-                                                       <div className="flex items-center gap-1 text-xs text-gray-500">
-                                                            <Clock className="w-3 h-3" />
-                                                            <span>{formatDate(notification.receivedAt)}</span>
-                                                       </div>
-
-                                                       {!notification.isRead && (
-                                                            <Button
-                                                                 variant="outline"
-                                                                 size="sm"
-                                                                 onClick={() => handleMarkAsRead(notification.userNotificationId)}
-                                                                 className="text-xs"
-                                                            >
-                                                                 <CheckCircle className="w-3 h-3 mr-1" />
-                                                                 Đã đọc
-                                                            </Button>
+                                                            {messageText}
+                                                       </p>
+                                                       {notification.commentContent && (
+                                                            <p className="text-xs text-gray-500 italic mb-2 line-clamp-2">
+                                                                 “{notification.commentContent}”
+                                                            </p>
                                                        )}
+
+                                                       <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                                                                 <Clock className="w-3 h-3" />
+                                                                 <span>{receivedAt ? formatDate(receivedAt) : "Vừa xong"}</span>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2">
+                                                                 {!notification.isRead && (
+                                                                      <Button
+                                                                           variant="outline"
+                                                                           size="sm"
+                                                                           onClick={() => handleMarkAsRead(notificationId)}
+                                                                           className="text-xs border-teal-500 text-teal-600 hover:bg-teal-50 font-medium"
+                                                                      >
+                                                                           <CheckCircle className="w-3 h-3 mr-1" />
+                                                                           Đã đọc
+                                                                      </Button>
+                                                                 )}
+                                                                 {/* Button xóa nội dung nếu là thông báo yêu cầu xóa */}
+                                                                 {notification.type === "ReportResult" && 
+                                                                  notification.message && 
+                                                                  notification.message.includes("yêu cầu xóa") && (
+                                                                      <Button
+                                                                           variant="outline"
+                                                                           size="sm"
+                                                                           onClick={() => handleDeleteReportedContentMain(notification)}
+                                                                           className="text-xs border-red-500 text-red-600 hover:bg-red-50 font-medium"
+                                                                           disabled={isDeleting}
+                                                                      >
+                                                                           <Trash2 className="w-3 h-3 mr-1" />
+                                                                           Xóa
+                                                                      </Button>
+                                                                 )}
+                                                                 {/* Button xóa thông báo */}
+                                                                 <Button
+                                                                      variant="ghost"
+                                                                      size="sm"
+                                                                      className="text-xs text-red-500 hover:text-red-600"
+                                                                      onClick={() => handleDeleteNotification(notificationId, notification.message)}
+                                                                      disabled={isDeleting}
+                                                                 >
+                                                                      <Trash2 className="w-3 h-3 mr-1" />
+                                                                      Xóa TB
+                                                                 </Button>
+                                                            </div>
+                                                       </div>
                                                   </div>
                                              </div>
                                         </div>
-                                   </div>
-                              ))}
+                                   );
+                              })}
                          </div>
                     )}
 
@@ -237,28 +621,52 @@ export default function NotificationsDisplay({ userId, className = "" }) {
 // Component for notification bell icon with count
 export function NotificationBell({ userId, onClick, className = "" }) {
      const [unreadCount, setUnreadCount] = useState(0);
+     const [loading, setLoading] = useState(true);
 
      useEffect(() => {
           const loadUnreadCount = async () => {
                try {
-                    const notifications = await fetchUserNotifications(userId);
-                    const count = notifications.filter(n => !n.isRead).length;
-                    setUnreadCount(count);
+                    setLoading(true);
+                    const result = await getUnreadCount();
+
+                    if (result.ok) {
+                         // Try multiple possible response formats
+                         const count = result.count || result.data?.count || result.data?.unreadCount || result.data || 0;
+                         setUnreadCount(Number(count) || 0);
+                    } else {
+                         setUnreadCount(0);
+                    }
                } catch (error) {
-                    console.error('Error loading unread count:', error);
+                    setUnreadCount(0);
+               } finally {
+                    setLoading(false);
                }
           };
 
           loadUnreadCount();
+          // Refresh count more frequently for better UX
+          const interval = setInterval(loadUnreadCount, 15000); // Every 15 seconds
+          return () => clearInterval(interval);
      }, [userId]);
 
      return (
-          <div className={`relative ${className}`} onClick={onClick}>
-               <Bell className="w-6 h-6 text-gray-600 hover:text-gray-900 cursor-pointer" />
-               {unreadCount > 0 && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                         {unreadCount > 9 ? "9+" : unreadCount}
-                    </div>
+          <div
+               className={`relative cursor-pointer transition-all duration-200 hover:scale-110 ${className}`}
+               onClick={onClick}
+               style={{ overflow: 'visible' }}
+          >
+               <Bell className={`w-6 h-6 transition-colors ${unreadCount > 0 ? 'text-teal-600' : 'text-gray-600'} hover:text-teal-700`} />
+               {!loading && unreadCount > 0 && (
+                    <span
+                         className="absolute -top-1 -right-0.5 min-w-[12px] h-4 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1 shadow-lg border border-white"
+                         style={{
+                              zIndex: 9999,
+                              lineHeight: '1',
+                              pointerEvents: 'none'
+                         }}
+                    >
+                         {unreadCount > 99 ? "99+" : String(unreadCount)}
+                    </span>
                )}
           </div>
      );
@@ -268,18 +676,39 @@ export function NotificationBell({ userId, onClick, className = "" }) {
 export function NotificationDropdown({ userId, isOpen, onClose, className = "" }) {
      const [notifications, setNotifications] = useState([]);
      const [loading, setLoading] = useState(false);
+     const [unreadCount, setUnreadCount] = useState(0);
+     const [isDeleting, setIsDeleting] = useState(false);
 
      useEffect(() => {
           if (isOpen) {
-               loadNotifications();
+               loadDropdownNotifications();
+               loadDropdownUnreadCount();
           }
      }, [isOpen, userId]);
 
-     const loadNotifications = async () => {
+     const loadDropdownUnreadCount = async () => {
+          try {
+               const result = await getUnreadCount();
+               if (result.ok) {
+                    setUnreadCount(result.count || 0);
+               }
+          } catch (error) {
+               console.error('Error loading unread count:', error);
+          }
+     };
+
+     const loadDropdownNotifications = async () => {
           try {
                setLoading(true);
-               const notificationsData = await fetchUserNotifications(userId);
-               setNotifications(notificationsData.slice(0, 10)); // Show only latest 10
+               const result = await getLatestNotifications(10);
+               if (result.ok) {
+                    const notificationsData = Array.isArray(result.data)
+                         ? result.data
+                         : result.data?.notifications || result.data?.data || [];
+                    const enrichedNotifications = await enrichNotificationsWithActors(notificationsData);
+                    setNotifications(enrichedNotifications);
+                    setUnreadCount(enrichedNotifications.filter(n => !n.isRead).length);
+               }
           } catch (error) {
                console.error('Error loading notifications:', error);
           } finally {
@@ -287,10 +716,15 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
           }
      };
 
-     const handleMarkAsRead = async (userNotificationId) => {
+     const handleMarkAsRead = async (notificationId) => {
           try {
-               await markNotificationAsRead(userNotificationId);
-               loadNotifications();
+               const result = await markNotificationAsRead(notificationId);
+               if (result.ok) {
+                    await loadDropdownNotifications();
+                    await loadDropdownUnreadCount();
+               } else {
+                    console.error('Error marking notification as read:', result.reason);
+               }
           } catch (error) {
                console.error('Error marking notification as read:', error);
           }
@@ -298,34 +732,209 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
 
      const handleMarkAllAsRead = async () => {
           try {
-               await markAllNotificationsAsRead(userId);
-               loadNotifications();
+               const result = await markAllNotificationsAsRead();
+               if (result.ok) {
+                    await loadDropdownNotifications();
+                    await loadDropdownUnreadCount();
+               } else {
+                    console.error('Error marking all notifications as read:', result.reason);
+               }
           } catch (error) {
                console.error('Error marking all notifications as read:', error);
           }
      };
 
+     const handleDeleteNotification = async (notificationId, messagePreview = "") => {
+          if (!notificationId) return;
+          if (!window.confirm(`Bạn có chắc muốn xóa thông báo "${messagePreview || notificationId}"?`)) {
+               return;
+          }
+          try {
+               setIsDeleting(true);
+               const result = await deleteNotification(notificationId);
+               if (result.ok) {
+                    await Promise.all([loadDropdownNotifications(), loadDropdownUnreadCount()]);
+               } else {
+                    alert(result.reason || "Không thể xóa thông báo");
+               }
+          } catch (error) {
+               console.error("Error deleting notification:", error);
+               alert("Có lỗi xảy ra khi xóa thông báo");
+          } finally {
+               setIsDeleting(false);
+          }
+     };
+
+     // Xử lý xóa nội dung bị báo cáo (bài viết/comment)
+     const handleDeleteReportedContent = async (notification) => {
+          const targetId = notification.targetId || notification.targetID || notification.TargetId;
+          const message = notification.message || "";
+          const notificationId = notification.id || notification.notificationId || notification.userNotificationId;
+          
+          // Xác định targetType từ message
+          const isPost = message.toLowerCase().includes("bài viết");
+          const isComment = message.toLowerCase().includes("bình luận");
+          
+          if (!targetId) {
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Không tìm thấy ID nội dung cần xóa.',
+                    confirmButtonText: 'Đã hiểu'
+               });
+               return;
+          }
+
+          const result = await Swal.fire({
+               title: 'Xác nhận xóa?',
+               text: isPost 
+                    ? 'Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.'
+                    : 'Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác.',
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (result.isConfirmed) {
+               try {
+                    Swal.fire({
+                         title: 'Đang xóa...',
+                         allowOutsideClick: false,
+                         didOpen: () => {
+                              Swal.showLoading();
+                         }
+                    });
+
+                    if (isPost) {
+                         await deletePost(targetId);
+                    } else if (isComment) {
+                         await deleteComment(targetId);
+                    } else {
+                         throw new Error('Không xác định được loại nội dung cần xóa');
+                    }
+
+                    // Sau khi xóa thành công, đánh dấu thông báo là đã đọc để phản ánh đã xử lý
+                    if (notificationId) {
+                         try {
+                              await markNotificationAsRead(notificationId);
+                         } catch (notifError) {
+                              console.error('Error marking notification as read:', notifError);
+                              // Tiếp tục dù có lỗi khi đánh dấu đã đọc
+                         }
+                    }
+
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đã xóa!',
+                         text: isPost ? 'Bài viết đã được xóa thành công.' : 'Bình luận đã được xóa thành công.',
+                         timer: 2000,
+                         showConfirmButton: false
+                    });
+
+                    // Reload notifications
+                    await loadDropdownNotifications();
+                    await loadDropdownUnreadCount();
+               } catch (error) {
+                    console.error('Error deleting content:', error);
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: error.message || 'Không thể xóa nội dung. Vui lòng thử lại.',
+                         confirmButtonText: 'Đã hiểu'
+                    });
+               }
+          }
+     };
+
+     const handleDeleteAllNotifications = async () => {
+          if (!notifications.length) return;
+          if (!window.confirm("Bạn có chắc muốn xóa toàn bộ thông báo?")) {
+               return;
+          }
+          try {
+               setIsDeleting(true);
+               const result = await deleteAllNotifications();
+               if (result.ok) {
+                    await Promise.all([loadDropdownNotifications(), loadDropdownUnreadCount()]);
+                    alert("Đã xóa toàn bộ thông báo");
+               } else {
+                    alert(result.reason || "Không thể xóa toàn bộ thông báo");
+               }
+          } catch (error) {
+               console.error("Error deleting all notifications:", error);
+               alert("Có lỗi xảy ra khi xóa toàn bộ thông báo");
+          } finally {
+               setIsDeleting(false);
+          }
+     };
+
+     const formatDate = (dateString) => {
+          if (!dateString) return "Vừa xong";
+
+          const date = new Date(dateString);
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          const seconds = String(date.getSeconds()).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
+
+          return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
+     };
+
+     const getNotificationIcon = (type) => {
+          const iconMap = {
+               cancellation: "❌",
+               maintenance: "🔧",
+               update: "📢",
+               promotion: "🎉",
+               System: "📢",
+               Comment: "💬",
+               Like: "👍",
+               ReportResult: "📋"
+          };
+          return iconMap[type] || "📢";
+     };
+
      if (!isOpen) return null;
 
      return (
-          <div className={`absolute right-0 top-full mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 ${className}`}>
-               <div className="p-4 border-b border-gray-200">
+          <div className={`absolute right-0 top-full mt-2 w-96 bg-white border-2 border-teal-200 rounded-2xl shadow-2xl z-50 overflow-hidden ${className}`}>
+               {/* Header */}
+               <div className="p-4 border-b-2 border-teal-100 bg-gradient-to-r from-teal-50 to-white">
                     <div className="flex items-center justify-between">
-                         <h3 className="font-semibold text-gray-900">Thông báo</h3>
+                         <h3 className="font-bold text-lg text-gray-900">Thông báo</h3>
                          <div className="flex items-center gap-2">
-                              <Button
-                                   variant="outline"
-                                   size="sm"
-                                   onClick={handleMarkAllAsRead}
-                                   className="text-xs"
-                              >
-                                   Đọc tất cả
-                              </Button>
+                              {notifications.length > 0 && (
+                                   <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleDeleteAllNotifications}
+                                        className="text-xs border-red-200 rounded-2xl text-red-500 hover:bg-red-50 font-medium"
+                                        disabled={isDeleting}
+                                   >
+                                        <Trash2 className="w-3 h-3 mr-1" />
+                                        Xóa tất cả
+                                   </Button>
+                              )}
+                              {unreadCount > 0 && (
+                                   <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleMarkAllAsRead}
+                                        className="text-xs border-teal-500 rounded-2xl text-teal-600 hover:bg-teal-50 font-medium"
+                                   >
+                                        Đọc tất cả
+                                   </Button>
+                              )}
                               <Button
                                    variant="outline"
                                    size="sm"
                                    onClick={onClose}
-                                   className="text-xs"
+                                   className="text-xs border-teal-200 rounded-2xl hover:bg-teal-50 hover:text-teal-600 p-1.5 h-7 w-7"
                               >
                                    <X className="w-3 h-3" />
                               </Button>
@@ -333,75 +942,121 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                     </div>
                </div>
 
-               <div className="max-h-96 overflow-y-auto">
+               {/* Notifications List */}
+               <div className="max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-teal-200 scrollbar-track-gray-100">
                     {loading ? (
-                         <div className="flex items-center justify-center py-8">
-                              <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-200 border-t-blue-600"></div>
-                              <span className="ml-3 text-gray-600">Đang tải...</span>
+                         <div className="flex items-center justify-center py-12">
+                              <div className="text-center">
+                                   <div className="animate-spin rounded-full h-8 w-8 border-2 border-teal-200 border-t-teal-600 mx-auto mb-2"></div>
+                                   <p className="text-sm text-gray-600">Đang tải...</p>
+                              </div>
                          </div>
                     ) : notifications.length === 0 ? (
-                         <div className="text-center py-8">
-                              <Bell className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                              <p className="text-gray-500 text-sm">Chưa có thông báo nào</p>
+                         <div className="text-center py-12">
+                              <Bell className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                              <p className="text-sm text-gray-500">Chưa có thông báo nào</p>
                          </div>
                     ) : (
-                         <div className="divide-y divide-gray-200">
-                              {notifications.map((notification) => (
-                                   <div
-                                        key={notification.userNotificationId}
-                                        className={`p-3 hover:bg-gray-50 ${!notification.isRead ? "bg-blue-50" : ""
-                                             }`}
-                                   >
-                                        <div className="flex items-start gap-3">
-                                             <span className="text-lg flex-shrink-0">
-                                                  {notification.type === 'cancellation' ? '❌' :
-                                                       notification.type === 'maintenance' ? '🔧' :
-                                                            notification.type === 'promotion' ? '🎉' : '📢'}
-                                             </span>
-                                             <div className="flex-1 min-w-0">
-                                                  <div className="flex items-start justify-between mb-1">
-                                                       <h4 className={`font-medium text-sm ${notification.isRead ? "text-gray-900" : "text-blue-900"
-                                                            }`}>
-                                                            {notification.title}
-                                                       </h4>
-                                                       {!notification.isRead && (
-                                                            <div className="w-2 h-2 bg-blue-600 rounded-full ml-2"></div>
-                                                       )}
-                                                  </div>
-                                                  <p className={`text-xs mb-2 ${notification.isRead ? "text-gray-600" : "text-blue-700"
-                                                       }`}>
-                                                       {notification.message}
-                                                  </p>
-                                                  <div className="flex items-center justify-between">
-                                                       <span className="text-xs text-gray-500">
-                                                            {new Date(notification.receivedAt).toLocaleString("vi-VN")}
-                                                       </span>
-                                                       {!notification.isRead && (
-                                                            <Button
-                                                                 variant="outline"
-                                                                 size="sm"
-                                                                 onClick={() => handleMarkAsRead(notification.userNotificationId)}
-                                                                 className="text-xs"
-                                                            >
-                                                                 Đã đọc
-                                                            </Button>
-                                                       )}
+                         <div className="divide-y divide-gray-100">
+                              {notifications.map((notification) => {
+                                   const notificationId = notification.id || notification.notificationId || notification.userNotificationId;
+                                   const receivedAt = notification.receivedAt || notification.createdAt || notification.sentAt;
+                                   const isUnread = !notification.isRead;
+                                   const message = formatNotificationMessage(notification);
+
+                                   return (
+                                        <div
+                                             key={notificationId}
+                                             className={`p-3 transition-all duration-200 hover:bg-teal-50 ${isUnread ? "bg-blue-50/50" : "bg-white"
+                                                  }`}
+                                        >
+                                             <div className="flex items-start gap-3">
+                                                  {/* Icon */}
+                                                  <span className="text-2xl border-2 border-teal-200 rounded-full p-2 flex-shrink-0">
+                                                       {getNotificationIcon(notification.type || notification.notificationType)}
+                                                  </span>
+
+                                                  {/* Content */}
+                                                  <div className="flex-1 min-w-0">
+                                                       <div className="flex items-start justify-between mb-1">
+                                                            <div className="flex-1">
+                                                                 <h4 className={`font-bold text-sm ${isUnread ? "text-gray-900" : "text-gray-700"
+                                                                      }`}>
+                                                                      {message.length > 50 ? message.substring(0, 50) + "..." : message}
+                                                                 </h4>
+                                                                 {message.length > 50 && (
+                                                                      <p className={`text-xs ${isUnread ? "text-teal-600" : "text-gray-500"
+                                                                           }`}>
+                                                                           {message}
+                                                                      </p>
+                                                                 )}
+                                                            </div>
+                                                            {isUnread && (
+                                                                 <div className="w-2.5 h-2.5 bg-teal-600 rounded-full ml-2 flex-shrink-0 mt-1"></div>
+                                                            )}
+                                                       </div>
+
+                                                       {/* Timestamp and Action */}
+                                                       <div className="flex items-center justify-between">
+                                                            <span className="text-xs text-gray-500 flex items-center gap-1">
+                                                                 <Clock className="w-3 h-3" />
+                                                                 {formatDate(receivedAt)}
+                                                            </span>
+                                                            <div className="flex items-center gap-2">
+                                                                 {isUnread && (
+                                                                      <Button
+                                                                           variant="outline"
+                                                                           size="sm"
+                                                                           onClick={() => handleMarkAsRead(notificationId)}
+                                                                           className="text-xs border-teal-500 text-teal-600 hover:bg-teal-50 font-medium rounded-2xl"
+                                                                      >
+                                                                           Đọc
+                                                                      </Button>
+                                                                 )}
+                                                                 {/* Button xóa nội dung nếu là thông báo yêu cầu xóa */}
+                                                                 {notification.type === "ReportResult" && 
+                                                                  notification.message && 
+                                                                  notification.message.includes("yêu cầu xóa") && (
+                                                                      <Button
+                                                                           variant="outline"
+                                                                           size="sm"
+                                                                           onClick={() => handleDeleteReportedContent(notification)}
+                                                                           className="text-xs border-red-500 text-red-600 hover:bg-red-50 font-medium rounded-2xl"
+                                                                      >
+                                                                           <Trash2 className="w-3 h-3 mr-1" />
+                                                                           Xóa
+                                                                      </Button>
+                                                                 )}
+                                                                 {/* Button xóa thông báo */}
+                                                                 <Button
+                                                                      variant="ghost"
+                                                                      size="sm"
+                                                                      className="text-xs text-red-500 hover:text-red-600"
+                                                                      onClick={() => handleDeleteNotification(notificationId, notification.message)}
+                                                                      disabled={isDeleting}
+                                                                 >
+                                                                      <Trash2 className="w-3 h-3 mr-1" />
+                                                                      Xóa TB
+                                                                 </Button>
+                                                            </div>
+                                                       </div>
                                                   </div>
                                              </div>
                                         </div>
-                                   </div>
-                              ))}
+                                   );
+                              })}
                          </div>
                     )}
                </div>
 
+               {/* Footer */}
                {notifications.length > 0 && (
-                    <div className="p-3 border-t border-gray-200 text-center">
+                    <div className="p-2 border-t-2  border-teal-100 bg-gradient-to-r from-teal-50 to-white text-center">
                          <Button
                               variant="outline"
                               size="sm"
                               onClick={onClose}
-                              className="text-xs"
+                              className="text-xs border-teal-500 rounded-2xl hover:text-teal-600 text-teal-600 hover:bg-teal-50 font-medium w-full"
                          >
                               Xem tất cả thông báo
                          </Button>

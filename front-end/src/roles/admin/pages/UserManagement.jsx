@@ -11,13 +11,20 @@ import {
      SelectItem,
      SelectTrigger,
      SelectValue,
-     Table,
      Badge,
      Avatar,
      AvatarFallback,
      DatePicker,
      Modal
 } from "../../../shared/components/ui";
+import {
+     Table,
+     TableHeader,
+     TableBody,
+     TableRow,
+     TableHead,
+     TableCell
+} from "../../../shared/components/ui/table";
 import {
      Search,
      Filter,
@@ -31,8 +38,12 @@ import {
      Calendar,
      Users,
      X,
-     Plus
+     Plus,
+     Bell,
+     Send
 } from "lucide-react";
+import { fetchAllUserStatistics } from "../../../shared/services/adminStatistics";
+import { createNotification, createBulkNotifications } from "../../../shared/services/notifications";
 
 export default function UserManagement() {
      const [users, setUsers] = useState([]);
@@ -43,6 +54,15 @@ export default function UserManagement() {
      const [selectedUser, setSelectedUser] = useState(null);
      const [showUserModal, setShowUserModal] = useState(false);
      const [showCreateModal, setShowCreateModal] = useState(false);
+     const [showNotificationModal, setShowNotificationModal] = useState(false);
+     const [loading, setLoading] = useState(false);
+     const [error, setError] = useState(null);
+     const [selectedUsersForNotification, setSelectedUsersForNotification] = useState([]);
+     const [selectedRecipientId, setSelectedRecipientId] = useState("0");
+     const [notificationData, setNotificationData] = useState({
+          type: "System",
+          message: ""
+     });
      const [newUser, setNewUser] = useState({
           email: "",
           fullName: "",
@@ -58,81 +78,52 @@ export default function UserManagement() {
      });
 
      useEffect(() => {
-          // Mock data - trong thực tế sẽ gọi API
-          const mockUsers = [
-               {
-                    id: 1,
-                    email: "user1@example.com",
-                    fullName: "Nguyễn Văn A",
-                    phone: "0123456789",
-                    role: "Player",
-                    status: "Active",
-                    createdAt: "2024-01-15",
-                    lastLogin: "2024-01-20",
-                    avatar: null,
-                    profile: {
-                         dateOfBirth: "1990-05-15",
-                         gender: "Nam",
-                         address: "Hà Nội",
-                         skillLevel: "Intermediate"
-                    }
-               },
-               {
-                    id: 2,
-                    email: "owner1@example.com",
-                    fullName: "Trần Thị B",
-                    phone: "0987654321",
-                    role: "FieldOwner",
-                    status: "Active",
-                    createdAt: "2024-01-10",
-                    lastLogin: "2024-01-19",
-                    avatar: null,
-                    profile: {
-                         dateOfBirth: "1985-03-20",
-                         gender: "Nữ",
-                         address: "TP.HCM",
-                         skillLevel: "Advanced"
-                    }
-               },
-               {
-                    id: 3,
-                    email: "admin@example.com",
-                    fullName: "Lê Văn C",
-                    phone: "0369258147",
-                    role: "Admin",
-                    status: "Active",
-                    createdAt: "2024-01-01",
-                    lastLogin: "2024-01-20",
-                    avatar: null,
-                    profile: {
-                         dateOfBirth: "1980-12-10",
-                         gender: "Nam",
-                         address: "Đà Nẵng",
-                         skillLevel: "Advanced"
-                    }
-               },
-               {
-                    id: 4,
-                    email: "user2@example.com",
-                    fullName: "Phạm Thị D",
-                    phone: "0147258369",
-                    role: "Player",
-                    status: "Suspended",
-                    createdAt: "2024-01-12",
-                    lastLogin: "2024-01-18",
-                    avatar: null,
-                    profile: {
-                         dateOfBirth: "1992-08-25",
-                         gender: "Nữ",
-                         address: "Cần Thơ",
-                         skillLevel: "Beginner"
-                    }
-               }
-          ];
-
-          setUsers(mockUsers);
-          setFilteredUsers(mockUsers);
+          loadUsers();
      }, []);
+
+     const loadUsers = async () => {
+          try {
+               setLoading(true);
+               setError(null);
+               const result = await fetchAllUserStatistics();
+               if (result.ok && result.data) {
+                    // Check if data is an array or needs to be extracted
+                    const usersData = Array.isArray(result.data) ? result.data :
+                         (result.data.users || result.data.data || []);
+                    // Transform API data to match component structure
+                    // API returns: { userId, fullName, email, phone, roleName }
+                    const transformedUsers = usersData.map(user => ({
+                         id: user.userId,
+                         email: user.email,
+                         fullName: user.fullName,
+                         phone: user.phone || "N/A",
+                         role: user.roleName,
+                         status: user.status || "Active",
+                         createdAt: user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : "N/A",
+                         lastLogin: user.lastLogin ? new Date(user.lastLogin).toLocaleDateString('vi-VN') : "N/A",
+                         avatar: user.avatar || null,
+                         profile: {
+                              dateOfBirth: user.dateOfBirth || user.profile?.dateOfBirth || "N/A",
+                              gender: user.gender || user.profile?.gender || "N/A",
+                              address: user.address || user.profile?.address || "N/A",
+                              skillLevel: user.skillLevel || user.profile?.skillLevel || "N/A"
+                         }
+                    }));
+                    console.log("Roles in data:", transformedUsers.map(u => u.role));
+
+                    setUsers(transformedUsers);
+                    setFilteredUsers(transformedUsers);
+               } else {
+                    console.error("API Error:", result);
+                    setError(result.reason || "Không thể tải danh sách người dùng");
+               }
+          } catch (err) {
+               console.error("Error loading users:", err);
+               setError("Đã xảy ra lỗi khi tải danh sách người dùng");
+          } finally {
+               setLoading(false);
+          }
+     };
 
      useEffect(() => {
           let filtered = users;
@@ -148,7 +139,12 @@ export default function UserManagement() {
 
           // Filter by role
           if (roleFilter !== "all") {
-               filtered = filtered.filter(user => user.role === roleFilter);
+               if (roleFilter === "Owner") {
+                    // Support both "Owner" and "FieldOwner"
+                    filtered = filtered.filter(user => user.role === "Owner" || user.role === "FieldOwner");
+               } else {
+                    filtered = filtered.filter(user => user.role === roleFilter);
+               }
           }
 
           // Filter by status
@@ -167,7 +163,6 @@ export default function UserManagement() {
      const handleEditUser = (user) => {
           setSelectedUser(user);
           // Implement edit functionality
-          console.log("Edit user:", user);
      };
 
      const handleCreateUser = () => {
@@ -207,6 +202,84 @@ export default function UserManagement() {
           ));
      };
 
+     const handleSendNotification = (user) => {
+          setSelectedUsersForNotification([user]);
+          setSelectedRecipientId(user.id.toString());
+          setShowNotificationModal(true);
+     };
+
+     const handleSendBulkNotification = () => {
+          setSelectedUsersForNotification(filteredUsers);
+          setSelectedRecipientId("0"); // 0 = gửi cho tất cả
+          setShowNotificationModal(true);
+     };
+
+     const handleOpenNotificationModal = () => {
+          setSelectedUsersForNotification([]);
+          setSelectedRecipientId("0");
+          setShowNotificationModal(true);
+     };
+
+     const handleSubmitNotification = async () => {
+          if (!notificationData.message.trim()) {
+               alert("Vui lòng nhập nội dung thông báo");
+               return;
+          }
+
+          try {
+               setLoading(true);
+               const recipientId = parseInt(selectedRecipientId);
+
+               if (recipientId === 0) {
+                    // Gửi hàng loạt cho tất cả người dùng hiện tại
+                    const usersToSend = selectedUsersForNotification.length > 0
+                         ? selectedUsersForNotification
+                         : filteredUsers;
+
+                    const notifications = usersToSend.map(user => ({
+                         userId: user.id,
+                         type: notificationData.type,
+                         targetId: 0,
+                         message: notificationData.message
+                    }));
+
+                    const result = await createBulkNotifications(notifications);
+
+                    if (result.ok) {
+                         alert(`Gửi thông báo thành công cho ${usersToSend.length} người dùng!`);
+                         setShowNotificationModal(false);
+                         setNotificationData({ type: "System", message: "" });
+                         setSelectedRecipientId("0");
+                    } else {
+                         alert(result.reason || "Không thể gửi thông báo hàng loạt");
+                    }
+               } else {
+                    // Gửi cho 1 người cụ thể
+                    const result = await createNotification({
+                         userId: recipientId,
+                         type: notificationData.type,
+                         targetId: 0,
+                         message: notificationData.message
+                    });
+
+                    if (result.ok) {
+                         const recipient = users.find(u => u.id === recipientId);
+                         alert(`Gửi thông báo thành công cho ${recipient?.fullName || 'người dùng'}!`);
+                         setShowNotificationModal(false);
+                         setNotificationData({ type: "System", message: "" });
+                         setSelectedRecipientId("0");
+                    } else {
+                         alert(result.reason || "Không thể gửi thông báo");
+                    }
+               }
+          } catch (err) {
+               console.error("Error sending notification:", err);
+               alert("Đã xảy ra lỗi khi gửi thông báo");
+          } finally {
+               setLoading(false);
+          }
+     };
+
      const getRoleBadgeVariant = (role) => {
           switch (role) {
                case "Admin":
@@ -223,7 +296,7 @@ export default function UserManagement() {
      const getStatusBadgeVariant = (status) => {
           switch (status) {
                case "Active":
-                    return "default";
+                    return "success";
                case "Suspended":
                     return "destructive";
                case "Inactive":
@@ -231,6 +304,13 @@ export default function UserManagement() {
                default:
                     return "outline";
           }
+     };
+
+     const getStatusBadgeClassName = (status) => {
+          if (status === "Active") {
+               return "bg-green-100 text-green-800 border-green-200 hover:bg-green-200";
+          }
+          return "";
      };
 
      const columns = [
@@ -264,7 +344,10 @@ export default function UserManagement() {
                key: "status",
                label: "Trạng thái",
                render: (user) => (
-                    <Badge variant={getStatusBadgeVariant(user.status)}>
+                    <Badge
+                         variant={getStatusBadgeVariant(user.status)}
+                         className={getStatusBadgeClassName(user.status)}
+                    >
                          {user.status}
                     </Badge>
                )
@@ -299,14 +382,25 @@ export default function UserManagement() {
                               variant="ghost"
                               size="sm"
                               className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                              title="Xem chi tiết"
                          >
                               <Eye className="w-4 h-4" />
+                         </Button>
+                         <Button
+                              onClick={() => handleSendNotification(user)}
+                              variant="ghost"
+                              size="sm"
+                              className="text-orange-600 hover:text-orange-800 hover:bg-orange-50"
+                              title="Gửi thông báo"
+                         >
+                              <Bell className="w-4 h-4" />
                          </Button>
                          <Button
                               onClick={() => handleEditUser(user)}
                               variant="ghost"
                               size="sm"
                               className="text-green-600 hover:text-green-800 hover:bg-green-50"
+                              title="Chỉnh sửa"
                          >
                               <Edit className="w-4 h-4" />
                          </Button>
@@ -315,6 +409,7 @@ export default function UserManagement() {
                               variant="ghost"
                               size="sm"
                               className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                              title="Xóa"
                          >
                               <Trash2 className="w-4 h-4" />
                          </Button>
@@ -371,7 +466,7 @@ export default function UserManagement() {
                                         <SelectContent>
                                              <SelectItem value="all">Tất cả vai trò</SelectItem>
                                              <SelectItem value="Admin">Admin</SelectItem>
-                                             <SelectItem value="FieldOwner">Chủ sân</SelectItem>
+                                             <SelectItem value="Owner">Chủ sân</SelectItem>
                                              <SelectItem value="Player">Người chơi</SelectItem>
                                         </SelectContent>
                                    </Select>
@@ -410,7 +505,7 @@ export default function UserManagement() {
                                    <div>
                                         <p className="text-sm font-medium text-slate-600">Chủ sân</p>
                                         <p className="text-2xl font-bold text-slate-900">
-                                             {users.filter(u => u.role === "FieldOwner").length}
+                                             {users.filter(u => u.role === "FieldOwner" || u.role === "Owner").length}
                                         </p>
                                    </div>
                                    <Shield className="w-8 h-8 text-green-600" />
@@ -452,18 +547,72 @@ export default function UserManagement() {
                               <CardTitle>
                                    Danh sách người dùng ({filteredUsers.length})
                               </CardTitle>
-                              <Button onClick={() => setShowCreateModal(true)}>
-                                   <Plus className="w-4 h-4 mr-2" />
-                                   Thêm người dùng
-                              </Button>
+                              <div className="flex space-x-2">
+                                   <Button
+                                        onClick={handleOpenNotificationModal}
+                                        variant="outline"
+                                        className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                                   >
+                                        <Bell className="w-4 h-4 mr-2" />
+                                        Tạo thông báo
+                                   </Button>
+                                   <Button onClick={() => setShowCreateModal(true)}>
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Thêm người dùng
+                                   </Button>
+                              </div>
                          </div>
                     </CardHeader>
                     <CardContent>
-                         <Table
-                              data={filteredUsers}
-                              columns={columns}
-                              className="w-full"
-                         />
+                         {loading ? (
+                              <div className="flex items-center justify-center py-12">
+                                   <div className="text-center">
+                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+                                        <p className="text-slate-600">Đang tải dữ liệu...</p>
+                                   </div>
+                              </div>
+                         ) : error ? (
+                              <div className="flex items-center justify-center py-12">
+                                   <div className="text-center">
+                                        <div className="text-red-600 mb-4">
+                                             <X className="w-12 h-12 mx-auto" />
+                                        </div>
+                                        <p className="text-slate-900 font-medium mb-2">Lỗi tải dữ liệu</p>
+                                        <p className="text-slate-600 mb-4">{error}</p>
+                                        <Button onClick={loadUsers} variant="outline">
+                                             Thử lại
+                                        </Button>
+                                   </div>
+                              </div>
+                         ) : filteredUsers.length === 0 ? (
+                              <div className="flex items-center justify-center py-12">
+                                   <div className="text-center">
+                                        <Users className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                                        <p className="text-slate-600">Không tìm thấy người dùng nào</p>
+                                   </div>
+                              </div>
+                         ) : (
+                              <Table className="w-full">
+                                   <TableHeader>
+                                        <TableRow>
+                                             {columns.map((column) => (
+                                                  <TableHead key={column.key}>{column.label}</TableHead>
+                                             ))}
+                                        </TableRow>
+                                   </TableHeader>
+                                   <TableBody>
+                                        {filteredUsers.map((user) => (
+                                             <TableRow key={user.id}>
+                                                  {columns.map((column) => (
+                                                       <TableCell key={column.key}>
+                                                            {column.render(user)}
+                                                       </TableCell>
+                                                  ))}
+                                             </TableRow>
+                                        ))}
+                                   </TableBody>
+                              </Table>
+                         )}
                     </CardContent>
                </Card>
 
@@ -626,7 +775,10 @@ export default function UserManagement() {
                                              <Badge variant={getRoleBadgeVariant(selectedUser.role)}>
                                                   {selectedUser.role}
                                              </Badge>
-                                             <Badge variant={getStatusBadgeVariant(selectedUser.status)}>
+                                             <Badge
+                                                  variant={getStatusBadgeVariant(selectedUser.status)}
+                                                  className={getStatusBadgeClassName(selectedUser.status)}
+                                             >
                                                   {selectedUser.status}
                                              </Badge>
                                         </div>
@@ -699,6 +851,207 @@ export default function UserManagement() {
                          </div>
                     )}
                </Modal>
+
+               {/* Notification Modal */}
+               {showNotificationModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                         <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                              <CardHeader className="border-b border-slate-200">
+                                   <div className="flex items-center justify-between">
+                                        <CardTitle className="text-xl font-bold">Tạo thông báo mới</CardTitle>
+                                        <Button
+                                             onClick={() => {
+                                                  setShowNotificationModal(false);
+                                                  setNotificationData({ type: "System", message: "" });
+                                             }}
+                                             variant="ghost"
+                                             size="sm"
+                                        >
+                                             <X className="w-5 h-5" />
+                                        </Button>
+                                   </div>
+                              </CardHeader>
+                              <CardContent className="space-y-5 pt-6">
+                                   {/* Thông tin API */}
+                                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <div className="flex items-start space-x-2">
+                                             <Bell className="w-5 h-5 text-blue-600 mt-0.5" />
+                                             <div className="flex-1">
+                                                  <p className="font-semibold text-blue-900 mb-1">Thông tin API</p>
+                                                  <p className="text-sm text-blue-700">
+                                                       Thông báo sẽ được gửi theo format: userId, type, targetId, message
+                                                  </p>
+                                             </div>
+                                        </div>
+                                   </div>
+
+                                   {/* Nội dung thông báo */}
+                                   <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                             Nội dung thông báo <span className="text-red-500">*</span>
+                                        </label>
+                                        <textarea
+                                             value={notificationData.message}
+                                             onChange={(e) =>
+                                                  setNotificationData({ ...notificationData, message: e.target.value })
+                                             }
+                                             placeholder="Nhập nội dung thông báo... (Ví dụ: Bạn có đặt sân mới, Hệ thống sẽ bảo trì từ 2:00-4:00, ...)"
+                                             className="w-full min-h-[120px] px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none text-sm"
+                                        />
+                                        <p className="text-xs text-slate-500 mt-1">0 ký tự</p>
+                                   </div>
+
+                                   {/* Loại thông báo */}
+                                   <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                             Loại thông báo <span className="text-red-500">*</span>
+                                        </label>
+                                        <Select
+                                             value={notificationData.type}
+                                             onValueChange={(value) =>
+                                                  setNotificationData({ ...notificationData, type: value })
+                                             }
+                                        >
+                                             <SelectTrigger className="w-full">
+                                                  <SelectValue />
+                                             </SelectTrigger>
+                                             <SelectContent>
+                                                  <SelectItem value="System">
+                                                       <div className="flex items-center space-x-2">
+                                                            <span>📢</span>
+                                                            <span>System - Thông báo hệ thống</span>
+                                                       </div>
+                                                  </SelectItem>
+                                                  <SelectItem value="NewComment">
+                                                       <div className="flex items-center space-x-2">
+                                                            <span>💬</span>
+                                                            <span>NewComment - Bình luận mới</span>
+                                                       </div>
+                                                  </SelectItem>
+                                                  <SelectItem value="Reply">
+                                                       <div className="flex items-center space-x-2">
+                                                            <span>↩️</span>
+                                                            <span>Reply - Trả lời</span>
+                                                       </div>
+                                                  </SelectItem>
+                                                  <SelectItem value="Mention">
+                                                       <div className="flex items-center space-x-2">
+                                                            <span>@</span>
+                                                            <span>Mention - Nhắc đến</span>
+                                                       </div>
+                                                  </SelectItem>
+                                                  <SelectItem value="Like">
+                                                       <div className="flex items-center space-x-2">
+                                                            <span>❤️</span>
+                                                            <span>Like - Thích</span>
+                                                       </div>
+                                                  </SelectItem>
+                                                  <SelectItem value="ReportResult">
+                                                       <div className="flex items-center space-x-2">
+                                                            <span>⚠️</span>
+                                                            <span>ReportResult - Kết quả báo cáo</span>
+                                                       </div>
+                                                  </SelectItem>
+                                             </SelectContent>
+                                        </Select>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                             Loại thông báo xác định cách hiển thị và xử lý
+                                        </p>
+                                   </div>
+
+                                   {/* User ID */}
+                                   <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                             User ID (Người nhận)
+                                        </label>
+                                        <Select
+                                             value={selectedRecipientId}
+                                             onValueChange={setSelectedRecipientId}
+                                        >
+                                             <SelectTrigger className="w-full">
+                                                  <SelectValue />
+                                             </SelectTrigger>
+                                             <SelectContent className="max-h-[300px]">
+                                                  <SelectItem value="0">
+                                                       <div className="flex items-center space-x-2">
+                                                            <Users className="w-4 h-4 text-blue-600" />
+                                                            <span className="font-medium">0 = Gửi cho tất cả ({filteredUsers.length} người)</span>
+                                                       </div>
+                                                  </SelectItem>
+                                                  {users.map((user) => (
+                                                       <SelectItem key={user.id} value={user.id.toString()}>
+                                                            <div className="flex items-center space-x-2">
+                                                                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center text-white text-xs font-semibold">
+                                                                      {user.fullName.charAt(0)}
+                                                                 </div>
+                                                                 <div className="flex-1">
+                                                                      <p className="font-medium text-sm">{user.fullName}</p>
+                                                                      <p className="text-xs text-slate-500">{user.email}</p>
+                                                                 </div>
+                                                                 <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
+                                                                      {user.role}
+                                                                 </Badge>
+                                                            </div>
+                                                       </SelectItem>
+                                                  ))}
+                                             </SelectContent>
+                                        </Select>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                             Để trống hoặc nhập 0 để gửi thông báo hệ thống cho tất cả người dùng
+                                        </p>
+                                   </div>
+
+                                   {/* Target ID */}
+                                   <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                             Target ID (ID đối tượng liên quan)
+                                        </label>
+                                        <Input
+                                             value="0"
+                                             disabled
+                                             placeholder="0 = Không áp dụng, >0 = ID của booking/post/comment liên quan"
+                                             className="bg-slate-50"
+                                        />
+                                        <p className="text-xs text-slate-500 mt-1">
+                                             ID của đối tượng liên quan (ví dụ: Booking ID, Post ID, Comment ID)
+                                        </p>
+                                   </div>
+
+                                   {/* Buttons */}
+                                   <div className="flex space-x-3 pt-4 border-t border-slate-200">
+                                        <Button
+                                             onClick={handleSubmitNotification}
+                                             className="flex-1 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700"
+                                             disabled={loading || !notificationData.message.trim()}
+                                        >
+                                             {loading ? (
+                                                  <>
+                                                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                       Đang gửi...
+                                                  </>
+                                             ) : (
+                                                  <>
+                                                       <Send className="w-4 h-4 mr-2" />
+                                                       Gửi thông báo
+                                                  </>
+                                             )}
+                                        </Button>
+                                        <Button
+                                             onClick={() => {
+                                                  setShowNotificationModal(false);
+                                                  setNotificationData({ type: "System", message: "" });
+                                             }}
+                                             variant="outline"
+                                             className="flex-1"
+                                             disabled={loading}
+                                        >
+                                             Hủy
+                                        </Button>
+                                   </div>
+                              </CardContent>
+                         </Card>
+                    </div>
+               )}
           </div>
      );
 }

@@ -89,7 +89,6 @@ export default function SystemSettings() {
 
      useEffect(() => {
           // Mock data - trong thực tế sẽ gọi API để lấy settings
-          console.log("Loading system settings...");
      }, []);
 
      const handleSaveSettings = async (section) => {
@@ -97,9 +96,6 @@ export default function SystemSettings() {
           try {
                // Mock API call
                await new Promise(resolve => setTimeout(resolve, 1000));
-
-               console.log(`Saving ${section} settings:`, settings);
-
                // Show success message
                alert(`${section} settings đã được lưu thành công!`);
 
@@ -132,7 +128,6 @@ export default function SystemSettings() {
      const handleResetSettings = (section) => {
           if (window.confirm(`Bạn có chắc chắn muốn reset ${section} settings về mặc định?`)) {
                // Reset to default values
-               console.log(`Resetting ${section} settings...`);
                alert(`${section} settings đã được reset về mặc định!`);
           }
      };

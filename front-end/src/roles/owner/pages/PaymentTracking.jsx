@@ -1,5 +1,4 @@
 import React from "react";
-import OwnerLayout from "../layouts/OwnerLayout";
 import { useAuth } from "../../../contexts/AuthContext";
 import { Card } from "../../../shared/components/ui";
 import { CreditCard } from "lucide-react";
@@ -8,8 +7,7 @@ export default function PaymentTracking({ isDemo = false }) {
      const { user, logout } = useAuth();
 
      return (
-          <OwnerLayout user={user} onLoggedOut={logout} isDemo={isDemo}>
-               <div className="space-y-6">
+          <div className="space-y-6">
                     <div className="flex items-center justify-between">
                          <div>
                               <h1 className="text-3xl font-bold text-gray-900">Đối soát thanh toán</h1>
@@ -25,8 +23,6 @@ export default function PaymentTracking({ isDemo = false }) {
                          </div>
                     </Card>
                </div>
-          </OwnerLayout>
      );
 }
-
 

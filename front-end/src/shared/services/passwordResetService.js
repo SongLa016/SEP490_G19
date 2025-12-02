@@ -59,20 +59,11 @@ export const passwordResetService = {
   // Send OTP for password reset
   async sendResetOtp(email) {
     try {
-      console.log(
-        "Send Reset OTP API URL:",
-        "https://sep490-g19-zxph.onrender.com/api/ResertPass/send-otp"
-      );
-      console.log("Send Reset OTP data:", { email });
-
       const response = await apiClient.post(
         "https://sep490-g19-zxph.onrender.com/api/ResertPass/send-otp",
         {
         email: email,
       });
-
-      console.log("Send Reset OTP response:", response.data);
-
       return {
         ok: true,
         data: response.data,
@@ -91,20 +82,11 @@ export const passwordResetService = {
   // Verify OTP for password reset
   async verifyResetOtp(otp) {
     try {
-      console.log(
-        "Verify Reset OTP API URL:",
-        "https://sep490-g19-zxph.onrender.com/api/ResertPass/verify-otp"
-      );
-      console.log("Verify Reset OTP data:", { otp });
-
       const response = await apiClient.post(
         "https://sep490-g19-zxph.onrender.com/api/ResertPass/verify-otp",
         {
         otp: otp,
       });
-
-      console.log("Verify Reset OTP response:", response.data);
-
       return {
         ok: true,
         data: response.data,

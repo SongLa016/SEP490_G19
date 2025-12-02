@@ -4,13 +4,23 @@ import { useNavigate } from "react-router-dom";
 import Lenis from "lenis";
 import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, QuickBookingSection, CommunityMatchmakingSection, UserReviewsSection, CancellationPoliciesSection, MobileAppSection, WhyChooseUsSection, NewsletterSection, CTASection } from "./components";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
+import { fetchTopBookingFields, fetchFieldComplex, fetchFieldDetail } from "../../../../shared/services/fields";
+
+const HOMEPAGE_LOCATION_OPTIONS = [
+     { value: "quan1", label: "Quận Hoàn Kiếm", query: "Quận Hoàn Kiếm" },
+     { value: "quan3", label: "Quận Ba Đình", query: "Quận Ba Đình" },
+     { value: "quan7", label: "Quận Đống Đa", query: "Quận Đống Đa" },
+     { value: "quan10", label: "Quận 10 (TP.HCM)", query: "Quận 10" },
+];
 
 export default function HomePage({ user }) {
      const navigate = useNavigate();
      const [searchQuery, setSearchQuery] = useState("");
-     const [selectedLocation, setSelectedLocation] = useState("all");
-     const [selectedPrice, setSelectedPrice] = useState("all");
+     const [selectedLocation, setSelectedLocation] = useState("");
+     const [selectedPrice, setSelectedPrice] = useState("");
      const [hoveredCardId, setHoveredCardId] = useState(null);
+     const [topBookingFields, setTopBookingFields] = useState([]);
+     const [loadingTopFields, setLoadingTopFields] = useState(true);
 
      // ============================================
      // KHAI BÁO CÁC THAM SỐ VÀ STATE CHO HORIZONTAL SCROLL
@@ -520,7 +530,68 @@ export default function HomePage({ user }) {
           };
      }, [componentCount, componentGap, componentWidth, detailZoom, overviewHoldThreshold, overviewFocusThreshold, overviewZoom, overviewFocusZoom, canvasPhaseDuration]);
 
-     // Mock data for featured fields
+     // Fetch top booking fields from API
+     useEffect(() => {
+          const loadTopBookingFields = async () => {
+               try {
+                    setLoadingTopFields(true);
+                    const data = await fetchTopBookingFields();
+                    
+                    // Lấy địa chỉ từ complex cho mỗi field
+                    const mappedFields = await Promise.all(
+                         data.map(async (item) => {
+                              let location = "Đang cập nhật";
+                              let complexId = item.complexId;
+                              
+                              // Nếu không có complexId trong response, lấy từ field detail
+                              if (!complexId && item.fieldId) {
+                                   try {
+                                        const fieldDetail = await fetchFieldDetail(item.fieldId);
+                                        if (fieldDetail && fieldDetail.complexId) {
+                                             complexId = fieldDetail.complexId;
+                                        }
+                                   } catch (error) {
+                                        console.error(`Error loading field detail ${item.fieldId}:`, error);
+                                   }
+                              }
+                              
+                              // Lấy địa chỉ từ complex
+                              if (complexId) {
+                                   try {
+                                        const complex = await fetchFieldComplex(complexId);
+                                        if (complex && complex.address) {
+                                             location = complex.address;
+                                        }
+                                   } catch (error) {
+                                        console.error(`Error loading complex ${complexId}:`, error);
+                                   }
+                              }
+                              
+                              return {
+                                   id: item.fieldId,
+                                   name: item.fieldName || "Sân bóng",
+                                   location: location,
+                                   price: "Liên hệ",
+                                   rating: 4.5,
+                                   mainImageUrl: item.imageUrl || null,
+                                   amenities: [],
+                                   availableSlots: item.totalBookings || 0
+                              };
+                         })
+                    );
+                    
+                    setTopBookingFields(mappedFields);
+               } catch (error) {
+                    console.error("Error loading top booking fields:", error);
+                    setTopBookingFields([]);
+               } finally {
+                    setLoadingTopFields(false);
+               }
+          };
+          loadTopBookingFields();
+     }, []);
+
+     // Mock data for featured fields (used in QuickCategoriesSection)
      const featuredFields = [
           {
                id: 1,
@@ -606,16 +677,14 @@ export default function HomePage({ user }) {
 
      const handleSearch = () => {
           try {
-               const locationMap = {
-                    quan1: "Quận Hoàn Kiếm",
-                    quan3: "Quận Ba Đình",
-                    quan7: "Quận Đống Đa",
-                    quan10: "Quận Hoàn Kiếm0",
-               };
+               const locationFilter = selectedLocation
+                    ? (HOMEPAGE_LOCATION_OPTIONS.find((opt) => opt.value === selectedLocation)?.query || "")
+                    : "";
+               const normalizedPrice = selectedPrice && selectedPrice !== "all" ? selectedPrice : "";
                const preset = {
-                    searchQuery: searchQuery || "",
-                    selectedLocation: selectedLocation ? (locationMap[selectedLocation] || "") : "",
-                    selectedPrice: selectedPrice || "",
+                    searchQuery: (searchQuery || "").trim(),
+                    selectedLocation: locationFilter,
+                    selectedPrice: normalizedPrice,
                     sortBy: "relevance",
                };
                window.localStorage.setItem("searchPreset", JSON.stringify(preset));
@@ -632,16 +701,19 @@ export default function HomePage({ user }) {
                     setSelectedLocation={setSelectedLocation}
                     selectedPrice={selectedPrice}
                     setSelectedPrice={setSelectedPrice}
+                    locationOptions={HOMEPAGE_LOCATION_OPTIONS}
                     onSearch={handleSearch}
                />
 
                <StatsSection />
                <QuickCategoriesSection featuredFields={featuredFields} />
-               <TopBookingNowSection
-                    featuredFields={featuredFields}
-                    hoveredCardId={hoveredCardId}
-                    setHoveredCardId={setHoveredCardId}
-               />
+               {!loadingTopFields && topBookingFields.length > 0 && (
+                    <TopBookingNowSection
+                         featuredFields={topBookingFields}
+                         hoveredCardId={hoveredCardId}
+                         setHoveredCardId={setHoveredCardId}
+                    />
+               )}
                {/* Horizontal Scroll Section with Zoom Effect */}
                <div ref={scrollSectionRef} data-scroll-section className="relative w-full bg-transparent" style={{ height: '400vh' }}>
                     {/* Canvas Area - Sticky */}
