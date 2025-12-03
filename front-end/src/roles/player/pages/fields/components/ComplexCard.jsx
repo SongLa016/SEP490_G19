@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { MapPin, EyeIcon } from "lucide-react";
 import StadiumIcon from '@mui/icons-material/Stadium';
 import { Button, FadeIn } from "../../../../../shared/components/ui";
-import { getImageProps } from "../../../../../shared/utils/imageUtils";
 
 export default function ComplexCard({ complex, index, navigate, formatPrice }) {
      return (

@@ -303,6 +303,21 @@ const handleApiError = (error) => {
   return errorMessage;
 };
 
+const extractArrayResponse = (responseData) => {
+  if (!responseData) return [];
+  if (Array.isArray(responseData)) return responseData;
+  if (Array.isArray(responseData.data)) return responseData.data;
+  if (Array.isArray(responseData.Data)) return responseData.Data;
+  return [];
+};
+
+const ensureLoggedIn = () => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    throw new Error("Bạn cần đăng nhập để thực hiện hành động này.");
+  }
+};
+
 export async function createBooking(bookingData) {
   try {
     // Check if user is authenticated (has token)
@@ -429,7 +444,8 @@ export async function createBookingPackage(packageData) {
     if (!token) {
       return {
         success: false,
-        error: "Bạn cần đăng nhập để tạo gói đặt định kỳ. Vui lòng đăng nhập trước.",
+        error:
+          "Bạn cần đăng nhập để tạo gói đặt định kỳ. Vui lòng đăng nhập trước.",
       };
     }
 
@@ -614,7 +630,11 @@ export async function generateQRCodeForRemaining(bookingId) {
     return {
       success: true,
       data: response.data,
-      qrCodeUrl: response.data?.qrCodeUrl || response.data?.qrCode || response.data?.qrCodeUrl || null,
+      qrCodeUrl:
+        response.data?.qrCodeUrl ||
+        response.data?.qrCode ||
+        response.data?.qrCodeUrl ||
+        null,
     };
   } catch (error) {
     console.error("❌ [TẠO QR CÒN LẠI - API] Error:", error);
@@ -712,7 +732,7 @@ export async function fetchBookingsByPlayer(playerId) {
     }
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/player/${playerId}`;
-   
+
     const response = await apiClient.get(endpoint);
 
     return {
@@ -730,13 +750,13 @@ export async function fetchBookingsByPlayer(playerId) {
   }
 }
 
-// Lịch sử gói đặt sân cố định theo người chơi
 export async function fetchBookingPackagesByPlayer(playerId) {
   try {
     if (playerId === undefined || playerId === null || playerId === "") {
       return {
         success: false,
-        error: "Thiếu thông tin người chơi. Không thể tải lịch sử gói đặt sân cố định.",
+        error:
+          "Thiếu thông tin người chơi. Không thể tải lịch sử gói đặt sân cố định.",
       };
     }
 
@@ -746,10 +766,52 @@ export async function fetchBookingPackagesByPlayer(playerId) {
 
     return {
       success: true,
-      data: Array.isArray(response.data) ? response.data : [],
+      data: extractArrayResponse(response.data),
     };
   } catch (error) {
     console.error("Error fetching booking packages by player:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+export async function fetchBookingPackagesByPlayerToken() {
+  try {
+    ensureLoggedIn();
+    const endpoint =
+      "https://sep490-g19-zxph.onrender.com/api/BookingPackage/player/packages";
+    const response = await apiClient.get(endpoint);
+    return {
+      success: true,
+      data: extractArrayResponse(response.data),
+    };
+  } catch (error) {
+    console.error("Error fetching booking packages by player (token):", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+export async function fetchBookingPackageSessionsByPlayerToken() {
+  try {
+    ensureLoggedIn();
+    const endpoint =
+      "https://sep490-g19-zxph.onrender.com/api/BookingPackage/player/sessions";
+    const response = await apiClient.get(endpoint);
+    return {
+      success: true,
+      data: extractArrayResponse(response.data),
+    };
+  } catch (error) {
+    console.error("Error fetching booking package sessions (player token):", error);
     const errorMessage = handleApiError(error);
     return {
       success: false,
@@ -793,7 +855,8 @@ export async function fetchBookingPackagesByOwner(ownerId) {
     if (ownerId === undefined || ownerId === null || ownerId === "") {
       return {
         success: false,
-        error: "Thiếu thông tin chủ sân. Không thể tải danh sách gói đặt sân cố định.",
+        error:
+          "Thiếu thông tin chủ sân. Không thể tải danh sách gói đặt sân cố định.",
       };
     }
 
@@ -807,6 +870,48 @@ export async function fetchBookingPackagesByOwner(ownerId) {
     };
   } catch (error) {
     console.error("Error fetching booking packages by owner:", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+export async function fetchBookingPackagesByOwnerToken() {
+  try {
+    ensureLoggedIn();
+    const endpoint =
+      "https://sep490-g19-zxph.onrender.com/api/BookingPackage/owner/packages";
+    const response = await apiClient.get(endpoint);
+    return {
+      success: true,
+      data: extractArrayResponse(response.data),
+    };
+  } catch (error) {
+    console.error("Error fetching booking packages by owner (token):", error);
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+export async function fetchBookingPackageSessionsByOwnerToken() {
+  try {
+    ensureLoggedIn();
+    const endpoint =
+      "https://sep490-g19-zxph.onrender.com/api/BookingPackage/owner/sessions";
+    const response = await apiClient.get(endpoint);
+    return {
+      success: true,
+      data: extractArrayResponse(response.data),
+    };
+  } catch (error) {
+    console.error("Error fetching booking package sessions by owner (token):", error);
     const errorMessage = handleApiError(error);
     return {
       success: false,
@@ -1043,7 +1148,6 @@ export async function confirmCancellation(cancellationId) {
       message: "Đã xác nhận hủy booking",
     };
   } catch (error) {
-
     if (error.response) {
       return {
         success: false,
@@ -1157,7 +1261,10 @@ export async function updateBookingStatus(bookingId, status) {
       } catch (putError) {
         lastError = putError;
         // If PUT fails with 404 or 405, try PATCH
-        if (putError.response?.status === 404 || putError.response?.status === 405) {
+        if (
+          putError.response?.status === 404 ||
+          putError.response?.status === 405
+        ) {
           try {
             const response = await apiClient.patch(endpoint, payload);
             return {
@@ -1171,7 +1278,10 @@ export async function updateBookingStatus(bookingId, status) {
           }
         }
         // If it's not a 404/405, stop trying
-        if (putError.response?.status !== 404 && putError.response?.status !== 405) {
+        if (
+          putError.response?.status !== 404 &&
+          putError.response?.status !== 405
+        ) {
           break;
         }
       }
@@ -1181,14 +1291,16 @@ export async function updateBookingStatus(bookingId, status) {
     const errorMessage = handleApiError(lastError);
     return {
       success: false,
-      error: errorMessage instanceof Error ? errorMessage.message : errorMessage,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
     };
   } catch (error) {
     console.error("Error updating booking status:", error);
     const errorMessage = handleApiError(error);
     return {
       success: false,
-      error: errorMessage instanceof Error ? errorMessage.message : errorMessage,
+      error:
+        errorMessage instanceof Error ? errorMessage.message : errorMessage,
     };
   }
 }

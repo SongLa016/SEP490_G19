@@ -35,7 +35,6 @@ import {
      confirmPaymentAPI,
      confirmByOwner,
      fetchCancellationRequestById,
-     updateBookingStatus,
      confirmBookingPackage,
      completeBookingPackage
 } from "../../../shared/services/bookings";

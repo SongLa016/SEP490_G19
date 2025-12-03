@@ -242,18 +242,18 @@ export default function ViolationReportsManagement() {
                               const post = await fetchPostById(targetId);
 
                               // Thử nhiều cách lấy userId
-                              reportedUserId = post?.userId ?? 
-                                             post?.userID ?? 
-                                             post?.UserID ??
-                                             post?.PostID ??
-                                             post?.postId ??
-                                             post?.author?.id ?? 
-                                             post?.author?.userId ?? 
-                                             post?.author?.userID ??
-                                             post?.author?.UserID ??
-                                             post?.author?.ID ??
-                                             null;
-                              
+                              reportedUserId = post?.userId ??
+                                   post?.userID ??
+                                   post?.UserID ??
+                                   post?.PostID ??
+                                   post?.postId ??
+                                   post?.author?.id ??
+                                   post?.author?.userId ??
+                                   post?.author?.userID ??
+                                   post?.author?.UserID ??
+                                   post?.author?.ID ??
+                                   null;
+
                               console.log("[ViolationReportsManagement] Extracted userId from post:", reportedUserId, "Post keys:", Object.keys(post || {}));
                          } catch (error) {
                               console.error("[ViolationReportsManagement] Error fetching post:", error);
@@ -268,36 +268,36 @@ export default function ViolationReportsManagement() {
                               // Thử nhiều cách lấy userId từ comment
                               // Ưu tiên lấy từ rawCommentData (data gốc từ API)
                               reportedUserId = comment?.rawCommentData?.userId ??
-                                             comment?.rawCommentData?.userID ??
-                                             comment?.rawCommentData?.UserID ??
-                                             comment?.rawCommentData?.UserId ??
-                                             // Sau đó từ rawData.data
-                                             comment?.rawData?.data?.userId ??
-                                             comment?.rawData?.data?.userID ??
-                                             comment?.rawData?.data?.UserID ??
-                                             comment?.rawData?.data?.UserId ??
-                                             // Từ author object
-                                             comment?.author?.id ?? 
-                                             comment?.author?.userId ?? 
-                                             comment?.author?.userID ??
-                                             comment?.author?.UserID ??
-                                             comment?.author?.Id ??
-                                             comment?.author?.ID ??
-                                             // Từ comment normalized
-                                             comment?.userId ?? 
-                                             comment?.userID ?? 
-                                             comment?.UserID ??
-                                             comment?.UserId ??
-                                             // Từ rawData trực tiếp
-                                             comment?.rawData?.userId ??
-                                             comment?.rawData?.userID ??
-                                             comment?.rawData?.UserID ??
-                                             comment?.rawData?.UserId ??
-                                             comment?.rawData?.author?.id ??
-                                             comment?.rawData?.author?.userId ??
-                                             comment?.rawData?.author?.userID ??
-                                             comment?.rawData?.author?.UserID ??
-                                             null;
+                                   comment?.rawCommentData?.userID ??
+                                   comment?.rawCommentData?.UserID ??
+                                   comment?.rawCommentData?.UserId ??
+                                   // Sau đó từ rawData.data
+                                   comment?.rawData?.data?.userId ??
+                                   comment?.rawData?.data?.userID ??
+                                   comment?.rawData?.data?.UserID ??
+                                   comment?.rawData?.data?.UserId ??
+                                   // Từ author object
+                                   comment?.author?.id ??
+                                   comment?.author?.userId ??
+                                   comment?.author?.userID ??
+                                   comment?.author?.UserID ??
+                                   comment?.author?.Id ??
+                                   comment?.author?.ID ??
+                                   // Từ comment normalized
+                                   comment?.userId ??
+                                   comment?.userID ??
+                                   comment?.UserID ??
+                                   comment?.UserId ??
+                                   // Từ rawData trực tiếp
+                                   comment?.rawData?.userId ??
+                                   comment?.rawData?.userID ??
+                                   comment?.rawData?.UserID ??
+                                   comment?.rawData?.UserId ??
+                                   comment?.rawData?.author?.id ??
+                                   comment?.rawData?.author?.userId ??
+                                   comment?.rawData?.author?.userID ??
+                                   comment?.rawData?.author?.UserID ??
+                                   null;
 
                               console.log("[ViolationReportsManagement] Comment keys:", Object.keys(comment || {}));
                               if (comment?.author) {
@@ -376,33 +376,33 @@ export default function ViolationReportsManagement() {
           if (actionStatus === "Resolved" && (actionDecision === "Hide" || actionDecision === "Delete")) {
                const targetType = getTargetType(selectedReport);
                const targetId = selectedReport?.targetId ?? selectedReport?.TargetId ?? 0;
-               
+
                if (targetId) {
                     try {
                          if (targetType === "Post") {
 
                               const post = await fetchPostById(targetId);
 
-                              reportedUserId = post?.userId ?? 
-                                             post?.userID ?? 
-                                             post?.UserID ??
-                                             post?.author?.id ?? 
-                                             post?.author?.userId ?? 
-                                             post?.author?.userID ??
-                                             post?.author?.UserID ??
-                                             null;
+                              reportedUserId = post?.userId ??
+                                   post?.userID ??
+                                   post?.UserID ??
+                                   post?.author?.id ??
+                                   post?.author?.userId ??
+                                   post?.author?.userID ??
+                                   post?.author?.UserID ??
+                                   null;
                          } else if (targetType === "Comment") {
 
                               const comment = await fetchCommentById(targetId);
 
-                              reportedUserId = comment?.userId ?? 
-                                             comment?.userID ?? 
-                                             comment?.UserID ??
-                                             comment?.author?.id ?? 
-                                             comment?.author?.userId ?? 
-                                             comment?.author?.userID ??
-                                             comment?.author?.UserID ??
-                                             null;
+                              reportedUserId = comment?.userId ??
+                                   comment?.userID ??
+                                   comment?.UserID ??
+                                   comment?.author?.id ??
+                                   comment?.author?.userId ??
+                                   comment?.author?.userID ??
+                                   comment?.author?.UserID ??
+                                   null;
                          }
 
                     } catch (error) {
@@ -572,7 +572,7 @@ export default function ViolationReportsManagement() {
                                    <p className="text-sm font-semibold text-slate-900">{type}</p>
                                    <p className="text-xs text-slate-500">ID: {report.targetId || report.TargetId}</p>
                               </div>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getTypeBadgeColor(type)}`}>
+                              <span className={`px-2 py-1 rounded-full truncate text-xs font-medium border ${getTypeBadgeColor(type)}`}>
                                    {type === "Comment" ? "Bình luận" : "Bài viết"}
                               </span>
                          </div>

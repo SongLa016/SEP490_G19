@@ -614,9 +614,27 @@ export default function ComplexDetail({ user }) {
                showToastMessage("Bạn cần đăng nhập để đặt sân.", 'warning');
                return;
           }
-          if (!selectedDate || !selectedSlotId) {
-               showToastMessage("Vui lòng chọn ngày và giờ.", 'warning');
-               return;
+
+          // Với đặt lẻ: yêu cầu chọn ngày và slot
+          // Với đặt cố định: chỉ cần chọn rangeStart, rangeEnd và repeatDays
+          if (!isRecurring) {
+               if (!selectedDate || !selectedSlotId) {
+                    showToastMessage("Vui lòng chọn ngày và giờ.", 'warning');
+                    return;
+               }
+          } else {
+               if (!rangeStart || !rangeEnd) {
+                    showToastMessage('Vui lòng chọn ngày bắt đầu và ngày kết thúc.', 'warning');
+                    return;
+               }
+               if (new Date(rangeStart) > new Date(rangeEnd)) {
+                    showToastMessage('Ngày kết thúc phải sau ngày bắt đầu.', 'warning');
+                    return;
+               }
+               if (repeatDays.length === 0) {
+                    showToastMessage("Vui lòng chọn ít nhất một ngày trong tuần.", 'warning');
+                    return;
+               }
           }
 
           // Find field data
@@ -679,8 +697,14 @@ export default function ComplexDetail({ user }) {
           };
 
           // Với đặt định kỳ, cho phép mở modal để xử lý xung đột trong modal; đặt lẻ thì chặn khi hết chỗ
+          let scheduleId = 0;
+          let matchedSchedule = null;
+          let slotStartTime = "";
+          let slotEndTime = "";
+          let computedDurationHours = 1;
+
           if (!isRecurring) {
-               // Kiểm tra lịch trình từ API để xác định slot có còn trống không
+               // Đặt lẻ: kiểm tra lịch trình từ API để xác định slot có còn trống không
                const scheduleForSlot = fieldSchedules.find(s =>
                     String(s.slotId) === String(selectedSlotId) &&
                     compareDate(s.date, selectedDate)
@@ -692,63 +716,53 @@ export default function ComplexDetail({ user }) {
                          showToastMessage("Sân này đã được đặt cho slot đã chọn. Vui lòng chọn slot khác.", 'warning');
                          return;
                     }
+                    matchedSchedule = scheduleForSlot;
+                    scheduleId = scheduleForSlot.scheduleId || scheduleForSlot.ScheduleId ||
+                         scheduleForSlot.scheduleID || scheduleForSlot.ScheduleID || 0;
                } else if (!field.isAvailableForSelectedSlot) {
                     // Fallback về kiểm tra từ field data nếu không có lịch trình từ API
                     showToastMessage("Sân này đã được đặt cho slot đã chọn. Vui lòng chọn slot khác.", 'warning');
                     return;
                }
-          } else {
-               if (currentWeeks < minRecurringWeeks) {
-                    showToastMessage(`Đặt định kỳ yêu cầu tối thiểu ${minRecurringWeeks} tuần.`, 'warning');
-                    return;
+
+               // Tìm scheduleId từ fieldSchedules dựa trên slotId và date
+               if (fieldSchedules && Array.isArray(fieldSchedules) && fieldSchedules.length > 0 && selectedSlotId) {
+                    const scheduleForSlot = fieldSchedules.find(s => {
+                         const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
+                         return String(scheduleSlotId) === String(selectedSlotId) &&
+                              compareDate(s.date, selectedDate);
+                    });
+
+                    if (scheduleForSlot) {
+                         matchedSchedule = scheduleForSlot;
+                         scheduleId = scheduleForSlot.scheduleId || scheduleForSlot.ScheduleId ||
+                              scheduleForSlot.scheduleID || scheduleForSlot.ScheduleID || 0;
+                    } else {
+                         console.warn("⚠️ [ComplexDetail] Không tìm thấy scheduleId từ fieldSchedules cho slotId:", selectedSlotId, "date:", selectedDate);
+                    }
                }
-               if (!rangeStart || !rangeEnd || repeatDays.length === 0) {
-                    showToastMessage("Vui lòng chọn khoảng ngày và các ngày trong tuần.", 'warning');
-                    return;
-               }
+
+               slotStartTime = selectedSlot?.startTime || selectedSlot?.StartTime ||
+                    matchedSchedule?.startTime || matchedSchedule?.StartTime || "";
+               slotEndTime = selectedSlot?.endTime || selectedSlot?.EndTime ||
+                    matchedSchedule?.endTime || matchedSchedule?.EndTime || "";
+               computedDurationHours = calculateSlotDurationHours(slotStartTime, slotEndTime) ?? 1;
           }
-
-          // Tìm scheduleId từ fieldSchedules dựa trên slotId và date
-          let scheduleId = 0;
-          let matchedSchedule = null;
-          if (fieldSchedules && Array.isArray(fieldSchedules) && fieldSchedules.length > 0) {
-               const scheduleForSlot = fieldSchedules.find(s => {
-                    const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
-                    return String(scheduleSlotId) === String(selectedSlotId) &&
-                         compareDate(s.date, selectedDate);
-               });
-
-               if (scheduleForSlot) {
-                    matchedSchedule = scheduleForSlot;
-                    scheduleId = scheduleForSlot.scheduleId || scheduleForSlot.ScheduleId ||
-                         scheduleForSlot.scheduleID || scheduleForSlot.ScheduleID || 0;
-                         if (DEBUG_COMPLEX_DETAIL) {
-
-                         }
-               } else {
-                    console.warn("⚠️ [ComplexDetail] Không tìm thấy scheduleId từ fieldSchedules cho slotId:", selectedSlotId, "date:", selectedDate);
-               }
-          }
-
-          const slotStartTime = selectedSlot?.startTime || selectedSlot?.StartTime ||
-               matchedSchedule?.startTime || matchedSchedule?.StartTime || "";
-          const slotEndTime = selectedSlot?.endTime || selectedSlot?.EndTime ||
-               matchedSchedule?.endTime || matchedSchedule?.EndTime || "";
-          const computedDurationHours = calculateSlotDurationHours(slotStartTime, slotEndTime) ?? 1;
+          // Với đặt cố định: không cần slotId và scheduleId ở đây, sẽ chọn trong modal
 
           const bookingData = {
                fieldId: fieldId,
                fieldName: field.name,
                fieldAddress: field.address,
-               date: selectedDate,
-               slotId: selectedSlotId,
-               slotName: selectedSlot?.name || selectedSlot?.slotName || "",
-               scheduleId: scheduleId, // Thêm scheduleId vào booking data
+               date: isRecurring ? rangeStart : selectedDate, // Với đặt cố định dùng rangeStart
+               slotId: isRecurring ? null : selectedSlotId, // Với đặt cố định không cần slotId ở đây
+               slotName: isRecurring ? "" : (selectedSlot?.name || selectedSlot?.slotName || ""),
+               scheduleId: isRecurring ? 0 : scheduleId, // Với đặt cố định sẽ chọn trong modal
                startTime: slotStartTime,
                endTime: slotEndTime,
                duration: computedDurationHours,
-               price: slotPrice, // Use price from TimeSlot
-               totalPrice: slotPrice, // Use price from TimeSlot
+               price: isRecurring ? 0 : slotPrice, // Với đặt cố định sẽ tính trong modal
+               totalPrice: isRecurring ? 0 : slotPrice, // Với đặt cố định sẽ tính trong modal
                fieldType: field.typeName,
                fieldSize: field.size || "Không xác định",
                complexId: id,
@@ -757,7 +771,10 @@ export default function ComplexDetail({ user }) {
                isRecurringPreset: isRecurring,
                recurringWeeksPreset: weeksCount,
                selectedDaysPreset: mappedDays,
-               fieldSchedules: fieldSchedules, // Thêm lịch trình vào booking data
+               recurringStartDatePreset: isRecurring ? rangeStart : null, // Thêm startDate preset
+               recurringEndDatePreset: isRecurring ? rangeEnd : null, // Thêm endDate preset
+               fieldSchedules: fieldSchedules, // Thêm lịch trình vào booking data để chọn slot trong modal
+               fieldTimeSlots: fieldTimeSlots, // Thêm TimeSlots để lấy giá
                depositPolicy: depositPolicy // Thêm chính sách đặt cọc vào booking data
           };
 
@@ -787,25 +804,25 @@ export default function ComplexDetail({ user }) {
 
                     // Debug log for fieldId 32
                     if (field.fieldId === 32) {
-                    if (DEBUG_COMPLEX_DETAIL) {
-                         console.log("🔍 [ComplexDetail] Mapping field 32:", {
-                              field: field,
-                              typeId: typeId,
-                              typeIdKey: typeIdKey,
-                              currentTypeName: currentTypeName,
-                              fieldTypeMap: fieldTypeMap,
-                              fieldTypeMapKeys: Object.keys(fieldTypeMap),
-                              mappedName: mappedName,
-                              hasMappedName: !!mappedName
-                         });
-                    }
+                         if (DEBUG_COMPLEX_DETAIL) {
+                              console.log("🔍 [ComplexDetail] Mapping field 32:", {
+                                   field: field,
+                                   typeId: typeId,
+                                   typeIdKey: typeIdKey,
+                                   currentTypeName: currentTypeName,
+                                   fieldTypeMap: fieldTypeMap,
+                                   fieldTypeMapKeys: Object.keys(fieldTypeMap),
+                                   mappedName: mappedName,
+                                   hasMappedName: !!mappedName
+                              });
+                         }
                     }
 
                     // If we have mappedName, use it (especially if currentTypeName is empty)
                     if (mappedName && mappedName.trim() !== "") {
-                    if (DEBUG_COMPLEX_DETAIL) {
+                         if (DEBUG_COMPLEX_DETAIL) {
 
-                    }
+                         }
                          return { ...field, typeName: mappedName, typeId: typeId };
                     } else if (field.fieldId === 32) {
                          console.warn("⚠️ [ComplexDetail] Could not map typeName for field 32:", {
@@ -940,7 +957,7 @@ export default function ComplexDetail({ user }) {
                     : []
           }));
      }, [fieldRatings]);
-     
+
      const reviewStats = useMemo(() => {
           const total = complexReviews.length || 0;
           const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
@@ -950,7 +967,7 @@ export default function ComplexDetail({ user }) {
      }, [complexReviews]);
      // Thư viện ảnh bao gồm ảnh khu sân (complex) và tất cả ảnh sân nhỏ (fields)
      const galleryImages = [];
-     
+
      // Thêm ảnh của complex (khu sân) - imageUrl từ Cloudinary
      if (complex?.imageUrl) {
           galleryImages.push({
@@ -959,7 +976,7 @@ export default function ComplexDetail({ user }) {
                label: 'Khu sân'
           });
      }
-     
+
      // Thêm ảnh của các field (sân nhỏ) - mainImageUrl và imageUrls từ Cloudinary
      fields.forEach(field => {
           // Thêm mainImageUrl nếu có
@@ -983,7 +1000,7 @@ export default function ComplexDetail({ user }) {
                });
           }
      });
-     
+
      // Extract chỉ URLs để truyền vào component
      const galleryImageUrls = galleryImages.map(img => img.url);
 
@@ -1007,9 +1024,42 @@ export default function ComplexDetail({ user }) {
      }, [isLightboxOpen, galleryImageUrls.length]);
 
      // Tính toán số sân còn trống (sân nhỏ)
-     const availableCount = selectedSlotId ?
-          fields.filter(f => f.isAvailableForSelectedSlot).length :
-          fields.length;
+     // Nếu đã chọn slot & field cụ thể: dựa trên lịch trình của sân đó trong ngày được chọn
+     const availableCount = useMemo(() => {
+          // Đã chọn một sân cụ thể
+          if (selectedFieldId && Array.isArray(selectedFieldSchedules)) {
+               // Nếu không có bất kỳ lịch trình nào cho ngày đã chọn → coi như hết chỗ
+               if (selectedFieldSchedules.length === 0) {
+                    return 0;
+               }
+
+               // Nếu đã chọn slot cụ thể: kiểm tra lịch trình của slot đó
+               if (selectedSlotId) {
+                    const slotIdStr = String(selectedSlotId);
+                    const relatedSchedules = selectedFieldSchedules.filter((s) => {
+                         const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
+                         return String(scheduleSlotId) === slotIdStr;
+                    });
+                    if (!relatedSchedules.length) {
+                         // Không có lịch trình cho slot này trong ngày đã chọn
+                         return 0;
+                    }
+                    const hasAvailable = relatedSchedules.some(
+                         (s) => (s.status || s.Status || "Available") === "Available"
+                    );
+                    return hasAvailable ? 1 : 0;
+               }
+
+               // Chưa chọn slot nhưng đã chọn sân: nếu có ít nhất một lịch trình Available trong ngày → 1, ngược lại 0
+               const hasAnyAvailable = selectedFieldSchedules.some(
+                    (s) => (s.status || s.Status || "Available") === "Available"
+               );
+               return hasAnyAvailable ? 1 : 0;
+          }
+
+          // Chưa chọn sân nhỏ: hiển thị tổng số sân nhỏ trong khu
+          return fields.length;
+     }, [selectedFieldId, selectedSlotId, selectedFieldSchedules, fields.length]);
 
      // Dynamic pricing derived from visible schedules
      const selectedSlotPrice = selectedSlotId
@@ -1030,14 +1080,7 @@ export default function ComplexDetail({ user }) {
           return repeatDays.length * weeks;
      };
 
-     // Recurring constraints: require at least 4 weeks to enable weekday selection
-     const minRecurringWeeks = 4;
-     const currentWeeks = (() => {
-          if (!rangeStart || !rangeEnd) return 0;
-          const s = new Date(rangeStart);
-          const e = new Date(rangeEnd);
-          return Math.ceil((e - s) / (7 * 24 * 60 * 60 * 1000));
-     })();
+     // Không còn yêu cầu minRecurringWeeks nữa, người dùng tự chọn startDate/endDate
 
      // Chính sách giảm giá đặt cố định theo số buổi
      const getRecurringDiscountPercent = (totalSessions) => {
@@ -1175,8 +1218,6 @@ export default function ComplexDetail({ user }) {
                                    rangeStart={rangeStart}
                                    rangeEnd={rangeEnd}
                                    daysOfWeek={daysOfWeek}
-                                   currentWeeks={currentWeeks}
-                                   minRecurringWeeks={minRecurringWeeks}
                                    recurringSummary={recurringSummary}
                                    selectedSlotPrice={selectedSlotPrice}
                                    minPrice={minPrice}

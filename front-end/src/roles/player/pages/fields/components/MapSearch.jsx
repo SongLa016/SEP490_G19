@@ -133,7 +133,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                     initMap();
                } else {
                     const existing = document.getElementById('gmaps-script');
-                    const apiKey = "AIzaSyDv_Uvlg2rEBOtMgs37tATqaPMaVDiZ1mA";
+                    const apiKey = "AIzaSyB0yJL50JnUVPwRUYjM9EjyHDKf8G7LJNo";
                     if (!apiKey) {
                          // eslint-disable-next-line no-console
                          console.warn('Missing REACT_APP_GOOGLE_MAPS_API_KEY in environment');

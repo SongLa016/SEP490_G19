@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Calendar, MapPin, Receipt, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon, Info, RefreshCw, Loader2, User, Phone } from "lucide-react";
 import { Section, Container, Card, CardContent, Button, Badge, LoadingList, FadeIn, StaggerContainer, Modal } from "../../../../shared/components/ui";
-import { listBookingsByUser, updateBooking, fetchBookingsByPlayer, fetchBookingPackagesByPlayer, generateQRCode, confirmPaymentAPI } from "../../../../shared/index";
-import { cancelBooking as cancelBookingAPI } from "../../../../shared/services/bookings";
+import { listBookingsByUser, updateBooking, fetchBookingsByPlayer, generateQRCode, confirmPaymentAPI } from "../../../../shared/index";
+import {
+     cancelBooking as cancelBookingAPI,
+     fetchBookingPackagesByPlayer,
+     fetchBookingPackagesByPlayerToken,
+     fetchBookingPackageSessionsByPlayerToken
+} from "../../../../shared/services/bookings";
 import {
      fetchMatchRequestById,
      fetchMatchRequests,
@@ -89,7 +94,76 @@ export default function BookingHistory({ user }) {
      const [bookingPackages, setBookingPackages] = useState([]);
      const [isLoadingPackages, setIsLoadingPackages] = useState(false);
      const [packageError, setPackageError] = useState("");
+     const [packageSessionsMap, setPackageSessionsMap] = useState({});
+     const [expandedPackageSessions, setExpandedPackageSessions] = useState({});
      const playerId = user?.userID || user?.UserID || user?.id || user?.Id || user?.userId;
+
+     const normalizePackageData = React.useCallback((pkg, fallbackIndex = 0) => {
+          const pkgId = pkg?.bookingPackageId || pkg?.bookingPackageID || pkg?.id || pkg?.packageId;
+          const fallbackId = pkgId || `pkg-${fallbackIndex}`;
+          return {
+               id: fallbackId,
+               bookingPackageId: pkgId || fallbackId,
+               userId: pkg?.userId || pkg?.UserId || pkg?.userID,
+               fieldId: pkg?.fieldId || pkg?.fieldID,
+               fieldName: pkg?.fieldName || pkg?.field?.name || `Sân #${pkg?.fieldId || pkg?.fieldID || "?"}`,
+               packageName: pkg?.packageName || pkg?.name || "Gói đặt sân cố định",
+               startDate: pkg?.startDate || pkg?.startDay || pkg?.start_time,
+               endDate: pkg?.endDate || pkg?.endDay || pkg?.end_time,
+               totalPrice: Number(pkg?.totalPrice ?? pkg?.price ?? 0),
+               bookingStatus: pkg?.bookingStatus || pkg?.status || "",
+               paymentStatus: pkg?.paymentStatus || pkg?.paymentState || "",
+               qrCodeUrl: pkg?.qrcode || pkg?.qrCode || pkg?.QRCode || pkg?.qrCodeUrl || null,
+               qrExpiresAt: pkg?.qrexpiresAt || pkg?.qrExpiresAt || pkg?.QRExpiresAt || null,
+               createdAt: pkg?.createdAt || pkg?.CreatedAt || null
+          };
+     }, []);
+
+     const normalizePackageSession = React.useCallback((session) => {
+          if (!session) return null;
+          const packageId = session.bookingPackageId ||
+               session.bookingPackageID ||
+               session.packageId ||
+               session.packageID ||
+               session?.bookingPackage?.bookingPackageId;
+          const startTime = session.startTime || session.slotStartTime || session.sessionStart || session.start || session.startHour;
+          const endTime = session.endTime || session.slotEndTime || session.sessionEnd || session.end || session.endHour;
+          let slotName = session.slotName || session.slot || session.timeRange;
+          if (!slotName && startTime && endTime) {
+               slotName = `${startTime} - ${endTime}`;
+          }
+          return {
+               id: session.bookingPackageSessionId || session.sessionId || session.id || `${packageId || "pkg"}-${session.sessionDate || session.date || Math.random()}`,
+               bookingPackageId: packageId,
+               date: session.sessionDate || session.date || session.sessionDay || session.startDate,
+               startTime,
+               endTime,
+               slotName,
+               status: session.status || session.sessionStatus || session.state || "",
+               fieldName: session.fieldName || session.field?.name || ""
+          };
+     }, []);
+
+     const formatSessionDateLabel = (dateStr) => {
+          if (!dateStr) return "Chưa có ngày";
+          const parsed = new Date(dateStr);
+          if (!isNaN(parsed.getTime())) {
+               return parsed.toLocaleDateString("vi-VN", {
+                    weekday: "long",
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "numeric"
+               });
+          }
+          return dateStr;
+     };
+
+     const formatSessionTimeRange = (session) => {
+          if (!session) return "Chưa rõ thời gian";
+          if (session.slotName) return session.slotName;
+          if (session.startTime && session.endTime) return `${session.startTime} - ${session.endTime}`;
+          return session.startTime || session.endTime || "Chưa rõ thời gian";
+     };
 
      // Scroll to top when filters or sorting change
      useEffect(() => {
@@ -162,46 +236,74 @@ export default function BookingHistory({ user }) {
      }, [playerId]);
 
      const loadBookingPackages = React.useCallback(async () => {
-          if (!playerId) {
+          if (!user) {
                setBookingPackages([]);
+               setPackageSessionsMap({});
                return;
           }
 
           setIsLoadingPackages(true);
           setPackageError("");
+          setPackageSessionsMap({});
+          setExpandedPackageSessions({});
           try {
-               const apiResult = await fetchBookingPackagesByPlayer(playerId);
-               const rawList = apiResult.success ? (apiResult.data || []) : [];
-               const normalized = rawList.map((pkg) => ({
-                    id: pkg.bookingPackageId || pkg.id,
-                    bookingPackageId: pkg.bookingPackageId || pkg.id,
-                    userId: pkg.userId,
-                    fieldId: pkg.fieldId || pkg.fieldID,
-                    fieldName: pkg.fieldName || `Sân #${pkg.fieldId || pkg.fieldID || "?"}`,
-                    packageName: pkg.packageName || "Gói đặt sân cố định",
-                    startDate: pkg.startDate,
-                    endDate: pkg.endDate,
-                    totalPrice: Number(pkg.totalPrice) || 0,
-                    bookingStatus: pkg.bookingStatus || "",
-                    paymentStatus: pkg.paymentStatus || "",
-                    qrCodeUrl: pkg.qrcode || pkg.qrCode || pkg.QRCode || pkg.qrCodeUrl || null,
-                    qrExpiresAt: pkg.qrexpiresAt || pkg.qrExpiresAt || pkg.QRExpiresAt || null,
-                    createdAt: pkg.createdAt || pkg.CreatedAt || null,
-               }));
-
-               setBookingPackages(normalized);
-
-               if (!apiResult.success) {
+               let packageList = [];
+               let apiResult = await fetchBookingPackagesByPlayerToken();
+               if (apiResult.success) {
+                    packageList = apiResult.data || [];
+               } else if (playerId) {
+                    // Fallback to playerId-based endpoint if token claim missing
+                    apiResult = await fetchBookingPackagesByPlayer(playerId);
+                    if (apiResult.success) {
+                         packageList = apiResult.data || [];
+                    } else {
+                         setPackageError(apiResult.error || "Không thể tải lịch sử gói đặt sân cố định.");
+                    }
+               } else {
                     setPackageError(apiResult.error || "Không thể tải lịch sử gói đặt sân cố định.");
+               }
+
+               const normalizedPackages = packageList.map((pkg, index) => normalizePackageData(pkg, index));
+               setBookingPackages(normalizedPackages);
+
+               // Fetch sessions if we have at least one package
+               if (normalizedPackages.length > 0) {
+                    const sessionResp = await fetchBookingPackageSessionsByPlayerToken();
+                    if (sessionResp.success) {
+                         const groupedSessions = {};
+                         (sessionResp.data || [])
+                              .map(normalizePackageSession)
+                              .filter(Boolean)
+                              .forEach((session) => {
+                                   if (!session.bookingPackageId) return;
+                                   if (!groupedSessions[session.bookingPackageId]) {
+                                        groupedSessions[session.bookingPackageId] = [];
+                                   }
+                                   groupedSessions[session.bookingPackageId].push(session);
+                              });
+
+                         Object.keys(groupedSessions).forEach((key) => {
+                              groupedSessions[key].sort((a, b) => {
+                                   const dateA = new Date(a.date || 0).getTime();
+                                   const dateB = new Date(b.date || 0).getTime();
+                                   return dateA - dateB;
+                              });
+                         });
+
+                         setPackageSessionsMap(groupedSessions);
+                    } else if (sessionResp.error) {
+                         console.warn("Không thể tải danh sách buổi của gói:", sessionResp.error);
+                    }
                }
           } catch (error) {
                console.error("Error loading booking packages:", error);
                setPackageError(error.message || "Không thể tải lịch sử gói đặt sân cố định.");
                setBookingPackages([]);
+               setPackageSessionsMap({});
           } finally {
                setIsLoadingPackages(false);
           }
-     }, [playerId]);
+     }, [playerId, user, normalizePackageData, normalizePackageSession]);
 
      useEffect(() => {
           loadBookings();
@@ -943,30 +1045,6 @@ export default function BookingHistory({ user }) {
           setShowRatingModal(true);
      };
 
-     const handleDeleteRating = async (booking) => {
-          if (!booking || !booking.ratingId) return;
-          const confirm = await Swal.fire({
-               icon: 'warning',
-               title: 'Xóa đánh giá?',
-               text: 'Bạn chắc chắn muốn xóa đánh giá này?',
-               showCancelButton: true,
-               confirmButtonText: 'Xóa',
-               cancelButtonText: 'Hủy',
-               confirmButtonColor: '#dc2626'
-          });
-          if (!confirm.isConfirmed) return;
-
-          try {
-               const { deleteRating } = await import("../../../../shared/services/ratings");
-               await deleteRating(booking.ratingId);
-               Swal.fire('Đã xóa!', 'Đánh giá đã được xóa.', 'success');
-               await loadBookings();
-          } catch (error) {
-               console.error("Error deleting rating:", error);
-               Swal.fire('Lỗi', error.message || 'Không thể xóa đánh giá.', 'error');
-          }
-     };
-
      const handleRatingSuccess = async () => {
           setShowRatingModal(false);
           setSelectedBooking(null);
@@ -974,6 +1052,13 @@ export default function BookingHistory({ user }) {
           Swal.fire('Thành công!', 'Đánh giá của bạn đã được lưu.', 'success');
           // Reload bookings to refresh the UI
           await loadBookings();
+     };
+
+     const togglePackageSessions = (packageId) => {
+          setExpandedPackageSessions(prev => ({
+               ...prev,
+               [packageId]: !prev[packageId]
+          }));
      };
 
      const handleViewInvoice = (bookingPayload) => {
@@ -2747,8 +2832,12 @@ export default function BookingHistory({ user }) {
                               )}
                               {!isLoadingPackages && bookingPackages.length > 0 && (
                                    <StaggerContainer staggerDelay={40}>
-                                        {bookingPackages.map((pkg, index) => (
-                                             <FadeIn key={pkg.id || index} delay={index * 40}>
+                                        {bookingPackages.map((pkg, index) => {
+                                             const sessions = packageSessionsMap[pkg.bookingPackageId] || [];
+                                             const isExpanded = !!expandedPackageSessions[pkg.bookingPackageId];
+
+                                             return (
+                                                  <FadeIn key={pkg.id || index} delay={index * 40}>
                                                   <div className="p-5 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 to-emerald-50 hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
                                                        <div className="flex justify-between items-start gap-4 flex-wrap">
                                                             <div className="space-y-1">
@@ -2804,9 +2893,44 @@ export default function BookingHistory({ user }) {
                                                                  )}
                                                             </div>
                                                        </div>
-                                                  </div>
-                                             </FadeIn>
-                                        ))}
+                                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                                 <Button
+                                                                      variant="ghost"
+                                                                      onClick={() => togglePackageSessions(pkg.bookingPackageId)}
+                                                                      className="px-3 py-1 rounded-full border border-teal-200 text-teal-700 hover:bg-teal-100 flex items-center gap-1 text-sm"
+                                                                 >
+                                                                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                                                      {isExpanded ? "Ẩn lịch buổi" : "Xem lịch buổi"}
+                                                                      {sessions.length > 0 && <span>({sessions.length})</span>}
+                                                                 </Button>
+                                                            </div>
+                                                            {isExpanded && (
+                                                                 <div className="mt-3 space-y-2 bg-white/80 border border-teal-100 rounded-2xl p-3">
+                                                                      {sessions.length > 0 ? (
+                                                                           sessions.map((session) => (
+                                                                                <div key={session.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-sm border border-teal-50 rounded-xl px-3 py-2 bg-white">
+                                                                                     <div className="flex items-center gap-2 text-gray-800">
+                                                                                          <Calendar className="w-4 h-4 text-blue-600" />
+                                                                                          <span className="font-medium">{formatSessionDateLabel(session.date)}</span>
+                                                                                     </div>
+                                                                                     <div className="flex items-center gap-2 text-gray-700">
+                                                                                          <Clock className="w-4 h-4 text-emerald-600" />
+                                                                                          <span>{formatSessionTimeRange(session)}</span>
+                                                                                     </div>
+                                                                                     {session.status && (
+                                                                                          <Badge className="bg-teal-100 text-teal-700 border-teal-200">{session.status}</Badge>
+                                                                                     )}
+                                                                                </div>
+                                                                           ))
+                                                                      ) : (
+                                                                           <div className="text-sm text-gray-500 italic">Chưa có dữ liệu buổi cho gói này.</div>
+                                                                      )}
+                                                                 </div>
+                                                            )}
+                                                       </div>
+                                                  </FadeIn>
+                                             );
+                                        })}
                                    </StaggerContainer>
                               )}
                          </div>

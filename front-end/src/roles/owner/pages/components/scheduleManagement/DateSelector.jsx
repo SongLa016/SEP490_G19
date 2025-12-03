@@ -1,5 +1,5 @@
 import React from "react";
-import { Card, Button, Badge } from "../../../../../shared/components/ui";
+import { Card, Button } from "../../../../../shared/components/ui";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function DateSelector({ selectedDate, onDateChange, weekDates }) {

@@ -197,20 +197,23 @@ export default function BookingWidget({
                                                                  type="button"
                                                                  onClick={() => !isDisabled && onSlotChange(isSelected ? "" : scheduleSlotId)}
                                                                  disabled={isDisabled}
-                                                                 className={`p-2 text-xs rounded-lg border transition-all ${isSelected
+                                                                 className={`p-2 text-xs rounded-lg border transition-all relative ${isSelected
                                                                       ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white border-teal-600 shadow-md"
                                                                       : isDisabled
                                                                            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                                                                            : "bg-white text-teal-800 border-teal-200/50 hover:text-teal-900 hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 hover:border-teal-300 hover:shadow-sm"
                                                                       }`}
                                                             >
+
                                                                  <div className="flex flex-col items-start w-full">
+                                                                      {isPastSlot && <span className="text-xs absolute -top-1.5 right-0 text-red-400 ">(Đã qua giờ)</span>}
+                                                                      {isDisabled && <span className="text-xs absolute -top-1.5 right-0 text-red-400 ">(Hết chỗ)</span>}
                                                                       {fieldName && (
-                                                                           <span className="text-xs font-semibold text-teal-700 mb-0.5">{fieldName}</span>
+                                                                           <span className="text-xs  font-semibold text-teal-700">{fieldName}</span>
                                                                       )}
                                                                       <span className="font-medium">{slotName}</span>
-                                                                      {timeRange && <span className="text-xs opacity-75 mt-0.5">{timeRange}</span>}
-                                                                      {isPastSlot && <span className="text-xs text-red-400 mt-0.5">(Đã qua giờ)</span>}
+                                                                      {timeRange && <span className="text-xs opacity-75 ">{timeRange}</span>}
+
                                                                  </div>
                                                             </Button>
                                                        );
@@ -223,7 +226,7 @@ export default function BookingWidget({
                                    </div>
                               </div>
                               <div className="grid grid-cols-2 gap-2 text-sm">
-                                   <div className="bg-gradient-to-br from-orange-50/50 to-amber-50/50 border border-orange-200/50 rounded-xl p-3 shadow-sm">
+                                   <div className="bg-gradient-to-br from-orange-50/50 to-amber-50/50 border border-orange-200/50 rounded-xl p-2 px-3 shadow-sm">
                                         <div className="text-gray-600 text-xs mb-1">{selectedSlotId ? "Giá slot (sân nhỏ)" : "Giá từ (sân nhỏ)"}</div>
                                         <div className="text-orange-600 font-bold text-sm">{
                                              (selectedSlotId ? selectedSlotPrice : minPrice) > 0
@@ -231,7 +234,7 @@ export default function BookingWidget({
                                                   : "—"
                                         }</div>
                                    </div>
-                                   <div className="bg-gradient-to-br from-teal-50/50 to-emerald-50/50 border border-teal-200/50 rounded-xl p-3 shadow-sm">
+                                   <div className="bg-gradient-to-br from-teal-50/50 to-emerald-50/50 border border-teal-200/50 rounded-xl p-2 px-3 shadow-sm">
                                         <div className="text-gray-600 text-xs mb-1">Sân nhỏ còn trống</div>
                                         <div className="text-teal-700 font-bold text-sm">
                                              {selectedField
@@ -245,20 +248,13 @@ export default function BookingWidget({
                                         </div>
                                    </div>
                               </div>
-                              <div className="p-4 border rounded-xl bg-gradient-to-br from-teal-50/70 via-emerald-50/50 to-teal-50/70 border-teal-200/50 shadow-sm">
+                              <div className="px-2 py-3 border rounded-xl bg-gradient-to-br from-teal-50/70 via-emerald-50/50 to-teal-50/70 border-teal-200/50 shadow-sm">
                                    <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-sm">
+                                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-sm">
                                                   <Repeat className="w-5 h-5 text-white" />
                                              </div>
-                                             <div>
-                                                  <div className="font-semibold text-teal-800">Đặt cố định</div>
-                                                  {isRecurring && recurringSummary && (
-                                                       <span className={`text-xs px-2 py-0.5 rounded-full border shadow-sm mt-1 inline-block ${recurringSummary.discountPercent > 0 ? "bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 border-emerald-300" : "bg-gray-100 text-gray-600 border-gray-200"}`}>
-                                                            Ưu đãi {recurringSummary.discountPercent}%
-                                                       </span>
-                                                  )}
-                                             </div>
+                                             <div className="font-semibold text-teal-800">Đặt cố định</div>
                                         </div>
                                         {/* Toggle Switch */}
                                         <button
@@ -280,18 +276,18 @@ export default function BookingWidget({
                                              : "max-h-0 opacity-0 mt-0"
                                              }`}
                                    >
-                                        <div className="space-y-3">
+                                        <div className="space-y-2">
                                              <div
-                                                  className={`bg-white border border-teal-200 rounded-lg p-2 transition-all duration-500 ease-out ${isRecurring
+                                                  className={`bg-white border border-teal-200 rounded-2xl p-2 px-3 transition-all duration-500 ease-out ${isRecurring
                                                        ? "transform translate-y-0 opacity-100"
                                                        : "transform -translate-y-4 opacity-0"
                                                        }`}
                                                   style={{ transitionDelay: isRecurring ? "50ms" : "0ms" }}
                                              >
-                                                  <div className="text-xs text-gray-500 mb-1">Thông tin đặt định kỳ</div>
-                                                  <div className="text-sm text-gray-700">• Đặt sân cho nhiều tuần liên tiếp</div>
-                                                  <div className="text-sm text-gray-700">• Chọn các ngày trong tuần cố định</div>
-                                                  <div className="text-sm text-gray-700">• Tự động kiểm tra xung đột</div>
+                                                  <div className="text-xs text-teal-600 mb-1">Thông tin đặt định kỳ</div>
+                                                  <div className="text-sm text-teal-700">• Đặt sân cho nhiều tuần liên tiếp</div>
+                                                  <div className="text-sm text-teal-700">• Chọn các ngày trong tuần cố định</div>
+
                                              </div>
                                              <div
                                                   className={`transition-all duration-500 ease-out ${isRecurring
@@ -301,7 +297,7 @@ export default function BookingWidget({
                                                   style={{ transitionDelay: isRecurring ? "100ms" : "0ms" }}
                                              >
                                                   <div className="text-sm text-gray-600 mb-1">Từ ngày</div>
-                                                  <DatePicker value={rangeStart} onChange={onRangeStartChange} min={selectedDate} />
+                                                  <DatePicker value={rangeStart} onChange={onRangeStartChange} className="rounded-xl mx-auto w-[97%]" min={selectedDate} />
                                              </div>
                                              <div
                                                   className={`transition-all duration-500 ease-out ${isRecurring
@@ -311,7 +307,7 @@ export default function BookingWidget({
                                                   style={{ transitionDelay: isRecurring ? "150ms" : "0ms" }}
                                              >
                                                   <div className="text-sm text-gray-600 mb-1">Đến ngày</div>
-                                                  <DatePicker value={rangeEnd} onChange={onRangeEndChange} min={rangeStart || selectedDate} />
+                                                  <DatePicker value={rangeEnd} onChange={onRangeEndChange} className="rounded-xl mx-auto w-[97%]" min={rangeStart || selectedDate} />
                                              </div>
                                              <div
                                                   className={`transition-all duration-500 ease-out ${isRecurring
@@ -326,13 +322,13 @@ export default function BookingWidget({
                                                             Vui lòng chọn ngày bắt đầu và ngày kết thúc trước.
                                                        </div>
                                                   ) : (
-                                                       <div className="flex flex-wrap gap-2">
+                                                       <div className="flex flex-wrap gap-1">
                                                             {daysOfWeek.map(d => (
                                                                  <Button
                                                                       key={d.id}
                                                                       type="button"
                                                                       onClick={() => onToggleDay(d.id)}
-                                                                      className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${repeatDays.includes(d.id) ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white border-teal-600 shadow-md" : "bg-white text-teal-800 border-teal-200 hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 hover:border-teal-300"}`}
+                                                                      className={`px-3 py-0.5 rounded-full border text-sm transition-all ${repeatDays.includes(d.id) ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white border-teal-600 shadow-md" : "bg-white text-teal-800 border-teal-200 hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 hover:border-teal-300"}`}
                                                                  >
                                                                       {d.label}
                                                                  </Button>
@@ -342,7 +338,7 @@ export default function BookingWidget({
                                              </div>
                                              {repeatDays.length > 0 && (
                                                   <div
-                                                       className={`bg-gradient-to-br from-blue-50 via-indigo-50/50 to-blue-50 border border-blue-200/50 rounded-lg p-3 shadow-sm transition-all duration-500 ease-out ${isRecurring
+                                                       className={`bg-gradient-to-br from-blue-50 via-indigo-50/50 to-blue-50 border border-blue-200/50 rounded-2xl p-3 shadow-sm transition-all duration-500 ease-out ${isRecurring
                                                             ? "transform translate-y-0 opacity-100"
                                                             : "transform -translate-y-4 opacity-0"
                                                             }`}
@@ -351,11 +347,10 @@ export default function BookingWidget({
                                                        <div className="text-xs text-blue-700 font-bold mb-1">Đã chọn {repeatDays.length} ngày/tuần</div>
                                                        <div className="text-xs text-blue-600 mb-2">Tổng số buổi: {calculateTotalSessions()}</div>
                                                        {recurringSummary && recurringSummary.totalSessions > 0 && (
-                                                            <div className="mt-2 text-xs text-blue-800 space-y-1 bg-white/60 p-2 rounded border border-blue-200/50">
-                                                                 <div className="flex items-center justify-between"><span className="font-medium">Giá mỗi buổi</span><span className="font-semibold text-teal-700">{recurringSummary.unitPrice.toLocaleString("vi-VN")}₫</span></div>
-                                                                 <div className="flex items-center justify-between"><span className="font-medium">Tạm tính</span><span className="font-semibold text-gray-700">{recurringSummary.subtotal.toLocaleString("vi-VN")}₫</span></div>
-                                                                 <div className="flex items-center justify-between"><span className="font-medium">Giảm giá ({recurringSummary.discountPercent}%)</span><span className="font-semibold text-emerald-600">-{recurringSummary.discountAmount.toLocaleString("vi-VN")}₫</span></div>
-                                                                 <div className="flex items-center justify-between pt-1 border-t border-blue-200"><span className="font-bold">Thành tiền</span><span className="font-bold text-blue-800 text-base">{recurringSummary.discountedTotal.toLocaleString("vi-VN")}₫</span></div>
+                                                            <div className="mt-2 text-xs text-blue-800 space-y-1 bg-white/60 p-2 rounded-xl border border-blue-200/50">
+                                                                 <div className="flex items-center justify-between"><span className="font-medium">Giá mỗi buổi</span><span className="font-semibold text-yellow-700">{recurringSummary.unitPrice.toLocaleString("vi-VN")}₫</span></div>
+                                                                 <div className="flex items-center justify-between"><span className="font-medium">Tạm tính</span><span className="font-semibold text-red-700">{recurringSummary.subtotal.toLocaleString("vi-VN")}₫</span></div>
+
                                                             </div>
                                                        )}
                                                   </div>
@@ -363,12 +358,25 @@ export default function BookingWidget({
                                         </div>
                                    </div>
                               </div>
+                              {isRecurring && repeatDays.length > 0 && rangeStart && rangeEnd && (
+                                   <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 flex items-start gap-2">
+                                        <Clock className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                        <div className="flex-1">
+                                             <p className="text-sm font-medium text-blue-800">
+                                                  Tiếp tục để chọn giờ và thanh toán
+                                             </p>
+                                             <p className="text-xs text-blue-600 mt-1">
+                                                  Sau khi nhấn "Đặt cố định", bạn sẽ được chuyển đến màn hình đặt sân để chọn khung giờ cho từng ngày trong tuần đã chọn.
+                                             </p>
+                                        </div>
+                                   </div>
+                              )}
                               <Button
                                    type="button"
                                    onClick={onBook}
-                                   className="rounded-lg bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-600 hover:from-teal-700 hover:via-emerald-700 hover:to-teal-700 text-white font-bold py-3 shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]"
+                                   className="rounded-2xl bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-600 hover:from-teal-700 hover:via-emerald-700 hover:to-teal-700 text-white font-bold py-3 shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]"
                               >
-                                   {isRecurring ? "Đặt định kỳ" : "Đặt sân nhỏ"}
+                                   {isRecurring ? "Đặt cố định" : "Đặt sân nhỏ"}
                               </Button>
                          </div>
                     )}
