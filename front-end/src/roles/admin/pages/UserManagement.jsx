@@ -551,15 +551,12 @@ export default function UserManagement() {
                                    <Button
                                         onClick={handleOpenNotificationModal}
                                         variant="outline"
-                                        className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                                        className="border-orange-300 rounded-2xl text-orange-700 hover:bg-orange-50"
                                    >
                                         <Bell className="w-4 h-4 mr-2" />
                                         Tạo thông báo
                                    </Button>
-                                   <Button onClick={() => setShowCreateModal(true)}>
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        Thêm người dùng
-                                   </Button>
+
                               </div>
                          </div>
                     </CardHeader>
@@ -592,7 +589,7 @@ export default function UserManagement() {
                                    </div>
                               </div>
                          ) : (
-                              <Table className="w-full">
+                              <Table className="w-full rounded-2xl shadow-lg border border-slate-200">
                                    <TableHeader>
                                         <TableRow>
                                              {columns.map((column) => (

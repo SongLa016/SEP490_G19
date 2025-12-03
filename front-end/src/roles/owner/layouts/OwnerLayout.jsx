@@ -113,9 +113,9 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
                                    {!sidebarCollapsed && (
                                         <div className="ml-3">
                                              <span className="text-lg font-bold bg-gradient-to-r from-teal-700 to-emerald-700 bg-clip-text text-transparent">
-                                                  {isDemo ? 'Demo Panel' : 'Owner Panel'}
+                                                  {isDemo ? 'Xem trước' : 'Chủ sân'}
                                              </span>
-                                             <p className="text-xs text-slate-500 font-medium">Management System</p>
+                                             <p className="text-xs text-slate-500 font-medium">Quản lý hệ thống</p>
                                         </div>
                                    )}
                               </div>
@@ -203,8 +203,8 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
                          <div className="sticky bottom-0 p-4 border-t border-slate-200/50 bg-gradient-to-r from-slate-50 to-slate-100 backdrop-blur-sm z-10">
                               <div className="flex items-center">
                                    <Avatar className="w-12 h-12 border-2 border-white shadow-lg ring-2 ring-teal-100">
-                                        <AvatarImage 
-                                             src={currentUser?.avatar} 
+                                        <AvatarImage
+                                             src={currentUser?.avatar}
                                              alt={currentUser?.name || currentUser?.fullName || 'User'}
                                              className="object-cover"
                                         />

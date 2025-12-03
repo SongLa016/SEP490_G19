@@ -1,5 +1,5 @@
 import React from "react";
-import { Search, X, SlidersHorizontal, ArrowUpDown } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Input, Button, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, DatePicker } from "../../../../../shared/components/ui";
 
 export default function BookingFilters({

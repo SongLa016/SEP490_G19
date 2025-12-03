@@ -7,7 +7,7 @@ export default function ContactFormSection({
      onInputChange
 }) {
      return (
-          <div className="bg-teal-50 rounded-lg p-4">
+          <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4">
                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                     <User className="w-5 h-5 mr-2 text-teal-600" />
                     Thông tin liên hệ
@@ -16,12 +16,12 @@ export default function ContactFormSection({
                     <div>
                          <label className="block text-sm font-medium text-gray-700 mb-2">
                               <User className="w-4 h-4 inline mr-1" />
-                              Họ và tên *
+                              Họ và tên <span className="text-red-500">*</span>
                          </label>
                          <Input
                               value={bookingData.customerName}
                               onChange={(e) => onInputChange("customerName", e.target.value)}
-                              className={errors.customerName ? "border-red-500" : ""}
+                              className={errors.customerName ? "border-red-500" : "border border-teal-200 rounded-lg"}
                               placeholder="Nhập họ và tên"
                          />
                          {errors.customerName && (
@@ -32,12 +32,12 @@ export default function ContactFormSection({
                     <div>
                          <label className="block text-sm font-medium text-gray-700 mb-2">
                               <Phone className="w-4 h-4 inline mr-1" />
-                              Số điện thoại *
+                              Số điện thoại <span className="text-red-500">*</span>
                          </label>
                          <Input
                               value={bookingData.customerPhone}
                               onChange={(e) => onInputChange("customerPhone", e.target.value)}
-                              className={errors.customerPhone ? "border-red-500" : ""}
+                              className={errors.customerPhone ? "border-red-500" : "border border-teal-200 rounded-lg"}
                               placeholder="Nhập số điện thoại"
                          />
                          {errors.customerPhone && (
@@ -54,7 +54,7 @@ export default function ContactFormSection({
                               type="email"
                               value={bookingData.customerEmail}
                               onChange={(e) => onInputChange("customerEmail", e.target.value)}
-                              className={errors.customerEmail ? "border-red-500" : ""}
+                              className={errors.customerEmail ? "border-red-500" : "border border-teal-200 rounded-lg"}
                               placeholder={bookingData.requiresEmail ? "Nhập email (bắt buộc)" : "Nhập email (tùy chọn)"}
                          />
                          {errors.customerEmail && (

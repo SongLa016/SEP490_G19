@@ -12,10 +12,8 @@ export default function PriceSummarySection({
      // Lấy giá từ TimeSlots hoặc schedule đã chọn cho từng thứ
      const getSlotPrice = (slotId) => {
           if (!slotId) {
-               console.log("[PriceSummarySection] No slotId provided");
                return bookingData.price || 0;
           }
-
           // Ưu tiên lấy từ TimeSlots (có giá chính xác)
           if (Array.isArray(bookingData?.fieldTimeSlots) && bookingData.fieldTimeSlots.length > 0) {
                const timeSlot = bookingData.fieldTimeSlots.find(s =>
@@ -23,13 +21,12 @@ export default function PriceSummarySection({
                );
                if (timeSlot) {
                     const price = timeSlot.price || timeSlot.Price || timeSlot.unitPrice || timeSlot.UnitPrice || 0;
-                    console.log(`[PriceSummarySection] Found price for slotId ${slotId} from TimeSlot:`, price, timeSlot);
+
                     return price;
                } else {
-                    console.log(`[PriceSummarySection] TimeSlot not found for slotId ${slotId}, available slots:`, bookingData.fieldTimeSlots.map(s => s.slotId || s.SlotId));
                }
           } else {
-               console.log("[PriceSummarySection] No fieldTimeSlots available:", bookingData?.fieldTimeSlots);
+
           }
 
           // Fallback: lấy từ fieldSchedules nếu có
@@ -39,32 +36,55 @@ export default function PriceSummarySection({
                );
                if (schedule) {
                     const price = schedule.price || schedule.Price || schedule.unitPrice || schedule.UnitPrice || 0;
-                    console.log(`[PriceSummarySection] Found price for slotId ${slotId} from Schedule:`, price);
                     return price;
                }
           }
 
-          console.log(`[PriceSummarySection] Using default price for slotId ${slotId}:`, bookingData.price || 0);
           return bookingData.price || 0;
      };
 
-     // Tính giá trung bình từ các slot đã chọn
-     const calculateAveragePrice = () => {
+     // Tính thống kê giá từ các slot đã chọn (để hiển thị khoảng giá khi các khung giờ có giá khác nhau)
+     const getRecurringPriceStats = () => {
           if (!isRecurring || !selectedSlotsByDay || Object.keys(selectedSlotsByDay).length === 0) {
-               return bookingData.price || 0;
+               const base = bookingData.price || 0;
+               return {
+                    minPrice: base,
+                    maxPrice: base,
+                    hasMultiplePrices: false
+               };
           }
 
           const prices = Object.values(selectedSlotsByDay)
                .map(slotId => getSlotPrice(slotId))
                .filter(price => price > 0);
 
-          if (prices.length === 0) return bookingData.price || 0;
+          if (prices.length === 0) {
+               const fallback = bookingData.price || 0;
+               return {
+                    minPrice: fallback,
+                    maxPrice: fallback,
+                    hasMultiplePrices: false
+               };
+          }
 
-          // Lấy giá đầu tiên (hoặc có thể tính trung bình)
-          return prices[0];
+          const minPrice = Math.min(...prices);
+          const maxPrice = Math.max(...prices);
+
+          return {
+               minPrice,
+               maxPrice,
+               hasMultiplePrices: minPrice !== maxPrice
+          };
      };
 
-     const slotPrice = isRecurring ? calculateAveragePrice() : (bookingData.price || 0);
+     const {
+          minPrice,
+          maxPrice,
+          hasMultiplePrices
+     } = getRecurringPriceStats();
+
+     // Giá đại diện để tính subtotal khi cần (đặt lẻ vẫn dùng bookingData.price)
+     const slotPrice = isRecurring ? (minPrice || bookingData.price || 0) : (bookingData.price || 0);
      // Với đặt sân cố định, không áp dụng giảm giá/cọc ở bước này – subtotal chính là tổng giá
      const subtotal = isRecurring
           ? (bookingData.totalPrice || bookingData.subtotal || (slotPrice * (totalSessions || 1)))
@@ -82,7 +102,11 @@ export default function PriceSummarySection({
                               <span className="mr-2">💵</span>
                               Giá/trận (1h30')
                          </span>
-                         <span className="font-medium">{formatPrice(slotPrice)}</span>
+                         <span className="font-medium">
+                              {isRecurring && hasMultiplePrices
+                                   ? `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`
+                                   : formatPrice(slotPrice)}
+                         </span>
                     </div>
                     {isRecurring && (
                          <div className="flex justify-between">
@@ -100,7 +124,11 @@ export default function PriceSummarySection({
                                         <span className="mr-2">💸</span>
                                         Giá mỗi trận
                                    </span>
-                                   <span className="font-medium">{formatPrice(slotPrice)}</span>
+                                   <span className="font-medium">
+                                        {hasMultiplePrices
+                                             ? `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`
+                                             : formatPrice(slotPrice)}
+                                   </span>
                               </div>
                               <div className="flex justify-between items-center">
                                    <span className="text-gray-600 font-medium flex items-center">
@@ -109,6 +137,11 @@ export default function PriceSummarySection({
                                    </span>
                                    <span className="font-medium">{formatPrice(subtotal)}</span>
                               </div>
+                              {hasMultiplePrices && (
+                                   <div className="mt-1 text-xs text-gray-600 italic">
+                                        Giá thay đổi theo khung giờ từng ngày, tổng giá đã tính theo đúng từng slot.
+                                   </div>
+                              )}
                          </>
                     )}
                     {!isRecurring && (

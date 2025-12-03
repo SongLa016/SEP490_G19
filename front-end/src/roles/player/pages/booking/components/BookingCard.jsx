@@ -1,6 +1,6 @@
 import React from "react";
-import { MapPin, Calendar, Clock, CreditCard, Receipt, Trash2, Star, UserSearchIcon } from "lucide-react";
-import { Badge, Button } from "../../../../../shared/components/ui";
+import { MapPin, Calendar, Clock, } from "lucide-react";
+import { Badge } from "../../../../../shared/components/ui";
 import BookingActions from "./BookingActions";
 import BookingMatchRequest from "./BookingMatchRequest";
 import BookingParticipants from "./BookingParticipants";

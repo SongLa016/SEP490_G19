@@ -405,7 +405,7 @@ const LandingPage = () => {
                                                   size="lg"
                                                   className="px-8 py-4 text-lg font-semibold border-2 border-white/20 hover:border-white/40 text-teal-500 hover:bg-transparent hover:text-white rounded-xl transition-all duration-[350ms] ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-95 hover:scale-105"
                                              >
-                                                  {selectedPersona === 'customer' ? 'Đăng ký' : 'Xem demo'}
+                                                  {selectedPersona === 'customer' ? 'Đăng ký' : 'Xem trước'}
                                              </Button>
                                         </motion.div>
 
@@ -602,22 +602,22 @@ const LandingPage = () => {
                                                   {[
                                                        {
                                                             icon: <Calendar className="w-6 h-6" />,
-                                                            title: 'Booking tự động',
+                                                            title: 'Đặt lịch tự động',
                                                             color: 'bg-blue-500/20 border-blue-500/30',
                                                        },
                                                        {
                                                             icon: <BarChart3 className="w-6 h-6" />,
-                                                            title: 'Báo cáo chi tiết',
+                                                            title: 'Thống kê chi tiết',
                                                             color: 'bg-green-500/20 border-green-500/30',
                                                        },
                                                        {
                                                             icon: <Zap className="w-6 h-6" />,
-                                                            title: 'Tích hợp API',
+                                                            title: 'Tích hợp nhiều nền tảng',
                                                             color: 'bg-yellow-500/20 border-yellow-500/30',
                                                        },
                                                        {
                                                             icon: <ShieldCheck className="w-6 h-6" />,
-                                                            title: 'Bảo mật cao',
+                                                            title: 'Bảo mật an toàn',
                                                             color: 'bg-purple-500/20 border-purple-500/30',
                                                        },
                                                   ].map((feature, index) => (

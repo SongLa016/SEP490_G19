@@ -125,18 +125,85 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
      }
 
      async function handleGoogleLogin() {
+          if (isGoogleLoading || isLoading) return;
           setIsGoogleLoading(true);
 
           try {
-               Swal.fire({
-                    icon: 'info',
-                    title: 'Thông báo',
-                    text: 'Chức năng đăng nhập Google chưa được tích hợp. Vui lòng sử dụng đăng nhập thường.',
-                    confirmButtonText: 'Đã hiểu',
-                    confirmButtonColor: '#0d9488'
+               // Kiểm tra Google Identity Services đã được nạp hay chưa
+               const googleLib = window.google && window.google.accounts && window.google.accounts.id;
+               if (!googleLib) {
+                    throw new Error('Google Sign-In chưa được cấu hình. Vui lòng kiểm tra script Google Identity (gsi/client) và REACT_APP_GOOGLE_CLIENT_ID.');
+               }
+
+               const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+               if (!clientId) {
+                    throw new Error('Thiếu cấu hình REACT_APP_GOOGLE_CLIENT_ID. Vui lòng thêm Client ID của Google vào file .env.');
+               }
+
+               // Bọc callback-based API của Google vào Promise để sử dụng async/await
+               const googleCredential = await new Promise((resolve, reject) => {
+                    try {
+                         googleLib.initialize({
+                              client_id: clientId,
+                              callback: (response) => {
+                                   if (!response || !response.credential) {
+                                        reject(new Error('Không lấy được thông tin đăng nhập từ Google.'));
+                                        return;
+                                   }
+                                   resolve(response.credential);
+                              }
+                         });
+
+                         googleLib.prompt((notification) => {
+                              if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                                   // Người dùng đóng hoặc không hiển thị được popup
+                                   reject(new Error('Đăng nhập Google bị hủy hoặc không thể hiển thị cửa sổ đăng nhập.'));
+                              }
+                         });
+                    } catch (e) {
+                         reject(e);
+                    }
                });
+
+               // Giải mã JWT credential từ Google để lấy email, tên
+               let email = '';
+               let name = '';
+               try {
+                    const payload = JSON.parse(atob(googleCredential.split('.')[1]));
+                    email = payload.email || '';
+                    const givenName = payload.given_name || '';
+                    const familyName = payload.family_name || '';
+                    name = payload.name || `${givenName} ${familyName}`.trim() || email;
+               } catch (e) {
+                    console.error('Không thể giải mã credential Google:', e);
+               }
+
+               if (!email) {
+                    throw new Error('Không thể lấy được email từ tài khoản Google.');
+               }
+
+               // Gọi API backend đăng nhập Google
+               const result = await authService.loginWithGoogle(email, name);
+               if (!result.ok) {
+                    throw new Error(result.reason || 'Đăng nhập Google thất bại.');
+               }
+
+               // Lưu user & token, cập nhật context
+               if (result.user && result.token) {
+                    localStorage.setItem('user', JSON.stringify(result.user));
+                    login(result.user, result.token);
+               }
+
+               Swal.fire({
+                    icon: 'success',
+                    title: 'Đăng nhập thành công',
+                    text: `Xin chào ${result?.user?.fullName || name || email}`,
+                    timer: 2000,
+                    showConfirmButton: false
+               });
+
                setIsGoogleLoading(false);
-               return;
+               onLoggedIn && onLoggedIn(result.user);
           } catch (error) {
                const errorMessage = error.message || 'Có lỗi xảy ra khi đăng nhập Google. Vui lòng thử lại.';
                Swal.fire({

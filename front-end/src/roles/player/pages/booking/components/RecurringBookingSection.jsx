@@ -14,7 +14,8 @@ export default function RecurringBookingSection({
      onSlotSelect, // (dayOfWeek, slotId) => void
      fieldSchedules = [], // Danh sách schedule để filter theo dayOfWeek
      onBookingDataChange,
-     generateRecurringSessions
+     generateRecurringSessions,
+     fieldTimeSlots = [] // TimeSlots chứa giá theo slotId
 }) {
      const dayOptions = [
           { value: 1, label: "T2", name: "Thứ 2" },
@@ -26,6 +27,12 @@ export default function RecurringBookingSection({
           { value: 0, label: "CN", name: "Chủ nhật" }
      ];
 
+     // Chuẩn hoá khoảng ngày bắt đầu/kết thúc để so sánh
+     const startDateObj = startDate ? new Date(startDate) : null;
+     const endDateObj = endDate ? new Date(endDate) : null;
+     if (startDateObj) startDateObj.setHours(0, 0, 0, 0);
+     if (endDateObj) endDateObj.setHours(23, 59, 59, 999);
+
      // Lấy schedule cho một dayOfWeek cụ thể (unique theo slotId)
      const getSchedulesForDay = (dayOfWeek) => {
           if (!Array.isArray(fieldSchedules) || fieldSchedules.length === 0) {
@@ -35,6 +42,7 @@ export default function RecurringBookingSection({
           const filtered = fieldSchedules.filter(s => {
                // Thử lấy dayOfWeek trực tiếp từ schedule
                let scheduleDayOfWeek = s.dayOfWeek ?? s.DayOfWeek ?? s.weekday ?? s.Weekday;
+               let scheduleDateObj = null;
 
                // Nếu không có, tính từ date
                if (scheduleDayOfWeek === undefined || scheduleDayOfWeek === null) {
@@ -47,6 +55,7 @@ export default function RecurringBookingSection({
                                         ? new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day)
                                         : new Date(scheduleDate));
                               if (!isNaN(date.getTime())) {
+                                   scheduleDateObj = date;
                                    scheduleDayOfWeek = date.getDay(); // 0 = CN, 1 = T2, ..., 6 = T7
                               }
                          } catch (e) {
@@ -55,7 +64,35 @@ export default function RecurringBookingSection({
                     }
                }
 
-               return Number(scheduleDayOfWeek) === Number(dayOfWeek);
+               // Nếu đã chọn khoảng ngày, chỉ lấy schedule nằm trong khoảng đó
+               let inRange = true;
+               if (startDateObj && endDateObj) {
+                    if (!scheduleDateObj) {
+                         const scheduleDate = s.date ?? s.Date ?? s.scheduleDate ?? s.ScheduleDate;
+                         if (scheduleDate) {
+                              try {
+                                   const date = typeof scheduleDate === 'string'
+                                        ? new Date(scheduleDate)
+                                        : (scheduleDate.year && scheduleDate.month && scheduleDate.day
+                                             ? new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day)
+                                             : new Date(scheduleDate));
+                                   if (!isNaN(date.getTime())) {
+                                        scheduleDateObj = date;
+                                   }
+                              } catch (e) {
+                                   // ignore parse error, coi như out of range
+                              }
+                         }
+                    }
+                    if (scheduleDateObj) {
+                         const time = scheduleDateObj.getTime();
+                         inRange = time >= startDateObj.getTime() && time <= endDateObj.getTime();
+                    } else {
+                         inRange = false;
+                    }
+               }
+
+               return inRange && Number(scheduleDayOfWeek) === Number(dayOfWeek);
           });
 
           // Deduplicate theo slotId để chỉ lấy unique slot cho mỗi thứ
@@ -70,7 +107,19 @@ export default function RecurringBookingSection({
                return true;
           });
 
-          return uniqueSchedules;
+          // Sắp xếp theo giờ bắt đầu tăng dần
+          const parseTime = (timeStr) => {
+               if (!timeStr || typeof timeStr !== "string") return Number.POSITIVE_INFINITY;
+               const [h, m] = timeStr.split(":").map(Number);
+               if (Number.isNaN(h) || Number.isNaN(m)) return Number.POSITIVE_INFINITY;
+               return h * 60 + m;
+          };
+
+          return uniqueSchedules.sort((a, b) => {
+               const startA = a.startTime || a.StartTime || "";
+               const startB = b.startTime || b.StartTime || "";
+               return parseTime(startA) - parseTime(startB);
+          });
      };
 
      // Format time range
@@ -125,9 +174,9 @@ export default function RecurringBookingSection({
                     </label>
                </div>
                {isRecurring && (
-                    <div className="space-y-4 mt-4">
+                    <div className="space-y-3 mt-3">
                          {/* Bước 1: Chọn khoảng thời gian */}
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                               <div>
                                    <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Ngày bắt đầu
@@ -139,6 +188,7 @@ export default function RecurringBookingSection({
                                              onBookingDataChange("startDate", date);
                                         }}
                                         min={new Date().toISOString().split('T')[0]}
+                                        className="rounded-xl"
                                    />
                               </div>
                               <div>
@@ -152,6 +202,7 @@ export default function RecurringBookingSection({
                                              onBookingDataChange("endDate", date);
                                         }}
                                         min={startDate || new Date().toISOString().split('T')[0]}
+                                        className="rounded-xl"
                                    />
                               </div>
                          </div>
@@ -159,7 +210,7 @@ export default function RecurringBookingSection({
                          {/* Bước 2: Chọn các thứ trong tuần */}
                          {startDate && endDate && (
                               <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Chọn ngày trong tuần
                                    </label>
                                    <div className="grid grid-cols-7 gap-2">
@@ -172,7 +223,7 @@ export default function RecurringBookingSection({
                                                        onClick={() => handleDayToggle(day.value)}
                                                        variant={isSelected ? "default" : "outline"}
                                                        size="sm"
-                                                       className={`p-2 text-sm font-medium ${isSelected
+                                                       className={`p-2 text-sm rounded-xl font-medium ${isSelected
                                                             ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600"
                                                             : "bg-white text-gray-700 hover:text-teal-500 hover:bg-teal-50 border-teal-300"
                                                             }`}
@@ -191,26 +242,26 @@ export default function RecurringBookingSection({
 
                          {/* Bước 3: Chọn slot cho từng thứ đã chọn */}
                          {selectedDays.length > 0 && startDate && endDate && (
-                              <div className="space-y-3">
+                              <div className="space-y-2">
                                    <label className="block text-sm font-medium text-gray-700">
                                         Chọn khung giờ cho từng ngày
                                    </label>
-                                   {selectedDays.map((dayOfWeek) => {
+                                   {selectedDays.slice().sort((a, b) => a - b).map((dayOfWeek) => {
                                         const dayOption = dayOptions.find(d => d.value === dayOfWeek);
                                         const schedules = getSchedulesForDay(dayOfWeek);
                                         const selectedSlotId = selectedSlotsByDay?.[dayOfWeek] || null;
 
                                         return (
-                                             <div key={dayOfWeek} className="bg-white rounded-lg border border-teal-200 p-3">
+                                             <div key={dayOfWeek} className="bg-white rounded-lg border border-teal-200 px-3 py-2">
                                                   <div className="flex items-center gap-2 mb-2">
                                                        <CalendarDays className="w-4 h-4 text-teal-600" />
-                                                       <span className="font-semibold text-teal-800">{dayOption?.name || `Thứ ${dayOfWeek}`}</span>
+                                                       <span className="font-semibold text-sm text-teal-800">{dayOption?.name || `Thứ ${dayOfWeek}`}</span>
                                                   </div>
 
                                                   {schedules.length === 0 ? (
                                                        <p className="text-sm text-gray-500 italic">Không có lịch trình cho {dayOption?.name}</p>
                                                   ) : (
-                                                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                       <div className="grid grid-cols-3 sm:grid-cols-3 gap-2">
                                                             {schedules.map((schedule) => {
                                                                  const scheduleSlotId = schedule.slotId || schedule.SlotId || schedule.slotID || schedule.SlotID;
                                                                  const scheduleId = schedule.scheduleId || schedule.ScheduleId || schedule.scheduleID || schedule.ScheduleID;
@@ -219,7 +270,18 @@ export default function RecurringBookingSection({
                                                                  const status = schedule.status || schedule.Status || "Available";
                                                                  const isSelected = String(selectedSlotId) === String(scheduleSlotId);
                                                                  const isAvailable = status === "Available";
-
+                                                                 // Lấy giá từ bảng TimeSlots theo slotId (ưu tiên), không lấy giá trực tiếp từ schedule
+                                                                 const price = (() => {
+                                                                      if (Array.isArray(fieldTimeSlots) && fieldTimeSlots.length > 0) {
+                                                                           const timeSlot = fieldTimeSlots.find(ts =>
+                                                                                String(ts.slotId || ts.SlotId || ts.slotID || ts.SlotID) === String(scheduleSlotId)
+                                                                           );
+                                                                           if (timeSlot) {
+                                                                                return timeSlot.price || timeSlot.Price || timeSlot.unitPrice || timeSlot.UnitPrice || 0;
+                                                                           }
+                                                                      }
+                                                                      return 0;
+                                                                 })();
                                                                  return (
                                                                       <Button
                                                                            key={scheduleId || scheduleSlotId}
@@ -230,19 +292,27 @@ export default function RecurringBookingSection({
                                                                                 }
                                                                            }}
                                                                            disabled={!isAvailable}
-                                                                           className={`text-xs py-2 px-3 rounded-lg transition-all ${isSelected
+                                                                           className={`text-xs py-3 px-4 rounded-lg transition-all relative ${isSelected
                                                                                 ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600"
                                                                                 : isAvailable
-                                                                                     ? "bg-white text-gray-700 border border-teal-300 hover:bg-teal-50 hover:border-teal-500"
+                                                                                     ? "bg-white text-gray-700 border border-teal-300 hover:bg-teal-50 hover:text-teal-600 hover:border-teal-500"
                                                                                      : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
                                                                                 }`}
                                                                       >
-                                                                           <div className="flex flex-col items-center gap-1">
-                                                                                <Clock className="w-3 h-3" />
-                                                                                <span className="font-medium">{formatTimeRange(startTime, endTime)}</span>
+                                                                           <div className="flex flex-col items-center gap-1 p-2">
                                                                                 {!isAvailable && (
-                                                                                     <span className="text-[10px] text-red-500">Hết chỗ</span>
+                                                                                     <span className="text-[10px] absolute -top-2.5 -right-1 text-red-500">Hết chỗ</span>
                                                                                 )}
+                                                                                <div className="flex items-center gap-1">
+                                                                                     <Clock className="w-3 h-3" />
+                                                                                     <span className="font-medium">{formatTimeRange(startTime, endTime)}</span>
+                                                                                </div>
+                                                                                {price > 0 && (
+                                                                                     <span className="text-xs text-orange-700 font-semibold">
+                                                                                          {price.toLocaleString("vi-VN")}₫
+                                                                                     </span>
+                                                                                )}
+
                                                                            </div>
                                                                       </Button>
                                                                  );
@@ -257,22 +327,22 @@ export default function RecurringBookingSection({
 
                          {/* Tóm tắt */}
                          {totalSessions > 0 && (
-                              <div className="bg-teal-100 rounded-lg p-3 border border-teal-300">
+                              <div className="bg-teal-100 flex items-center rounded-lg p-2 gap-4 border border-teal-300">
                                    <div className="flex items-center gap-2 text-teal-800">
                                         <CalendarDays className="w-4 h-4" />
                                         <span className="font-semibold">Tóm tắt:</span>
                                    </div>
-                                   <div className="mt-2 text-sm text-teal-700">
-                                        <p>Sẽ tạo <span className="font-bold">{totalSessions}</span> buổi đặt sân</p>
+                                   <div className="text-sm space-y-1 text-teal-700">
+                                        <p>Sẽ tạo <span className="font-bold text-red-500">{totalSessions}</span> buổi đặt sân</p>
                                         {startDate && endDate && (
-                                             <p className="mt-1">
-                                                  Từ <span className="font-semibold">{new Date(startDate).toLocaleDateString("vi-VN")}</span> đến{" "}
-                                                  <span className="font-semibold">{new Date(endDate).toLocaleDateString("vi-VN")}</span>
+                                             <p className="">
+                                                  Từ <span className="font-semibold text-yellow-500">{new Date(startDate).toLocaleDateString("vi-VN")}</span> đến{" "}
+                                                  <span className="font-semibold text-yellow-500">{new Date(endDate).toLocaleDateString("vi-VN")}</span>
                                              </p>
                                         )}
                                         {selectedDays.length > 0 && (
-                                             <p className="mt-1">
-                                                  {selectedDays.length} ngày/tuần: {selectedDays.map(d => dayOptions.find(o => o.value === d)?.label).join(", ")}
+                                             <p className="">
+                                                  {selectedDays.length} ngày/tuần: <span className="font-semibold text-blue-500">{selectedDays.map(d => dayOptions.find(o => o.value === d)?.label).join(", ")}</span>
                                              </p>
                                         )}
                                    </div>

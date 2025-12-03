@@ -1,4 +1,4 @@
-import { CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { CheckCircle, Clock } from "lucide-react";
 import { Button } from "../../../../../shared/components/ui";
 
 export default function ConfirmationStepSection({

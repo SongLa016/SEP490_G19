@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Heart, MessageCircle, Repeat2, Share, Bookmark } from "lucide-react";
+import { Heart, MessageCircle, Share, Bookmark } from "lucide-react";
 import { Button } from "../../../../../shared/components/ui";
 
 const InteractionButtons = ({
@@ -20,7 +20,7 @@ const InteractionButtons = ({
                          variant="ghost"
                          size="sm"
                          onClick={onLike}
-                         className={`flex items-center gap-1 px-3 py-1.5 rounded-full rounded-2xl hover:text-red-500 transition-colors hover:bg-red-50 ${post.isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
+                         className={`flex items-center gap-1 px-3 py-1.5 rounded-full hover:text-red-500 transition-colors hover:bg-red-50 ${post.isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
                     >
                          <motion.div
                               animate={post.isLiked ? { scale: [1, 1.3, 1], rotate: [0, -10, 10, 0] } : {}}

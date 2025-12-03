@@ -8,13 +8,18 @@ export default function PaymentStepSection({
      isRecurring,
      recurringWeeks,
      selectedDays,
+     selectedSlotsByDay,
      isProcessing,
      formatPrice,
      errors = {},
      onConfirmPayment,
      onCancelBooking = () => { },
      isPaymentLocked = false,
-     lockCountdownSeconds = 0
+     lockCountdownSeconds = 0,
+     // Khoảng thời gian gói cố định (từ BookingModal truyền xuống)
+     startDate,
+     endDate,
+     fieldSchedules = []
 }) {
      const fallbackAccount = ownerBankAccount || {
           bankName: bookingData.bankName,
@@ -29,9 +34,6 @@ export default function PaymentStepSection({
      const rawDepositAmount = bookingData.depositAmount || bookingInfo?.depositAmount || 0;
      const depositAmount = isRecurringPackage ? 0 : rawDepositAmount;
      const depositAvailable = !isRecurringPackage && depositAmount > 0;
-     const transferAmount = isRecurringPackage
-          ? (bookingInfo?.totalPrice || bookingData.totalPrice || 0)
-          : depositAmount;
      const formatCountdown = (seconds) => {
           const safeSeconds = Math.max(0, seconds || 0);
           const minutes = Math.floor(safeSeconds / 60);
@@ -52,11 +54,141 @@ export default function PaymentStepSection({
           if (minutes > 0) return `${minutes} phút`;
           return "—";
      };
-     const totalSessions = bookingData.totalSessions || (isRecurring ? (recurringWeeks * selectedDays.length) : 1);
-     const slotPrice = bookingData.price || 0;
+     // Tạo danh sách buổi định kỳ (local) từ startDate + endDate + selectedDays + selectedSlotsByDay
+     const generateRecurringSessionsLocal = () => {
+          if (!isRecurringPackage || !startDate || !endDate || !Array.isArray(selectedDays) || selectedDays.length === 0) {
+               return [];
+          }
+          try {
+               const sessions = [];
+               const start = new Date(startDate);
+               start.setHours(0, 0, 0, 0);
+               const end = new Date(endDate);
+               end.setHours(23, 59, 59, 999);
+
+               for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                    const weekday = d.getDay(); // 0=CN..6=T7
+                    if (selectedDays.includes(weekday)) {
+                         const selectedSlotId = selectedSlotsByDay?.[weekday];
+                         if (selectedSlotId) {
+                              sessions.push({
+                                   date: new Date(d),
+                                   dayOfWeek: weekday,
+                                   slotId: selectedSlotId
+                              });
+                         }
+                    }
+               }
+               return sessions;
+          } catch {
+               return [];
+          }
+     };
+
+     const recurringSessions = generateRecurringSessionsLocal();
+
+     // Số buổi thực tế: với gói cố định ưu tiên theo sessions local, fallback bookingData
+     const totalSessions = isRecurringPackage
+          ? (recurringSessions.length || bookingData.totalSessions || 0)
+          : (bookingData.totalSessions || 1);
+
+     // Lấy giá theo slotId từ TimeSlots (ưu tiên) hoặc schedule, giống BookingModal/PriceSummarySection
+     const getSlotPrice = (slotId) => {
+          if (!slotId) return bookingData.price || 0;
+
+          if (Array.isArray(bookingData?.fieldTimeSlots) && bookingData.fieldTimeSlots.length > 0) {
+               const timeSlot = bookingData.fieldTimeSlots.find((s) =>
+                    String(s.slotId || s.SlotId || s.slotID || s.SlotID) === String(slotId)
+               );
+               if (timeSlot) {
+                    return (
+                         timeSlot.price ||
+                         timeSlot.Price ||
+                         timeSlot.unitPrice ||
+                         timeSlot.UnitPrice ||
+                         0
+                    );
+               }
+          }
+
+          if (Array.isArray(fieldSchedules) && fieldSchedules.length > 0) {
+               const schedule = fieldSchedules.find((s) =>
+                    String(s.slotId || s.SlotId || s.slotID || s.SlotID) === String(slotId)
+               );
+               if (schedule) {
+                    return (
+                         schedule.price ||
+                         schedule.Price ||
+                         schedule.unitPrice ||
+                         schedule.UnitPrice ||
+                         0
+                    );
+               }
+          }
+
+          return bookingData.price || 0;
+     };
+
+     // Tính min/max giá từ các slot đã chọn để hiển thị khoảng giá (250k - 300k)
+     const getRecurringPriceStats = () => {
+          if (!isRecurringPackage || !selectedSlotsByDay || Object.keys(selectedSlotsByDay).length === 0) {
+               const base = bookingData.price || 0;
+               return {
+                    minPrice: base,
+                    maxPrice: base,
+                    hasMultiplePrices: false
+               };
+          }
+
+          const prices = Object.values(selectedSlotsByDay)
+               .map((slotId) => getSlotPrice(slotId))
+               .filter((price) => price > 0);
+
+          if (prices.length === 0) {
+               const fallback = bookingData.price || 0;
+               return {
+                    minPrice: fallback,
+                    maxPrice: fallback,
+                    hasMultiplePrices: false
+               };
+          }
+
+          const minPrice = Math.min(...prices);
+          const maxPrice = Math.max(...prices);
+
+          return {
+               minPrice,
+               maxPrice,
+               hasMultiplePrices: minPrice !== maxPrice
+          };
+     };
+
+     const {
+          minPrice,
+          maxPrice,
+          hasMultiplePrices
+     } = getRecurringPriceStats();
+
+     // Giá đại diện để hiển thị khi không phải gói cố định hoặc tất cả slot cùng giá
+     const slotPrice = isRecurringPackage ? (minPrice || bookingData.price || 0) : (bookingData.price || 0);
+
+     // Tổng tiền gói cố định: tính lại từ các session + giá từng slot (không phụ thuộc totalPrice backend)
+     const recurringTotal = isRecurringPackage
+          ? (() => {
+               if (recurringSessions.length === 0) return 0;
+               return recurringSessions.reduce((sum, session) => {
+                    const price = getSlotPrice(session.slotId);
+                    return sum + (Number(price) || 0);
+               }, 0);
+          })()
+          : (bookingData.totalPrice || bookingInfo?.totalPrice || bookingData.subtotal || 0);
+
      const subtotal = isRecurringPackage
-          ? (bookingData.totalPrice || bookingInfo?.totalPrice || bookingData.subtotal || (slotPrice * (totalSessions || 1)))
+          ? recurringTotal
           : (bookingData.subtotal || (slotPrice * (totalSessions || 1)));
+
+     // Số tiền cần thanh toán phải khớp với phần "Tổng cộng" bên dưới
+     const transferAmount = isRecurringPackage ? subtotal : depositAmount;
 
      return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -151,13 +283,13 @@ export default function PaymentStepSection({
                                    </div>
                                    {depositAvailable && transferAmount > 0 && (
                                         <div className="pt-2 border-t border-blue-50">
-                                   <div className="flex justify-between">
-                                        <span className="text-gray-600 font-medium">Số tiền cần thanh toán</span>
-                                        <span className="font-bold text-lg text-blue-700">{formatPrice(transferAmount)}</span>
-                                   </div>
-                                   <div className="text-xs text-gray-500 mt-1">
-                                        Nội dung chuyển khoản gợi ý: <span className="font-semibold">BOOKING-{bookingInfo?.bookingId || "XXXX"}</span>
-                                   </div>
+                                             <div className="flex justify-between">
+                                                  <span className="text-gray-600 font-medium">Số tiền cần thanh toán</span>
+                                                  <span className="font-bold text-lg text-blue-700">{formatPrice(transferAmount)}</span>
+                                             </div>
+                                             <div className="text-xs text-gray-500 mt-1">
+                                                  Nội dung chuyển khoản gợi ý: <span className="font-semibold">BOOKING-{bookingInfo?.bookingId || "XXXX"}</span>
+                                             </div>
                                         </div>
                                    )}
                               </div>
@@ -170,13 +302,13 @@ export default function PaymentStepSection({
                     <h3 className="text-lg font-semibold text-gray-900 ">Tóm tắt đặt sân</h3>
                     <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3">
                          <div className="mb-4 pb-1 border-b border-gray-200">
-                              <h4 className="font-semibold text-gray-900 mb-2">{bookingData.fieldName}</h4>
-                              <div className="flex items-center font-medium border border-gray-200 rounded-2xl p-1 text-gray-600 mb-1">
+                              <h4 className="font-semibold text-teal-900 mb-2">{bookingData.fieldName}</h4>
+                              <div className="flex items-center font-medium border border-teal-200 rounded-2xl p-1 text-teal-600 mb-1">
                                    <MapPin className="w-4 h-4 mr-2" />
                                    <span className="text-sm">{bookingData.fieldAddress}</span>
                               </div>
                               {bookingData.fieldType && (
-                                   <div className="text-sm text-gray-500">
+                                   <div className="text-sm text-teal-500">
                                         Loại: {bookingData.fieldType}
                                         {bookingData.fieldSize && ` - ${bookingData.fieldSize}`}
                                    </div>
@@ -195,15 +327,18 @@ export default function PaymentStepSection({
                                    </div>
                               )}
                               <div className="flex justify-between">
-                                   <span className="text-gray-600">Thời lượng</span>
-                                   <span className="font-medium">{formatDurationLabel(bookingData.duration)}</span>
+                                   <span className="text-gray-600">
+                                        {isRecurringPackage ? "Thời lượng gói" : "Thời lượng"}
+                                   </span>
+                                   <span className="font-medium">
+                                        {isRecurringPackage && startDate && endDate
+                                             ? `${new Date(startDate).toLocaleDateString("vi-VN")} - ${new Date(endDate).toLocaleDateString("vi-VN")}`
+                                             : formatDurationLabel(bookingData.duration)}
+                                   </span>
                               </div>
                               {isRecurring && (
                                    <>
-                                        <div className="flex justify-between">
-                                             <span className="text-gray-600">Số tuần</span>
-                                             <span className="font-medium text-teal-600">{recurringWeeks} tuần</span>
-                                        </div>
+
                                         <div className="flex justify-between">
                                              <span className="text-gray-600">Tổng số buổi</span>
                                              <span className="font-medium text-teal-600">{bookingData.totalSessions || (recurringWeeks * selectedDays.length)} buổi</span>
@@ -218,7 +353,11 @@ export default function PaymentStepSection({
                          <div className="space-y-1 text-sm">
                               <div className="flex justify-between">
                                    <span className="text-gray-600">Giá/trận (1h30')</span>
-                                   <span className="font-medium text-teal-600">{formatPrice(slotPrice)}</span>
+                                   <span className="font-medium text-teal-600">
+                                        {isRecurringPackage && hasMultiplePrices
+                                             ? `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`
+                                             : formatPrice(slotPrice)}
+                                   </span>
                               </div>
                               {isRecurring && (
                                    <div className="flex justify-between">
@@ -226,16 +365,16 @@ export default function PaymentStepSection({
                                         <span className="font-medium text-teal-600">{totalSessions} buổi</span>
                                    </div>
                               )}
-                              {isRecurring && (
-                                   <div className="flex justify-between">
-                                        <span className="text-gray-600">Giá mỗi trận</span>
-                                        <span className="font-medium text-teal-600">{formatPrice(slotPrice)}</span>
-                                   </div>
-                              )}
+
                               {isRecurring && (
                                    <div className="flex justify-between">
                                         <span className="text-gray-600">Tổng giá ({totalSessions} buổi)</span>
                                         <span className="font-medium text-teal-600">{formatPrice(subtotal)}</span>
+                                   </div>
+                              )}
+                              {isRecurringPackage && hasMultiplePrices && (
+                                   <div className="mt-1 text-xs text-gray-600 italic">
+                                        Giá thay đổi theo khung giờ từng ngày, tổng giá đã tính theo đúng từng slot.
                                    </div>
                               )}
                               {!isRecurringPackage && (

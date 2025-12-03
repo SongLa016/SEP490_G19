@@ -42,10 +42,10 @@ function DemoTopBanner({ isVisible, onClose, onSignUp }) {
                          </div>
                     </div>
 
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center  space-x-3">
                          <Button
                               onClick={handleSignUp}
-                              className="bg-white text-blue-600 hover:bg-gray-100 font-semibold px-4 py-1.5 text-sm rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+                              className="bg-white text-blue-600 hover:text-blue-800 hover:bg-gray-100 font-semibold px-4 py-1.5 text-sm rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg"
                          >
                               <UserPlus className="w-4 h-4 mr-1" />
                               Tạo tài khoản
@@ -56,7 +56,7 @@ function DemoTopBanner({ isVisible, onClose, onSignUp }) {
                               onClick={handleDismiss}
                               variant="ghost"
                               size="sm"
-                              className="text-white hover:bg-white/20 p-1 rounded-full"
+                              className="text-white hover:bg-white/20 hover:text-white p-2 rounded-2xl"
                          >
                               <X className="w-4 h-4" />
                          </Button>
@@ -81,7 +81,7 @@ function DemoAccountPrompt({ isVisible, onClose, onSignUp }) {
      if (isMinimized) {
           return (
                <div className="fixed bottom-4 right-4 z-50">
-                    <div className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-lg"
+                    <div className="py-3 px-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer rounded-2xl"
                          onClick={() => setIsMinimized(false)}>
                          <div className="flex items-center space-x-2">
                               <UserPlus className="w-5 h-5" />
@@ -94,8 +94,8 @@ function DemoAccountPrompt({ isVisible, onClose, onSignUp }) {
      }
 
      return (
-          <div className="fixed bottom-4 right-4 z-50 max-w-sm">
-               <div className="p-6 bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-200 shadow-xl rounded-lg">
+          <div className="fixed bottom-4 right-4 z-50 max-w-sm ">
+               <div className="p-5 bg-gradient-to-br from-blue-50 to-purple-50 border-2 border-blue-200 shadow-xl rounded-2xl">
                     <div className="flex items-center justify-between mb-4">
                          <div className="flex items-center space-x-2">
                               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
@@ -137,11 +137,11 @@ function DemoAccountPrompt({ isVisible, onClose, onSignUp }) {
                          </div>
                     </div>
 
-                    <div className="bg-gradient-to-r from-green-100 to-emerald-100 border border-green-200 rounded-lg p-3 mb-4">
+                    <div className="bg-gradient-to-r from-green-100 to-emerald-100 border border-green-200 rounded-xl p-3 mb-4">
                          <div className="flex items-center space-x-2">
                               <Gift className="w-4 h-4 text-green-600" />
                               <span className="text-sm font-medium text-green-800">
-                                   🎁 Hoàn toàn miễn phí - Không giới hạn thời gian!
+                                   Hoàn toàn miễn phí - Không giới hạn thời gian!
                               </span>
                          </div>
                     </div>

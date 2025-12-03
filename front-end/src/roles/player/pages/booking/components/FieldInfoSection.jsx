@@ -134,7 +134,7 @@ export default function FieldInfoSection({
      const durationLabel = formatDuration(durationHours);
 
      return (
-          <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4">
+          <div className="bg-transparent border border-teal-200 rounded-2xl p-4">
                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                     <MapPin className="w-5 h-5 mr-2 text-teal-600" />
                     Thông tin đặt sân
@@ -153,7 +153,7 @@ export default function FieldInfoSection({
                               </div>
                          )}
                     </div>
-                    <div className="space-y-2 text-sm">
+                    <div className="space-y-2 text-sm ">
                          <div className="flex justify-between">
                               <span className="text-gray-600 flex items-center">
                                    <span className="mr-2">📅</span>
@@ -170,15 +170,17 @@ export default function FieldInfoSection({
                                    <span className="font-medium">{bookingData.slotName}</span>
                               </div>
                          )}
-                         <div className="flex justify-between">
-                              <span className="text-gray-600 flex items-center">
-                                   <span className="mr-2">⏱️</span>
-                                   Thời lượng
-                              </span>
-                              <span className="font-medium">{durationLabel}</span>
-                         </div>
+                         {!isRecurring && (
+                              <div className="flex justify-between">
+                                   <span className="text-gray-600 flex items-center">
+                                        <span className="mr-2">⏱️</span>
+                                        Thời lượng
+                                   </span>
+                                   <span className="font-medium">{durationLabel}</span>
+                              </div>
+                         )}
                          {isRecurring && (
-                              <div className="mt-3 p-3 bg-teal-100 rounded-lg">
+                              <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
                                    <div className="flex justify-between">
                                         <span className="text-gray-600 flex items-center">
                                              <span className="mr-2">📅</span>
@@ -193,7 +195,11 @@ export default function FieldInfoSection({
                                                   Ngày trong tuần
                                              </span>
                                              <span className="font-medium text-teal-600">
-                                                  {selectedDays.map(day => dayNames[day]).join(", ")}
+                                                  {selectedDays
+                                                       .slice()
+                                                       .sort((a, b) => a - b)
+                                                       .map(day => dayNames[day])
+                                                       .join(", ")}
                                              </span>
                                         </div>
                                    )}
