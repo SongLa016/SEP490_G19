@@ -14,6 +14,7 @@ import {
      getDefaultPathForRole,
      getRoleByName,
 } from '../shared/constants/roles';
+import { profileService } from '../shared/services/profileService';
 
 const AuthContext = createContext();
 
@@ -62,6 +63,41 @@ export const AuthProvider = ({ children }) => {
           setUser(userData);
           localStorage.setItem('user', JSON.stringify(userData));
      };
+
+     // Sau khi có user nhưng chưa có avatar, tự động gọi API profile để lấy avatar/fullName
+     useEffect(() => {
+          if (!user || user.avatar) return;
+
+          let isCancelled = false;
+
+          const loadProfile = async () => {
+               try {
+                    const userId = user.userID || user.userId || user.id;
+                    const result = await profileService.getProfile(userId);
+                    const profile = result?.profile || result?.data || null;
+
+                    if (!isCancelled && profile) {
+                         const enrichedUser = {
+                              ...user,
+                              avatar: profile.avatar || profile.avatarUrl || user.avatar || null,
+                              fullName: user.fullName || profile.fullName || profile.FullName || user.fullName,
+                              name: user.name || profile.fullName || profile.FullName || user.name,
+                         };
+                         setUser(enrichedUser);
+                         localStorage.setItem('user', JSON.stringify(enrichedUser));
+                    }
+               } catch (e) {
+                    // Im lặng nếu lỗi, vẫn dùng fallback avatar chữ cái
+                    console.warn('[AuthContext] Failed to load profile for avatar:', e);
+               }
+          };
+
+          loadProfile();
+
+          return () => {
+               isCancelled = true;
+          };
+     }, [user]);
 
      // Memoized role helpers for better performance
      const roleHelpers = useMemo(() => ({

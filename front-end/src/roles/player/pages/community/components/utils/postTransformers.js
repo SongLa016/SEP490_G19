@@ -1,24 +1,100 @@
+import axios from "axios";
 import { fetchField, fetchFieldComplex } from "../../../../../../shared/services/fields";
+
+// Simple cache to avoid calling PlayerProfile API repeatedly for the same user
+const playerProfileCache = new Map();
+
+async function fetchPlayerProfile(userId) {
+     if (!userId) return null;
+
+     // Return from cache if available
+     if (playerProfileCache.has(userId)) {
+          return playerProfileCache.get(userId);
+     }
+
+     try {
+          const token = localStorage.getItem("token");
+          const response = await axios.get(
+               `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`,
+               {
+                    headers: {
+                         "Content-Type": "application/json",
+                         ...(token && { Authorization: `Bearer ${token}` }),
+                    },
+               }
+          );
+          const profileData = response.data || null;
+          if (profileData) {
+               playerProfileCache.set(userId, profileData);
+          }
+          return profileData;
+     } catch (error) {
+          console.error(`[normalizeAuthor] Failed to fetch player profile ${userId}:`, error);
+          return null;
+     }
+}
 
 /**
  * Normalize author data from various formats
  */
-export function normalizeAuthor(post, defaultUserId = null) {
-     if (post.author) {
-          return {
-               UserID: post.author.id || post.author.userId || post.author.userID || post.author.UserID || post.userId || defaultUserId,
-               Username: post.author.username || post.author.Username || post.author.userName || "user",
-               FullName: post.author.name || post.author.Name || post.author.fullName || post.author.FullName || post.author.full_name || "Người dùng",
-               Avatar: post.author.avatar || post.author.Avatar || post.author.avatarUrl || "https://ui-avatars.com/api/?name=User&background=0ea5e9&color=fff&size=100",
-               Verified: post.author.verified || post.author.Verified || post.author.isVerified || false
-          };
+export async function normalizeAuthor(post, defaultUserId = null) {
+     // Determine base userId from post / author
+     const baseUserId =
+          (post.author &&
+               (post.author.id ||
+                    post.author.userId ||
+                    post.author.userID ||
+                    post.author.UserID)) ||
+          post.userId ||
+          defaultUserId;
+
+     // Base fields from post.author if available
+     let username =
+          post.author?.username ||
+          post.author?.Username ||
+          post.author?.userName ||
+          "user";
+     let fullName =
+          post.author?.name ||
+          post.author?.Name ||
+          post.author?.fullName ||
+          post.author?.FullName ||
+          post.author?.full_name ||
+          "Người dùng";
+     let avatar =
+          post.author?.avatar ||
+          post.author?.Avatar ||
+          post.author?.avatarUrl ||
+          null;
+     const verified =
+          post.author?.verified ||
+          post.author?.Verified ||
+          post.author?.isVerified ||
+          false;
+
+     // Nếu chưa có avatar trong post, thử gọi PlayerProfile API để lấy avatar & fullName
+     if (!avatar && baseUserId) {
+          const profile = await fetchPlayerProfile(baseUserId);
+          if (profile) {
+               fullName = profile.fullName || fullName;
+               avatar = profile.avatar || avatar;
+          }
      }
+
+     // Fallback avatar (ui-avatars) nếu vẫn chưa có
+     const safeFullName = fullName || "User";
+     const finalAvatar =
+          avatar ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(
+               safeFullName
+          )}&background=0ea5e9&color=fff&size=100`;
+
      return {
-          UserID: post.userId || defaultUserId,
-          Username: "user",
-          FullName: "Người dùng",
-          Avatar: "https://ui-avatars.com/api/?name=User&background=0ea5e9&color=fff&size=100",
-          Verified: false
+          UserID: baseUserId,
+          Username: username,
+          FullName: safeFullName,
+          Avatar: finalAvatar,
+          Verified: !!verified,
      };
 }
 
@@ -113,7 +189,7 @@ export async function normalizeFieldData(post, fieldId = null) {
  * Normalize post data from API response
  */
 export async function normalizePostData(post) {
-     const author = normalizeAuthor(post);
+     const author = await normalizeAuthor(post);
      const field = await normalizeFieldData(post);
      const fieldId = post.fieldId || post.fieldID || post.FieldID || null;
      const postUserId = post.userId || post.userID || post.UserID || author.UserID || null;

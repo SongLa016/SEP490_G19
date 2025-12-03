@@ -7,6 +7,7 @@ import { fetchFields } from '../../../../../shared/index';
 import { formatTimeAgo } from './utils/formatTime';
 import { createReport } from '../../../../../shared/services/reports';
 import Swal from 'sweetalert2';
+import { getUserAvatarAndName } from "./utils";
 
 const PostDetailModal = ({
      isOpen,
@@ -27,6 +28,29 @@ const PostDetailModal = ({
      const [replyingToCommentId, setReplyingToCommentId] = useState(null);
      const [replyContent, setReplyContent] = useState({});
      const [fieldDetails, setFieldDetails] = useState(null);
+     const { avatarUrl: currentUserAvatar, initial: currentUserInitial } = getUserAvatarAndName(user);
+
+     // Helper: yêu cầu đăng nhập trước khi thực hiện thao tác
+     const requireLogin = (actionLabel = "sử dụng tính năng này") => {
+          if (user) return true;
+
+          Swal.fire({
+               icon: "info",
+               title: "Yêu cầu đăng nhập",
+               text: `Vui lòng đăng nhập để ${actionLabel}.`,
+               showCancelButton: true,
+               confirmButtonText: "Đăng nhập",
+               cancelButtonText: "Hủy",
+               confirmButtonColor: "#0ea5e9",
+               cancelButtonColor: "#6b7280",
+          }).then((result) => {
+               if (result.isConfirmed) {
+                    window.location.href = "/login";
+               }
+          });
+
+          return false;
+     };
 
      useEffect(() => {
           if (isOpen && post) {
@@ -75,20 +99,50 @@ const PostDetailModal = ({
                               comment.author?.username && comment.author.username.trim() !== '';
                          if (!hasAuthorInfo && comment.userId) {
                               try {
-                                   const userResponse = await fetch(`https://sep490-g19-zxph.onrender.com/api/User/${comment.userId}`);
-                                   if (userResponse.ok) {
-                                        const userData = await userResponse.json();
+                                   const token = localStorage.getItem("token");
+                                   const profileResponse = await fetch(
+                                        `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${comment.userId}`,
+                                        {
+                                             headers: {
+                                                  "Content-Type": "application/json",
+                                                  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                                             },
+                                        }
+                                   );
+
+                                   if (profileResponse.ok) {
+                                        const profile = await profileResponse.json();
                                         return {
                                              ...comment,
-                                             userName: userData.userName || userData.username || userData.Username || userData.fullName || userData.FullName,
+                                             userName:
+                                                  profile.fullName ||
+                                                  profile.FullName ||
+                                                  comment.userName ||
+                                                  comment.username ||
+                                                  comment.userName,
                                              author: {
                                                   ...comment.author,
-                                                  id: userData.id || userData.userId || userData.UserID,
-                                                  username: userData.userName || userData.username || userData.Username,
-                                                  name: userData.fullName || userData.FullName || userData.userName || userData.username,
-                                                  avatar: userData.avatar || userData.Avatar,
-                                                  verified: userData.verified || userData.Verified || false
-                                             }
+                                                  id: profile.id || profile.userId || profile.UserID || comment.userId,
+                                                  username:
+                                                       comment.author?.username ||
+                                                       comment.author?.userName ||
+                                                       comment.userName ||
+                                                       "",
+                                                  name:
+                                                       profile.fullName ||
+                                                       profile.FullName ||
+                                                       comment.author?.name ||
+                                                       comment.fullName ||
+                                                       comment.FullName ||
+                                                       "",
+                                                  avatar: profile.avatar || profile.avatarUrl || comment.author?.avatar || null,
+                                                  verified:
+                                                       profile.verified ||
+                                                       profile.Verified ||
+                                                       comment.author?.verified ||
+                                                       comment.author?.Verified ||
+                                                       false,
+                                             },
                                         };
                                    }
                               } catch (error) {
@@ -116,6 +170,9 @@ const PostDetailModal = ({
      };
 
      const handleCommentSubmit = async () => {
+          if (!user) {
+               if (!requireLogin("bình luận")) return;
+          }
           if (!commentContent.trim()) return;
 
           const success = await onCommentSubmit?.(post.PostID, commentContent);
@@ -213,6 +270,9 @@ const PostDetailModal = ({
      };
 
      const handleReplySubmit = async (commentId) => {
+          if (!user) {
+               if (!requireLogin("trả lời bình luận")) return;
+          }
           const content = replyContent[commentId];
           if (!content || !content.trim()) return;
 
@@ -240,6 +300,9 @@ const PostDetailModal = ({
      };
 
      const handleReportComment = async (commentId) => {
+          if (!user) {
+               if (!requireLogin("báo cáo bình luận")) return;
+          }
           const reportPrompt = await Swal.fire({
                title: 'Báo cáo bình luận',
                input: 'textarea',
@@ -302,7 +365,7 @@ const PostDetailModal = ({
           <Modal
                isOpen={isOpen}
                onClose={onClose}
-               className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl"
+               className="max-w-2xl max-h-[95vh] overflow-y-auto bg-white rounded-2xl scrollbar-hide"
           >
                <div className="sticky top-0 bg-white z-10 border-b border-gray-200 px-4 py-3 flex items-center justify-between">
                     <h2 className="text-xl font-bold">Chi tiết bài viết</h2>
@@ -410,7 +473,10 @@ const PostDetailModal = ({
                               <Button
                                    variant="ghost"
                                    size="sm"
-                                   onClick={() => onLike?.(post.PostID)}
+                                   onClick={() => {
+                                        if (!requireLogin("thích bài viết")) return;
+                                        onLike?.(post.PostID);
+                                   }}
                                    className={`flex items-center hover:text-red-500 rounded-2xl hover:bg-pink-50 gap-2 ${post.isLiked ? 'text-red-500' : 'text-gray-500'}`}
                               >
                                    <Heart className={`w-5 h-5 ${post.isLiked ? 'fill-current' : ''}`} />
@@ -419,6 +485,10 @@ const PostDetailModal = ({
                               <Button
                                    variant="ghost"
                                    size="sm"
+                                   onClick={() => {
+                                        // Nếu chưa đăng nhập, yêu cầu đăng nhập khi bấm "Bình luận"
+                                        if (!requireLogin("bình luận bài viết")) return;
+                                   }}
                                    className="flex items-center hover:text-blue-500 rounded-2xl hover:bg-blue-50 gap-2 text-gray-500"
                               >
                                    <MessageCircle className="w-5 h-5" />
@@ -427,22 +497,26 @@ const PostDetailModal = ({
                               <Button
                                    variant="ghost"
                                    size="sm"
-                                   onClick={() => onRepost?.(post.PostID)}
+                                   onClick={() => {
+                                        if (!requireLogin("chia sẻ bài viết")) return;
+                                        onRepost?.(post.PostID);
+                                   }}
                                    className={`flex items-center hover:text-yellow-500 rounded-2xl hover:bg-yellow-50 gap-2 ${post.isReposted ? 'text-green-500' : 'text-gray-500'}`}
                               >
                                    <Share className="w-5 h-5" />
                                    <span>Chia sẻ</span>
                               </Button>
-                              {user && (
-                                   <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => onBookmark?.(post.PostID)}
-                                        className={`flex items-center gap-2 ${post.isBookmarked ? 'text-yellow-500' : 'text-gray-500'}`}
-                                   >
-                                        <Bookmark className={`w-5 h-5 ${post.isBookmarked ? 'fill-current' : ''}`} />
-                                   </Button>
-                              )}
+                              <Button
+                                   variant="ghost"
+                                   size="sm"
+                                   onClick={() => {
+                                        if (!requireLogin("lưu bài viết")) return;
+                                        onBookmark?.(post.PostID);
+                                   }}
+                                   className={`flex items-center gap-2 ${post.isBookmarked ? 'text-yellow-500' : 'text-gray-500'}`}
+                              >
+                                   <Bookmark className={`w-5 h-5 ${post.isBookmarked ? 'fill-current' : ''}`} />
+                              </Button>
                          </div>
                     </div>
 
@@ -451,9 +525,9 @@ const PostDetailModal = ({
                          <div className="mb-2">
                               <div className="flex gap-2">
                                    <Avatar className="w-10 h-10">
-                                        <AvatarImage src={user?.avatar} />
+                                        <AvatarImage src={currentUserAvatar} />
                                         <AvatarFallback className="bg-gray-200 text-gray-700">
-                                             {user?.name?.charAt(0) || "U"}
+                                             {currentUserInitial}
                                         </AvatarFallback>
                                    </Avatar>
                                    <div className="flex-1">
@@ -515,27 +589,27 @@ const PostDetailModal = ({
                                                        <Avatar className="w-10 h-10">
                                                             <AvatarImage src={comment.author?.avatar} />
                                                             <AvatarFallback className="bg-gray-200 text-gray-700">
-                                                                 {(comment.author?.name || 
-                                                                   comment.author?.fullName || 
-                                                                   comment.author?.FullName ||
-                                                                   comment.userName || 
-                                                                   comment.fullName || 
-                                                                   comment.FullName ||
-                                                                   "U").charAt(0).toUpperCase()}
+                                                                 {(comment.author?.name ||
+                                                                      comment.author?.fullName ||
+                                                                      comment.author?.FullName ||
+                                                                      comment.userName ||
+                                                                      comment.fullName ||
+                                                                      comment.FullName ||
+                                                                      "U").charAt(0).toUpperCase()}
                                                             </AvatarFallback>
                                                        </Avatar>
                                                        <div className="flex-1">
                                                             <div className="flex items-center gap-1 ">
                                                                  <span className="font-semibold text-sm">
-                                                                      {comment.author?.name || 
-                                                                       comment.author?.fullName || 
-                                                                       comment.author?.FullName ||
-                                                                       comment.author?.username || 
-                                                                       comment.author?.Username ||
-                                                                       comment.userName || 
-                                                                       comment.fullName || 
-                                                                       comment.FullName ||
-                                                                       "Người dùng"}
+                                                                      {comment.author?.name ||
+                                                                           comment.author?.fullName ||
+                                                                           comment.author?.FullName ||
+                                                                           comment.author?.username ||
+                                                                           comment.author?.Username ||
+                                                                           comment.userName ||
+                                                                           comment.fullName ||
+                                                                           comment.FullName ||
+                                                                           "Người dùng"}
                                                                  </span>
 
                                                                  {isOwn && (
@@ -601,9 +675,9 @@ const PostDetailModal = ({
                                                             {replyingToCommentId === commentId && user && (
                                                                  <div className="mt-3 ml-8 flex gap-2">
                                                                       <Avatar className="w-8 h-8">
-                                                                           <AvatarImage src={user?.avatar} />
+                                                                           <AvatarImage src={currentUserAvatar} />
                                                                            <AvatarFallback className="bg-gray-200 text-gray-700">
-                                                                                {(user?.name || "U").charAt(0).toUpperCase()}
+                                                                                {currentUserInitial}
                                                                            </AvatarFallback>
                                                                       </Avatar>
                                                                       <div className="flex-1">
@@ -720,26 +794,26 @@ const PostDetailModal = ({
                                                                            <Avatar className="w-8 h-8">
                                                                                 <AvatarImage src={reply.author?.avatar} />
                                                                                 <AvatarFallback className="bg-gray-200 text-gray-700">
-                                                                                     {(reply.author?.name || 
-                                                                                       reply.author?.fullName || 
-                                                                                       reply.author?.FullName ||
-                                                                                       reply.userName || 
-                                                                                       reply.fullName || 
-                                                                                       "U").charAt(0).toUpperCase()}
+                                                                                     {(reply.author?.name ||
+                                                                                          reply.author?.fullName ||
+                                                                                          reply.author?.FullName ||
+                                                                                          reply.userName ||
+                                                                                          reply.fullName ||
+                                                                                          "U").charAt(0).toUpperCase()}
                                                                                 </AvatarFallback>
                                                                            </Avatar>
                                                                            <div className="flex-1">
                                                                                 <div className="flex items-center gap-1 mb-1">
                                                                                      <span className="font-semibold text-sm">
-                                                                                          {reply.author?.name || 
-                                                                                           reply.author?.fullName || 
-                                                                                           reply.author?.FullName ||
-                                                                                           reply.author?.username || 
-                                                                                           reply.author?.Username ||
-                                                                                           reply.userName || 
-                                                                                           reply.fullName || 
-                                                                                           reply.FullName ||
-                                                                                           "Người dùng"}
+                                                                                          {reply.author?.name ||
+                                                                                               reply.author?.fullName ||
+                                                                                               reply.author?.FullName ||
+                                                                                               reply.author?.username ||
+                                                                                               reply.author?.Username ||
+                                                                                               reply.userName ||
+                                                                                               reply.fullName ||
+                                                                                               reply.FullName ||
+                                                                                               "Người dùng"}
                                                                                      </span>
 
                                                                                      {isReplyOwn && (

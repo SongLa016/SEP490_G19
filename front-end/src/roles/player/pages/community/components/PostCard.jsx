@@ -89,11 +89,6 @@ const PostCard = ({
                               )}
                               <span className="text-gray-500 text-sm">•</span>
                               <span className="text-gray-500 text-sm">{formatTimeAgo(post.CreatedAt)}</span>
-                              {user && (
-                                   <Button variant="ghost" size="sm" className="ml-auto p-1 h-6 w-6 hover:bg-gray-100 rounded-full transition-colors">
-                                        <Plus className="w-4 h-4 text-gray-400" />
-                                   </Button>
-                              )}
                          </div>
 
                          {/* Post Title - Clickable */}

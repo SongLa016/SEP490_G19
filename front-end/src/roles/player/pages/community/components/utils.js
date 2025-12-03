@@ -29,3 +29,19 @@ export function isCurrentUserPost(post, user) {
      return isMatch;
 }
 
+// Chuẩn hóa avatar & tên hiển thị cho user hiện tại (sử dụng profile nếu có, fallback ui-avatars)
+export function getUserAvatarAndName(user) {
+     const displayName = user?.fullName || user?.name || user?.phone || "User";
+     const avatarUrl =
+          user?.avatar ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(
+               displayName
+          )}&background=0ea5e9&color=fff&size=100`;
+
+     return {
+          displayName,
+          avatarUrl,
+          initial: displayName.charAt(0).toUpperCase(),
+     };
+}
+

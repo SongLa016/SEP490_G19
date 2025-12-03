@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { Search, User, Menu, X, LogOut, Settings, Home, MapPin, Calendar, Users, BarChart3, LogIn } from "lucide-react";
+import { Search, Menu, X, LogOut, Settings, Home, MapPin, Calendar, Users, BarChart3, LogIn } from "lucide-react";
 import logo from "../../../shared/components/assets/logo.png";
-import { Button } from "../../../shared/components/ui";
+import { Button, Avatar, AvatarImage, AvatarFallback } from "../../../shared/components/ui";
 import { useModal } from "../../../contexts/ModalContext";
 import { NotificationBell, NotificationDropdown } from "../../../shared/components/NotificationsDisplay";
 import { roleMapping } from "../../../shared/index";
+import { getUserAvatarAndName } from "../pages/community/components/utils";
 export default function Header({ user, onLoggedOut }) {
      const [isMenuOpen, setIsMenuOpen] = useState(false);
      const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -14,6 +15,7 @@ export default function Header({ user, onLoggedOut }) {
      const navigate = useNavigate();
      const location = useLocation();
      const { isBookingModalOpen } = useModal();
+     const { avatarUrl, initial } = getUserAvatarAndName(user);
 
      useEffect(() => {
           let lastScrollY = window.scrollY;
@@ -152,9 +154,12 @@ export default function Header({ user, onLoggedOut }) {
                                                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                                                   className="flex items-center space-x-2 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
                                              >
-                                                  <div className="h-8 w-8 bg-gray-300 rounded-full flex items-center justify-center">
-                                                       <User className="w-4 h-4" />
-                                                  </div>
+                                             <Avatar className="h-8 w-8">
+                                                  <AvatarImage src={avatarUrl} />
+                                                  <AvatarFallback className="bg-gray-300 text-gray-700">
+                                                       {initial}
+                                                  </AvatarFallback>
+                                             </Avatar>
                                                   <span className="hidden md:block text-gray-700">{user.fullName || user.email || "User"}</span>
                                                   <span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.roleName)}`}>
                                                        {getRoleDisplayName(user.roleName)}

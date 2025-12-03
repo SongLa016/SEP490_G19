@@ -1,5 +1,6 @@
 import { Avatar, AvatarImage, AvatarFallback, Textarea, Button, Badge } from "../../../../../shared/components/ui";
 import { getCurrentUserFromToken } from "../../../../../shared/services/posts";
+import { getUserAvatarAndName } from "./utils";
 
 const CommentInput = ({
      post,
@@ -16,6 +17,8 @@ const CommentInput = ({
           currentUser?.role === 'Owner' || currentUser?.role === 'owner' ? 'Chủ sân' :
                currentUser?.role;
 
+     const { avatarUrl, initial, displayName } = getUserAvatarAndName(user);
+
      return (
           <div className="mt-4">
                {/* Timeline line from post */}
@@ -26,10 +29,10 @@ const CommentInput = ({
                     <div className="flex-1">
                          <div className="flex gap-2">
                               <Avatar className="w-8 h-8">
-                                   <AvatarImage src={user.avatar} />
-                                   <AvatarFallback className="bg-gray-200 text-gray-700">
-                                        {user.name?.charAt(0) || "U"}
-                                   </AvatarFallback>
+                                        <AvatarImage src={avatarUrl} />
+                                        <AvatarFallback className="bg-gray-200 text-gray-700">
+                                             {initial}
+                                        </AvatarFallback>
                               </Avatar>
                               <div className="flex-1">
                                    <div className="flex items-center gap-2 flex-wrap">
