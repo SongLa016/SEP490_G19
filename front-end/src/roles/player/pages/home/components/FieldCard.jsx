@@ -135,6 +135,13 @@ const getFieldImages = (field) => {
      ];
      const offset = (field.id || 0) % common.length;
      const rotated = [...common.slice(offset), ...common.slice(0, offset)];
+
+     // Nếu field.image không tồn tại hoặc rỗng, chỉ dùng ảnh mặc định
+     if (!field.image || typeof field.image !== "string" || field.image.trim() === "") {
+          return rotated;
+     }
+
+     // Ưu tiên ảnh riêng của sân, sau đó đến ảnh mặc định
      return [field.image, ...rotated];
 };
 

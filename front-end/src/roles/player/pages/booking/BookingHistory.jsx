@@ -1548,10 +1548,47 @@ export default function BookingHistory({ user }) {
      }, [bookings]);
 
      const withinDateRange = React.useCallback(function withinDateRange(dateStr) {
+          // Không có ngày => luôn hiển thị
           if (!dateStr) return true;
-          const d = new Date(dateStr);
-          if (dateFrom && d < new Date(dateFrom)) return false;
-          if (dateTo && d > new Date(dateTo)) return false;
+
+          // Hàm parse date an toàn cho nhiều format (dd/MM/yyyy, yyyy-MM-dd, Date object)
+          const parseDateSafe = (value) => {
+               if (!value) return null;
+               if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+
+               if (typeof value === "string") {
+                    const trimmed = value.trim();
+
+                    // Format yyyy-MM-dd hoặc yyyy-MM-ddTHH:mm:ss
+                    if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+                         const [y, m, d] = trimmed.split("T")[0].split("-").map(Number);
+                         const dt = new Date(y, m - 1, d);
+                         return isNaN(dt.getTime()) ? null : dt;
+                    }
+
+                    // Format dd/MM/yyyy
+                    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
+                         const [d, m, y] = trimmed.split("/").map(Number);
+                         const dt = new Date(y, m - 1, d);
+                         return isNaN(dt.getTime()) ? null : dt;
+                    }
+
+                    // Thử parse mặc định của JS (fallback)
+                    const dt = new Date(trimmed);
+                    return isNaN(dt.getTime()) ? null : dt;
+               }
+
+               return null;
+          };
+
+          const d = parseDateSafe(dateStr);
+          if (!d) return true;
+
+          const from = parseDateSafe(dateFrom);
+          const to = parseDateSafe(dateTo);
+
+          if (from && d < from) return false;
+          if (to && d > to) return false;
           return true;
      }, [dateFrom, dateTo]);
 
@@ -1560,13 +1597,26 @@ export default function BookingHistory({ user }) {
           const filtered = base.filter(b => {
                const q = query.trim().toLowerCase();
                const matchQuery = !q || b.id.toLowerCase().includes(q) || (b.fieldName || "").toLowerCase().includes(q) || (b.address || "").toLowerCase().includes(q);
-               const matchStatus = statusFilter === "all" || b.status === statusFilter;
+               const normalizedStatus = String(b.status || b.bookingStatus || "").toLowerCase();
+               const matchStatus = statusFilter === "all" || normalizedStatus === statusFilter;
                const matchDate = withinDateRange(b.date);
                return matchQuery && matchStatus && matchDate;
           });
           const sorted = filtered.sort((a, b) => {
-               if (sortBy === "newest") return new Date(b.date) - new Date(a.date);
-               if (sortBy === "oldest") return new Date(a.date) - new Date(b.date);
+               const parseForSort = (value) => {
+                    if (!value) return 0;
+                    // Hỗ trợ cả "dd/MM/yyyy" và "yyyy-MM-dd"
+                    if (typeof value === "string" && value.includes("/")) {
+                         const [d, m, y] = value.split("/").map(Number);
+                         const dt = new Date(y, m - 1, d);
+                         return isNaN(dt.getTime()) ? 0 : dt.getTime();
+                    }
+                    const dt = new Date(value);
+                    return isNaN(dt.getTime()) ? 0 : dt.getTime();
+               };
+
+               if (sortBy === "newest") return parseForSort(b.date) - parseForSort(a.date);
+               if (sortBy === "oldest") return parseForSort(a.date) - parseForSort(b.date);
                if (sortBy === "price-asc") return (a.price || 0) - (b.price || 0);
                if (sortBy === "price-desc") return (b.price || 0) - (a.price || 0);
                return 0;

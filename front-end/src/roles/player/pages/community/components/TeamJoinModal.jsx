@@ -8,6 +8,7 @@ import {
      AvatarImage,
      AvatarFallback,
 } from "../../../../../shared/components/ui";
+import { getUserAvatarAndName } from "./utils";
 import { createTeamJoinRequest } from "../../../../../shared/index";
 import Swal from "sweetalert2";
 
@@ -57,7 +58,9 @@ export default function TeamJoinModal({ isOpen, onClose, team, user, onJoinReque
           }
      };
 
-     if (!team) return null;
+     if (!team || !user) return null;
+
+     const { avatarUrl, initial } = getUserAvatarAndName(user);
 
      return (
           <Modal
@@ -93,9 +96,9 @@ export default function TeamJoinModal({ isOpen, onClose, team, user, onJoinReque
                     {/* User Info */}
                     <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
                          <Avatar className="w-8 h-8">
-                              <AvatarImage src={user?.avatar} />
+                              <AvatarImage src={avatarUrl} />
                               <AvatarFallback className="bg-gray-200 text-gray-700">
-                                   {user?.name?.charAt(0) || user?.email?.charAt(0) || "U"}
+                                   {initial}
                               </AvatarFallback>
                          </Avatar>
                          <div>

@@ -110,11 +110,7 @@ export default function GroupedViewSection({
                                                        <MapPin className="w-4 h-4" />
                                                        <span className="text-xs font-semibold line-clamp-1">{item.address}</span>
                                                   </span>
-                                                  {typeof item.distanceKm === 'number' && !Number.isNaN(item.distanceKm) && (
-                                                       <span className="text-xs font-semibold text-red-500 whitespace-nowrap">
-                                                            • {item.distanceKm.toFixed(1)} km
-                                                       </span>
-                                                  )}
+
                                              </div>
                                              <div className="flex items-center justify-between mb-3">
 
@@ -141,8 +137,13 @@ export default function GroupedViewSection({
                                                                  {item.availableFields}/{item.totalFields} sân
                                                             </span>
                                                             <div className="text-xs font-semibold flex items-center text-red-500">
-                                                                 <MapPin className="w-4 h-4 mr-1" />
-                                                                 <p>{item.distanceKm ? `${item.distanceKm.toFixed(1)} km` : ""}</p>
+
+                                                                 {typeof item.distanceKm === 'number' && !Number.isNaN(item.distanceKm) && (
+                                                                      <span className="text-xs font-semibold text-red-500 whitespace-nowrap">
+                                                                           <MapPin className="w-4 h-4 mr-1" />
+                                                                           • {item.distanceKm.toFixed(1)} km
+                                                                      </span>
+                                                                 )}
                                                             </div>
                                                        </div>
                                                        <Button

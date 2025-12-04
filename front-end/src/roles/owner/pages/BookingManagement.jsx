@@ -1071,8 +1071,17 @@ const BookingManagement = ({ isDemo = false }) => {
 
      const filteredBookings = useMemo(() => {
           return bookings.filter(booking => {
-               const matchesDate = !selectedDate || booking.date === selectedDate;
-               const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
+               // booking.date luôn normalize dạng "yyyy-MM-dd" trong normalizeBookingData
+               const matchesDate =
+                    !selectedDate ||
+                    booking.date === selectedDate ||
+                    (typeof booking.date === "string" &&
+                         typeof selectedDate === "string" &&
+                         booking.date.startsWith(selectedDate));
+
+               const normalizedStatus = String(booking.status || "").toLowerCase();
+               const matchesStatus = statusFilter === "all" || normalizedStatus === statusFilter;
+
                const matchesField = fieldFilter === "all" || booking.field === fieldFilter;
                const matchesSearch = !searchTerm ||
                     booking.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||

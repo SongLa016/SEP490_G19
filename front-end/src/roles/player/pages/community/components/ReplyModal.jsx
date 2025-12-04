@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Modal, Button, Avatar, AvatarImage, AvatarFallback, Badge, Textarea } from '../../../../../shared/components/ui';
+import { getUserAvatarAndName } from "./utils";
 
 const ReplyModal = ({
      isOpen,
@@ -30,6 +31,8 @@ const ReplyModal = ({
 
      // Get username - check all possible fields
      const displayUsername = user?.userName || user?.username || user?.Username || user?.name || user?.fullName || user?.FullName || "User";
+
+     const { avatarUrl, initial } = getUserAvatarAndName(user);
      return (
           <Modal
                isOpen={isOpen}
@@ -82,9 +85,9 @@ const ReplyModal = ({
 
                               <div className="items-center ">
                                    <Avatar className="w-10 h-10">
-                                        <AvatarImage src={user?.avatar} />
+                                        <AvatarImage src={avatarUrl} />
                                         <AvatarFallback className="bg-gray-200 text-gray-700">
-                                             {user?.name?.charAt(0) || "U"}
+                                             {initial}
                                         </AvatarFallback>
                                    </Avatar>
                                    <div className="flex pt-1 justify-center">

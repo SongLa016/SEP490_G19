@@ -19,6 +19,7 @@ import {
      deleteNotification,
      deleteAllNotifications
 } from "../services/notifications";
+import { useNavigate } from "react-router-dom";
 import { deletePost } from "../services/posts";
 import { deleteComment, fetchCommentById } from "../services/comments";
 import Swal from "sweetalert2";
@@ -294,18 +295,18 @@ export default function NotificationsDisplay({ userId, className = "" }) {
           const targetId = notification.targetId || notification.targetID || notification.TargetId;
           const message = notification.message || "";
           const notificationId = notification.id || notification.notificationId || notification.userNotificationId;
-          
+
           // Xác định targetType từ message
           const isPost = message.toLowerCase().includes("bài viết");
           const isComment = message.toLowerCase().includes("bình luận");
-          
+
           if (!targetId) {
                alert('Không tìm thấy ID nội dung cần xóa.');
                return;
           }
 
           if (!window.confirm(
-               isPost 
+               isPost
                     ? 'Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.'
                     : 'Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác.'
           )) {
@@ -440,7 +441,7 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                                         variant="outline"
                                         size="sm"
                                         onClick={handleDeleteAllNotifications}
-                                        className="text-xs"
+                                        className="text-xs rounded-2xl border-red-500 hover:text-red-700 text-red-600 hover:bg-red-200 font-medium"
                                         disabled={isDeleting}
                                    >
                                         <Trash2 className="w-3 h-3 mr-1" />
@@ -452,7 +453,7 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                                         variant="outline"
                                         size="sm"
                                         onClick={handleMarkAllAsRead}
-                                        className="text-xs"
+                                        className="text-xs rounded-2xl border-teal-500 hover:text-teal-700 text-teal-600 hover:bg-teal-200 font-medium"
                                    >
                                         <CheckCircle className="w-3 h-3 mr-1" />
                                         Đọc tất cả
@@ -462,7 +463,7 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                                    variant="outline"
                                    size="sm"
                                    onClick={() => setShowAll(!showAll)}
-                                   className="text-xs"
+                                   className="text-xs rounded-2xl border-blue-500 hover:text-blue-700 text-blue-600 hover:bg-blue-200 font-medium"
                               >
                                    {showAll ? (
                                         <>
@@ -486,7 +487,7 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                                    variant={activeType === type.value ? "default" : "outline"}
                                    size="sm"
                                    onClick={() => handleTypeChange(type.value)}
-                                   className={`text-xs ${activeType === type.value ? "bg-blue-600 text-white" : ""}`}
+                                   className={`text-xs rounded-2xl ${activeType === type.value ? "bg-blue-600 text-white" : ""}`}
                               >
                                    {type.value === "all" && <Filter className="w-3 h-3 mr-1" />}
                                    {type.label}
@@ -500,7 +501,7 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                               <p className="text-gray-500 text-sm">Chưa có thông báo nào</p>
                          </div>
                     ) : (
-                         <div className="space-y-3">
+                         <div className="space-y-2">
                               {displayedNotifications.map((notification) => {
                                    const notificationId = notification.id || notification.notificationId || notification.userNotificationId;
                                    const receivedAt = notification.receivedAt || notification.createdAt || notification.sentAt;
@@ -508,7 +509,7 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                                    return (
                                         <div
                                              key={notificationId}
-                                             className={`p-3 rounded-lg border ${notification.isRead
+                                             className={`p-3 rounded-2xl border ${notification.isRead
                                                   ? "bg-gray-50 border-gray-200"
                                                   : "bg-blue-50 border-blue-200"
                                                   }`}
@@ -559,32 +560,32 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                                                                            variant="outline"
                                                                            size="sm"
                                                                            onClick={() => handleMarkAsRead(notificationId)}
-                                                                           className="text-xs border-teal-500 text-teal-600 hover:bg-teal-50 font-medium"
+                                                                           className="text-xs rounded-2xl border-teal-500 hover:text-teal-700 text-teal-600 hover:bg-teal-200 font-medium"
                                                                       >
                                                                            <CheckCircle className="w-3 h-3 mr-1" />
                                                                            Đã đọc
                                                                       </Button>
                                                                  )}
                                                                  {/* Button xóa nội dung nếu là thông báo yêu cầu xóa */}
-                                                                 {notification.type === "ReportResult" && 
-                                                                  notification.message && 
-                                                                  notification.message.includes("yêu cầu xóa") && (
-                                                                      <Button
-                                                                           variant="outline"
-                                                                           size="sm"
-                                                                           onClick={() => handleDeleteReportedContentMain(notification)}
-                                                                           className="text-xs border-red-500 text-red-600 hover:bg-red-50 font-medium"
-                                                                           disabled={isDeleting}
-                                                                      >
-                                                                           <Trash2 className="w-3 h-3 mr-1" />
-                                                                           Xóa
-                                                                      </Button>
-                                                                 )}
+                                                                 {notification.type === "ReportResult" &&
+                                                                      notification.message &&
+                                                                      notification.message.includes("yêu cầu xóa") && (
+                                                                           <Button
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                onClick={() => handleDeleteReportedContentMain(notification)}
+                                                                                className="text-xs rounded-2xl border-red-500 text-red-600 hover:bg-red-50 font-medium"
+                                                                                disabled={isDeleting}
+                                                                           >
+                                                                                <Trash2 className="w-3 h-3 mr-1" />
+                                                                                Xóa
+                                                                           </Button>
+                                                                      )}
                                                                  {/* Button xóa thông báo */}
                                                                  <Button
                                                                       variant="ghost"
                                                                       size="sm"
-                                                                      className="text-xs text-red-500 hover:text-red-600"
+                                                                      className="text-xs rounded-2xl text-red-500 hover:text-red-600"
                                                                       onClick={() => handleDeleteNotification(notificationId, notification.message)}
                                                                       disabled={isDeleting}
                                                                  >
@@ -601,15 +602,15 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                          </div>
                     )}
 
-                    {notifications.length > 5 && !showAll && (
+                    {notifications.length > 5 && (
                          <div className="text-center">
                               <Button
                                    variant="outline"
                                    size="sm"
-                                   onClick={() => setShowAll(true)}
-                                   className="text-xs"
+                                   onClick={() => setShowAll(!showAll)}
+                                   className="text-xs rounded-2xl border-blue-500 hover:text-blue-700 text-blue-600 hover:bg-blue-200 font-medium"
                               >
-                                   Xem thêm {notifications.length - 5} thông báo
+                                   {showAll ? "Thu gọn" : `Xem thêm ${notifications.length - 5} thông báo`}
                               </Button>
                          </div>
                     )}
@@ -678,6 +679,7 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
      const [loading, setLoading] = useState(false);
      const [unreadCount, setUnreadCount] = useState(0);
      const [isDeleting, setIsDeleting] = useState(false);
+     const navigate = useNavigate();
 
      useEffect(() => {
           if (isOpen) {
@@ -770,11 +772,11 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
           const targetId = notification.targetId || notification.targetID || notification.TargetId;
           const message = notification.message || "";
           const notificationId = notification.id || notification.notificationId || notification.userNotificationId;
-          
+
           // Xác định targetType từ message
           const isPost = message.toLowerCase().includes("bài viết");
           const isComment = message.toLowerCase().includes("bình luận");
-          
+
           if (!targetId) {
                Swal.fire({
                     icon: 'error',
@@ -787,7 +789,7 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
 
           const result = await Swal.fire({
                title: 'Xác nhận xóa?',
-               text: isPost 
+               text: isPost
                     ? 'Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.'
                     : 'Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác.',
                icon: 'warning',
@@ -1014,19 +1016,19 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                                                                       </Button>
                                                                  )}
                                                                  {/* Button xóa nội dung nếu là thông báo yêu cầu xóa */}
-                                                                 {notification.type === "ReportResult" && 
-                                                                  notification.message && 
-                                                                  notification.message.includes("yêu cầu xóa") && (
-                                                                      <Button
-                                                                           variant="outline"
-                                                                           size="sm"
-                                                                           onClick={() => handleDeleteReportedContent(notification)}
-                                                                           className="text-xs border-red-500 text-red-600 hover:bg-red-50 font-medium rounded-2xl"
-                                                                      >
-                                                                           <Trash2 className="w-3 h-3 mr-1" />
-                                                                           Xóa
-                                                                      </Button>
-                                                                 )}
+                                                                 {notification.type === "ReportResult" &&
+                                                                      notification.message &&
+                                                                      notification.message.includes("yêu cầu xóa") && (
+                                                                           <Button
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                onClick={() => handleDeleteReportedContent(notification)}
+                                                                                className="text-xs border-red-500 text-red-600 hover:bg-red-50 font-medium rounded-2xl"
+                                                                           >
+                                                                                <Trash2 className="w-3 h-3 mr-1" />
+                                                                                Xóa
+                                                                           </Button>
+                                                                      )}
                                                                  {/* Button xóa thông báo */}
                                                                  <Button
                                                                       variant="ghost"
@@ -1055,7 +1057,10 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                          <Button
                               variant="outline"
                               size="sm"
-                              onClick={onClose}
+                              onClick={() => {
+                                   onClose && onClose();
+                                   navigate("/notifications");
+                              }}
                               className="text-xs border-teal-500 rounded-2xl hover:text-teal-600 text-teal-600 hover:bg-teal-50 font-medium w-full"
                          >
                               Xem tất cả thông báo

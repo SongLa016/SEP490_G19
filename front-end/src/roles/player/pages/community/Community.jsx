@@ -39,6 +39,14 @@ export default function Community() {
      const pageSize = 10;
      const visibleMatchRequests = matchRequests.slice(0, matchPage * pageSize);
 
+     // Hiển thị avatar và tên cho user hiện tại (ưu tiên avatar từ backend, fallback bằng ui-avatars)
+     const displayName = user?.fullName || user?.name || user?.phone || "User";
+     const avatarUrl =
+          user?.avatar ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(
+               displayName
+          )}&background=0ea5e9&color=fff&size=100`;
+
      // Function to handle post submission
      const handlePostSubmit = async (title, content, field, imageFile) => {
           if (!user || !content.trim()) return;
@@ -222,9 +230,9 @@ export default function Community() {
                                                             transition={{ duration: 0.2 }}
                                                        >
                                                             <Avatar className="w-8 h-8">
-                                                                 <AvatarImage src={user.avatar} />
+                                                                 <AvatarImage src={avatarUrl} />
                                                                  <AvatarFallback className="bg-gray-200 text-gray-700">
-                                                                      {user.name?.charAt(0) || "U"}
+                                                                      {displayName.charAt(0).toUpperCase()}
                                                                  </AvatarFallback>
                                                             </Avatar>
                                                        </motion.div>
