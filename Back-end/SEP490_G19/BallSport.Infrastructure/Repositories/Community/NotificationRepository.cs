@@ -1,7 +1,7 @@
-﻿ 
+﻿// File: BallSport.Infrastructure/Repositories/Community/NotificationRepository.cs
+using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
-using BallSport.Infrastructure.Data;
 
 namespace BallSport.Infrastructure.Repositories.Community
 {
@@ -11,156 +11,192 @@ namespace BallSport.Infrastructure.Repositories.Community
 
         public NotificationRepository(Sep490G19v1Context context)
         {
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
+        // ===================== USER METHODS =====================
         public async Task<(IEnumerable<Notification> Notifications, int TotalCount)> GetNotificationsByUserIdAsync(
-            int userId,
-            int pageNumber,
-            int pageSize,
-            bool? isRead = null)
+            int userId, int pageNumber = 1, int pageSize = 20, bool? isRead = null)
         {
-            var query = _context.Notifications
-                .Include(n => n.User)
-                .Where(n => n.UserId == userId);
+            var query = _context.Notifications.Where(n => n.UserId == userId);
 
             if (isRead.HasValue)
-            {
                 query = query.Where(n => n.IsRead == isRead.Value);
-            }
-
-            query = query.OrderByDescending(n => n.CreatedAt);
 
             var totalCount = await query.CountAsync();
+
             var notifications = await query
+                .OrderByDescending(n => n.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
+                .AsNoTracking()
                 .ToListAsync();
 
             return (notifications, totalCount);
         }
 
         public async Task<Notification?> GetNotificationByIdAsync(int notificationId)
-        {
-            return await _context.Notifications
-                .Include(n => n.User)
+            => await _context.Notifications
+                .AsNoTracking()
                 .FirstOrDefaultAsync(n => n.NotificationId == notificationId);
-        }
 
-        public async Task<Notification> CreateNotificationAsync(Notification notification)
-        {
-            notification.CreatedAt = DateTime.Now;
-            notification.IsRead = false;
+        public async Task<int> CountUnreadNotificationsAsync(int userId)
+            => await _context.Notifications
+                .CountAsync(n => n.UserId == userId && (n.IsRead == false || n.IsRead == null));
 
-            await _context.Notifications.AddAsync(notification);
-            await _context.SaveChangesAsync();
+        public async Task<IEnumerable<Notification>> GetLatestNotificationsAsync(int userId, int topCount = 10)
+            => await _context.Notifications
+                .Where(n => n.UserId == userId)
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(topCount)
+                .AsNoTracking()
+                .ToListAsync();
 
-            return notification;
-        }
-
-        public async Task<bool> CreateNotificationsAsync(IEnumerable<Notification> notifications)
-        {
-            foreach (var notification in notifications)
-            {
-                notification.CreatedAt = DateTime.Now;
-                notification.IsRead = false;
-            }
-
-            await _context.Notifications.AddRangeAsync(notifications);
-            await _context.SaveChangesAsync();
-
-            return true;
-        }
+        public async Task<IEnumerable<Notification>> GetNotificationsByTypeAsync(int userId, string type)
+            => await _context.Notifications
+                .Where(n => n.UserId == userId && n.Type == type)
+                .OrderByDescending(n => n.CreatedAt)
+                .AsNoTracking()
+                .ToListAsync();
 
         public async Task<bool> MarkAsReadAsync(int notificationId)
         {
-            var notification = await _context.Notifications.FindAsync(notificationId);
-            if (notification == null)
-                return false;
+            var noti = await _context.Notifications.FindAsync(notificationId);
+            if (noti == null) return false;
 
-            notification.IsRead = true;
+            noti.IsRead = true;
             await _context.SaveChangesAsync();
-
             return true;
         }
 
         public async Task<bool> MarkAllAsReadAsync(int userId)
         {
-            var notifications = await _context.Notifications
+            await _context.Notifications
                 .Where(n => n.UserId == userId && (n.IsRead == false || n.IsRead == null))
-                .ToListAsync();
+                .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true));
 
-            foreach (var notification in notifications)
-            {
-                notification.IsRead = true;
-            }
-
-            await _context.SaveChangesAsync();
             return true;
         }
 
         public async Task<bool> DeleteNotificationAsync(int notificationId)
         {
-            var notification = await _context.Notifications.FindAsync(notificationId);
-            if (notification == null)
-                return false;
+            var noti = await _context.Notifications.FindAsync(notificationId);
+            if (noti == null) return false;
 
-            _context.Notifications.Remove(notification);
+            _context.Notifications.Remove(noti);
             await _context.SaveChangesAsync();
-
             return true;
         }
 
         public async Task<bool> DeleteAllNotificationsAsync(int userId)
         {
-            var notifications = await _context.Notifications
+            await _context.Notifications
                 .Where(n => n.UserId == userId)
-                .ToListAsync();
-
-            _context.Notifications.RemoveRange(notifications);
-            await _context.SaveChangesAsync();
+                .ExecuteDeleteAsync();
 
             return true;
         }
 
-        public async Task<int> CountUnreadNotificationsAsync(int userId)
+        // ===================== CREATE METHODS =====================
+        public async Task<Notification> CreateNotificationAsync(Notification notification)
         {
-            return await _context.Notifications
-                .Where(n => n.UserId == userId && (n.IsRead == false || n.IsRead == null))
-                .CountAsync();
+            notification.CreatedAt = DateTime.UtcNow;
+            notification.IsRead = false;
+
+            await _context.Notifications.AddAsync(notification);
+            await _context.SaveChangesAsync();
+            return notification;
         }
 
-        public async Task<IEnumerable<Notification>> GetLatestNotificationsAsync(int userId, int topCount = 10)
+        public async Task<bool> CreateNotificationsAsync(IEnumerable<Notification> notifications)
         {
-            return await _context.Notifications
+            if (!notifications.Any()) return true;
+
+            var now = DateTime.UtcNow;
+            foreach (var n in notifications)
+            {
+                n.CreatedAt = now;
+                n.IsRead = false;
+            }
+
+            await _context.Notifications.AddRangeAsync(notifications);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        // ===================== ADMIN METHODS (ĐÃ BỎ HOÀN TOÀN UPDATE) =====================
+        public async Task<(IEnumerable<Notification> Notifications, int TotalCount)> GetAllNotificationsAdminAsync(
+            int pageNumber = 1,
+            int pageSize = 20,
+            string? search = null,
+            string? type = null,
+            int? userId = null,
+            bool? isRead = null)
+        {
+            var query = _context.Notifications
                 .Include(n => n.User)
-                .Where(n => n.UserId == userId)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+                query = query.Where(n => n.Message != null && EF.Functions.Like(n.Message, $"%{search}%"));
+
+            if (!string.IsNullOrWhiteSpace(type))
+                query = query.Where(n => n.Type == type);
+
+            if (userId.HasValue)
+                query = query.Where(n => n.UserId == userId.Value);
+
+            if (isRead.HasValue)
+                query = query.Where(n => n.IsRead == isRead.Value);
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
                 .OrderByDescending(n => n.CreatedAt)
-                .Take(topCount)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .AsNoTracking()
                 .ToListAsync();
+
+            return (items, totalCount);
         }
 
+        public async Task<Notification?> GetNotificationByIdAdminAsync(int notificationId)
+            => await _context.Notifications
+                .Include(n => n.User)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(n => n.NotificationId == notificationId);
+
+        // ĐÃ XÓA HOÀN TOÀN UpdateNotificationAdminAsync → Không còn lỗi DTO!
+
+        public async Task<bool> DeleteNotificationAdminAsync(int notificationId)
+        {
+            var noti = await _context.Notifications.FindAsync(notificationId);
+            if (noti == null) return false;
+
+            _context.Notifications.Remove(noti);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<int> DeleteMultipleNotificationsAdminAsync(IEnumerable<int> notificationIds)
+        {
+            if (notificationIds == null || !notificationIds.Any()) return 0;
+
+            return await _context.Notifications
+                .Where(n => notificationIds.Contains(n.NotificationId))
+                .ExecuteDeleteAsync();
+        }
+
+        // ===================== MAINTENANCE =====================
         public async Task<bool> DeleteOldNotificationsAsync(int daysOld = 30)
         {
-            var cutoffDate = DateTime.Now.AddDays(-daysOld);
+            var cutoff = DateTime.UtcNow.AddDays(-daysOld);
+            var deletedCount = await _context.Notifications
+                .Where(n => n.CreatedAt < cutoff)
+                .ExecuteDeleteAsync();
 
-            var oldNotifications = await _context.Notifications
-                .Where(n => n.CreatedAt < cutoffDate)
-                .ToListAsync();
-
-            _context.Notifications.RemoveRange(oldNotifications);
-            await _context.SaveChangesAsync();
-
-            return true;
-        }
-
-        public async Task<IEnumerable<Notification>> GetNotificationsByTypeAsync(int userId, string type)
-        {
-            return await _context.Notifications
-                .Include(n => n.User)
-                .Where(n => n.UserId == userId && n.Type == type)
-                .OrderByDescending(n => n.CreatedAt)
-                .ToListAsync();
+            return deletedCount > 0;
         }
     }
 }

@@ -1,6 +1,8 @@
 ﻿// File: BallSport.Application/Services/MatchFinding/MatchFindingService.cs
 using BallSport.Application.Common.Extensions;
+using BallSport.Application.DTOs.Community;
 using BallSport.Application.DTOs.MatchFinding;
+using BallSport.Application.Services.Community;
 using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories.MatchFinding;
@@ -12,17 +14,27 @@ namespace BallSport.Application.Services.MatchFinding
     {
         private readonly IMatchFindingRepository _repo;
         private readonly Sep490G19v1Context _context;
+        private readonly INotificationService _notificationService;
 
-        public MatchFindingService(IMatchFindingRepository repo, Sep490G19v1Context context)
+        public MatchFindingService(
+            IMatchFindingRepository repo,
+            Sep490G19v1Context context,
+            INotificationService notificationService)
         {
-            _repo = repo;
-            _context = context;
+            _repo = repo ?? throw new ArgumentNullException(nameof(repo));
+            _context = context ?? throw new ArgumentNullException(nameof(context));
+            _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         }
 
-        // 1. LẤY DANH SÁCH KÈO ĐƯỢC LOẠI BỎ KÈO CỦA MÌNH + ĐÚNG NGÀY GIỜ
+        // 1. LẤY DANH SÁCH KÈO ĐANG MỞ
         public async Task<PagedResponse<MatchRequestListItemDto>> GetActiveRequestsAsync(int page = 1, int size = 10, int? currentUserId = null)
         {
             var requests = await _repo.GetActiveRequestsAsync();
+
+            if (currentUserId.HasValue)
+            {
+                requests = requests.Where(r => r.CreatedBy != currentUserId.Value).ToList();
+            }
 
             var dtos = requests.Select(r =>
             {
@@ -40,7 +52,7 @@ namespace BallSport.Application.Services.MatchFinding
                         .FirstOrDefault(p => p.UserId == r.CreatedBy)?.TeamName ?? "Đội chủ sân",
                     JoinedCount = r.MatchParticipants?.Count(p => p.StatusFromB == "Pending") ?? 0,
                     ExpiresAt = r.ExpiresAt ?? DateTime.UtcNow.AddHours(48),
-                    IsMyRequest = currentUserId.HasValue && r.CreatedBy == currentUserId.Value
+                    IsMyRequest = false
                 };
             })
             .OrderByDescending(x => x.ExpiresAt)
@@ -56,10 +68,11 @@ namespace BallSport.Application.Services.MatchFinding
                 PageSize = size,
                 TotalElements = total,
                 TotalPages = (int)Math.Ceiling(total / (double)size)
+                // HasNext & HasPrevious là read-only → tự động tính trong class PagedResponse
             };
         }
 
-        // 2. CHI TIẾT KÈO – ĐÚNG NGÀY GIỜ + ĐẸP LUNG LINH
+        // 2. CHI TIẾT KÈO
         public async Task<MatchRequestDetailDto?> GetRequestDetailAsync(int requestId, int currentUserId)
         {
             var request = await _repo.GetDetailAsync(requestId);
@@ -94,7 +107,6 @@ namespace BallSport.Application.Services.MatchFinding
                     ParticipantId = p.ParticipantId,
                     UserId = p.UserId,
                     FullName = p.User?.FullName ?? "Ẩn danh",
-
                     TeamName = p.TeamName ?? "Đội bóng",
                     PlayerCount = (PlayerCountOption)(p.PlayerCount ?? 7),
                     ContactPhone = p.ContactPhone,
@@ -107,14 +119,12 @@ namespace BallSport.Application.Services.MatchFinding
             };
         }
 
-        // 3. TẠO KÈO – CHẶN 100% TRƯỜNG HỢP LỖI
+        // 3. TẠO KÈO
         public async Task<int> CreateRequestAsync(CreateMatchRequestDto dto, int userId)
         {
             var booking = await _context.Bookings
-                .Include(b => b.Schedule!)
-                    .ThenInclude(s => s.Slot!)
-                .Include(b => b.Schedule!)
-                    .ThenInclude(s => s.Field)
+                .Include(b => b.Schedule!).ThenInclude(s => s.Slot!)
+                .Include(b => b.Schedule!).ThenInclude(s => s.Field)
                 .FirstOrDefaultAsync(b => b.BookingId == dto.BookingId && b.UserId == userId)
                 ?? throw new UnauthorizedAccessException("Không tìm thấy booking hoặc không phải của bạn!");
 
@@ -156,10 +166,11 @@ namespace BallSport.Application.Services.MatchFinding
             };
 
             await _repo.AddParticipantAsync(creator);
+
             return request.MatchRequestId;
         }
 
-        // 4. THAM GIA KÈO
+        // 4. THAM GIA KÈO + GỬI THÔNG BÁO CHO CHỦ SÂN
         public async Task JoinRequestAsync(int requestId, JoinMatchRequestDto dto, int userId)
         {
             var request = await _repo.GetDetailAsync(requestId)
@@ -188,9 +199,19 @@ namespace BallSport.Application.Services.MatchFinding
             };
 
             await _repo.AddParticipantAsync(participant);
+
+            var joinNoti = new CreateNotificationDTO
+            {
+                UserId = request.CreatedBy,
+                Type = "MatchJoinRequest",
+                TargetId = requestId,
+                Message = $"Đội \"{dto.TeamName}\" ({dto.PlayerCount} người) vừa gửi yêu cầu tham gia kèo của bạn!"
+            };
+
+            await _notificationService.CreateNotificationAsync(joinNoti);
         }
 
-        // 5. CHẤP NHẬN → GHÉP ĐỘI THÀNH CÔNG – TRẢ ĐÚNG FORMAT + ĐÚNG NGÀY GIỜ
+        // 5. CHẤP NHẬN ĐỘI → GHÉP THÀNH CÔNG + GỬI THÔNG BÁO
         public async Task<MatchSuccessResponseDto> AcceptParticipantAsync(int requestId, int participantId, int ownerUserId)
         {
             var request = await _repo.GetDetailAsync(requestId)
@@ -213,15 +234,46 @@ namespace BallSport.Application.Services.MatchFinding
             participant.StatusFromB = "Accepted";
             participant.StatusFromA = "Accepted";
 
+            var notifications = new List<CreateNotificationDTO>();
+
+            // Từ chối các đội còn lại
             foreach (var p in request.MatchParticipants!.Where(p => p.ParticipantId != participantId && p.StatusFromB == "Pending"))
             {
                 p.StatusFromB = "Rejected";
                 p.StatusFromA = "Rejected";
                 await _repo.UpdateParticipantAsync(p);
+
+                notifications.Add(new CreateNotificationDTO
+                {
+                    UserId = p.UserId,
+                    Type = "MatchRejected",
+                    TargetId = requestId,
+                    Message = "Rất tiếc! Chủ sân đã chọn đội khác. Chúc bạn sớm tìm được kèo mới!"
+                });
             }
 
             await _repo.UpdateMatchRequestAsync(request);
             await _repo.UpdateParticipantAsync(participant);
+
+            // Gửi thông báo thành công cho cả 2 bên
+            notifications.Add(new CreateNotificationDTO
+            {
+                UserId = ownerUserId,
+                Type = "MatchAccepted",
+                TargetId = request.MatchRequestId,
+                Message = $"Ghép kèo thành công với đội \"{participant.TeamName}\"! Chúc trận đấu vui vẻ!"
+            });
+
+            notifications.Add(new CreateNotificationDTO
+            {
+                UserId = participant.UserId,
+                Type = "MatchAccepted",
+                TargetId = request.MatchRequestId,
+                Message = $"CHÚC MỪNG! Bạn đã được ghép trận tại {request.Booking.Schedule.Field?.Name} vào {matchDateTime:HH:mm dd/MM/yyyy}!"
+            });
+
+            if (notifications.Any())
+                await _notificationService.CreateBulkNotificationsAsync(notifications);
 
             return new MatchSuccessResponseDto
             {
@@ -240,7 +292,6 @@ namespace BallSport.Application.Services.MatchFinding
                     {
                         UserId = participant.UserId,
                         FullName = participant.User?.FullName ?? "Ẩn danh",
-
                         Phone = participant.User?.Phone ?? "Không có"
                     },
                     OpponentTeamName = participant.TeamName ?? "Đội bóng",
@@ -263,6 +314,21 @@ namespace BallSport.Application.Services.MatchFinding
 
             request.Status = "Cancelled";
             await _repo.UpdateMatchRequestAsync(request);
+
+            if (request.MatchParticipants?.Any(p => p.UserId != ownerUserId) == true)
+            {
+                var cancelNotis = request.MatchParticipants!
+                    .Where(p => p.UserId != ownerUserId)
+                    .Select(p => new CreateNotificationDTO
+                    {
+                        UserId = p.UserId,
+                        Type = "MatchCancelled",
+                        TargetId = requestId,
+                        Message = "Chủ sân đã hủy kèo tìm đối thủ. Rất tiếc!"
+                    });
+
+                await _notificationService.CreateBulkNotificationsAsync(cancelNotis);
+            }
         }
 
         // 7. TỪ CHỐI / RÚT LUI
@@ -283,6 +349,18 @@ namespace BallSport.Application.Services.MatchFinding
             participant.StatusFromB = isOwner ? "Rejected" : "Withdrawn";
             await _repo.UpdateParticipantAsync(participant);
 
+            if (isOwner)
+            {
+                var rejectNoti = new CreateNotificationDTO
+                {
+                    UserId = participant.UserId,
+                    Type = "MatchRejected",
+                    TargetId = requestId,
+                    Message = "Chủ sân đã từ chối yêu cầu tham gia kèo của bạn."
+                };
+                await _notificationService.CreateNotificationAsync(rejectNoti);
+            }
+
             if (!request.MatchParticipants!.Any(p => p.StatusFromB == "Pending"))
             {
                 request.Status = "Open";
@@ -290,11 +368,10 @@ namespace BallSport.Application.Services.MatchFinding
             }
         }
 
-        // 8. LỊCH SỬ
+        // 8. LỊCH SỬ CỦA TÔI
         public async Task<PagedResponse<MatchHistoryDto>> GetMyHistoryAsync(int userId, int page = 1, int size = 10)
         {
             var histories = await _repo.GetHistoryByUserAsync(userId);
-
             var dtos = histories.Select(h =>
             {
                 var matchDateTime = h.MatchRequest?.Booking?.Schedule?.Date
@@ -317,7 +394,6 @@ namespace BallSport.Application.Services.MatchFinding
                     OpponentTeamName = h.MatchRequest.MatchParticipants?
                         .FirstOrDefault(p => p.UserId == h.OpponentUserId)?.TeamName ?? "Đối thủ",
                     OpponentPhone = h.OpponentUser?.Phone,
-
                     CreatedAt = h.CreatedAt ?? DateTime.UtcNow
                 };
             })
@@ -337,24 +413,24 @@ namespace BallSport.Application.Services.MatchFinding
             };
         }
 
-        // HỖ TRỢ
+        // 9. KIỂM TRA BOOKING ĐÃ CÓ KÈO CHƯA
         public async Task<bool> IsBookingAlreadyHasRequestAsync(int bookingId)
             => await _repo.HasActiveRequestForBookingAsync(bookingId);
-        // THÊM MỚI – DÀNH RIÊNG CHO ENDPOINT CHECK HAS-REQUEST
-        public async Task<(bool hasRequest, int? matchRequestId)> GetBookingRequestInfoAsync(int bookingId)
-        {
-            var request = await _repo.GetRequestByBookingIdAsync(bookingId);
 
-            if (request == null)
-                return (false, null);
-
-            bool hasActiveRequest = request.Status == "Open" || request.Status == "Matched";
-
-            return (hasActiveRequest, hasActiveRequest ? request.MatchRequestId : null);
-        }
+        // 10. LẤY REQUEST THEO BOOKING ID
         public async Task<MatchRequest?> GetRequestByBookingIdAsync(int bookingId)
             => await _repo.GetRequestByBookingIdAsync(bookingId);
 
+        // 11. THÔNG TIN BOOKING CÓ KÈO HAY KHÔNG
+        public async Task<(bool hasRequest, int? matchRequestId)> GetBookingRequestInfoAsync(int bookingId)
+        {
+            var request = await _repo.GetRequestByBookingIdAsync(bookingId);
+            if (request == null) return (false, null);
+            bool hasActive = request.Status == "Open" || request.Status == "Matched";
+            return (hasActive, hasActive ? request.MatchRequestId : null);
+        }
+
+        // 12. DỌN KÈO QUÁ HẠN (ADMIN)
         public async Task<int> ExpireOldRequestsAsync()
         {
             var requests = await _repo.GetActiveRequestsAsync();

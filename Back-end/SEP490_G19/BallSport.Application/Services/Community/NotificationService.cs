@@ -1,4 +1,5 @@
-﻿using BallSport.Application.DTOs.Community;
+﻿// File: BallSport.Application/Services/Community/NotificationService.cs
+using BallSport.Application.DTOs.Community;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories.Community;
 
@@ -10,55 +11,52 @@ namespace BallSport.Application.Services.Community
 
         public NotificationService(INotificationRepository notificationRepository)
         {
-            _notificationRepository = notificationRepository;
+            _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
         }
 
+        // ===================== USER METHODS =====================
         public async Task<(IEnumerable<NotificationDTO> Notifications, int TotalCount)> GetNotificationsByUserIdAsync(
-            int userId,
-            int pageNumber,
-            int pageSize,
-            bool? isRead = null)
+            int userId, int pageNumber, int pageSize, bool? isRead = null)
         {
             var (notifications, totalCount) = await _notificationRepository.GetNotificationsByUserIdAsync(
-                userId,
-                pageNumber,
-                pageSize,
-                isRead
-            );
+                userId, pageNumber, pageSize, isRead);
 
-            var notificationDtos = MapToNotificationDTOs(notifications);
-
-            return (notificationDtos, totalCount);
+            return (MapToNotificationDTOs(notifications), totalCount);
         }
 
         public async Task<IEnumerable<NotificationDTO>> GetLatestNotificationsAsync(int userId, int topCount = 10)
-        {
-            var notifications = await _notificationRepository.GetLatestNotificationsAsync(userId, topCount);
-            return MapToNotificationDTOs(notifications);
-        }
+            => MapToNotificationDTOs(await _notificationRepository.GetLatestNotificationsAsync(userId, topCount));
 
-        public async Task<NotificationDTO> CreateNotificationAsync(CreateNotificationDTO createNotificationDto)
+        public async Task<NotificationDTO> CreateNotificationAsync(CreateNotificationDTO dto)
         {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+
             var notification = new Notification
             {
-                UserId = createNotificationDto.UserId,
-                Type = createNotificationDto.Type,
-                TargetId = createNotificationDto.TargetId,
-                Message = createNotificationDto.Message
+                UserId = dto.UserId,
+                Type = dto.Type ?? "Info",
+                TargetId = dto.TargetId,
+                Message = dto.Message ?? "Bạn có thông báo mới",
+                CreatedAt = DateTime.UtcNow,
+                IsRead = false
             };
 
-            var createdNotification = await _notificationRepository.CreateNotificationAsync(notification);
-            return MapToNotificationDTO(createdNotification);
+            var created = await _notificationRepository.CreateNotificationAsync(notification);
+            return MapToNotificationDTO(created);
         }
 
-        public async Task<bool> CreateBulkNotificationsAsync(IEnumerable<CreateNotificationDTO> notificationDtos)
+        public async Task<bool> CreateBulkNotificationsAsync(IEnumerable<CreateNotificationDTO> dtos)
         {
-            var notifications = notificationDtos.Select(dto => new Notification
+            if (dtos?.Any() != true) return true;
+
+            var notifications = dtos.Select(dto => new Notification
             {
                 UserId = dto.UserId,
-                Type = dto.Type,
+                Type = dto.Type ?? "Info",
                 TargetId = dto.TargetId,
-                Message = dto.Message
+                Message = dto.Message ?? "Bạn có thông báo mới",
+                CreatedAt = DateTime.UtcNow,
+                IsRead = false
             }).ToList();
 
             return await _notificationRepository.CreateNotificationsAsync(notifications);
@@ -66,68 +64,75 @@ namespace BallSport.Application.Services.Community
 
         public async Task<bool> MarkAsReadAsync(int notificationId, int userId)
         {
-            // Kiểm tra notification có thuộc về user không
-            var notification = await _notificationRepository.GetNotificationByIdAsync(notificationId);
-            if (notification == null || notification.UserId != userId)
-                return false;
-
-            return await _notificationRepository.MarkAsReadAsync(notificationId);
+            var noti = await _notificationRepository.GetNotificationByIdAsync(notificationId);
+            return noti?.UserId == userId && await _notificationRepository.MarkAsReadAsync(notificationId);
         }
 
-        public async Task<bool> MarkAllAsReadAsync(int userId)
-        {
-            return await _notificationRepository.MarkAllAsReadAsync(userId);
-        }
+        public Task<bool> MarkAllAsReadAsync(int userId)
+            => _notificationRepository.MarkAllAsReadAsync(userId);
 
         public async Task<bool> DeleteNotificationAsync(int notificationId, int userId)
         {
-            // Kiểm tra notification có thuộc về user không
-            var notification = await _notificationRepository.GetNotificationByIdAsync(notificationId);
-            if (notification == null || notification.UserId != userId)
-                return false;
+            var noti = await _notificationRepository.GetNotificationByIdAsync(notificationId);
+            if (noti == null || noti.UserId != userId) return false;
 
             return await _notificationRepository.DeleteNotificationAsync(notificationId);
         }
 
-        public async Task<bool> DeleteAllNotificationsAsync(int userId)
-        {
-            return await _notificationRepository.DeleteAllNotificationsAsync(userId);
-        }
+        public Task<bool> DeleteAllNotificationsAsync(int userId)
+            => _notificationRepository.DeleteAllNotificationsAsync(userId);
 
-        public async Task<int> GetUnreadCountAsync(int userId)
-        {
-            return await _notificationRepository.CountUnreadNotificationsAsync(userId);
-        }
+        public Task<int> GetUnreadCountAsync(int userId)
+            => _notificationRepository.CountUnreadNotificationsAsync(userId);
 
         public async Task<IEnumerable<NotificationDTO>> GetNotificationsByTypeAsync(int userId, string type)
+            => MapToNotificationDTOs(await _notificationRepository.GetNotificationsByTypeAsync(userId, type));
+
+        public Task<bool> CleanupOldNotificationsAsync(int daysOld = 30)
+            => _notificationRepository.DeleteOldNotificationsAsync(daysOld);
+
+        // ===================== ADMIN METHODS – SIÊU SẠCH, KHÔNG CÓ UPDATE =====================
+        public async Task<(IEnumerable<NotificationDTO> Notifications, int TotalCount)> GetAllNotificationsAdminAsync(
+            int pageNumber = 1,
+            int pageSize = 20,
+            string? search = null,
+            string? type = null,
+            int? userId = null,
+            bool? isRead = null)
         {
-            var notifications = await _notificationRepository.GetNotificationsByTypeAsync(userId, type);
-            return MapToNotificationDTOs(notifications);
+            var (notifications, totalCount) = await _notificationRepository.GetAllNotificationsAdminAsync(
+                pageNumber, pageSize, search, type, userId, isRead);
+
+            return (MapToNotificationDTOs(notifications), totalCount);
         }
 
-        public async Task<bool> CleanupOldNotificationsAsync(int daysOld = 30)
+        public async Task<NotificationDTO?> GetNotificationByIdAdminAsync(int notificationId)
         {
-            return await _notificationRepository.DeleteOldNotificationsAsync(daysOld);
+            var noti = await _notificationRepository.GetNotificationByIdAdminAsync(notificationId);
+            return noti is null ? null : MapToNotificationDTO(noti);
         }
 
-        // Helper methods
-        private NotificationDTO MapToNotificationDTO(Notification notification)
-        {
-            return new NotificationDTO
-            {
-                NotificationId = notification.NotificationId,
-                UserId = notification.UserId,
-                Type = notification.Type,
-                TargetId = notification.TargetId,
-                Message = notification.Message,
-                IsRead = notification.IsRead ?? false,
-                CreatedAt = notification.CreatedAt
-            };
-        }
+        public Task<bool> DeleteNotificationAdminAsync(int notificationId)
+            => _notificationRepository.DeleteNotificationAdminAsync(notificationId);
 
-        private IEnumerable<NotificationDTO> MapToNotificationDTOs(IEnumerable<Notification> notifications)
+        public Task<int> DeleteMultipleNotificationsAdminAsync(IEnumerable<int> notificationIds)
+            => notificationIds?.Any() == true
+                ? _notificationRepository.DeleteMultipleNotificationsAdminAsync(notificationIds)
+                : Task.FromResult(0);
+
+        // ===================== HELPER MAPPING – AN TOÀN 100% VỚI NULL =====================
+        private NotificationDTO MapToNotificationDTO(Notification n) => new()
         {
-            return notifications.Select(MapToNotificationDTO).ToList();
-        }
+            NotificationId = n.NotificationId,
+            UserId = n.UserId,
+            Type = n.Type ?? "Info",
+            TargetId = n.TargetId,
+            Message = n.Message ?? "[Nội dung đã bị xóa]",
+            IsRead = n.IsRead ?? false,
+            CreatedAt = n.CreatedAt ?? DateTime.UtcNow
+        };
+
+        private IEnumerable<NotificationDTO> MapToNotificationDTOs(IEnumerable<Notification> source)
+            => (source ?? Enumerable.Empty<Notification>()).Select(MapToNotificationDTO);
     }
 }
