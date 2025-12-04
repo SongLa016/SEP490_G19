@@ -38,8 +38,18 @@ namespace BallSport.Application.Services.Community
         public async Task<NotificationDTO> CreateNotificationAsync(CreateNotificationDTO dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
-            if (!dto.UserId.HasValue)
-                throw new ArgumentException("UserId là bắt buộc khi tạo thông báo cá nhân.");
+
+            // FIX CHUẨN NHẤT: Chỉ bắt buộc UserId khi KHÔNG PHẢI System
+            if (!dto.UserId.HasValue && dto.Type != "System")
+                throw new ArgumentException("UserId là bắt buộc khi không phải thông báo hệ thống.");
+
+            // Nếu cố tình gửi toàn hệ thống bằng API này → báo lỗi rõ ràng
+            if (dto.Type == "System" && dto.UserId == null)
+            {
+                throw new InvalidOperationException(
+                    "Không thể gửi thông báo hệ thống bằng API này. " +
+                    "Vui lòng dùng POST /admin/bulk với userId: null và type: \"System\".");
+            }
 
             var finalMessage = BuildFullMessage(dto.Title, dto.Message);
 
@@ -71,7 +81,21 @@ namespace BallSport.Application.Services.Community
                 // GỬI TOÀN HỆ THỐNG (System + UserId = null)
                 if (dto.Type == "System" && dto.UserId == null)
                 {
+                    // Lấy RoleId của Admin
+                    var adminRoleId = await _context.Roles
+                        .Where(r => r.RoleName == "Admin")
+                        .Select(r => r.RoleId)
+                        .FirstOrDefaultAsync();
+
+                    // Nếu không tìm thấy Role Admin → gửi hết (tránh lỗi)
+                    if (adminRoleId == 0)
+                    {
+                        _logger.LogWarning("Role 'Admin' not found in database.");
+                    }
+
+                    // Lấy tất cả User KHÔNG có Role Admin
                     var allUserIds = await _context.Users
+                        .Where(u => adminRoleId == 0 || !u.UserRoles.Any(ur => ur.RoleId == adminRoleId))
                         .Select(u => u.UserId)
                         .ToListAsync();
 
@@ -87,8 +111,9 @@ namespace BallSport.Application.Services.Community
                             IsRead = false
                         });
                     }
+
                     totalExpected += allUserIds.Count;
-                    _logger.LogInformation("System notification prepared for {Count} users.", allUserIds.Count);
+                    _logger.LogInformation("System notification prepared for {Count} users (Admins excluded).", allUserIds.Count);
                 }
                 // GỬI CÁ NHÂN
                 else
