@@ -20,39 +20,100 @@ const lazyLoad = (importFunc) => lazy(importFunc);
 export const LandingPage = lazyLoad(() => import("../../pages/LandingPage"));
 
 // Player pages
-export const HomePage = lazyLoad(() => import("../../roles/player/pages/home/HomePage"));
-export const Dashboard = lazyLoad(() => import("../../roles/player/pages/dashboard/Dashboard"));
-export const BookingHistory = lazyLoad(() => import("../../roles/player/pages/booking/BookingHistory"));
-export const ComplexDetail = lazyLoad(() => import("../../roles/player/pages/fields/ComplexDetail"));
-export const Community = lazyLoad(() => import("../../roles/player/pages/community/Community"));
-export const FieldSearch = lazyLoad(() => import("../../roles/player/pages/fields/FieldSearch"));
-export const ProfileIndex = lazyLoad(() => import("../../roles/player/pages/profile"));
+export const HomePage = lazyLoad(() =>
+  import("../../roles/player/pages/home/HomePage")
+);
+export const Dashboard = lazyLoad(() =>
+  import("../../roles/player/pages/dashboard/Dashboard")
+);
+export const BookingHistory = lazyLoad(() =>
+  import("../../roles/player/pages/booking/BookingHistory")
+);
+export const PlayerNotificationsPage = lazyLoad(() =>
+  import("../../roles/player/pages/notifications/NotificationsPage")
+);
+export const ComplexDetail = lazyLoad(() =>
+  import("../../roles/player/pages/fields/ComplexDetail")
+);
+export const Community = lazyLoad(() =>
+  import("../../roles/player/pages/community/Community")
+);
+export const FieldSearch = lazyLoad(() =>
+  import("../../roles/player/pages/fields/FieldSearch")
+);
+export const ProfileIndex = lazyLoad(() =>
+  import("../../roles/player/pages/profile")
+);
 
 // Owner pages
-export const OwnerDashboard = lazyLoad(() => import("../../roles/owner/pages/OwnerDashboard"));
-export const FieldManagement = lazyLoad(() => import("../../roles/owner/pages/FieldManagement"));
-export const PricingManagement = lazyLoad(() => import("../../roles/owner/pages/PricingManagement"));
-export const BookingManagement = lazyLoad(() => import("../../roles/owner/pages/BookingManagement"));
-export const RevenueReports = lazyLoad(() => import("../../roles/owner/pages/RevenueReports"));
-export const ScheduleManagement = lazyLoad(() => import("../../roles/owner/pages/ScheduleManagement"));
-export const CancellationPolicies = lazyLoad(() => import("../../roles/owner/pages/CancellationPolicies"));
-export const DepositPolicies = lazyLoad(() => import("../../roles/owner/pages/DepositPolicies"));
-export const PromotionsManagement = lazyLoad(() => import("../../roles/owner/pages/PromotionsManagement"));
-export const PaymentTracking = lazyLoad(() => import("../../roles/owner/pages/PaymentTracking"));
-export const NotificationsManagement = lazyLoad(() => import("../../roles/owner/pages/NotificationsManagement"));
-export const TimeSlotManagement = lazyLoad(() => import("../../roles/owner/pages/TimeSlotManagement"));
-export const FieldTypeManagement = lazyLoad(() => import("../../roles/owner/pages/FieldTypeManagement"));
-export const BankAccountManagement = lazyLoad(() => import("../../roles/owner/pages/BankAccountManagement"));
-export const OwnerProfileSettings = lazyLoad(() => import("../../roles/owner/pages/ProfileSettings"));
+export const OwnerDashboard = lazyLoad(() =>
+  import("../../roles/owner/pages/OwnerDashboard")
+);
+export const FieldManagement = lazyLoad(() =>
+  import("../../roles/owner/pages/FieldManagement")
+);
+export const PricingManagement = lazyLoad(() =>
+  import("../../roles/owner/pages/PricingManagement")
+);
+export const BookingManagement = lazyLoad(() =>
+  import("../../roles/owner/pages/BookingManagement")
+);
+export const RevenueReports = lazyLoad(() =>
+  import("../../roles/owner/pages/RevenueReports")
+);
+export const ScheduleManagement = lazyLoad(() =>
+  import("../../roles/owner/pages/ScheduleManagement")
+);
+export const CancellationPolicies = lazyLoad(() =>
+  import("../../roles/owner/pages/CancellationPolicies")
+);
+export const DepositPolicies = lazyLoad(() =>
+  import("../../roles/owner/pages/DepositPolicies")
+);
+export const PromotionsManagement = lazyLoad(() =>
+  import("../../roles/owner/pages/PromotionsManagement")
+);
+export const PaymentTracking = lazyLoad(() =>
+  import("../../roles/owner/pages/PaymentTracking")
+);
+export const NotificationsManagement = lazyLoad(() =>
+  import("../../roles/owner/pages/NotificationsManagement")
+);
+export const TimeSlotManagement = lazyLoad(() =>
+  import("../../roles/owner/pages/TimeSlotManagement")
+);
+export const FieldTypeManagement = lazyLoad(() =>
+  import("../../roles/owner/pages/FieldTypeManagement")
+);
+export const BankAccountManagement = lazyLoad(() =>
+  import("../../roles/owner/pages/BankAccountManagement")
+);
+export const OwnerProfileSettings = lazyLoad(() =>
+  import("../../roles/owner/pages/ProfileSettings")
+);
 
 // Admin pages
-export const AdminDashboard = lazyLoad(() => import("../../roles/admin/pages/AdminDashboard"));
-export const UserManagement = lazyLoad(() => import("../../roles/admin/pages/UserManagement"));
-export const SystemNotificationsManagement = lazyLoad(() => import("../../roles/admin/pages/SystemNotificationsManagement"));
-export const ViolationReportsManagement = lazyLoad(() => import("../../roles/admin/pages/ViolationReportsManagement"));
-export const PostManagement = lazyLoad(() => import("../../roles/admin/pages/PostManagement"));
-export const SystemSettings = lazyLoad(() => import("../../roles/admin/pages/SystemSettings"));
-export const AdminProfileSettings = lazyLoad(() => import("../../roles/admin/pages/ProfileSettings"));
+export const AdminDashboard = lazyLoad(() =>
+  import("../../roles/admin/pages/AdminDashboard")
+);
+export const UserManagement = lazyLoad(() =>
+  import("../../roles/admin/pages/UserManagement")
+);
+export const SystemNotificationsManagement = lazyLoad(() =>
+  import("../../roles/admin/pages/SystemNotificationsManagement")
+);
+export const ViolationReportsManagement = lazyLoad(() =>
+  import("../../roles/admin/pages/ViolationReportsManagement")
+);
+export const PostManagement = lazyLoad(() =>
+  import("../../roles/admin/pages/PostManagement")
+);
+export const SystemSettings = lazyLoad(() =>
+  import("../../roles/admin/pages/SystemSettings")
+);
+export const AdminProfileSettings = lazyLoad(() =>
+  import("../../roles/admin/pages/ProfileSettings")
+);
 
 // Route definitions với metadata
 export const routeConfig = [
@@ -61,6 +122,12 @@ export const routeConfig = [
     path: "/",
     element: LandingPage,
     public: true,
+  },
+  {
+    path: "/notifications",
+    element: PlayerNotificationsPage,
+    layout: "MainLayout",
+    allowedRoles: [ROLES.PLAYER.name],
   },
   // Note: Auth routes use AuthLayout directly, not lazy loaded
   // They are handled separately in App.js
@@ -313,4 +380,3 @@ export const demoRoutes = [
     isDemo: true,
   },
 ];
-

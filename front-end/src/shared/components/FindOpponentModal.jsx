@@ -205,7 +205,7 @@ export default function FindOpponentModal({
                isOpen={isOpen}
                onClose={onClose}
                title="Tìm đối thủ"
-               className="max-w-2xl rounded-2xl"
+               className="max-w-2xl rounded-2xl max-h-[90vh] overflow-y-auto scrollbar-hide"
           >
                <div className="px-3">
                     {/* Header Info */}

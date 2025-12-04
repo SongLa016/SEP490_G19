@@ -11,7 +11,8 @@ import {
      SelectValue,
      Textarea,
      Modal,
-     Badge
+     Badge,
+     Pagination
 } from "../../../shared/components/ui";
 import {
      Table,
@@ -22,11 +23,14 @@ import {
      TableCell
 } from "../../../shared/components/ui/table";
 import {
-     createNotification,
+     createAdminNotification,
+     createAdminBulkNotifications,
      getNotifications,
      getNotificationsByType,
+     getAdminNotifications,
      deleteNotification,
-     deleteAllNotifications
+     deleteAdminNotification,
+     bulkDeleteAdminNotifications
 } from "../../../shared/services/notifications";
 import { fetchAllUserStatistics } from "../../../shared/services/adminStatistics";
 import {
@@ -42,6 +46,7 @@ import {
      Clock,
      RefreshCw
 } from "lucide-react";
+import Swal from "sweetalert2";
 
 export default function SystemNotificationsManagement() {
      const { user } = useAuth();
@@ -55,13 +60,23 @@ export default function SystemNotificationsManagement() {
      const [showDetailModal, setShowDetailModal] = useState(false);
      const [loading, setLoading] = useState(false);
      const [users, setUsers] = useState([]);
-     const [selectedRecipientId, setSelectedRecipientId] = useState("0");
+     // "all" = gửi cho toàn hệ thống (userId = null), còn lại = userId cụ thể
+     const [selectedRecipientId, setSelectedRecipientId] = useState("all");
+     const [isCustomTargetId, setIsCustomTargetId] = useState(false);
+     // Tab tạo thông báo: "system" = thông báo hệ thống (broadcast), "user" = gửi cho người dùng cụ thể
+     const [createTab, setCreateTab] = useState("system");
+     // Phân trang danh sách thông báo
+     const [page, setPage] = useState(1);
+     const pageSize = 10;
 
      const [newNotification, setNewNotification] = useState({
+          title: "",
           message: "",
           type: "System",
-          userId: 0, // 0 = system notification (gửi cho tất cả), >0 = gửi cho user cụ thể
-          targetId: 0 // ID của đối tượng liên quan (booking, post, comment, etc.)
+          // null = gửi cho toàn hệ thống (theo rule backend), >0 = gửi cho user cụ thể
+          userId: null,
+          targetId: 0, // ID của đối tượng liên quan (booking, post, comment, etc.)
+          targetType: "none", // none | booking | post | comment | report | user
      });
 
      const parseApiData = (data) => {
@@ -108,14 +123,28 @@ export default function SystemNotificationsManagement() {
                const targetType = options.type || typeFilter;
                let result;
 
-               if (targetType && targetType !== "all") {
-                    result = await getNotificationsByType(targetType, { page: 1, pageSize: 100 });
-               } else {
-                    result = await getNotifications({ page: 1, pageSize: 100 });
+               // Ưu tiên dùng endpoint admin chuyên biệt
+               result = await getAdminNotifications({ pageNumber: 1, pageSize: 100 });
+
+               // Nếu endpoint admin lỗi (không ok), fallback về endpoint thường
+               if (!result?.ok) {
+                    if (targetType && targetType !== "all") {
+                         result = await getNotificationsByType(targetType, { page: 1, pageSize: 100 });
+                    } else {
+                         result = await getNotifications({ page: 1, pageSize: 100 });
+                    }
                }
                if (result.ok) {
                     // Parse response data - API có thể trả về nhiều format
-                    const notificationsData = parseApiData(result.data ?? result.raw);
+                    let notificationsData = parseApiData(result.data ?? result.raw);
+
+                    // Nếu có filter type (ở phía client) thì lọc tiếp theo type
+                    if (targetType && targetType !== "all") {
+                         notificationsData = notificationsData.filter((n) => {
+                              const t = n.type || n.notificationType || "System";
+                              return t === targetType;
+                         });
+                    }
                     // Nếu không có data, thử dùng mock data để test UI
                     if (notificationsData.length === 0) {
                          console.warn("⚠️ [SystemNotificationsManagement] No notifications from API, using mock data for testing");
@@ -164,7 +193,11 @@ export default function SystemNotificationsManagement() {
           } catch (error) {
                console.error("❌ [SystemNotificationsManagement] Error loading notifications:", error);
                setNotifications([]);
-               alert("Có lỗi xảy ra khi tải thông báo: " + error.message);
+               Swal.fire({
+                    icon: "error",
+                    title: "Lỗi tải thông báo",
+                    text: error.message || "Có lỗi xảy ra khi tải thông báo.",
+               });
           } finally {
                setLoading(false);
           }
@@ -207,50 +240,138 @@ export default function SystemNotificationsManagement() {
           }
 
           setFilteredNotifications(filtered);
+          // Reset về trang 1 khi bộ lọc thay đổi
+          setPage(1);
      }, [notifications, searchTerm, statusFilter]);
+
+     const totalPages = Math.max(1, Math.ceil(filteredNotifications.length / pageSize));
+     const paginatedNotifications = filteredNotifications.slice(
+          (page - 1) * pageSize,
+          page * pageSize
+     );
 
      const handleCreateNotification = async () => {
           // Kiểm tra role Admin
           if (user?.roleName !== "Admin") {
-               alert("Chỉ Admin mới có quyền tạo thông báo hệ thống.");
+               Swal.fire({
+                    icon: "error",
+                    title: "Không có quyền",
+                    text: "Chỉ Admin mới có quyền tạo thông báo hệ thống.",
+               });
                return;
           }
 
-          // Validate
+          // Validate nội dung
           if (!newNotification.message || newNotification.message.trim() === "") {
-               alert("Vui lòng nhập nội dung thông báo!");
+               Swal.fire({
+                    icon: "warning",
+                    title: "Thiếu nội dung",
+                    text: "Vui lòng nhập nội dung thông báo!",
+               });
                return;
+          }
+
+          // Validate theo tab
+          if (createTab === "user") {
+               if (!newNotification.userId || newNotification.userId <= 0) {
+                    Swal.fire({
+                         icon: "warning",
+                         title: "Thiếu người nhận",
+                         text: "Vui lòng chọn người nhận khi gửi thông báo cho người dùng.",
+                    });
+                    return;
+               }
+          }
+
+          // Có thể không bắt buộc title, nhưng nếu trống thì tự sinh từ message
+          const title =
+               (newNotification.title && newNotification.title.trim()) ||
+               newNotification.message.slice(0, 50);
+
+          // Validate Target ID (chỉ áp dụng cho tab gửi cho người dùng và khi có targetType khác "none")
+          if (createTab === "user") {
+               if (
+                    newNotification.targetType &&
+                    newNotification.targetType !== "none" &&
+                    (!newNotification.targetId || newNotification.targetId <= 0)
+               ) {
+                    Swal.fire({
+                         icon: "warning",
+                         title: "Thiếu Target ID",
+                         text: "Vui lòng nhập ID đối tượng liên quan phù hợp với loại bạn đã chọn.",
+                    });
+                    return;
+               }
           }
 
           try {
                setLoading(true);
 
-               // Format data theo API
-               const notificationData = {
-                    userId: newNotification.userId || 0, // 0 = system notification, >0 = gửi cho user cụ thể
-                    type: newNotification.type || "System",
+               // Format data cho API
+               // Quy ước: userId = null => gửi cho toàn hệ thống
+               // Loại thông báo cho tab hệ thống luôn cố định là "System"
+               const basePayload = {
+                    title: title,
+                    type: createTab === "system" ? "System" : (newNotification.type || "System"),
                     targetId: newNotification.targetId || 0, // 0 if not applicable
                     message: newNotification.message.trim()
                };
-               const result = await createNotification(notificationData);
+
+               let result;
+               if (createTab === "system") {
+                    // Tab hệ thống: dùng bulk API, broadcast cho toàn hệ thống
+                    // userId để null -> backend hiểu là toàn hệ thống
+                    result = await createAdminBulkNotifications([
+                         {
+                              ...basePayload,
+                              userId: null
+                         }
+                    ]);
+               } else {
+                    // Tab người dùng: dùng API đơn lẻ, gửi cho user cụ thể hoặc null (tất cả)
+                    const notificationData = {
+                         ...basePayload,
+                         userId:
+                              newNotification.userId === 0
+                                   ? null
+                                   : newNotification.userId,
+                    };
+                    result = await createAdminNotification(notificationData);
+               }
 
                if (result.ok) {
                     // Reload notifications
                     await loadNotifications({ type: typeFilter });
                     setShowCreateModal(false);
                     setNewNotification({
+                         title: "",
                          message: "",
                          type: "System",
-                         userId: 0,
+                         userId: null,
                          targetId: 0
                     });
-                    alert("✅ Tạo thông báo thành công!");
+                    setCreateTab("system");
+                    Swal.fire({
+                         icon: "success",
+                         title: "Đã tạo thông báo",
+                         text: "Tạo thông báo hệ thống thành công.",
+                         timer: 2000,
+                         showConfirmButton: false,
+                    });
                } else {
-                    alert("❌ Lỗi: " + result.reason);
+                    Swal.fire({
+                         icon: "error",
+                         title: "Lỗi tạo thông báo",
+                         text: result.reason || "Không thể tạo thông báo.",
+                    });
                }
           } catch (error) {
                console.error("Error creating notification:", error);
-               alert("❌ Có lỗi xảy ra khi tạo thông báo: " + error.message);
+               Swal.fire({
+                    icon: "error",
+                    title: "Lỗi tạo thông báo",
+                    text: error.message || "Có lỗi xảy ra khi tạo thông báo.",
+               });
           } finally {
                setLoading(false);
           }
@@ -259,30 +380,60 @@ export default function SystemNotificationsManagement() {
      const handleDeleteNotification = async (notification) => {
           // Kiểm tra role Admin
           if (user?.roleName !== "Admin") {
-               alert("Chỉ Admin mới có quyền xóa thông báo hệ thống.");
+               Swal.fire({
+                    icon: "error",
+                    title: "Không có quyền",
+                    text: "Chỉ Admin mới có quyền xóa thông báo hệ thống.",
+               });
                return;
           }
 
           const notificationId = notification.id || notification.notificationId;
           const message = notification.message || notification.title || "thông báo này";
 
-          if (!window.confirm(`Bạn có chắc chắn muốn xóa thông báo "${message.substring(0, 50)}..."?`)) {
-               return;
-          }
+          const confirmResult = await Swal.fire({
+               icon: "warning",
+               title: "Xóa thông báo?",
+               text: `Bạn có chắc chắn muốn xóa thông báo "${message.substring(0, 50)}..."?`,
+               showCancelButton: true,
+               confirmButtonText: "Xóa",
+               cancelButtonText: "Hủy",
+               confirmButtonColor: "#dc2626",
+          });
+          if (!confirmResult.isConfirmed) return;
 
           try {
                setLoading(true);
-               const result = await deleteNotification(notificationId);
+               // Ưu tiên dùng endpoint delete admin chuyên biệt
+               let result = await deleteAdminNotification(notificationId);
+
+               // Nếu vì lý do nào đó endpoint admin không ok, fallback về delete thường
+               if (!result?.ok) {
+                    result = await deleteNotification(notificationId);
+               }
 
                if (result.ok) {
-                    alert("✅ Xóa thông báo thành công!");
+                    Swal.fire({
+                         icon: "success",
+                         title: "Đã xóa thông báo",
+                         timer: 1500,
+                         showConfirmButton: false,
+                    });
                     await loadNotifications({ type: typeFilter }); // Reload từ API
                } else {
-                    alert("❌ Lỗi: " + result.reason);
+                    Swal.fire({
+                         icon: "error",
+                         title: "Lỗi xóa thông báo",
+                         text: result.reason || "Không thể xóa thông báo.",
+                    });
                }
           } catch (error) {
                console.error("Error deleting notification:", error);
-               alert("❌ Có lỗi xảy ra khi xóa thông báo: " + error.message);
+               Swal.fire({
+                    icon: "error",
+                    title: "Lỗi xóa thông báo",
+                    text: error.message || "Có lỗi xảy ra khi xóa thông báo.",
+               });
           } finally {
                setLoading(false);
           }
@@ -290,24 +441,52 @@ export default function SystemNotificationsManagement() {
 
      const handleDeleteAllNotificationsAdmin = async () => {
           if (!notifications.length) {
-               alert("Hiện không có thông báo để xóa.");
+               Swal.fire({
+                    icon: "info",
+                    title: "Không có thông báo",
+                    text: "Hiện không có thông báo để xóa.",
+               });
                return;
           }
-          if (!window.confirm("Bạn có chắc chắn muốn xóa toàn bộ thông báo của hệ thống?")) {
-               return;
-          }
+          const confirmResult = await Swal.fire({
+               icon: "warning",
+               title: "Xóa toàn bộ thông báo?",
+               text: "Bạn có chắc chắn muốn xóa toàn bộ thông báo của hệ thống?",
+               showCancelButton: true,
+               confirmButtonText: "Xóa tất cả",
+               cancelButtonText: "Hủy",
+               confirmButtonColor: "#dc2626",
+          });
+          if (!confirmResult.isConfirmed) return;
           try {
                setLoading(true);
-               const result = await deleteAllNotifications();
+               // Dùng bulkDeleteAdminNotifications với tất cả ID hiện có
+               const allIds = notifications.map(
+                    (n) => n.notificationID || n.notificationId || n.id
+               );
+               const result = await bulkDeleteAdminNotifications(allIds);
                if (result.ok) {
-                    alert("✅ Đã xóa toàn bộ thông báo.");
+                    Swal.fire({
+                         icon: "success",
+                         title: "Đã xóa toàn bộ thông báo",
+                         timer: 2000,
+                         showConfirmButton: false,
+                    });
                     await loadNotifications({ type: typeFilter });
                } else {
-                    alert("❌ Lỗi: " + result.reason);
+                    Swal.fire({
+                         icon: "error",
+                         title: "Lỗi xóa tất cả",
+                         text: result.reason || "Không thể xóa toàn bộ thông báo.",
+                    });
                }
           } catch (error) {
                console.error("Error deleting all notifications:", error);
-               alert("❌ Có lỗi xảy ra khi xóa toàn bộ thông báo: " + error.message);
+               Swal.fire({
+                    icon: "error",
+                    title: "Lỗi xóa tất cả",
+                    text: error.message || "Có lỗi xảy ra khi xóa toàn bộ thông báo.",
+               });
           } finally {
                setLoading(false);
           }
@@ -318,43 +497,54 @@ export default function SystemNotificationsManagement() {
           setShowDetailModal(true);
      };
 
-     const getTypeBadgeVariant = (type) => {
+     // Badge helpers: dùng variant "outline" + className để kiểm soát màu
+     const getTypeBadgeVariant = () => "outline";
+
+     const getTypeBadgeClass = (type) => {
           const actualType = type || "System";
           switch (actualType) {
                case "System":
-                    return "default";
+                    return "bg-red-50 text-red-700 border-red-200";
                case "Comment":
-                    return "secondary";
+                    return "bg-blue-50 text-blue-700 border-blue-200";
                case "Like":
-                    return "secondary";
+                    return "bg-pink-50 text-pink-700 border-pink-200";
                case "ReportResult":
-                    return "outline";
+                    return "bg-orange-50 text-orange-700 border-orange-200";
+               case "MatchAccepted":
+                    return "bg-green-50 text-green-700 border-green-200";
+               case "MatchJoinRequest":
+                    return "bg-yellow-50 text-yellow-700 border-yellow-200";
+               case "NewComment":
+                    return "bg-blue-50 text-blue-700 border-blue-200";
                case "Mention":
-                    return "secondary";
+                    return "bg-purple-50 text-purple-700 border-purple-200";
                default:
-                    return "outline";
+                    return "bg-slate-50 text-slate-700 border-slate-200";
           }
      };
 
-     const getStatusBadgeVariant = (notification) => {
+     const getStatusBadgeVariant = () => "outline";
+
+     const getStatusBadgeClass = (notification) => {
           // API có thể trả về isRead thay vì status
           const isRead = notification.isRead;
           if (isRead === true) {
-               return "default";
+               return "bg-blue-50 text-blue-700 border-blue-200";
           } else if (isRead === false) {
-               return "secondary";
+               return "bg-gray-100 text-gray-700 border-gray-300";
           }
           // Fallback cho status cũ
           const status = notification.status;
           switch (status) {
                case "Sent":
-                    return "default";
+                    return "bg-blue-50 text-blue-700 border-blue-200";
                case "Draft":
-                    return "secondary";
+                    return "bg-gray-100 text-gray-700 border-gray-300";
                case "Failed":
-                    return "destructive";
+                    return "bg-red-50 text-red-700 border-red-200";
                default:
-                    return "outline";
+                    return "bg-slate-50 text-slate-600 border-slate-200";
           }
      };
 
@@ -371,8 +561,39 @@ export default function SystemNotificationsManagement() {
                     return "📋";
                case "Mention":
                     return "@";
+               case "MatchAccepted":
+                    return "✅";
+               case "MatchJoinRequest":
+                    return "🤝";
+               case "NewComment":
+                    return "🆕";
                default:
                     return "📢";
+          }
+     };
+
+     // Nhãn hiển thị tiếng Việt cho loại thông báo
+     const getTypeLabel = (type) => {
+          const actualType = type || "System";
+          switch (actualType) {
+               case "System":
+                    return "Hệ thống";
+               case "Comment":
+                    return "Bình luận";
+               case "Like":
+                    return "Lượt thích";
+               case "ReportResult":
+                    return "Báo cáo";
+               case "Mention":
+                    return "Được nhắc đến";
+               case "MatchAccepted":
+                    return "Ghép trận";
+               case "MatchJoinRequest":
+                    return "Tham gia trận";
+               case "NewComment":
+                    return "Bình luận";
+               default:
+                    return actualType;
           }
      };
 
@@ -384,10 +605,10 @@ export default function SystemNotificationsManagement() {
                     const message = notification.message || "";
                     const type = notification.type || "System";
                     return (
-                         <div className="flex items-start space-x-2">
+                         <div className="flex items-center">
                               <span className="text-lg flex-shrink-0">{getTypeIcon(type)}</span>
                               <span className="font-medium text-slate-900 line-clamp-2">
-                                   {message.length > 60 ? message.substring(0, 60) + "..." : message}
+                                   {message.length > 50 ? message.substring(0, 50) + "..." : message}
                               </span>
                          </div>
                     );
@@ -398,9 +619,10 @@ export default function SystemNotificationsManagement() {
                label: "Loại",
                render: (notification) => {
                     const type = notification.type || notification.notificationType || "System";
+                    const label = getTypeLabel(type);
                     return (
-                         <Badge variant={getTypeBadgeVariant(type)}>
-                              {type}
+                         <Badge variant={getTypeBadgeVariant(type)} className={getTypeBadgeClass(type)}>
+                              {label}
                          </Badge>
                     );
                }
@@ -410,11 +632,16 @@ export default function SystemNotificationsManagement() {
                label: "Người nhận",
                render: (notification) => {
                     const userId = notification.userId || 0;
+                    const userInfo = users.find((u) => u.id === userId);
                     return (
-                         <div className="flex items-center space-x-2">
-                              <Users className="w-4 h-4 text-slate-400" />
+                         <div className="flex items-center">
+                              <Users className="w-4 h-4 text-slate-400 mr-1" />
                               <span className="text-sm text-slate-600">
-                                   {userId === 0 ? "Tất cả" : `User ID: ${userId}`}
+                                   {userId === 0
+                                        ? "Tất cả người dùng"
+                                        : userInfo
+                                             ? `${userInfo.fullName} (ID: ${userId})`
+                                             : `User ID: ${userId}`}
                               </span>
                          </div>
                     );
@@ -430,7 +657,10 @@ export default function SystemNotificationsManagement() {
                          ? (isRead ? "Đã đọc" : "Chưa đọc")
                          : (status || "N/A");
                     return (
-                         <Badge variant={getStatusBadgeVariant(notification)}>
+                         <Badge
+                              variant={getStatusBadgeVariant(notification)}
+                              className={getStatusBadgeClass(notification)}
+                         >
                               {statusText}
                          </Badge>
                     );
@@ -442,7 +672,7 @@ export default function SystemNotificationsManagement() {
                render: (notification) => {
                     const date = notification.createdAt || notification.sentAt || notification.receivedAt;
                     return (
-                         <div className="flex items-center space-x-2">
+                         <div className="flex items-center">
                               <Calendar className="w-4 h-4 text-slate-400" />
                               <span className="text-sm text-slate-600">
                                    {date ? new Date(date).toLocaleDateString('vi-VN') : "N/A"}
@@ -455,7 +685,7 @@ export default function SystemNotificationsManagement() {
                key: "actions",
                label: "Thao tác",
                render: (notification) => (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center">
                          <Button
                               onClick={() => handleViewNotification(notification)}
                               variant="ghost"
@@ -615,7 +845,7 @@ export default function SystemNotificationsManagement() {
                </div>
 
                {/* Notifications Table */}
-               <Card className="p-6 rounded-2xl shadow-lg">
+               <Card className="p-5 rounded-2xl shadow-lg">
                     <div className="flex items-center justify-between mb-4">
                          <h3 className="text-lg font-bold text-slate-900">
                               Danh sách thông báo ({filteredNotifications.length})
@@ -671,18 +901,18 @@ export default function SystemNotificationsManagement() {
                               </div>
                          </div>
                     ) : (
-                         <div className="overflow-x-auto">
-                              <Table className="w-full  rounded-2xl border border-teal-300">
+                         <div className="">
+                              <Table className="w-full rounded-2xl border border-teal-300">
                                    <TableHeader>
-                                        <TableRow>
+                                        <TableRow className="truncate text-nowrap">
                                              {columns.map((column) => (
                                                   <TableHead key={column.key}>{column.label}</TableHead>
                                              ))}
                                         </TableRow>
                                    </TableHeader>
                                    <TableBody>
-                                        {filteredNotifications.map((notification) => (
-                                             <TableRow key={notification.notificationID || notification.id || Math.random()}>
+                                        {paginatedNotifications.map((notification) => (
+                                             <TableRow key={notification.notificationID || notification.id || Math.random()} className="truncate text-nowrap">
                                                   {columns.map((column) => (
                                                        <TableCell key={column.key}>
                                                             {column.render(notification)}
@@ -692,6 +922,18 @@ export default function SystemNotificationsManagement() {
                                         ))}
                                    </TableBody>
                               </Table>
+                              {/* Pagination */}
+                              {filteredNotifications.length > pageSize && (
+                                   <div className="mt-4 flex justify-end">
+                                        <Pagination
+                                             currentPage={page}
+                                             totalPages={totalPages}
+                                             onPageChange={setPage}
+                                             itemsPerPage={pageSize}
+                                             totalItems={filteredNotifications.length}
+                                        />
+                                   </div>
+                              )}
                          </div>
                     )}
                </Card>
@@ -701,23 +943,54 @@ export default function SystemNotificationsManagement() {
                     isOpen={showCreateModal}
                     onClose={() => setShowCreateModal(false)}
                     title="Tạo thông báo mới"
-                    size="2xl"
+                    size="lg"
                     className="max-h-[90vh] overflow-y-auto scrollbar-hide"
                >
-                    <div className="space-y-4">
-                         {/* Info Banner */}
-                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
-                              <Bell className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                              <div className="text-sm text-blue-800">
-                                   <p className="font-medium mb-1">Thông tin API</p>
-                                   <p className="text-xs">Thông báo sẽ được gửi theo format: userId, type, targetId, message</p>
-                              </div>
+                    <div className="space-y-3">
+                         {/* Tabs: Hệ thống / Người dùng */}
+                         <div className="flex items-center mb-2 rounded-xl bg-slate-100 p-1">
+                              <button
+                                   type="button"
+                                   onClick={() => {
+                                        setCreateTab("system");
+                                        setSelectedRecipientId("all");
+                                        setNewNotification((prev) => ({
+                                             ...prev,
+                                             userId: null,
+                                        }));
+                                   }}
+                                   className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition ${createTab === "system"
+                                        ? "bg-white text-red-600 shadow"
+                                        : "text-slate-600 hover:text-slate-800"
+                                        }`}
+                              >
+                                   <Bell className="w-4 h-4" />
+                                   <span>Thông báo hệ thống</span>
+                              </button>
+                              <button
+                                   type="button"
+                                   onClick={() => {
+                                        setCreateTab("user");
+                                        // Reset lựa chọn người nhận, bắt buộc admin chọn 1 user cụ thể
+                                        setSelectedRecipientId("");
+                                        setNewNotification((prev) => ({
+                                             ...prev,
+                                             userId: null,
+                                        }));
+                                   }}
+                                   className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition ${createTab === "user"
+                                        ? "bg-white text-emerald-600 shadow"
+                                        : "text-slate-600 hover:text-slate-800"
+                                        }`}
+                              >
+                                   <Users className="w-4 h-4" />
+                                   <span>Gửi cho người dùng</span>
+                              </button>
                          </div>
-
                          {/* Message Content */}
                          <div>
-                              <label className="block text-sm font-medium text-slate-700 mb-2">
-                                   Nội dung thông báo *
+                              <label className="block text-sm font-medium text-slate-700 mb-1">
+                                   Nội dung thông báo <span className="text-red-500">*</span>
                               </label>
                               <Textarea
                                    value={newNotification.message}
@@ -726,7 +999,7 @@ export default function SystemNotificationsManagement() {
                                    rows={3}
                                    className="resize-none"
                               />
-                              <p className="text-xs text-slate-500 mt-1">
+                              <p className="text-xs text-slate-500">
                                    {newNotification.message.length} ký tự
                               </p>
                          </div>
@@ -734,40 +1007,44 @@ export default function SystemNotificationsManagement() {
                          {/* Type Selection */}
                          <div>
                               <label className="block text-sm font-medium text-slate-700 mb-2">
-                                   Loại thông báo *
+                                   Loại thông báo <span className="text-red-500">*</span>
                               </label>
                               <Select
-                                   value={newNotification.type}
+                                   value={createTab === "system" ? "System" : newNotification.type}
+                                   disabled={createTab === "system"}
                                    onValueChange={(value) => setNewNotification({ ...newNotification, type: value })}
                               >
                                    <SelectTrigger className="rounded-xl">
                                         <SelectValue placeholder="Chọn loại thông báo" />
                                    </SelectTrigger>
                                    <SelectContent>
-                                        <SelectItem value="System">📢 System - Thông báo hệ thống</SelectItem>
-                                        <SelectItem value="Comment">💬 Comment - Bình luận</SelectItem>
-                                        <SelectItem value="Like">👍 Like - Thích</SelectItem>
-                                        <SelectItem value="ReportResult">📋 ReportResult - Kết quả báo cáo</SelectItem>
-                                        <SelectItem value="Mention">@ Mention - Được nhắc đến</SelectItem>
+                                        <SelectItem value="System">📢 Thông báo hệ thống</SelectItem>
+                                        <SelectItem value="Comment">💬  Bình luận</SelectItem>
+                                        <SelectItem value="Like">👍 Thích</SelectItem>
+                                        <SelectItem value="ReportResult">📋 Kết quả báo cáo</SelectItem>
+                                        <SelectItem value="Mention">@ Được nhắc đến</SelectItem>
                                    </SelectContent>
                               </Select>
                               <p className="text-xs text-slate-500 mt-1">
-                                   Loại thông báo xác định cách hiển thị và xử lý
+                                   {createTab === "system"
+                                        ? 'Tab "Thông báo hệ thống" luôn gửi loại "System".'
+                                        : "Loại thông báo xác định cách hiển thị và xử lý"}
                               </p>
                          </div>
 
                          {/* User ID - Người nhận */}
                          <div>
                               <label className="block text-sm font-medium text-slate-700 mb-2">
-                                   User ID (Người nhận)
+                                   Người nhận
                               </label>
                               <Select
                                    value={selectedRecipientId}
+                                   disabled={createTab === "system"}
                                    onValueChange={(value) => {
                                         setSelectedRecipientId(value);
                                         setNewNotification({
                                              ...newNotification,
-                                             userId: parseInt(value)
+                                             userId: value === "all" ? null : parseInt(value, 10)
                                         });
                                    }}
                               >
@@ -775,12 +1052,14 @@ export default function SystemNotificationsManagement() {
                                         <SelectValue />
                                    </SelectTrigger>
                                    <SelectContent className="max-h-[300px]">
-                                        <SelectItem value="0">
-                                             <div className="flex items-center space-x-2">
-                                                  <Users className="w-4 h-4 text-blue-600" />
-                                                  <span className="font-medium">0 = Gửi cho tất cả ({users.length} người)</span>
-                                             </div>
-                                        </SelectItem>
+                                        {createTab === "system" && (
+                                             <SelectItem value="all">
+                                                  <div className="flex items-center space-x-2">
+                                                       <Users className="w-4 h-4 text-blue-600" />
+                                                       <span className="font-medium">Gửi cho tất cả ({users.length} người)</span>
+                                                  </div>
+                                             </SelectItem>
+                                        )}
                                         {users.map((user) => (
                                              <SelectItem key={user.id} value={user.id.toString()}>
                                                   <div className="flex items-center space-x-2">
@@ -791,36 +1070,142 @@ export default function SystemNotificationsManagement() {
                                                             <p className="font-medium text-sm">{user.fullName}</p>
                                                             <p className="text-xs text-slate-500">{user.email}</p>
                                                        </div>
-                                                       <Badge className="text-xs">{user.role}</Badge>
+                                                       <Badge
+                                                            variant="outline"
+                                                            className={
+                                                                 user.role === "Admin"
+                                                                      ? "bg-red-50 text-red-700 border-red-200"
+                                                                      : user.role === "Owner"
+                                                                           ? "bg-amber-50 text-amber-700 border-amber-200"
+                                                                           : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                            }
+                                                       >
+                                                            {user.role}
+                                                       </Badge>
                                                   </div>
                                              </SelectItem>
                                         ))}
                                    </SelectContent>
                               </Select>
                               <p className="text-xs text-slate-500 mt-1">
-                                   Để trống hoặc nhập 0 để gửi thông báo hệ thống cho tất cả người dùng
+                                   {createTab === "system"
+                                        ? '"Thông báo hệ thống" sẽ tự động gửi toàn bộ hệ thống.'
+                                        : 'Chọn 1 người dùng cụ thể'}
                               </p>
                          </div>
 
-                         {/* Target ID */}
-                         <div>
-                              <label className="block text-sm font-medium text-slate-700 mb-2">
-                                   Target ID (ID đối tượng liên quan)
-                              </label>
-                              <Input
-                                   type="number"
-                                   value={newNotification.targetId || ""}
-                                   onChange={(e) => setNewNotification({
-                                        ...newNotification,
-                                        targetId: e.target.value ? parseInt(e.target.value) : 0
-                                   })}
-                                   placeholder="0 = Không áp dụng, >0 = ID của booking/post/comment liên quan"
-                                   min="0"
-                              />
-                              <p className="text-xs text-slate-500 mt-1">
-                                   ID của đối tượng liên quan (ví dụ: Booking ID, Post ID, Comment ID)
-                              </p>
-                         </div>
+                         {/* Target ID - chỉ hiển thị cho tab Gửi cho người dùng */}
+                         {createTab === "user" && (
+                              <div>
+                                   <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Đối tượng liên quan <span className="text-red-500">*</span>
+                                   </label>
+
+                                   {/* Select loại đối tượng */}
+                                   <div className="mb-2">
+                                        <Select
+                                             value={newNotification.targetType}
+                                             onValueChange={(value) => {
+                                                  setNewNotification((prev) => ({
+                                                       ...prev,
+                                                       targetType: value,
+                                                       targetId: value === "none" ? 0 : prev.targetId,
+                                                  }));
+                                             }}
+                                        >
+                                             <SelectTrigger className="w-full rounded-xl mb-1">
+                                                  <SelectValue placeholder="Chọn loại đối tượng liên quan" />
+                                             </SelectTrigger>
+                                             <SelectContent>
+                                                  <SelectItem value="none">
+                                                       Không áp dụng (thông báo chung)
+                                                  </SelectItem>
+                                                  <SelectItem value="booking">Đặt sân</SelectItem>
+                                                  <SelectItem value="post">Bài viết cộng đồng</SelectItem>
+                                                  <SelectItem value="comment">Bình luận</SelectItem>
+                                                  <SelectItem value="report">Báo cáo vi phạm</SelectItem>
+                                                  <SelectItem value="user">Người được nhắc đến</SelectItem>
+                                             </SelectContent>
+                                        </Select>
+                                   </div>
+
+                                   {/* Select Target ID nhanh hoặc nhập thủ công */}
+                                   <div className="flex flex-col gap-1">
+                                        <Select
+                                             value={
+                                                  isCustomTargetId
+                                                       ? "custom"
+                                                       : String(newNotification.targetId ?? 0)
+                                             }
+                                             onValueChange={(value) => {
+                                                  if (value === "custom") {
+                                                       setIsCustomTargetId(true);
+                                                       setNewNotification((prev) => ({
+                                                            ...prev,
+                                                            targetId: prev.targetId || 0,
+                                                       }));
+                                                  } else {
+                                                       setIsCustomTargetId(false);
+                                                       setNewNotification((prev) => ({
+                                                            ...prev,
+                                                            targetId: parseInt(value, 10) || 0,
+                                                       }));
+                                                  }
+                                             }}
+                                             disabled={newNotification.targetType === "none"}
+                                        >
+                                             <SelectTrigger className="w-full rounded-xl">
+                                                  <SelectValue
+                                                       placeholder={
+                                                            newNotification.targetType === "none"
+                                                                 ? "0 = Không áp dụng"
+                                                                 : "Chọn nhanh ID hoặc nhập thủ công"
+                                                       }
+                                                  />
+                                             </SelectTrigger>
+                                             <SelectContent>
+                                                  <SelectItem value="0">0 = Không áp dụng</SelectItem>
+                                                  <SelectItem value="custom">Nhập ID tùy chỉnh...</SelectItem>
+                                             </SelectContent>
+                                        </Select>
+
+                                        {isCustomTargetId && newNotification.targetType !== "none" && (
+                                             <Input
+                                                  type="number"
+                                                  value={newNotification.targetId || ""}
+                                                  onChange={(e) =>
+                                                       setNewNotification({
+                                                            ...newNotification,
+                                                            targetId: e.target.value
+                                                                 ? parseInt(e.target.value, 10)
+                                                                 : 0,
+                                                       })
+                                                  }
+                                                  placeholder={
+                                                       newNotification.targetType === "booking"
+                                                            ? "Nhập Booking ID liên quan"
+                                                            : newNotification.targetType === "post"
+                                                                 ? "Nhập Post ID liên quan"
+                                                                 : newNotification.targetType === "comment"
+                                                                      ? "Nhập Comment ID liên quan"
+                                                                      : newNotification.targetType === "report"
+                                                                           ? "Nhập Report ID liên quan"
+                                                                           : "Nhập User ID được nhắc đến"
+                                                  }
+                                                  min="0"
+                                             />
+                                        )}
+                                   </div>
+                                   <p className="text-xs text-slate-500 mt-1">
+                                        ID đối tượng liên quan tùy theo loại thông báo:
+                                        System → 0 (không gắn gì);
+                                        Comment → CommentID;
+                                        Like → PostID;
+                                        ReportResult → ReportID;
+                                        Mention → UserID được nhắc đến.
+                                   </p>
+                              </div>
+                         )}
 
                          {/* Preview */}
                          {newNotification.message && (
@@ -898,67 +1283,107 @@ export default function SystemNotificationsManagement() {
                     className="max-h-[90vh] overflow-y-auto max-w-[90vw] scrollbar-hide"
                >
                     {selectedNotification && (
-                         <div className="space-y-4">
-                              <div className="flex items-center space-x-2">
-                                   <span className="text-2xl">{getTypeIcon(selectedNotification.type || selectedNotification.notificationType)}</span>
-                                   <h4 className="text-lg font-bold text-slate-900">
-                                        {selectedNotification.message || selectedNotification.title || "Thông báo"}
-                                   </h4>
-                              </div>
+                         (() => {
+                              // Chuẩn hóa dữ liệu theo format mới từ API admin:
+                              // { success: true, data: { notificationId, userId, fullName, title, message, type, targetId, isRead, createdAt, link } }
+                              const raw = selectedNotification;
+                              const detail = raw.data || raw; // hỗ trợ cả khi truyền trực tiếp object data
 
-                              <div className="flex space-x-2">
-                                   <Badge variant={getTypeBadgeVariant(selectedNotification.type || selectedNotification.notificationType)}>
-                                        {selectedNotification.type || selectedNotification.notificationType || "System"}
-                                   </Badge>
-                                   <Badge variant={getStatusBadgeVariant(selectedNotification)}>
-                                        {selectedNotification.isRead !== undefined
-                                             ? (selectedNotification.isRead ? "Đã đọc" : "Chưa đọc")
-                                             : (selectedNotification.status || "N/A")}
-                                   </Badge>
-                              </div>
+                              const notificationId = detail.notificationId || detail.id;
+                              const type = detail.type || detail.notificationType || "System";
+                              const message = detail.message || detail.title || detail.content || "Thông báo";
+                              const isRead = detail.isRead;
+                              const createdAt =
+                                   detail.createdAt ||
+                                   detail.sentAt ||
+                                   detail.receivedAt ||
+                                   null;
+                              const userId = detail.userId ?? 0;
+                              const fullName = detail.fullName || "";
+                              const targetId = detail.targetId || 0;
+                              const link = detail.link || null;
 
-                              <div>
-                                   <p className="text-sm font-medium text-slate-600 mb-2">Nội dung:</p>
-                                   <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                                        <p className="text-slate-900 whitespace-pre-wrap">
-                                             {selectedNotification.message || selectedNotification.content || "Không có nội dung"}
-                                        </p>
-                                   </div>
-                              </div>
-
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                   <div>
-                                        <p className="text-sm font-medium text-slate-600 mb-1">User ID:</p>
-                                        <p className="text-slate-900">
-                                             {selectedNotification.userId === 0 ? "Tất cả người dùng" : `User ID: ${selectedNotification.userId}`}
-                                        </p>
-                                   </div>
-                                   <div>
-                                        <p className="text-sm font-medium text-slate-600 mb-1">Target ID:</p>
-                                        <p className="text-slate-900">
-                                             {selectedNotification.targetId || 0}
-                                        </p>
-                                   </div>
-                                   <div>
-                                        <p className="text-sm font-medium text-slate-600 mb-1">Ngày tạo:</p>
-                                        <p className="text-slate-900">
-                                             {selectedNotification.createdAt
-                                                  ? new Date(selectedNotification.createdAt).toLocaleString('vi-VN')
-                                                  : selectedNotification.sentAt
-                                                       ? new Date(selectedNotification.sentAt).toLocaleString('vi-VN')
-                                                       : "N/A"}
-                                        </p>
-                                   </div>
-                                   {selectedNotification.id && (
-                                        <div>
-                                             <p className="text-sm font-medium text-slate-600 mb-1">Notification ID:</p>
-                                             <p className="text-slate-900 font-mono text-sm">
-                                                  {selectedNotification.id || selectedNotification.notificationId}
-                                             </p>
+                              return (
+                                   <div className="space-y-4">
+                                        <div className="flex items-center space-x-2">
+                                             <span className="text-2xl">{getTypeIcon(type)}</span>
+                                             <h4 className="text-lg font-bold text-slate-900">
+                                                  {message}
+                                             </h4>
                                         </div>
-                                   )}
-                              </div>
-                         </div>
+
+                                        <div className="flex flex-wrap gap-2">
+                                             <Badge variant={getTypeBadgeVariant(type)}>
+                                                  {getTypeLabel(type)}
+                                             </Badge>
+                                             <Badge variant={getStatusBadgeVariant(detail)}>
+                                                  {isRead === true
+                                                       ? "Đã đọc"
+                                                       : isRead === false
+                                                            ? "Chưa đọc"
+                                                            : "N/A"}
+                                             </Badge>
+                                        </div>
+
+                                        <div>
+                                             <p className="text-sm font-medium text-slate-600 mb-2">Nội dung:</p>
+                                             <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                                                  <p className="text-slate-900 whitespace-pre-wrap">
+                                                       {message}
+                                                  </p>
+                                             </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                             <div>
+                                                  <p className="text-sm font-medium text-slate-600 mb-1">Người nhận:</p>
+                                                  <p className="text-slate-900">
+                                                       {userId === 0
+                                                            ? "Tất cả người dùng"
+                                                            : fullName
+                                                                 ? `${fullName} (User ID: ${userId})`
+                                                                 : `User ID: ${userId}`}
+                                                  </p>
+                                             </div>
+                                             <div>
+                                                  <p className="text-sm font-medium text-slate-600 mb-1">Target ID:</p>
+                                                  <p className="text-slate-900">
+                                                       {targetId || 0}
+                                                  </p>
+                                             </div>
+                                             <div>
+                                                  <p className="text-sm font-medium text-slate-600 mb-1">Ngày tạo:</p>
+                                                  <p className="text-slate-900">
+                                                       {createdAt
+                                                            ? new Date(createdAt).toLocaleString("vi-VN")
+                                                            : "N/A"}
+                                                  </p>
+                                             </div>
+                                             {notificationId && (
+                                                  <div>
+                                                       <p className="text-sm font-medium text-slate-600 mb-1">Notification ID:</p>
+                                                       <p className="text-slate-900 font-mono text-sm">
+                                                            {notificationId}
+                                                       </p>
+                                                  </div>
+                                             )}
+                                             {link && (
+                                                  <div className="md:col-span-2">
+                                                       <p className="text-sm font-medium text-slate-600 mb-1">Link liên quan:</p>
+                                                       <a
+                                                            href={link}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-sm text-blue-600 hover:underline break-all"
+                                                       >
+                                                            {link}
+                                                       </a>
+                                                  </div>
+                                             )}
+                                        </div>
+                                   </div>
+                              );
+                         })()
                     )}
                </Modal>
           </div>

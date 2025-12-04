@@ -226,7 +226,7 @@ export default function CommunityHeader({ user, onLoggedOut }) {
                                         userId={user.id}
                                         isOpen={isNotificationOpen}
                                         onClose={() => setIsNotificationOpen(false)}
-                                        className="left-16 right-auto -top-72"
+                                        className="left-16 right-auto -top-[400px]"
                                    />
                               </div>
 
