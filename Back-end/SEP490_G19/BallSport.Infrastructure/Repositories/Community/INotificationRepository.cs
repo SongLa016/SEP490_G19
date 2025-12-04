@@ -3,11 +3,18 @@ using BallSport.Infrastructure.Models;
 
 namespace BallSport.Infrastructure.Repositories.Community
 {
+    /// <summary>
+    /// Repository xử lý toàn bộ thao tác với bảng Notifications
+    /// ĐÃ LOẠI BỎ HOÀN TOÀN chức năng Update (theo yêu cầu bảo mật)
+    /// </summary>
     public interface INotificationRepository
     {
         // ===================== USER METHODS =====================
         Task<(IEnumerable<Notification> Notifications, int TotalCount)> GetNotificationsByUserIdAsync(
-            int userId, int pageNumber = 1, int pageSize = 20, bool? isRead = null);
+            int userId,
+            int pageNumber = 1,
+            int pageSize = 20,
+            bool? isRead = null);
 
         Task<Notification?> GetNotificationByIdAsync(int notificationId);
 
@@ -26,11 +33,21 @@ namespace BallSport.Infrastructure.Repositories.Community
         Task<bool> DeleteAllNotificationsAsync(int userId);
 
         // ===================== CREATE METHODS =====================
+        /// <summary>
+        /// Tạo 1 thông báo duy nhất
+        /// </summary>
         Task<Notification> CreateNotificationAsync(Notification notification);
 
-        Task<bool> CreateNotificationsAsync(IEnumerable<Notification> notifications);
+        /// <summary>
+        /// Tạo hàng loạt thông báo (dùng cho gửi toàn hệ thống)
+        /// Trả về số lượng bản ghi đã insert thành công
+        /// </summary>
+        Task<int> CreateNotificationsAsync(IEnumerable<Notification> notifications);
 
-        // ===================== ADMIN METHODS (ĐÃ BỎ HOÀN TOÀN UPDATE) =====================
+        // ===================== ADMIN METHODS =====================
+        /// <summary>
+        /// [Admin] Lấy danh sách toàn bộ thông báo trong hệ thống (có phân trang + lọc)
+        /// </summary>
         Task<(IEnumerable<Notification> Notifications, int TotalCount)> GetAllNotificationsAdminAsync(
             int pageNumber = 1,
             int pageSize = 20,
@@ -39,15 +56,27 @@ namespace BallSport.Infrastructure.Repositories.Community
             int? userId = null,
             bool? isRead = null);
 
+        /// <summary>
+        /// [Admin] Lấy chi tiết 1 thông báo bất kỳ (không cần kiểm tra owner)
+        /// </summary>
         Task<Notification?> GetNotificationByIdAdminAsync(int notificationId);
 
-        // ĐÃ XÓA: UpdateNotificationAdminAsync → Không cần nữa!
-
+        /// <summary>
+        /// [Admin] Xóa 1 thông báo bất kỳ
+        /// </summary>
         Task<bool> DeleteNotificationAdminAsync(int notificationId);
 
+        /// <summary>
+        /// [Admin] Xóa hàng loạt thông báo theo danh sách ID
+        /// Trả về số lượng đã xóa thành công
+        /// </summary>
         Task<int> DeleteMultipleNotificationsAdminAsync(IEnumerable<int> notificationIds);
 
+
         // ===================== MAINTENANCE =====================
-        Task<bool> DeleteOldNotificationsAsync(int daysOld = 30);
+        /// <summary>
+        /// Xóa các thông báo cũ hơn X ngày (dùng cho cleanup định kỳ)
+        /// </summary>
+        Task<int> DeleteOldNotificationsAsync(int daysOld = 30);
     }
 }

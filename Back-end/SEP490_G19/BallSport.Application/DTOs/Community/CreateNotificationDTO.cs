@@ -1,11 +1,12 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿// File: BallSport.Application/DTOs/Community/CreateNotificationDTO.cs
+using System.ComponentModel.DataAnnotations;
 
 namespace BallSport.Application.DTOs.Community
 {
     public class CreateNotificationDTO
     {
-        [Required(ErrorMessage = "UserId là bắt buộc")]
-        public int UserId { get; set; }
+        // CHO PHÉP NULL KHI GỬI TOÀN HỆ THỐNG
+        public int? UserId { get; set; }
 
         [Required(ErrorMessage = "Tiêu đề là bắt buộc")]
         [StringLength(100, MinimumLength = 5, ErrorMessage = "Tiêu đề phải từ 5 đến 100 ký tự")]
@@ -17,12 +18,10 @@ namespace BallSport.Application.DTOs.Community
 
         [Required(ErrorMessage = "Type là bắt buộc")]
         [RegularExpression(
-            "^(NewComment|Reply|Mention|Like|ReportResult|System|MatchRequest|MatchAccepted|MatchRejected|MatchCancelled)$",
-            ErrorMessage = "Type không hợp lệ. Chỉ chấp nhận: NewComment, Reply, Mention, Like, ReportResult, System, MatchRequest, MatchAccepted, MatchRejected, MatchCancelled")]
+            "^(NewComment|Reply|Mention|Like|ReportResult|System|MatchJoinRequest|MatchAccepted|Rejected|Cancelled)$",
+            ErrorMessage = "Type không hợp lệ")]
         public string Type { get; set; } = string.Empty;
 
-        public int? TargetId { get; set; } // PostId, CommentId, MatchRequestId, BookingId...
-
-        // Không cần Link ở đây → sẽ tự động sinh ở DTO trả về
+        public int? TargetId { get; set; } = 0;
     }
 }
