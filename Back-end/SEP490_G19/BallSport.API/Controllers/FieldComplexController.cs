@@ -15,7 +15,7 @@ namespace BallSport.API.Controllers
             _service = service;
         }
 
-        // ✅ THÊM KHU SÂN (TỰ LẤY TỌA ĐỘ TỪ ADDRESS)
+        // Thêm khu sân mới
         [HttpPost]
         public async Task<IActionResult> AddComplex([FromForm] FieldComplexDTO dto)
         {
@@ -26,7 +26,7 @@ namespace BallSport.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.ComplexId }, created);
         }
 
-        // ✅ LẤY TẤT CẢ
+        // Lấy tất cả khu sân
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -34,7 +34,7 @@ namespace BallSport.API.Controllers
             return Ok(result);
         }
 
-        // ✅ LẤY CHI TIẾT
+        // Lấy chi tiết khu sân theo ID
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -45,7 +45,7 @@ namespace BallSport.API.Controllers
             return Ok(complex);
         }
 
-        // ✅ UPDATE (TỰ CẬP NHẬT LẠI TỌA ĐỘ KHI ĐỔI ADDRESS)
+        // UPDATE 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateComplex(int id, [FromForm] FieldComplexDTO dto)
         {
@@ -59,7 +59,7 @@ namespace BallSport.API.Controllers
             return Ok(updated);
         }
 
-        // ✅ DELETE
+        // DELETE 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteComplex(int id)
         {

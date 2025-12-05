@@ -1,5 +1,6 @@
 ﻿using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Data;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace BallSport.Infrastructure.Repositories
@@ -13,7 +14,7 @@ namespace BallSport.Infrastructure.Repositories
             _context = context;
         }
 
-        // 🟢 THÊM KHU SÂN
+        // 🟢 Thêm khu sân mới
         public async Task<FieldComplex> AddComplexAsync(FieldComplex complex)
         {
             _context.FieldComplexes.Add(complex);
@@ -21,20 +22,23 @@ namespace BallSport.Infrastructure.Repositories
             return complex;
         }
 
-        // 🟢 LẤY 1 KHU SÂN THEO ID ✅ (ĐÃ FIX)
+        // 🟢 Lấy 1 khu sân theo ID
         public async Task<FieldComplex?> GetComplexByIdAsync(int complexId)
         {
             return await _context.FieldComplexes
+                .Include(fc => fc.Fields)
                 .FirstOrDefaultAsync(fc => fc.ComplexId == complexId);
         }
 
-        // 🟢 LẤY TẤT CẢ KHU SÂN
+        // 🟢 Lấy tất cả khu sân
         public async Task<List<FieldComplex>> GetAllComplexesAsync()
         {
-            return await _context.FieldComplexes.ToListAsync();
+            return await _context.FieldComplexes
+                .Include(fc => fc.Fields)
+                .ToListAsync();
         }
 
-        // 🟢 CẬP NHẬT KHU SÂN ✅ (ĐÃ FIX LƯU TỌA ĐỘ)
+        // 🟢 Cập nhật khu sân
         public async Task<FieldComplex?> UpdateComplexAsync(FieldComplex complex)
         {
             var existing = await _context.FieldComplexes.FindAsync(complex.ComplexId);
@@ -45,17 +49,14 @@ namespace BallSport.Infrastructure.Repositories
             existing.OwnerId = complex.OwnerId;
             existing.Description = complex.Description;
             existing.Status = complex.Status;
-            existing.ImageUrl = complex.ImageUrl;
+            existing.ImageUrl = complex.ImageUrl; // 🔹 Cập nhật URL Cloudinary nếu có
 
-            // ✅ QUAN TRỌNG: LƯU TỌA ĐỘ
-            existing.Latitude = complex.Latitude;
-            existing.Longitude = complex.Longitude;
-
+            _context.FieldComplexes.Update(existing);
             await _context.SaveChangesAsync();
             return existing;
         }
 
-        // 🟢 XÓA KHU SÂN
+        // 🟢 Xóa khu sân
         public async Task<bool> DeleteComplexAsync(int complexId)
         {
             var existing = await _context.FieldComplexes.FindAsync(complexId);

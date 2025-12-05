@@ -5,7 +5,6 @@ using BallSport.Application.CloudinarySettings;
 using BallSport.Application.Services;
 using BallSport.Application.Services.AdminStatistics;
 using BallSport.Application.Services.Community;
-using BallSport.Application.Services.Geocoding;
 using BallSport.Application.Services.MatchFinding;
 using BallSport.Application.Services.OwnerStatistics;
 using BallSport.Application.Services.RatingBooking;
@@ -207,8 +206,6 @@ services.AddScoped<IPlayerProfileRepository, PlayerProfileRepository>();
 services.AddScoped<IPlayerProfileService, PlayerProfileService>();
 services.AddScoped<IFavoriteFieldRepository, FavoriteFieldRepository>();
 services.AddScoped<IFavoriteFieldService, FavoriteFieldService>();
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>();
 
 
 // 1. Tăng giới hạn upload (100MB)
