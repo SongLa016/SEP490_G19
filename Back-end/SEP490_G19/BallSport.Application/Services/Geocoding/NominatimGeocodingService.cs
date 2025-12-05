@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Json;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Net.Http.Json;
 
 namespace BallSport.Application.Services.Geocoding
 {
@@ -14,18 +9,24 @@ namespace BallSport.Application.Services.Geocoding
         public NominatimGeocodingService(HttpClient httpClient)
         {
             _httpClient = httpClient;
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("BallSportApp/1.0");
+
+            // ✅ BẮT BUỘC PHẢI CÓ User-Agent
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Add(
+                "User-Agent", "BallSportApp/1.0 (contact: ballsport@gmail.com)"
+            );
         }
 
         public async Task<(double? lat, double? lng)> GetLocationFromAddressAsync(string address)
         {
             try
             {
-                var url = $"https://nominatim.openstreetmap.org/search" +
-                          $"?q={Uri.EscapeDataString(address)}&format=json&limit=1";
+                var url =
+                    $"https://nominatim.openstreetmap.org/search" +
+                    $"?q={Uri.EscapeDataString(address)}&format=json&limit=1";
 
-                var response = await _httpClient
-                    .GetFromJsonAsync<List<NominatimResponse>>(url);
+                var response =
+                    await _httpClient.GetFromJsonAsync<List<NominatimResponse>>(url);
 
                 var first = response?.FirstOrDefault();
 
@@ -37,8 +38,9 @@ namespace BallSport.Application.Services.Geocoding
                     double.Parse(first.lon)
                 );
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine("❌ NOMINATIM ERROR: " + ex.Message);
                 return (null, null);
             }
         }

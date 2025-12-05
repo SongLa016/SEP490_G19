@@ -23,12 +23,11 @@ namespace BallSport.Application.Services
             _geocodingService = geocodingService;
         }
 
-        // 🟢 THÊM KHU SÂN (CÓ TỰ ĐỘNG LẤY TỌA ĐỘ)
+        // ✅ THÊM KHU SÂN - TỰ ĐỘNG LẤY TỌA ĐỘ TỪ ADDRESS
         public async Task<FieldComplexResponseDTO> AddComplexAsync(FieldComplexDTO dto)
         {
             string? imageUrl = null;
 
-            // ✅ Upload ảnh
             if (dto.ImageFile != null)
             {
                 var uploadParams = new ImageUploadParams
@@ -41,7 +40,7 @@ namespace BallSport.Application.Services
                 imageUrl = uploadResult.SecureUrl.AbsoluteUri;
             }
 
-            // ✅ LẤY TỌA ĐỘ THEO ĐỊA CHỈ
+            // ✅ LẤY TỌA ĐỘ TỪ ADDRESS (NOMINATIM)
             double? latitude = null;
             double? longitude = null;
 
@@ -60,8 +59,6 @@ namespace BallSport.Application.Services
                 ImageUrl = imageUrl,
                 Status = dto.Status ?? "Active",
                 CreatedAt = DateTime.Now,
-
-                // ✅ QUAN TRỌNG
                 Latitude = latitude,
                 Longitude = longitude
             };
@@ -78,13 +75,12 @@ namespace BallSport.Application.Services
                 Status = created.Status,
                 CreatedAt = created.CreatedAt,
                 ImageUrl = created.ImageUrl,
-
                 Latitude = created.Latitude,
                 Longitude = created.Longitude
             };
         }
 
-        // 🟢 LẤY TẤT CẢ KHU SÂN
+        // ✅ GET ALL
         public async Task<List<FieldComplexResponseDTO>> GetAllComplexesAsync()
         {
             var complexes = await _complexRepository.GetAllComplexesAsync();
@@ -99,13 +95,12 @@ namespace BallSport.Application.Services
                 Status = c.Status,
                 CreatedAt = c.CreatedAt,
                 ImageUrl = c.ImageUrl,
-
                 Latitude = c.Latitude,
                 Longitude = c.Longitude
             }).ToList();
         }
 
-        // 🟢 LẤY CHI TIẾT 1 KHU SÂN
+        // ✅ GET BY ID
         public async Task<FieldComplexResponseDTO?> GetComplexByIdAsync(int complexId)
         {
             var c = await _complexRepository.GetComplexByIdAsync(complexId);
@@ -121,36 +116,28 @@ namespace BallSport.Application.Services
                 Status = c.Status,
                 CreatedAt = c.CreatedAt,
                 ImageUrl = c.ImageUrl,
-
                 Latitude = c.Latitude,
                 Longitude = c.Longitude
             };
         }
 
-        // 🟢 CẬP NHẬT KHU SÂN (ĐỔI ĐỊA CHỈ → TỰ CẬP NHẬT LẠI TỌA ĐỘ)
+        // ✅ UPDATE – ĐỔI ADDRESS LÀ CẬP NHẬT LẠI TỌA ĐỘ
         public async Task<FieldComplexResponseDTO?> UpdateComplexAsync(FieldComplexDTO dto)
         {
             var existing = await _complexRepository.GetComplexByIdAsync(dto.ComplexId);
             if (existing == null) return null;
 
             existing.Name = dto.Name;
+            existing.Address = dto.Address;
             existing.Description = dto.Description;
             existing.OwnerId = dto.OwnerId;
             existing.Status = dto.Status;
 
-            // ✅ NẾU ĐỔI ĐỊA CHỈ → CẬP NHẬT LẠI TỌA ĐỘ
-            if (existing.Address != dto.Address)
+            // ✅ UPDATE LẠI TỌA ĐỘ
+            if (!string.IsNullOrWhiteSpace(dto.Address))
             {
-                existing.Address = dto.Address;
-
-                if (!string.IsNullOrWhiteSpace(dto.Address))
-                {
-                    var (lat, lng) =
-                        await _geocodingService.GetLocationFromAddressAsync(dto.Address);
-
-                    existing.Latitude = lat;
-                    existing.Longitude = lng;
-                }
+                (existing.Latitude, existing.Longitude) =
+                    await _geocodingService.GetLocationFromAddressAsync(dto.Address);
             }
 
             if (dto.ImageFile != null)
@@ -177,13 +164,12 @@ namespace BallSport.Application.Services
                 Status = updated.Status,
                 CreatedAt = updated.CreatedAt,
                 ImageUrl = updated.ImageUrl,
-
                 Latitude = updated.Latitude,
                 Longitude = updated.Longitude
             };
         }
 
-        // 🟢 XÓA KHU SÂN
+        // ✅ DELETE
         public async Task<bool> DeleteComplexAsync(int complexId)
         {
             return await _complexRepository.DeleteComplexAsync(complexId);
