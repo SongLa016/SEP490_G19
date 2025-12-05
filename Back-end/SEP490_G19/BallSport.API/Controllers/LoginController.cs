@@ -20,18 +20,22 @@ namespace BallSport.API.Controllers
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginDTO loginDto)
         {
-            var token = _userService.Login(loginDto.Phone, loginDto.Password);
-            if (token == null)
+            try
             {
-                return Unauthorized(new { message = "Sai số điện thoại hoặc mật khẩu" });
+                var token = _userService.Login(loginDto.Phone, loginDto.Password);
+                return Ok(new
+                {
+                    message = "Đăng nhập thành công",
+                    token
+                });
             }
-
-            return Ok(new
+            catch (UnauthorizedAccessException ex)
             {
-                message = "Đăng nhập thành công",
-                token
-            });
+                // Nếu tài khoản bị khóa hoặc sai mật khẩu, service sẽ ném exception
+                return Unauthorized(new { message = ex.Message });
+            }
         }
+
 
         [HttpPost("login-google")]
         public IActionResult LoginWithGoogle([FromBody] LoginGoogle googleDto)
