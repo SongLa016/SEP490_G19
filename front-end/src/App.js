@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
 import { Routes, Route, Navigate, BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ModalProvider } from "./contexts/ModalContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
@@ -174,15 +175,19 @@ function AppContent() {
 }
 
 function App() {
+  const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+  
   return (
     <QueryClientProvider client={queryClient}>
-      <LanguageProvider>
-        <AuthProvider>
-          <ModalProvider>
-            <AppContent />
-          </ModalProvider>
-        </AuthProvider>
-      </LanguageProvider>
+      <GoogleOAuthProvider clientId={googleClientId}>
+        <LanguageProvider>
+          <AuthProvider>
+            <ModalProvider>
+              <AppContent />
+            </ModalProvider>
+          </AuthProvider>
+        </LanguageProvider>
+      </GoogleOAuthProvider>
     </QueryClientProvider>
   );
 }

@@ -18,7 +18,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
   const suggestionsRef = useRef(null);
 
   // Google Maps API Key (from existing MapSearch component)
-  const GOOGLE_MAPS_API_KEY = "AIzaSyB0yJL50JnUVPwRUYjM9EjyHDKf8G7LJNo";
+  const GOOGLE_MAPS_API_KEY = "a72d0817-f6f9-4471-b477-87073d9d3933";
 
   // Load Google Maps script
   useEffect(() => {

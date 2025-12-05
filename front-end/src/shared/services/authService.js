@@ -2,11 +2,50 @@
 import axios from "axios";
 import { roleMapping } from "../utils/roleMapping";
 
+// Helper function to safely decode UTF-8 strings
+// Handles cases where backend might URL-encode or double-encode UTF-8 characters
+function safeDecodeUTF8(str) {
+  if (!str || typeof str !== 'string') return str;
+  try {
+    // Check if string contains URL-encoded characters
+    if (str.includes('%')) {
+      try {
+        // Try to decode URL-encoded string
+        const decoded = decodeURIComponent(str);
+        // Check if decoded string contains valid UTF-8 characters
+        return decoded;
+      } catch (e) {
+        // If decodeURIComponent fails, might be double-encoded
+        // Try decoding twice
+        try {
+          return decodeURIComponent(decodeURIComponent(str));
+        } catch (e2) {
+          console.warn('Failed to decode UTF-8 string (double decode):', e2);
+          return str;
+        }
+      }
+    }
+    // If string contains mojibake patterns (common encoding errors), try to fix
+    // Example: "Nguyá»…n" should be "Nguyễn"
+    if (str.includes('á»') || str.includes('Æ')) {
+      // This might be a backend encoding issue, return as is for now
+      // Backend should fix encoding, but we log it
+      console.warn('Potential encoding issue detected in string:', str);
+    }
+    // If it's already a valid UTF-8 string, return as is
+    return str;
+  } catch (e) {
+    // If decoding fails, return original string
+    console.warn('Failed to decode UTF-8 string:', e);
+    return str;
+  }
+}
+
 // Create axios instance with base configuration
 const apiClient = axios.create({
   timeout: 15000, // 15 seconds timeout
   headers: {
-    "Content-Type": "application/json",
+    "Content-Type": "application/json; charset=utf-8",
   },
 });
 
@@ -200,7 +239,7 @@ export const authService = {
           userData = {
             userID: payload.UserID,
             email: payload.Email,
-            fullName: payload.FullName,
+            fullName: safeDecodeUTF8(payload.FullName),
             phone: payload.Phone,
             roleID: roleID,
             roleName: roleName,
@@ -292,14 +331,14 @@ export const authService = {
           userData = {
             userID: payload.UserID,
             email: payload.Email,
-            fullName: payload.FullName,
+            fullName: safeDecodeUTF8(payload.FullName),
             phone: payload.Phone || "",
             roleID: roleID,
             roleName: roleName,
             emailVerified:
               payload.EmailVerified !== undefined
                 ? payload.EmailVerified
-                : false, // Google login might not be verified
+                : true, // Google đã xác thực email, không cần OTP
           };
         } catch (error) {
           console.error("Error decoding JWT token:", error);
@@ -308,7 +347,7 @@ export const authService = {
             fullName: name,
             roleID: 1, // Default to Player
             roleName: "Player",
-            emailVerified: false, // Google login might not be verified
+            emailVerified: true, // Google đã xác thực email, không cần OTP
           };
         }
       }
