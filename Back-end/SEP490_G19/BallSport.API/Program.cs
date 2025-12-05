@@ -41,15 +41,10 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 
 // --- Xóa các nguồn config mặc định ---
 builder.Configuration.Sources.Clear();
-
 // --- Load config JSON mà không tạo FileSystemWatcher ---
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
-    .AddJsonFile(
-        $"appsettings.{builder.Environment.EnvironmentName}.json",
-        optional: true,
-        reloadOnChange: false
-    )
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: false)
     .AddEnvironmentVariables();
 
 var services = builder.Services;
