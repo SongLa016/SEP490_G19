@@ -5,6 +5,7 @@ using BallSport.Application.CloudinarySettings;
 using BallSport.Application.Services;
 using BallSport.Application.Services.AdminStatistics;
 using BallSport.Application.Services.Community;
+using BallSport.Application.Services.Geocoding;
 using BallSport.Application.Services.MatchFinding;
 using BallSport.Application.Services.OwnerStatistics;
 using BallSport.Application.Services.RatingBooking;
@@ -206,6 +207,9 @@ services.AddScoped<IPlayerProfileRepository, PlayerProfileRepository>();
 services.AddScoped<IPlayerProfileService, PlayerProfileService>();
 services.AddScoped<IFavoriteFieldRepository, FavoriteFieldRepository>();
 services.AddScoped<IFavoriteFieldService, FavoriteFieldService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient<ITheIpApiService, TheIpApiService>();
+
 
 // 1. Tăng giới hạn upload (100MB)
 services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = 100_000_000);
@@ -305,6 +309,7 @@ app.UseSwaggerUI(c =>
 // app.UseHttpsRedirection(); // Nếu test local bằng HTTP → comment HTTPS redirect
 
 app.UseRouting();
+
 app.UseCors("AllowAll");
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions

@@ -15,18 +15,24 @@ namespace BallSport.API.Controllers
             _service = service;
         }
 
-        // Thêm khu sân mới
+        // ✅ Thêm khu sân mới
         [HttpPost]
-        public async Task<IActionResult> AddComplex([FromForm] FieldComplexDTO dto) 
+        public async Task<IActionResult> AddComplex([FromForm] FieldComplexDTO dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            // ✅ LẤY IP CHUẨN SAU PROXY / SERVER
+            dto.IpAddress = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                            ?? HttpContext.Request.Headers["X-Real-IP"].FirstOrDefault()
+                            ?? HttpContext.Connection.RemoteIpAddress?.ToString();
+
             var created = await _service.AddComplexAsync(dto);
+
             return CreatedAtAction(nameof(GetById), new { id = created.ComplexId }, created);
         }
 
-        // Lấy tất cả khu sân
+        // ✅ Lấy tất cả khu sân
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -34,7 +40,7 @@ namespace BallSport.API.Controllers
             return Ok(result);
         }
 
-        // Lấy chi tiết khu sân theo ID
+        // ✅ Lấy chi tiết khu sân theo ID
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -45,9 +51,9 @@ namespace BallSport.API.Controllers
             return Ok(complex);
         }
 
-        // UPDATE 
+        // ✅ UPDATE
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateComplex(int id, [FromForm] FieldComplexDTO dto) 
+        public async Task<IActionResult> UpdateComplex(int id, [FromForm] FieldComplexDTO dto)
         {
             if (!ModelState.IsValid || id != dto.ComplexId)
                 return BadRequest("Dữ liệu không hợp lệ");
@@ -59,7 +65,7 @@ namespace BallSport.API.Controllers
             return Ok(updated);
         }
 
-        // DELETE 
+        // ✅ DELETE
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteComplex(int id)
         {
@@ -67,7 +73,7 @@ namespace BallSport.API.Controllers
             if (!deleted)
                 return NotFound($"Không tìm thấy khu sân có ID = {id}");
 
-            return NoContent(); 
+            return NoContent();
         }
     }
 }

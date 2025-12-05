@@ -1,6 +1,5 @@
 ﻿using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Data;
-
 using Microsoft.EntityFrameworkCore;
 
 namespace BallSport.Infrastructure.Repositories
@@ -22,11 +21,10 @@ namespace BallSport.Infrastructure.Repositories
             return complex;
         }
 
-        // 🟢 Lấy 1 khu sân theo ID
+        // 🟢 Lấy 1 khu sân theo ID ✅ SỬA CHUẨN
         public async Task<FieldComplex?> GetComplexByIdAsync(int complexId)
         {
             return await _context.FieldComplexes
-                .Include(fc => fc.Fields)
                 .FirstOrDefaultAsync(fc => fc.ComplexId == complexId);
         }
 
@@ -34,11 +32,10 @@ namespace BallSport.Infrastructure.Repositories
         public async Task<List<FieldComplex>> GetAllComplexesAsync()
         {
             return await _context.FieldComplexes
-                .Include(fc => fc.Fields)
                 .ToListAsync();
         }
 
-        // 🟢 Cập nhật khu sân
+        // 🟢 Cập nhật khu sân ✅ BỔ SUNG Latitude & Longitude
         public async Task<FieldComplex?> UpdateComplexAsync(FieldComplex complex)
         {
             var existing = await _context.FieldComplexes.FindAsync(complex.ComplexId);
@@ -49,9 +46,12 @@ namespace BallSport.Infrastructure.Repositories
             existing.OwnerId = complex.OwnerId;
             existing.Description = complex.Description;
             existing.Status = complex.Status;
-            existing.ImageUrl = complex.ImageUrl; // 🔹 Cập nhật URL Cloudinary nếu có
+            existing.ImageUrl = complex.ImageUrl;
 
-            _context.FieldComplexes.Update(existing);
+            // ✅ TRÁNH LỖI khi bạn cập nhật GPS sau này
+            existing.Latitude = complex.Latitude;
+            existing.Longitude = complex.Longitude;
+
             await _context.SaveChangesAsync();
             return existing;
         }
