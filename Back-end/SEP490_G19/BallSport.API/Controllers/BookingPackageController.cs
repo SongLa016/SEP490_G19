@@ -3,6 +3,7 @@ using BallSport.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace BallSport.API.Controllers
 {
@@ -88,15 +89,16 @@ namespace BallSport.API.Controllers
 
         // ================= Player: lấy booking packages của player =================
         [HttpGet("player/packages")]
-        [Authorize]
         public async Task<IActionResult> GetMyBookingPackages()
         {
             try
             {
-                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId");
-                if (userIdClaim == null) return Unauthorized(new { message = "UserId claim not found in token" });
+                var userIdClaim = User.FindFirst("UserID")?.Value;
+                if (userIdClaim == null)
+                    return Unauthorized(new { message = "UserID claim not found in token" });
 
-                int userId = int.Parse(userIdClaim.Value);
+                int userId = int.Parse(userIdClaim);
+
                 var data = await _monthlyService.GetBookingPackagesForPlayerAsync(userId);
                 return Ok(new { message = "Player booking packages", data });
             }
@@ -113,10 +115,12 @@ namespace BallSport.API.Controllers
         {
             try
             {
-                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId");
-                if (userIdClaim == null) return Unauthorized(new { message = "UserId claim not found in token" });
+                var userIdClaim = User.FindFirst("UserID")?.Value;
+                if (userIdClaim == null)
+                    return Unauthorized(new { message = "UserID claim not found in token" });
 
-                int ownerId = int.Parse(userIdClaim.Value);
+                int ownerId = int.Parse(userIdClaim);
+
                 var data = await _monthlyService.GetBookingPackagesForOwnerAsync(ownerId);
                 return Ok(new { message = "Owner booking packages", data });
             }
@@ -128,15 +132,16 @@ namespace BallSport.API.Controllers
 
         // ================= Player: lấy package sessions của player =================
         [HttpGet("player/sessions")]
-        [Authorize]
         public async Task<IActionResult> GetMyPackageSessions()
         {
             try
             {
-                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId");
-                if (userIdClaim == null) return Unauthorized(new { message = "UserId claim not found in token" });
+                var userIdClaim = User.FindFirst("UserID")?.Value;
+                if (userIdClaim == null)
+                    return Unauthorized(new { message = "UserID claim not found in token" });
 
-                int userId = int.Parse(userIdClaim.Value);
+                int userId = int.Parse(userIdClaim);
+
                 var data = await _monthlyService.GetPackageSessionsForPlayerAsync(userId);
                 return Ok(new { message = "Player package sessions", data });
             }
@@ -153,10 +158,12 @@ namespace BallSport.API.Controllers
         {
             try
             {
-                var userIdClaim = User.Claims.FirstOrDefault(c => c.Type == "userId");
-                if (userIdClaim == null) return Unauthorized(new { message = "UserId claim not found in token" });
+                var userIdClaim = User.FindFirst("UserID")?.Value;
+                if (userIdClaim == null)
+                    return Unauthorized(new { message = "UserID claim not found in token" });
 
-                int ownerId = int.Parse(userIdClaim.Value);
+                int ownerId = int.Parse(userIdClaim);
+
                 var data = await _monthlyService.GetPackageSessionsForOwnerAsync(ownerId);
                 return Ok(new { message = "Owner package sessions", data });
             }
@@ -165,7 +172,6 @@ namespace BallSport.API.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
-
-
     }
-}
+}    
+

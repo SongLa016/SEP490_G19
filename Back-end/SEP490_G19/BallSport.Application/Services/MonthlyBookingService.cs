@@ -1,5 +1,5 @@
 ﻿    using BallSport.Application.DTOs;
-    using BallSport.Infrastructure.Models;
+using BallSport.Infrastructure.Models;
     using BallSport.Infrastructure.Repositories;
     using Banking.Application.Services;
     using System;
@@ -295,29 +295,94 @@
         }
 
 
-        // Owner packages
-        public async Task<List<BookingPackage>> GetBookingPackagesForOwnerAsync(int ownerId)
+        // ================= Owner packages =================
+        public async Task<List<BKDTO>> GetBookingPackagesForOwnerAsync(int ownerId)
         {
-            return await _bookingRepo.GetByOwnerIdAsync(ownerId);
+            var packages = await _bookingRepo.GetByOwnerIdAsync(ownerId);
+
+            var result = packages.Select(p => new BKDTO
+            {
+                BookingPackageId = p.BookingPackageId,
+                UserId = p.UserId,
+                FieldId = p.FieldId,
+                PackageName = p.PackageName,
+                StartDate = p.StartDate,
+                EndDate = p.EndDate,
+                TotalPrice = p.TotalPrice,
+                BookingStatus = p.BookingStatus,
+                PaymentStatus = p.PaymentStatus,
+                Qrcode = p.Qrcode,
+                QrexpiresAt = p.QrexpiresAt,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt,
+                FieldName = p.Field?.Name,
+                FieldStatus = p.Field?.Status,
+                
+            }).ToList();
+
+            return result;
         }
 
-        // Player packages
-        public async Task<List<BookingPackage>> GetBookingPackagesForPlayerAsync(int userId)
+        // ================= Player packages =================
+        public async Task<List<BKDTO>> GetBookingPackagesForPlayerAsync(int userId)
         {
-            return await _bookingRepo.GetByPlayerIdAsync(userId);
+            var packages = await _bookingRepo.GetByPlayerIdAsync(userId);
+
+            var result = packages.Select(p => new BKDTO
+            {
+                BookingPackageId = p.BookingPackageId,
+                UserId = p.UserId,
+                FieldId = p.FieldId,
+                PackageName = p.PackageName,
+                StartDate = p.StartDate,
+                EndDate = p.EndDate,
+                TotalPrice = p.TotalPrice,
+                BookingStatus = p.BookingStatus,
+                PaymentStatus = p.PaymentStatus,
+                Qrcode = p.Qrcode,
+                QrexpiresAt = p.QrexpiresAt,
+                CreatedAt = p.CreatedAt,
+                UpdatedAt = p.UpdatedAt,
+                FieldName = p.Field?.Name,
+                FieldStatus = p.Field?.Status,
+                
+            }).ToList();
+
+            return result;
         }
 
-        // Player sessions
-        public async Task<List<PackageSession>> GetPackageSessionsForPlayerAsync(int userId)
+        // ================= Player sessions =================
+        public async Task<List<PSDTO>> GetPackageSessionsForPlayerAsync(int userId)
         {
-            return await _packageSessionRepo.GetSessionsByPlayerIdAsync(userId);
+            var sessions = await _packageSessionRepo.GetSessionsByPlayerIdAsync(userId);
 
+            return sessions.Select(s => new PSDTO
+            {
+                PackageSessionId = s.PackageSessionId,
+                SessionDate = s.SessionDate,
+                PricePerSession = s.PricePerSession,
+                SessionStatus = s.SessionStatus,
+                UserId = s.UserId,
+                ScheduleId = s.ScheduleId
+               
+            }).ToList();
         }
 
-        // Owner sessions
-        public async Task<List<PackageSession>> GetPackageSessionsForOwnerAsync(int ownerId)
+        // ================= Owner sessions =================
+        public async Task<List<PSDTO>> GetPackageSessionsForOwnerAsync(int ownerId)
         {
-            return await _packageSessionRepo.GetSessionsByOwnerIdAsync(ownerId);
+            var sessions = await _packageSessionRepo.GetSessionsByOwnerIdAsync(ownerId);
+
+            return sessions.Select(s => new PSDTO
+            {
+                PackageSessionId = s.PackageSessionId,
+                SessionDate = s.SessionDate,
+                PricePerSession = s.PricePerSession,
+                SessionStatus = s.SessionStatus,
+                UserId = s.UserId,
+                ScheduleId = s.ScheduleId
+               
+            }).ToList();
         }
 
 

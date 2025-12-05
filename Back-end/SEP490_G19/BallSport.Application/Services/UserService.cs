@@ -55,7 +55,8 @@ namespace BallSport.Application.Services
             if (user == null) return null;
 
             var roles = _userRepository.GetRolesByUserId(user.UserId);
-
+            if (user.Status == "Locked")
+                throw new UnauthorizedAccessException("Tài khoản của bạn đã bị khóa.");
             if (CheckPassword(phone, inputPassword))
             {
 
