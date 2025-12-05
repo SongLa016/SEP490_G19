@@ -4,7 +4,6 @@ using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
-using Microsoft.AspNetCore.Http;
 
 namespace BallSport.Application.Services
 {
@@ -12,46 +11,24 @@ namespace BallSport.Application.Services
     {
         private readonly FieldComplexRepository _complexRepository;
         private readonly Cloudinary _cloudinary;
-        private readonly ITheIpApiService _ipService;
-        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IGeocodingService _geocodingService;
 
         public FieldComplexService(
             FieldComplexRepository complexRepository,
             Cloudinary cloudinary,
-            ITheIpApiService ipService,
-            IHttpContextAccessor httpContextAccessor)
+            IGeocodingService geocodingService)
         {
             _complexRepository = complexRepository;
             _cloudinary = cloudinary;
-            _ipService = ipService;
-            _httpContextAccessor = httpContextAccessor;
+            _geocodingService = geocodingService;
         }
 
-        // =========================
-        // ✅ HÀM LẤY IP CHUẨN SẢN PHẨM
-        // =========================
-        private string? GetClientIp()
-        {
-            var context = _httpContextAccessor.HttpContext;
-
-            var ip = context?.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-                  ?? context?.Connection.RemoteIpAddress?.ToString();
-
-            if (ip == "::1") return null;
-            if (ip == "127.0.0.1") return null;
-
-            return ip;
-        }
-
-
-        // =========================
-        // ✅ ADD COMPLEX
-        // =========================
+        // 🟢 THÊM KHU SÂN (CÓ TỰ ĐỘNG LẤY TỌA ĐỘ)
         public async Task<FieldComplexResponseDTO> AddComplexAsync(FieldComplexDTO dto)
         {
             string? imageUrl = null;
 
-            // ✅ Upload ảnh Cloudinary
+            // ✅ Upload ảnh
             if (dto.ImageFile != null)
             {
                 var uploadParams = new ImageUploadParams
@@ -64,28 +41,14 @@ namespace BallSport.Application.Services
                 imageUrl = uploadResult.SecureUrl.AbsoluteUri;
             }
 
-            // ✅ LẤY TỌA ĐỘ TỪ IP
+            // ✅ LẤY TỌA ĐỘ THEO ĐỊA CHỈ
             double? latitude = null;
             double? longitude = null;
 
-            string? ipAddress = dto.IpAddress;
-
-            if (string.IsNullOrEmpty(ipAddress))
+            if (!string.IsNullOrWhiteSpace(dto.Address))
             {
-                ipAddress = GetClientIp();
-            }
-
-            try
-            {
-                if (!string.IsNullOrEmpty(ipAddress))
-                {
-                    (latitude, longitude) = await _ipService.GetLocationFromIpAsync(ipAddress);
-                }
-            }
-            catch
-            {
-                latitude = null;
-                longitude = null;
+                (latitude, longitude) =
+                    await _geocodingService.GetLocationFromAddressAsync(dto.Address);
             }
 
             var complex = new FieldComplex
@@ -97,6 +60,8 @@ namespace BallSport.Application.Services
                 ImageUrl = imageUrl,
                 Status = dto.Status ?? "Active",
                 CreatedAt = DateTime.Now,
+
+                // ✅ QUAN TRỌNG
                 Latitude = latitude,
                 Longitude = longitude
             };
@@ -113,14 +78,13 @@ namespace BallSport.Application.Services
                 Status = created.Status,
                 CreatedAt = created.CreatedAt,
                 ImageUrl = created.ImageUrl,
+
                 Latitude = created.Latitude,
                 Longitude = created.Longitude
             };
         }
 
-        // =========================
-        // ✅ GET ALL
-        // =========================
+        // 🟢 LẤY TẤT CẢ KHU SÂN
         public async Task<List<FieldComplexResponseDTO>> GetAllComplexesAsync()
         {
             var complexes = await _complexRepository.GetAllComplexesAsync();
@@ -135,14 +99,13 @@ namespace BallSport.Application.Services
                 Status = c.Status,
                 CreatedAt = c.CreatedAt,
                 ImageUrl = c.ImageUrl,
+
                 Latitude = c.Latitude,
                 Longitude = c.Longitude
             }).ToList();
         }
 
-        // =========================
-        // ✅ GET BY ID
-        // =========================
+        // 🟢 LẤY CHI TIẾT 1 KHU SÂN
         public async Task<FieldComplexResponseDTO?> GetComplexByIdAsync(int complexId)
         {
             var c = await _complexRepository.GetComplexByIdAsync(complexId);
@@ -158,26 +121,38 @@ namespace BallSport.Application.Services
                 Status = c.Status,
                 CreatedAt = c.CreatedAt,
                 ImageUrl = c.ImageUrl,
+
                 Latitude = c.Latitude,
                 Longitude = c.Longitude
             };
         }
 
-        // =========================
-        // ✅ UPDATE COMPLEX (CẬP NHẬT LẠI TỌA ĐỘ)
-        // =========================
+        // 🟢 CẬP NHẬT KHU SÂN (ĐỔI ĐỊA CHỈ → TỰ CẬP NHẬT LẠI TỌA ĐỘ)
         public async Task<FieldComplexResponseDTO?> UpdateComplexAsync(FieldComplexDTO dto)
         {
             var existing = await _complexRepository.GetComplexByIdAsync(dto.ComplexId);
             if (existing == null) return null;
 
             existing.Name = dto.Name;
-            existing.Address = dto.Address;
             existing.Description = dto.Description;
             existing.OwnerId = dto.OwnerId;
             existing.Status = dto.Status;
 
-            // ✅ Upload ảnh mới nếu có
+            // ✅ NẾU ĐỔI ĐỊA CHỈ → CẬP NHẬT LẠI TỌA ĐỘ
+            if (existing.Address != dto.Address)
+            {
+                existing.Address = dto.Address;
+
+                if (!string.IsNullOrWhiteSpace(dto.Address))
+                {
+                    var (lat, lng) =
+                        await _geocodingService.GetLocationFromAddressAsync(dto.Address);
+
+                    existing.Latitude = lat;
+                    existing.Longitude = lng;
+                }
+            }
+
             if (dto.ImageFile != null)
             {
                 var uploadParams = new ImageUploadParams
@@ -188,28 +163,6 @@ namespace BallSport.Application.Services
 
                 var uploadResult = await _cloudinary.UploadAsync(uploadParams);
                 existing.ImageUrl = uploadResult.SecureUrl.AbsoluteUri;
-            }
-
-            // ✅ LẤY LẠI IP + TỌA ĐỘ MỚI
-            string? ipAddress = dto.IpAddress;
-
-            if (string.IsNullOrEmpty(ipAddress))
-            {
-                ipAddress = GetClientIp();
-            }
-
-            try
-            {
-                if (!string.IsNullOrEmpty(ipAddress))
-                {
-                    var (latitude, longitude) = await _ipService.GetLocationFromIpAsync(ipAddress);
-                    existing.Latitude = latitude;
-                    existing.Longitude = longitude;
-                }
-            }
-            catch
-            {
-                // Không crash nếu IP API lỗi
             }
 
             var updated = await _complexRepository.UpdateComplexAsync(existing);
@@ -224,14 +177,13 @@ namespace BallSport.Application.Services
                 Status = updated.Status,
                 CreatedAt = updated.CreatedAt,
                 ImageUrl = updated.ImageUrl,
+
                 Latitude = updated.Latitude,
                 Longitude = updated.Longitude
             };
         }
 
-        // =========================
-        // ✅ DELETE
-        // =========================
+        // 🟢 XÓA KHU SÂN
         public async Task<bool> DeleteComplexAsync(int complexId)
         {
             return await _complexRepository.DeleteComplexAsync(complexId);

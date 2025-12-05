@@ -6,8 +6,9 @@ using System.Threading.Tasks;
 
 namespace BallSport.Application.Services.Geocoding
 {
-    public interface ITheIpApiService
+    public interface IGeocodingService
     {
-        Task<(double? lat, double? lng)> GetLocationFromIpAsync(string ip);
+        Task<(double? lat, double? lng)> GetLocationFromAddressAsync(string address);
     }
+
 }

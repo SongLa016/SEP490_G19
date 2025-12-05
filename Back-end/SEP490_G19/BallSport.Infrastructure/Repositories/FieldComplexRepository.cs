@@ -13,7 +13,7 @@ namespace BallSport.Infrastructure.Repositories
             _context = context;
         }
 
-        // 🟢 Thêm khu sân mới
+        // 🟢 THÊM KHU SÂN
         public async Task<FieldComplex> AddComplexAsync(FieldComplex complex)
         {
             _context.FieldComplexes.Add(complex);
@@ -21,21 +21,20 @@ namespace BallSport.Infrastructure.Repositories
             return complex;
         }
 
-        // 🟢 Lấy 1 khu sân theo ID ✅ SỬA CHUẨN
+        // 🟢 LẤY 1 KHU SÂN THEO ID ✅ (ĐÃ FIX)
         public async Task<FieldComplex?> GetComplexByIdAsync(int complexId)
         {
             return await _context.FieldComplexes
                 .FirstOrDefaultAsync(fc => fc.ComplexId == complexId);
         }
 
-        // 🟢 Lấy tất cả khu sân
+        // 🟢 LẤY TẤT CẢ KHU SÂN
         public async Task<List<FieldComplex>> GetAllComplexesAsync()
         {
-            return await _context.FieldComplexes
-                .ToListAsync();
+            return await _context.FieldComplexes.ToListAsync();
         }
 
-        // 🟢 Cập nhật khu sân ✅ BỔ SUNG Latitude & Longitude
+        // 🟢 CẬP NHẬT KHU SÂN ✅ (ĐÃ FIX LƯU TỌA ĐỘ)
         public async Task<FieldComplex?> UpdateComplexAsync(FieldComplex complex)
         {
             var existing = await _context.FieldComplexes.FindAsync(complex.ComplexId);
@@ -48,7 +47,7 @@ namespace BallSport.Infrastructure.Repositories
             existing.Status = complex.Status;
             existing.ImageUrl = complex.ImageUrl;
 
-            // ✅ TRÁNH LỖI khi bạn cập nhật GPS sau này
+            // ✅ QUAN TRỌNG: LƯU TỌA ĐỘ
             existing.Latitude = complex.Latitude;
             existing.Longitude = complex.Longitude;
 
@@ -56,7 +55,7 @@ namespace BallSport.Infrastructure.Repositories
             return existing;
         }
 
-        // 🟢 Xóa khu sân
+        // 🟢 XÓA KHU SÂN
         public async Task<bool> DeleteComplexAsync(int complexId)
         {
             var existing = await _context.FieldComplexes.FindAsync(complexId);

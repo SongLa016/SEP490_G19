@@ -208,7 +208,7 @@ services.AddScoped<IPlayerProfileService, PlayerProfileService>();
 services.AddScoped<IFavoriteFieldRepository, FavoriteFieldRepository>();
 services.AddScoped<IFavoriteFieldService, FavoriteFieldService>();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddHttpClient<ITheIpApiService, TheIpApiService>();
+builder.Services.AddHttpClient<IGeocodingService, NominatimGeocodingService>();
 
 
 // 1. Tăng giới hạn upload (100MB)
@@ -309,7 +309,6 @@ app.UseSwaggerUI(c =>
 // app.UseHttpsRedirection(); // Nếu test local bằng HTTP → comment HTTPS redirect
 
 app.UseRouting();
-
 app.UseCors("AllowAll");
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions

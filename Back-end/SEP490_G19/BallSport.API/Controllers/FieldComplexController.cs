@@ -15,24 +15,18 @@ namespace BallSport.API.Controllers
             _service = service;
         }
 
-        // ✅ Thêm khu sân mới
+        // ✅ THÊM KHU SÂN (TỰ LẤY TỌA ĐỘ TỪ ADDRESS)
         [HttpPost]
         public async Task<IActionResult> AddComplex([FromForm] FieldComplexDTO dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // ✅ LẤY IP CHUẨN SAU PROXY / SERVER
-            dto.IpAddress = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-                            ?? HttpContext.Request.Headers["X-Real-IP"].FirstOrDefault()
-                            ?? HttpContext.Connection.RemoteIpAddress?.ToString();
-
             var created = await _service.AddComplexAsync(dto);
-
             return CreatedAtAction(nameof(GetById), new { id = created.ComplexId }, created);
         }
 
-        // ✅ Lấy tất cả khu sân
+        // ✅ LẤY TẤT CẢ
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -40,7 +34,7 @@ namespace BallSport.API.Controllers
             return Ok(result);
         }
 
-        // ✅ Lấy chi tiết khu sân theo ID
+        // ✅ LẤY CHI TIẾT
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -51,7 +45,7 @@ namespace BallSport.API.Controllers
             return Ok(complex);
         }
 
-        // ✅ UPDATE
+        // ✅ UPDATE (TỰ CẬP NHẬT LẠI TỌA ĐỘ KHI ĐỔI ADDRESS)
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateComplex(int id, [FromForm] FieldComplexDTO dto)
         {
