@@ -3,11 +3,8 @@ import {
      Calendar,
      CheckCircle,
      XCircle,
-     Search,
      Download,
-     Eye,
      RefreshCw,
-     Filter,
      User,
      Phone,
      Mail,
@@ -22,21 +19,19 @@ import {
      Repeat
 } from "lucide-react";
 
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, DatePicker, Modal, Input, Card, Button, Table, TableHeader, TableHead, TableRow, TableBody, TableCell, Pagination, usePagination } from "../../../shared/components/ui";
+import { Modal, Button, usePagination } from "../../../shared/components/ui";
 import { useAuth } from "../../../contexts/AuthContext";
 import { DemoRestrictedModal } from "../../../shared";
+import { OwnerFilters, OwnerBookingsTable, OwnerPackagesTable, OwnerCancellationsTable } from "./components/bookingManagement";
 import {
      cancelBooking,
      fetchCancellationRequests,
      confirmCancellation,
      deleteCancellationRequest,
      fetchBookingsByOwner,
-     fetchBookingPackagesByOwner,
      confirmPaymentAPI,
      confirmByOwner,
      fetchCancellationRequestById,
-     confirmBookingPackage,
-     completeBookingPackage
 } from "../../../shared/services/bookings";
 import { fetchFieldScheduleById } from "../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
@@ -90,9 +85,6 @@ const BookingManagement = ({ isDemo = false }) => {
      const [isCancellationDetailModalOpen, setIsCancellationDetailModalOpen] = useState(false);
      const [loadingCancellationDetail, setLoadingCancellationDetail] = useState(false);
      const [autoCompletedIds, setAutoCompletedIds] = useState({});
-     const [bookingPackages, setBookingPackages] = useState([]);
-     const [loadingPackages, setLoadingPackages] = useState(false);
-     const [packageError, setPackageError] = useState("");
 
      // Get owner ID from user
      const ownerId = user?.userID || user?.UserID || user?.id || user?.userId;
@@ -120,46 +112,6 @@ const BookingManagement = ({ isDemo = false }) => {
           { value: "completed", label: "Hoàn thành" }
      ];
 
-     const loadBookingPackages = useCallback(async () => {
-          if (!ownerId) {
-               setBookingPackages([]);
-               return;
-          }
-          setLoadingPackages(true);
-          setPackageError("");
-          try {
-               const apiResult = await fetchBookingPackagesByOwner(ownerId);
-               const rawList = apiResult.success ? (apiResult.data || []) : [];
-               const normalized = rawList.map(pkg => ({
-                    id: pkg.bookingPackageId || pkg.id,
-                    bookingPackageId: pkg.bookingPackageId || pkg.id,
-                    fieldId: pkg.fieldId || pkg.fieldID,
-                    fieldName: pkg.fieldName || "",
-                    packageName: pkg.packageName || "Gói sân cố định",
-                    startDate: pkg.startDate,
-                    endDate: pkg.endDate,
-                    totalPrice: Number(pkg.totalPrice) || 0,
-                    bookingStatus: pkg.bookingStatus || "",
-                    paymentStatus: pkg.paymentStatus || "",
-                    qrCodeUrl: pkg.qrcode || pkg.qrCode || pkg.QRCode || pkg.qrCodeUrl || null,
-                    qrExpiresAt: pkg.qrexpiresAt || pkg.qrExpiresAt || pkg.QRExpiresAt || null,
-               }));
-               setBookingPackages(normalized);
-               if (!apiResult.success) {
-                    setPackageError(apiResult.error || "Không thể tải danh sách gói sân cố định.");
-               }
-          } catch (error) {
-               console.error("Error loading booking packages (owner):", error);
-               setPackageError(error.message || "Không thể tải danh sách gói sân cố định.");
-               setBookingPackages([]);
-          } finally {
-               setLoadingPackages(false);
-          }
-     }, [ownerId]);
-
-     useEffect(() => {
-          loadBookingPackages();
-     }, [loadBookingPackages]);
 
      const handleConfirmBooking = async (bookingId) => {
           if (isDemo) {
@@ -899,7 +851,7 @@ const BookingManagement = ({ isDemo = false }) => {
      };
 
      // Load bookings from API
-     const loadBookings = async () => {
+     const loadBookings = useCallback(async () => {
           if (!ownerId) {
                setBookings([]);
                return;
@@ -1018,7 +970,7 @@ const BookingManagement = ({ isDemo = false }) => {
           } finally {
                setLoadingBookings(false);
           }
-     };
+     }, [ownerId]);
 
      // Load bookings on mount and when ownerId changes
      useEffect(() => {
@@ -1272,263 +1224,41 @@ const BookingManagement = ({ isDemo = false }) => {
                     {/* Bookings Tab */}
                     {activeTab === 'bookings' && (
                          <>
-                              {/* Filters */}
-                              <Card className="p-6 rounded-2xl shadow-lg border border-teal-200 bg-gradient-to-br from-white to-teal-50/30">
-                                   <h3 className="text-lg font-semibold text-teal-800 mb-4 flex items-center">
-                                        <Filter className="w-5 h-5 mr-2" />
-                                        Bộ lọc tìm kiếm
-                                   </h3>
-                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <div>
-                                             <label className="text-sm font-semibold text-teal-700 mb-2 flex items-center">
-                                                  <Search className="w-4 h-4 mr-1" />
-                                                  Tìm kiếm
-                                             </label>
-                                             <div className="relative">
-                                                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-teal-500 w-4 h-4" />
-                                                  <Input
-                                                       placeholder="Tên, SĐT, email..."
-                                                       value={searchTerm}
-                                                       onChange={(e) => setSearchTerm(e.target.value)}
-                                                       className="pl-10 rounded-2xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
-                                                  />
-                                             </div>
-                                        </div>
+                              <OwnerFilters
+                                   selectedDate={selectedDate}
+                                   statusFilter={statusFilter}
+                                   fieldFilter={fieldFilter}
+                                   searchTerm={searchTerm}
+                                   statusOptions={statusOptions}
+                                   fields={fields}
+                                   onDateChange={setSelectedDate}
+                                   onStatusChange={setStatusFilter}
+                                   onFieldChange={setFieldFilter}
+                                   onSearchChange={setSearchTerm}
+                                   onClearFilters={() => {
+                                        setSelectedDate("");
+                                        setStatusFilter("all");
+                                        setFieldFilter("all");
+                                        setSearchTerm("");
+                                   }}
+                              />
 
-                                        <div>
-                                             <label className="text-sm font-semibold text-teal-700 mb-2 flex items-center">
-                                                  <Calendar className="w-4 h-4 mr-1" />
-                                                  Ngày
-                                             </label>
-                                             <DatePicker
-                                                  value={selectedDate}
-                                                  onChange={setSelectedDate}
-                                                  placeholder="Chọn ngày"
-                                                  minDate={new Date().toISOString().split('T')[0]}
-                                                  className="rounded-2xl border-teal-200 focus:border-teal-500 focus:ring-teal-500"
-                                             />
-                                        </div>
-
-                                        <div>
-                                             <label className="text-sm font-semibold text-teal-700 mb-2 flex items-center">
-                                                  <AlertCircle className="w-4 h-4 mr-1" />
-                                                  Trạng thái
-                                             </label>
-                                             <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                                  <SelectTrigger className="rounded-2xl border-teal-200 focus:border-teal-500">
-                                                       <SelectValue placeholder="Chọn trạng thái" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       {statusOptions.map(option => (
-                                                            <SelectItem key={option.value} value={option.value}>
-                                                                 {option.label}
-                                                            </SelectItem>
-                                                       ))}
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-
-                                        <div>
-                                             <label className="text-sm font-semibold text-teal-700 mb-2 flex items-center">
-                                                  <MapPin className="w-4 h-4 mr-1" />
-                                                  Sân
-                                             </label>
-                                             <Select value={fieldFilter} onValueChange={setFieldFilter}>
-                                                  <SelectTrigger className="rounded-2xl border-teal-200 focus:border-teal-500">
-                                                       <SelectValue placeholder="Chọn sân" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       {fields.map(field => (
-                                                            <SelectItem key={field.value} value={field.value}>
-                                                                 {field.label}
-                                                            </SelectItem>
-                                                       ))}
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-
-                                   </div>
-                                   <div className="flex items-center justify-end mt-4">
-                                        <Button
-                                             variant="outline"
-                                             onClick={() => {
-                                                  setSelectedDate("");
-                                                  setStatusFilter("all");
-                                                  setFieldFilter("all");
-                                                  setSearchTerm("");
-                                             }}
-                                             className="rounded-2xl border-teal-300 text-teal-700 hover:bg-teal-50"
-                                        >
-                                             <Filter className="w-4 h-4 mr-2" />
-                                             Xóa bộ lọc
-                                        </Button>
-                                   </div>
-                              </Card>
-
-                              {/* Error Message */}
-                              {bookingError && (
-                                   <Card className="p-4 rounded-2xl border border-red-200 bg-red-50 mb-4">
-                                        <div className="flex items-center text-red-700">
-                                             <AlertCircle className="w-5 h-5 mr-2" />
-                                             <span className="text-sm">{bookingError}</span>
-                                        </div>
-                                   </Card>
-                              )}
-
-                              {/* Bookings Table */}
-                              <Card className="overflow-hidden rounded-2xl border border-teal-200 shadow-lg bg-gradient-to-br from-white to-slate-50/50">
-                                   <div className="bg-gradient-to-r from-teal-500 to-emerald-700 p-4">
-                                        <h3 className="text-lg font-semibold text-white flex items-center">
-                                             <Calendar className="w-5 h-5 mr-2" />
-                                             Danh sách booking ({filteredBookings.length})
-                                        </h3>
-                                   </div>
-                                   {loadingBookings ? (
-                                        <div className="text-center py-12">
-                                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
-                                             <p className="text-gray-600 mt-4">Đang tải danh sách booking...</p>
-                                        </div>
-                                   ) : (
-                                        <>
-                                             <Table>
-                                                  <TableHeader>
-                                                       <TableRow className="bg-teal-700">
-                                                            <TableHead className="text-white font-semibold">Khách hàng</TableHead>
-                                                            <TableHead className="text-white font-semibold">Sân & Thời gian</TableHead>
-                                                            <TableHead className="text-white font-semibold">Trạng thái</TableHead>
-                                                            <TableHead className="text-white font-semibold">Thanh toán</TableHead>
-                                                            <TableHead className="text-white font-semibold">Tiền cọc</TableHead>
-                                                            <TableHead className="text-white font-semibold">Số tiền</TableHead>
-                                                            <TableHead className="text-white font-semibold">Thao tác</TableHead>
-                                                       </TableRow>
-                                                  </TableHeader>
-                                                  <TableBody>
-                                                       {bookingsPagination.currentItems.map((booking) => (
-                                                            <TableRow key={booking.id} className="hover:bg-teal-50/50 transition-colors">
-                                                                 <TableCell>
-                                                                      <div className="space-y-1">
-                                                                           <div className="text-sm font-semibold text-gray-900">{booking.customer}</div>
-                                                                           <div className="text-xs text-teal-600 font-medium flex items-center">
-                                                                                <Phone className="w-3 h-3 mr-1" />
-                                                                                {booking.phone}
-                                                                           </div>
-                                                                           <div className="text-xs text-gray-500 font-medium flex items-center">
-                                                                                <Mail className="w-3 h-3 mr-1" />
-                                                                                {booking.email}
-                                                                           </div>
-                                                                      </div>
-                                                                 </TableCell>
-                                                                 <TableCell>
-                                                                      <div className="space-y-1">
-                                                                           <div className="text-sm font-semibold text-gray-900 flex items-center">
-                                                                                <MapPin className="w-3 h-3 mr-1 text-teal-600" />
-                                                                                {booking.field}
-                                                                           </div>
-                                                                           <div className="text-xs text-gray-600 flex items-center">
-                                                                                <Calendar className="w-3 h-3 mr-1" />
-                                                                                {formatDate(booking.date)}
-                                                                           </div>
-                                                                           <div className="text-xs text-gray-600 flex items-center">
-                                                                                <Clock className="w-3 h-3 mr-1" />
-                                                                                {booking.timeSlot}
-                                                                           </div>
-                                                                      </div>
-                                                                 </TableCell>
-                                                                 <TableCell>
-                                                                      {(() => {
-                                                                           const effectiveStatus =
-                                                                                booking.status === "confirmed" && isBookingPassed(booking)
-                                                                                     ? "completed"
-                                                                                     : booking.status;
-                                                                           return (
-                                                                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(effectiveStatus)}`}>
-                                                                                     {getStatusText(effectiveStatus)}
-                                                                                </span>
-                                                                           );
-                                                                      })()}
-                                                                 </TableCell>
-                                                                 <TableCell>
-                                                                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(booking.paymentStatus)}`}>
-                                                                           {getPaymentStatusText(booking.paymentStatus)}
-                                                                      </span>
-                                                                 </TableCell>
-                                                                 <TableCell className="text-sm font-bold text-yellow-500">
-                                                                      {formatCurrency(booking.depositAmount)}
-                                                                 </TableCell>
-                                                                 <TableCell className="text-sm font-bold text-emerald-600">
-                                                                      {formatCurrency(booking.amount)}
-                                                                 </TableCell>
-                                                                 <TableCell className="text-sm font-medium">
-                                                                      <div className="flex items-center space-x-2">
-                                                                           <Button
-                                                                                variant="ghost"
-                                                                                size="sm"
-                                                                                onClick={() => handleViewDetails(booking)}
-                                                                                className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
-                                                                                title="Xem chi tiết"
-                                                                           >
-                                                                                <Eye className="w-4 h-4" />
-                                                                           </Button>
-
-                                                                           {!isBookingPassed(booking) && (
-                                                                                <>
-                                                                                     {(booking.status === 'pending' || (booking.status === 'confirmed' && booking.paymentStatus === 'paid')) && (
-                                                                                          <Button
-                                                                                               variant="ghost"
-                                                                                               size="sm"
-                                                                                               onClick={() => handleConfirmBooking(booking.bookingId || booking.id)}
-                                                                                               className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                                                               title={booking.status === 'pending' ? "Xác nhận thanh toán" : "Hoàn thành booking"}
-                                                                                          >
-                                                                                               <CheckCircle className="w-4 h-4" />
-                                                                                          </Button>
-                                                                                     )}
-                                                                                     {booking.status !== 'cancelled' && booking.status !== 'completed' && (
-                                                                                          <Button
-                                                                                               variant="ghost"
-                                                                                               size="sm"
-                                                                                               onClick={() => handleCancelBooking(booking.bookingId || booking.id)}
-                                                                                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                                                               title="Hủy booking"
-                                                                                          >
-                                                                                               <XCircle className="w-4 h-4" />
-                                                                                          </Button>
-                                                                                     )}
-                                                                                </>
-                                                                           )}
-                                                                           {isBookingPassed(booking) && (
-                                                                                <span className="text-xs text-gray-500 italic" title="Lịch trình đã qua">
-                                                                                     Đã qua
-                                                                                </span>
-                                                                           )}
-                                                                      </div>
-                                                                 </TableCell>
-                                                            </TableRow>
-                                                       ))}
-                                                  </TableBody>
-                                             </Table>
-                                             {bookingsPagination.totalPages > 1 && (
-                                                  <div className="p-4">
-                                                       <Pagination
-                                                            currentPage={bookingsPagination.currentPage}
-                                                            totalPages={bookingsPagination.totalPages}
-                                                            onPageChange={bookingsPagination.handlePageChange}
-                                                            itemsPerPage={bookingsPagination.itemsPerPage}
-                                                            totalItems={bookingsPagination.totalItems}
-                                                       />
-                                                  </div>
-                                             )}
-                                        </>
-                                   )}
-
-                                   {!loadingBookings && filteredBookings.length === 0 && (
-                                        <div className="text-center py-12">
-                                             <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                             <h3 className="text-lg font-medium text-gray-900 mb-2">Không có booking nào</h3>
-                                             <p className="text-gray-500">Không tìm thấy booking nào phù hợp với bộ lọc hiện tại.</p>
-                                        </div>
-                                   )}
-                              </Card>
+                              <OwnerBookingsTable
+                                   loading={loadingBookings}
+                                   error={bookingError}
+                                   filteredCount={filteredBookings.length}
+                                   bookingsPagination={bookingsPagination}
+                                   formatDate={formatDate}
+                                   isBookingPassed={isBookingPassed}
+                                   handleViewDetails={handleViewDetails}
+                                   handleConfirmBooking={handleConfirmBooking}
+                                   handleCancelBooking={handleCancelBooking}
+                                   formatCurrency={formatCurrency}
+                                   getStatusColor={getStatusColor}
+                                   getStatusText={getStatusText}
+                                   getPaymentStatusColor={getPaymentStatusColor}
+                                   getPaymentStatusText={getPaymentStatusText}
+                              />
 
                               {/* Booking Detail Modal */}
                               <Modal
@@ -1771,304 +1501,26 @@ const BookingManagement = ({ isDemo = false }) => {
 
                     {/* Fixed Booking Packages Tab */}
                     {activeTab === 'packages' && (
-                         <Card className="mt-6 p-6 rounded-2xl shadow-lg">
-                              <div className="flex items-center justify-between mb-4">
-                                   <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                        <Repeat className="w-5 h-5 text-teal-600" />
-                                        Gói sân cố định
-                                   </h3>
-                                   <Button
-                                        onClick={loadBookingPackages}
-                                        variant="outline"
-                                        className="rounded-xl"
-                                   >
-                                        <RefreshCw className="w-4 h-4 mr-2" />
-                                        Làm mới
-                                   </Button>
-                              </div>
-                              {packageError && (
-                                   <div className="mb-3 p-3 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
-                                        {packageError}
-                                   </div>
-                              )}
-                              {loadingPackages ? (
-                                   <div className="text-center py-8">
-                                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600 mx-auto"></div>
-                                        <p className="text-gray-600 mt-2">Đang tải gói sân cố định...</p>
-                                   </div>
-                              ) : bookingPackages.length === 0 ? (
-                                   <div className="text-center py-8 text-sm text-gray-600">
-                                        Chưa có gói sân cố định nào.
-                                   </div>
-                              ) : (
-                                   <div className="overflow-x-auto">
-                                        <Table className="rounded-2xl border border-teal-300">
-                                             <TableHeader>
-                                                  <TableRow>
-                                                       <TableHead>ID gói</TableHead>
-                                                       <TableHead>Tên gói</TableHead>
-                                                       <TableHead>Sân</TableHead>
-                                                       <TableHead>Thời gian</TableHead>
-                                                       <TableHead>Tổng giá</TableHead>
-                                                       <TableHead>Trạng thái</TableHead>
-                                                       <TableHead>Thanh toán</TableHead>
-                                                       <TableHead className="text-center">Thao tác</TableHead>
-                                                  </TableRow>
-                                             </TableHeader>
-                                             <TableBody>
-                                                  {bookingPackages.map(pkg => (
-                                                       <TableRow key={pkg.id}>
-                                                            <TableCell className="font-semibold text-teal-700">
-                                                                 #{pkg.bookingPackageId}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                 <div className="font-medium text-gray-900">{pkg.packageName}</div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                 <div className="text-sm text-gray-700">{pkg.fieldName || `Sân #${pkg.fieldId}`}</div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                 <div className="text-xs text-gray-700">
-                                                                      <div><span className="font-medium">Từ:</span> {pkg.startDate}</div>
-                                                                      <div><span className="font-medium">Đến:</span> {pkg.endDate}</div>
-                                                                 </div>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                 <span className="font-semibold text-emerald-700">
-                                                                      {pkg.totalPrice?.toLocaleString("vi-VN")}₫
-                                                                 </span>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                 <span className="text-sm font-medium">
-                                                                      {pkg.bookingStatus || "—"}
-                                                                 </span>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                 <span className="text-sm font-medium">
-                                                                      {pkg.paymentStatus || "—"}
-                                                                 </span>
-                                                            </TableCell>
-                                                            <TableCell className="text-right">
-                                                                 <div className="flex items-center justify-end gap-2">
-                                                                      <Button
-                                                                           size="sm"
-                                                                           variant="outline"
-                                                                           onClick={async () => {
-                                                                                const result = await Swal.fire({
-                                                                                     icon: "question",
-                                                                                     title: "Xác nhận gói định kỳ",
-                                                                                     text: "Xác nhận thanh toán cho gói sân cố định này?",
-                                                                                     showCancelButton: true,
-                                                                                     confirmButtonText: "Xác nhận",
-                                                                                     cancelButtonText: "Hủy",
-                                                                                });
-                                                                                if (!result.isConfirmed) return;
-                                                                                const resp = await confirmBookingPackage(pkg.bookingPackageId);
-                                                                                if (!resp.success) {
-                                                                                     await Swal.fire("Lỗi", resp.error || "Không thể xác nhận gói.", "error");
-                                                                                } else {
-                                                                                     await Swal.fire("Thành công", "Đã xác nhận gói sân cố định.", "success");
-                                                                                     loadBookingPackages();
-                                                                                }
-                                                                           }}
-                                                                      >
-                                                                           <CheckCircle className="w-4 h-4 mr-1" />
-                                                                           Xác nhận
-                                                                      </Button>
-                                                                      <Button
-                                                                           size="sm"
-                                                                           onClick={async () => {
-                                                                                const result = await Swal.fire({
-                                                                                     icon: "question",
-                                                                                     title: "Hoàn thành gói định kỳ",
-                                                                                     text: "Đánh dấu gói sân cố định này đã hoàn thành?",
-                                                                                     showCancelButton: true,
-                                                                                     confirmButtonText: "Hoàn thành",
-                                                                                     cancelButtonText: "Hủy",
-                                                                                });
-                                                                                if (!result.isConfirmed) return;
-                                                                                const resp = await completeBookingPackage(pkg.bookingPackageId);
-                                                                                if (!resp.success) {
-                                                                                     await Swal.fire("Lỗi", resp.error || "Không thể hoàn thành gói.", "error");
-                                                                                } else {
-                                                                                     await Swal.fire("Thành công", "Đã hoàn thành gói sân cố định.", "success");
-                                                                                     loadBookingPackages();
-                                                                                }
-                                                                           }}
-                                                                      >
-                                                                           <CheckSquare className="w-4 h-4 mr-1" />
-                                                                           Hoàn thành
-                                                                      </Button>
-                                                                 </div>
-                                                            </TableCell>
-                                                       </TableRow>
-                                                  ))}
-                                             </TableBody>
-                                        </Table>
-                                   </div>
-                              )}
-                         </Card>
+                         <OwnerPackagesTable
+                              ownerId={ownerId}
+                              getStatusColor={getStatusColor}
+                              getStatusText={getStatusText}
+                              getPaymentStatusColor={getPaymentStatusColor}
+                              getPaymentStatusText={getPaymentStatusText}
+                         />
                     )}
 
                     {/* Cancellations Tab */}
                     {activeTab === 'cancellations' && (
-                         <Card className="p-6 rounded-2xl shadow-lg">
-                              <div className="flex items-center justify-between mb-6">
-                                   <h3 className="text-xl font-bold text-gray-900 flex items-center">
-                                        <XCircle className="w-6 h-6 mr-2 text-red-600" />
-                                        Yêu cầu hủy booking
-                                   </h3>
-                                   <Button
-                                        onClick={loadCancellationRequests}
-                                        variant="outline"
-                                        className="rounded-xl"
-                                   >
-                                        <RefreshCw className="w-4 h-4 mr-2" />
-                                        Làm mới
-                                   </Button>
-                              </div>
-
-                              {loadingCancellations ? (
-                                   <div className="text-center py-12">
-                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
-                                        <p className="text-gray-600 mt-4">Đang tải...</p>
-                                   </div>
-                              ) : cancellationRequests.length === 0 ? (
-                                   <div className="text-center py-12">
-                                        <CheckCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                                        <p className="text-gray-600">Không có yêu cầu hủy nào</p>
-                                   </div>
-                              ) : (
-                                   <>
-                                        <div className="overflow-x-auto">
-                                             <Table className="rounded-2xl border border-teal-300">
-                                                  <TableHeader>
-                                                       <TableRow>
-                                                            <TableHead>ID</TableHead>
-                                                            <TableHead>Booking ID</TableHead>
-                                                            <TableHead>Lý do</TableHead>
-                                                            <TableHead>Ngày tạo</TableHead>
-                                                            <TableHead>QR Hoàn tiền</TableHead>
-                                                            <TableHead className="text-center">Thao tác</TableHead>
-                                                       </TableRow>
-                                                  </TableHeader>
-                                                  <TableBody>
-                                                       {cancellationsPagination.currentItems.map((request) => (
-                                                            <TableRow key={request.requestId || request.id || request.cancellationId}>
-                                                                 <TableCell className="font-medium">
-                                                                      #{request.requestId || request.id || request.cancellationId}
-                                                                 </TableCell>
-                                                                 <TableCell>
-                                                                      <span className="text-teal-600 font-semibold">
-                                                                           #{request.bookingId}
-                                                                      </span>
-                                                                 </TableCell>
-                                                                 <TableCell>
-                                                                      <div className="max-w-md">
-                                                                           <p className="text-sm text-gray-700 line-clamp-2">
-                                                                                {request.requestReason?.split('|')[0]?.trim() || request.reason || 'Không có lý do'}
-                                                                           </p>
-                                                                      </div>
-                                                                 </TableCell>
-                                                                 <TableCell>
-                                                                      <div className="text-sm">
-                                                                           <p className="text-gray-900">
-                                                                                {(request.requestedAt || request.createdAt) ? new Date(request.requestedAt || request.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
-                                                                           </p>
-                                                                           <p className="text-gray-500 text-xs">
-                                                                                {(request.requestedAt || request.createdAt) ? new Date(request.requestedAt || request.createdAt).toLocaleTimeString('vi-VN') : ''}
-                                                                           </p>
-                                                                      </div>
-                                                                 </TableCell>
-                                                                 <TableCell>
-                                                                      {(() => {
-                                                                           const qrMatch = request.requestReason?.match(/RefundQR:\s*(https?:\/\/[^\s]+)/);
-                                                                           const qrUrl = qrMatch ? qrMatch[1] : null;
-                                                                           return qrUrl ? (
-                                                                                <button
-                                                                                     onClick={() => {
-                                                                                          Swal.fire({
-                                                                                               title: 'QR Code Hoàn tiền',
-                                                                                               html: `
-                                                                                               <div class="flex flex-col items-center">
-                                                                                                    <img src="${qrUrl}" alt="QR Code" class="max-w-full h-auto rounded-lg shadow-lg" style="max-height: 400px;" />
-                                                                                                    <p class="text-sm text-gray-600 mt-3">Quét mã QR để hoàn tiền</p>
-                                                                                               </div>
-                                                                                          `,
-                                                                                               showConfirmButton: true,
-                                                                                               confirmButtonText: 'Đóng',
-                                                                                               width: '500px'
-                                                                                          });
-                                                                                     }}
-                                                                                     className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                                                                                >
-                                                                                     <QrCode className="w-4 h-4" />
-                                                                                     Xem QR
-                                                                                </button>
-                                                                           ) : (
-                                                                                <span className="text-xs text-gray-400">Không có</span>
-                                                                           );
-                                                                      })()}
-                                                                 </TableCell>
-                                                                 <TableCell className="text-right">
-                                                                      <div className="flex items-center justify-center gap-2">
-                                                                           <Button
-                                                                                onClick={() => handleViewCancellationDetails(request.requestId || request.id || request.cancellationId)}
-                                                                                size="sm"
-                                                                                variant="ghost"
-                                                                                className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 rounded-xl"
-                                                                           >
-                                                                                <Eye className="w-4 h-4 mr-1" />
-
-                                                                           </Button>
-                                                                           {(request.requestStatus || request.status) === "Pending" && (
-                                                                                <Button
-                                                                                     onClick={() => handleConfirmCancellation(request.requestId || request.id || request.cancellationId)}
-                                                                                     size="sm"
-                                                                                     className="bg-green-600 hover:bg-green-700 rounded-xl"
-                                                                                >
-                                                                                     <CheckCircle className="w-4 h-4 mr-1" />
-                                                                                     Xác nhận
-                                                                                </Button>
-                                                                           )}
-                                                                           {(request.requestStatus || request.status) === "Pending" && (
-                                                                                <Button
-                                                                                     onClick={() => handleDeleteCancellation(request.requestId || request.id || request.cancellationId)}
-                                                                                     size="sm"
-                                                                                     variant="outline"
-                                                                                     className="border-red-300 text-red-600 hover:bg-red-50 rounded-xl"
-                                                                                >
-                                                                                     <XCircle className="w-4 h-4 mr-1" />
-                                                                                     Xóa
-                                                                                </Button>
-                                                                           )}
-                                                                           {(request.requestStatus || request.status) === "Confirmed" && (
-                                                                                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 flex items-center gap-1">
-                                                                                     <CheckCircle className="w-3 h-3" />
-                                                                                     Đã xác nhận
-                                                                                </span>
-                                                                           )}
-                                                                      </div>
-                                                                 </TableCell>
-                                                            </TableRow>
-                                                       ))}
-                                                  </TableBody>
-                                             </Table>
-                                        </div>
-                                        {cancellationsPagination.totalPages > 1 && (
-                                             <div className="p-4">
-                                                  <Pagination
-                                                       currentPage={cancellationsPagination.currentPage}
-                                                       totalPages={cancellationsPagination.totalPages}
-                                                       onPageChange={cancellationsPagination.handlePageChange}
-                                                       itemsPerPage={cancellationsPagination.itemsPerPage}
-                                                       totalItems={cancellationsPagination.totalItems}
-                                                  />
-                                             </div>
-                                        )}
-                                   </>
-                              )}
-                         </Card>
+                         <OwnerCancellationsTable
+                              cancellationRequests={cancellationRequests}
+                              loading={loadingCancellations}
+                              pagination={cancellationsPagination}
+                              onRefresh={loadCancellationRequests}
+                              onViewDetails={handleViewCancellationDetails}
+                              onConfirm={handleConfirmCancellation}
+                              onDelete={handleDeleteCancellation}
+                         />
                     )}
 
                     {/* Demo Restricted Modal */}

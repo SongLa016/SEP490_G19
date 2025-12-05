@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Calendar, MapPin, Receipt, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, Calendar as CalendarIcon, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon, Info, RefreshCw, Loader2, User, Phone } from "lucide-react";
+import { Calendar, MapPin, Receipt, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon, Info, RefreshCw, Loader2, User, Phone, Calendar as CalendarIcon } from "lucide-react";
 import { Section, Container, Card, CardContent, Button, Badge, LoadingList, FadeIn, StaggerContainer, Modal } from "../../../../shared/components/ui";
 import { listBookingsByUser, updateBooking, fetchBookingsByPlayer, generateQRCode, confirmPaymentAPI } from "../../../../shared/index";
 import {
@@ -30,6 +30,7 @@ import Swal from 'sweetalert2';
 import {
      BookingStats,
      BookingFilters,
+     FixedPackagesTab,
 } from './components';
 
 // Utils
@@ -268,31 +269,50 @@ export default function BookingHistory({ user }) {
 
                // Fetch sessions if we have at least one package
                if (normalizedPackages.length > 0) {
-                    const sessionResp = await fetchBookingPackageSessionsByPlayerToken();
-                    if (sessionResp.success) {
-                         const groupedSessions = {};
-                         (sessionResp.data || [])
-                              .map(normalizePackageSession)
-                              .filter(Boolean)
-                              .forEach((session) => {
-                                   if (!session.bookingPackageId) return;
-                                   if (!groupedSessions[session.bookingPackageId]) {
-                                        groupedSessions[session.bookingPackageId] = [];
+                    try {
+                         const sessionResp = await fetchBookingPackageSessionsByPlayerToken();
+                         if (sessionResp.success && sessionResp.data) {
+                              const groupedSessions = {};
+                              const sessionsArray = Array.isArray(sessionResp.data) ? sessionResp.data : [];
+
+                              sessionsArray
+                                   .map(normalizePackageSession)
+                                   .filter(Boolean)
+                                   .forEach((session) => {
+                                        if (!session.bookingPackageId) return;
+                                        // Convert to string for consistent key matching
+                                        const packageIdKey = String(session.bookingPackageId);
+                                        if (!groupedSessions[packageIdKey]) {
+                                             groupedSessions[packageIdKey] = [];
+                                        }
+                                        groupedSessions[packageIdKey].push(session);
+                                   });
+
+                              // Also map by numeric keys for backward compatibility
+                              Object.keys(groupedSessions).forEach((key) => {
+                                   const sessions = groupedSessions[key];
+                                   sessions.sort((a, b) => {
+                                        const dateA = new Date(a.date || 0).getTime();
+                                        const dateB = new Date(b.date || 0).getTime();
+                                        return dateA - dateB;
+                                   });
+
+                                   // Store under both string and numeric keys for flexible lookup
+                                   const numKey = Number(key);
+                                   if (!isNaN(numKey) && numKey.toString() === key) {
+                                        groupedSessions[numKey] = sessions;
                                    }
-                                   groupedSessions[session.bookingPackageId].push(session);
                               });
 
-                         Object.keys(groupedSessions).forEach((key) => {
-                              groupedSessions[key].sort((a, b) => {
-                                   const dateA = new Date(a.date || 0).getTime();
-                                   const dateB = new Date(b.date || 0).getTime();
-                                   return dateA - dateB;
-                              });
-                         });
-
-                         setPackageSessionsMap(groupedSessions);
-                    } else if (sessionResp.error) {
-                         console.warn("Không thể tải danh sách buổi của gói:", sessionResp.error);
+                              setPackageSessionsMap(groupedSessions);
+                         } else if (sessionResp.error) {
+                              console.warn("Không thể tải danh sách buổi của gói:", sessionResp.error);
+                              // Set empty map to avoid showing incorrect counts
+                              setPackageSessionsMap({});
+                         }
+                    } catch (error) {
+                         console.error("Error fetching package sessions:", error);
+                         setPackageSessionsMap({});
                     }
                }
           } catch (error) {
@@ -1926,7 +1946,7 @@ export default function BookingHistory({ user }) {
                                              }`}
                                    >
                                         <CalendarIcon className="w-4 h-4 inline mr-2" />
-                                        Lịch sử đặt sân
+                                        Lịch đơn
                                    </button>
                                    <button
                                         onClick={() => setActiveTab("matchHistory")}
@@ -1951,7 +1971,7 @@ export default function BookingHistory({ user }) {
                                              }`}
                                    >
                                         <Repeat className="w-4 h-4 inline mr-2" />
-                                        Sân cố định
+                                        Lịch cố định
                                    </button>
                               </div>
 
@@ -2028,12 +2048,7 @@ export default function BookingHistory({ user }) {
                                                                                      Đang hoạt động
                                                                                 </Badge>
                                                                            )}
-                                                                           {status === "partial" && (
-                                                                                <Badge variant="secondary" className="bg-yellow-500 text-white font-semibold flex items-center gap-1">
-                                                                                     <AlertTriangle className="w-3 h-3" />
-                                                                                     Một phần
-                                                                                </Badge>
-                                                                           )}
+
                                                                            {status === "completed" && (
                                                                                 <Badge variant="secondary" className="bg-blue-500 text-white font-semibold flex items-center gap-1">
                                                                                      <CheckCircle className="w-3 h-3" />
@@ -2866,124 +2881,17 @@ export default function BookingHistory({ user }) {
 
                     {/* Fixed-field packages tab */}
                     {activeTab === "packages" && (
-                         <div className="mt-4 space-y-4">
-                              {packageError && (
-                                   <div className="mb-2 p-3 rounded-xl border border-red-200 bg-red-50 text-sm text-red-700">
-                                        {packageError}
-                                   </div>
-                              )}
-                              {isLoadingPackages && (
-                                   <LoadingList count={3} />
-                              )}
-                              {!isLoadingPackages && bookingPackages.length === 0 && !packageError && (
-                                   <div className="p-4 rounded-2xl border border-dashed border-teal-200 bg-teal-50/40 text-center text-sm text-teal-700">
-                                        Bạn chưa có gói sân cố định nào.
-                                   </div>
-                              )}
-                              {!isLoadingPackages && bookingPackages.length > 0 && (
-                                   <StaggerContainer staggerDelay={40}>
-                                        {bookingPackages.map((pkg, index) => {
-                                             const sessions = packageSessionsMap[pkg.bookingPackageId] || [];
-                                             const isExpanded = !!expandedPackageSessions[pkg.bookingPackageId];
-
-                                             return (
-                                                  <FadeIn key={pkg.id || index} delay={index * 40}>
-                                                  <div className="p-5 rounded-2xl border border-teal-200 bg-gradient-to-r from-teal-50 to-emerald-50 hover:shadow-lg transition-all duration-300 hover:scale-[1.01]">
-                                                       <div className="flex justify-between items-start gap-4 flex-wrap">
-                                                            <div className="space-y-1">
-                                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                                      <h3 className="text-lg font-bold text-teal-900">{pkg.packageName}</h3>
-                                                                      <Badge variant="outline" className="border-teal-400 bg-teal-100 text-teal-800 font-semibold px-2 py-0.5 flex items-center gap-1">
-                                                                           <Repeat className="w-3 h-3" />
-                                                                           Gói sân cố định
-                                                                      </Badge>
-                                                                 </div>
-                                                                 <div className="text-sm text-gray-700 flex items-center gap-2">
-                                                                      <MapPin className="w-4 h-4 text-teal-600" />
-                                                                      <span>{pkg.fieldName}</span>
-                                                                 </div>
-                                                                 <div className="text-xs text-gray-600">
-                                                                      Thời gian: <span className="font-semibold">{pkg.startDate}</span> - <span className="font-semibold">{pkg.endDate}</span>
-                                                                 </div>
-                                                                 <div className="flex items-center gap-3 text-xs mt-1 flex-wrap">
-                                                                      {pkg.bookingStatus && (
-                                                                           <Badge variant="secondary" className="bg-white text-gray-700 border-gray-200 flex items-center gap-1">
-                                                                                <Calendar className="w-3 h-3" />
-                                                                                Trạng thái: <span className="font-semibold">{pkg.bookingStatus}</span>
-                                                                           </Badge>
-                                                                      )}
-                                                                      {pkg.paymentStatus && (
-                                                                           <Badge variant="secondary" className="bg-white text-gray-700 border-gray-200 flex items-center gap-1">
-                                                                                <CreditCard className="w-3 h-3" />
-                                                                                Thanh toán: <span className="font-semibold">{pkg.paymentStatus}</span>
-                                                                           </Badge>
-                                                                      )}
-                                                                 </div>
-                                                            </div>
-                                                            <div className="flex flex-col items-end gap-2">
-                                                                 <div className="text-sm text-gray-700">
-                                                                      Tổng giá gói
-                                                                 </div>
-                                                                 <div className="text-xl font-bold text-emerald-700">
-                                                                      {formatPrice(pkg.totalPrice)}
-                                                                 </div>
-                                                                 {pkg.qrCodeUrl && (
-                                                                      <div className="mt-1 flex flex-col items-center text-xs text-gray-500">
-                                                                           <img
-                                                                                src={pkg.qrCodeUrl}
-                                                                                alt="QR gói sân cố định"
-                                                                                className="w-28 h-28 rounded-xl border border-teal-100 bg-white object-contain"
-                                                                           />
-                                                                           {pkg.qrExpiresAt && (
-                                                                                <span className="mt-1">
-                                                                                     QR hết hạn: {new Date(pkg.qrExpiresAt).toLocaleString("vi-VN")}
-                                                                                </span>
-                                                                           )}
-                                                                      </div>
-                                                                 )}
-                                                            </div>
-                                                       </div>
-                                                            <div className="mt-4 flex flex-wrap gap-2">
-                                                                 <Button
-                                                                      variant="ghost"
-                                                                      onClick={() => togglePackageSessions(pkg.bookingPackageId)}
-                                                                      className="px-3 py-1 rounded-full border border-teal-200 text-teal-700 hover:bg-teal-100 flex items-center gap-1 text-sm"
-                                                                 >
-                                                                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                                                      {isExpanded ? "Ẩn lịch buổi" : "Xem lịch buổi"}
-                                                                      {sessions.length > 0 && <span>({sessions.length})</span>}
-                                                                 </Button>
-                                                            </div>
-                                                            {isExpanded && (
-                                                                 <div className="mt-3 space-y-2 bg-white/80 border border-teal-100 rounded-2xl p-3">
-                                                                      {sessions.length > 0 ? (
-                                                                           sessions.map((session) => (
-                                                                                <div key={session.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 text-sm border border-teal-50 rounded-xl px-3 py-2 bg-white">
-                                                                                     <div className="flex items-center gap-2 text-gray-800">
-                                                                                          <Calendar className="w-4 h-4 text-blue-600" />
-                                                                                          <span className="font-medium">{formatSessionDateLabel(session.date)}</span>
-                                                                                     </div>
-                                                                                     <div className="flex items-center gap-2 text-gray-700">
-                                                                                          <Clock className="w-4 h-4 text-emerald-600" />
-                                                                                          <span>{formatSessionTimeRange(session)}</span>
-                                                                                     </div>
-                                                                                     {session.status && (
-                                                                                          <Badge className="bg-teal-100 text-teal-700 border-teal-200">{session.status}</Badge>
-                                                                                     )}
-                                                                                </div>
-                                                                           ))
-                                                                      ) : (
-                                                                           <div className="text-sm text-gray-500 italic">Chưa có dữ liệu buổi cho gói này.</div>
-                                                                      )}
-                                                                 </div>
-                                                            )}
-                                                       </div>
-                                                  </FadeIn>
-                                             );
-                                        })}
-                                   </StaggerContainer>
-                              )}
-                         </div>
+                         <FixedPackagesTab
+                              bookingPackages={bookingPackages}
+                              packageSessionsMap={packageSessionsMap}
+                              expandedPackageSessions={expandedPackageSessions}
+                              togglePackageSessions={togglePackageSessions}
+                              packageError={packageError}
+                              isLoadingPackages={isLoadingPackages}
+                              formatPrice={formatPrice}
+                              formatSessionDateLabel={formatSessionDateLabel}
+                              formatSessionTimeRange={formatSessionTimeRange}
+                         />
                     )}
 
                     {/* Match History Tab Content */}
