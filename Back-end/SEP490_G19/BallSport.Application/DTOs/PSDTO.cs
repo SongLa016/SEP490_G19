@@ -9,6 +9,8 @@ namespace BallSport.Application.DTOs
     public class PSDTO
     {
         public int PackageSessionId { get; set; }
+
+        public int BookingPackageId { get; set; }
         public DateOnly SessionDate { get; set; }
         public decimal PricePerSession { get; set; }
         public string? SessionStatus { get; set; }
