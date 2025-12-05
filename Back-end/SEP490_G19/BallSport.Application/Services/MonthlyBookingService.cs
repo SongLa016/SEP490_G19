@@ -359,6 +359,7 @@ using BallSport.Infrastructure.Models;
             return sessions.Select(s => new PSDTO
             {
                 PackageSessionId = s.PackageSessionId,
+                BookingPackageId = s.BookingPackageId,
                 SessionDate = s.SessionDate,
                 PricePerSession = s.PricePerSession,
                 SessionStatus = s.SessionStatus,
@@ -376,6 +377,7 @@ using BallSport.Infrastructure.Models;
             return sessions.Select(s => new PSDTO
             {
                 PackageSessionId = s.PackageSessionId,
+                BookingPackageId = s.BookingPackageId,
                 SessionDate = s.SessionDate,
                 PricePerSession = s.PricePerSession,
                 SessionStatus = s.SessionStatus,
