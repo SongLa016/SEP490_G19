@@ -4,3 +4,4 @@ export { default as BookingCard } from "./BookingCard";
 export { default as BookingActions } from "./BookingActions";
 export { default as BookingMatchRequest } from "./BookingMatchRequest";
 export { default as BookingParticipants } from "./BookingParticipants";
+export { default as FixedPackagesTab } from "./FixedPackagesTab";
