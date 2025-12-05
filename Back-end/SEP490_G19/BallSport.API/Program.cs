@@ -159,6 +159,9 @@ services.AddScoped<OTPService>();
 services.AddScoped<UserProfileService>();
 services.AddScoped<UserProfileRepository>();
 services.AddScoped<ICloudinaryService, CloudinaryService>();
+services.AddScoped<ICloudinaryService, CloudinaryService>();
+services.AddScoped<IUserRepository, LockUserRepository>();
+services.AddScoped<IUserService,LockUserService>();
 
 // --- Booking & Payment ---
 services.AddScoped<BookingService>();
@@ -206,6 +209,7 @@ services.AddScoped<IPlayerProfileRepository, PlayerProfileRepository>();
 services.AddScoped<IPlayerProfileService, PlayerProfileService>();
 services.AddScoped<IFavoriteFieldRepository, FavoriteFieldRepository>();
 services.AddScoped<IFavoriteFieldService, FavoriteFieldService>();
+
 
 // 1. Tăng giới hạn upload (100MB)
 services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = 100_000_000);

@@ -16,5 +16,7 @@ namespace BallSport.Application.DTOs
         public string? Status { get; set; }
         public DateTime? CreatedAt { get; set; }
         public string? ImageUrl { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
     }
 }
