@@ -33,7 +33,24 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using static BallSport.Application.Services.UserService;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = Directory.GetCurrentDirectory()
+});
+
+// --- Xóa các nguồn config mặc định ---
+builder.Configuration.Sources.Clear();
+
+// --- Load config JSON mà không tạo FileSystemWatcher ---
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+    .AddJsonFile(
+        $"appsettings.{builder.Environment.EnvironmentName}.json",
+        optional: true,
+        reloadOnChange: false
+    )
+    .AddEnvironmentVariables();
 
 var services = builder.Services;
 var config = builder.Configuration;
