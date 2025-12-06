@@ -328,16 +328,6 @@ public class Program
                     app.UseEndpoints(endpoints =>
                     {
                         endpoints.MapControllers();
-                        endpoints.MapGet("/", async context =>
-                        {
-                            await context.Response.WriteAsync("✅ BallSport API is running with JWT + CORS + Swagger + Community!");
-                        });
-                    });
-
-
-                    app.UseEndpoints(endpoints =>
-                    {
-                        endpoints.MapControllers();
                         endpoints.MapGet("/", context =>
                         {
                             return context.Response.WriteAsync("✅ BallSport API is running with JWT + CORS + Swagger + Community!");
