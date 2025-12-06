@@ -62,14 +62,35 @@ const ComplexFormModal = ({
                               onLocationSelect={onLocationSelect}
                               placeholder="Nhập địa chỉ hoặc chọn trên bản đồ"
                          />
-                         {formData.lat && formData.lng && (
-                              <div className="mt-2 flex items-center text-xs text-gray-500 bg-green-50 p-2 rounded">
-                                   <CheckCircle className="w-3 h-3 mr-1 text-green-600" />
-                                   <span>
-                                        Vị trí: {formData.lat.toFixed(6)}, {formData.lng.toFixed(6)}
-                                   </span>
+                         {(formData.lat && formData.lng) || (formData.latitude && formData.longitude) ? (
+                              <div className="mt-2 space-y-1">
+                                   <div className="flex items-center text-xs text-gray-500 bg-green-50 p-2 rounded">
+                                        <CheckCircle className="w-3 h-3 mr-1 text-green-600" />
+                                        <span>
+                                             Vị trí: {(formData.latitude || formData.lat)?.toFixed(6)}, {(formData.longitude || formData.lng)?.toFixed(6)}
+                                        </span>
+                                   </div>
+                                   {(formData.ward || formData.district || formData.province) && (
+                                        <div className="flex flex-wrap gap-2 text-xs text-gray-600 bg-blue-50 p-2 rounded">
+                                             {formData.ward && (
+                                                  <span className="px-2 py-1 bg-white rounded border border-blue-200">
+                                                       Phường/Xã: {formData.ward}
+                                                  </span>
+                                             )}
+                                             {formData.district && (
+                                                  <span className="px-2 py-1 bg-white rounded border border-blue-200">
+                                                       Quận/Huyện: {formData.district}
+                                                  </span>
+                                             )}
+                                             {formData.province && (
+                                                  <span className="px-2 py-1 bg-white rounded border border-blue-200">
+                                                       Tỉnh/TP: {formData.province}
+                                                  </span>
+                                             )}
+                                        </div>
+                                   )}
                               </div>
-                         )}
+                         ) : null}
                     </div>
 
                     <div>
