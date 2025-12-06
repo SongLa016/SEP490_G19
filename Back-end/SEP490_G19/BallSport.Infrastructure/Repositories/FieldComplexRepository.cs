@@ -14,7 +14,7 @@ namespace BallSport.Infrastructure.Repositories
             _context = context;
         }
 
-        // 🟢 Thêm khu sân mới
+        //  Thêm khu sân mới
         public async Task<FieldComplex> AddComplexAsync(FieldComplex complex)
         {
             _context.FieldComplexes.Add(complex);
@@ -22,7 +22,7 @@ namespace BallSport.Infrastructure.Repositories
             return complex;
         }
 
-        // 🟢 Lấy 1 khu sân theo ID
+        //  Lấy 1 khu sân theo ID
         public async Task<FieldComplex?> GetComplexByIdAsync(int complexId)
         {
             return await _context.FieldComplexes
@@ -30,7 +30,7 @@ namespace BallSport.Infrastructure.Repositories
                 .FirstOrDefaultAsync(fc => fc.ComplexId == complexId);
         }
 
-        // 🟢 Lấy tất cả khu sân
+        //  Lấy tất cả khu sân
         public async Task<List<FieldComplex>> GetAllComplexesAsync()
         {
             return await _context.FieldComplexes
@@ -38,7 +38,7 @@ namespace BallSport.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        // 🟢 Cập nhật khu sân
+        //  Cập nhật khu sân
         public async Task<FieldComplex?> UpdateComplexAsync(FieldComplex complex)
         {
             var existing = await _context.FieldComplexes.FindAsync(complex.ComplexId);
@@ -56,7 +56,7 @@ namespace BallSport.Infrastructure.Repositories
             return existing;
         }
 
-        // 🟢 Xóa khu sân
+        //  Xóa khu sân
         public async Task<bool> DeleteComplexAsync(int complexId)
         {
             var existing = await _context.FieldComplexes.FindAsync(complexId);
@@ -65,6 +65,15 @@ namespace BallSport.Infrastructure.Repositories
             _context.FieldComplexes.Remove(existing);
             await _context.SaveChangesAsync();
             return true;
+        }
+        // Lấy tất cả khu sân đang hoạt động có tọa độ
+        public async Task<List<FieldComplex>> GetAllActiveWithLocationAsync()
+        {
+            return await _context.FieldComplexes
+                .Where(x => x.Status == "Active"
+                         && x.Latitude != null
+                         && x.Longitude != null)
+                .ToListAsync();
         }
     }
 }
