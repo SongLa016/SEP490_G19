@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Repeat, RefreshCw, CheckCircle, CheckSquare, Eye, AlertTriangle, RotateCcw, XCircle, Info, Calendar, Clock, DollarSign, MapPin, FileText, CreditCard } from "lucide-react";
+import { Repeat, RefreshCw, CheckCircle, CheckSquare, Eye, AlertTriangle, RotateCcw, XCircle, Info, Calendar, Clock, DollarSign, MapPin, FileText, CreditCard, List, User, Phone, Mail } from "lucide-react";
 import { Card, Table, TableHeader, TableHead, TableRow, TableBody, TableCell, Button, Modal } from "../../../../../shared/components/ui";
 import {
   fetchBookingPackagesByOwnerToken,
@@ -9,6 +9,7 @@ import {
   fetchBookingPackageSessionsByOwnerToken,
   cancelBookingPackageSession
 } from "../../../../../shared/services/bookings";
+import { fetchFieldScheduleById } from "../../../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
 
 export default function OwnerPackagesTable({
@@ -24,6 +25,11 @@ export default function OwnerPackagesTable({
   const [packageSessions, setPackageSessions] = useState({});
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isSessionsModalOpen, setIsSessionsModalOpen] = useState(false);
+  const [selectedPackageForSessions, setSelectedPackageForSessions] = useState(null);
+  const [userMap, setUserMap] = useState({}); // Map userId -> user info
+  const [sessionScheduleDataMap, setSessionScheduleDataMap] = useState({}); // Map scheduleId -> schedule data for sessions
+  const [sessionUserMap, setSessionUserMap] = useState({}); // Map userId -> user info for sessions
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString("vi-VN");
@@ -91,8 +97,56 @@ export default function OwnerPackagesTable({
         createdAt: pkg.createdAt || pkg.CreatedAt || null,
         updatedAt: pkg.updatedAt || pkg.UpdatedAt || null,
         fieldStatus: pkg.fieldStatus || "",
+        userId: pkg.userId || pkg.userID || pkg.UserId || pkg.UserID || null,
       }));
       setBookingPackages(normalized);
+
+      // Fetch user info for all unique userIds
+      const uniqueUserIds = [...new Set(normalized.filter(pkg => pkg.userId).map(pkg => pkg.userId))];
+      if (uniqueUserIds.length > 0) {
+        const fetchUsers = async () => {
+          const userInfoMap = {};
+          await Promise.all(
+            uniqueUserIds.map(async (userId) => {
+              try {
+                const token = localStorage.getItem("token");
+                const response = await fetch(`https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`, {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                  },
+                });
+                if (response.ok) {
+                  const userData = await response.json();
+                  const userName = userData.fullName || userData.FullName || userData.name || userData.Name || userData.email || userData.Email || `User #${userId}`;
+                  const userPhone = userData.phone || userData.Phone || userData.phoneNumber || userData.PhoneNumber || userData.mobile || userData.Mobile || null;
+                  const userEmail = userData.email || userData.Email || null;
+                  userInfoMap[userId] = {
+                    name: userName,
+                    phone: userPhone,
+                    email: userEmail
+                  };
+                } else {
+                  userInfoMap[userId] = {
+                    name: `User #${userId}`,
+                    phone: null,
+                    email: null
+                  };
+                }
+              } catch (error) {
+                console.error(`Error fetching user ${userId}:`, error);
+                userInfoMap[userId] = {
+                  name: `User #${userId}`,
+                  phone: null,
+                  email: null
+                };
+              }
+            })
+          );
+          setUserMap(prev => ({ ...prev, ...userInfoMap }));
+        };
+        fetchUsers();
+      }
 
       // Fetch sessions for all packages
       try {
@@ -203,6 +257,102 @@ export default function OwnerPackagesTable({
     }
   }, [isDetailModalOpen, selectedPackage]);
 
+  // Fetch sessions khi mở modal danh sách buổi đặt
+  useEffect(() => {
+    if (isSessionsModalOpen && selectedPackageForSessions) {
+      const fetchSessions = async () => {
+        try {
+          const sessionsResult = await fetchBookingPackageSessionsByOwnerToken();
+          if (sessionsResult.success && sessionsResult.data) {
+            const sessionsMap = {};
+            const sessionsArray = sessionsResult.data;
+            sessionsArray.forEach(session => {
+              const pkgId = session.bookingPackageId || session.bookingPackageID;
+              if (pkgId) {
+                if (!sessionsMap[pkgId]) {
+                  sessionsMap[pkgId] = [];
+                }
+                sessionsMap[pkgId].push(session);
+              }
+            });
+            setPackageSessions(prev => ({ ...prev, ...sessionsMap }));
+
+            // Fetch schedule data for all sessions
+            const scheduleIds = [...new Set(sessionsArray.filter(s => s.scheduleId || s.scheduleID).map(s => s.scheduleId || s.scheduleID))];
+            if (scheduleIds.length > 0) {
+              const schedulePromises = scheduleIds.map(async (scheduleId) => {
+                try {
+                  const scheduleResult = await fetchFieldScheduleById(scheduleId);
+                  if (scheduleResult.success && scheduleResult.data) {
+                    return { scheduleId, data: scheduleResult.data };
+                  }
+                } catch (error) {
+                  console.error(`Error fetching schedule ${scheduleId}:`, error);
+                }
+                return null;
+              });
+              const scheduleResults = await Promise.all(schedulePromises);
+              const scheduleMap = {};
+              scheduleResults.forEach(result => {
+                if (result && result.scheduleId) {
+                  scheduleMap[result.scheduleId] = result.data;
+                }
+              });
+              setSessionScheduleDataMap(scheduleMap);
+            }
+
+            // Fetch user data for all sessions
+            const userIds = [...new Set(sessionsArray.filter(s => s.userId || s.userID).map(s => s.userId || s.userID))];
+            if (userIds.length > 0) {
+              const userPromises = userIds.map(async (userId) => {
+                try {
+                  const token = localStorage.getItem("token");
+                  const response = await fetch(`https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`, {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      "Content-Type": "application/json",
+                    },
+                  });
+                  if (response.ok) {
+                    const userData = await response.json();
+                    return {
+                      userId,
+                      name: userData.fullName || `User #${userId}`,
+                      phone: userData.phone || null,
+                      email: userData.email || null
+                    };
+                  }
+                } catch (error) {
+                  console.error(`Error fetching user ${userId}:`, error);
+                }
+                return { userId, name: `User #${userId}`, phone: null, email: null };
+              });
+              const userResults = await Promise.all(userPromises);
+              const userInfoMap = {};
+              userResults.forEach(result => {
+                if (result && result.userId) {
+                  userInfoMap[result.userId] = {
+                    name: result.name,
+                    phone: result.phone,
+                    email: result.email
+                  };
+                }
+              });
+              setSessionUserMap(userInfoMap);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching package sessions:", error);
+        }
+      };
+      fetchSessions();
+    } else {
+      // Reset khi đóng modal
+      setSessionScheduleDataMap({});
+      setSessionUserMap({});
+    }
+  }, [isSessionsModalOpen, selectedPackageForSessions]);
+
   const handleConfirmPackage = async (pkgId) => {
     const result = await Swal.fire({
       icon: "question",
@@ -242,10 +392,11 @@ export default function OwnerPackagesTable({
   };
 
   const handleCancelSession = async (session) => {
+    const sessionPrice = session.pricePerSession || session.price || 0;
     const result = await Swal.fire({
       icon: "warning",
       title: "Hủy buổi đặt",
-      text: `Bạn có chắc chắn muốn hủy buổi đặt này? Số tiền ${session.price ? Number(session.price).toLocaleString("vi-VN") + "₫" : ""} sẽ được hoàn lại.`,
+      text: `Bạn có chắc chắn muốn hủy buổi đặt này? Số tiền ${sessionPrice ? Number(sessionPrice).toLocaleString("vi-VN") + "₫" : ""} sẽ được hoàn lại.`,
       showCancelButton: true,
       confirmButtonText: "Hủy buổi",
       cancelButtonText: "Không",
@@ -254,29 +405,48 @@ export default function OwnerPackagesTable({
     if (!result.isConfirmed) return;
 
     try {
-      const resp = await cancelBookingPackageSession(session.id || session.sessionId);
+      const sessionId = session.packageSessionId || session.id || session.sessionId;
+      const resp = await cancelBookingPackageSession(sessionId);
       if (!resp.success) {
         await Swal.fire("Lỗi", resp.error || "Không thể hủy buổi đặt.", "error");
       } else {
-        const refundQr = resp.data?.data?.refundQr || resp.data?.refundQr;
+        // Lấy refundQr từ response - có thể ở nhiều vị trí
+        const responseData = resp.data?.data || resp.data || {};
+        const refundQr = responseData.refundQr || resp.data?.refundQr;
+        const refundAmount = responseData.price || sessionPrice;
+
         if (refundQr) {
           await Swal.fire({
             icon: "success",
-            title: "Đã hủy buổi đặt",
+            title: "Đã hủy buổi đặt thành công",
             html: `
               <div class="text-center">
-                <p class="mb-3">Buổi đặt đã được hủy thành công.</p>
-                <p class="text-sm text-gray-600 mb-2">Vui lòng quét mã QR để hoàn tiền cho khách hàng:</p>
-                <img src="${refundQr}" alt="QR Code hoàn tiền" class="mx-auto rounded-lg shadow-md" style="max-width: 250px;" />
+                <p class="mb-3 text-gray-700">Buổi đặt đã được hủy thành công.</p>
+                ${refundAmount ? `<p class="text-sm font-semibold text-orange-600 mb-3">Số tiền hoàn lại: <span class="text-lg">${Number(refundAmount).toLocaleString("vi-VN")}₫</span></p>` : ''}
+                <p class="text-sm text-gray-600 mb-3">Vui lòng quét mã QR để hoàn tiền cho khách hàng:</p>
+                <div class="flex justify-center mb-3">
+                  <img src="${refundQr}" alt="QR Code hoàn tiền" class="rounded-lg shadow-lg border-2 border-gray-200" style="max-width: 280px; width: 100%;" />
+                </div>
+                <p class="text-xs text-gray-500 italic">Lưu ý: Mã QR này dùng để quét và hoàn tiền cho khách hàng</p>
               </div>
             `,
-            confirmButtonText: "Đóng",
-            width: "500px"
+            confirmButtonText: "Đã hiểu",
+            width: "550px",
+            customClass: {
+              popup: 'rounded-2xl',
+              confirmButton: 'rounded-xl bg-teal-600 hover:bg-teal-700'
+            }
           });
         } else {
-          await Swal.fire("Thành công", "Đã hủy buổi đặt thành công.", "success");
+          await Swal.fire({
+            icon: "success",
+            title: "Đã hủy buổi đặt",
+            text: refundAmount ? `Đã hủy buổi đặt thành công. Số tiền ${Number(refundAmount).toLocaleString("vi-VN")}₫ sẽ được hoàn lại.` : "Đã hủy buổi đặt thành công.",
+            confirmButtonText: "Đóng"
+          });
         }
-        // Reload sessions
+
+        // Reload sessions để cập nhật trạng thái
         const sessionsResult = await fetchBookingPackageSessionsByOwnerToken();
         if (sessionsResult.success && sessionsResult.data) {
           const sessionsMap = {};
@@ -291,6 +461,58 @@ export default function OwnerPackagesTable({
           });
           setPackageSessions(prev => ({ ...prev, ...sessionsMap }));
         }
+
+        // Reload schedule và user data nếu modal đang mở
+        if (isSessionsModalOpen && selectedPackageForSessions) {
+          // Trigger reload bằng cách fetch lại
+          const fetchSessions = async () => {
+            try {
+              const sessionsResult = await fetchBookingPackageSessionsByOwnerToken();
+              if (sessionsResult.success && sessionsResult.data) {
+                const sessionsArray = sessionsResult.data;
+                const sessionsMap = {};
+                sessionsArray.forEach(session => {
+                  const pkgId = session.bookingPackageId || session.bookingPackageID;
+                  if (pkgId) {
+                    if (!sessionsMap[pkgId]) {
+                      sessionsMap[pkgId] = [];
+                    }
+                    sessionsMap[pkgId].push(session);
+                  }
+                });
+                setPackageSessions(prev => ({ ...prev, ...sessionsMap }));
+
+                // Reload schedule data
+                const scheduleIds = [...new Set(sessionsArray.filter(s => s.scheduleId || s.scheduleID).map(s => s.scheduleId || s.scheduleID))];
+                if (scheduleIds.length > 0) {
+                  const schedulePromises = scheduleIds.map(async (scheduleId) => {
+                    try {
+                      const scheduleResult = await fetchFieldScheduleById(scheduleId);
+                      if (scheduleResult.success && scheduleResult.data) {
+                        return { scheduleId, data: scheduleResult.data };
+                      }
+                    } catch (error) {
+                      console.error(`Error fetching schedule ${scheduleId}:`, error);
+                    }
+                    return null;
+                  });
+                  const scheduleResults = await Promise.all(schedulePromises);
+                  const scheduleMap = {};
+                  scheduleResults.forEach(result => {
+                    if (result && result.scheduleId) {
+                      scheduleMap[result.scheduleId] = result.data;
+                    }
+                  });
+                  setSessionScheduleDataMap(scheduleMap);
+                }
+              }
+            } catch (error) {
+              console.error("Error reloading sessions:", error);
+            }
+          };
+          fetchSessions();
+        }
+
         // Reload packages để cập nhật trạng thái
         loadBookingPackages();
       }
@@ -303,6 +525,11 @@ export default function OwnerPackagesTable({
   const handleViewDetails = (pkg) => {
     setSelectedPackage(pkg);
     setIsDetailModalOpen(true);
+  };
+
+  const handleViewSessions = (pkg) => {
+    setSelectedPackageForSessions(pkg);
+    setIsSessionsModalOpen(true);
   };
 
   return (
@@ -335,8 +562,9 @@ export default function OwnerPackagesTable({
             <Table className="rounded-2xl border border-teal-300">
               <TableHeader>
                 <TableRow className="bg-gradient-to-r from-blue-500 to-teal-500">
-                  <TableHead className="text-white font-semibold">STT</TableHead>
+                  <TableHead className="text-white font-semibold">Khách hàng</TableHead>
                   <TableHead className="text-white font-semibold">Tên</TableHead>
+
                   <TableHead className="text-white font-semibold">Sân</TableHead>
                   <TableHead className="text-white font-semibold">Thời gian</TableHead>
                   <TableHead className="text-white font-semibold">Tổng giá</TableHead>
@@ -393,7 +621,28 @@ export default function OwnerPackagesTable({
 
                   return (
                     <TableRow key={pkg.id}>
-                      <TableCell className="font-semibold text-teal-700">{idx + 1}</TableCell>
+                      <TableCell>
+                        {pkg.userId ? (
+                          userMap[pkg.userId] ? (
+                            <div className="text-sm truncate">
+                              <div className="font-medium flex items-center gap-1 text-indigo-700">
+                                <User className="w-3 h-3" />
+                                {userMap[pkg.userId].name}</div>
+                              {userMap[pkg.userId].phone && (
+                                <div className="text-xs text-gray-600 mt-0.5 flex items-center gap-1">
+                                  <Phone className="w-3 h-3" />
+                                  {userMap[pkg.userId].phone}
+                                </div>
+                              )}
+
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-500">Đang tải...</div>
+                          )
+                        ) : (
+                          <div className="text-sm text-gray-400">—</div>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="font-medium text-teal-700">{pkg.packageName}</div>
                       </TableCell>
@@ -446,6 +695,15 @@ export default function OwnerPackagesTable({
                             title="Xem chi tiết"
                           >
                             <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-purple-600 hover:text-purple-700 rounded-full hover:bg-purple-50"
+                            onClick={() => handleViewSessions(pkg)}
+                            title="Danh sách buổi đặt"
+                          >
+                            <List className="w-4 h-4" />
                           </Button>
                           {showConfirm && (
                             <Button
@@ -571,97 +829,6 @@ export default function OwnerPackagesTable({
               </div>
             </div>
 
-            {/* Danh sách sessions */}
-            {(() => {
-              const sessions = packageSessions[selectedPackage.bookingPackageId] || packageSessions[selectedPackage.id] || [];
-              if (sessions.length === 0) return null;
-
-              const sortedSessions = [...sessions].sort((a, b) => {
-                const dateA = a.date ? new Date(a.date) : null;
-                const dateB = b.date ? new Date(b.date) : null;
-                if (!dateA && !dateB) return 0;
-                if (!dateA) return 1;
-                if (!dateB) return -1;
-                if (dateA.getTime() !== dateB.getTime()) {
-                  return dateA.getTime() - dateB.getTime();
-                }
-                const startTimeA = a.startTime ? (typeof a.startTime === 'string' ? new Date(a.startTime) : a.startTime) : null;
-                const startTimeB = b.startTime ? (typeof b.startTime === 'string' ? new Date(b.startTime) : b.startTime) : null;
-                if (!startTimeA && !startTimeB) return 0;
-                if (!startTimeA) return 1;
-                if (!startTimeB) return -1;
-                return startTimeA.getTime() - startTimeB.getTime();
-              });
-
-              return (
-                <div className="rounded-2xl border border-purple-100 bg-purple-50/60 p-4">
-                  <div className="flex items-center gap-2 text-purple-800 font-semibold mb-3">
-                    <Calendar className="w-5 h-5" />
-                    <span>Danh sách buổi đặt ({sessions.length} buổi)</span>
-                  </div>
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {sortedSessions.map((session, idx) => {
-                      const sessionDate = session.date ? new Date(session.date) : null;
-                      const startTime = session.startTime ? (typeof session.startTime === 'string' ? new Date(session.startTime) : session.startTime) : null;
-                      const endTime = session.endTime ? (typeof session.endTime === 'string' ? new Date(session.endTime) : session.endTime) : null;
-                      const sessionStatus = (session.sessionStatus || session.status || "").toLowerCase();
-                      const isCancelled = sessionStatus.includes("cancel");
-                      const isPast = endTime ? endTime < new Date() : false;
-
-                      return (
-                        <div key={session.id || session.sessionId || idx} className="p-3 rounded-xl border border-white/70 bg-white flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-semibold text-purple-800">
-                                Buổi {idx + 1}
-                              </span>
-                              {isCancelled && (
-                                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                                  Đã hủy
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-600 space-y-1">
-                              {sessionDate && (
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  <span>{sessionDate.toLocaleDateString("vi-VN")}</span>
-                                </div>
-                              )}
-                              {startTime && endTime && (
-                                <div className="flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  <span>
-                                    {startTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} - {endTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
-                                  </span>
-                                </div>
-                              )}
-                              {session.price && (
-                                <div className="flex items-center gap-1">
-                                  <DollarSign className="w-3 h-3" />
-                                  <span className="font-semibold text-orange-600">{Number(session.price).toLocaleString("vi-VN")}₫</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          {!isCancelled && !isPast && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleCancelSession(session)}
-                              className="rounded-xl border-red-300 text-red-600 hover:bg-red-50 font-semibold"
-                            >
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Hủy
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
 
             {/* Actions */}
             <div className="flex justify-between items-center pt-4 border-t border-gray-200">
@@ -699,6 +866,321 @@ export default function OwnerPackagesTable({
                   </div>
                 );
               })()}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-600">Không tìm thấy thông tin gói.</p>
+        )}
+      </Modal>
+
+      {/* Modal danh sách buổi đặt */}
+      <Modal
+        isOpen={isSessionsModalOpen}
+        onClose={() => {
+          setIsSessionsModalOpen(false);
+          setSelectedPackageForSessions(null);
+        }}
+        title="Danh sách buổi đặt"
+        className="max-w-3xl rounded-2xl border border-purple-200 shadow-lg bg-white"
+      >
+        {selectedPackageForSessions ? (
+          <div className="space-y-2">
+            {/* Thông tin gói */}
+            {(() => {
+              const sessions = packageSessions[selectedPackageForSessions.bookingPackageId] || packageSessions[selectedPackageForSessions.id] || [];
+              const firstSession = sessions.length > 0 ? sessions[0] : null;
+              const packageUserId = selectedPackageForSessions.userId || (firstSession ? (firstSession.userId || firstSession.userID) : null);
+              const packageUserInfo = packageUserId ? sessionUserMap[packageUserId] : null;
+
+              return (
+                <div className="rounded-xl border border-purple-100 bg-purple-50/60 p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="text-sm text-gray-600">
+                      <div className="flex items-center gap-2 text-purple-800 font-semibold mb-3">
+                        <Repeat className="w-5 h-5" />
+                        <span>{selectedPackageForSessions.packageName || "Gói sân cố định"}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <MapPin className="w-4 h-4" />
+                        <span className="font-medium">{selectedPackageForSessions.fieldName || `Sân #${selectedPackageForSessions.fieldId}`}</span>
+                      </div>
+                    </div>
+                    <div>
+                      {packageUserInfo && (
+                        <div className="text-sm">
+                          <div className="font-semibold text-xs text-indigo-800 mb-2 flex items-center gap-1">
+                            <User className="w-4 h-4" />
+                            Khách hàng
+                          </div>
+                          <div className="space-y-1 text-gray-700">
+                            <div className="flex items-center gap-1.5">
+                              <User className="w-3.5 h-3.5 text-indigo-600" />
+                              <span className="font-medium">Tên:</span>
+                              <span className="font-semibold text-indigo-700">{packageUserInfo.name}</span>
+                            </div>
+                            {packageUserInfo.phone && (
+                              <div className="flex items-center gap-1.5">
+                                <Phone className="w-3.5 h-3.5 text-indigo-600" />
+                                <span className="font-medium">ĐT:</span>
+                                <span>{packageUserInfo.phone}</span>
+                              </div>
+                            )}
+                            {packageUserInfo.email && (
+                              <div className="flex items-center gap-1.5">
+                                <Mail className="w-3.5 h-3.5 text-indigo-600" />
+                                <span className="font-medium">Email:</span>
+                                <span>{packageUserInfo.email}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Danh sách sessions */}
+            {(() => {
+              const sessions = packageSessions[selectedPackageForSessions.bookingPackageId] || packageSessions[selectedPackageForSessions.id] || [];
+
+              if (sessions.length === 0) {
+                return (
+                  <div className="text-center py-8 text-sm text-gray-600">
+                    Chưa có buổi đặt nào cho gói này.
+                  </div>
+                );
+              }
+
+              const sortedSessions = [...sessions].sort((a, b) => {
+                const dateA = a.date ? new Date(a.date) : null;
+                const dateB = b.date ? new Date(b.date) : null;
+                if (!dateA && !dateB) return 0;
+                if (!dateA) return 1;
+                if (!dateB) return -1;
+                if (dateA.getTime() !== dateB.getTime()) {
+                  return dateA.getTime() - dateB.getTime();
+                }
+                const startTimeA = a.startTime ? (typeof a.startTime === 'string' ? new Date(a.startTime) : a.startTime) : null;
+                const startTimeB = b.startTime ? (typeof b.startTime === 'string' ? new Date(b.startTime) : b.startTime) : null;
+                if (!startTimeA && !startTimeB) return 0;
+                if (!startTimeA) return 1;
+                if (!startTimeB) return -1;
+                return startTimeA.getTime() - startTimeB.getTime();
+              });
+
+              // Đếm số buổi đã hủy và đã đặt
+              const cancelledCount = sessions.filter(s => {
+                const status = (s.sessionStatus || s.status || "").toLowerCase();
+                return status.includes("cancel");
+              }).length;
+              const bookedCount = sessions.filter(s => {
+                const status = (s.sessionStatus || s.status || "").toLowerCase();
+                return !status.includes("cancel");
+              }).length;
+
+              return (
+                <div className="rounded-2xl border border-purple-100 bg-purple-50/60 p-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-purple-800 font-semibold">
+                      <Calendar className="w-5 h-5" />
+                      <span>Danh sách buổi đặt ({sessions.length} buổi)</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        <span className="font-semibold">Đã đặt: {bookedCount}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-100 text-red-700 border border-red-200">
+                        <XCircle className="w-3.5 h-3.5" />
+                        <span className="font-semibold">Đã hủy: {cancelledCount}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {sortedSessions.map((session, idx) => {
+                      // Lấy các thông tin từ JSON session
+                      const packageSessionId = session.packageSessionId || session.id || session.sessionId;
+                      const sessionDate = session.sessionDate || session.date ? new Date(session.sessionDate || session.date) : null;
+                      const pricePerSession = session.pricePerSession || session.price;
+                      const sessionStatus = session.sessionStatus || session.status || "";
+                      const scheduleId = session.scheduleId || session.scheduleID;
+
+                      // Lấy thông tin từ schedule
+                      const scheduleData = scheduleId ? sessionScheduleDataMap[scheduleId] : null;
+                      const scheduleStartTime = scheduleData?.startTime || null;
+                      const scheduleEndTime = scheduleData?.endTime || null;
+                      const scheduleSlotName = scheduleData?.slotName || null;
+
+                      // Fallback về session time nếu không có schedule
+                      const startTime = scheduleStartTime || (session.startTime ? (typeof session.startTime === 'string' ? new Date(session.startTime) : session.startTime) : null);
+                      const endTime = scheduleEndTime || (session.endTime ? (typeof session.endTime === 'string' ? new Date(session.endTime) : session.endTime) : null);
+                      const sessionStatusLower = sessionStatus.toLowerCase();
+                      const isCancelled = sessionStatusLower.includes("cancel");
+                      const isPast = endTime ? endTime < new Date() : false;
+
+                      // Hàm lấy màu cho trạng thái
+                      const getStatusBadgeClass = (status) => {
+                        const statusLower = (status || "").toLowerCase();
+                        if (statusLower.includes("cancel")) {
+                          return "bg-red-100 text-red-700 border-red-200";
+                        }
+                        if (statusLower.includes("booking") || statusLower.includes("pending")) {
+                          return "bg-green-100 text-teal-700 border-teal-200";
+                        }
+                        if (statusLower.includes("confirmed") || statusLower.includes("active")) {
+                          return "bg-green-100 text-green-700 border-green-200";
+                        }
+                        if (statusLower.includes("completed")) {
+                          return "bg-blue-100 text-blue-700 border-blue-200";
+                        }
+                        return "bg-gray-100 text-gray-700 border-gray-200";
+                      };
+
+                      const getStatusText = (status) => {
+                        const statusLower = (status || "").toLowerCase();
+                        if (statusLower.includes("cancel")) {
+                          return "Đã hủy";
+                        }
+                        if (statusLower.includes("booking") || statusLower.includes("pending")) {
+                          return "Đặt";
+                        }
+                      };
+
+                      const getStatusIcon = (status) => {
+                        const statusLower = (status || "").toLowerCase();
+                        if (statusLower.includes("cancel")) {
+                          return <XCircle className="w-4 h-4" />;
+                        }
+                        return <CheckCircle className="w-4 h-4" />;
+                      };
+
+                      return (
+                        <div key={packageSessionId || idx} className="p-3 rounded-2xl border border-purple-300 bg-white">
+                          <div className="flex items-center gap-2 flex-wrap mb-2">
+                            <span className="text-sm font-semibold text-purple-800">
+                              Buổi {idx + 1}
+                            </span>
+                            {packageSessionId && (
+                              <span className="text-xs text-gray-500">
+                                #{packageSessionId}
+                              </span>
+                            )}
+                            {sessionStatus && (
+                              <span className={`px-2 py-0.5 flex items-center gap-1 rounded-full text-xs font-semibold border ${getStatusBadgeClass(sessionStatus)}`}>
+                                {getStatusIcon(sessionStatus)}
+                                {getStatusText(sessionStatus)}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Lịch trình, giá và button Hủy cùng 1 hàng */}
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            {/* Lịch trình */}
+                            <div className="flex-1 min-w-[200px]">
+                              <div className="p-2 rounded-xl bg-blue-50 border border-blue-100 text-xs">
+                                <div className="font-semibold text-blue-800 mb-1 flex items-center gap-1">
+                                  <Clock className="w-3.5 h-3.5" />
+                                  Lịch trình
+                                </div>
+                                <div className="space-y-1 text-gray-700">
+                                  {sessionDate && (
+                                    <div className="flex items-center gap-1.5">
+                                      <Calendar className="w-3 h-3 text-blue-600" />
+                                      <span className="font-medium">Ngày:</span>
+                                      <span>{sessionDate.toLocaleDateString("vi-VN")}</span>
+                                    </div>
+                                  )}
+                                  {scheduleSlotName ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <Clock className="w-3 h-3 text-blue-600" />
+                                      <span className="font-medium">Giờ:</span>
+                                      <span className="font-semibold">{scheduleSlotName}</span>
+                                    </div>
+                                  ) : startTime && endTime ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <Clock className="w-3 h-3 text-blue-600" />
+                                      <span className="font-medium">Giờ:</span>
+                                      <span>
+                                        {typeof startTime === 'string' ? startTime : startTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} - {typeof endTime === 'string' ? endTime : endTime.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                                      </span>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Giá */}
+                            {pricePerSession && (
+                              <div className="flex items-center gap-1.5 text-gray-700 p-2 rounded-lg bg-orange-50 border border-orange-100 text-xs">
+                                <DollarSign className="w-3.5 h-3.5 text-orange-600" />
+                                <span className="font-medium">Giá:</span>
+                                <span className="font-bold text-orange-600">{Number(pricePerSession).toLocaleString("vi-VN")}₫</span>
+                              </div>
+                            )}
+
+                            {/* Button Hủy */}
+                            <div className="flex-shrink-0">
+                              {!isCancelled && !isPast && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    handleCancelSession(session);
+                                    // Reload sessions after cancel
+                                    setTimeout(() => {
+                                      const fetchSessions = async () => {
+                                        try {
+                                          const sessionsResult = await fetchBookingPackageSessionsByOwnerToken();
+                                          if (sessionsResult.success && sessionsResult.data) {
+                                            const sessionsMap = {};
+                                            sessionsResult.data.forEach(s => {
+                                              const pkgId = s.bookingPackageId || s.bookingPackageID;
+                                              if (pkgId) {
+                                                if (!sessionsMap[pkgId]) {
+                                                  sessionsMap[pkgId] = [];
+                                                }
+                                                sessionsMap[pkgId].push(s);
+                                              }
+                                            });
+                                            setPackageSessions(prev => ({ ...prev, ...sessionsMap }));
+                                          }
+                                        } catch (error) {
+                                          console.error("Error fetching package sessions:", error);
+                                        }
+                                      };
+                                      fetchSessions();
+                                    }, 500);
+                                  }}
+                                  className="rounded-xl border-red-300 text-red-600 hover:text-red-700 hover:bg-red-50 font-semibold"
+                                >
+                                  <XCircle className="w-4 h-4 mr-1" />
+                                  Hủy
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Actions */}
+            <div className="flex justify-end items-center pt-4 border-t border-gray-200">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsSessionsModalOpen(false);
+                  setSelectedPackageForSessions(null);
+                }}
+                className="rounded-xl border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold"
+              >
+                Đóng
+              </Button>
             </div>
           </div>
         ) : (

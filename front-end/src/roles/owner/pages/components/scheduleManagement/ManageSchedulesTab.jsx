@@ -93,7 +93,27 @@ export default function ManageSchedulesTab({
 
                // Filter by date
                if (scheduleFilterDate) {
-                    const filterDateStr = scheduleFilterDate.toISOString().split('T')[0];
+                    // Handle both Date object and string
+                    let filterDateStr;
+                    if (scheduleFilterDate instanceof Date) {
+                         filterDateStr = scheduleFilterDate.toISOString().split('T')[0];
+                    } else if (typeof scheduleFilterDate === 'string') {
+                         // If it's already in YYYY-MM-DD format, use it directly
+                         if (/^\d{4}-\d{2}-\d{2}$/.test(scheduleFilterDate)) {
+                              filterDateStr = scheduleFilterDate;
+                         } else {
+                              // Try to parse it as a date
+                              const parsedDate = new Date(scheduleFilterDate);
+                              if (!isNaN(parsedDate.getTime())) {
+                                   filterDateStr = parsedDate.toISOString().split('T')[0];
+                              } else {
+                                   return false; // Invalid date format
+                              }
+                         }
+                    } else {
+                         return false; // Invalid type
+                    }
+                    
                     const scheduleDateStr = date ? date.toISOString().split('T')[0] : '';
                     if (scheduleDateStr !== filterDateStr) {
                          return false;

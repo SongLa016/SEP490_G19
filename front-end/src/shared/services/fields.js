@@ -43,21 +43,18 @@ apiClient.interceptors.request.use(
 
 // Helper function to handle API errors
 const handleApiError = (error) => {
+  // Preserve the original error with all its properties
+  // This allows components to access error.response for detailed error handling
+  if (error.response) {
+    // Keep the original error so components can access error.response
+    throw error;
+  }
+  
+  // For non-response errors, create a new error with message
   let errorMessage = "Có lỗi xảy ra khi gọi API";
   let details = "";
 
-  if (error.response) {
-    const { status, statusText, data } = error.response;
-    if (status === 404) {
-      errorMessage = "API endpoint không tồn tại.";
-    } else if (status === 500) {
-      errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau.";
-    } else if (data && data.message) {
-      errorMessage = data.message;
-    } else {
-      errorMessage = `Lỗi ${status}: ${statusText}`;
-    }
-  } else if (error.request) {
+  if (error.request) {
     // Check if it's a CORS error
     if (
       error.code === "ERR_NETWORK" ||
@@ -83,6 +80,7 @@ const handleApiError = (error) => {
   }
 
   const fullError = new Error(errorMessage);
+  fullError.originalError = error;
   if (details) {
     fullError.details = details;
   }
@@ -217,8 +215,13 @@ export async function fetchFieldComplexes() {
         status: complex.status || complex.Status || "Active",
         createdAt: complex.createdAt || complex.CreatedAt,
         ownerName: complex.ownerName || complex.OwnerName || "",
-        lat: complex.lat || complex.Lat,
-        lng: complex.lng || complex.Lng,
+        lat: complex.lat || complex.Lat || complex.latitude || complex.Latitude,
+        lng: complex.lng || complex.Lng || complex.longitude || complex.Longitude,
+        latitude: complex.latitude || complex.Latitude || complex.lat || complex.Lat,
+        longitude: complex.longitude || complex.Longitude || complex.lng || complex.Lng,
+        ward: complex.ward || complex.Ward || "",
+        district: complex.district || complex.District || "",
+        province: complex.province || complex.Province || "",
       };
     });
 
@@ -255,8 +258,13 @@ export async function fetchFieldComplex(id) {
         status: complex.status || complex.Status || "Active",
         createdAt: complex.createdAt || complex.CreatedAt,
         ownerName: complex.ownerName || complex.OwnerName || "",
-        lat: complex.lat || complex.Lat,
-        lng: complex.lng || complex.Lng,
+        lat: complex.lat || complex.Lat || complex.latitude || complex.Latitude,
+        lng: complex.lng || complex.Lng || complex.longitude || complex.Longitude,
+        latitude: complex.latitude || complex.Latitude || complex.lat || complex.Lat,
+        longitude: complex.longitude || complex.Longitude || complex.lng || complex.Lng,
+        ward: complex.ward || complex.Ward || "",
+        district: complex.district || complex.District || "",
+        province: complex.province || complex.Province || "",
       };
     }
 
@@ -621,8 +629,13 @@ export async function fetchComplexes(params = {}) {
             address: complex.address,
             // Only use URL from Cloudinary
             imageUrl: complex.imageUrl,
-            lat: complex.lat,
-            lng: complex.lng,
+            lat: complex.lat || complex.latitude,
+            lng: complex.lng || complex.longitude,
+            latitude: complex.latitude || complex.lat,
+            longitude: complex.longitude || complex.lng,
+            ward: complex.ward || "",
+            district: complex.district || "",
+            province: complex.province || "",
             totalFields: fields.length,
             availableFields: fields.filter((f) => f.status === "Available")
               .length,
@@ -643,8 +656,13 @@ export async function fetchComplexes(params = {}) {
             address: complex.address,
             // Only use URL from Cloudinary
             imageUrl: complex.imageUrl,
-            lat: complex.lat,
-            lng: complex.lng,
+            lat: complex.lat || complex.latitude,
+            lng: complex.lng || complex.longitude,
+            latitude: complex.latitude || complex.lat,
+            longitude: complex.longitude || complex.lng,
+            ward: complex.ward || "",
+            district: complex.district || "",
+            province: complex.province || "",
             totalFields: 0,
             availableFields: 0,
             minPriceForSelectedSlot: 0,

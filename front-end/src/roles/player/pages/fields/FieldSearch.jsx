@@ -863,7 +863,20 @@ export default function FieldSearch({ user }) {
           // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [userLocation, complexes.length, fields.length]);
 
-     // const nearGroup = [...filteredFields].sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0)).slice(0, 4);
+     // Calculate near group - complexes sorted by distance
+     const nearGroup = [...complexes]
+          .filter(c => {
+               const lat = c.lat ?? c.latitude;
+               const lng = c.lng ?? c.longitude;
+               return typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng);
+          })
+          .sort((a, b) => {
+               const distA = typeof a.distanceKm === "number" && !isNaN(a.distanceKm) ? a.distanceKm : Infinity;
+               const distB = typeof b.distanceKm === "number" && !isNaN(b.distanceKm) ? b.distanceKm : Infinity;
+               return distA - distB;
+          })
+          .slice(0, 4);
+     
      const bestPriceGroup = [...filteredFields].sort((a, b) => (a.priceForSelectedSlot || 0) - (b.priceForSelectedSlot || 0)).slice(0, 4);
      const topRatedGroup = [...filteredFields].sort((a, b) => b.rating - a.rating).slice(0, 4);
 
@@ -1118,7 +1131,7 @@ export default function FieldSearch({ user }) {
                                              iconColor="text-teal-800"
                                              bgColor="bg-teal-50"
                                              borderColor="border-teal-300"
-                                             items={complexes.slice(0, 4)}
+                                             items={nearGroup}
                                              type="complex"
                                              navigate={navigate}
                                              formatPrice={formatPrice}
@@ -1126,6 +1139,7 @@ export default function FieldSearch({ user }) {
                                              handleLoginRequired={(msg) => showToastMessage(msg, 'warning')}
                                              onToggleFavoriteComplex={handleToggleFavoriteComplex}
                                              handleViewAll={() => { setActiveTab("near"); setForceList(true); setPage(1); setEntityTab("complexes"); }}
+                                             showDistance={true}
                                         />
                                    </ScrollReveal>
 

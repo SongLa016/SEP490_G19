@@ -139,9 +139,9 @@ export default function GroupedViewSection({
                                                             <div className="text-xs font-semibold flex items-center text-red-500">
 
                                                                  {typeof item.distanceKm === 'number' && !Number.isNaN(item.distanceKm) && (
-                                                                      <span className="text-xs font-semibold text-red-500 whitespace-nowrap">
-                                                                           <MapPin className="w-4 h-4 mr-1" />
-                                                                           • {item.distanceKm.toFixed(1)} km
+                                                                      <span className="text-xs flex items-center gap-1 font-semibold text-red-500 whitespace-nowrap">
+                                                                           <MapPin className="w-4 h-4" />
+                                                                           {item.distanceKm.toFixed(1)} km
                                                                       </span>
                                                                  )}
                                                             </div>
@@ -162,7 +162,7 @@ export default function GroupedViewSection({
                                                                  const targetUrl = type === 'complex' ? `/complex/${item.complexId}` : `/field/${item.fieldId}`;
                                                                  nav(targetUrl);
                                                             }}
-                                                            className="w-fit hover:bg-teal-600 text-white px-3 py-0.5 rounded-full font-semibold transition-all duration-200 hover:scale-105"
+                                                            className="w-fit h-7 hover:bg-teal-600 text-white px-3 py-0.5 rounded-full font-semibold transition-all duration-200 hover:scale-105"
                                                        >
                                                             <EyeIcon className="w-5 h-5" />
                                                        </Button>

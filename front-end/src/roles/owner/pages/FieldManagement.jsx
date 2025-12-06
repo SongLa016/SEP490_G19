@@ -56,6 +56,11 @@ const FieldManagement = ({ isDemo = false }) => {
           address: "",
           lat: null,
           lng: null,
+          latitude: null,
+          longitude: null,
+          ward: "",
+          district: "",
+          province: "",
           description: "",
           image: "", // Preview URL (ObjectURL for File or URL string from Cloudinary)
           imageFile: null, // File object (new upload) or null
@@ -145,7 +150,14 @@ const FieldManagement = ({ isDemo = false }) => {
                               createdAt: complex.createdAt,
                               ownerName: complex.ownerName || null,
                               fields: complex.fields || [],
-                              fieldCount: complex.fieldCount || 0
+                              fieldCount: complex.fieldCount || 0,
+                              lat: complex.lat || complex.latitude,
+                              lng: complex.lng || complex.longitude,
+                              latitude: complex.latitude || complex.lat,
+                              longitude: complex.longitude || complex.lng,
+                              ward: complex.ward || "",
+                              district: complex.district || "",
+                              province: complex.province || "",
                          }));
                     setComplexes(ownerComplexes);
 
@@ -387,43 +399,93 @@ const FieldManagement = ({ isDemo = false }) => {
           const isEditingComplex = Boolean(isEditComplexModalOpen && editingComplexId);
           const actionLabel = isEditingComplex ? 'cập nhật khu sân' : 'tạo khu sân';
 
+          // Validate required fields for creating new complex
+          if (!isEditingComplex) {
+               // Validate image is required for new complexes
+               if (!complexFormData.imageFile && !complexFormData.imageUrl) {
+                    await Swal.fire({
+                         icon: 'warning',
+                         title: 'Thiếu hình ảnh!',
+                         text: 'Vui lòng chọn hình ảnh cho khu sân.',
+                         confirmButtonText: 'Đóng',
+                         confirmButtonColor: '#f59e0b'
+                    });
+                    return;
+               }
+
+               // Validate name
+               if (!complexFormData.name || complexFormData.name.trim() === '') {
+                    await Swal.fire({
+                         icon: 'warning',
+                         title: 'Thiếu tên khu sân!',
+                         text: 'Vui lòng nhập tên khu sân.',
+                         confirmButtonText: 'Đóng',
+                         confirmButtonColor: '#f59e0b'
+                    });
+                    return;
+               }
+
+               // Validate address
+               if (!complexFormData.address || complexFormData.address.trim() === '') {
+                    await Swal.fire({
+                         icon: 'warning',
+                         title: 'Thiếu địa chỉ!',
+                         text: 'Vui lòng nhập địa chỉ khu sân.',
+                         confirmButtonText: 'Đóng',
+                         confirmButtonColor: '#f59e0b'
+                    });
+                    return;
+               }
+          }
+
           try {
                if (isEditingComplex) {
                     let updatePayload;
 
+                    // Always use FormData for update to match API expectations
+                    updatePayload = new FormData();
+                    updatePayload.append("ComplexId", String(editingComplexId));
+                    updatePayload.append("OwnerId", String(Number(ownerId)));
+                    updatePayload.append("Name", complexFormData.name);
+                    updatePayload.append("Address", complexFormData.address);
+                    updatePayload.append("Description", complexFormData.description || "");
+                    updatePayload.append("Status", complexFormData.status || "Active");
+                    
+                    // Add image file if new one is selected, otherwise keep existing
                     if (complexFormData.imageFile) {
-                         updatePayload = new FormData();
-                         updatePayload.append("ComplexId", String(editingComplexId));
-                         updatePayload.append("OwnerId", String(Number(ownerId)));
-                         updatePayload.append("Name", complexFormData.name);
-                         updatePayload.append("Address", complexFormData.address);
-                         updatePayload.append("Description", complexFormData.description || "");
-                         updatePayload.append("Status", complexFormData.status || "Active"); // Preserve status
                          updatePayload.append("ImageFile", complexFormData.imageFile);
-                         if (complexFormData.lat !== null && complexFormData.lat !== undefined) {
-                              updatePayload.append("Lat", String(complexFormData.lat));
-                         }
-                         if (complexFormData.lng !== null && complexFormData.lng !== undefined) {
-                              updatePayload.append("Lng", String(complexFormData.lng));
-                         }
-                    } else {
-                         // No new file, update with existing imageUrl or empty
-                         updatePayload = {
-                              complexId: editingComplexId,
-                              ownerId: Number(ownerId),
-                              name: complexFormData.name,
-                              address: complexFormData.address,
-                              description: complexFormData.description || "",
-                              imageUrl: complexFormData.imageUrl || "", // Send existing URL
-                              status: complexFormData.status || "Active", // Preserve status
-                         };
-
-                         if (complexFormData.lat !== null && complexFormData.lat !== undefined) {
-                              updatePayload.lat = complexFormData.lat;
-                         }
-                         if (complexFormData.lng !== null && complexFormData.lng !== undefined) {
-                              updatePayload.lng = complexFormData.lng;
-                         }
+                    } else if (complexFormData.imageUrl) {
+                         // If no new file but has existing URL, we might need to send it
+                         // But FormData doesn't handle URLs well, so we'll let backend handle it
+                         // by not sending ImageFile field
+                    }
+                    
+                    // Add location data - use only one format (Lat/Lng) to avoid confusion
+                    const lat = complexFormData.latitude || complexFormData.lat;
+                    const lng = complexFormData.longitude || complexFormData.lng;
+                    
+                    if (lat !== null && lat !== undefined) {
+                         updatePayload.append("Lat", String(lat));
+                    }
+                    if (lng !== null && lng !== undefined) {
+                         updatePayload.append("Lng", String(lng));
+                    }
+                    
+                    // Add address components
+                    if (complexFormData.ward) {
+                         updatePayload.append("Ward", complexFormData.ward);
+                    }
+                    if (complexFormData.district) {
+                         updatePayload.append("District", complexFormData.district);
+                    }
+                    if (complexFormData.province) {
+                         updatePayload.append("Province", complexFormData.province);
+                    }
+                    
+                    // Add CreatedAt if available (for preserving creation date)
+                    const existingComplex = complexes.find(c => c.complexId === editingComplexId);
+                    if (existingComplex?.createdAt) {
+                         updatePayload.append("CreatedAt", existingComplex.createdAt);
                     }
 
                     await updateFieldComplex(editingComplexId, updatePayload);
@@ -449,6 +511,9 @@ const FieldManagement = ({ isDemo = false }) => {
 
                // Create FormData if image file exists, otherwise use JSON
                let newComplexResponse;
+               const lat = complexFormData.latitude || complexFormData.lat;
+               const lng = complexFormData.longitude || complexFormData.lng;
+               
                if (complexFormData.imageFile) {
                     const formDataToSend = new FormData();
                     formDataToSend.append("ComplexId", "0");
@@ -458,11 +523,23 @@ const FieldManagement = ({ isDemo = false }) => {
                     formDataToSend.append("Description", complexFormData.description || "");
                     formDataToSend.append("Status", "Active");
                     formDataToSend.append("ImageFile", complexFormData.imageFile);
-                    if (complexFormData.lat !== null && complexFormData.lat !== undefined) {
-                         formDataToSend.append("Lat", String(complexFormData.lat));
+                    
+                    if (lat !== null && lat !== undefined) {
+                         formDataToSend.append("Lat", String(lat));
+                         formDataToSend.append("Latitude", String(lat));
                     }
-                    if (complexFormData.lng !== null && complexFormData.lng !== undefined) {
-                         formDataToSend.append("Lng", String(complexFormData.lng));
+                    if (lng !== null && lng !== undefined) {
+                         formDataToSend.append("Lng", String(lng));
+                         formDataToSend.append("Longitude", String(lng));
+                    }
+                    if (complexFormData.ward) {
+                         formDataToSend.append("Ward", complexFormData.ward);
+                    }
+                    if (complexFormData.district) {
+                         formDataToSend.append("District", complexFormData.district);
+                    }
+                    if (complexFormData.province) {
+                         formDataToSend.append("Province", complexFormData.province);
                     }
 
                     newComplexResponse = await createFieldComplex(formDataToSend);
@@ -479,11 +556,22 @@ const FieldManagement = ({ isDemo = false }) => {
                          status: "Active",
                     };
 
-                    if (complexFormData.lat !== null && complexFormData.lat !== undefined) {
-                         payload.lat = complexFormData.lat;
+                    if (lat !== null && lat !== undefined) {
+                         payload.lat = lat;
+                         payload.latitude = lat;
                     }
-                    if (complexFormData.lng !== null && complexFormData.lng !== undefined) {
-                         payload.lng = complexFormData.lng;
+                    if (lng !== null && lng !== undefined) {
+                         payload.lng = lng;
+                         payload.longitude = lng;
+                    }
+                    if (complexFormData.ward) {
+                         payload.ward = complexFormData.ward;
+                    }
+                    if (complexFormData.district) {
+                         payload.district = complexFormData.district;
+                    }
+                    if (complexFormData.province) {
+                         payload.province = complexFormData.province;
                     }
 
                     newComplexResponse = await createFieldComplex(payload);
@@ -545,12 +633,79 @@ const FieldManagement = ({ isDemo = false }) => {
                }
           } catch (error) {
                console.error(isEditingComplex ? 'Error updating complex:' : 'Error creating complex:', error);
-               const errorMessage = error.message || `Có lỗi xảy ra khi ${actionLabel}`;
+               
+               // Extract detailed error message from API response
+               let errorMessage = `Có lỗi xảy ra khi ${actionLabel}`;
+               let errorDetails = '';
+               
+               if (error.response) {
+                    const { status, data } = error.response;
+                    
+                    // Handle 400 Bad Request with detailed messages
+                    if (status === 400) {
+                         if (data) {
+                              // Try to get error message from different possible fields
+                              errorMessage = data.message || data.title || data.error || 'Dữ liệu không hợp lệ';
+                              
+                              // Handle validation errors (ModelState errors)
+                              if (data.errors && typeof data.errors === 'object') {
+                                   const validationErrors = [];
+                                   Object.keys(data.errors).forEach(key => {
+                                        if (Array.isArray(data.errors[key])) {
+                                             validationErrors.push(...data.errors[key]);
+                                        } else {
+                                             validationErrors.push(data.errors[key]);
+                                        }
+                                   });
+                                   
+                                   if (validationErrors.length > 0) {
+                                        errorMessage = validationErrors[0]; // Show first error
+                                        if (validationErrors.length > 1) {
+                                             errorDetails = `Các lỗi khác: ${validationErrors.slice(1).join(', ')}`;
+                                        }
+                                   }
+                              }
+                              
+                              // Check for specific image-related errors
+                              if (errorMessage.toLowerCase().includes('image') || 
+                                  errorMessage.toLowerCase().includes('ảnh') ||
+                                  errorMessage.toLowerCase().includes('file')) {
+                                   errorMessage = 'Hình ảnh không hợp lệ. Vui lòng chọn lại hình ảnh.';
+                              }
+                         } else {
+                              errorMessage = 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin đã nhập.';
+                         }
+                    } else if (status === 401) {
+                         errorMessage = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+                    } else if (status === 403) {
+                         errorMessage = 'Bạn không có quyền thực hiện thao tác này.';
+                    } else if (status === 404) {
+                         errorMessage = 'Không tìm thấy tài nguyên.';
+                    } else if (status === 500) {
+                         errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau.';
+                    } else if (data && data.message) {
+                         errorMessage = data.message;
+                    }
+               } else if (error.request) {
+                    // Network error
+                    if (error.message?.includes('CORS')) {
+                         errorMessage = 'Lỗi CORS: Backend chưa cấu hình cho phép truy cập từ domain này.';
+                         errorDetails = 'Vui lòng kiểm tra cấu hình CORS trên backend hoặc liên hệ admin.';
+                    } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+                         errorMessage = 'Kết nối timeout. Vui lòng thử lại sau.';
+                         errorDetails = 'Server có thể đang quá tải hoặc kết nối mạng chậm.';
+                    } else {
+                         errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.';
+                    }
+               } else if (error.message) {
+                    errorMessage = error.message;
+               }
 
                await Swal.fire({
                     icon: 'error',
                     title: 'Lỗi!',
-                    html: `<p>${errorMessage}</p>${error.message?.includes('CORS') ? '<p class="text-xs mt-2 text-gray-500">Vui lòng kiểm tra cấu hình CORS trên backend.</p>' : ''}`,
+                    html: `<p class="font-medium">${errorMessage}</p>${errorDetails ? `<p class="text-sm mt-2 text-gray-600">${errorDetails}</p>` : ''}`,
+                    confirmButtonText: 'Đóng',
                     confirmButtonColor: '#ef4444'
                });
           }
@@ -890,8 +1045,13 @@ const FieldManagement = ({ isDemo = false }) => {
           setComplexFormData({
                name: complex.name || "",
                address: complex.address || "",
-               lat: complex.lat ?? complex.Lat ?? null,
-               lng: complex.lng ?? complex.Lng ?? null,
+               lat: complex.lat ?? complex.Lat ?? complex.latitude ?? complex.Latitude ?? null,
+               lng: complex.lng ?? complex.Lng ?? complex.longitude ?? complex.Longitude ?? null,
+               latitude: complex.latitude ?? complex.Latitude ?? complex.lat ?? complex.Lat ?? null,
+               longitude: complex.longitude ?? complex.Longitude ?? complex.lng ?? complex.Lng ?? null,
+               ward: complex.ward || complex.Ward || "",
+               district: complex.district || complex.District || "",
+               province: complex.province || complex.Province || "",
                description: complex.description || complex.Description || "",
                // Only use imageUrl from Cloudinary
                image: complexImageUrl || "",
@@ -998,11 +1158,25 @@ const FieldManagement = ({ isDemo = false }) => {
                     }
                }
 
-               if (complex.lat !== null && complex.lat !== undefined) {
-                    updatePayload.append("Lat", String(complex.lat || complex.Lat));
+               const lat = complex.latitude || complex.Latitude || complex.lat || complex.Lat;
+               const lng = complex.longitude || complex.Longitude || complex.lng || complex.Lng;
+               
+               if (lat !== null && lat !== undefined) {
+                    updatePayload.append("Lat", String(lat));
+                    updatePayload.append("Latitude", String(lat));
                }
-               if (complex.lng !== null && complex.lng !== undefined) {
-                    updatePayload.append("Lng", String(complex.lng || complex.Lng));
+               if (lng !== null && lng !== undefined) {
+                    updatePayload.append("Lng", String(lng));
+                    updatePayload.append("Longitude", String(lng));
+               }
+               if (complex.ward || complex.Ward) {
+                    updatePayload.append("Ward", complex.ward || complex.Ward);
+               }
+               if (complex.district || complex.District) {
+                    updatePayload.append("District", complex.district || complex.District);
+               }
+               if (complex.province || complex.Province) {
+                    updatePayload.append("Province", complex.province || complex.Province);
                }
 
                await updateFieldComplex(complexId, updatePayload);
@@ -1069,6 +1243,11 @@ const FieldManagement = ({ isDemo = false }) => {
                address: "",
                lat: null,
                lng: null,
+               latitude: null,
+               longitude: null,
+               ward: "",
+               district: "",
+               province: "",
                description: "",
                image: "",
                imageFile: null,
@@ -1132,8 +1311,13 @@ const FieldManagement = ({ isDemo = false }) => {
           setComplexFormData(prev => ({
                ...prev,
                address: locationData.address,
-               lat: locationData.lat,
-               lng: locationData.lng,
+               lat: locationData.lat || locationData.latitude,
+               lng: locationData.lng || locationData.longitude,
+               latitude: locationData.latitude || locationData.lat,
+               longitude: locationData.longitude || locationData.lng,
+               ward: locationData.ward || "",
+               district: locationData.district || "",
+               province: locationData.province || "",
           }));
      };
 

@@ -11,12 +11,13 @@ import {
      Loader2,
      Info,
      BarChart3,
-     Timer
+     Timer,
+     Repeat
 } from "lucide-react";
 import { fetchAllComplexesWithFields } from "../../../shared/services/fields";
 import { fetchTimeSlots, fetchTimeSlotsByField, createTimeSlot, updateTimeSlot, deleteTimeSlot } from "../../../shared/services/timeSlots";
 import { createFieldSchedule, fetchFieldSchedulesByField, fetchFieldSchedules, updateFieldScheduleStatus, deleteFieldSchedule } from "../../../shared/services/fieldSchedules";
-import { fetchBookingsByOwner } from "../../../shared/services/bookings";
+import { fetchBookingsByOwner, fetchBookingPackageSessionsByOwnerToken, fetchBookingPackagesByOwnerToken } from "../../../shared/services/bookings";
 import Swal from "sweetalert2";
 import axios from "axios";
 import { DateSelector, MonthlyCalendar, FieldList, ComplexAndFieldSelector, ScheduleGrid, ScheduleModal, TimeSlotModal, TimeSlotsTab, ManageSchedulesTab, StatisticsCards } from "./components/scheduleManagement";
@@ -135,6 +136,11 @@ export default function ScheduleManagement({ isDemo = false }) {
      // Bookings state to track actual bookings
      const [bookings, setBookings] = useState([]);
      const [loadingBookings, setLoadingBookings] = useState(false);
+     // Package sessions state to track fixed booking sessions
+     const [packageSessions, setPackageSessions] = useState([]);
+     const [loadingPackageSessions, setLoadingPackageSessions] = useState(false);
+     // Booking packages state to get package names
+     const [bookingPackages, setBookingPackages] = useState([]);
 
      // Quick slot templates
      const quickSlotTemplates = [
@@ -740,6 +746,85 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      }, [selectedComplex, fields, selectedFieldForSchedule]);
 
+     // Load booking packages for owner
+     const loadBookingPackages = useCallback(async () => {
+          try {
+               const result = await fetchBookingPackagesByOwnerToken();
+               if (result.success && result.data) {
+                    setBookingPackages(result.data || []);
+               } else {
+                    console.warn('Failed to load booking packages:', result.error);
+                    setBookingPackages([]);
+               }
+          } catch (error) {
+               console.error('Error loading booking packages:', error);
+               setBookingPackages([]);
+          }
+     }, []);
+
+     // Load package sessions for owner
+     const loadPackageSessions = useCallback(async () => {
+          try {
+               setLoadingPackageSessions(true);
+               const result = await fetchBookingPackageSessionsByOwnerToken();
+               if (result.success && result.data) {
+                    // Normalize package sessions data
+                    const normalizedSessions = (result.data || []).map(session => ({
+                         ...session,
+                         // Map package session fields to match booking structure for easier processing
+                         scheduleId: session.scheduleId || session.scheduleID || session.ScheduleID,
+                         sessionId: session.packageSessionId || session.bookingPackageSessionId || session.id,
+                         bookingPackageId: session.bookingPackageId || session.bookingPackageID,
+                         date: session.sessionDate || session.date || session.Date,
+                         slotId: session.slotId || session.slotID || session.SlotID,
+                         fieldId: session.fieldId || session.fieldID || session.FieldID,
+                         userId: session.userId || session.userID,
+                         // Mark as package session for identification
+                         isPackageSession: true,
+                         bookingType: 'package'
+                    }));
+
+                    // Fetch customer info for each package session using PlayerProfile API
+                    const sessionsWithUserInfo = await Promise.all(
+                         normalizedSessions.map(async (session) => {
+                              const userId = session.userId || session.userID;
+                              if (userId) {
+                                   try {
+                                        const userResult = await fetchPlayerProfile(userId);
+
+                                        if (userResult.ok && userResult.data) {
+                                             const userData = userResult.profile || userResult.data || userResult.data.profile || userResult.data.data;
+                                             // API returns: {fullName, phone, email, ...}
+                                             return {
+                                                  ...session,
+                                                  customerName: userData?.fullName || userData?.name || userData?.userName || userData?.FullName || userData?.Name || 'Khách hàng',
+                                                  customerPhone: userData?.phone || userData?.Phone || userData?.phoneNumber || userData?.PhoneNumber || '',
+                                                  customerEmail: userData?.email || userData?.Email || '',
+                                             };
+                                        } else {
+                                        }
+                                   } catch (error) {
+                                        console.error(`Failed to fetch customer profile ${userId} for package session:`, error);
+                                   }
+                              } else {
+                              }
+                              return session;
+                         })
+                    );
+
+                    setPackageSessions(sessionsWithUserInfo || []);
+               } else {
+                    console.warn('Failed to load package sessions:', result.error);
+                    setPackageSessions([]);
+               }
+          } catch (error) {
+               console.error('Error loading package sessions:', error);
+               setPackageSessions([]);
+          } finally {
+               setLoadingPackageSessions(false);
+          }
+     }, []);
+
      // Load bookings for owner
      const loadBookings = useCallback(async () => {
           try {
@@ -913,24 +998,28 @@ export default function ScheduleManagement({ isDemo = false }) {
           loadData();
      }, [loadData]);
 
-     // Load bookings when user is available
+     // Load bookings, package sessions, and booking packages when user is available
      useEffect(() => {
           if (currentUserId) {
                loadBookings();
+               loadPackageSessions();
+               loadBookingPackages();
           }
-     }, [currentUserId, loadBookings]);
+     }, [currentUserId, loadBookings, loadPackageSessions, loadBookingPackages]);
 
      // Load time slots and schedules when complex, fields, or selectedFieldForSchedule changes
      useEffect(() => {
           if (selectedComplex && fields.length > 0) {
                loadTimeSlotsForTable();
                loadSchedulesForTable();
-               // Also reload bookings to ensure we have the latest booking data
+               // Also reload bookings, package sessions, and booking packages to ensure we have the latest booking data
                if (currentUserId) {
                     loadBookings();
+                    loadPackageSessions();
+                    loadBookingPackages();
                }
           }
-     }, [selectedComplex, fields, selectedFieldForSchedule, loadTimeSlotsForTable, loadSchedulesForTable, currentUserId, loadBookings]);
+     }, [selectedComplex, fields, selectedFieldForSchedule, loadTimeSlotsForTable, loadSchedulesForTable, currentUserId, loadBookings, loadPackageSessions, loadBookingPackages]);
 
      // Load FieldSchedules
      const loadFieldSchedules = useCallback(async () => {
@@ -1423,15 +1512,36 @@ export default function ScheduleManagement({ isDemo = false }) {
                return matches;
           });
 
-          // Update schedule status to "Booked" if there's a booking for it
+          // Update schedule status to "Booked" if there's a booking or package session for it
           const enrichedSchedules = matchingSchedules.map(schedule => {
                const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
+               const scheduleFieldId = schedule.fieldId ?? schedule.FieldId;
+               const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
+               const scheduleDateStr = normalizeDateString(schedule.date);
+               
+               // Check for regular booking
                const booking = bookings.find(b => {
                     const bookingScheduleId = b.scheduleId || b.scheduleID || b.ScheduleID;
                     return bookingScheduleId && Number(bookingScheduleId) === Number(scheduleId);
                });
 
-               if (booking) {
+               // Check for package session
+               const packageSession = packageSessions.find(ps => {
+                    const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
+                    // Match by scheduleId if available
+                    if (psScheduleId && Number(psScheduleId) === Number(scheduleId)) {
+                         return true;
+                    }
+                    // Fallback: match by fieldId, slotId, and date
+                    const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
+                    const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
+                    const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
+                    return Number(psFieldId) === Number(scheduleFieldId) &&
+                         Number(psSlotId) === Number(scheduleSlotId) &&
+                         psDateStr === scheduleDateStr;
+               });
+
+               if (booking || packageSession) {
                     // Return schedule with Booked status
                     return {
                          ...schedule,
@@ -1507,6 +1617,21 @@ export default function ScheduleManagement({ isDemo = false }) {
                return true;
           }
 
+          // Check for package session
+          const packageSession = packageSessions.find(ps => {
+               const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
+               const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
+               const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
+               return Number(psFieldId) === Number(fieldId) &&
+                    Number(psSlotId) === Number(slotId) &&
+                    psDateStr === dateStr;
+          });
+
+          // If there's a package session, consider it booked
+          if (packageSession) {
+               return true;
+          }
+
           // Otherwise check schedule status
           const schedule = fieldSchedules.find(s => {
                const scheduleFieldId = s.fieldId ?? s.FieldId;
@@ -1518,10 +1643,10 @@ export default function ScheduleManagement({ isDemo = false }) {
           });
           // Nếu có schedule và status là "Booked" thì coi như đã đặt
           return schedule && (schedule.status === 'Booked' || schedule.status === 'booked');
-     }, [fieldSchedules, bookings]);
+     }, [fieldSchedules, bookings, packageSessions]);
 
      // Get booking info
-     const getBookingInfo = (fieldId, date, slotId) => {
+     const getBookingInfo = useCallback((fieldId, date, slotId) => {
           if (!fieldId || !date || !slotId) {
                return null;
           }
@@ -1576,9 +1701,46 @@ export default function ScheduleManagement({ isDemo = false }) {
                          address: booking.address || booking.complexName || booking.ComplexName || booking.fieldName || booking.FieldName || 'N/A',
                          bookingDate: booking.bookingDate || booking.BookingDate || booking.createdDate || booking.CreatedDate || 'N/A'
                     };
-               } else {
                }
-          } else {
+
+               // Check for package session
+               const packageSession = packageSessions.find(ps => {
+                    const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
+                    // Match by scheduleId if available
+                    if (psScheduleId && Number(psScheduleId) === Number(scheduleId)) {
+                         return true;
+                    }
+                    // Fallback: match by fieldId, slotId, and date
+                    const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
+                    const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
+                    const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
+                    const scheduleFieldId = schedule.fieldId ?? schedule.FieldId;
+                    const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
+                    const scheduleDateStr = normalizeDateString(schedule.date);
+                    return Number(psFieldId) === Number(scheduleFieldId) &&
+                         Number(psSlotId) === Number(scheduleSlotId) &&
+                         psDateStr === scheduleDateStr;
+               });
+
+               if (packageSession) {
+                    // Package session already has customer info from loadPackageSessions
+                    return {
+                         bookingId: packageSession.sessionId || packageSession.packageSessionId || packageSession.id,
+                         bookingPackageId: packageSession.bookingPackageId || packageSession.bookingPackageID,
+                         customerName: packageSession.customerName || packageSession.CustomerName || packageSession.playerName || packageSession.PlayerName || packageSession.fullName || packageSession.name || 'Khách hàng',
+                         customerPhone: packageSession.customerPhone || packageSession.CustomerPhone || packageSession.playerPhone || packageSession.PlayerPhone || packageSession.phone || packageSession.Phone || packageSession.phoneNumber || 'N/A',
+                         customerEmail: packageSession.customerEmail || packageSession.CustomerEmail || packageSession.email || packageSession.Email || 'N/A',
+                         totalPrice: packageSession.pricePerSession || packageSession.price || packageSession.totalPrice || 0,
+                         depositAmount: 0,
+                         status: packageSession.sessionStatus || packageSession.status || 'Booked',
+                         paymentStatus: packageSession.paymentStatus || packageSession.PaymentStatus || packageSession.bookingPackagePaymentStatus || 'N/A',
+                         hasOpponent: packageSession.hasOpponent || packageSession.HasOpponent || false,
+                         address: packageSession.address || packageSession.complexName || packageSession.ComplexName || packageSession.fieldName || packageSession.FieldName || 'N/A',
+                         bookingDate: packageSession.sessionDate || packageSession.date || packageSession.Date || 'N/A',
+                         isPackageSession: true,
+                         bookingType: 'package'
+                    };
+               }
           }
 
           // Fallback: try to find booking by fieldId, slotId, and date directly
@@ -1618,8 +1780,61 @@ export default function ScheduleManagement({ isDemo = false }) {
                     bookingDate: directBooking.bookingDate || directBooking.BookingDate || directBooking.createdDate || directBooking.CreatedDate || 'N/A'
                };
           }
+
+          // Fallback: try to find package session by fieldId, slotId, and date directly
+          const directPackageSession = packageSessions.find(ps => {
+               const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
+               const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
+               const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
+               return Number(psFieldId) === Number(fieldId) &&
+                    Number(psSlotId) === Number(slotId) &&
+                    psDateStr === dateStr;
+          });
+
+          if (directPackageSession) {
+               // Find package info to get package name
+               const packageId = directPackageSession.bookingPackageId || directPackageSession.bookingPackageID;
+               const packageInfo = bookingPackages.find(pkg => 
+                    (pkg.bookingPackageId || pkg.id || pkg.bookingPackageID) === packageId
+               );
+               const packageName = packageInfo?.packageName || packageInfo?.PackageName || packageInfo?.name || 'Gói đặt cố định';
+               
+               // Determine payment status - if session status is booked/active, consider it successful
+               const sessionStatus = (directPackageSession.sessionStatus || directPackageSession.status || '').toLowerCase();
+               let paymentStatus = directPackageSession.paymentStatus || directPackageSession.PaymentStatus || directPackageSession.bookingPackagePaymentStatus;
+               if (!paymentStatus || paymentStatus === 'N/A') {
+                    // If session is booked and not cancelled, consider payment successful
+                    if (sessionStatus.includes('booked') || sessionStatus.includes('active') || sessionStatus === 'booked') {
+                         paymentStatus = 'Paid';
+                    } else if (sessionStatus.includes('cancel')) {
+                         paymentStatus = 'Cancelled';
+                    } else {
+                         paymentStatus = 'Pending';
+                    }
+               }
+               
+               // Package session already has customer info from loadPackageSessions
+               return {
+                    bookingId: directPackageSession.sessionId || directPackageSession.packageSessionId || directPackageSession.id,
+                    bookingPackageId: packageId,
+                    packageName: packageName,
+                    customerName: directPackageSession.customerName || directPackageSession.CustomerName || directPackageSession.playerName || directPackageSession.PlayerName || directPackageSession.fullName || directPackageSession.name || 'Khách hàng',
+                    customerPhone: directPackageSession.customerPhone || directPackageSession.CustomerPhone || directPackageSession.playerPhone || directPackageSession.PlayerPhone || directPackageSession.phone || directPackageSession.Phone || directPackageSession.phoneNumber || 'N/A',
+                    customerEmail: directPackageSession.customerEmail || directPackageSession.CustomerEmail || directPackageSession.email || directPackageSession.Email || 'N/A',
+                    totalPrice: directPackageSession.pricePerSession || directPackageSession.price || directPackageSession.totalPrice || 0,
+                    depositAmount: 0,
+                    status: directPackageSession.sessionStatus || directPackageSession.status || 'Booked',
+                    paymentStatus: paymentStatus,
+                    hasOpponent: directPackageSession.hasOpponent || directPackageSession.HasOpponent || false,
+                    address: directPackageSession.address || directPackageSession.complexName || directPackageSession.ComplexName || directPackageSession.fieldName || directPackageSession.FieldName || 'N/A',
+                    bookingDate: directPackageSession.sessionDate || directPackageSession.date || directPackageSession.Date || 'N/A',
+                    isPackageSession: true,
+                    bookingType: 'package'
+               };
+          }
+
           return null;
-     };
+     }, [fieldSchedules, bookings, packageSessions, bookingPackages]);
 
      // Calculate statistics
      const statistics = useMemo(() => {
@@ -1912,25 +2127,29 @@ export default function ScheduleManagement({ isDemo = false }) {
                     {activeTab === 'schedule' && (
                          <Card className="p-5 bg-gradient-to-r from-gray-50 to-blue-50 border-2 border-gray-200">
                               <div className="space-y-4">
-                                   <div className="flex items-center gap-8 flex-wrap">
+                                   <div className="flex items-center gap-6 flex-wrap">
                                         <span className="font-bold text-gray-800 flex items-center gap-2">
                                              <Info className="w-5 h-5 text-teal-600" />
                                              Chú thích:
                                         </span>
-                                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg shadow-sm">
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border border-gray-200">
                                              <div className="w-6 h-6 bg-white border-2 border-gray-300 rounded flex items-center justify-center">
-                                                  <span className="text-gray-300 text-lg">○</span>
+                                                  <span className="text-gray-400 text-lg">○</span>
                                              </div>
                                              <span className="text-sm font-medium text-gray-700">Trống</span>
                                         </div>
-                                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg shadow-sm">
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border border-gray-200">
                                              <div className="w-6 h-6 bg-green-500 border-2 border-green-600 rounded flex items-center justify-center">
                                                   <span className="text-white text-xs font-bold">✓</span>
                                              </div>
                                              <span className="text-sm font-medium text-gray-700">Đã đặt</span>
                                         </div>
-                                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg  shadow-md">
-                                             <Calendar className="w-5 h-5 text-white" />
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-sm border border-purple-700">
+                                             <Repeat className="w-4 h-4 text-white" />
+                                             <span className="text-sm font-medium text-white">Lịch cố định</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg shadow-md border border-teal-700">
+                                             <Calendar className="w-4 h-4 text-white" />
                                              <span className="text-sm font-bold text-white">Cột hôm nay</span>
                                         </div>
                                    </div>
@@ -1938,7 +2157,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                                    <Alert className="border-blue-300 bg-gradient-to-r from-blue-50 to-blue-100 shadow-sm">
                                         <Info className="h-5 w-5 text-blue-600" />
                                         <AlertDescription className="text-blue-900 text-sm font-medium">
-                                             <strong>💡 Mẹo:</strong> Click vào ô đã đặt để xem chi tiết booking.
+                                             <strong>💡 Mẹo:</strong> Click vào ô <span className="font-semibold text-green-700">"Đã đặt"</span> hoặc <span className="font-semibold text-purple-700">"Lịch cố định"</span> để xem chi tiết booking và thông tin khách hàng.
                                              Để thay đổi khung giờ hoạt động, chuyển sang tab{' '}
                                              <button
                                                   onClick={() => setActiveTab('timeslots')}

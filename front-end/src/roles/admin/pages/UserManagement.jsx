@@ -13,6 +13,7 @@ import {
      SelectValue,
      Badge,
      Avatar,
+     AvatarImage,
      AvatarFallback,
      DatePicker,
      Modal
@@ -38,24 +39,28 @@ import {
      Calendar,
      Users,
      X,
-     Plus,
      Bell,
      Send
 } from "lucide-react";
-import { fetchAllUserStatistics } from "../../../shared/services/adminStatistics";
+import { fetchAllUserStatistics, fetchPlayerProfile, lockUserAccount } from "../../../shared/services/adminStatistics";
 import { createNotification, createBulkNotifications } from "../../../shared/services/notifications";
+import Swal from "sweetalert2";
+import { useAuth } from "../../../contexts/AuthContext";
 
 export default function UserManagement() {
+     const { user, isAdmin: checkIsAdmin } = useAuth();
      const [users, setUsers] = useState([]);
      const [filteredUsers, setFilteredUsers] = useState([]);
      const [searchTerm, setSearchTerm] = useState("");
      const [roleFilter, setRoleFilter] = useState("all");
      const [statusFilter, setStatusFilter] = useState("all");
      const [selectedUser, setSelectedUser] = useState(null);
+     const [userProfileDetails, setUserProfileDetails] = useState(null);
      const [showUserModal, setShowUserModal] = useState(false);
      const [showCreateModal, setShowCreateModal] = useState(false);
      const [showNotificationModal, setShowNotificationModal] = useState(false);
      const [loading, setLoading] = useState(false);
+     const [loadingProfile, setLoadingProfile] = useState(false);
      const [error, setError] = useState(null);
      const [selectedUsersForNotification, setSelectedUsersForNotification] = useState([]);
      const [selectedRecipientId, setSelectedRecipientId] = useState("0");
@@ -155,9 +160,26 @@ export default function UserManagement() {
           setFilteredUsers(filtered);
      }, [users, searchTerm, roleFilter, statusFilter]);
 
-     const handleViewUser = (user) => {
+     const handleViewUser = async (user) => {
           setSelectedUser(user);
           setShowUserModal(true);
+          setUserProfileDetails(null);
+
+          // Fetch detailed profile information
+          try {
+               setLoadingProfile(true);
+               const result = await fetchPlayerProfile(user.id);
+               if (result.ok && result.data) {
+                    setUserProfileDetails(result.data);
+               } else {
+                    console.error("Failed to fetch profile:", result.reason);
+                    // Still show modal with basic info even if profile fetch fails
+               }
+          } catch (err) {
+               console.error("Error fetching profile:", err);
+          } finally {
+               setLoadingProfile(false);
+          }
      };
 
      const handleEditUser = (user) => {
@@ -190,27 +212,109 @@ export default function UserManagement() {
           });
      };
 
-     const handleDeleteUser = (user) => {
-          if (window.confirm(`Bạn có chắc chắn muốn xóa người dùng ${user.fullName}?`)) {
+     const handleDeleteUser = async (user) => {
+          const result = await Swal.fire({
+               title: "Xác nhận xóa",
+               text: `Bạn có chắc chắn muốn xóa người dùng ${user.fullName}?`,
+               icon: "warning",
+               showCancelButton: true,
+               confirmButtonColor: "#d33",
+               cancelButtonColor: "#3085d6",
+               confirmButtonText: "Xóa",
+               cancelButtonText: "Hủy"
+          });
+
+          if (result.isConfirmed) {
                setUsers(users.filter(u => u.id !== user.id));
+               await Swal.fire("Đã xóa!", "Người dùng đã được xóa thành công.", "success");
           }
      };
 
-     const handleStatusChange = (user, newStatus) => {
-          setUsers(users.map(u =>
-               u.id === user.id ? { ...u, status: newStatus } : u
-          ));
+     const handleLockAccount = async (targetUser) => {
+          // Kiểm tra quyền admin trước khi thực hiện (user từ useAuth là user hiện tại đang đăng nhập)
+          if (!user) {
+               await Swal.fire({
+                    icon: "error",
+                    title: "Lỗi xác thực",
+                    text: "Không thể xác thực người dùng. Vui lòng đăng nhập lại."
+               });
+               return;
+          }
+
+          // Kiểm tra quyền admin
+          if (!checkIsAdmin()) {
+               await Swal.fire({
+                    icon: "error",
+                    title: "Không có quyền",
+                    text: "Bạn không có quyền thực hiện thao tác này. Chỉ quản trị viên mới được phép khóa/mở khóa tài khoản."
+               });
+               return;
+          }
+
+          const actionText = targetUser.status === "Active" ? "khóa" : "mở khóa";
+          const result = await Swal.fire({
+               title: "Xác nhận",
+               text: `Bạn có chắc chắn muốn ${actionText} tài khoản ${targetUser.fullName}?`,
+               icon: "question",
+               showCancelButton: true,
+               confirmButtonColor: targetUser.status === "Active" ? "#d33" : "#3085d6",
+               cancelButtonColor: "#6c757d",
+               confirmButtonText: "Xác nhận",
+               cancelButtonText: "Hủy"
+          });
+
+          if (!result.isConfirmed) {
+               return;
+          }
+
+          try {
+               setLoading(true);
+               const result = await lockUserAccount(targetUser.id);
+               if (result.ok) {
+                    // Reload users to get updated status
+                    await loadUsers();
+                    // Update selected user if modal is open
+                    if (selectedUser && selectedUser.id === targetUser.id) {
+                         const updatedUsers = await fetchAllUserStatistics();
+                         if (updatedUsers.ok && updatedUsers.data) {
+                              const usersData = Array.isArray(updatedUsers.data) ? updatedUsers.data :
+                                   (updatedUsers.data.users || updatedUsers.data.data || []);
+                              const updatedUser = usersData.find(u => u.userId === targetUser.id);
+                              if (updatedUser) {
+                                   setSelectedUser({
+                                        ...selectedUser,
+                                        status: updatedUser.status || (targetUser.status === "Active" ? "Suspended" : "Active")
+                                   });
+                              }
+                         }
+                    }
+                    await Swal.fire({
+                         icon: "success",
+                         title: "Thành công",
+                         text: `Đã ${targetUser.status === "Active" ? "khóa" : "mở khóa"} tài khoản thành công!`
+                    });
+               } else {
+                    await Swal.fire({
+                         icon: "error",
+                         title: "Lỗi",
+                         text: result.reason || "Không thể thực hiện thao tác này"
+                    });
+               }
+          } catch (err) {
+               console.error("Error locking account:", err);
+               await Swal.fire({
+                    icon: "error",
+                    title: "Lỗi",
+                    text: "Đã xảy ra lỗi khi thực hiện thao tác"
+               });
+          } finally {
+               setLoading(false);
+          }
      };
 
      const handleSendNotification = (user) => {
           setSelectedUsersForNotification([user]);
           setSelectedRecipientId(user.id.toString());
-          setShowNotificationModal(true);
-     };
-
-     const handleSendBulkNotification = () => {
-          setSelectedUsersForNotification(filteredUsers);
-          setSelectedRecipientId("0"); // 0 = gửi cho tất cả
           setShowNotificationModal(true);
      };
 
@@ -222,7 +326,11 @@ export default function UserManagement() {
 
      const handleSubmitNotification = async () => {
           if (!notificationData.message.trim()) {
-               alert("Vui lòng nhập nội dung thông báo");
+               await Swal.fire({
+                    icon: "warning",
+                    title: "Thiếu thông tin",
+                    text: "Vui lòng nhập nội dung thông báo"
+               });
                return;
           }
 
@@ -246,12 +354,20 @@ export default function UserManagement() {
                     const result = await createBulkNotifications(notifications);
 
                     if (result.ok) {
-                         alert(`Gửi thông báo thành công cho ${usersToSend.length} người dùng!`);
+                         await Swal.fire({
+                              icon: "success",
+                              title: "Thành công",
+                              text: `Gửi thông báo thành công cho ${usersToSend.length} người dùng!`
+                         });
                          setShowNotificationModal(false);
                          setNotificationData({ type: "System", message: "" });
                          setSelectedRecipientId("0");
                     } else {
-                         alert(result.reason || "Không thể gửi thông báo hàng loạt");
+                         await Swal.fire({
+                              icon: "error",
+                              title: "Lỗi",
+                              text: result.reason || "Không thể gửi thông báo hàng loạt"
+                         });
                     }
                } else {
                     // Gửi cho 1 người cụ thể
@@ -264,17 +380,29 @@ export default function UserManagement() {
 
                     if (result.ok) {
                          const recipient = users.find(u => u.id === recipientId);
-                         alert(`Gửi thông báo thành công cho ${recipient?.fullName || 'người dùng'}!`);
+                         await Swal.fire({
+                              icon: "success",
+                              title: "Thành công",
+                              text: `Gửi thông báo thành công cho ${recipient?.fullName || 'người dùng'}!`
+                         });
                          setShowNotificationModal(false);
                          setNotificationData({ type: "System", message: "" });
                          setSelectedRecipientId("0");
                     } else {
-                         alert(result.reason || "Không thể gửi thông báo");
+                         await Swal.fire({
+                              icon: "error",
+                              title: "Lỗi",
+                              text: result.reason || "Không thể gửi thông báo"
+                         });
                     }
                }
           } catch (err) {
                console.error("Error sending notification:", err);
-               alert("Đã xảy ra lỗi khi gửi thông báo");
+               await Swal.fire({
+                    icon: "error",
+                    title: "Lỗi",
+                    text: "Đã xảy ra lỗi khi gửi thông báo"
+               });
           } finally {
                setLoading(false);
           }
@@ -284,12 +412,12 @@ export default function UserManagement() {
           switch (role) {
                case "Admin":
                     return "destructive";
-               case "FieldOwner":
-                    return "default";
+               case "Owner":
+                    return "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200";
                case "Player":
-                    return "secondary";
+                    return "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200";
                default:
-                    return "outline";
+                    return "default";
           }
      };
 
@@ -297,8 +425,8 @@ export default function UserManagement() {
           switch (status) {
                case "Active":
                     return "success";
-               case "Suspended":
-                    return "destructive";
+               case "Locked":
+                    return "bg-red-100 text-red-800 border-red-200 hover:bg-red-200";
                case "Inactive":
                     return "secondary";
                default:
@@ -751,100 +879,170 @@ export default function UserManagement() {
                {/* User Detail Modal */}
                <Modal
                     isOpen={showUserModal}
-                    onClose={() => setShowUserModal(false)}
+                    onClose={() => {
+                         setShowUserModal(false);
+                         setUserProfileDetails(null);
+                    }}
                     title="Chi tiết người dùng"
                     size="2xl"
                     className="max-h-[90vh] scrollbar-hide"
                >
                     {selectedUser && (
                          <div className="space-y-6">
-                              {/* User Info */}
-                              <div className="flex items-center space-x-4">
-                                   <Avatar className="w-16 h-16">
-                                        <AvatarFallback className="bg-gradient-to-br from-slate-400 to-slate-600 text-white text-xl">
-                                             {selectedUser.fullName.charAt(0)}
-                                        </AvatarFallback>
-                                   </Avatar>
-                                   <div>
-                                        <h4 className="text-lg font-bold text-slate-900">{selectedUser.fullName}</h4>
-                                        <p className="text-slate-600">{selectedUser.email}</p>
-                                        <div className="flex space-x-2 mt-2">
-                                             <Badge variant={getRoleBadgeVariant(selectedUser.role)}>
-                                                  {selectedUser.role}
-                                             </Badge>
-                                             <Badge
-                                                  variant={getStatusBadgeVariant(selectedUser.status)}
-                                                  className={getStatusBadgeClassName(selectedUser.status)}
-                                             >
-                                                  {selectedUser.status}
-                                             </Badge>
+                              {loadingProfile ? (
+                                   <div className="flex items-center justify-center py-8">
+                                        <div className="text-center">
+                                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-2"></div>
+                                             <p className="text-slate-600 text-sm">Đang tải thông tin chi tiết...</p>
                                         </div>
                                    </div>
-                              </div>
+                              ) : (
+                                   <>
+                                        {/* User Info */}
+                                        <div className="flex items-center space-x-4">
+                                             <Avatar className="w-16 h-16">
+                                                  {userProfileDetails?.avatar && (
+                                                       <AvatarImage src={userProfileDetails.avatar} alt={selectedUser.fullName} />
+                                                  )}
+                                                  <AvatarFallback className="bg-gradient-to-br from-slate-400 to-slate-600 text-white text-xl">
+                                                       {selectedUser.fullName.charAt(0)}
+                                                  </AvatarFallback>
+                                             </Avatar>
+                                             <div>
+                                                  <h4 className="text-lg font-bold text-slate-900">
+                                                       {userProfileDetails?.fullName || selectedUser.fullName}
+                                                  </h4>
+                                                  <p className="text-slate-600">{userProfileDetails?.email || selectedUser.email}</p>
+                                                  <div className="flex space-x-2 mt-2">
+                                                       <Badge variant={getRoleBadgeVariant(selectedUser.role)}>
+                                                            {selectedUser.role}
+                                                       </Badge>
+                                                       <Badge
+                                                            variant={getStatusBadgeVariant(selectedUser.status)}
+                                                            className={getStatusBadgeClassName(selectedUser.status)}
+                                                       >
+                                                            {selectedUser.status}
+                                                       </Badge>
+                                                  </div>
+                                             </div>
+                                        </div>
 
-                              {/* Contact Info */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                   <div className="flex items-center space-x-3">
-                                        <Phone className="w-5 h-5 text-slate-400" />
-                                        <div>
-                                             <p className="text-sm font-medium text-slate-600">Số điện thoại</p>
-                                             <p className="text-slate-900">{selectedUser.phone}</p>
-                                        </div>
-                                   </div>
-                                   <div className="flex items-center space-x-3">
-                                        <Calendar className="w-5 h-5 text-slate-400" />
-                                        <div>
-                                             <p className="text-sm font-medium text-slate-600">Ngày tạo</p>
-                                             <p className="text-slate-900">{selectedUser.createdAt}</p>
-                                        </div>
-                                   </div>
-                              </div>
-
-                              {/* Profile Info */}
-                              {selectedUser.profile && (
-                                   <div>
-                                        <h5 className="text-lg font-bold text-slate-900 mb-3">Thông tin cá nhân</h5>
+                                        {/* Contact Info */}
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                             <div>
-                                                  <p className="text-sm font-medium text-slate-600">Ngày sinh</p>
-                                                  <p className="text-slate-900">{selectedUser.profile.dateOfBirth}</p>
+                                             <div className="flex items-center space-x-3">
+                                                  <Phone className="w-5 h-5 text-slate-400" />
+                                                  <div>
+                                                       <p className="text-sm font-medium text-slate-600">Số điện thoại</p>
+                                                       <p className="text-slate-900">{userProfileDetails?.phone || selectedUser.phone}</p>
+                                                  </div>
                                              </div>
-                                             <div>
-                                                  <p className="text-sm font-medium text-slate-600">Giới tính</p>
-                                                  <p className="text-slate-900">{selectedUser.profile.gender}</p>
-                                             </div>
-                                             <div>
-                                                  <p className="text-sm font-medium text-slate-600">Địa chỉ</p>
-                                                  <p className="text-slate-900">{selectedUser.profile.address}</p>
-                                             </div>
-                                             <div>
-                                                  <p className="text-sm font-medium text-slate-600">Trình độ</p>
-                                                  <p className="text-slate-900">{selectedUser.profile.skillLevel}</p>
+                                             <div className="flex items-center space-x-3">
+                                                  <Calendar className="w-5 h-5 text-slate-400" />
+                                                  <div>
+                                                       <p className="text-sm font-medium text-slate-600">Ngày tạo</p>
+                                                       <p className="text-slate-900">{selectedUser.createdAt}</p>
+                                                  </div>
                                              </div>
                                         </div>
-                                   </div>
-                              )}
 
-                              {/* Actions */}
-                              <div className="flex space-x-3 pt-4 border-t border-slate-200">
-                                   <Button
-                                        onClick={() => handleStatusChange(selectedUser, selectedUser.status === "Active" ? "Suspended" : "Active")}
-                                        variant={selectedUser.status === "Active" ? "destructive" : "default"}
-                                        className="flex-1 rounded-2xl"
-                                   >
-                                        {selectedUser.status === "Active" ? "Tạm khóa" : "Kích hoạt"}
-                                   </Button>
-                                   <Button
-                                        onClick={() => {
-                                             setShowUserModal(false);
-                                             handleEditUser(selectedUser);
-                                        }}
-                                        variant="outline"
-                                        className="flex-1 rounded-2xl"
-                                   >
-                                        Chỉnh sửa
-                                   </Button>
-                              </div>
+                                        {/* Profile Info from API */}
+                                        {userProfileDetails && (
+                                             <div>
+                                                  <h5 className="text-lg font-bold text-slate-900 mb-3">Thông tin cá nhân</h5>
+                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                       {userProfileDetails.dateOfBirth && (
+                                                            <div>
+                                                                 <p className="text-sm font-medium text-slate-600">Ngày sinh</p>
+                                                                 <p className="text-slate-900">
+                                                                      {new Date(userProfileDetails.dateOfBirth).toLocaleDateString('vi-VN')}
+                                                                 </p>
+                                                            </div>
+                                                       )}
+                                                       {userProfileDetails.gender && (
+                                                            <div>
+                                                                 <p className="text-sm font-medium text-slate-600">Giới tính</p>
+                                                                 <p className="text-slate-900">{userProfileDetails.gender}</p>
+                                                            </div>
+                                                       )}
+                                                       {userProfileDetails.address && (
+                                                            <div>
+                                                                 <p className="text-sm font-medium text-slate-600">Địa chỉ</p>
+                                                                 <p className="text-slate-900">{userProfileDetails.address}</p>
+                                                            </div>
+                                                       )}
+                                                       {userProfileDetails.skillLevel && (
+                                                            <div>
+                                                                 <p className="text-sm font-medium text-slate-600">Trình độ</p>
+                                                                 <p className="text-slate-900">{userProfileDetails.skillLevel}</p>
+                                                            </div>
+                                                       )}
+                                                       {userProfileDetails.preferredPositions && (
+                                                            <div>
+                                                                 <p className="text-sm font-medium text-slate-600">Vị trí ưa thích</p>
+                                                                 <p className="text-slate-900">{userProfileDetails.preferredPositions}</p>
+                                                            </div>
+                                                       )}
+                                                  </div>
+                                             </div>
+                                        )}
+
+                                        {/* Fallback to basic profile if API didn't return details */}
+                                        {!userProfileDetails && selectedUser.profile && (
+                                             <div>
+                                                  <h5 className="text-lg font-bold text-slate-900 mb-3">Thông tin cá nhân</h5>
+                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                       <div>
+                                                            <p className="text-sm font-medium text-slate-600">Ngày sinh</p>
+                                                            <p className="text-slate-900">{selectedUser.profile.dateOfBirth}</p>
+                                                       </div>
+                                                       <div>
+                                                            <p className="text-sm font-medium text-slate-600">Giới tính</p>
+                                                            <p className="text-slate-900">{selectedUser.profile.gender}</p>
+                                                       </div>
+                                                       <div>
+                                                            <p className="text-sm font-medium text-slate-600">Địa chỉ</p>
+                                                            <p className="text-slate-900">{selectedUser.profile.address}</p>
+                                                       </div>
+                                                       <div>
+                                                            <p className="text-sm font-medium text-slate-600">Trình độ</p>
+                                                            <p className="text-slate-900">{selectedUser.profile.skillLevel}</p>
+                                                       </div>
+                                                  </div>
+                                             </div>
+                                        )}
+
+                                        {/* Actions */}
+                                        <div className="flex space-x-3 pt-4 border-t border-slate-200">
+                                             {checkIsAdmin() && (
+                                                  <Button
+                                                       onClick={() => handleLockAccount(selectedUser)}
+                                                       variant={selectedUser.status === "Active" ? "destructive" : "default"}
+                                                       className="flex-1 rounded-2xl"
+                                                       disabled={loading}
+                                                  >
+                                                       {loading ? (
+                                                            <>
+                                                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                                 Đang xử lý...
+                                                            </>
+                                                       ) : (
+                                                            selectedUser.status === "Active" ? "Khóa tài khoản" : "Mở khóa tài khoản"
+                                                       )}
+                                                  </Button>
+                                             )}
+                                             <Button
+                                                  onClick={() => {
+                                                       setShowUserModal(false);
+                                                       handleEditUser(selectedUser);
+                                                  }}
+                                                  variant="outline"
+                                                  className="flex-1 rounded-2xl"
+                                             >
+                                                  Chỉnh sửa
+                                             </Button>
+                                        </div>
+                                   </>
+                              )}
                          </div>
                     )}
                </Modal>

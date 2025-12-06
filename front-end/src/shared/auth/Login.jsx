@@ -93,11 +93,21 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
                     return;
                }
 
-               // Store user data and token
-               if (result.user) {
-                    localStorage.setItem('user', JSON.stringify(result.user));
-                    login(result.user, result.token);
+               // Store user data and token - only if we have valid user data
+               if (!result.user || !result.token) {
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Đăng nhập thất bại',
+                         text: 'Không nhận được thông tin người dùng từ máy chủ. Vui lòng thử lại.',
+                         confirmButtonText: 'Đóng',
+                         confirmButtonColor: '#ef4444'
+                    });
+                    setIsLoading(false);
+                    return;
                }
+
+               localStorage.setItem('user', JSON.stringify(result.user));
+               login(result.user, result.token);
 
                // Handle remember me functionality
                if (rememberMe) {
