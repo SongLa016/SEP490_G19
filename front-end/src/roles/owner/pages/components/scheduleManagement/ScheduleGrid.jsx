@@ -56,13 +56,18 @@ export default function ScheduleGrid({
                     onClick={(e) => {
                          e.stopPropagation();
                          const bookingInfo = getBookingInfo(Number(field.fieldId), selectedDate, Number(actualSlotId));
+                         const isPackageBooking = bookingInfo && (bookingInfo.isPackageSession || bookingInfo.bookingType === 'package');
 
                          let statusIcon = '📋';
                          let statusBadge = '';
 
                          if (booked) {
                               statusIcon = '✅';
-                              statusBadge = '<span class="inline-block px-3 bg-green-100 text-green-800 rounded-full text-sm font-semibold">Đã đặt</span>';
+                              if (isPackageBooking) {
+                                   statusBadge = '<span class="inline-block px-3 bg-purple-100 text-purple-800 rounded-full text-sm font-semibold">🔄 Lịch cố định</span>';
+                              } else {
+                                   statusBadge = '<span class="inline-block px-3 bg-green-100 text-green-800 rounded-full text-sm font-semibold">Đã đặt</span>';
+                              }
                          } else if (maintenance) {
                               statusIcon = '🔧';
                               statusBadge = '<span class="inline-block px-3 bg-orange-100 text-orange-800 rounded-full text-sm font-semibold">Bảo trì</span>';
@@ -83,42 +88,58 @@ export default function ScheduleGrid({
 
                               const getPaymentStatusBadge = (status) => {
                                    const statusLower = (status || '').toLowerCase();
-                                   if (statusLower === 'paid' || statusLower === 'đã thanh toán') {
-                                        return '<span class="inline-block px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">Đã thanh toán</span>';
+                                   if (statusLower === 'paid' || statusLower === 'đã thanh toán' || statusLower === 'thành công') {
+                                        return '<span class="inline-block px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">Thành công</span>';
                                    } else if (statusLower === 'pending' || statusLower === 'chờ thanh toán') {
                                         return '<span class="inline-block px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">Chờ thanh toán</span>';
                                    } else if (statusLower === 'cancelled' || statusLower === 'đã hủy') {
                                         return '<span class="inline-block px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">Đã hủy</span>';
                                    }
-                                   return '<span class="inline-block px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-semibold">' + (status || 'N/A') + '</span>';
+                                   // Default to "Thành công" for package sessions if status is not clear
+                                   return '<span class="inline-block px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">Thành công</span>';
                               };
 
+                              const isPackageBooking = bookingInfo.isPackageSession || bookingInfo.bookingType === 'package';
+                              const bookingTitle = isPackageBooking ? 'Thông tin Lịch Cố Định' : 'Thông tin Booking';
+                              const bookingIcon = isPackageBooking ? '🔄' : '📋';
+                              const bgColor = isPackageBooking ? 'bg-purple-50' : 'bg-green-50';
+                              const borderColor = isPackageBooking ? 'border-purple-300' : 'border-green-300';
+                              const textColor = isPackageBooking ? 'text-purple-900' : 'text-green-900';
+                              
                               bookingInfoHTML = `
-                                   <div class="bg-green-50 px-4 py-3 rounded-2xl border-2 border-green-300 mt-3">
-                                        <p class="text-sm font-bold text-green-900 mb-3 flex items-center gap-2">
-                                             <span>📋</span>
-                                             <span>Thông tin Booking</span>
+                                   <div class="${bgColor} px-4 py-3 rounded-2xl border-2 ${borderColor} mt-3">
+                                        <p class="text-sm font-bold ${textColor} mb-3 flex items-center gap-2">
+                                             <span>${bookingIcon}</span>
+                                             <span>${bookingTitle}</span>
+                                             ${isPackageBooking ? '<span class="ml-2 px-2 py-0.5 bg-purple-200 text-purple-800 rounded-full text-xs font-semibold">Lịch cố định</span>' : ''}
                                         </p>
                                         <div class="space-y-2">
                                              <div class="flex items-center justify-between">
-                                                  <span class="text-xs text-gray-600">Mã Booking:</span>
-                                                  <span class="text-sm font-semibold text-green-900">#${bookingInfo.bookingId}</span>
+                                                  <span class="text-xs text-gray-600">${isPackageBooking ? 'Mã Session:' : 'Mã Booking:'}</span>
+                                                  <span class="text-sm font-semibold ${textColor}">#${bookingInfo.bookingId}</span>
+                                                  ${bookingInfo.bookingPackageId ? `<span class="text-xs text-gray-500">(Gói: #${bookingInfo.bookingPackageId})</span>` : ''}
                                              </div>
+                                             ${isPackageBooking && bookingInfo.packageName ? `
+                                             <div class="flex items-center justify-between">
+                                                  <span class="text-xs text-gray-600">Tên gói:</span>
+                                                  <span class="text-sm font-semibold ${textColor}">${bookingInfo.packageName}</span>
+                                             </div>
+                                             ` : ''}
                                              <div class="border-t border-green-200 pt-2 mt-2">
                                                   <p class="text-xs font-semibold text-gray-700 mb-2">Thông tin khách hàng:</p>
                                                   <div class="space-y-1">
                                                        <div class="flex items-center gap-2">
                                                             <span class="text-xs text-gray-600">👤 Tên:</span>
-                                                            <span class="text-sm font-medium text-green-900">${bookingInfo.customerName || 'N/A'}</span>
+                                                            <span class="text-sm font-medium ${textColor}">${bookingInfo.customerName || 'N/A'}</span>
                                                        </div>
                                                        <div class="flex items-center gap-2">
                                                             <span class="text-xs text-gray-600">📞 SĐT:</span>
-                                                            <span class="text-sm font-medium text-green-900">${bookingInfo.customerPhone || 'N/A'}</span>
+                                                            <span class="text-sm font-medium ${textColor}">${bookingInfo.customerPhone || 'N/A'}</span>
                                                        </div>
                                                        ${bookingInfo.customerEmail && bookingInfo.customerEmail !== 'N/A' ? `
                                                        <div class="flex items-center gap-2">
                                                             <span class="text-xs text-gray-600">📧 Email:</span>
-                                                            <span class="text-sm font-medium text-green-900">${bookingInfo.customerEmail}</span>
+                                                            <span class="text-sm font-medium ${textColor}">${bookingInfo.customerEmail}</span>
                                                        </div>
                                                        ` : ''}
                                                   </div>
@@ -127,13 +148,19 @@ export default function ScheduleGrid({
                                                   <p class="text-xs font-semibold text-gray-700 mb-2">Thông tin thanh toán:</p>
                                                   <div class="space-y-1">
                                                        <div class="flex items-center justify-between">
-                                                            <span class="text-xs text-gray-600">Tổng tiền:</span>
+                                                            <span class="text-xs text-gray-600">${isPackageBooking ? 'Giá mỗi buổi:' : 'Tổng tiền:'}</span>
                                                             <span class="text-sm font-bold text-orange-500">${formatCurrency(bookingInfo.totalPrice)}</span>
                                                        </div>
                                                        ${bookingInfo.depositAmount > 0 ? `
                                                        <div class="flex items-center justify-between">
                                                             <span class="text-xs text-gray-600">Đặt cọc:</span>
                                                             <span class="text-sm font-semibold text-yellow-600">${formatCurrency(bookingInfo.depositAmount)}</span>
+                                                       </div>
+                                                       ` : ''}
+                                                       ${isPackageBooking ? `
+                                                       <div class="flex items-center justify-between">
+                                                            <span class="text-xs text-gray-600">Loại:</span>
+                                                            <span class="text-xs font-semibold ${textColor}">Gói đặt cố định</span>
                                                        </div>
                                                        ` : ''}
                                                        <div class="flex items-center justify-between">
@@ -151,10 +178,10 @@ export default function ScheduleGrid({
                                              </div>
                                              ` : ''}
                                              ${bookingInfo.address && bookingInfo.address !== 'N/A' ? `
-                                             <div class="border-t border-green-200 pt-2 mt-2">
+                                             <div class="border-t ${isPackageBooking ? 'border-purple-200' : 'border-green-200'} pt-2 mt-2">
                                                   <div class="flex items-start gap-2">
                                                        <span class="text-xs text-gray-600">📍</span>
-                                                       <span class="text-xs font-medium text-green-900">${bookingInfo.address}</span>
+                                                       <span class="text-xs font-medium ${textColor}">${bookingInfo.address}</span>
                                                   </div>
                                              </div>
                                              ` : ''}
@@ -198,7 +225,16 @@ export default function ScheduleGrid({
                          <div className="font-bold text-sm line-clamp-1 truncate">{field.name}</div>
                     </div>
                     <div className={`text-xs opacity-90 flex items-center gap-1 justify-center mt-1`}>
-                         {booked && <span className={`text-green-500`}>✅ Đã đặt</span>}
+                         {booked && (() => {
+                              // Check if this is a package session by getting booking info
+                              const bookingInfo = getBookingInfo(Number(field.fieldId), selectedDate, Number(actualSlotId));
+                              const isPackageBooking = bookingInfo && (bookingInfo.isPackageSession || bookingInfo.bookingType === 'package');
+                              return isPackageBooking ? (
+                                   <span className="text-purple-600 font-semibold">🔄 Lịch cố định</span>
+                              ) : (
+                                   <span className="text-green-500">✅ Đã đặt</span>
+                              );
+                         })()}
                          {maintenance && <span>🔧 Bảo trì</span>}
                          {available && <span className={`text-red-600`}>⭕ Trống</span>}
                     </div>

@@ -271,10 +271,48 @@ export const authService = {
         token: token,
       };
     } catch (error) {
-      handleApiError(error);
+      // Extract error message without throwing
+      let errorMessage = "Đăng nhập thất bại";
+      
+      if (error.response) {
+        // Server responded with error status
+        const { status, statusText, data } = error.response;
+        
+        // Handle specific status codes
+        if (status === 401) {
+          errorMessage = "Số điện thoại hoặc mật khẩu không đúng";
+        } else if (status === 404) {
+          errorMessage = "Không tìm thấy tài khoản với số điện thoại này";
+        } else if (status === 400) {
+          errorMessage = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.";
+        } else if (status === 500) {
+          errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau.";
+        } else if (status === 403) {
+          errorMessage = "Truy cập bị từ chối. Vui lòng kiểm tra quyền hạn.";
+        }
+        
+        // Try to get error message from response data
+        if (data && (data.message || data.error || data.detail)) {
+          errorMessage = data.message || data.error || data.detail || errorMessage;
+        } else if (statusText) {
+          errorMessage = statusText;
+        }
+      } else if (error.request) {
+        // Request was made but no response received
+        errorMessage = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet.";
+      } else {
+        // Something else happened
+        errorMessage = error.message || errorMessage;
+      }
+      
+      console.error("Login error:", {
+        errorMessage,
+        originalError: error
+      });
+      
       return {
         ok: false,
-        reason: error.message || "Đăng nhập thất bại",
+        reason: errorMessage,
       };
     }
   },
