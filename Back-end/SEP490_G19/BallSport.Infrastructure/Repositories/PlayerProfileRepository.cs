@@ -21,6 +21,9 @@ namespace BallSport.Infrastructure.Repositories
         public string? Address { get; set; }
         public string? PreferredPositions { get; set; }
         public string? SkillLevel { get; set; }
+        public string? Status { get; set; }
+        public DateTime? CreatedAt { get; set; }
+
     }
     public interface IPlayerProfileRepository
     {
@@ -58,7 +61,9 @@ namespace BallSport.Infrastructure.Repositories
                 Gender = user.UserProfile?.Gender,
                 Address = user.UserProfile?.Address,
                 PreferredPositions = user.UserProfile?.PreferredPositions,
-                SkillLevel = user.UserProfile?.SkillLevel
+                SkillLevel = user.UserProfile?.SkillLevel,
+                Status = user.Status,
+                CreatedAt = user.CreatedAt
             };
         }
     }
