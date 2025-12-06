@@ -97,6 +97,7 @@ export default function BookingHistory({ user }) {
      const [packageError, setPackageError] = useState("");
      const [packageSessionsMap, setPackageSessionsMap] = useState({});
      const [expandedPackageSessions, setExpandedPackageSessions] = useState({});
+     const [sessionScheduleDataMap, setSessionScheduleDataMap] = useState({}); // Map scheduleId -> schedule data for sessions
      const playerId = user?.userID || user?.UserID || user?.id || user?.Id || user?.userId;
 
      const normalizePackageData = React.useCallback((pkg, fallbackIndex = 0) => {
@@ -134,14 +135,17 @@ export default function BookingHistory({ user }) {
                slotName = `${startTime} - ${endTime}`;
           }
           return {
-               id: session.bookingPackageSessionId || session.sessionId || session.id || `${packageId || "pkg"}-${session.sessionDate || session.date || Math.random()}`,
+               id: session.packageSessionId || session.bookingPackageSessionId || session.sessionId || session.id || `${packageId || "pkg"}-${session.sessionDate || session.date || Math.random()}`,
                bookingPackageId: packageId,
                date: session.sessionDate || session.date || session.sessionDay || session.startDate,
                startTime,
                endTime,
                slotName,
                status: session.status || session.sessionStatus || session.state || "",
-               fieldName: session.fieldName || session.field?.name || ""
+               fieldName: session.fieldName || session.field?.name || "",
+               scheduleId: session.scheduleId || session.scheduleID || null,
+               pricePerSession: session.pricePerSession || session.price || null,
+               sessionStatus: session.sessionStatus || session.status || ""
           };
      }, []);
 
@@ -240,12 +244,14 @@ export default function BookingHistory({ user }) {
           if (!user) {
                setBookingPackages([]);
                setPackageSessionsMap({});
+               setSessionScheduleDataMap({});
                return;
           }
 
           setIsLoadingPackages(true);
           setPackageError("");
           setPackageSessionsMap({});
+          setSessionScheduleDataMap({});
           setExpandedPackageSessions({});
           try {
                let packageList = [];
@@ -275,18 +281,19 @@ export default function BookingHistory({ user }) {
                               const groupedSessions = {};
                               const sessionsArray = Array.isArray(sessionResp.data) ? sessionResp.data : [];
 
-                              sessionsArray
+                              const normalizedSessions = sessionsArray
                                    .map(normalizePackageSession)
-                                   .filter(Boolean)
-                                   .forEach((session) => {
-                                        if (!session.bookingPackageId) return;
-                                        // Convert to string for consistent key matching
-                                        const packageIdKey = String(session.bookingPackageId);
-                                        if (!groupedSessions[packageIdKey]) {
-                                             groupedSessions[packageIdKey] = [];
-                                        }
-                                        groupedSessions[packageIdKey].push(session);
-                                   });
+                                   .filter(Boolean);
+
+                              normalizedSessions.forEach((session) => {
+                                   if (!session.bookingPackageId) return;
+                                   // Convert to string for consistent key matching
+                                   const packageIdKey = String(session.bookingPackageId);
+                                   if (!groupedSessions[packageIdKey]) {
+                                        groupedSessions[packageIdKey] = [];
+                                   }
+                                   groupedSessions[packageIdKey].push(session);
+                              });
 
                               // Also map by numeric keys for backward compatibility
                               Object.keys(groupedSessions).forEach((key) => {
@@ -305,14 +312,44 @@ export default function BookingHistory({ user }) {
                               });
 
                               setPackageSessionsMap(groupedSessions);
+
+                              // Fetch schedule data for each session that has a scheduleId
+                              const schedulePromises = normalizedSessions
+                                   .filter(s => s.scheduleId)
+                                   .map(async (session) => {
+                                        try {
+                                             const scheduleResult = await fetchFieldScheduleById(session.scheduleId);
+                                             if (scheduleResult.success && scheduleResult.data) {
+                                                  return {
+                                                       scheduleId: session.scheduleId,
+                                                       data: scheduleResult.data
+                                                  };
+                                             }
+                                        } catch (error) {
+                                             console.error(`Error fetching schedule ${session.scheduleId}:`, error);
+                                        }
+                                        return null;
+                                   });
+
+                              const scheduleResults = await Promise.all(schedulePromises);
+                              const scheduleMap = {};
+                              scheduleResults.forEach(result => {
+                                   if (result && result.scheduleId) {
+                                        scheduleMap[result.scheduleId] = result.data;
+                                   }
+                              });
+
+                              setSessionScheduleDataMap(scheduleMap);
                          } else if (sessionResp.error) {
                               console.warn("Không thể tải danh sách buổi của gói:", sessionResp.error);
                               // Set empty map to avoid showing incorrect counts
                               setPackageSessionsMap({});
+                              setSessionScheduleDataMap({});
                          }
                     } catch (error) {
                          console.error("Error fetching package sessions:", error);
                          setPackageSessionsMap({});
+                         setSessionScheduleDataMap({});
                     }
                }
           } catch (error) {
@@ -320,6 +357,7 @@ export default function BookingHistory({ user }) {
                setPackageError(error.message || "Không thể tải lịch sử gói đặt sân cố định.");
                setBookingPackages([]);
                setPackageSessionsMap({});
+               setSessionScheduleDataMap({});
           } finally {
                setIsLoadingPackages(false);
           }
@@ -2891,6 +2929,7 @@ export default function BookingHistory({ user }) {
                               formatPrice={formatPrice}
                               formatSessionDateLabel={formatSessionDateLabel}
                               formatSessionTimeRange={formatSessionTimeRange}
+                              sessionScheduleDataMap={sessionScheduleDataMap}
                          />
                     )}
 
