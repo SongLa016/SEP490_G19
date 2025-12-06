@@ -1,9 +1,12 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using BallSport.API.Controllers.DistanceCalculator;
 using BallSport.Application.CloudinarySettings;
 using BallSport.Application.Services;
 using BallSport.Application.Services.AdminStatistics;
 using BallSport.Application.Services.Community;
+using BallSport.Application.Services.DistanceCalculator;
+using BallSport.Application.Services.GoongMap;
 using BallSport.Application.Services.MatchFinding;
 using BallSport.Application.Services.OwnerStatistics;
 using BallSport.Application.Services.RatingBooking;
@@ -59,7 +62,7 @@ public class Program
                 webBuilder.ConfigureServices((context, services) =>
                 {
                     var config = context.Configuration;
-
+                    
                     // ===================== SETTINGS =====================
                     services.Configure<CloudinarySettings>(config.GetSection("CloudinarySettings"));
 
@@ -124,9 +127,6 @@ public class Program
                         options.UseSqlServer(config.GetConnectionString("MyCnn")));
 
                     // ===================== DEPENDENCY INJECTION =====================
-                    services.AddMemoryCache();
-
-                    // --- Copy toàn bộ DI services của bạn vào đây ---
                     services.AddMemoryCache();
 
                     // --- Statistic Owner ---
@@ -253,7 +253,12 @@ public class Program
                     // --- Match Finding module ---
                     services.AddScoped<IMatchFindingRepository, MatchFindingRepository>();
                     services.AddScoped<IMatchFindingService, MatchFindingService>();
-
+                    // --- Goong Map Service ---
+                    services.AddHttpClient();
+                    services.AddScoped<GoongMapService>();
+                    services.AddScoped<IDistanceCalculator, HaversineDistanceCalculator>();
+                    services.AddScoped<ILocationCacheService, LocationMemoryCacheService>();
+                    services.AddScoped<FieldComplexNearbyService>();
                     // --- Settings ---
                     services.Configure<CommunitySettings>(config.GetSection("CommunitySettings"));
                     services.Configure<NotificationSettings>(config.GetSection("NotificationSettings"));

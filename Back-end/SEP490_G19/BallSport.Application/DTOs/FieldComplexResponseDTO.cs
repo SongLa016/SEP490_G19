@@ -18,5 +18,9 @@ namespace BallSport.Application.DTOs
         public string? ImageUrl { get; set; }
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
+        public string? Ward { get; set; }
+        public string? District { get; set; }
+        public string? Province { get; set; }
+
     }
 }

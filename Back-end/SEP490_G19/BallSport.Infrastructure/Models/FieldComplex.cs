@@ -24,6 +24,12 @@ public partial class FieldComplex
     public double? Latitude { get; set; }
 
     public double? Longitude { get; set; }
+
+    public string? Ward { get; set; }
+
+    public string? District { get; set; }
+
+    public string? Province { get; set; }
     public virtual User? Owner { get; set; }
     public virtual ICollection<Field> Fields { get; set; } = new List<Field>();
     public virtual ICollection<FavoriteField> FavoriteFields { get; set; } = new List<FavoriteField>();

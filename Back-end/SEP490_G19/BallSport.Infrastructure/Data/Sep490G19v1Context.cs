@@ -384,19 +384,26 @@ public partial class Sep490G19v1Context : DbContext
         {
             entity.HasKey(e => e.ComplexId).HasName("PK__FieldCom__E14B3DF64B1F947D");
 
+            entity.HasIndex(e => e.District, "IX_FieldComplex_District");
+
+            entity.HasIndex(e => e.Province, "IX_FieldComplex_Province");
+
+            entity.HasIndex(e => e.Ward, "IX_FieldComplex_Ward");
+
             entity.Property(e => e.ComplexId).HasColumnName("ComplexID");
             entity.Property(e => e.Address).HasMaxLength(500);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.District).HasMaxLength(255);
             entity.Property(e => e.Name).HasMaxLength(255);
             entity.Property(e => e.OwnerId).HasColumnName("OwnerID");
+            entity.Property(e => e.Province).HasMaxLength(255);
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasDefaultValue("Active");
-
-            entity.HasOne(d => d.Owner).WithMany(p => p.FieldComplexes)
-                .HasForeignKey(d => d.OwnerId)
-                .HasConstraintName("FK__FieldComp__Owner__02FC7413");
+            entity.Property(e => e.Ward).HasMaxLength(255);
         });
+
+        OnModelCreatingPartial(modelBuilder);
 
         modelBuilder.Entity<FieldImage>(entity =>
         {

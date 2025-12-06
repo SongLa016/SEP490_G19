@@ -22,9 +22,17 @@ namespace BallSport.API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var created = await _service.AddComplexAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = created.ComplexId }, created);
+            try
+            {
+                var created = await _service.AddComplexAsync(dto);
+                return CreatedAtAction(nameof(GetById), new { id = created.ComplexId }, created);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
+
 
         // Lấy tất cả khu sân
         [HttpGet]
