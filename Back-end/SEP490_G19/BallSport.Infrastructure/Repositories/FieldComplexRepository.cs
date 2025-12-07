@@ -49,12 +49,21 @@ namespace BallSport.Infrastructure.Repositories
             existing.OwnerId = complex.OwnerId;
             existing.Description = complex.Description;
             existing.Status = complex.Status;
-            existing.ImageUrl = complex.ImageUrl; // 🔹 Cập nhật URL Cloudinary nếu có
+            existing.ImageUrl = complex.ImageUrl;
+
+            // ✅ BỔ SUNG CÁC TRƯỜNG TỌA ĐỘ & HÀNH CHÍNH
+            existing.Latitude = complex.Latitude;
+            existing.Longitude = complex.Longitude;
+            existing.Ward = complex.Ward;
+            existing.District = complex.District;
+            existing.Province = complex.Province;
 
             _context.FieldComplexes.Update(existing);
             await _context.SaveChangesAsync();
+
             return existing;
         }
+
 
         //  Xóa khu sân
         public async Task<bool> DeleteComplexAsync(int complexId)

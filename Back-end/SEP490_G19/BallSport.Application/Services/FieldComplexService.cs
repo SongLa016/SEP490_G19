@@ -83,7 +83,7 @@ public class FieldComplexService
         return c == null ? null : MapToResponseDTO(c);
     }
 
- 
+
     //  CẬP NHẬT (NẾU ĐỔI ADDRESS → CẬP NHẬT LẠI TỌA ĐỘ)
 
     public async Task<FieldComplexResponseDTO?> UpdateComplexAsync(FieldComplexDTO dto)
@@ -97,24 +97,27 @@ public class FieldComplexService
         existing.Status = dto.Status;
 
         // ✅ NẾU ĐỔI ĐỊA CHỈ → CẬP NHẬT LẠI TỌA ĐỘ
-        if (existing.Address != dto.Address)
+        if (!string.IsNullOrWhiteSpace(dto.Address))
         {
-            existing.Address = dto.Address;
-
             var location = await _goongMapService.GetLocationDetailAsync(dto.Address);
+
             if (location == null)
             {
                 throw new Exception("Không tìm được địa chỉ hợp lệ trên bản đồ.");
-                var (ward, district, province) = ExtractAdministrativeUnits(location.Value.formattedAddress);
-                existing.Address = location.Value.formattedAddress;
-                existing.Latitude = location.Value.lat;
-                existing.Longitude = location.Value.lng;
-                existing.Ward = ward;
-                existing.District = district;
-                existing.Province = province;
             }
+
+            var (ward, district, province) =
+                ExtractAdministrativeUnits(location.Value.formattedAddress);
+
+            existing.Address = location.Value.formattedAddress;
+            existing.Latitude = location.Value.lat;
+            existing.Longitude = location.Value.lng;
+            existing.Ward = ward;
+            existing.District = district;
+            existing.Province = province;
         }
 
+        // ✅ UPDATE ẢNH
         if (dto.ImageFile != null)
         {
             var uploadParams = new ImageUploadParams
@@ -122,15 +125,19 @@ public class FieldComplexService
                 File = new FileDescription(dto.ImageFile.FileName, dto.ImageFile.OpenReadStream()),
                 Folder = "field-complexes"
             };
+
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
             existing.ImageUrl = uploadResult.SecureUrl.AbsoluteUri;
         }
 
         var updated = await _complexRepository.UpdateComplexAsync(existing);
-        _cacheService.ClearNearbyCache();
+
+        // ✅ CLEAR CACHE SAU UPDATE (NẾU BẠN ĐANG DÙNG NEARBY CACHE)
+        _cacheService?.ClearNearbyCache();
 
         return MapToResponseDTO(updated);
     }
+
 
     //  XÓA
     public async Task<bool> DeleteComplexAsync(int complexId)
