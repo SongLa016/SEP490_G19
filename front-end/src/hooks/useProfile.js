@@ -5,85 +5,83 @@ import {
   formatProfileForAPI,
 } from "../services/profileService";
 
+/* ============================================================================
+   PROFILE INFO HOOK
+============================================================================ */
 export const useProfile = (userId) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
-
+  // Load profile
   const loadProfile = async () => {
     if (!userId) return;
 
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
-      const profileData = await profileService.getProfile(userId);
-      setProfile(profileData);
-    } catch (err) {
-      setError(err.message);
+      const result = await profileService.getProfile(userId);
+      setProfile(result);
+    } catch (ex) {
+      setError(ex?.message);
     } finally {
       setLoading(false);
     }
   };
 
- 
-  const saveProfile = async (profileData) => {
+  // Save profile
+  const saveProfile = async (incoming) => {
     if (!userId) return;
 
-    try {
-      setSaving(true);
-      setError(null);
+    setSaving(true);
+    setError(null);
 
-     
-      const validation = validateProfileData(profileData);
+    try {
+      const validation = validateProfileData(incoming);
+
       if (!validation.isValid) {
         throw new Error(JSON.stringify(validation.errors));
       }
 
-      const formattedData = formatProfileForAPI(profileData);
+      const dataToSend = formatProfileForAPI(incoming);
+      const updated = await profileService.updateProfile(userId, dataToSend);
 
-  
-      const savedProfile = await profileService.updateProfile(
-        userId,
-        formattedData
-      );
-      setProfile(savedProfile);
-
-      return savedProfile;
-    } catch (err) {
-      setError(err.message);
-      throw err;
+      setProfile(updated);
+      return updated;
+    } catch (ex) {
+      setError(ex?.message);
+      throw ex;
     } finally {
       setSaving(false);
     }
   };
 
-
+  // Upload avatar
   const uploadAvatar = async (file) => {
     if (!userId || !file) return;
 
+    setSaving(true);
+    setError(null);
+
     try {
-      setSaving(true);
-      setError(null);
+      const res = await profileService.uploadAvatar(userId, file);
 
-      const result = await profileService.uploadAvatar(userId, file);
+      setProfile((prev) =>
+        prev
+          ? { ...prev, avatar: res.avatarUrl }
+          : { avatar: res.avatarUrl }
+      );
 
-   
-      setProfile((prev) => ({
-        ...prev,
-        avatar: result.avatarUrl,
-      }));
-
-      return result;
-    } catch (err) {
-      setError(err.message);
-      throw err;
+      return res;
+    } catch (ex) {
+      setError(ex?.message);
+      throw ex;
     } finally {
       setSaving(false);
     }
   };
-
 
   useEffect(() => {
     loadProfile();
@@ -100,6 +98,9 @@ export const useProfile = (userId) => {
   };
 };
 
+/* ============================================================================
+   PROFILE STATS HOOK
+============================================================================ */
 export const useProfileStats = (userId) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -108,13 +109,14 @@ export const useProfileStats = (userId) => {
   const loadStats = async () => {
     if (!userId) return;
 
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
-      const statsData = await profileService.getStats(userId);
-      setStats(statsData);
-    } catch (err) {
-      setError(err.message);
+      const res = await profileService.getStats(userId);
+      setStats(res);
+    } catch (ex) {
+      setError(ex?.message);
     } finally {
       setLoading(false);
     }
@@ -132,6 +134,9 @@ export const useProfileStats = (userId) => {
   };
 };
 
+/* ============================================================================
+   PROFILE SETTINGS HOOK
+============================================================================ */
 export const useProfileSettings = (userId) => {
   const [settings, setSettings] = useState({
     notifications: {
@@ -147,6 +152,7 @@ export const useProfileSettings = (userId) => {
       showAddress: false,
     },
   });
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -154,36 +160,32 @@ export const useProfileSettings = (userId) => {
   const loadSettings = async () => {
     if (!userId) return;
 
+    setLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      setError(null);
-   
-      const settingsData = await profileService.getSettings(userId);
-      setSettings(settingsData);
-    } catch (err) {
-      setError(err.message);
+      const result = await profileService.getSettings(userId);
+      setSettings(result);
+    } catch (ex) {
+      setError(ex?.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const saveSettings = async (newSettings) => {
+  const saveSettings = async (incoming) => {
     if (!userId) return;
 
+    setSaving(true);
+    setError(null);
+
     try {
-      setSaving(true);
-      setError(null);
-
-      const savedSettings = await profileService.updateSettings(
-        userId,
-        newSettings
-      );
-      setSettings(savedSettings);
-
-      return savedSettings;
-    } catch (err) {
-      setError(err.message);
-      throw err;
+      const result = await profileService.updateSettings(userId, incoming);
+      setSettings(result);
+      return result;
+    } catch (ex) {
+      setError(ex?.message);
+      throw ex;
     } finally {
       setSaving(false);
     }
