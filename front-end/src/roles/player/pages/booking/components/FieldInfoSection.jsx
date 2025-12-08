@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { fetchFieldTypes, normalizeFieldType } from "../../../../../shared/services/fieldTypes";
 
@@ -11,6 +11,11 @@ export default function FieldInfoSection({
      selectedDays,
      generateRecurringSessions
 }) {
+     // Memoize sessions để tránh gọi generateRecurringSessions nhiều lần
+     const recurringSessions = useMemo(() => {
+          if (!isRecurring || !generateRecurringSessions) return [];
+          return generateRecurringSessions();
+     }, [isRecurring, generateRecurringSessions, startDate, endDate, selectedDays]);
      // Tính số tuần từ startDate và endDate
      const calculateWeeks = () => {
           if (!startDate || !endDate) return 0;
@@ -208,19 +213,19 @@ export default function FieldInfoSection({
                                              <span className="mr-2">🎯</span>
                                              Tổng số buổi
                                         </span>
-                                        <span className="font-medium text-teal-600">{bookingData.totalSessions || (weeksCount * selectedDays.length)} buổi</span>
+                                        <span className="font-medium text-teal-600">{bookingData.totalSessions || 0} buổi</span>
                                    </div>
                                    {/* Preview danh sách buổi */}
                                    <div className="mt-3 bg-white/70 rounded-lg p-2 border border-teal-200">
                                         <div className="text-xs text-gray-600 font-semibold mb-1">Lịch các buổi dự kiến</div>
                                         <div className="overflow-y-auto max-h-24 scrollbar-thin scrollbar-thumb-teal-200 scrollbar-track-white space-y-1 text-xs">
-                                             {generateRecurringSessions().map((s, idx) => (
+                                             {recurringSessions.map((s, idx) => (
                                                   <div key={idx} className="flex justify-between">
-                                                       <span>{s.date.toLocaleDateString('vi-VN')}</span>
-                                                       <span className="text-teal-700">{s.slotName}</span>
+                                                       <span>{s.date?.toLocaleDateString('vi-VN') || 'N/A'}</span>
+                                                       <span className="text-teal-700">{s.slotName || '—'}</span>
                                                   </div>
                                              ))}
-                                             {generateRecurringSessions().length === 0 && (
+                                             {recurringSessions.length === 0 && (
                                                   <div className="text-gray-500">Chọn ngày trong tuần để xem danh sách buổi</div>
                                              )}
                                         </div>

@@ -47,7 +47,7 @@ const FieldFormModal = ({
                isOpen={isOpen}
                onClose={onClose}
                title={isEdit ? "Chỉnh sửa sân" : "Thêm sân mới"}
-               className="max-w-2xl rounded-2xl shadow-lg px-3 max-h-[90vh]"
+               className="max-w-2xl rounded-2xl shadow-lg px-3 max-h-[90vh] overflow-y-auto scrollbar-hide"
           >
                <form onSubmit={onSubmit} className="space-y-3">
                     {!isEdit && (

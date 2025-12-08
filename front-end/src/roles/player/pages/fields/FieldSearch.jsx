@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Star } from "lucide-react";
 import { Section, Container, Card, CardContent, StaggerContainer } from "../../../../shared/components/ui";
@@ -25,6 +25,18 @@ import ComplexListItem from "./components/ComplexListItem";
 import GroupedViewSection from "./components/GroupedViewSection";
 
 const normalizeStatus = (status) => (typeof status === "string" ? status.trim().toLowerCase() : "");
+const normalizeText = (text) => {
+     if (typeof text !== "string") return "";
+     return text
+          .normalize("NFD")
+          .replace(/\p{Diacritic}/gu, "")
+          .toLowerCase()
+          .trim();
+};
+const normalizeDistrictKey = (text) => {
+     const normalized = normalizeText(text);
+     return normalized.replace(/^(quan|huyen|thi xa)\s+/i, "");
+};
 const ALLOWED_FIELD_STATUSES = new Set(["available", "active"]);
 const FIELD_TYPE_ALIASES = {
      "5vs5": ["5vs5", "5v5", "san5", "san5nguoi", "5nguoi"],
@@ -70,7 +82,7 @@ export default function FieldSearch({ user }) {
      const navigate = useNavigate();
      const [entityTab, setEntityTab] = useState("fields"); // complexes | fields
      const [searchQuery, setSearchQuery] = useState("");
-     const [selectedLocation, setSelectedLocation] = useState("all");
+     const [selectedLocation, setSelectedLocation] = useState("");
      const [selectedPrice, setSelectedPrice] = useState("all");
      const [selectedRating, setSelectedRating] = useState("all");
      const [viewMode, setViewMode] = useState("grid"); // grid or list
@@ -126,6 +138,27 @@ export default function FieldSearch({ user }) {
      const [complexes, setComplexes] = useState([]);
      const [filteredFields, setFilteredFields] = useState([]);
      const [favoriteFieldIds, setFavoriteFieldIds] = useState(new Set());
+     // District options derived from fetched complexes (deduped by base district name)
+     const districtOptions = useMemo(() => {
+          const map = new Map(); // baseKey -> label
+          complexes.forEach((c) => {
+               const raw = typeof c?.district === "string" ? c.district.trim() : "";
+               if (!raw) return;
+               const baseKey = normalizeDistrictKey(raw);
+               const hasPrefix = /^(Quận|Huyện|Thị xã)/i.test(raw);
+               if (!map.has(baseKey)) {
+                    map.set(baseKey, raw);
+                    return;
+               }
+               const current = map.get(baseKey);
+               const currentHasPrefix = /^(Quận|Huyện|Thị xã)/i.test(current);
+               // Prefer label with administrative prefix if available
+               if (hasPrefix && !currentHasPrefix) {
+                    map.set(baseKey, raw);
+               }
+          });
+          return Array.from(map.values()).sort((a, b) => a.localeCompare(b, "vi"));
+     }, [complexes]);
      const [isLoading, setIsLoading] = useState(false);
      const [userLocation, setUserLocation] = useState(null); // { lat, lng }
      const [fieldTypeMap, setFieldTypeMap] = useState({}); // Map typeId -> typeName
@@ -485,7 +518,12 @@ export default function FieldSearch({ user }) {
 
           // Filter by location
           if (selectedLocation) {
-               filtered = filtered.filter(field => (field.address || "").includes(selectedLocation));
+               const normalizedLocation = normalizeText(selectedLocation);
+               filtered = filtered.filter(field => {
+                    const addr = normalizeText(field.address || "");
+                    const dist = normalizeText(field.district || "");
+                    return addr.includes(normalizedLocation) || dist.includes(normalizedLocation);
+               });
           }
 
           // Filter by field type via tabs
@@ -876,7 +914,7 @@ export default function FieldSearch({ user }) {
                return distA - distB;
           })
           .slice(0, 4);
-     
+
      const bestPriceGroup = [...filteredFields].sort((a, b) => (a.priceForSelectedSlot || 0) - (b.priceForSelectedSlot || 0)).slice(0, 4);
      const topRatedGroup = [...filteredFields].sort((a, b) => b.rating - a.rating).slice(0, 4);
 
@@ -986,6 +1024,7 @@ export default function FieldSearch({ user }) {
                                              selectedLocation={selectedLocation}
                                              handleLocationChange={handleLocationChange}
                                              getLocationValue={getLocationValue}
+                                             districtOptions={districtOptions}
                                              selectedPrice={selectedPrice}
                                              handlePriceChange={handlePriceChange}
                                              getPriceValue={getPriceValue}

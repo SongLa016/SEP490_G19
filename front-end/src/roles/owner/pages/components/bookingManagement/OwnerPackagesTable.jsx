@@ -49,12 +49,49 @@ export default function OwnerPackagesTable({
     }
   };
 
+  // Hàm dịch booking status sang tiếng Việt
+  const getBookingStatusText = (status) => {
+    const statusLower = (status || "").toLowerCase();
+    if (statusLower.includes("pending")) return "Chờ xác nhận";
+    if (statusLower.includes("confirm")) return "Đã xác nhận";
+    if (statusLower.includes("complete")) return "Hoàn thành";
+    if (statusLower.includes("cancel")) return "Đã hủy";
+    return status || "—";
+  };
+
+  const getBookingStatusColor = (status) => {
+    const statusLower = (status || "").toLowerCase();
+    if (statusLower.includes("pending")) return "bg-yellow-100 text-yellow-800 border-yellow-200";
+    if (statusLower.includes("confirm")) return "bg-blue-100 text-blue-800 border-blue-200";
+    if (statusLower.includes("complete")) return "bg-green-100 text-green-800 border-green-200";
+    if (statusLower.includes("cancel")) return "bg-red-100 text-red-800 border-red-200";
+    return "bg-gray-100 text-gray-800 border-gray-200";
+  };
+
+  // Hàm dịch payment status sang tiếng Việt
+  const getPaymentStatusTextVi = (status) => {
+    const statusLower = (status || "").toLowerCase();
+    if (statusLower.includes("paid")) return "Đã thanh toán";
+    if (statusLower.includes("pending")) return "Chưa thanh toán";
+    if (statusLower.includes("refund")) return "Đã hoàn tiền";
+    if (statusLower.includes("fail")) return "Thất bại";
+    return status || "—";
+  };
+
+  const getPaymentStatusColorVi = (status) => {
+    const statusLower = (status || "").toLowerCase();
+    if (statusLower.includes("paid")) return "bg-green-100 text-green-800 border-green-200";
+    if (statusLower.includes("pending") || statusLower.includes("unpaid")) return "bg-yellow-100 text-yellow-800 border-yellow-200";
+    if (statusLower.includes("refund")) return "bg-blue-100 text-blue-800 border-blue-200";
+    if (statusLower.includes("fail")) return "bg-red-100 text-red-800 border-red-200";
+    return "bg-gray-100 text-gray-800 border-gray-200";
+  };
+
   const getPaymentIcon = (status) => {
     switch (status) {
       case "paid":
         return <CheckCircle className="w-3 h-3" />;
       case "unpaid":
-      case "pending":
         return <AlertTriangle className="w-3 h-3" />;
       case "refunded":
         return <RotateCcw className="w-3 h-3" />;
@@ -354,20 +391,56 @@ export default function OwnerPackagesTable({
   }, [isSessionsModalOpen, selectedPackageForSessions]);
 
   const handleConfirmPackage = async (pkgId) => {
+    // Tìm package để lấy thông tin
+    const pkg = bookingPackages.find(p => (p.bookingPackageId || p.id) === pkgId);
+
     const result = await Swal.fire({
       icon: "question",
       title: "Xác nhận gói định kỳ",
-      text: "Xác nhận thanh toán cho gói sân cố định này?",
+      html: `
+        <div class="text-left">
+          <p class="mb-3">💳 <strong>Xác nhận thanh toán</strong> - Gói sân cố định sẽ chuyển sang trạng thái "Đã xác nhận" và thanh toán "Đã thanh toán"</p>
+          ${pkg ? `
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+              <p class="text-sm text-blue-800 font-semibold mb-1">📋 Thông tin gói sân cố định:</p>
+              <div class="text-xs text-blue-700 space-y-1">
+                ${pkg.userId && userMap[pkg.userId] ? `<p><strong>Khách hàng:</strong> ${userMap[pkg.userId].name || "—"}</p>` : ''}
+                <p><strong>Tên gói:</strong> ${pkg.packageName || "—"}</p>
+                <p><strong>Sân:</strong> ${pkg.fieldName || `Sân #${pkg.fieldId}`}</p>
+                <p><strong>Từ ngày:</strong> ${formatDate(pkg.startDate)}</p>
+                <p><strong>Đến ngày:</strong> ${formatDate(pkg.endDate)}</p>
+                <p><strong>Số tiền:</strong> <span class="font-bold text-green-600">${(pkg.totalPrice || 0).toLocaleString("vi-VN")}₫</span></p>
+                <p><strong>Trạng thái:</strong> ${getBookingStatusText((pkg.bookingStatus || "").toLowerCase())}</p>
+                <p><strong>Thanh toán:</strong> ${getPaymentStatusTextVi((pkg.paymentStatus || "").toLowerCase())}</p>
+              </div>
+            </div>
+            <div class="bg-green-50 border border-green-200 rounded-lg p-2">
+              <p class="text-xs text-green-800">
+                Sau khi xác nhận, gói sân cố định sẽ được kích hoạt và khách hàng có thể sử dụng các buổi đặt sân.
+              </p>
+            </div>
+          ` : ''}
+        </div>
+      `,
       showCancelButton: true,
       confirmButtonText: "Xác nhận",
       cancelButtonText: "Hủy",
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#6b7280',
+      width: '550px'
     });
     if (!result.isConfirmed) return;
     const resp = await confirmBookingPackage(pkgId);
     if (!resp.success) {
       await Swal.fire("Lỗi", resp.error || "Không thể xác nhận gói.", "error");
     } else {
-      await Swal.fire("Thành công", "Đã xác nhận gói sân cố định.", "success");
+      const amountText = pkg ? `<br/><br/><p class="text-sm"><strong>Số tiền:</strong> <span class="font-bold text-green-600">${(pkg.totalPrice || 0).toLocaleString("vi-VN")}₫</span></p>` : '';
+      await Swal.fire({
+        icon: "success",
+        title: "Đã xác nhận thanh toán!",
+        html: `Đã xác nhận gói sân cố định thành công. Trạng thái đã chuyển sang "Đã xác nhận" và thanh toán "Đã thanh toán".${amountText}`,
+        confirmButtonColor: '#10b981'
+      });
       loadBookingPackages();
     }
   };
@@ -644,17 +717,17 @@ export default function OwnerPackagesTable({
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium text-teal-700">{pkg.packageName}</div>
+                        <div className="font-medium truncate text-teal-700">{pkg.packageName}</div>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm font-medium text-teal-700">{pkg.fieldName || `Sân #${pkg.fieldId}`}</div>
+                        <div className="text-sm font-medium truncate text-teal-700">{pkg.fieldName || `Sân #${pkg.fieldId}`}</div>
                       </TableCell>
                       <TableCell>
                         <div className="text-xs text-gray-700">
-                          <div>
+                          <div className="truncate">
                             Từ: <span className="font-medium text-teal-700">{formatDate(pkg.startDate)}</span>
                           </div>
-                          <div>
+                          <div className="truncate">
                             Đến: <span className="font-medium text-teal-700">{formatDate(pkg.endDate)}</span>
                           </div>
                         </div>
@@ -662,31 +735,34 @@ export default function OwnerPackagesTable({
                       <TableCell>
                         <span className="font-bold text-orange-500">{pkg.totalPrice?.toLocaleString("vi-VN")}₫</span>
                       </TableCell>
+
                       <TableCell>
                         {(() => {
-                          const StatusIcon = getStatusIcon(status);
+                          const bookingStatus = (pkg.bookingStatus || "").toLowerCase();
+                          const StatusIcon = getStatusIcon(bookingStatus);
                           return (
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(status)}`}>
+                            <span className={`inline-flex items-center truncate gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${getBookingStatusColor(bookingStatus)}`}>
                               {StatusIcon}
-                              {getStatusText(status)}
+                              {getBookingStatusText(bookingStatus)}
                             </span>
                           );
                         })()}
                       </TableCell>
+
                       <TableCell>
                         {(() => {
                           const payStatus = (pkg.paymentStatus || "").toLowerCase();
                           const PayIcon = getPaymentIcon(payStatus);
                           return (
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(payStatus)}`}>
+                            <span className={`inline-flex items-center truncate gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${getPaymentStatusColorVi(payStatus)}`}>
                               {PayIcon}
-                              {getPaymentStatusText(payStatus)}
+                              {getPaymentStatusTextVi(payStatus)}
                             </span>
                           );
                         })()}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -822,8 +898,8 @@ export default function OwnerPackagesTable({
                     <CreditCard className="w-4 h-4 text-amber-600" />
                     Trạng thái thanh toán
                   </div>
-                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor((selectedPackage.paymentStatus || "").toLowerCase())}`}>
-                    {getPaymentStatusText((selectedPackage.paymentStatus || "").toLowerCase())}
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${getPaymentStatusColorVi((selectedPackage.paymentStatus || "").toLowerCase())}`}>
+                    {getPaymentStatusTextVi((selectedPackage.paymentStatus || "").toLowerCase())}
                   </span>
                 </div>
               </div>

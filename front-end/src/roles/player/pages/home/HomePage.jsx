@@ -6,11 +6,41 @@ import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
 import { fetchTopBookingFields, fetchFieldComplex, fetchFieldDetail } from "../../../../shared/services/fields";
 
+// Danh sách khu vực cố định cho homepage (đầy đủ quận/huyện/thị xã Hà Nội)
 const HOMEPAGE_LOCATION_OPTIONS = [
-     { value: "quan1", label: "Quận Hoàn Kiếm", query: "Quận Hoàn Kiếm" },
-     { value: "quan3", label: "Quận Ba Đình", query: "Quận Ba Đình" },
-     { value: "quan7", label: "Quận Đống Đa", query: "Quận Đống Đa" },
-     { value: "quan10", label: "Quận 10 (TP.HCM)", query: "Quận 10" },
+     // Quận
+     { value: "Quận Ba Đình", label: "Quận Ba Đình", query: "Quận Ba Đình" },
+     { value: "Quận Bắc Từ Liêm", label: "Quận Bắc Từ Liêm", query: "Quận Bắc Từ Liêm" },
+     { value: "Quận Cầu Giấy", label: "Quận Cầu Giấy", query: "Quận Cầu Giấy" },
+     { value: "Quận Đống Đa", label: "Quận Đống Đa", query: "Quận Đống Đa" },
+     { value: "Quận Hà Đông", label: "Quận Hà Đông", query: "Quận Hà Đông" },
+     { value: "Quận Hai Bà Trưng", label: "Quận Hai Bà Trưng", query: "Quận Hai Bà Trưng" },
+     { value: "Quận Hoàn Kiếm", label: "Quận Hoàn Kiếm", query: "Quận Hoàn Kiếm" },
+     { value: "Quận Hoàng Mai", label: "Quận Hoàng Mai", query: "Quận Hoàng Mai" },
+     { value: "Quận Long Biên", label: "Quận Long Biên", query: "Quận Long Biên" },
+     { value: "Quận Nam Từ Liêm", label: "Quận Nam Từ Liêm", query: "Quận Nam Từ Liêm" },
+     { value: "Quận Tây Hồ", label: "Quận Tây Hồ", query: "Quận Tây Hồ" },
+     { value: "Quận Thanh Xuân", label: "Quận Thanh Xuân", query: "Quận Thanh Xuân" },
+     // Huyện
+     { value: "Huyện Ba Vì", label: "Huyện Ba Vì", query: "Huyện Ba Vì" },
+     { value: "Huyện Chương Mỹ", label: "Huyện Chương Mỹ", query: "Huyện Chương Mỹ" },
+     { value: "Huyện Đan Phượng", label: "Huyện Đan Phượng", query: "Huyện Đan Phượng" },
+     { value: "Huyện Đông Anh", label: "Huyện Đông Anh", query: "Huyện Đông Anh" },
+     { value: "Huyện Gia Lâm", label: "Huyện Gia Lâm", query: "Huyện Gia Lâm" },
+     { value: "Huyện Hoài Đức", label: "Huyện Hoài Đức", query: "Huyện Hoài Đức" },
+     { value: "Huyện Mê Linh", label: "Huyện Mê Linh", query: "Huyện Mê Linh" },
+     { value: "Huyện Mỹ Đức", label: "Huyện Mỹ Đức", query: "Huyện Mỹ Đức" },
+     { value: "Huyện Phú Xuyên", label: "Huyện Phú Xuyên", query: "Huyện Phú Xuyên" },
+     { value: "Huyện Phúc Thọ", label: "Huyện Phúc Thọ", query: "Huyện Phúc Thọ" },
+     { value: "Huyện Quốc Oai", label: "Huyện Quốc Oai", query: "Huyện Quốc Oai" },
+     { value: "Huyện Sóc Sơn", label: "Huyện Sóc Sơn", query: "Huyện Sóc Sơn" },
+     { value: "Huyện Thạch Thất", label: "Huyện Thạch Thất", query: "Huyện Thạch Thất" },
+     { value: "Huyện Thanh Oai", label: "Huyện Thanh Oai", query: "Huyện Thanh Oai" },
+     { value: "Huyện Thanh Trì", label: "Huyện Thanh Trì", query: "Huyện Thanh Trì" },
+     { value: "Huyện Thường Tín", label: "Huyện Thường Tín", query: "Huyện Thường Tín" },
+     { value: "Huyện Ứng Hòa", label: "Huyện Ứng Hòa", query: "Huyện Ứng Hòa" },
+     // Thị xã
+     { value: "Thị xã Sơn Tây", label: "Thị xã Sơn Tây", query: "Thị xã Sơn Tây" },
 ];
 
 export default function HomePage({ user }) {

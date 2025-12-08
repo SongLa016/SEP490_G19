@@ -200,7 +200,7 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
                          </nav>
 
                          {/* User Info */}
-                         <div className="sticky bottom-0 p-4 border-t border-slate-200/50 bg-gradient-to-r from-slate-50 to-slate-100 backdrop-blur-sm z-10">
+                         <div className="sticky bottom-0 p-2 border-t border-slate-200/50 bg-gradient-to-r from-slate-50 to-slate-100 backdrop-blur-sm z-10">
                               <div className="flex items-center">
                                    <Avatar className="w-12 h-12 border-2 border-white shadow-lg ring-2 ring-teal-100">
                                         <AvatarImage

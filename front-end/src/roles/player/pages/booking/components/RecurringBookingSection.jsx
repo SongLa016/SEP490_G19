@@ -1,4 +1,4 @@
-import { Repeat, CalendarDays, Clock } from "lucide-react";
+import { Repeat, CalendarDays, Clock, DollarSign } from "lucide-react";
 import { Button, DatePicker } from "../../../../../shared/components/ui";
 
 export default function RecurringBookingSection({
@@ -151,7 +151,62 @@ export default function RecurringBookingSection({
           }
      };
 
+     // Tính số buổi theo từng mức giá
+     const calculateSessionsByPrice = () => {
+          if (!startDate || !endDate || selectedDays.length === 0 || !selectedSlotsByDay) return {};
+
+          try {
+               const start = new Date(startDate);
+               const end = new Date(endDate);
+               if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return {};
+
+               // Đếm số buổi cho mỗi ngày được chọn
+               const sessionsByDay = {};
+               const current = new Date(start);
+               while (current <= end) {
+                    const weekday = current.getDay();
+                    if (selectedDays.includes(weekday)) {
+                         if (!sessionsByDay[weekday]) {
+                              sessionsByDay[weekday] = 0;
+                         }
+                         sessionsByDay[weekday]++;
+                    }
+                    current.setDate(current.getDate() + 1);
+               }
+
+               // Tính số buổi theo từng mức giá
+               const sessionsByPrice = {};
+               Object.keys(sessionsByDay).forEach(dayOfWeek => {
+                    const slotId = selectedSlotsByDay[Number(dayOfWeek)];
+                    if (slotId) {
+                         // Lấy giá từ fieldTimeSlots
+                         const timeSlot = Array.isArray(fieldTimeSlots) && fieldTimeSlots.length > 0
+                              ? fieldTimeSlots.find(ts =>
+                                   String(ts.slotId || ts.SlotId || ts.slotID || ts.SlotID) === String(slotId)
+                              )
+                              : null;
+
+                         const price = timeSlot
+                              ? (timeSlot.price || timeSlot.Price || timeSlot.unitPrice || timeSlot.UnitPrice || 0)
+                              : 0;
+
+                         if (price > 0) {
+                              if (!sessionsByPrice[price]) {
+                                   sessionsByPrice[price] = 0;
+                              }
+                              sessionsByPrice[price] += sessionsByDay[dayOfWeek];
+                         }
+                    }
+               });
+
+               return sessionsByPrice;
+          } catch {
+               return {};
+          }
+     };
+
      const totalSessions = calculateTotalSessions();
+     const sessionsByPrice = calculateSessionsByPrice();
 
      return (
           <div className="bg-teal-50 rounded-2xl shadow-sm border border-teal-200 p-4">
@@ -308,7 +363,8 @@ export default function RecurringBookingSection({
                                                                                      <span className="font-medium">{formatTimeRange(startTime, endTime)}</span>
                                                                                 </div>
                                                                                 {price > 0 && (
-                                                                                     <span className="text-xs text-orange-700 font-semibold">
+                                                                                     <span className={`text-xs font-semibold ${isSelected ? "text-yellow-400" : "text-orange-700"} flex items-center`}>
+                                                                                          <DollarSign className="w-3 h-3" />
                                                                                           {price.toLocaleString("vi-VN")}₫
                                                                                      </span>
                                                                                 )}
@@ -327,24 +383,42 @@ export default function RecurringBookingSection({
 
                          {/* Tóm tắt */}
                          {totalSessions > 0 && (
-                              <div className="bg-teal-100 flex items-center rounded-lg p-2 gap-4 border border-teal-300">
-                                   <div className="flex items-center gap-2 text-teal-800">
+                              <div className="bg-teal-100 rounded-lg p-3 gap-4 border border-teal-300">
+                                   <div className="flex items-center gap-2 text-teal-800 mb-1">
                                         <CalendarDays className="w-4 h-4" />
                                         <span className="font-semibold">Tóm tắt:</span>
                                    </div>
-                                   <div className="text-sm space-y-1 text-teal-700">
-                                        <p>Sẽ tạo <span className="font-bold text-red-500">{totalSessions}</span> buổi đặt sân</p>
-                                        {startDate && endDate && (
-                                             <p className="">
-                                                  Từ <span className="font-semibold text-yellow-500">{new Date(startDate).toLocaleDateString("vi-VN")}</span> đến{" "}
-                                                  <span className="font-semibold text-yellow-500">{new Date(endDate).toLocaleDateString("vi-VN")}</span>
-                                             </p>
-                                        )}
-                                        {selectedDays.length > 0 && (
-                                             <p className="">
-                                                  {selectedDays.length} ngày/tuần: <span className="font-semibold text-blue-500">{selectedDays.map(d => dayOptions.find(o => o.value === d)?.label).join(", ")}</span>
-                                             </p>
-                                        )}
+                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {/* Cột trái: Tổng số buổi và số buổi theo giá */}
+                                        <div className="text-sm pl-3 space-y-0.5 text-teal-700">
+                                             <p>Tổng số buổi: <span className="font-bold text-red-500">{totalSessions}</span> buổi đặt sân</p>
+                                             {Object.keys(sessionsByPrice).length > 0 && (
+                                                  <div className="space-y-0.5">
+                                                       {Object.entries(sessionsByPrice)
+                                                            .sort((a, b) => Number(b[0]) - Number(a[0])) // Sắp xếp theo giá giảm dần
+                                                            .map(([price, count]) => (
+                                                                 <p key={price} className="">
+                                                                      <span className="font-semibold text-orange-600">{count}</span> buổi với giá{" "}
+                                                                      <span className="font-semibold text-orange-600">{Number(price).toLocaleString("vi-VN")}₫</span>
+                                                                 </p>
+                                                            ))}
+                                                  </div>
+                                             )}
+                                        </div>
+                                        {/* Cột phải: Thông tin ngày và số ngày/tuần */}
+                                        <div className="text-sm space-y-0.5 text-teal-700">
+                                             {startDate && endDate && (
+                                                  <p className="">
+                                                       Từ <span className="font-semibold text-yellow-500">{new Date(startDate).toLocaleDateString("vi-VN")}</span> đến{" "}
+                                                       <span className="font-semibold text-yellow-500">{new Date(endDate).toLocaleDateString("vi-VN")}</span>
+                                                  </p>
+                                             )}
+                                             {selectedDays.length > 0 && (
+                                                  <p className="">
+                                                       {selectedDays.length} ngày/tuần: <span className="font-semibold text-blue-500">{selectedDays.map(d => dayOptions.find(o => o.value === d)?.label).join(", ")}</span>
+                                                  </p>
+                                             )}
+                                        </div>
                                    </div>
                               </div>
                          )}

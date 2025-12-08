@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Calendar, MapPin, Receipt, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, UserSearchIcon, Info, RefreshCw, Loader2, User, Phone, Calendar as CalendarIcon } from "lucide-react";
+import { Calendar, MapPin, Receipt, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, Info, RefreshCw, Loader2, User, Phone, Calendar as CalendarIcon } from "lucide-react";
 import { Section, Container, Card, CardContent, Button, Badge, LoadingList, FadeIn, StaggerContainer, Modal } from "../../../../shared/components/ui";
 import { listBookingsByUser, updateBooking, fetchBookingsByPlayer, generateQRCode, confirmPaymentAPI } from "../../../../shared/index";
 import {
@@ -20,7 +20,7 @@ import {
      fetchMyMatchHistory
 } from "../../../../shared/services/matchRequest";
 import FindOpponentModal from "../../../../shared/components/FindOpponentModal";
-import RecurringOpponentModal from "../../../../shared/components/RecurringOpponentModal";
+// import RecurringOpponentModal from "../../../../shared/components/RecurringOpponentModal"; // Removed: recurring opponent feature
 import RatingModal from "../../../../shared/components/RatingModal";
 import InvoiceModal from "../../../../shared/components/InvoiceModal";
 import CancelBookingModal from "../../../../shared/components/CancelBookingModal";
@@ -72,7 +72,7 @@ export default function BookingHistory({ user }) {
      const [requestJoins, setRequestJoins] = useState({});
      const [playerHistories, setPlayerHistories] = useState([]);
      const [showFindOpponentModal, setShowFindOpponentModal] = useState(false);
-     const [showRecurringOpponentModal, setShowRecurringOpponentModal] = useState(false);
+     // const [showRecurringOpponentModal, setShowRecurringOpponentModal] = useState(false); // Removed: recurring opponent feature
      const [showRatingModal, setShowRatingModal] = useState(false);
      const [showInvoiceModal, setShowInvoiceModal] = useState(false);
      const [showCancelModal, setShowCancelModal] = useState(false);
@@ -81,7 +81,7 @@ export default function BookingHistory({ user }) {
      const [selectedBooking, setSelectedBooking] = useState(null);
      const [editingRating, setEditingRating] = useState(null); // { ratingId, stars, comment } when editing
      const [invoiceBooking, setInvoiceBooking] = useState(null);
-     const [opponentData, setOpponentData] = useState(null);
+     // const [opponentData, setOpponentData] = useState(null); // Removed: recurring opponent feature
      const [isLoadingBookings, setIsLoadingBookings] = useState(false);
      const [bookingError, setBookingError] = useState("");
      const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -956,15 +956,11 @@ export default function BookingHistory({ user }) {
      };
 
      const handleFindOpponentSuccess = async (result) => {
-          if (result.type === "recurring") {
-               setOpponentData(result);
-               setShowFindOpponentModal(false);
-               setShowRecurringOpponentModal(true);
-          } else {
-               setShowFindOpponentModal(false);
+          // Removed: recurring opponent feature - if (result.type === "recurring") logic
+          setShowFindOpponentModal(false);
 
-               // If we have the match request data, add it to state immediately
-               if (result.matchRequest) {
+          // If we have the match request data, add it to state immediately
+          if (result.matchRequest) {
                     const matchRequest = result.matchRequest;
                     const requestId = extractRequestId(matchRequest);
                     // Use selectedBooking if available, otherwise use result.booking
@@ -1009,82 +1005,76 @@ export default function BookingHistory({ user }) {
                               matchRequest
                          });
                     }
-               }
+          }
 
-               // Preserve the match request we just added to state
-               const preservedMatchRequest = result.matchRequest;
-               const preservedRequestId = extractRequestId(preservedMatchRequest);
-               const preservedBooking = selectedBooking || result.booking;
-               const preservedBookingId = preservedBooking?.id || preservedBooking?.bookingId;
-               const preservedBookingDatabaseId = preservedBooking?.bookingId;
+          // Preserve the match request we just added to state
+          const preservedMatchRequest = result.matchRequest;
+          const preservedRequestId = extractRequestId(preservedMatchRequest);
+          const preservedBooking = selectedBooking || result.booking;
+          const preservedBookingId = preservedBooking?.id || preservedBooking?.bookingId;
+          const preservedBookingDatabaseId = preservedBooking?.bookingId;
 
-               // Wait longer to ensure backend has updated the booking with matchRequestId
-               // Retry mechanism to ensure backend has processed the update
-               const maxRetries = 3;
-               let bookingUpdated = false;
+          // Wait longer to ensure backend has updated the booking with matchRequestId
+          // Retry mechanism to ensure backend has processed the update
+          const maxRetries = 3;
+          let bookingUpdated = false;
 
-               for (let retryCount = 0; retryCount < maxRetries && !bookingUpdated; retryCount++) {
-                    // Wait before checking (longer delay for first retry)
-                    const currentRetry = retryCount;
-                    const delay = currentRetry === 0 ? 2000 : 1000;
-                    await new Promise(resolve => setTimeout(resolve, delay));
+          for (let retryCount = 0; retryCount < maxRetries && !bookingUpdated; retryCount++) {
+               // Wait before checking (longer delay for first retry)
+               const currentRetry = retryCount;
+               const delay = currentRetry === 0 ? 2000 : 1000;
+               await new Promise(resolve => setTimeout(resolve, delay));
 
-                    try {
-                         if (playerId) {
-                              const apiResult = await fetchBookingsByPlayer(playerId);
-                              if (apiResult.success) {
-                                   const bookingList = normalizeApiBookings(apiResult.data);
+               try {
+                    if (playerId) {
+                         const apiResult = await fetchBookingsByPlayer(playerId);
+                         if (apiResult.success) {
+                              const bookingList = normalizeApiBookings(apiResult.data);
 
-                                   // Find the booking in the new list that matches our preserved booking
-                                   const updatedBooking = bookingList.find(b =>
-                                        (preservedBookingDatabaseId && b.bookingId && String(b.bookingId) === String(preservedBookingDatabaseId)) ||
-                                        (b.id === preservedBookingId) ||
-                                        (b.bookingId && String(b.bookingId) === String(preservedBookingId)) ||
-                                        (b.id && String(b.id) === String(preservedBookingId))
-                                   );
+                              // Find the booking in the new list that matches our preserved booking
+                              const updatedBooking = bookingList.find(b =>
+                                   (preservedBookingDatabaseId && b.bookingId && String(b.bookingId) === String(preservedBookingDatabaseId)) ||
+                                   (b.id === preservedBookingId) ||
+                                   (b.bookingId && String(b.bookingId) === String(preservedBookingId)) ||
+                                   (b.id && String(b.id) === String(preservedBookingId))
+                              );
 
-                                   if (updatedBooking) {
-                                        // Check if booking now has matchRequestId (backend has updated)
-                                        const hasMatchRequestId = updatedBooking.matchRequestId || updatedBooking.matchRequestID || updatedBooking.MatchRequestID;
+                              if (updatedBooking) {
+                                   // Check if booking now has matchRequestId (backend has updated)
+                                   const hasMatchRequestId = updatedBooking.matchRequestId || updatedBooking.matchRequestID || updatedBooking.MatchRequestID;
 
-                                        if (hasMatchRequestId || currentRetry === maxRetries - 1) {
-                                             // Backend has updated or this is the last retry
-                                             setBookings(bookingList);
-                                             setGroupedBookings(buildRecurringGroups(bookingList));
+                                   if (hasMatchRequestId || currentRetry === maxRetries - 1) {
+                                        // Backend has updated or this is the last retry
+                                        setBookings(bookingList);
+                                        setGroupedBookings(buildRecurringGroups(bookingList));
 
-                                             // Ensure our newly created match request is mapped
-                                             if (preservedMatchRequest && preservedRequestId && updatedBooking.id) {
-                                                  setBookingIdToRequest(prev => ({
-                                                       ...prev,
-                                                       [updatedBooking.id]: preservedMatchRequest
-                                                  }));
+                                        // Ensure our newly created match request is mapped
+                                        if (preservedMatchRequest && preservedRequestId && updatedBooking.id) {
+                                             setBookingIdToRequest(prev => ({
+                                                  ...prev,
+                                                  [updatedBooking.id]: preservedMatchRequest
+                                             }));
 
-                                             }
-                                             bookingUpdated = true;
                                         }
+                                        bookingUpdated = true;
                                    }
                               }
                          }
-                    } catch (error) {
-                         console.error("Error reloading bookings (retry", currentRetry + 1, "):", error);
                     }
+               } catch (error) {
+                    console.error("Error reloading bookings (retry", currentRetry + 1, "):", error);
                }
-
-               // Then load match requests to ensure everything is in sync
-               // This will merge with our preserved state, not replace it
-               // The improved loadMatchRequestsForBookings will now prioritize matchRequestId from booking data
-               await loadMatchRequestsForBookings();
-
-               Swal.fire('Đã gửi!', 'Yêu cầu tìm đối đã được tạo.', 'success');
           }
+
+          // Then load match requests to ensure everything is in sync
+          // This will merge with our preserved state, not replace it
+          // The improved loadMatchRequestsForBookings will now prioritize matchRequestId from booking data
+          await loadMatchRequestsForBookings();
+
+          Swal.fire('Đã gửi!', 'Yêu cầu tìm đối đã được tạo.', 'success');
      };
 
-     const handleRecurringOpponentSuccess = async () => {
-          await loadMatchRequestsForBookings();
-          setShowRecurringOpponentModal(false);
-          setOpponentData(null);
-          Swal.fire('Đã gửi!', 'Yêu cầu tìm đối cho lịch cố định đã được tạo.', 'success');
-     };
+     // Removed: handleRecurringOpponentSuccess - recurring opponent feature
 
      const handleRating = (booking) => {
           setSelectedBooking(booking);
@@ -2606,7 +2596,7 @@ export default function BookingHistory({ user }) {
                                                                                           onClick={() => handleFindOpponent(b)}
                                                                                           className="px-4 !rounded-full py-2.5 text-sm font-medium bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
                                                                                      >
-                                                                                          <UserSearchIcon className="w-4 h-4" />
+                                                                                          <UserSearch className="w-4 h-4" />
                                                                                           <span>Tìm đối thủ</span>
                                                                                      </Button>
                                                                                 );
@@ -3129,21 +3119,7 @@ export default function BookingHistory({ user }) {
                     onSuccess={handleFindOpponentSuccess}
                />
 
-               {/* Recurring Opponent Modal */}
-               {opponentData && (
-                    <RecurringOpponentModal
-                         isOpen={showRecurringOpponentModal}
-                         onClose={() => {
-                              setShowRecurringOpponentModal(false);
-                              setOpponentData(null);
-                         }}
-                         booking={opponentData.booking}
-                         user={user}
-                         level={opponentData.level}
-                         note={opponentData.note}
-                         onSuccess={handleRecurringOpponentSuccess}
-                    />
-               )}
+               {/* Removed: Recurring Opponent Modal - recurring opponent feature */}
 
                {/* Rating Modal */}
                <RatingModal
