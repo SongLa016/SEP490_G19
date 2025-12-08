@@ -4,6 +4,7 @@ using BallSport.API.Controllers.DistanceCalculator;
 using BallSport.Application.CloudinarySettings;
 using BallSport.Application.Services;
 using BallSport.Application.Services.AdminStatistics;
+using BallSport.Application.Services.AISeoContent;
 using BallSport.Application.Services.Community;
 using BallSport.Application.Services.DistanceCalculator;
 using BallSport.Application.Services.GoongMap;
@@ -259,6 +260,13 @@ public class Program
                     services.AddScoped<IDistanceCalculator, HaversineDistanceCalculator>();
                     services.AddScoped<ILocationCacheService, LocationMemoryCacheService>();
                     services.AddScoped<FieldComplexNearbyService>();
+                    // --- AI tạo SEO ---
+                    services.AddScoped<AiDataService>();
+                    services.AddScoped<AiContentService>();
+                    services.AddScoped<AiPostService>();
+                    services.AddScoped<AiAutoPostService>();
+                    services.AddScoped<AiAutoPostBackgroundService>();
+
                     // --- Settings ---
                     services.Configure<CommunitySettings>(config.GetSection("CommunitySettings"));
                     services.Configure<NotificationSettings>(config.GetSection("NotificationSettings"));

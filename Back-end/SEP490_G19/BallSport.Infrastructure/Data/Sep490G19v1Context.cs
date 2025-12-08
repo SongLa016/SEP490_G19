@@ -91,11 +91,31 @@ public partial class Sep490G19v1Context : DbContext
     public virtual DbSet<UserProfile> UserProfiles { get; set; }
 
     public virtual DbSet<UserRole> UserRoles { get; set; }
-
+    public virtual DbSet<AiPost> AiPosts { get; set; }
     public virtual DbSet<ViolationReport> ViolationReports { get; set; }
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) { }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AiPost>(entity =>
+        {
+            entity.HasKey(e => e.PostId).HasName("PK__AI_Posts__AA12603806C3C16C");
+
+            entity.ToTable("AI_Posts");
+
+            entity.Property(e => e.PostId).HasColumnName("PostID");
+            entity.Property(e => e.ComplexId).HasColumnName("ComplexID");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.SeoDescription).HasMaxLength(500);
+            entity.Property(e => e.SeoKeywords).HasMaxLength(500);
+            entity.Property(e => e.SeoTitle).HasMaxLength(255);
+            entity.Property(e => e.Slug).HasMaxLength(255);
+            entity.Property(e => e.Title).HasMaxLength(255);
+            entity.Property(e => e.Type).HasMaxLength(50);
+        });
+
+
         modelBuilder.Entity<BlogPost>(entity =>
         {
             entity.HasKey(e => e.PostId).HasName("PK__BlogPost__AA12603814054939");
