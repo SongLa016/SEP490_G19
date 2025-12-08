@@ -16,8 +16,6 @@ public partial class Sep490G19v1Context : DbContext
     {
     }
 
-    public virtual DbSet<AiPost> AiPosts { get; set; }
-
     public virtual DbSet<BlogPost> BlogPosts { get; set; }
 
     public virtual DbSet<Booking> Bookings { get; set; }
