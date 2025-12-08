@@ -79,7 +79,8 @@ using BallSport.Infrastructure.Models;
                             DayOfWeek = slot.DayOfWeek,
                             Status = "Draft",
                             CreatedAt = DateTime.Now,
-                            ScheduleId = scheduleId
+                            ScheduleId = scheduleId,
+                            ActualDate = DateOnly.FromDateTime(date)
                         };
 
                         // Lưu draft vào DB
@@ -212,7 +213,7 @@ using BallSport.Infrastructure.Models;
                     {
                         BookingPackageId = package.BookingPackageId,
                         UserId = package.UserId,
-                        SessionDate = schedule.Date,
+                        SessionDate = draft.ActualDate!.Value,
                         PricePerSession = pricePerSession,
                         SessionStatus = "Booking",
                         CreatedAt = DateTime.Now,

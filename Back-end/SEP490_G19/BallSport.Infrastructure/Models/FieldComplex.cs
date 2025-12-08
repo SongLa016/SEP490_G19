@@ -35,4 +35,11 @@ public partial class FieldComplex
     public virtual User? Owner { get; set; }
     public virtual ICollection<Field> Fields { get; set; } = new List<Field>();
     public virtual ICollection<FavoriteField> FavoriteFields { get; set; } = new List<FavoriteField>();
+
+    public virtual ICollection<FavoriteField> FavoriteFields { get; set; } = new List<FavoriteField>();
+
+    public virtual ICollection<Field> Fields { get; set; } = new List<Field>();
+
+    public virtual User? Owner { get; set; }
+
 }
