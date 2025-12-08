@@ -39,6 +39,8 @@ public partial class Field
 
     public virtual ICollection<DepositPolicy> DepositPolicies { get; set; } = new List<DepositPolicy>();
 
+    public virtual ICollection<FavoriteField> FavoriteFields { get; set; } = new List<FavoriteField>();
+
     public virtual ICollection<FieldImage> FieldImages { get; set; } = new List<FieldImage>();
 
     public virtual ICollection<FieldPrice> FieldPrices { get; set; } = new List<FieldPrice>();
@@ -47,8 +49,9 @@ public partial class Field
 
     public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
 
-    public virtual ICollection<TimeSlot> TimeSlots { get; set; } = new List<TimeSlot>();
     public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
-    public virtual ICollection<FavoriteField> FavoriteFields { get; set; } = new List<FavoriteField>();
+
+    public virtual ICollection<TimeSlot> TimeSlots { get; set; } = new List<TimeSlot>();
+
     public virtual FieldType? Type { get; set; }
 }

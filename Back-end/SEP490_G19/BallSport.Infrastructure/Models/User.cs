@@ -35,6 +35,8 @@ public partial class User
 
     public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();
 
+    public virtual ICollection<FavoriteField> FavoriteFields { get; set; } = new List<FavoriteField>();
+
     public virtual ICollection<FieldComplex> FieldComplexes { get; set; } = new List<FieldComplex>();
 
     public virtual ICollection<MatchParticipant> MatchParticipants { get; set; } = new List<MatchParticipant>();
@@ -63,6 +65,10 @@ public partial class User
 
     public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
 
+    public virtual ICollection<RatingReply> RatingReplies { get; set; } = new List<RatingReply>();
+
+    public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+
     public virtual ICollection<Report> ReportHandledByNavigations { get; set; } = new List<Report>();
 
     public virtual ICollection<Report> ReportReporters { get; set; } = new List<Report>();
@@ -80,9 +86,6 @@ public partial class User
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 
     public virtual ICollection<ViolationReport> ViolationReportReportedUsers { get; set; } = new List<ViolationReport>();
-    public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
-    public virtual ICollection<RatingReply> RatingReplies { get; set; } = new List<RatingReply>();
-    public virtual ICollection<FavoriteField> FavoriteFields { get; set; } = new List<FavoriteField>();
 
     public virtual ICollection<ViolationReport> ViolationReportReporters { get; set; } = new List<ViolationReport>();
 }
