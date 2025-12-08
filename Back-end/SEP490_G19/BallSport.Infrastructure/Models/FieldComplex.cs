@@ -30,6 +30,8 @@ public partial class FieldComplex
     public string? District { get; set; }
 
     public string? Province { get; set; }
+
+    public DateTime? LastAutoPostAt { get; set; }
     public virtual User? Owner { get; set; }
     public virtual ICollection<Field> Fields { get; set; } = new List<Field>();
     public virtual ICollection<FavoriteField> FavoriteFields { get; set; } = new List<FavoriteField>();
