@@ -294,11 +294,7 @@ export async function fetchPublicFieldSchedulesByField(fieldId) {
 export async function fetchPublicFieldSchedulesByDate(date) {
   try {
     // Try different endpoint variations
-    const endpoints = [
-      `/FieldSchedule/public/date/${date}`,
-      `/FieldSchedule/public?date=${date}`,
-      `/FieldSchedule/public/date?date=${date}`,
-    ];
+    const endpoints = [`/FieldSchedule/public?date=${date}`];
 
     const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
     const API_BASE_URL =

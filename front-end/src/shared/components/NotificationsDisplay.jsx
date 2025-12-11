@@ -271,20 +271,50 @@ export default function NotificationsDisplay({ userId, className = "" }) {
 
      const handleDeleteNotification = async (notificationId, messagePreview = "") => {
           if (!notificationId) return;
-          if (!window.confirm(`Bạn có chắc muốn xóa thông báo "${messagePreview || notificationId}"?`)) {
+          
+          const result = await Swal.fire({
+               title: 'Xác nhận xóa?',
+               text: `Bạn có chắc muốn xóa thông báo "${messagePreview || notificationId}"?`,
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (!result.isConfirmed) {
                return;
           }
+
           try {
                setIsDeleting(true);
                const result = await deleteNotification(notificationId);
                if (result.ok) {
                     await Promise.all([loadNotifications(), fetchUnreadCount()]);
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đã xóa!',
+                         text: 'Thông báo đã được xóa thành công.',
+                         timer: 2000,
+                         showConfirmButton: false
+                    });
                } else {
-                    alert(result.reason || "Không thể xóa thông báo");
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: result.reason || "Không thể xóa thông báo",
+                         confirmButtonText: 'Đã hiểu'
+                    });
                }
           } catch (error) {
                console.error("Error deleting notification:", error);
-               alert("Có lỗi xảy ra khi xóa thông báo");
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: "Có lỗi xảy ra khi xóa thông báo",
+                    confirmButtonText: 'Đã hiểu'
+               });
           } finally {
                setIsDeleting(false);
           }
@@ -301,19 +331,41 @@ export default function NotificationsDisplay({ userId, className = "" }) {
           const isComment = message.toLowerCase().includes("bình luận");
 
           if (!targetId) {
-               alert('Không tìm thấy ID nội dung cần xóa.');
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Không tìm thấy ID nội dung cần xóa.',
+                    confirmButtonText: 'Đã hiểu'
+               });
                return;
           }
 
-          if (!window.confirm(
-               isPost
+          const confirmResult = await Swal.fire({
+               title: 'Xác nhận xóa?',
+               text: isPost
                     ? 'Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.'
-                    : 'Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác.'
-          )) {
+                    : 'Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác.',
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (!confirmResult.isConfirmed) {
                return;
           }
 
           try {
+               Swal.fire({
+                    title: 'Đang xóa...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                         Swal.showLoading();
+                    }
+               });
+
                setIsDeleting(true);
                if (isPost) {
                     await deletePost(targetId);
@@ -333,11 +385,23 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                     }
                }
 
-               alert(isPost ? 'Bài viết đã được xóa thành công.' : 'Bình luận đã được xóa thành công.');
+               Swal.fire({
+                    icon: 'success',
+                    title: 'Đã xóa!',
+                    text: isPost ? 'Bài viết đã được xóa thành công.' : 'Bình luận đã được xóa thành công.',
+                    timer: 2000,
+                    showConfirmButton: false
+               });
+
                await Promise.all([loadNotifications(), fetchUnreadCount()]);
           } catch (error) {
                console.error('Error deleting content:', error);
-               alert(error.message || 'Không thể xóa nội dung. Vui lòng thử lại.');
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: error.message || 'Không thể xóa nội dung. Vui lòng thử lại.',
+                    confirmButtonText: 'Đã hiểu'
+               });
           } finally {
                setIsDeleting(false);
           }
@@ -345,21 +409,50 @@ export default function NotificationsDisplay({ userId, className = "" }) {
 
      const handleDeleteAllNotifications = async () => {
           if (!notifications.length) return;
-          if (!window.confirm("Bạn có chắc muốn xóa toàn bộ thông báo?")) {
+          
+          const result = await Swal.fire({
+               title: 'Xác nhận xóa?',
+               text: "Bạn có chắc muốn xóa toàn bộ thông báo?",
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa tất cả',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (!result.isConfirmed) {
                return;
           }
+
           try {
                setIsDeleting(true);
                const result = await deleteAllNotifications();
                if (result.ok) {
                     await Promise.all([loadNotifications(), fetchUnreadCount()]);
-                    alert("Đã xóa toàn bộ thông báo");
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đã xóa!',
+                         text: "Đã xóa toàn bộ thông báo",
+                         timer: 2000,
+                         showConfirmButton: false
+                    });
                } else {
-                    alert(result.reason || "Không thể xóa toàn bộ thông báo");
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: result.reason || "Không thể xóa toàn bộ thông báo",
+                         confirmButtonText: 'Đã hiểu'
+                    });
                }
           } catch (error) {
                console.error("Error deleting all notifications:", error);
-               alert("Có lỗi xảy ra khi xóa toàn bộ thông báo");
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: "Có lỗi xảy ra khi xóa toàn bộ thông báo",
+                    confirmButtonText: 'Đã hiểu'
+               });
           } finally {
                setIsDeleting(false);
           }
@@ -748,20 +841,50 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
 
      const handleDeleteNotification = async (notificationId, messagePreview = "") => {
           if (!notificationId) return;
-          if (!window.confirm(`Bạn có chắc muốn xóa thông báo "${messagePreview || notificationId}"?`)) {
+          
+          const result = await Swal.fire({
+               title: 'Xác nhận xóa?',
+               text: `Bạn có chắc muốn xóa thông báo "${messagePreview || notificationId}"?`,
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (!result.isConfirmed) {
                return;
           }
+
           try {
                setIsDeleting(true);
                const result = await deleteNotification(notificationId);
                if (result.ok) {
                     await Promise.all([loadDropdownNotifications(), loadDropdownUnreadCount()]);
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đã xóa!',
+                         text: 'Thông báo đã được xóa thành công.',
+                         timer: 2000,
+                         showConfirmButton: false
+                    });
                } else {
-                    alert(result.reason || "Không thể xóa thông báo");
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: result.reason || "Không thể xóa thông báo",
+                         confirmButtonText: 'Đã hiểu'
+                    });
                }
           } catch (error) {
                console.error("Error deleting notification:", error);
-               alert("Có lỗi xảy ra khi xóa thông báo");
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: "Có lỗi xảy ra khi xóa thông báo",
+                    confirmButtonText: 'Đã hiểu'
+               });
           } finally {
                setIsDeleting(false);
           }
@@ -853,21 +976,50 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
 
      const handleDeleteAllNotifications = async () => {
           if (!notifications.length) return;
-          if (!window.confirm("Bạn có chắc muốn xóa toàn bộ thông báo?")) {
+          
+          const result = await Swal.fire({
+               title: 'Xác nhận xóa?',
+               text: "Bạn có chắc muốn xóa toàn bộ thông báo?",
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa tất cả',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (!result.isConfirmed) {
                return;
           }
+
           try {
                setIsDeleting(true);
                const result = await deleteAllNotifications();
                if (result.ok) {
                     await Promise.all([loadDropdownNotifications(), loadDropdownUnreadCount()]);
-                    alert("Đã xóa toàn bộ thông báo");
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đã xóa!',
+                         text: "Đã xóa toàn bộ thông báo",
+                         timer: 2000,
+                         showConfirmButton: false
+                    });
                } else {
-                    alert(result.reason || "Không thể xóa toàn bộ thông báo");
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: result.reason || "Không thể xóa toàn bộ thông báo",
+                         confirmButtonText: 'Đã hiểu'
+                    });
                }
           } catch (error) {
                console.error("Error deleting all notifications:", error);
-               alert("Có lỗi xảy ra khi xóa toàn bộ thông báo");
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: "Có lỗi xảy ra khi xóa toàn bộ thông báo",
+                    confirmButtonText: 'Đã hiểu'
+               });
           } finally {
                setIsDeleting(false);
           }

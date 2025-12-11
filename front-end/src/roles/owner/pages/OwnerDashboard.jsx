@@ -564,7 +564,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                                    onClick={() => navigate(isDemo ? "/demo/bookings" : "/owner/bookings")}
                               >
                                    <Calendar className="w-4 h-4 mr-2" />
-                                   Xem booking
+                                   Xem đặt sân
                               </Button>
                               <Button
                                    className="w-full justify-start rounded-2xl"
@@ -580,7 +580,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                                    onClick={() => navigate(isDemo ? "/demo/schedule" : "/owner/schedule")}
                               >
                                    <Calendar className="w-4 h-4 mr-2" />
-                                   Lịch trình & Slots
+                                   Lịch trình & khung giờ
                               </Button>
                          </div>
 

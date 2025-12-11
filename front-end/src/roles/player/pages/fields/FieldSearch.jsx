@@ -6,7 +6,8 @@ import { ScrollReveal } from "../../../../shared/components/ScrollReveal";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
 import { useNavigate } from "react-router-dom";
 import MapSearch from "./components/MapSearch";
-import { fetchComplexes, fetchFields, fetchTimeSlots, fetchPublicFieldSchedulesByDate, fetchPublicFieldSchedulesByField, fetchFavoriteFields, toggleFavoriteField } from "../../../../shared/index";
+import { fetchComplexes, fetchFields, fetchTimeSlots, fetchFavoriteFields, toggleFavoriteField } from "../../../../shared/index";
+import { usePublicFieldSchedulesByDate } from "../../../../shared/hooks/useFieldSchedules";
 import { fetchFieldTypes, normalizeFieldType } from "../../../../shared/services/fieldTypes";
 import { fetchRatingsByField } from "../../../../shared/services/ratings";
 import Swal from 'sweetalert2';
@@ -49,6 +50,14 @@ const normalizeTypeString = (value = "") => value
      .replace(/[\u0300-\u036f]/g, "")
      .toLowerCase()
      .replace(/[^a-z0-9]/g, "");
+// Format time range like "HH:mm - HH:mm" when slot name is missing
+const formatTimeRange = (start, end) => {
+     if (!start && !end) return "";
+     const s = start ? String(start).slice(0, 5) : "";
+     const e = end ? String(end).slice(0, 5) : "";
+     if (s && e) return `${s} - ${e}`;
+     return s || e;
+};
 const resolveFieldTypeName = (field, fieldTypeMap = {}) => {
      if (!field) return "";
      if (field.typeName && field.typeName.trim()) return field.typeName;
@@ -98,9 +107,42 @@ export default function FieldSearch({ user }) {
      const [showMapSearch, setShowMapSearch] = useState(false);
      // removed unused mapLocation state
      const [mapSearchKey, setMapSearchKey] = useState(0); // Key to force MapSearch reset
-     const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+     // Default không lọc theo ngày để tránh mất kết quả ban đầu
+     const [date, setDate] = useState("");
      const [slotId, setSlotId] = useState("");
-     const [timeSlots, setTimeSlots] = useState([]);
+    const [timeSlots, setTimeSlots] = useState([]);
+    const [availableFieldIds, setAvailableFieldIds] = useState(null); // Set of fieldIds available for selected date
+
+    // Helpers to avoid redundant state updates (prevent extra renders/loops)
+    const setTimeSlotsSafe = (nextSlots) => {
+         setTimeSlots((prev) => {
+              if (!Array.isArray(prev) || !Array.isArray(nextSlots)) return nextSlots;
+              if (prev.length !== nextSlots.length) return nextSlots;
+              for (let i = 0; i < prev.length; i++) {
+                   const a = prev[i];
+                   const b = nextSlots[i];
+                   if ((a.slotId || a.slotID) !== (b.slotId || b.slotID) || a.name !== b.name) {
+                        return nextSlots;
+                   }
+              }
+              return prev;
+         });
+    };
+
+    const setAvailableFieldIdsSafe = (nextSet) => {
+         setAvailableFieldIds((prev) => {
+              if (prev === null && nextSet === null) return prev;
+              if (prev instanceof Set && nextSet instanceof Set) {
+                   if (prev.size === nextSet.size) {
+                        for (const v of prev) {
+                             if (!nextSet.has(v)) return nextSet;
+                        }
+                        return prev;
+                   }
+              }
+              return nextSet;
+         });
+    };
      const heroRef = useRef(null);
      const hasExistingDataRef = useRef(false);
      const complexesRef = useRef([]);
@@ -259,145 +301,88 @@ export default function FieldSearch({ user }) {
      }, [user]);
 
      // Load available slots from schedules when date changes
-     useEffect(() => {
-          let mounted = true;
-          const loadSlotsFromSchedules = async () => {
-               try {
-                    if (!date) {
-                         // If no date, fetch all time slots
-                         const response = await fetchTimeSlots();
-                         if (!mounted) return;
-                         const slots = response?.success && Array.isArray(response.data)
-                              ? response.data
-                              : [];
-                         setTimeSlots(slots);
-                         return;
-                    }
+    // React Query: fetch schedules by date (cached)
+    const { data: schedulesByDate = [], isFetching: isFetchingSchedules } = usePublicFieldSchedulesByDate(
+         date ? date.split("T")[0] : ""
+    );
+    const schedulesData = useMemo(() => (Array.isArray(schedulesByDate) ? schedulesByDate : []), [schedulesByDate]);
 
-                    // Normalize date format
-                    const normalizedDate = date.split('T')[0]; // Ensure YYYY-MM-DD format
+    // Derive slot options and available fields when date or schedules change
+    useEffect(() => {
+         let mounted = true;
 
-                    // Try to fetch schedules by date first
-                    let schedulesResponse = await fetchPublicFieldSchedulesByDate(normalizedDate);
+         const loadAllSlotsWhenNoDate = async () => {
+              try {
+                   const response = await fetchTimeSlots();
+                   if (!mounted) return;
+                   const slots = response?.success && Array.isArray(response.data) ? response.data : [];
+                   setTimeSlotsSafe(
+                        slots.map((slot) => {
+                             const timeLabel = formatTimeRange(slot.startTime || slot.StartTime, slot.endTime || slot.EndTime);
+                             const baseName = slot.name || slot.slotName || slot.SlotName;
+                             const label = baseName
+                                  ? timeLabel
+                                       ? `${baseName} (${timeLabel})`
+                                       : baseName
+                                  : timeLabel || `Slot ${slot.slotId || slot.SlotID}`;
+                             return { ...slot, name: label };
+                        })
+                   );
+                   setAvailableFieldIdsSafe(null);
+              } catch (error) {
+                   console.error("Error loading all time slots:", error);
+                   if (!mounted) return;
+                   setTimeSlotsSafe([]);
+                   setAvailableFieldIdsSafe(null);
+              }
+         };
 
-                    // If endpoint doesn't exist or returns empty, fetch from all fields
-                    if (!schedulesResponse?.success || !Array.isArray(schedulesResponse.data) || schedulesResponse.data.length === 0) {
-                         // Fetch all fields first to get fieldIds
-                         const fList = await fetchFields({ query: "", date: normalizedDate, slotId: "", sortBy: "relevance", useApi: true });
+         if (!date) {
+              loadAllSlotsWhenNoDate();
+              return () => {
+                   mounted = false;
+              };
+         }
 
-                         if (!mounted) return;
+        // With date selected, use schedulesByDate from React Query
+         const slotMap = new Map();
+         const fieldIdSet = new Set();
 
-                         // Get unique fieldIds
-                         const fieldIds = new Set();
-                         if (Array.isArray(fList)) {
-                              fList.forEach(field => {
-                                   if (field.fieldId) fieldIds.add(field.fieldId);
-                              });
-                         }
+        schedulesData.forEach((schedule) => {
+              const status = normalizeStatus(schedule.status || schedule.Status);
+              if (status && status !== "available") return;
 
-                         // Fetch schedules for all fields in parallel
-                         const schedulePromises = Array.from(fieldIds).map(fieldId =>
-                              fetchPublicFieldSchedulesByField(fieldId)
-                         );
+              const slotId = schedule.slotId || schedule.SlotId;
+              const fieldId = schedule.fieldId || schedule.FieldId || schedule.fieldID || schedule.FieldID;
+              const slotName = schedule.slotName || schedule.SlotName;
+              const timeLabel = formatTimeRange(schedule.startTime || schedule.StartTime, schedule.endTime || schedule.EndTime);
+              const label = slotName
+                   ? timeLabel
+                        ? `${slotName} (${timeLabel})`
+                        : slotName
+                   : timeLabel || (slotId ? `Slot ${slotId}` : "");
 
-                         const scheduleResults = await Promise.all(schedulePromises);
+              if (slotId && !slotMap.has(slotId)) {
+                   slotMap.set(slotId, {
+                        slotId,
+                        name: label || `Slot ${slotId}`,
+                        startTime: schedule.startTime || schedule.StartTime,
+                        endTime: schedule.endTime || schedule.EndTime,
+                   });
+              }
 
-                         // Combine all schedules
-                         let allSchedules = [];
-                         scheduleResults.forEach(result => {
-                              if (result?.success && Array.isArray(result.data)) {
-                                   allSchedules = allSchedules.concat(result.data);
-                              }
-                         });
+              if (fieldId) {
+                   fieldIdSet.add(String(fieldId));
+              }
+         });
 
-                         // Filter schedules by date
-                         const filteredSchedules = allSchedules.filter(schedule => {
-                              const scheduleDate = schedule.date || schedule.Date;
-                              if (!scheduleDate) return false;
-                              const normalizedScheduleDate = typeof scheduleDate === 'string'
-                                   ? scheduleDate.split('T')[0]
-                                   : scheduleDate;
-                              return normalizedScheduleDate === normalizedDate;
-                         });
+        setTimeSlotsSafe(slotMap.size > 0 ? Array.from(slotMap.values()) : []);
+        setAvailableFieldIdsSafe(fieldIdSet.size > 0 ? new Set(fieldIdSet) : null);
 
-                         schedulesResponse = {
-                              success: true,
-                              data: filteredSchedules
-                         };
-                    }
-
-                    if (!mounted) return;
-
-                    if (schedulesResponse?.success && Array.isArray(schedulesResponse.data) && schedulesResponse.data.length > 0) {
-                         // Extract unique slotIds from schedules
-                         const slotIdSet = new Set();
-                         const slotMap = new Map(); // Map slotId to slot info
-
-                         schedulesResponse.data.forEach(schedule => {
-                              const slotId = schedule.slotId || schedule.SlotId;
-                              if (slotId) {
-                                   slotIdSet.add(slotId);
-                                   // Store slot info if available in schedule
-                                   if (!slotMap.has(slotId) && (schedule.slotName || schedule.SlotName)) {
-                                        slotMap.set(slotId, {
-                                             slotId: slotId,
-                                             name: schedule.slotName || schedule.SlotName,
-                                             startTime: schedule.startTime || schedule.StartTime,
-                                             endTime: schedule.endTime || schedule.EndTime
-                                        });
-                                   }
-                              }
-                         });
-
-                         // If we have slot info from schedules, use it
-                         if (slotMap.size > 0) {
-                              const slots = Array.from(slotMap.values());
-                              setTimeSlots(slots);
-                         } else {
-                              // Otherwise, fetch all time slots and filter by available slotIds
-                              const allSlotsResponse = await fetchTimeSlots();
-                              if (!mounted) return;
-
-                              const allSlots = allSlotsResponse?.success && Array.isArray(allSlotsResponse.data)
-                                   ? allSlotsResponse.data
-                                   : [];
-
-                              // Filter slots that are available in schedules
-                              const availableSlots = allSlots.filter(slot =>
-                                   slotIdSet.has(slot.slotId || slot.SlotID)
-                              );
-
-                              setTimeSlots(availableSlots.length > 0 ? availableSlots : allSlots);
-                         }
-                    } else {
-                         // If no schedules found, fetch all time slots
-                         const response = await fetchTimeSlots();
-                         if (!mounted) return;
-                         const slots = response?.success && Array.isArray(response.data)
-                              ? response.data
-                              : [];
-                         setTimeSlots(slots);
-                    }
-               } catch (error) {
-                    console.error("Error loading slots from schedules:", error);
-                    if (!mounted) return;
-                    // Fallback to fetch all time slots
-                    try {
-                         const response = await fetchTimeSlots();
-                         if (!mounted) return;
-                         const slots = response?.success && Array.isArray(response.data)
-                              ? response.data
-                              : [];
-                         setTimeSlots(slots);
-                    } catch (fallbackError) {
-                         console.error("Error loading time slots (fallback):", fallbackError);
-                         setTimeSlots([]);
-                    }
-               }
-          };
-          loadSlotsFromSchedules();
-          return () => { mounted = false; };
-     }, [date]);
+         return () => {
+              mounted = false;
+         };
+    }, [date, schedulesData]);
 
      // Reset slotId when date changes to avoid invalid slot selection
      useEffect(() => {
@@ -516,13 +501,47 @@ export default function FieldSearch({ user }) {
                );
           }
 
-          // Filter by location
+          // Filter by available fieldIds for selected date (from schedules)
+          if (date && availableFieldIds instanceof Set) {
+               filtered = filtered.filter(field => {
+                    const fid = field.fieldId ?? field.FieldID ?? field.fieldID ?? field.id;
+                    if (!fid) return false;
+                    return availableFieldIds.has(String(fid));
+               });
+          }
+
+          // Filter by location (support both full label and base district without prefix)
           if (selectedLocation) {
                const normalizedLocation = normalizeText(selectedLocation);
+               const normalizedBase = normalizeDistrictKey(selectedLocation);
                filtered = filtered.filter(field => {
-                    const addr = normalizeText(field.address || "");
-                    const dist = normalizeText(field.district || "");
-                    return addr.includes(normalizedLocation) || dist.includes(normalizedLocation);
+               const addr = normalizeText(field.address || "");
+               const dist = normalizeText(field.district || "");
+               const ward = normalizeText(field.ward || field.Ward || "");
+               const complexName = normalizeText(field.complexName || field.fieldName || field.name || "");
+               const locationText = normalizeText(field.location || field.Location || "");
+               const complexAddress = normalizeText(field.complexAddress || "");
+
+               const matchesFull =
+                    addr.includes(normalizedLocation) ||
+                    dist.includes(normalizedLocation) ||
+                    ward.includes(normalizedLocation) ||
+                    complexName.includes(normalizedLocation) ||
+                    locationText.includes(normalizedLocation) ||
+                    complexAddress.includes(normalizedLocation);
+
+               const matchesBase = normalizedBase
+                    ? (
+                         addr.includes(normalizedBase) ||
+                         dist.includes(normalizedBase) ||
+                         ward.includes(normalizedBase) ||
+                         complexName.includes(normalizedBase) ||
+                         locationText.includes(normalizedBase) ||
+                         complexAddress.includes(normalizedBase)
+                    )
+                    : false;
+
+               return matchesFull || matchesBase;
                });
           }
 
@@ -765,18 +784,19 @@ export default function FieldSearch({ user }) {
      const isGroupedView = activeTab === "all" && isNoFilter && !forceList && entityTab === "fields";
 
      // Flip to list view whenever user adjusts any filter/search/sort or tab is not "all"
-     useEffect(() => {
-          const hasAny = !!searchQuery || !!selectedLocation || !!selectedPrice || !!selectedRating || sortBy !== "relevance";
-          setForceList(hasAny || activeTab !== "all");
-     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab]);
+    useEffect(() => {
+         const hasAny = !!searchQuery || !!selectedLocation || !!selectedPrice || !!selectedRating || sortBy !== "relevance";
+         const nextForceList = hasAny || activeTab !== "all";
+         setForceList((prev) => (prev === nextForceList ? prev : nextForceList));
+    }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab]);
 
      const updateViewMode = (mode) => {
           setViewMode(mode);
           if (mode === "grid") {
                const noFilter = !searchQuery && !selectedLocation && !selectedPrice && !selectedRating && sortBy === "relevance" && activeTab === "all";
-               setForceList(!noFilter);
+              setForceList((prev) => (prev === !noFilter ? prev : !noFilter));
           } else {
-               setForceList(true);
+              setForceList((prev) => (prev === true ? prev : true));
           }
      };
 
@@ -1041,7 +1061,7 @@ export default function FieldSearch({ user }) {
                                                   setPage(1);
                                                   setForceList(false);
                                                   setEntityTab("fields");
-                                                  setDate(new Date().toISOString().split('T')[0]);
+                                                  setDate("");
                                                   setSlotId("");
                                                   setMapSearchKey(prev => prev + 1);
                                                   localStorage.removeItem('searchPreset');
@@ -1075,7 +1095,7 @@ export default function FieldSearch({ user }) {
                                              onResetAdvancedFilters={() => {
                                                   setSelectedRating("");
                                                   setSortBy("relevance");
-                                                  setDate(new Date().toISOString().split('T')[0]);
+                                                  setDate("");
                                                   setSlotId("");
                                              }}
                                         />

@@ -37,7 +37,7 @@ export default function TimeSlotModal({
           <Modal
                isOpen={isOpen}
                onClose={onClose}
-               title={editingSlot ? 'Chỉnh sửa Time Slot' : 'Thêm Time Slot mới'}
+               title={editingSlot ? 'Chỉnh sửa khung giờ' : 'Thêm khung giờ mới'}
                size="md"
                className="max-h-[90vh] overflow-y-hidden"
           >
@@ -45,7 +45,7 @@ export default function TimeSlotModal({
                     {!editingSlot && creationLocked && (
                          <Alert className="border-orange-200 bg-orange-50">
                               <AlertDescription className="text-orange-800 text-sm">
-                                   Tất cả các sân đang ở trạng thái <strong>Bảo trì</strong>. Vui lòng đổi trạng thái sân thành "Available" trong Quản lý sân trước khi thêm Time Slot mới.
+                                   Tất cả các sân đang ở trạng thái <strong>Bảo trì</strong>. Vui lòng đổi trạng thái sân thành "Có sẵn" trong Quản lý sân trước khi thêm khung giờ mới.
                               </AlertDescription>
                          </Alert>
                     )}
@@ -119,7 +119,7 @@ export default function TimeSlotModal({
                     {!editingSlot && slotFormData.fieldId && (
                          <div >
                               <label className="block text-sm font-bold text-gray-900 mb-2">
-                                   💰 Giá cho slot(s) (VNĐ) <span className="text-red-500">*</span>
+                                   💰 Giá cho khung giờ(s) (VNĐ) <span className="text-red-500">*</span>
                               </label>
                               <Input
                                    type="number"
@@ -140,8 +140,8 @@ export default function TimeSlotModal({
                               )}
                               <p className="text-xs text-gray-600 mt-2">
                                    {selectedQuickSlots.length > 0
-                                        ? `Giá này sẽ được áp dụng cho ${selectedQuickSlots.length} slot(s) bạn chọn bên dưới`
-                                        : 'Giá này sẽ được áp dụng cho slot bạn tạo'
+                                        ? `Giá này sẽ được áp dụng cho ${selectedQuickSlots.length} khung giờ(s) bạn chọn bên dưới`
+                                        : 'Giá này sẽ được áp dụng cho khung giờ bạn tạo'
                                    }
                               </p>
                          </div>
@@ -196,12 +196,12 @@ export default function TimeSlotModal({
                          <>
                               <div>
                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Tên Slot <span className="text-red-500">*</span>
+                                        Tên khung giờ <span className="text-red-500">*</span>
                                    </label>
                                    <Input
                                         value={slotFormData.slotName}
                                         onChange={(e) => setSlotFormData({ ...slotFormData, slotName: e.target.value })}
-                                        placeholder="Ví dụ: Slot 1, Sáng sớm, ..."
+                                        placeholder="Ví dụ: Khung giờ 1, Sáng sớm, ..."
                                         className={slotFormErrors.slotName ? 'border-red-500' : ''}
                                    />
                                    {slotFormErrors.slotName && (
@@ -286,7 +286,7 @@ export default function TimeSlotModal({
                               ) : (
                                    <>
                                         <Save className="w-4 h-4 mr-2" />
-                                        {editingSlot ? 'Cập nhật' : selectedQuickSlots.length > 0 ? `Thêm ${selectedQuickSlots.length} slots` : 'Tạo mới'}
+                                        {editingSlot ? 'Cập nhật' : selectedQuickSlots.length > 0 ? `Thêm ${selectedQuickSlots.length} khung giờ` : 'Tạo mới'}
                                    </>
                               )}
                          </Button>

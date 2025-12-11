@@ -961,50 +961,50 @@ export default function BookingHistory({ user }) {
 
           // If we have the match request data, add it to state immediately
           if (result.matchRequest) {
-                    const matchRequest = result.matchRequest;
-                    const requestId = extractRequestId(matchRequest);
-                    // Use selectedBooking if available, otherwise use result.booking
-                    const booking = selectedBooking || result.booking;
-                    // Use booking.id as display key (consistent with loadMatchRequestsForBookings)
-                    const bookingDisplayId = booking?.id;
-                    const matchRequestBookingId = matchRequest.bookingId || matchRequest.bookingID || matchRequest.BookingID;
+               const matchRequest = result.matchRequest;
+               const requestId = extractRequestId(matchRequest);
+               // Use selectedBooking if available, otherwise use result.booking
+               const booking = selectedBooking || result.booking;
+               // Use booking.id as display key (consistent with loadMatchRequestsForBookings)
+               const bookingDisplayId = booking?.id;
+               const matchRequestBookingId = matchRequest.bookingId || matchRequest.bookingID || matchRequest.BookingID;
 
-                    if (requestId && bookingDisplayId) {
-                         // Add to bookingIdToRequest map using booking.id (display key)
-                         // This is consistent with how loadMatchRequestsForBookings maps
-                         setBookingIdToRequest(prev => {
-                              const updated = { ...prev };
+               if (requestId && bookingDisplayId) {
+                    // Add to bookingIdToRequest map using booking.id (display key)
+                    // This is consistent with how loadMatchRequestsForBookings maps
+                    setBookingIdToRequest(prev => {
+                         const updated = { ...prev };
 
-                              // Map by booking.id (display key) - this is what we use in the UI
-                              updated[bookingDisplayId] = matchRequest;
+                         // Map by booking.id (display key) - this is what we use in the UI
+                         updated[bookingDisplayId] = matchRequest;
 
-                              // Also try to find and map any other bookings with the same bookingId
-                              // in case the booking list hasn't updated yet
-                              if (matchRequestBookingId) {
-                                   const normalizedMatchRequestBookingId = String(matchRequestBookingId);
-                                   bookings.forEach(b => {
-                                        if (String(b.bookingId) === normalizedMatchRequestBookingId && b.id) {
-                                             updated[b.id] = matchRequest;
-                                        }
-                                   });
-                              }
-
-                              return updated;
-                         });
-
-                         // Add participants to requestJoins
-                         const participants = extractParticipants(matchRequest);
-                         if (participants && participants.length > 0) {
-                              setRequestJoins(prev => ({
-                                   ...prev,
-                                   [requestId]: participants
-                              }));
+                         // Also try to find and map any other bookings with the same bookingId
+                         // in case the booking list hasn't updated yet
+                         if (matchRequestBookingId) {
+                              const normalizedMatchRequestBookingId = String(matchRequestBookingId);
+                              bookings.forEach(b => {
+                                   if (String(b.bookingId) === normalizedMatchRequestBookingId && b.id) {
+                                        updated[b.id] = matchRequest;
+                                   }
+                              });
                          }
-                    } else {
-                         console.warn("⚠️ [FindOpponentSuccess] Missing requestId:", {
-                              matchRequest
-                         });
+
+                         return updated;
+                    });
+
+                    // Add participants to requestJoins
+                    const participants = extractParticipants(matchRequest);
+                    if (participants && participants.length > 0) {
+                         setRequestJoins(prev => ({
+                              ...prev,
+                              [requestId]: participants
+                         }));
                     }
+               } else {
+                    console.warn("⚠️ [FindOpponentSuccess] Missing requestId:", {
+                         matchRequest
+                    });
+               }
           }
 
           // Preserve the match request we just added to state
@@ -1595,6 +1595,39 @@ export default function BookingHistory({ user }) {
           return { total, completed, cancelled, upcoming, pending };
      }, [bookings]);
 
+     // Prefer createdAt when filtering by date range
+     const getFilterDateValue = React.useCallback((booking) => booking?.createdAt || booking?.date, []);
+
+     // Normalize bookingId to a sortable number (handles "#123", "BK-123", etc.)
+     const getBookingIdValue = (booking) => {
+          const raw = booking?.bookingId ?? booking?.id ?? 0;
+          const numeric = Number(String(raw).replace(/[^\d]/g, ""));
+          return Number.isFinite(numeric) ? numeric : 0;
+     };
+
+     // Check if a match history item matches the current status filter
+     const matchHistoryMatchesStatus = React.useCallback((history) => {
+          if (statusFilter === "all") return true;
+          const status = (history?.finalStatus || history?.status || "").toLowerCase();
+          if (statusFilter === "completed") return status === "completed" || status === "matched";
+          if (statusFilter === "confirmed") return status === "confirmed" || status === "matched";
+          if (statusFilter === "cancelled") return status === "cancelled" || status === "expired";
+          return status === statusFilter;
+     }, [statusFilter]);
+
+     // Normalize match request/history id to a sortable number for match history tab
+     const getRequestIdValue = (history) => {
+          const raw = history?.matchRequestId ??
+               history?.matchRequestID ??
+               history?.requestId ??
+               history?.requestID ??
+               history?.id ??
+               history?.historyId ??
+               0;
+          const numeric = Number(String(raw).replace(/[^\d]/g, ""));
+          return Number.isFinite(numeric) ? numeric : 0;
+     };
+
      const withinDateRange = React.useCallback(function withinDateRange(dateStr) {
           // Không có ngày => luôn hiển thị
           if (!dateStr) return true;
@@ -1647,30 +1680,21 @@ export default function BookingHistory({ user }) {
                const matchQuery = !q || b.id.toLowerCase().includes(q) || (b.fieldName || "").toLowerCase().includes(q) || (b.address || "").toLowerCase().includes(q);
                const normalizedStatus = String(b.status || b.bookingStatus || "").toLowerCase();
                const matchStatus = statusFilter === "all" || normalizedStatus === statusFilter;
-               const matchDate = withinDateRange(b.date);
+               const matchDate = withinDateRange(getFilterDateValue(b));
                return matchQuery && matchStatus && matchDate;
           });
           const sorted = filtered.sort((a, b) => {
-               const parseForSort = (value) => {
-                    if (!value) return 0;
-                    // Hỗ trợ cả "dd/MM/yyyy" và "yyyy-MM-dd"
-                    if (typeof value === "string" && value.includes("/")) {
-                         const [d, m, y] = value.split("/").map(Number);
-                         const dt = new Date(y, m - 1, d);
-                         return isNaN(dt.getTime()) ? 0 : dt.getTime();
-                    }
-                    const dt = new Date(value);
-                    return isNaN(dt.getTime()) ? 0 : dt.getTime();
-               };
+               const idA = getBookingIdValue(a);
+               const idB = getBookingIdValue(b);
 
-               if (sortBy === "newest") return parseForSort(b.date) - parseForSort(a.date);
-               if (sortBy === "oldest") return parseForSort(a.date) - parseForSort(b.date);
+               if (sortBy === "newest") return idB - idA;
+               if (sortBy === "oldest") return idA - idB;
                if (sortBy === "price-asc") return (a.price || 0) - (b.price || 0);
                if (sortBy === "price-desc") return (b.price || 0) - (a.price || 0);
                return 0;
           });
           return sorted;
-     }, [bookings, query, statusFilter, sortBy, withinDateRange]);
+     }, [bookings, query, statusFilter, sortBy, withinDateRange, getFilterDateValue]);
 
      // Pagination for single bookings
      const totalSingleBookings = visibleSingles.length;
@@ -1686,20 +1710,32 @@ export default function BookingHistory({ user }) {
                const matchQuery = !q || (group.fieldName || "").toLowerCase().includes(q) || (group.address || "").toLowerCase().includes(q);
                const groupStatus = getRecurringStatus(group);
                const matchStatus = statusFilter === "all" || groupStatus === statusFilter;
-               const anyInRange = (group.bookings || []).some(b => withinDateRange(b.date));
+               const anyInRange = (group.bookings || []).some(b => withinDateRange(getFilterDateValue(b)));
                return matchQuery && matchStatus && anyInRange;
           });
           const sorted = filtered.sort((a, b) => {
-               const aFirst = (a.bookings || []).reduce((min, cur) => new Date(cur.date) < new Date(min) ? cur.date : min, (a.bookings?.[0]?.date || "1970-01-01"));
-               const bFirst = (b.bookings || []).reduce((min, cur) => new Date(cur.date) < new Date(min) ? cur.date : min, (b.bookings?.[0]?.date || "1970-01-01"));
-               if (sortBy === "newest") return new Date(bFirst) - new Date(aFirst);
-               if (sortBy === "oldest") return new Date(aFirst) - new Date(bFirst);
+               const aId = (a.bookings || []).reduce((acc, cur) => Math.max(acc, getBookingIdValue(cur)), 0);
+               const bId = (b.bookings || []).reduce((acc, cur) => Math.max(acc, getBookingIdValue(cur)), 0);
+               if (sortBy === "newest") return bId - aId;
+               if (sortBy === "oldest") return aId - bId;
                if (sortBy === "price-asc") return ((a.price || 0) * (a.totalWeeks || 1)) - ((b.price || 0) * (b.totalWeeks || 1));
                if (sortBy === "price-desc") return ((b.price || 0) * (b.totalWeeks || 1)) - ((a.price || 0) * (a.totalWeeks || 1));
                return 0;
           });
           return sorted;
-     }, [groupedBookings, query, statusFilter, sortBy, withinDateRange]);
+     }, [groupedBookings, query, statusFilter, sortBy, withinDateRange, getFilterDateValue]);
+
+     // Sort match history by request id (newest/oldest) to match other tabs behavior
+     const sortedPlayerHistories = useMemo(() => {
+          const list = (playerHistories || []).filter(matchHistoryMatchesStatus);
+          return list.sort((a, b) => {
+               const aId = getRequestIdValue(a);
+               const bId = getRequestIdValue(b);
+               if (sortBy === "oldest") return aId - bId;
+               // default + "newest"
+               return bId - aId;
+          });
+     }, [playerHistories, sortBy, matchHistoryMatchesStatus]);
 
      const handleCancel = (id) => {
           const booking = bookings.find(b => b.id === id);
@@ -2012,10 +2048,7 @@ export default function BookingHistory({ user }) {
                                                        <BarChart3 className="w-4 h-4" />
                                                        Tổng cộng: <span className="text-red-800 font-bold">{visibleGroups.length + visibleSingles.length}</span> đặt sân
                                                   </span>
-                                                  <span className="text-yellow-600 flex items-center gap-1">
-                                                       <RotateCcw className="w-4 h-4" />
-                                                       Lịch định kỳ: <span className="font-semibold">{visibleGroups.length}</span>
-                                                  </span>
+
                                                   <span className="text-blue-600 flex items-center gap-1">
                                                        <CalendarIcon className="w-4 h-4" />
                                                        Đặt đơn: <span className="font-semibold">{visibleSingles.length}</span>
@@ -2926,9 +2959,9 @@ export default function BookingHistory({ user }) {
                     {/* Match History Tab Content */}
                     {activeTab === "matchHistory" && (
                          <div className="space-y-4">
-                              {playerHistories && playerHistories.length > 0 ? (
+                              {sortedPlayerHistories && sortedPlayerHistories.length > 0 ? (
                                    <StaggerContainer staggerDelay={50}>
-                                        {playerHistories.map((h, index) => {
+                                        {sortedPlayerHistories.map((h, index) => {
                                              // Format date and time
                                              // Parse matchDate properly to avoid timezone issues
                                              let matchDate = null;

@@ -119,7 +119,7 @@ export default function Header({ user, onLoggedOut }) {
                                         <Link
                                              key={item.id}
                                              to={`/${item.id}`}
-                                             className={`flex items-center px-3 py-2 rounded-xl text-sm font-semibold transition-colors ${location.pathname === `/${item.id}`
+                                             className={`flex items-center px-3 py-2 rounded-xl text-sm truncate font-semibold transition-colors ${location.pathname === `/${item.id}`
                                                   ? `${isScrolled ? 'text-teal-600  border-b-teal-600' : 'text-white border-b-teal-500'} border-b-2`
                                                   : `${isScrolled ? 'text-white hover:text-teal-600' : 'text-teal-800 hover:text-gray-700'} hover:border-b-2 hover:border-teal-500`
                                                   }`}
@@ -154,12 +154,12 @@ export default function Header({ user, onLoggedOut }) {
                                                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                                                   className="flex items-center space-x-2 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
                                              >
-                                             <Avatar className="h-8 w-8">
-                                                  <AvatarImage src={avatarUrl} />
-                                                  <AvatarFallback className="bg-gray-300 text-gray-700">
-                                                       {initial}
-                                                  </AvatarFallback>
-                                             </Avatar>
+                                                  <Avatar className="h-8 w-8">
+                                                       <AvatarImage src={avatarUrl} />
+                                                       <AvatarFallback className="bg-gray-300 text-gray-700">
+                                                            {initial}
+                                                       </AvatarFallback>
+                                                  </Avatar>
                                                   <span className="hidden md:block text-gray-700">{user.fullName || user.email || "User"}</span>
                                                   <span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.roleName)}`}>
                                                        {getRoleDisplayName(user.roleName)}

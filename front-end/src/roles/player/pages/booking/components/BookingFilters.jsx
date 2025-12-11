@@ -87,11 +87,11 @@ export default function BookingFilters({
                          <label className="block text-sm font-medium text-teal-600 mb-2">Sắp xếp</label>
                          <Select value={sortBy} onValueChange={setSortBy}>
                               <SelectTrigger className="rounded-xl border-teal-300 focus:border-teal-500">
-                                   <SelectValue placeholder="Mới nhất" />
+                                   <SelectValue placeholder="Mã booking (#)" />
                               </SelectTrigger>
                               <SelectContent>
-                                   <SelectItem value="newest">Mới nhất</SelectItem>
-                                   <SelectItem value="oldest">Cũ nhất</SelectItem>
+                                   <SelectItem value="newest">Mã booking mới nhất (#↓)</SelectItem>
+                                   <SelectItem value="oldest">Mã booking cũ nhất (#↑)</SelectItem>
                                    <SelectItem value="price-asc">Giá tăng dần</SelectItem>
                                    <SelectItem value="price-desc">Giá giảm dần</SelectItem>
                               </SelectContent>

@@ -1622,7 +1622,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                     <div>
                          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
                               <Timer className="w-8 h-8 text-teal-600" />
-                              Lịch trình & Time Slots
+                              Lịch trình & khung giờ
                          </h1>
                          <p className="text-gray-600 mt-1">Quản lý khung giờ và xem lịch đặt sân</p>
                     </div>
@@ -1649,7 +1649,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                                    }`}
                          >
                               <Timer className="w-4 h-4" />
-                              <span>Quản lý Time Slots</span>
+                              <span>Quản lý khung giờ</span>
                          </button>
                          <button
                               onClick={() => setActiveTab('manage-schedules')}
@@ -1659,7 +1659,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                                    }`}
                          >
                               <BarChart3 className="w-4 h-4" />
-                              <span>Quản lý Lịch trình</span>
+                              <span>Quản lý lịch trình</span>
                          </button>
                     </nav>
                </div>
@@ -1672,12 +1672,12 @@ export default function ScheduleManagement({ isDemo = false }) {
                               <Alert className="border-amber-200 bg-amber-50">
                                    <Info className="h-4 w-4 text-amber-600" />
                                    <AlertDescription className="text-amber-800">
-                                        Bạn chưa có Time Slot nào. Vui lòng chuyển sang tab{' '}
+                                        Bạn chưa có khung giờ nào. Vui lòng chuyển sang tab{' '}
                                         <button
                                              onClick={() => setActiveTab('timeslots')}
                                              className="underline font-semibold hover:text-amber-900"
                                         >
-                                             Quản lý Time Slots
+                                             Quản lý khung giờ
                                         </button>
                                         {' '}để tạo khung giờ hoạt động.
                                    </AlertDescription>
@@ -1688,7 +1688,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                                    <Info className="h-4 w-4 text-orange-600" />
                                    <AlertDescription className="text-orange-900">
                                         Có {maintenanceFields.length} sân đang ở trạng thái <strong>Bảo trì</strong>
-                                        {maintenanceNoticeText ? `: ${maintenanceNoticeText}` : ''}. Các Time Slot và lịch trình mới sẽ bị khóa cho đến khi bạn đổi trạng thái sân sang "Available".
+                                        {maintenanceNoticeText ? `: ${maintenanceNoticeText}` : ''}. Các khung giờ và lịch trình mới sẽ bị khóa cho đến khi bạn đổi trạng thái sân sang "Available".
                                    </AlertDescription>
                               </Alert>
                          )}
@@ -1880,7 +1880,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                                              onClick={() => setActiveTab('timeslots')}
                                              className="underline font-bold hover:text-blue-700 transition-colors"
                                         >
-                                             Quản lý Time Slots
+                                             Quản lý khung giờ
                                         </button>.
                                    </AlertDescription>
                               </Alert>

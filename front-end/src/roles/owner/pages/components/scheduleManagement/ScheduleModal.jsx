@@ -361,9 +361,9 @@ export default function ScheduleModal({
                                    <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                   <SelectItem value="Available">Available</SelectItem>
-                                   <SelectItem value="Booked">Booked</SelectItem>
-                                   <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                   <SelectItem value="Available">Có sẵn</SelectItem>
+                                   <SelectItem value="Booked">Đã đặt</SelectItem>
+                                   <SelectItem value="Maintenance">Bảo trì</SelectItem>
                               </SelectContent>
                          </Select>
                     </div>

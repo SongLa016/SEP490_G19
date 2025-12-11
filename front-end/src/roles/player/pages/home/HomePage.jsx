@@ -4,43 +4,25 @@ import { useNavigate } from "react-router-dom";
 import Lenis from "lenis";
 import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, QuickBookingSection, CommunityMatchmakingSection, UserReviewsSection, CancellationPoliciesSection, MobileAppSection, WhyChooseUsSection, NewsletterSection, CTASection } from "./components";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
-import { fetchTopBookingFields, fetchFieldComplex, fetchFieldDetail } from "../../../../shared/services/fields";
+import { fetchTopBookingFields, fetchFieldComplex, fetchFieldDetail, fetchComplexes } from "../../../../shared/services/fields";
 
-// Danh sách khu vực cố định cho homepage (đầy đủ quận/huyện/thị xã Hà Nội)
+// Helpers giống FieldSearch để chuẩn hóa quận/huyện
+const normalizeText = (text) => {
+     if (typeof text !== "string") return "";
+     return text
+          .normalize("NFD")
+          .replace(/\p{Diacritic}/gu, "")
+          .toLowerCase()
+          .trim();
+};
+const normalizeDistrictKey = (text) => {
+     const normalized = normalizeText(text);
+     return normalized.replace(/^(quan|huyen|thi xa)\s+/i, "");
+};
+
+// Fallback danh sách khu vực nếu không tải được từ backend
 const HOMEPAGE_LOCATION_OPTIONS = [
-     // Quận
-     { value: "Quận Ba Đình", label: "Quận Ba Đình", query: "Quận Ba Đình" },
-     { value: "Quận Bắc Từ Liêm", label: "Quận Bắc Từ Liêm", query: "Quận Bắc Từ Liêm" },
-     { value: "Quận Cầu Giấy", label: "Quận Cầu Giấy", query: "Quận Cầu Giấy" },
-     { value: "Quận Đống Đa", label: "Quận Đống Đa", query: "Quận Đống Đa" },
-     { value: "Quận Hà Đông", label: "Quận Hà Đông", query: "Quận Hà Đông" },
-     { value: "Quận Hai Bà Trưng", label: "Quận Hai Bà Trưng", query: "Quận Hai Bà Trưng" },
-     { value: "Quận Hoàn Kiếm", label: "Quận Hoàn Kiếm", query: "Quận Hoàn Kiếm" },
-     { value: "Quận Hoàng Mai", label: "Quận Hoàng Mai", query: "Quận Hoàng Mai" },
-     { value: "Quận Long Biên", label: "Quận Long Biên", query: "Quận Long Biên" },
-     { value: "Quận Nam Từ Liêm", label: "Quận Nam Từ Liêm", query: "Quận Nam Từ Liêm" },
-     { value: "Quận Tây Hồ", label: "Quận Tây Hồ", query: "Quận Tây Hồ" },
-     { value: "Quận Thanh Xuân", label: "Quận Thanh Xuân", query: "Quận Thanh Xuân" },
-     // Huyện
-     { value: "Huyện Ba Vì", label: "Huyện Ba Vì", query: "Huyện Ba Vì" },
-     { value: "Huyện Chương Mỹ", label: "Huyện Chương Mỹ", query: "Huyện Chương Mỹ" },
-     { value: "Huyện Đan Phượng", label: "Huyện Đan Phượng", query: "Huyện Đan Phượng" },
-     { value: "Huyện Đông Anh", label: "Huyện Đông Anh", query: "Huyện Đông Anh" },
-     { value: "Huyện Gia Lâm", label: "Huyện Gia Lâm", query: "Huyện Gia Lâm" },
-     { value: "Huyện Hoài Đức", label: "Huyện Hoài Đức", query: "Huyện Hoài Đức" },
-     { value: "Huyện Mê Linh", label: "Huyện Mê Linh", query: "Huyện Mê Linh" },
-     { value: "Huyện Mỹ Đức", label: "Huyện Mỹ Đức", query: "Huyện Mỹ Đức" },
-     { value: "Huyện Phú Xuyên", label: "Huyện Phú Xuyên", query: "Huyện Phú Xuyên" },
-     { value: "Huyện Phúc Thọ", label: "Huyện Phúc Thọ", query: "Huyện Phúc Thọ" },
-     { value: "Huyện Quốc Oai", label: "Huyện Quốc Oai", query: "Huyện Quốc Oai" },
-     { value: "Huyện Sóc Sơn", label: "Huyện Sóc Sơn", query: "Huyện Sóc Sơn" },
-     { value: "Huyện Thạch Thất", label: "Huyện Thạch Thất", query: "Huyện Thạch Thất" },
-     { value: "Huyện Thanh Oai", label: "Huyện Thanh Oai", query: "Huyện Thanh Oai" },
-     { value: "Huyện Thanh Trì", label: "Huyện Thanh Trì", query: "Huyện Thanh Trì" },
-     { value: "Huyện Thường Tín", label: "Huyện Thường Tín", query: "Huyện Thường Tín" },
-     { value: "Huyện Ứng Hòa", label: "Huyện Ứng Hòa", query: "Huyện Ứng Hòa" },
-     // Thị xã
-     { value: "Thị xã Sơn Tây", label: "Thị xã Sơn Tây", query: "Thị xã Sơn Tây" },
+     { value: "Tất cả khu vực", label: "Tất cả khu vực", query: "" },
 ];
 
 export default function HomePage({ user }) {
@@ -48,9 +30,59 @@ export default function HomePage({ user }) {
      const [searchQuery, setSearchQuery] = useState("");
      const [selectedLocation, setSelectedLocation] = useState("");
      const [selectedPrice, setSelectedPrice] = useState("");
+     const [locationOptions, setLocationOptions] = useState(HOMEPAGE_LOCATION_OPTIONS);
      const [hoveredCardId, setHoveredCardId] = useState(null);
      const [topBookingFields, setTopBookingFields] = useState([]);
      const [loadingTopFields, setLoadingTopFields] = useState(true);
+
+     // Load danh sách khu vực giống FieldSearch (từ complexes)
+     useEffect(() => {
+          let ignore = false;
+          async function loadDistricts() {
+               try {
+                    const res = await fetchComplexes({ page: 1, size: 200 });
+                    if (ignore) return;
+                    const list = Array.isArray(res?.data?.data)
+                         ? res.data.data
+                         : Array.isArray(res?.data)
+                              ? res.data
+                              : Array.isArray(res)
+                                   ? res
+                                   : [];
+                    const map = new Map();
+                    list.forEach((c) => {
+                         const raw = typeof c?.district === "string" ? c.district.trim() : "";
+                         if (!raw) return;
+                         const baseKey = normalizeDistrictKey(raw);
+                         const hasPrefix = /^(Quận|Huyện|Thị xã)/i.test(raw);
+                         if (!map.has(baseKey)) {
+                              map.set(baseKey, raw);
+                              return;
+                         }
+                         const current = map.get(baseKey);
+                         const currentHasPrefix = /^(Quận|Huyện|Thị xã)/i.test(current);
+                         if (hasPrefix && !currentHasPrefix) {
+                              map.set(baseKey, raw);
+                         }
+                    });
+                    const districts = Array.from(map.values())
+                         .sort((a, b) => a.localeCompare(b, "vi"))
+                         .map((v) => ({ value: v, label: v, query: v }));
+                    if (districts.length > 0) {
+                         setLocationOptions([{ value: "all", label: "Tất cả khu vực", query: "" }, ...districts]);
+                    } else {
+                         setLocationOptions([{ value: "all", label: "Tất cả khu vực", query: "" }]);
+                    }
+               } catch (error) {
+                    console.error("Error loading districts for HomePage:", error);
+                    setLocationOptions([{ value: "all", label: "Tất cả khu vực", query: "" }]);
+               }
+          }
+          loadDistricts();
+          return () => {
+               ignore = true;
+          };
+     }, []);
 
      // ============================================
      // KHAI BÁO CÁC THAM SỐ VÀ STATE CHO HORIZONTAL SCROLL
@@ -708,7 +740,7 @@ export default function HomePage({ user }) {
      const handleSearch = () => {
           try {
                const locationFilter = selectedLocation
-                    ? (HOMEPAGE_LOCATION_OPTIONS.find((opt) => opt.value === selectedLocation)?.query || "")
+                    ? (locationOptions.find((opt) => opt.value === selectedLocation)?.query || selectedLocation)
                     : "";
                const normalizedPrice = selectedPrice && selectedPrice !== "all" ? selectedPrice : "";
                const preset = {
@@ -731,7 +763,7 @@ export default function HomePage({ user }) {
                     setSelectedLocation={setSelectedLocation}
                     selectedPrice={selectedPrice}
                     setSelectedPrice={setSelectedPrice}
-                    locationOptions={HOMEPAGE_LOCATION_OPTIONS}
+                    locationOptions={locationOptions}
                     onSearch={handleSearch}
                />
 

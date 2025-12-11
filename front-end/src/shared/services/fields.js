@@ -49,7 +49,7 @@ const handleApiError = (error) => {
     // Keep the original error so components can access error.response
     throw error;
   }
-  
+
   // For non-response errors, create a new error with message
   let errorMessage = "Có lỗi xảy ra khi gọi API";
   let details = "";
@@ -159,7 +159,6 @@ export async function createFieldComplex(complexData) {
 export async function fetchFieldComplexes() {
   try {
     const endpoint = "/api/FieldComplex";
-    const fullUrl = `${API_BASE_URL}${endpoint}`;
     const response = await apiClient.get(endpoint);
 
     let data = response.data;
@@ -216,9 +215,12 @@ export async function fetchFieldComplexes() {
         createdAt: complex.createdAt || complex.CreatedAt,
         ownerName: complex.ownerName || complex.OwnerName || "",
         lat: complex.lat || complex.Lat || complex.latitude || complex.Latitude,
-        lng: complex.lng || complex.Lng || complex.longitude || complex.Longitude,
-        latitude: complex.latitude || complex.Latitude || complex.lat || complex.Lat,
-        longitude: complex.longitude || complex.Longitude || complex.lng || complex.Lng,
+        lng:
+          complex.lng || complex.Lng || complex.longitude || complex.Longitude,
+        latitude:
+          complex.latitude || complex.Latitude || complex.lat || complex.Lat,
+        longitude:
+          complex.longitude || complex.Longitude || complex.lng || complex.Lng,
         ward: complex.ward || complex.Ward || "",
         district: complex.district || complex.District || "",
         province: complex.province || complex.Province || "",
@@ -259,9 +261,12 @@ export async function fetchFieldComplex(id) {
         createdAt: complex.createdAt || complex.CreatedAt,
         ownerName: complex.ownerName || complex.OwnerName || "",
         lat: complex.lat || complex.Lat || complex.latitude || complex.Latitude,
-        lng: complex.lng || complex.Lng || complex.longitude || complex.Longitude,
-        latitude: complex.latitude || complex.Latitude || complex.lat || complex.Lat,
-        longitude: complex.longitude || complex.Longitude || complex.lng || complex.Lng,
+        lng:
+          complex.lng || complex.Lng || complex.longitude || complex.Longitude,
+        latitude:
+          complex.latitude || complex.Latitude || complex.lat || complex.Lat,
+        longitude:
+          complex.longitude || complex.Longitude || complex.lng || complex.Lng,
         ward: complex.ward || complex.Ward || "",
         district: complex.district || complex.District || "",
         province: complex.province || complex.Province || "",
@@ -375,13 +380,15 @@ export async function fetchAllComplexesWithFields() {
 export async function fetchFieldsByComplex(complexId) {
   try {
     const complexIdNum = Number(complexId);
+    const endpoint = `/api/Field/complex/${complexIdNum}`;
 
-    // Use the correct endpoint from Swagger: GET /api/Field/complex/{complexId}
-    const response = await apiClient.get(`/api/Field/complex/${complexIdNum}`);
+    const response = await apiClient.get(endpoint);
 
+    if (!response) {
+      return [];
+    }
     // Handle response - can be array or object
     let data = response.data;
-
     // Handle wrapper object
     if (data && !Array.isArray(data)) {
       if (Array.isArray(data.data)) {
@@ -699,21 +706,24 @@ export async function fetchFields(params = {}) {
         const fields = await fetchFieldsByComplex(complexId);
         allFields = Array.isArray(fields) ? fields : [];
       } catch (error) {
-        console.error(`[fetchFields] Error fetching fields for complex ${complexId}:`, error);
+        console.error(
+          `[fetchFields] Error fetching fields for complex ${complexId}:`,
+          error
+        );
         allFields = [];
       }
-      
+
       // Fetch complexes for address mapping
       complexes = await fetchFieldComplexes();
     } else {
       // Fetch all fields from all complexes
       complexes = await fetchFieldComplexes();
-      
+
       // Filter only Active complexes for Player pages
       const activeComplexes = complexes.filter(
         (complex) => (complex.status || complex.Status || "Active") === "Active"
       );
-      
+
       const fieldsPromises = activeComplexes.map(async (complex) => {
         try {
           return await fetchFieldsByComplex(complex.complexId);
@@ -729,13 +739,17 @@ export async function fetchFields(params = {}) {
     const activeComplexes = complexes.filter(
       (complex) => (complex.status || complex.Status || "Active") === "Active"
     );
-    const complexMap = new Map(activeComplexes.map((c) => [String(c.complexId), c]));
+    const complexMap = new Map(
+      activeComplexes.map((c) => [String(c.complexId), c])
+    );
 
     return allFields
       .filter((f) => {
         // Only include fields from Active complexes
         const complex = complexMap.get(String(f.complexId));
-        return complex && (complex.status || complex.Status || "Active") === "Active";
+        return (
+          complex && (complex.status || complex.Status || "Active") === "Active"
+        );
       })
       .filter((f) => !typeId || f.typeId === Number(typeId))
       .map((f) => {
@@ -819,34 +833,37 @@ export async function fetchComplexDetail(complexId, { date, slotId } = {}) {
     ]);
 
     // Normalize status check - case insensitive
-    const complexStatus = complex ? (complex.status || complex.Status || "").toString().toLowerCase() : "";
+    const complexStatus = complex
+      ? (complex.status || complex.Status || "").toString().toLowerCase()
+      : "";
     const isActive = complexStatus === "active" || complexStatus === "";
-    
+
     // If complex is not Active, still return fields but mark complex as inactive
     // This allows viewing fields even if complex status is not "Active"
     return {
-      complex: complex && isActive
-        ? {
-            complexId: complex.complexId,
-            name: complex.name,
-            address: complex.address,
-            description: complex.description,
-            // Only use URL from Cloudinary
-            imageUrl: complex.imageUrl,
-            rating: 0, // Should come from API
-            status: complex.status || complex.Status || "Active",
-          }
-        : complex
-        ? {
-            complexId: complex.complexId,
-            name: complex.name,
-            address: complex.address,
-            description: complex.description,
-            imageUrl: complex.imageUrl,
-            rating: 0,
-            status: complex.status || complex.Status || "Active",
-          }
-        : null,
+      complex:
+        complex && isActive
+          ? {
+              complexId: complex.complexId,
+              name: complex.name,
+              address: complex.address,
+              description: complex.description,
+              // Only use URL from Cloudinary
+              imageUrl: complex.imageUrl,
+              rating: 0, // Should come from API
+              status: complex.status || complex.Status || "Active",
+            }
+          : complex
+          ? {
+              complexId: complex.complexId,
+              name: complex.name,
+              address: complex.address,
+              description: complex.description,
+              imageUrl: complex.imageUrl,
+              rating: 0,
+              status: complex.status || complex.Status || "Active",
+            }
+          : null,
       fields: Array.isArray(fields) ? fields : [],
     };
   } catch (error) {
@@ -862,7 +879,10 @@ export async function fetchFieldMeta(fieldId) {
     const complex = await fetchFieldComplex(field.complexId);
 
     // Check if complex is Active - if not, return null for Player pages
-    if (complex && (complex.status || complex.Status || "Active") !== "Active") {
+    if (
+      complex &&
+      (complex.status || complex.Status || "Active") !== "Active"
+    ) {
       return { field: null, complex: null };
     }
 
@@ -892,9 +912,12 @@ export async function fetchFieldDetail(fieldId) {
     if (!field) return null;
 
     const complex = await fetchFieldComplex(field.complexId);
-    
+
     // Check if complex is Active - if not, return null for Player pages
-    if (complex && (complex.status || complex.Status || "Active") !== "Active") {
+    if (
+      complex &&
+      (complex.status || complex.Status || "Active") !== "Active"
+    ) {
       return null;
     }
 
