@@ -29,8 +29,6 @@ import {
 import {
      Search,
      Filter,
-     Edit,
-     Trash2,
      Shield,
      UserCheck,
      UserX,
@@ -40,7 +38,9 @@ import {
      Users,
      X,
      Bell,
-     Send
+     Send,
+     Lock,
+     Unlock
 } from "lucide-react";
 import { fetchAllUserStatistics, fetchPlayerProfile, lockUserAccount } from "../../../shared/services/adminStatistics";
 import { createNotification, createBulkNotifications } from "../../../shared/services/notifications";
@@ -95,25 +95,56 @@ export default function UserManagement() {
                     // Check if data is an array or needs to be extracted
                     const usersData = Array.isArray(result.data) ? result.data :
                          (result.data.users || result.data.data || []);
+                    
                     // Transform API data to match component structure
                     // API returns: { userId, fullName, email, phone, roleName }
-                    const transformedUsers = usersData.map(user => ({
-                         id: user.userId,
-                         email: user.email,
-                         fullName: user.fullName,
-                         phone: user.phone || "N/A",
-                         role: user.roleName,
-                         status: user.status || "Active",
-                         createdAt: user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : "N/A",
-                         lastLogin: user.lastLogin ? new Date(user.lastLogin).toLocaleDateString('vi-VN') : "N/A",
-                         avatar: user.avatar || null,
-                         profile: {
-                              dateOfBirth: user.dateOfBirth || user.profile?.dateOfBirth || "N/A",
-                              gender: user.gender || user.profile?.gender || "N/A",
-                              address: user.address || user.profile?.address || "N/A",
-                              skillLevel: user.skillLevel || user.profile?.skillLevel || "N/A"
-                         }
-                    }));
+                    const transformedUsers = await Promise.all(
+                         usersData.map(async (user) => {
+                              // Fetch status và createdAt từ PlayerProfile API cho mỗi user
+                              let userStatus = user.status || "Active";
+                              let userCreatedAt = user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : "N/A";
+                              
+                              try {
+                                   const profileResult = await fetchPlayerProfile(user.userId);
+                                   if (profileResult.ok && profileResult.data) {
+                                        // Lấy status từ PlayerProfile
+                                        if (profileResult.data.status) {
+                                             userStatus = profileResult.data.status;
+                                        }
+                                        // Lấy createdAt từ PlayerProfile (chính xác hơn)
+                                        if (profileResult.data.createdAt) {
+                                             userCreatedAt = new Date(profileResult.data.createdAt).toLocaleDateString('vi-VN', {
+                                                  year: 'numeric',
+                                                  month: '2-digit',
+                                                  day: '2-digit'
+                                             });
+                                        }
+                                   }
+                              } catch (err) {
+                                   // Nếu không fetch được, dùng dữ liệu từ fetchAllUserStatistics
+                                   console.warn(`Could not fetch profile for user ${user.userId}:`, err);
+                              }
+                              
+                              return {
+                                   id: user.userId,
+                                   email: user.email,
+                                   fullName: user.fullName,
+                                   phone: user.phone || "N/A",
+                                   role: user.roleName,
+                                   status: userStatus,
+                                   createdAt: userCreatedAt,
+                                   lastLogin: user.lastLogin ? new Date(user.lastLogin).toLocaleDateString('vi-VN') : "N/A",
+                                   avatar: user.avatar || null,
+                                   profile: {
+                                        dateOfBirth: user.dateOfBirth || user.profile?.dateOfBirth || "N/A",
+                                        gender: user.gender || user.profile?.gender || "N/A",
+                                        address: user.address || user.profile?.address || "N/A",
+                                        skillLevel: user.skillLevel || user.profile?.skillLevel || "N/A"
+                                   }
+                              };
+                         })
+                    );
+                    
                     console.log("Roles in data:", transformedUsers.map(u => u.role));
 
                     setUsers(transformedUsers);
@@ -170,7 +201,15 @@ export default function UserManagement() {
                setLoadingProfile(true);
                const result = await fetchPlayerProfile(user.id);
                if (result.ok && result.data) {
-                    setUserProfileDetails(result.data);
+                    const profileData = result.data;
+                    setUserProfileDetails(profileData);
+                    // Cập nhật status từ API PlayerProfile vào selectedUser
+                    if (profileData.status) {
+                         setSelectedUser({
+                              ...user,
+                              status: profileData.status
+                         });
+                    }
                } else {
                     console.error("Failed to fetch profile:", result.reason);
                     // Still show modal with basic info even if profile fetch fails
@@ -180,11 +219,6 @@ export default function UserManagement() {
           } finally {
                setLoadingProfile(false);
           }
-     };
-
-     const handleEditUser = (user) => {
-          setSelectedUser(user);
-          // Implement edit functionality
      };
 
      const handleCreateUser = () => {
@@ -212,23 +246,6 @@ export default function UserManagement() {
           });
      };
 
-     const handleDeleteUser = async (user) => {
-          const result = await Swal.fire({
-               title: "Xác nhận xóa",
-               text: `Bạn có chắc chắn muốn xóa người dùng ${user.fullName}?`,
-               icon: "warning",
-               showCancelButton: true,
-               confirmButtonColor: "#d33",
-               cancelButtonColor: "#3085d6",
-               confirmButtonText: "Xóa",
-               cancelButtonText: "Hủy"
-          });
-
-          if (result.isConfirmed) {
-               setUsers(users.filter(u => u.id !== user.id));
-               await Swal.fire("Đã xóa!", "Người dùng đã được xóa thành công.", "success");
-          }
-     };
 
      const handleLockAccount = async (targetUser) => {
           // Kiểm tra quyền admin trước khi thực hiện (user từ useAuth là user hiện tại đang đăng nhập)
@@ -251,13 +268,17 @@ export default function UserManagement() {
                return;
           }
 
-          const actionText = targetUser.status === "Active" ? "khóa" : "mở khóa";
+          // Xác định status hiện tại - ưu tiên lấy từ userProfileDetails nếu có
+          const currentStatus = userProfileDetails?.status || targetUser.status || "Active";
+          const isActive = currentStatus === "Active";
+          const actionText = isActive ? "khóa" : "mở khóa";
+          
           const result = await Swal.fire({
                title: "Xác nhận",
                text: `Bạn có chắc chắn muốn ${actionText} tài khoản ${targetUser.fullName}?`,
                icon: "question",
                showCancelButton: true,
-               confirmButtonColor: targetUser.status === "Active" ? "#d33" : "#3085d6",
+               confirmButtonColor: isActive ? "#d33" : "#3085d6",
                cancelButtonColor: "#6c757d",
                confirmButtonText: "Xác nhận",
                cancelButtonText: "Hủy"
@@ -269,35 +290,61 @@ export default function UserManagement() {
 
           try {
                setLoading(true);
-               const result = await lockUserAccount(targetUser.id);
-               if (result.ok) {
-                    // Reload users to get updated status
-                    await loadUsers();
-                    // Update selected user if modal is open
+               const lockResult = await lockUserAccount(targetUser.id);
+               if (lockResult.ok) {
+                    // Fetch lại PlayerProfile để lấy status mới nhất từ API
+                    const profileResult = await fetchPlayerProfile(targetUser.id);
+                    let newStatus = isActive ? "Locked" : "Active";
+                    
+                    if (profileResult.ok && profileResult.data?.status) {
+                         newStatus = profileResult.data.status;
+                    }
+                    
+                    // Cập nhật status trong danh sách users
+                    setUsers(prevUsers => 
+                         prevUsers.map(u => 
+                              u.id === targetUser.id 
+                                   ? { ...u, status: newStatus }
+                                   : u
+                         )
+                    );
+                    setFilteredUsers(prevUsers => 
+                         prevUsers.map(u => 
+                              u.id === targetUser.id 
+                                   ? { ...u, status: newStatus }
+                                   : u
+                         )
+                    );
+                    
+                    // Cập nhật selectedUser nếu modal đang mở
                     if (selectedUser && selectedUser.id === targetUser.id) {
-                         const updatedUsers = await fetchAllUserStatistics();
-                         if (updatedUsers.ok && updatedUsers.data) {
-                              const usersData = Array.isArray(updatedUsers.data) ? updatedUsers.data :
-                                   (updatedUsers.data.users || updatedUsers.data.data || []);
-                              const updatedUser = usersData.find(u => u.userId === targetUser.id);
-                              if (updatedUser) {
-                                   setSelectedUser({
-                                        ...selectedUser,
-                                        status: updatedUser.status || (targetUser.status === "Active" ? "Suspended" : "Active")
-                                   });
-                              }
+                         if (profileResult.ok && profileResult.data) {
+                              const updatedProfile = profileResult.data;
+                              setUserProfileDetails(updatedProfile);
+                              setSelectedUser({
+                                   ...selectedUser,
+                                   status: newStatus
+                              });
+                         } else {
+                              setSelectedUser({
+                                   ...selectedUser,
+                                   status: newStatus
+                              });
                          }
                     }
+                    
                     await Swal.fire({
                          icon: "success",
                          title: "Thành công",
-                         text: `Đã ${targetUser.status === "Active" ? "khóa" : "mở khóa"} tài khoản thành công!`
+                         text: `Đã ${actionText} tài khoản thành công!`,
+                         timer: 2000,
+                         timerProgressBar: true
                     });
                } else {
                     await Swal.fire({
                          icon: "error",
                          title: "Lỗi",
-                         text: result.reason || "Không thể thực hiện thao tác này"
+                         text: lockResult.reason || "Không thể thực hiện thao tác này"
                     });
                }
           } catch (err) {
@@ -413,11 +460,12 @@ export default function UserManagement() {
                case "Admin":
                     return "destructive";
                case "Owner":
+               case "FieldOwner":
                     return "bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200";
                case "Player":
                     return "bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200";
                default:
-                    return "default";
+                    return "bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200";
           }
      };
 
@@ -426,17 +474,21 @@ export default function UserManagement() {
                case "Active":
                     return "success";
                case "Locked":
+               case "Suspended":
                     return "bg-red-100 text-red-800 border-red-200 hover:bg-red-200";
                case "Inactive":
                     return "secondary";
                default:
-                    return "outline";
+                    return "bg-slate-100 text-slate-800 border-slate-200 hover:bg-slate-200";
           }
      };
 
      const getStatusBadgeClassName = (status) => {
           if (status === "Active") {
                return "bg-green-100 text-green-800 border-green-200 hover:bg-green-200";
+          }
+          if (status === "Locked" || status === "Suspended") {
+               return "bg-red-100 text-red-800 border-red-200 hover:bg-red-200";
           }
           return "";
      };
@@ -462,23 +514,35 @@ export default function UserManagement() {
           {
                key: "role",
                label: "Vai trò",
-               render: (user) => (
-                    <Badge variant={getRoleBadgeVariant(user.role)}>
-                         {user.role}
-                    </Badge>
-               )
+               render: (user) => {
+                    const variant = getRoleBadgeVariant(user.role);
+                    const isCustomClass = variant.includes("bg-");
+                    return (
+                         <Badge 
+                              variant={isCustomClass ? "outline" : variant}
+                              className={isCustomClass ? variant : ""}
+                         >
+                              {user.role}
+                         </Badge>
+                    );
+               }
           },
           {
                key: "status",
                label: "Trạng thái",
-               render: (user) => (
-                    <Badge
-                         variant={getStatusBadgeVariant(user.status)}
-                         className={getStatusBadgeClassName(user.status)}
-                    >
-                         {user.status}
-                    </Badge>
-               )
+               render: (user) => {
+                    const variant = getStatusBadgeVariant(user.status);
+                    const className = getStatusBadgeClassName(user.status);
+                    const isCustomClass = variant.includes("bg-");
+                    return (
+                         <Badge
+                              variant={isCustomClass ? "outline" : variant}
+                              className={isCustomClass ? variant : className}
+                         >
+                              {user.status}
+                         </Badge>
+                    );
+               }
           },
           {
                key: "phone",
@@ -503,46 +567,49 @@ export default function UserManagement() {
           {
                key: "actions",
                label: "Thao tác",
-               render: (user) => (
-                    <div className="flex items-center space-x-2">
-                         <Button
-                              onClick={() => handleViewUser(user)}
-                              variant="ghost"
-                              size="sm"
-                              className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                              title="Xem chi tiết"
-                         >
-                              <Eye className="w-4 h-4" />
-                         </Button>
-                         <Button
-                              onClick={() => handleSendNotification(user)}
-                              variant="ghost"
-                              size="sm"
-                              className="text-orange-600 hover:text-orange-800 hover:bg-orange-50"
-                              title="Gửi thông báo"
-                         >
-                              <Bell className="w-4 h-4" />
-                         </Button>
-                         <Button
-                              onClick={() => handleEditUser(user)}
-                              variant="ghost"
-                              size="sm"
-                              className="text-green-600 hover:text-green-800 hover:bg-green-50"
-                              title="Chỉnh sửa"
-                         >
-                              <Edit className="w-4 h-4" />
-                         </Button>
-                         <Button
-                              onClick={() => handleDeleteUser(user)}
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                              title="Xóa"
-                         >
-                              <Trash2 className="w-4 h-4" />
-                         </Button>
-                    </div>
-               )
+               render: (user) => {
+                    const isActive = user.status === "Active";
+                    return (
+                         <div className="flex items-center space-x-2">
+                              <Button
+                                   onClick={() => handleViewUser(user)}
+                                   variant="ghost"
+                                   size="sm"
+                                   className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                   title="Xem chi tiết"
+                              >
+                                   <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                   onClick={() => handleSendNotification(user)}
+                                   variant="ghost"
+                                   size="sm"
+                                   className="text-orange-600 hover:text-orange-800 hover:bg-orange-50"
+                                   title="Gửi thông báo"
+                              >
+                                   <Bell className="w-4 h-4" />
+                              </Button>
+                              {checkIsAdmin() && (
+                                   <Button
+                                        onClick={() => handleLockAccount(user)}
+                                        variant="ghost"
+                                        size="sm"
+                                        className={isActive 
+                                             ? "text-red-600 hover:text-red-800 hover:bg-red-50" 
+                                             : "text-green-600 hover:text-green-800 hover:bg-green-50"}
+                                        title={isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"}
+                                        disabled={loading}
+                                   >
+                                        {isActive ? (
+                                             <Lock className="w-4 h-4" />
+                                        ) : (
+                                             <Unlock className="w-4 h-4" />
+                                        )}
+                                   </Button>
+                              )}
+                         </div>
+                    );
+               }
           }
      ];
 
@@ -914,15 +981,32 @@ export default function UserManagement() {
                                                   </h4>
                                                   <p className="text-slate-600">{userProfileDetails?.email || selectedUser.email}</p>
                                                   <div className="flex space-x-2 mt-2">
-                                                       <Badge variant={getRoleBadgeVariant(selectedUser.role)}>
-                                                            {selectedUser.role}
-                                                       </Badge>
-                                                       <Badge
-                                                            variant={getStatusBadgeVariant(selectedUser.status)}
-                                                            className={getStatusBadgeClassName(selectedUser.status)}
-                                                       >
-                                                            {selectedUser.status}
-                                                       </Badge>
+                                                       {(() => {
+                                                            const roleVariant = getRoleBadgeVariant(selectedUser.role);
+                                                            const isRoleCustomClass = roleVariant.includes("bg-");
+                                                            return (
+                                                                 <Badge 
+                                                                      variant={isRoleCustomClass ? "outline" : roleVariant}
+                                                                      className={isRoleCustomClass ? roleVariant : ""}
+                                                                 >
+                                                                      {selectedUser.role}
+                                                                 </Badge>
+                                                            );
+                                                       })()}
+                                                       {(() => {
+                                                            const status = userProfileDetails?.status || selectedUser.status;
+                                                            const statusVariant = getStatusBadgeVariant(status);
+                                                            const statusClassName = getStatusBadgeClassName(status);
+                                                            const isStatusCustomClass = statusVariant.includes("bg-");
+                                                            return (
+                                                                 <Badge
+                                                                      variant={isStatusCustomClass ? "outline" : statusVariant}
+                                                                      className={isStatusCustomClass ? statusVariant : statusClassName}
+                                                                 >
+                                                                      {status}
+                                                                 </Badge>
+                                                            );
+                                                       })()}
                                                   </div>
                                              </div>
                                         </div>
@@ -936,13 +1020,6 @@ export default function UserManagement() {
                                                        <p className="text-slate-900">{userProfileDetails?.phone || selectedUser.phone}</p>
                                                   </div>
                                              </div>
-                                             <div className="flex items-center space-x-3">
-                                                  <Calendar className="w-5 h-5 text-slate-400" />
-                                                  <div>
-                                                       <p className="text-sm font-medium text-slate-600">Ngày tạo</p>
-                                                       <p className="text-slate-900">{selectedUser.createdAt}</p>
-                                                  </div>
-                                             </div>
                                         </div>
 
                                         {/* Profile Info from API */}
@@ -950,6 +1027,27 @@ export default function UserManagement() {
                                              <div>
                                                   <h5 className="text-lg font-bold text-slate-900 mb-3">Thông tin cá nhân</h5>
                                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                       {/* Status từ API PlayerProfile */}
+                                                       {userProfileDetails.status && (
+                                                            <div>
+                                                                 <p className="text-sm font-medium text-slate-600">Trạng thái tài khoản</p>
+                                                                 <div className="mt-1">
+                                                                      {(() => {
+                                                                           const statusVariant = getStatusBadgeVariant(userProfileDetails.status);
+                                                                           const statusClassName = getStatusBadgeClassName(userProfileDetails.status);
+                                                                           const isCustomClass = statusVariant.includes("bg-");
+                                                                           return (
+                                                                                <Badge
+                                                                                     variant={isCustomClass ? "outline" : statusVariant}
+                                                                                     className={isCustomClass ? statusVariant : statusClassName}
+                                                                                >
+                                                                                     {userProfileDetails.status}
+                                                                                </Badge>
+                                                                           );
+                                                                      })()}
+                                                                 </div>
+                                                            </div>
+                                                       )}
                                                        {userProfileDetails.dateOfBirth && (
                                                             <div>
                                                                  <p className="text-sm font-medium text-slate-600">Ngày sinh</p>
@@ -980,6 +1078,20 @@ export default function UserManagement() {
                                                             <div>
                                                                  <p className="text-sm font-medium text-slate-600">Vị trí ưa thích</p>
                                                                  <p className="text-slate-900">{userProfileDetails.preferredPositions}</p>
+                                                            </div>
+                                                       )}
+                                                       {userProfileDetails.createdAt && (
+                                                            <div>
+                                                                 <p className="text-sm font-medium text-slate-600">Ngày tạo tài khoản</p>
+                                                                 <p className="text-slate-900">
+                                                                      {new Date(userProfileDetails.createdAt).toLocaleDateString('vi-VN', {
+                                                                           year: 'numeric',
+                                                                           month: '2-digit',
+                                                                           day: '2-digit',
+                                                                           hour: '2-digit',
+                                                                           minute: '2-digit'
+                                                                      })}
+                                                                 </p>
                                                             </div>
                                                        )}
                                                   </div>
@@ -1013,33 +1125,27 @@ export default function UserManagement() {
 
                                         {/* Actions */}
                                         <div className="flex space-x-3 pt-4 border-t border-slate-200">
-                                             {checkIsAdmin() && (
-                                                  <Button
-                                                       onClick={() => handleLockAccount(selectedUser)}
-                                                       variant={selectedUser.status === "Active" ? "destructive" : "default"}
-                                                       className="flex-1 rounded-2xl"
-                                                       disabled={loading}
-                                                  >
-                                                       {loading ? (
-                                                            <>
-                                                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                                                 Đang xử lý...
-                                                            </>
-                                                       ) : (
-                                                            selectedUser.status === "Active" ? "Khóa tài khoản" : "Mở khóa tài khoản"
-                                                       )}
-                                                  </Button>
-                                             )}
-                                             <Button
-                                                  onClick={() => {
-                                                       setShowUserModal(false);
-                                                       handleEditUser(selectedUser);
-                                                  }}
-                                                  variant="outline"
-                                                  className="flex-1 rounded-2xl"
-                                             >
-                                                  Chỉnh sửa
-                                             </Button>
+                                             {checkIsAdmin() && (() => {
+                                                  const currentStatus = userProfileDetails?.status || selectedUser.status || "Active";
+                                                  const isActive = currentStatus === "Active";
+                                                  return (
+                                                       <Button
+                                                            onClick={() => handleLockAccount(selectedUser)}
+                                                            variant={isActive ? "destructive" : "default"}
+                                                            className="flex-1 rounded-2xl"
+                                                            disabled={loading}
+                                                       >
+                                                            {loading ? (
+                                                                 <>
+                                                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                                      Đang xử lý...
+                                                                 </>
+                                                            ) : (
+                                                                 isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"
+                                                            )}
+                                                       </Button>
+                                                  );
+                                             })()}
                                         </div>
                                    </>
                               )}
@@ -1183,9 +1289,18 @@ export default function UserManagement() {
                                                                       <p className="font-medium text-sm">{user.fullName}</p>
                                                                       <p className="text-xs text-slate-500">{user.email}</p>
                                                                  </div>
-                                                                 <Badge variant={getRoleBadgeVariant(user.role)} className="text-xs">
-                                                                      {user.role}
-                                                                 </Badge>
+                                                                 {(() => {
+                                                                      const roleVariant = getRoleBadgeVariant(user.role);
+                                                                      const isRoleCustomClass = roleVariant.includes("bg-");
+                                                                      return (
+                                                                           <Badge 
+                                                                                variant={isRoleCustomClass ? "outline" : roleVariant}
+                                                                                className={isRoleCustomClass ? `${roleVariant} text-xs` : "text-xs"}
+                                                                           >
+                                                                                {user.role}
+                                                                           </Badge>
+                                                                      );
+                                                                 })()}
                                                             </div>
                                                        </SelectItem>
                                                   ))}

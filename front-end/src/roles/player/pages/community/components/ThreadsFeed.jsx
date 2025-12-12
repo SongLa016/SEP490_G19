@@ -111,7 +111,7 @@ export default function ThreadsFeed({ refreshTrigger }) {
      return (
           <div className="min-h-screen">
                {/* Main Content - Centered */}
-               <div className="flex justify-center">
+               <div className="flex flex-col">
                     {/* Posts Feed với Stagger Animations */}
                     {loading ? (
                          <div className="flex justify-center items-center py-12">
@@ -122,7 +122,7 @@ export default function ThreadsFeed({ refreshTrigger }) {
                               <div className="text-gray-500">Chưa có bài viết nào</div>
                          </div>
                     ) : (
-                         <div className="divide-y divide-gray-200">
+                         <div className="divide-y divide-gray-100">
                               {posts.map((post, index) => (
                                    <PostCard
                                         key={post.PostID}
