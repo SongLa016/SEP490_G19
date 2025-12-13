@@ -106,5 +106,8 @@ namespace BallSport.Infrastructure.Repositories
                 .OrderBy(s => s.SessionDate)
                 .ToListAsync();
         }
+
+     
+
     }
 }
