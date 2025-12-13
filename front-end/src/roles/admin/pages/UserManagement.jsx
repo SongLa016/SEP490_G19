@@ -58,32 +58,15 @@ export default function UserManagement() {
      const [userProfileDetails, setUserProfileDetails] = useState(null);
      const [showUserModal, setShowUserModal] = useState(false);
      const [showCreateModal, setShowCreateModal] = useState(false);
-     const [showNotificationModal, setShowNotificationModal] = useState(false);
      const [loading, setLoading] = useState(false);
      const [loadingProfile, setLoadingProfile] = useState(false);
      const [error, setError] = useState(null);
-     const [selectedUsersForNotification, setSelectedUsersForNotification] = useState([]);
-     const [selectedRecipientId, setSelectedRecipientId] = useState("0");
-     const [notificationData, setNotificationData] = useState({
-          type: "System",
-          message: ""
-     });
-     const [newUser, setNewUser] = useState({
-          email: "",
-          fullName: "",
-          phone: "",
-          role: "Player",
-          status: "Active",
-          profile: {
-               dateOfBirth: "",
-               gender: "",
-               address: "",
-               skillLevel: "Beginner"
-          }
-     });
+     const [ownerProfile, setOwnerProfile] = useState(null);
+     const [ownerLoading, setOwnerLoading] = useState(false);
 
      useEffect(() => {
           loadUsers();
+          fetchOwnerProfile();
      }, []);
 
      const loadUsers = async () => {
@@ -95,7 +78,7 @@ export default function UserManagement() {
                     // Check if data is an array or needs to be extracted
                     const usersData = Array.isArray(result.data) ? result.data :
                          (result.data.users || result.data.data || []);
-                    
+
                     // Transform API data to match component structure
                     // API returns: { userId, fullName, email, phone, roleName }
                     const transformedUsers = await Promise.all(
@@ -104,7 +87,7 @@ export default function UserManagement() {
                               let userStatus = user.status || "Active";
                               let userCreatedAt = user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : "N/A";
                               let avatarUrl = user.avatar || user.profile?.avatar || user.profile?.avatarUrl || null;
-                              
+
                               try {
                                    const profileResult = await fetchPlayerProfile(user.userId);
                                    if (profileResult.ok && profileResult.data) {
@@ -131,7 +114,7 @@ export default function UserManagement() {
                                    // Nếu không fetch được, dùng dữ liệu từ fetchAllUserStatistics
                                    console.warn(`Could not fetch profile for user ${user.userId}:`, err);
                               }
-                              
+
                               return {
                                    id: user.userId,
                                    email: user.email,
@@ -151,7 +134,7 @@ export default function UserManagement() {
                               };
                          })
                     );
-                    
+
                     console.log("Roles in data:", transformedUsers.map(u => u.role));
 
                     setUsers(transformedUsers);
@@ -165,6 +148,20 @@ export default function UserManagement() {
                setError("Đã xảy ra lỗi khi tải danh sách người dùng");
           } finally {
                setLoading(false);
+          }
+     };
+
+     const fetchOwnerProfile = async () => {
+          setOwnerLoading(true);
+          try {
+               const res = await fetch('https://sep490-g19-zxph.onrender.com/api/PlayerProfile/3');
+               if (!res.ok) throw new Error(`HTTP ${res.status}`);
+               const data = await res.json();
+               setOwnerProfile(data);
+          } catch (err) {
+               console.error('Failed to fetch owner profile:', err);
+          } finally {
+               setOwnerLoading(false);
           }
      };
 
@@ -228,30 +225,6 @@ export default function UserManagement() {
           }
      };
 
-     const handleCreateUser = () => {
-          const user = {
-               id: users.length + 1,
-               ...newUser,
-               createdAt: new Date().toISOString().split('T')[0],
-               lastLogin: new Date().toISOString().split('T')[0],
-               avatar: null
-          };
-          setUsers([user, ...users]);
-          setShowCreateModal(false);
-          setNewUser({
-               email: "",
-               fullName: "",
-               phone: "",
-               role: "Player",
-               status: "Active",
-               profile: {
-                    dateOfBirth: "",
-                    gender: "",
-                    address: "",
-                    skillLevel: "Beginner"
-               }
-          });
-     };
 
 
      const handleLockAccount = async (targetUser) => {
@@ -276,10 +249,10 @@ export default function UserManagement() {
           }
 
           // Xác định status hiện tại - ưu tiên lấy từ userProfileDetails nếu có
-          const currentStatus = userProfileDetails?.status || targetUser.status || "Active";
+          const currentStatus = ownerProfile?.status || userProfileDetails?.status || targetUser.status || "Active";
           const isActive = currentStatus === "Active";
           const actionText = isActive ? "khóa" : "mở khóa";
-          
+
           const result = await Swal.fire({
                title: "Xác nhận",
                text: `Bạn có chắc chắn muốn ${actionText} tài khoản ${targetUser.fullName}?`,
@@ -302,27 +275,27 @@ export default function UserManagement() {
                     // Fetch lại PlayerProfile để lấy status mới nhất từ API
                     const profileResult = await fetchPlayerProfile(targetUser.id);
                     let newStatus = isActive ? "Locked" : "Active";
-                    
+
                     if (profileResult.ok && profileResult.data?.status) {
                          newStatus = profileResult.data.status;
                     }
-                    
+
                     // Cập nhật status trong danh sách users
-                    setUsers(prevUsers => 
-                         prevUsers.map(u => 
-                              u.id === targetUser.id 
+                    setUsers(prevUsers =>
+                         prevUsers.map(u =>
+                              u.id === targetUser.id
                                    ? { ...u, status: newStatus }
                                    : u
                          )
                     );
-                    setFilteredUsers(prevUsers => 
-                         prevUsers.map(u => 
-                              u.id === targetUser.id 
+                    setFilteredUsers(prevUsers =>
+                         prevUsers.map(u =>
+                              u.id === targetUser.id
                                    ? { ...u, status: newStatus }
                                    : u
                          )
                     );
-                    
+
                     // Cập nhật selectedUser nếu modal đang mở
                     if (selectedUser && selectedUser.id === targetUser.id) {
                          if (profileResult.ok && profileResult.data) {
@@ -339,7 +312,7 @@ export default function UserManagement() {
                               });
                          }
                     }
-                    
+
                     await Swal.fire({
                          icon: "success",
                          title: "Thành công",
@@ -360,102 +333,6 @@ export default function UserManagement() {
                     icon: "error",
                     title: "Lỗi",
                     text: "Đã xảy ra lỗi khi thực hiện thao tác"
-               });
-          } finally {
-               setLoading(false);
-          }
-     };
-
-     const handleSendNotification = (user) => {
-          setSelectedUsersForNotification([user]);
-          setSelectedRecipientId(user.id.toString());
-          setShowNotificationModal(true);
-     };
-
-     const handleOpenNotificationModal = () => {
-          setSelectedUsersForNotification([]);
-          setSelectedRecipientId("0");
-          setShowNotificationModal(true);
-     };
-
-     const handleSubmitNotification = async () => {
-          if (!notificationData.message.trim()) {
-               await Swal.fire({
-                    icon: "warning",
-                    title: "Thiếu thông tin",
-                    text: "Vui lòng nhập nội dung thông báo"
-               });
-               return;
-          }
-
-          try {
-               setLoading(true);
-               const recipientId = parseInt(selectedRecipientId);
-
-               if (recipientId === 0) {
-                    // Gửi hàng loạt cho tất cả người dùng hiện tại
-                    const usersToSend = selectedUsersForNotification.length > 0
-                         ? selectedUsersForNotification
-                         : filteredUsers;
-
-                    const notifications = usersToSend.map(user => ({
-                         userId: user.id,
-                         type: notificationData.type,
-                         targetId: 0,
-                         message: notificationData.message
-                    }));
-
-                    const result = await createBulkNotifications(notifications);
-
-                    if (result.ok) {
-                         await Swal.fire({
-                              icon: "success",
-                              title: "Thành công",
-                              text: `Gửi thông báo thành công cho ${usersToSend.length} người dùng!`
-                         });
-                         setShowNotificationModal(false);
-                         setNotificationData({ type: "System", message: "" });
-                         setSelectedRecipientId("0");
-                    } else {
-                         await Swal.fire({
-                              icon: "error",
-                              title: "Lỗi",
-                              text: result.reason || "Không thể gửi thông báo hàng loạt"
-                         });
-                    }
-               } else {
-                    // Gửi cho 1 người cụ thể
-                    const result = await createNotification({
-                         userId: recipientId,
-                         type: notificationData.type,
-                         targetId: 0,
-                         message: notificationData.message
-                    });
-
-                    if (result.ok) {
-                         const recipient = users.find(u => u.id === recipientId);
-                         await Swal.fire({
-                              icon: "success",
-                              title: "Thành công",
-                              text: `Gửi thông báo thành công cho ${recipient?.fullName || 'người dùng'}!`
-                         });
-                         setShowNotificationModal(false);
-                         setNotificationData({ type: "System", message: "" });
-                         setSelectedRecipientId("0");
-                    } else {
-                         await Swal.fire({
-                              icon: "error",
-                              title: "Lỗi",
-                              text: result.reason || "Không thể gửi thông báo"
-                         });
-                    }
-               }
-          } catch (err) {
-               console.error("Error sending notification:", err);
-               await Swal.fire({
-                    icon: "error",
-                    title: "Lỗi",
-                    text: "Đã xảy ra lỗi khi gửi thông báo"
                });
           } finally {
                setLoading(false);
@@ -507,15 +384,15 @@ export default function UserManagement() {
                render: (user) => (
                     <div className="flex items-center space-x-3">
                          <Avatar className="w-10 h-10">
-                             {user.avatar && (
-                                  <AvatarImage
-                                       src={user.avatar}
-                                       alt={user.fullName}
-                                       onError={(e) => {
-                                            e.currentTarget.style.display = "none";
-                                       }}
-                                  />
-                             )}
+                              {user.avatar && (
+                                   <AvatarImage
+                                        src={user.avatar}
+                                        alt={user.fullName}
+                                        onError={(e) => {
+                                             e.currentTarget.style.display = "none";
+                                        }}
+                                   />
+                              )}
                               <AvatarFallback className="bg-gradient-to-br from-slate-400 to-slate-600 text-white">
                                    {user.fullName.charAt(0)}
                               </AvatarFallback>
@@ -534,7 +411,7 @@ export default function UserManagement() {
                     const variant = getRoleBadgeVariant(user.role);
                     const isCustomClass = variant.includes("bg-");
                     return (
-                         <Badge 
+                         <Badge
                               variant={isCustomClass ? "outline" : variant}
                               className={isCustomClass ? variant : ""}
                          >
@@ -596,22 +473,14 @@ export default function UserManagement() {
                               >
                                    <Eye className="w-4 h-4" />
                               </Button>
-                              <Button
-                                   onClick={() => handleSendNotification(user)}
-                                   variant="ghost"
-                                   size="sm"
-                                   className="text-orange-600 hover:text-orange-800 hover:bg-orange-50"
-                                   title="Gửi thông báo"
-                              >
-                                   <Bell className="w-4 h-4" />
-                              </Button>
+
                               {checkIsAdmin() && (
                                    <Button
                                         onClick={() => handleLockAccount(user)}
                                         variant="ghost"
                                         size="sm"
-                                        className={isActive 
-                                             ? "text-red-600 hover:text-red-800 hover:bg-red-50" 
+                                        className={isActive
+                                             ? "text-red-600 hover:text-red-800 hover:bg-red-50"
                                              : "text-green-600 hover:text-green-800 hover:bg-green-50"}
                                         title={isActive ? "Khóa tài khoản" : "Mở khóa tài khoản"}
                                         disabled={loading}
@@ -758,17 +627,7 @@ export default function UserManagement() {
                               <CardTitle>
                                    Danh sách người dùng ({filteredUsers.length})
                               </CardTitle>
-                              <div className="flex space-x-2">
-                                   <Button
-                                        onClick={handleOpenNotificationModal}
-                                        variant="outline"
-                                        className="border-orange-300 rounded-2xl text-orange-700 hover:bg-orange-50"
-                                   >
-                                        <Bell className="w-4 h-4 mr-2" />
-                                        Tạo thông báo
-                                   </Button>
 
-                              </div>
                          </div>
                     </CardHeader>
                     <CardContent>
@@ -824,141 +683,6 @@ export default function UserManagement() {
                     </CardContent>
                </Card>
 
-               {/* Create User Modal */}
-               {showCreateModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                         <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                              <CardHeader>
-                                   <div className="flex items-center justify-between">
-                                        <CardTitle>Tạo người dùng mới</CardTitle>
-                                        <Button
-                                             onClick={() => setShowCreateModal(false)}
-                                             variant="ghost"
-                                             size="sm"
-                                        >
-                                             <X className="w-4 h-4" />
-                                        </Button>
-                                   </div>
-                              </CardHeader>
-                              <CardContent className="space-y-4">
-                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Họ tên *
-                                             </label>
-                                             <Input
-                                                  value={newUser.fullName}
-                                                  onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
-                                                  placeholder="Nhập họ tên..."
-                                             />
-                                        </div>
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Email *
-                                             </label>
-                                             <Input
-                                                  type="email"
-                                                  value={newUser.email}
-                                                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                                                  placeholder="Nhập email..."
-                                             />
-                                        </div>
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Số điện thoại *
-                                             </label>
-                                             <Input
-                                                  value={newUser.phone}
-                                                  onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
-                                                  placeholder="Nhập số điện thoại..."
-                                             />
-                                        </div>
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Vai trò
-                                             </label>
-                                             <Select value={newUser.role} onValueChange={(value) => setNewUser({ ...newUser, role: value })}>
-                                                  <SelectTrigger>
-                                                       <SelectValue />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="Player">Người chơi</SelectItem>
-                                                       <SelectItem value="FieldOwner">Chủ sân</SelectItem>
-                                                       <SelectItem value="Admin">Admin</SelectItem>
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Giới tính
-                                             </label>
-                                             <Select value={newUser.profile.gender} onValueChange={(value) => setNewUser({ ...newUser, profile: { ...newUser.profile, gender: value } })}>
-                                                  <SelectTrigger>
-                                                       <SelectValue placeholder="Chọn giới tính" />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="Nam">Nam</SelectItem>
-                                                       <SelectItem value="Nữ">Nữ</SelectItem>
-                                                       <SelectItem value="Khác">Khác</SelectItem>
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-                                        <div>
-                                             <label className="block text-sm font-medium text-slate-700 mb-2">
-                                                  Trình độ
-                                             </label>
-                                             <Select value={newUser.profile.skillLevel} onValueChange={(value) => setNewUser({ ...newUser, profile: { ...newUser.profile, skillLevel: value } })}>
-                                                  <SelectTrigger>
-                                                       <SelectValue />
-                                                  </SelectTrigger>
-                                                  <SelectContent>
-                                                       <SelectItem value="Beginner">Mới bắt đầu</SelectItem>
-                                                       <SelectItem value="Intermediate">Trung bình</SelectItem>
-                                                       <SelectItem value="Advanced">Nâng cao</SelectItem>
-                                                  </SelectContent>
-                                             </Select>
-                                        </div>
-                                   </div>
-                                   <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                                             Ngày sinh
-                                        </label>
-                                        <DatePicker
-                                             value={newUser.profile.dateOfBirth}
-                                             onChange={(date) => setNewUser({ ...newUser, profile: { ...newUser.profile, dateOfBirth: date } })}
-                                        />
-                                   </div>
-                                   <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                                             Địa chỉ
-                                        </label>
-                                        <Input
-                                             value={newUser.profile.address}
-                                             onChange={(e) => setNewUser({ ...newUser, profile: { ...newUser.profile, address: e.target.value } })}
-                                             placeholder="Nhập địa chỉ..."
-                                        />
-                                   </div>
-                                   <div className="flex space-x-3 pt-4 border-t border-slate-200">
-                                        <Button
-                                             onClick={handleCreateUser}
-                                             className="flex-1"
-                                             disabled={!newUser.fullName || !newUser.email || !newUser.phone}
-                                        >
-                                             Tạo người dùng
-                                        </Button>
-                                        <Button
-                                             onClick={() => setShowCreateModal(false)}
-                                             variant="outline"
-                                             className="flex-1"
-                                        >
-                                             Hủy
-                                        </Button>
-                                   </div>
-                              </CardContent>
-                         </Card>
-                    </div>
-               )}
-
                {/* User Detail Modal */}
                <Modal
                     isOpen={showUserModal}
@@ -1001,7 +725,7 @@ export default function UserManagement() {
                                                             const roleVariant = getRoleBadgeVariant(selectedUser.role);
                                                             const isRoleCustomClass = roleVariant.includes("bg-");
                                                             return (
-                                                                 <Badge 
+                                                                 <Badge
                                                                       variant={isRoleCustomClass ? "outline" : roleVariant}
                                                                       className={isRoleCustomClass ? roleVariant : ""}
                                                                  >
@@ -1142,7 +866,7 @@ export default function UserManagement() {
                                         {/* Actions */}
                                         <div className="flex space-x-3 pt-4 border-t border-slate-200">
                                              {checkIsAdmin() && (() => {
-                                                  const currentStatus = userProfileDetails?.status || selectedUser.status || "Active";
+                                                  const currentStatus = ownerProfile?.status || userProfileDetails?.status || selectedUser.status || "Active";
                                                   const isActive = currentStatus === "Active";
                                                   return (
                                                        <Button
@@ -1169,215 +893,6 @@ export default function UserManagement() {
                     )}
                </Modal>
 
-               {/* Notification Modal */}
-               {showNotificationModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                         <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                              <CardHeader className="border-b border-slate-200">
-                                   <div className="flex items-center justify-between">
-                                        <CardTitle className="text-xl font-bold">Tạo thông báo mới</CardTitle>
-                                        <Button
-                                             onClick={() => {
-                                                  setShowNotificationModal(false);
-                                                  setNotificationData({ type: "System", message: "" });
-                                             }}
-                                             variant="ghost"
-                                             size="sm"
-                                        >
-                                             <X className="w-5 h-5" />
-                                        </Button>
-                                   </div>
-                              </CardHeader>
-                              <CardContent className="space-y-5 pt-6">
-                                   {/* Thông tin API */}
-                                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                        <div className="flex items-start space-x-2">
-                                             <Bell className="w-5 h-5 text-blue-600 mt-0.5" />
-                                             <div className="flex-1">
-                                                  <p className="font-semibold text-blue-900 mb-1">Thông tin API</p>
-                                                  <p className="text-sm text-blue-700">
-                                                       Thông báo sẽ được gửi theo format: userId, type, targetId, message
-                                                  </p>
-                                             </div>
-                                        </div>
-                                   </div>
-
-                                   {/* Nội dung thông báo */}
-                                   <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                                             Nội dung thông báo <span className="text-red-500">*</span>
-                                        </label>
-                                        <textarea
-                                             value={notificationData.message}
-                                             onChange={(e) =>
-                                                  setNotificationData({ ...notificationData, message: e.target.value })
-                                             }
-                                             placeholder="Nhập nội dung thông báo... (Ví dụ: Bạn có đặt sân mới, Hệ thống sẽ bảo trì từ 2:00-4:00, ...)"
-                                             className="w-full min-h-[120px] px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none text-sm"
-                                        />
-                                        <p className="text-xs text-slate-500 mt-1">0 ký tự</p>
-                                   </div>
-
-                                   {/* Loại thông báo */}
-                                   <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                                             Loại thông báo <span className="text-red-500">*</span>
-                                        </label>
-                                        <Select
-                                             value={notificationData.type}
-                                             onValueChange={(value) =>
-                                                  setNotificationData({ ...notificationData, type: value })
-                                             }
-                                        >
-                                             <SelectTrigger className="w-full">
-                                                  <SelectValue />
-                                             </SelectTrigger>
-                                             <SelectContent>
-                                                  <SelectItem value="System">
-                                                       <div className="flex items-center space-x-2">
-                                                            <span>📢</span>
-                                                            <span>System - Thông báo hệ thống</span>
-                                                       </div>
-                                                  </SelectItem>
-                                                  <SelectItem value="NewComment">
-                                                       <div className="flex items-center space-x-2">
-                                                            <span>💬</span>
-                                                            <span>NewComment - Bình luận mới</span>
-                                                       </div>
-                                                  </SelectItem>
-                                                  <SelectItem value="Reply">
-                                                       <div className="flex items-center space-x-2">
-                                                            <span>↩️</span>
-                                                            <span>Reply - Trả lời</span>
-                                                       </div>
-                                                  </SelectItem>
-                                                  <SelectItem value="Mention">
-                                                       <div className="flex items-center space-x-2">
-                                                            <span>@</span>
-                                                            <span>Mention - Nhắc đến</span>
-                                                       </div>
-                                                  </SelectItem>
-                                                  <SelectItem value="Like">
-                                                       <div className="flex items-center space-x-2">
-                                                            <span>❤️</span>
-                                                            <span>Like - Thích</span>
-                                                       </div>
-                                                  </SelectItem>
-                                                  <SelectItem value="ReportResult">
-                                                       <div className="flex items-center space-x-2">
-                                                            <span>⚠️</span>
-                                                            <span>ReportResult - Kết quả báo cáo</span>
-                                                       </div>
-                                                  </SelectItem>
-                                             </SelectContent>
-                                        </Select>
-                                        <p className="text-xs text-slate-500 mt-1">
-                                             Loại thông báo xác định cách hiển thị và xử lý
-                                        </p>
-                                   </div>
-
-                                   {/* User ID */}
-                                   <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                                             User ID (Người nhận)
-                                        </label>
-                                        <Select
-                                             value={selectedRecipientId}
-                                             onValueChange={setSelectedRecipientId}
-                                        >
-                                             <SelectTrigger className="w-full">
-                                                  <SelectValue />
-                                             </SelectTrigger>
-                                             <SelectContent className="max-h-[300px]">
-                                                  <SelectItem value="0">
-                                                       <div className="flex items-center space-x-2">
-                                                            <Users className="w-4 h-4 text-blue-600" />
-                                                            <span className="font-medium">0 = Gửi cho tất cả ({filteredUsers.length} người)</span>
-                                                       </div>
-                                                  </SelectItem>
-                                                  {users.map((user) => (
-                                                       <SelectItem key={user.id} value={user.id.toString()}>
-                                                            <div className="flex items-center space-x-2">
-                                                                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-400 to-slate-600 flex items-center justify-center text-white text-xs font-semibold">
-                                                                      {user.fullName.charAt(0)}
-                                                                 </div>
-                                                                 <div className="flex-1">
-                                                                      <p className="font-medium text-sm">{user.fullName}</p>
-                                                                      <p className="text-xs text-slate-500">{user.email}</p>
-                                                                 </div>
-                                                                 {(() => {
-                                                                      const roleVariant = getRoleBadgeVariant(user.role);
-                                                                      const isRoleCustomClass = roleVariant.includes("bg-");
-                                                                      return (
-                                                                           <Badge 
-                                                                                variant={isRoleCustomClass ? "outline" : roleVariant}
-                                                                                className={isRoleCustomClass ? `${roleVariant} text-xs` : "text-xs"}
-                                                                           >
-                                                                                {user.role}
-                                                                           </Badge>
-                                                                      );
-                                                                 })()}
-                                                            </div>
-                                                       </SelectItem>
-                                                  ))}
-                                             </SelectContent>
-                                        </Select>
-                                        <p className="text-xs text-slate-500 mt-1">
-                                             Để trống hoặc nhập 0 để gửi thông báo hệ thống cho tất cả người dùng
-                                        </p>
-                                   </div>
-
-                                   {/* Target ID */}
-                                   <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                                             Target ID (ID đối tượng liên quan)
-                                        </label>
-                                        <Input
-                                             value="0"
-                                             disabled
-                                             placeholder="0 = Không áp dụng, >0 = ID của booking/post/comment liên quan"
-                                             className="bg-slate-50"
-                                        />
-                                        <p className="text-xs text-slate-500 mt-1">
-                                             ID của đối tượng liên quan (ví dụ: Booking ID, Post ID, Comment ID)
-                                        </p>
-                                   </div>
-
-                                   {/* Buttons */}
-                                   <div className="flex space-x-3 pt-4 border-t border-slate-200">
-                                        <Button
-                                             onClick={handleSubmitNotification}
-                                             className="flex-1 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700"
-                                             disabled={loading || !notificationData.message.trim()}
-                                        >
-                                             {loading ? (
-                                                  <>
-                                                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                                       Đang gửi...
-                                                  </>
-                                             ) : (
-                                                  <>
-                                                       <Send className="w-4 h-4 mr-2" />
-                                                       Gửi thông báo
-                                                  </>
-                                             )}
-                                        </Button>
-                                        <Button
-                                             onClick={() => {
-                                                  setShowNotificationModal(false);
-                                                  setNotificationData({ type: "System", message: "" });
-                                             }}
-                                             variant="outline"
-                                             className="flex-1"
-                                             disabled={loading}
-                                        >
-                                             Hủy
-                                        </Button>
-                                   </div>
-                              </CardContent>
-                         </Card>
-                    </div>
-               )}
           </div>
      );
 }

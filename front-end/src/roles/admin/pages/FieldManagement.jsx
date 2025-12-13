@@ -495,7 +495,7 @@ export default function FieldManagement() {
                render: (field) => (
                     <div className="flex items-center space-x-2">
                          <User className="w-4 h-4 text-slate-400" />
-                         <span className="text-sm text-slate-600">{field.ownerName || "N/A"}</span>
+                         <span className="text-sm text-slate-600">{field.fullName || "N/A"}</span>
                     </div>
                )
           },
@@ -717,9 +717,9 @@ export default function FieldManagement() {
                     ) : (
                          <Table className="w-full rounded-2xl shadow-lg border border-slate-200">
                               <TableHeader>
-                                   <TableRow>
+                                   <TableRow >
                                         {columns.map((column) => (
-                                             <TableHead key={column.key}>{column.label}</TableHead>
+                                             <TableHead key={column.key} className="truncate">{column.label}</TableHead>
                                         ))}
                                    </TableRow>
                               </TableHeader>

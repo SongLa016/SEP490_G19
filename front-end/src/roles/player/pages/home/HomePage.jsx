@@ -159,26 +159,26 @@ export default function HomePage({ user }) {
      // MẢNG COMPONENTS ĐƯỢC HIỂN THỊ
      // ============================================
 
-    // detailComponents: Mảng chứa các components sẽ được scroll ngang qua
-    // Mỗi component có:
-    //   - key: Unique identifier
-    //   - element: JSX element của component
-    // Thay đổi: Thêm/bớt components vào mảng này
-    // Các components này sẽ được hiển thị tuần tự khi scroll
-    const detailComponents = [
-         { key: "overview-quick", element: <QuickBookingSection user={user} /> },
-         { key: "overview-community", element: <CommunityMatchmakingSection /> },
-         { key: "overview-reviews", element: <UserReviewsSection /> },
-         { key: "overview-cancellation", element: <CancellationPoliciesSection /> }
-    ];
+     // detailComponents: Mảng chứa các components sẽ được scroll ngang qua
+     // Mỗi component có:
+     //   - key: Unique identifier
+     //   - element: JSX element của component
+     // Thay đổi: Thêm/bớt components vào mảng này
+     // Các components này sẽ được hiển thị tuần tự khi scroll
+     const detailComponents = [
+          { key: "overview-quick", element: <QuickBookingSection user={user} /> },
+          { key: "overview-community", element: <CommunityMatchmakingSection /> },
+          { key: "overview-reviews", element: <UserReviewsSection /> },
+          { key: "overview-cancellation", element: <CancellationPoliciesSection /> }
+     ];
 
-    // Tiêu đề tiếng Việt cho từng component (theo cùng thứ tự detailComponents)
-    const componentTitles = [
-         "Đặt sân nhanh chóng",
-         "Cộng đồng & Matchmaking",
-         "Đánh giá & Cộng đồng người dùng",
-         "Chính sách hủy đặt sân"
-    ];
+     // Tiêu đề tiếng Việt cho từng component (theo cùng thứ tự detailComponents)
+     const componentTitles = [
+          "Đặt sân nhanh chóng",
+          "Cộng đồng & Matchmaking",
+          "Đánh giá & Cộng đồng người dùng",
+          "Chính sách hủy đặt sân"
+     ];
 
      // ============================================
      // THAM SỐ KÍCH THƯỚC VÀ KHOẢNG CÁCH
@@ -606,13 +606,13 @@ export default function HomePage({ user }) {
                try {
                     setLoadingTopFields(true);
                     const data = await fetchTopBookingFields();
-                    
+
                     // Lấy địa chỉ từ complex cho mỗi field
                     const mappedFields = await Promise.all(
                          data.map(async (item) => {
                               let location = "Đang cập nhật";
                               let complexId = item.complexId;
-                              
+
                               // Nếu không có complexId trong response, lấy từ field detail
                               if (!complexId && item.fieldId) {
                                    try {
@@ -624,7 +624,7 @@ export default function HomePage({ user }) {
                                         console.error(`Error loading field detail ${item.fieldId}:`, error);
                                    }
                               }
-                              
+
                               // Lấy địa chỉ từ complex
                               if (complexId) {
                                    try {
@@ -636,7 +636,7 @@ export default function HomePage({ user }) {
                                         console.error(`Error loading complex ${complexId}:`, error);
                                    }
                               }
-                              
+
                               return {
                                    id: item.fieldId,
                                    name: item.fieldName || "Sân bóng",
@@ -652,7 +652,7 @@ export default function HomePage({ user }) {
                               };
                          })
                     );
-                    
+
                     setTopBookingFields(mappedFields);
                } catch (error) {
                     console.error("Error loading top booking fields:", error);
@@ -750,19 +750,23 @@ export default function HomePage({ user }) {
 
      const handleSearch = () => {
           try {
+               const params = new URLSearchParams();
+               const q = (searchQuery || "").trim();
+               if (q) params.set("searchQuery", q);
+               // map selectedLocation to underlying query value if available
                const locationFilter = selectedLocation
                     ? (locationOptions.find((opt) => opt.value === selectedLocation)?.query || selectedLocation)
                     : "";
+               if (locationFilter) params.set("selectedLocation", locationFilter);
                const normalizedPrice = selectedPrice && selectedPrice !== "all" ? selectedPrice : "";
-               const preset = {
-                    searchQuery: (searchQuery || "").trim(),
-                    selectedLocation: locationFilter,
-                    selectedPrice: normalizedPrice,
-                    sortBy: "relevance",
-               };
-               window.localStorage.setItem("searchPreset", JSON.stringify(preset));
-          } catch { }
-          navigate("/search");
+               if (normalizedPrice) params.set("selectedPrice", normalizedPrice);
+               // default sortBy preserved
+               params.set("sortBy", "relevance");
+               const qs = params.toString();
+               navigate(qs ? `/search?${qs}` : "/search");
+          } catch {
+               navigate("/search");
+          }
      };
 
      return (

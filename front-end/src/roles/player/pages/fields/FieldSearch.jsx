@@ -4,7 +4,7 @@ import { MapPin, Star } from "lucide-react";
 import { Section, Container, Card, CardContent, StaggerContainer } from "../../../../shared/components/ui";
 import { ScrollReveal } from "../../../../shared/components/ScrollReveal";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import MapSearch from "./components/MapSearch";
 import { fetchComplexes, fetchFields, fetchTimeSlots, fetchFavoriteFields, toggleFavoriteField } from "../../../../shared/index";
 import { usePublicFieldSchedulesByDate } from "../../../../shared/hooks/useFieldSchedules";
@@ -89,6 +89,7 @@ const isFieldDisplayable = (field) => {
 
 export default function FieldSearch({ user }) {
      const navigate = useNavigate();
+     const location = useLocation();
      const [entityTab, setEntityTab] = useState("fields"); // complexes | fields
      const [searchQuery, setSearchQuery] = useState("");
      const [selectedLocation, setSelectedLocation] = useState("");
@@ -110,39 +111,39 @@ export default function FieldSearch({ user }) {
      // Default không lọc theo ngày để tránh mất kết quả ban đầu
      const [date, setDate] = useState("");
      const [slotId, setSlotId] = useState("");
-    const [timeSlots, setTimeSlots] = useState([]);
-    const [availableFieldIds, setAvailableFieldIds] = useState(null); // Set of fieldIds available for selected date
+     const [timeSlots, setTimeSlots] = useState([]);
+     const [availableFieldIds, setAvailableFieldIds] = useState(null); // Set of fieldIds available for selected date
 
-    // Helpers to avoid redundant state updates (prevent extra renders/loops)
-    const setTimeSlotsSafe = (nextSlots) => {
-         setTimeSlots((prev) => {
-              if (!Array.isArray(prev) || !Array.isArray(nextSlots)) return nextSlots;
-              if (prev.length !== nextSlots.length) return nextSlots;
-              for (let i = 0; i < prev.length; i++) {
-                   const a = prev[i];
-                   const b = nextSlots[i];
-                   if ((a.slotId || a.slotID) !== (b.slotId || b.slotID) || a.name !== b.name) {
-                        return nextSlots;
-                   }
-              }
-              return prev;
-         });
-    };
+     // Helpers to avoid redundant state updates (prevent extra renders/loops)
+     const setTimeSlotsSafe = (nextSlots) => {
+          setTimeSlots((prev) => {
+               if (!Array.isArray(prev) || !Array.isArray(nextSlots)) return nextSlots;
+               if (prev.length !== nextSlots.length) return nextSlots;
+               for (let i = 0; i < prev.length; i++) {
+                    const a = prev[i];
+                    const b = nextSlots[i];
+                    if ((a.slotId || a.slotID) !== (b.slotId || b.slotID) || a.name !== b.name) {
+                         return nextSlots;
+                    }
+               }
+               return prev;
+          });
+     };
 
-    const setAvailableFieldIdsSafe = (nextSet) => {
-         setAvailableFieldIds((prev) => {
-              if (prev === null && nextSet === null) return prev;
-              if (prev instanceof Set && nextSet instanceof Set) {
-                   if (prev.size === nextSet.size) {
-                        for (const v of prev) {
-                             if (!nextSet.has(v)) return nextSet;
-                        }
-                        return prev;
-                   }
-              }
-              return nextSet;
-         });
-    };
+     const setAvailableFieldIdsSafe = (nextSet) => {
+          setAvailableFieldIds((prev) => {
+               if (prev === null && nextSet === null) return prev;
+               if (prev instanceof Set && nextSet instanceof Set) {
+                    if (prev.size === nextSet.size) {
+                         for (const v of prev) {
+                              if (!nextSet.has(v)) return nextSet;
+                         }
+                         return prev;
+                    }
+               }
+               return nextSet;
+          });
+     };
      const heroRef = useRef(null);
      const hasExistingDataRef = useRef(false);
      const complexesRef = useRef([]);
@@ -243,31 +244,33 @@ export default function FieldSearch({ user }) {
           if (didInitRef.current) return;
           didInitRef.current = true;
           try {
-               const raw = window.localStorage.getItem("searchPreset");
-               if (raw) {
-                    const preset = JSON.parse(raw);
-                    if (preset.searchQuery !== undefined) setSearchQuery(preset.searchQuery);
-                    if (preset.selectedLocation !== undefined) setSelectedLocation(preset.selectedLocation);
-                    if (preset.selectedPrice !== undefined) setSelectedPrice(preset.selectedPrice);
-                    if (preset.selectedRating !== undefined) setSelectedRating(preset.selectedRating);
-                    if (preset.sortBy !== undefined) setSortBy(preset.sortBy);
-                    if (preset.typeTab !== undefined) setTypeTab(preset.typeTab);
-                    if (preset.activeTab !== undefined) setActiveTab(preset.activeTab);
-                    window.localStorage.removeItem("searchPreset");
-                    setForceList(true);
-               } else {
-                    setSearchQuery("");
-                    setSelectedLocation("");
-                    setSelectedPrice("");
-                    setSelectedRating("");
-                    setSortBy("relevance");
-                    setActiveTab("all");
-                    setViewMode("grid");
-                    setPage(1);
-                    setForceList(false);
-               }
+               const params = new URLSearchParams(location.search || "");
+               let found = false;
+               const q = params.get("searchQuery");
+               if (q !== null) { setSearchQuery(q); found = true; }
+               const sl = params.get("selectedLocation");
+               if (sl !== null) { setSelectedLocation(sl === "all" ? "" : sl); found = true; }
+               const sp = params.get("selectedPrice");
+               if (sp !== null) { setSelectedPrice(sp === "all" ? "" : sp); found = true; }
+               const sr = params.get("selectedRating");
+               if (sr !== null) { setSelectedRating(sr === "all" ? "" : sr); found = true; }
+               const sb = params.get("sortBy");
+               if (sb !== null) { setSortBy(sb); found = true; }
+               const tt = params.get("typeTab");
+               if (tt !== null) { setTypeTab(tt); found = true; }
+               const at = params.get("activeTab");
+               if (at !== null) { setActiveTab(at); found = true; }
+               const p = params.get("page");
+               if (p !== null) { const pn = parseInt(p, 10); if (!Number.isNaN(pn)) setPage(pn); found = true; }
+               const et = params.get("entityTab");
+               if (et !== null) { setEntityTab(et); found = true; }
+               const d = params.get("date");
+               if (d !== null) { setDate(d); found = true; }
+               const s = params.get("slotId");
+               if (s !== null) { setSlotId(s); found = true; }
+               if (found) setForceList(true);
 
-               // Load persisted preferences
+               // Load persisted preferences - keep existing behavior for prefs
                const saved = window.localStorage.getItem("fieldSearchPrefs");
                if (saved) {
                     const prefs = JSON.parse(saved);
@@ -279,8 +282,10 @@ export default function FieldSearch({ user }) {
                     if (prefs.slotId) setSlotId(prefs.slotId);
                     if (prefs.typeTab) setTypeTab(prefs.typeTab);
                }
-          } catch { }
-     }, []);
+          } catch (e) {
+               console.error("Error parsing search query params:", e);
+          }
+     }, [location.search]);
 
      // Load danh sách sân yêu thích khi đã có user đăng nhập
      useEffect(() => {
@@ -301,88 +306,88 @@ export default function FieldSearch({ user }) {
      }, [user]);
 
      // Load available slots from schedules when date changes
-    // React Query: fetch schedules by date (cached)
-    const { data: schedulesByDate = [], isFetching: isFetchingSchedules } = usePublicFieldSchedulesByDate(
-         date ? date.split("T")[0] : ""
-    );
-    const schedulesData = useMemo(() => (Array.isArray(schedulesByDate) ? schedulesByDate : []), [schedulesByDate]);
+     // React Query: fetch schedules by date (cached)
+     const { data: schedulesByDate = [], isFetching: isFetchingSchedules } = usePublicFieldSchedulesByDate(
+          date ? date.split("T")[0] : ""
+     );
+     const schedulesData = useMemo(() => (Array.isArray(schedulesByDate) ? schedulesByDate : []), [schedulesByDate]);
 
-    // Derive slot options and available fields when date or schedules change
-    useEffect(() => {
-         let mounted = true;
+     // Derive slot options and available fields when date or schedules change
+     useEffect(() => {
+          let mounted = true;
 
-         const loadAllSlotsWhenNoDate = async () => {
-              try {
-                   const response = await fetchTimeSlots();
-                   if (!mounted) return;
-                   const slots = response?.success && Array.isArray(response.data) ? response.data : [];
-                   setTimeSlotsSafe(
-                        slots.map((slot) => {
-                             const timeLabel = formatTimeRange(slot.startTime || slot.StartTime, slot.endTime || slot.EndTime);
-                             const baseName = slot.name || slot.slotName || slot.SlotName;
-                             const label = baseName
-                                  ? timeLabel
-                                       ? `${baseName} (${timeLabel})`
-                                       : baseName
-                                  : timeLabel || `Slot ${slot.slotId || slot.SlotID}`;
-                             return { ...slot, name: label };
-                        })
-                   );
-                   setAvailableFieldIdsSafe(null);
-              } catch (error) {
-                   console.error("Error loading all time slots:", error);
-                   if (!mounted) return;
-                   setTimeSlotsSafe([]);
-                   setAvailableFieldIdsSafe(null);
-              }
-         };
+          const loadAllSlotsWhenNoDate = async () => {
+               try {
+                    const response = await fetchTimeSlots();
+                    if (!mounted) return;
+                    const slots = response?.success && Array.isArray(response.data) ? response.data : [];
+                    setTimeSlotsSafe(
+                         slots.map((slot) => {
+                              const timeLabel = formatTimeRange(slot.startTime || slot.StartTime, slot.endTime || slot.EndTime);
+                              const baseName = slot.name || slot.slotName || slot.SlotName;
+                              const label = baseName
+                                   ? timeLabel
+                                        ? `${baseName} (${timeLabel})`
+                                        : baseName
+                                   : timeLabel || `Slot ${slot.slotId || slot.SlotID}`;
+                              return { ...slot, name: label };
+                         })
+                    );
+                    setAvailableFieldIdsSafe(null);
+               } catch (error) {
+                    console.error("Error loading all time slots:", error);
+                    if (!mounted) return;
+                    setTimeSlotsSafe([]);
+                    setAvailableFieldIdsSafe(null);
+               }
+          };
 
-         if (!date) {
-              loadAllSlotsWhenNoDate();
-              return () => {
-                   mounted = false;
-              };
-         }
+          if (!date) {
+               loadAllSlotsWhenNoDate();
+               return () => {
+                    mounted = false;
+               };
+          }
 
-        // With date selected, use schedulesByDate from React Query
-         const slotMap = new Map();
-         const fieldIdSet = new Set();
+          // With date selected, use schedulesByDate from React Query
+          const slotMap = new Map();
+          const fieldIdSet = new Set();
 
-        schedulesData.forEach((schedule) => {
-              const status = normalizeStatus(schedule.status || schedule.Status);
-              if (status && status !== "available") return;
+          schedulesData.forEach((schedule) => {
+               const status = normalizeStatus(schedule.status || schedule.Status);
+               if (status && status !== "available") return;
 
-              const slotId = schedule.slotId || schedule.SlotId;
-              const fieldId = schedule.fieldId || schedule.FieldId || schedule.fieldID || schedule.FieldID;
-              const slotName = schedule.slotName || schedule.SlotName;
-              const timeLabel = formatTimeRange(schedule.startTime || schedule.StartTime, schedule.endTime || schedule.EndTime);
-              const label = slotName
-                   ? timeLabel
-                        ? `${slotName} (${timeLabel})`
-                        : slotName
-                   : timeLabel || (slotId ? `Slot ${slotId}` : "");
+               const slotId = schedule.slotId || schedule.SlotId;
+               const fieldId = schedule.fieldId || schedule.FieldId || schedule.fieldID || schedule.FieldID;
+               const slotName = schedule.slotName || schedule.SlotName;
+               const timeLabel = formatTimeRange(schedule.startTime || schedule.StartTime, schedule.endTime || schedule.EndTime);
+               const label = slotName
+                    ? timeLabel
+                         ? `${slotName} (${timeLabel})`
+                         : slotName
+                    : timeLabel || (slotId ? `Slot ${slotId}` : "");
 
-              if (slotId && !slotMap.has(slotId)) {
-                   slotMap.set(slotId, {
-                        slotId,
-                        name: label || `Slot ${slotId}`,
-                        startTime: schedule.startTime || schedule.StartTime,
-                        endTime: schedule.endTime || schedule.EndTime,
-                   });
-              }
+               if (slotId && !slotMap.has(slotId)) {
+                    slotMap.set(slotId, {
+                         slotId,
+                         name: label || `Slot ${slotId}`,
+                         startTime: schedule.startTime || schedule.StartTime,
+                         endTime: schedule.endTime || schedule.EndTime,
+                    });
+               }
 
-              if (fieldId) {
-                   fieldIdSet.add(String(fieldId));
-              }
-         });
+               if (fieldId) {
+                    fieldIdSet.add(String(fieldId));
+               }
+          });
 
-        setTimeSlotsSafe(slotMap.size > 0 ? Array.from(slotMap.values()) : []);
-        setAvailableFieldIdsSafe(fieldIdSet.size > 0 ? new Set(fieldIdSet) : null);
+          setTimeSlotsSafe(slotMap.size > 0 ? Array.from(slotMap.values()) : []);
+          setAvailableFieldIdsSafe(fieldIdSet.size > 0 ? new Set(fieldIdSet) : null);
 
-         return () => {
-              mounted = false;
-         };
-    }, [date, schedulesData]);
+          return () => {
+               mounted = false;
+          };
+     }, [date, schedulesData]);
 
      // Reset slotId when date changes to avoid invalid slot selection
      useEffect(() => {
@@ -515,33 +520,33 @@ export default function FieldSearch({ user }) {
                const normalizedLocation = normalizeText(selectedLocation);
                const normalizedBase = normalizeDistrictKey(selectedLocation);
                filtered = filtered.filter(field => {
-               const addr = normalizeText(field.address || "");
-               const dist = normalizeText(field.district || "");
-               const ward = normalizeText(field.ward || field.Ward || "");
-               const complexName = normalizeText(field.complexName || field.fieldName || field.name || "");
-               const locationText = normalizeText(field.location || field.Location || "");
-               const complexAddress = normalizeText(field.complexAddress || "");
+                    const addr = normalizeText(field.address || "");
+                    const dist = normalizeText(field.district || "");
+                    const ward = normalizeText(field.ward || field.Ward || "");
+                    const complexName = normalizeText(field.complexName || field.fieldName || field.name || "");
+                    const locationText = normalizeText(field.location || field.Location || "");
+                    const complexAddress = normalizeText(field.complexAddress || "");
 
-               const matchesFull =
-                    addr.includes(normalizedLocation) ||
-                    dist.includes(normalizedLocation) ||
-                    ward.includes(normalizedLocation) ||
-                    complexName.includes(normalizedLocation) ||
-                    locationText.includes(normalizedLocation) ||
-                    complexAddress.includes(normalizedLocation);
+                    const matchesFull =
+                         addr.includes(normalizedLocation) ||
+                         dist.includes(normalizedLocation) ||
+                         ward.includes(normalizedLocation) ||
+                         complexName.includes(normalizedLocation) ||
+                         locationText.includes(normalizedLocation) ||
+                         complexAddress.includes(normalizedLocation);
 
-               const matchesBase = normalizedBase
-                    ? (
-                         addr.includes(normalizedBase) ||
-                         dist.includes(normalizedBase) ||
-                         ward.includes(normalizedBase) ||
-                         complexName.includes(normalizedBase) ||
-                         locationText.includes(normalizedBase) ||
-                         complexAddress.includes(normalizedBase)
-                    )
-                    : false;
+                    const matchesBase = normalizedBase
+                         ? (
+                              addr.includes(normalizedBase) ||
+                              dist.includes(normalizedBase) ||
+                              ward.includes(normalizedBase) ||
+                              complexName.includes(normalizedBase) ||
+                              locationText.includes(normalizedBase) ||
+                              complexAddress.includes(normalizedBase)
+                         )
+                         : false;
 
-               return matchesFull || matchesBase;
+                    return matchesFull || matchesBase;
                });
           }
 
@@ -784,19 +789,19 @@ export default function FieldSearch({ user }) {
      const isGroupedView = activeTab === "all" && isNoFilter && !forceList && entityTab === "fields";
 
      // Flip to list view whenever user adjusts any filter/search/sort or tab is not "all"
-    useEffect(() => {
-         const hasAny = !!searchQuery || !!selectedLocation || !!selectedPrice || !!selectedRating || sortBy !== "relevance";
-         const nextForceList = hasAny || activeTab !== "all";
-         setForceList((prev) => (prev === nextForceList ? prev : nextForceList));
-    }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab]);
+     useEffect(() => {
+          const hasAny = !!searchQuery || !!selectedLocation || !!selectedPrice || !!selectedRating || sortBy !== "relevance";
+          const nextForceList = hasAny || activeTab !== "all";
+          setForceList((prev) => (prev === nextForceList ? prev : nextForceList));
+     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab]);
 
      const updateViewMode = (mode) => {
           setViewMode(mode);
           if (mode === "grid") {
                const noFilter = !searchQuery && !selectedLocation && !selectedPrice && !selectedRating && sortBy === "relevance" && activeTab === "all";
-              setForceList((prev) => (prev === !noFilter ? prev : !noFilter));
+               setForceList((prev) => (prev === !noFilter ? prev : !noFilter));
           } else {
-              setForceList((prev) => (prev === true ? prev : true));
+               setForceList((prev) => (prev === true ? prev : true));
           }
      };
 
@@ -1064,7 +1069,6 @@ export default function FieldSearch({ user }) {
                                                   setDate("");
                                                   setSlotId("");
                                                   setMapSearchKey(prev => prev + 1);
-                                                  localStorage.removeItem('searchPreset');
                                              }}
                                         />
                                         <QuickPresets
