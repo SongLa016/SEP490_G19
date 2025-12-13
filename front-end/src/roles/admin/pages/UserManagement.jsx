@@ -103,6 +103,7 @@ export default function UserManagement() {
                               // Fetch status và createdAt từ PlayerProfile API cho mỗi user
                               let userStatus = user.status || "Active";
                               let userCreatedAt = user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : "N/A";
+                              let avatarUrl = user.avatar || user.profile?.avatar || user.profile?.avatarUrl || null;
                               
                               try {
                                    const profileResult = await fetchPlayerProfile(user.userId);
@@ -119,6 +120,12 @@ export default function UserManagement() {
                                                   day: '2-digit'
                                              });
                                         }
+                                        // Avatar từ PlayerProfile (ưu tiên Cloudinary URL)
+                                        avatarUrl =
+                                             profileResult.data.avatar ||
+                                             profileResult.data.avatarUrl ||
+                                             profileResult.data.imageUrl ||
+                                             avatarUrl;
                                    }
                               } catch (err) {
                                    // Nếu không fetch được, dùng dữ liệu từ fetchAllUserStatistics
@@ -134,7 +141,7 @@ export default function UserManagement() {
                                    status: userStatus,
                                    createdAt: userCreatedAt,
                                    lastLogin: user.lastLogin ? new Date(user.lastLogin).toLocaleDateString('vi-VN') : "N/A",
-                                   avatar: user.avatar || null,
+                                   avatar: avatarUrl,
                                    profile: {
                                         dateOfBirth: user.dateOfBirth || user.profile?.dateOfBirth || "N/A",
                                         gender: user.gender || user.profile?.gender || "N/A",
@@ -500,6 +507,15 @@ export default function UserManagement() {
                render: (user) => (
                     <div className="flex items-center space-x-3">
                          <Avatar className="w-10 h-10">
+                             {user.avatar && (
+                                  <AvatarImage
+                                       src={user.avatar}
+                                       alt={user.fullName}
+                                       onError={(e) => {
+                                            e.currentTarget.style.display = "none";
+                                       }}
+                                  />
+                             )}
                               <AvatarFallback className="bg-gradient-to-br from-slate-400 to-slate-600 text-white">
                                    {user.fullName.charAt(0)}
                               </AvatarFallback>

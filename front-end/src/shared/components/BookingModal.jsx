@@ -12,6 +12,8 @@ import {
      fetchPublicFieldSchedulesByField,
      fetchTimeSlotsByField
 } from "../index";
+// Removed: updateFieldScheduleStatus imports - no longer needed here
+// FieldSchedule status will be updated when owner confirms booking
 import { createMatchRequest, createCommunityPost } from "../index";
 import EmailVerificationModal from "./EmailVerificationModal";
 // import RecurringOpponentSelection from "./RecurringOpponentSelection"; // Removed: recurring opponent feature
@@ -1501,9 +1503,47 @@ export default function BookingModal({
                     }));
 
                     // Lưu thông tin booking cùng QR do backend trả về
+                    // Tìm scheduleId từ nhiều nguồn khác nhau trong response
+                    let finalScheduleId = 
+                         apiResult.data?.scheduleID || 
+                         apiResult.data?.scheduleId || 
+                         apiResult.data?.ScheduleID ||
+                         apiResult.data?.ScheduleId ||
+                         apiResult.data?.fieldScheduleId ||
+                         apiResult.data?.FieldScheduleID ||
+                         scheduleId;
+
+                    // Nếu vẫn không có scheduleId từ response và scheduleId ban đầu là 0,
+                    // thử tìm lại từ fieldSchedules dựa trên fieldId, slotId, và date
+                    if ((!finalScheduleId || Number(finalScheduleId) === 0) && booking.fieldSchedules && Array.isArray(booking.fieldSchedules)) {
+                         const compareDate = (scheduleDate, targetDate) => {
+                              if (!scheduleDate) return false;
+                              if (typeof scheduleDate === 'string') {
+                                   return scheduleDate === targetDate || scheduleDate.split('T')[0] === targetDate;
+                              }
+                              if (scheduleDate.year && scheduleDate.month && scheduleDate.day) {
+                                   const formattedDate = `${scheduleDate.year}-${String(scheduleDate.month).padStart(2, '0')}-${String(scheduleDate.day).padStart(2, '0')}`;
+                                   return formattedDate === targetDate;
+                              }
+                              return false;
+                         };
+
+                         const matchingSchedule = booking.fieldSchedules.find(s => {
+                              const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
+                              const scheduleDate = s.date || s.Date;
+                              return String(scheduleSlotId) === String(booking.slotId) &&
+                                   compareDate(scheduleDate, booking.date);
+                         });
+
+                         if (matchingSchedule) {
+                              finalScheduleId = matchingSchedule.scheduleId || matchingSchedule.ScheduleId ||
+                                   matchingSchedule.scheduleID || matchingSchedule.ScheduleID || 0;
+                         }
+                    }
+
                     setBookingInfo({
                          bookingId: bookingId,
-                         scheduleId: apiResult.data?.scheduleID || apiResult.data?.scheduleId,
+                         scheduleId: finalScheduleId,
                          bookingStatus: apiResult.data?.bookingStatus || "Pending",
                          paymentStatus: apiResult.data?.paymentStatus || "Pending",
                          qrCodeUrl: normalizedQrCode,
@@ -1512,6 +1552,12 @@ export default function BookingModal({
                          depositAmount: apiDepositAmount,
                          remainingAmount: apiRemainingAmount
                     });
+
+                    // Lưu ý: Không cập nhật FieldSchedule status ở đây
+                    // Status sẽ được cập nhật thành "Booked" khi owner xác nhận booking
+                    // Player chỉ tạo booking ở trạng thái "Pending"
+                    console.log("📝 [BOOKING] Booking created successfully with status: Pending");
+                    console.log("📝 [BOOKING] FieldSchedule status will be updated to 'Booked' when owner confirms the booking");
                } else {
                     // ----------------- ĐẶT ĐỊNH KỲ: dùng BookingPackage/create -----------------
                     if (!recurringStartDate || !recurringEndDate) {
@@ -1921,6 +1967,12 @@ export default function BookingModal({
                          depositAmount: apiDepositAmount,
                          remainingAmount: apiRemainingAmount
                     });
+
+                    // Lưu ý: Không cập nhật FieldSchedule status ở đây
+                    // Status sẽ được cập nhật thành "Booked" khi owner xác nhận booking package
+                    // Player chỉ tạo booking package ở trạng thái "Pending"
+                    console.log("📝 [BOOKING PACKAGE] Booking package created successfully with status: Pending");
+                    console.log("📝 [BOOKING PACKAGE] FieldSchedule status will be updated to 'Booked' when owner confirms the booking");
                }
 
                // Chuyển sang bước thanh toán và khóa thao tác trong 5 phút hoặc đến khi hủy

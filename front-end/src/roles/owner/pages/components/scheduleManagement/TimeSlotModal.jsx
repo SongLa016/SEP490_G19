@@ -39,7 +39,7 @@ export default function TimeSlotModal({
                onClose={onClose}
                title={editingSlot ? 'Chỉnh sửa khung giờ' : 'Thêm khung giờ mới'}
                size="md"
-               className="max-h-[90vh] overflow-y-hidden"
+               className="max-h-[90vh] overflow-y-auto scrollbar-hide"
           >
                <form onSubmit={onSubmit} className="space-y-4">
                     {!editingSlot && creationLocked && (

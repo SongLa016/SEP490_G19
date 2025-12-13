@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
      Card,
-     CardContent,
-     CardHeader,
-     CardTitle,
      Button,
      Input,
      Select,
@@ -28,13 +25,11 @@ import {
      Eye,
      CheckCircle,
      XCircle,
-     MapPin,
      Building,
      Calendar,
      DollarSign,
      User,
-     RefreshCw,
-     Filter
+     RefreshCw
 } from "lucide-react";
 import { fetchFields, fetchFieldComplexes, fetchField, fetchFieldComplex } from "../../../shared/services/fields";
 import { updateFieldComplex } from "../../../shared/services/fields";
@@ -85,7 +80,7 @@ export default function FieldManagement() {
                setIsLoading(true);
                // Lấy tất cả complexes
                const allComplexes = await fetchFieldComplexes();
-               
+
                // Lấy số lượng sân cho mỗi complex và fields
                const complexesWithFieldCount = await Promise.all(
                     allComplexes.map(async (complex) => {
@@ -104,7 +99,7 @@ export default function FieldManagement() {
                          }
                     })
                );
-               
+
                // Filter complexes theo status
                let filteredComplexes = complexesWithFieldCount;
                if (statusFilter !== "all") {
@@ -113,9 +108,9 @@ export default function FieldManagement() {
                          return complexStatus === statusFilter;
                     });
                }
-               
+
                setComplexes(filteredComplexes);
-               
+
                // Lấy tất cả fields từ tất cả complexes
                const allFieldsPromises = allComplexes.map(async (complex) => {
                     try {
@@ -143,7 +138,7 @@ export default function FieldManagement() {
                     filteredFields = allFields.filter(field => {
                          const fieldStatus = field.status || field.Status || "Available";
                          const complexStatus = field.complexStatus || "Active";
-                         
+
                          if (statusFilter === "Pending") {
                               return complexStatus === "Pending";
                          } else if (statusFilter === "Active") {
@@ -208,11 +203,11 @@ export default function FieldManagement() {
      };
 
      const handleApproveItem = async (item) => {
-          const itemName = viewMode === "complexes" 
+          const itemName = viewMode === "complexes"
                ? (item.name || item.Name || "khu sân này")
                : (item.name || "sân này");
           const itemType = viewMode === "complexes" ? "khu sân" : "sân";
-          
+
           const result = await Swal.fire({
                title: `Xác nhận duyệt ${itemType}?`,
                text: `Bạn có chắc chắn muốn duyệt ${itemType} "${itemName}"?`,
@@ -228,10 +223,10 @@ export default function FieldManagement() {
                try {
                     setIsRefreshing(true);
                     // Cập nhật status của complex thành "Active"
-                    const complexId = viewMode === "complexes" 
+                    const complexId = viewMode === "complexes"
                          ? (item.complexId || item.ComplexID)
                          : (item.complexId || item.complexID || item.ComplexID);
-                    
+
                     if (complexId) {
                          await updateFieldComplex(complexId, {
                               status: "Active"
@@ -265,11 +260,11 @@ export default function FieldManagement() {
      };
 
      const handleRejectItem = async (item) => {
-          const itemName = viewMode === "complexes" 
+          const itemName = viewMode === "complexes"
                ? (item.name || item.Name || "khu sân này")
                : (item.name || "sân này");
           const itemType = viewMode === "complexes" ? "khu sân" : "sân";
-          
+
           const result = await Swal.fire({
                title: `Từ chối ${itemType}?`,
                text: `Bạn có chắc chắn muốn từ chối ${itemType} "${itemName}"?`,
@@ -288,10 +283,10 @@ export default function FieldManagement() {
                try {
                     setIsRefreshing(true);
                     // Cập nhật status của complex thành "Rejected"
-                    const complexId = viewMode === "complexes" 
+                    const complexId = viewMode === "complexes"
                          ? (item.complexId || item.ComplexID)
                          : (item.complexId || item.complexID || item.ComplexID);
-                    
+
                     if (complexId) {
                          await updateFieldComplex(complexId, {
                               status: "Rejected",
@@ -353,7 +348,7 @@ export default function FieldManagement() {
 
      const stats = {
           total: viewMode === "complexes" ? complexes.length : fields.length,
-          pending: viewMode === "complexes" 
+          pending: viewMode === "complexes"
                ? complexes.filter(c => (c.status || c.Status || "Active") === "Pending").length
                : fields.filter(f => (f.complexStatus || "Active") === "Pending").length,
           approved: viewMode === "complexes"
@@ -612,7 +607,7 @@ export default function FieldManagement() {
                               <div className="relative">
                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
                                    <Input
-                                        placeholder={viewMode === "complexes" 
+                                        placeholder={viewMode === "complexes"
                                              ? "Tìm kiếm theo tên khu sân, địa chỉ, chủ sân..."
                                              : "Tìm kiếm theo tên sân, khu sân..."}
                                         value={searchTerm}
@@ -623,12 +618,12 @@ export default function FieldManagement() {
                          </div>
                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-3 sm:space-y-0">
                               {/* Tabs để chuyển đổi giữa khu sân và sân nhỏ */}
-                              <div className="flex bg-slate-100 rounded-2xl p-1">
+                              <div className="flex bg-slate-100 rounded-2xl border border-slate-200 p-1">
                                    <Button
                                         variant={viewMode === "complexes" ? "default" : "ghost"}
                                         size="sm"
                                         onClick={() => setViewMode("complexes")}
-                                        className={`rounded-xl ${viewMode === "complexes" ? "bg-white shadow-sm" : ""}`}
+                                        className={`rounded-xl ${viewMode === "complexes" ? "bg-teal-600 shadow-sm text-white hover:text-white hover:bg-teal-700" : ""}`}
                                    >
                                         <Building className="w-4 h-4 mr-2" />
                                         Khu sân
@@ -637,7 +632,7 @@ export default function FieldManagement() {
                                         variant={viewMode === "fields" ? "default" : "ghost"}
                                         size="sm"
                                         onClick={() => setViewMode("fields")}
-                                        className={`rounded-xl ${viewMode === "fields" ? "bg-white shadow-sm" : ""}`}
+                                        className={`rounded-xl ${viewMode === "fields" ? "bg-teal-600 shadow-sm text-white hover:text-white hover:bg-teal-700" : ""}`}
                                    >
                                         Sân nhỏ
                                    </Button>
@@ -710,7 +705,7 @@ export default function FieldManagement() {
                <Card className="p-6 rounded-2xl shadow-lg space-y-4">
                     <div className="flex items-center justify-between">
                          <h3 className="text-lg font-bold text-slate-900">
-                              {viewMode === "complexes" 
+                              {viewMode === "complexes"
                                    ? `Danh sách khu sân (${filteredData.length})`
                                    : `Danh sách sân nhỏ (${filteredData.length})`}
                          </h3>
@@ -730,7 +725,7 @@ export default function FieldManagement() {
                               </TableHeader>
                               <TableBody>
                                    {filteredData.map((item) => {
-                                        const key = viewMode === "complexes" 
+                                        const key = viewMode === "complexes"
                                              ? (item.complexId || item.ComplexID)
                                              : (item.fieldId || item.FieldID);
                                         return (

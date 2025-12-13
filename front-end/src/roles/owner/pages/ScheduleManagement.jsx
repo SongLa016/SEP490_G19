@@ -183,7 +183,7 @@ export default function ScheduleManagement({ isDemo = false }) {
      }, []);
 
      // Handle Time Slot Modal
-     const handleOpenSlotModal = (slot = null) => {
+     const handleOpenSlotModal = (slot = null, fieldId = null) => {
           if (slot) {
                setEditingSlot(slot);
                const fieldIdValue = slot.fieldId || slot.FieldId || '';
@@ -200,12 +200,19 @@ export default function ScheduleManagement({ isDemo = false }) {
                }
           } else {
                setEditingSlot(null);
+               // Use provided fieldId if available, otherwise reset to empty
+               const fieldIdToUse = fieldId !== null && fieldId !== undefined ? fieldId.toString() : '';
                setSlotFormData({
-                    fieldId: '',
+                    fieldId: fieldIdToUse,
                     slotName: '',
                     startTime: '',
-                    endTime: ''
+                    endTime: '',
+                    price: ''
                });
+               // Load timeslots for the field if fieldId is set
+               if (fieldIdToUse) {
+                    loadTimeSlotsForField(fieldIdToUse);
+               }
           }
           setSlotFormErrors({});
           setSelectedQuickSlots([]);
@@ -343,13 +350,10 @@ export default function ScheduleManagement({ isDemo = false }) {
                                    continue;
                               }
 
-                              // Get field name to make slot name unique
-                              const field = fields.find(f => f.fieldId === fieldId);
-                              const fieldName = field?.name || `Field${fieldId}`;
-                              const uniqueSlotName = `${quickSlot.name} - ${fieldName}`;
+                              // Use the quick slot name as-is without adding field name
                               const result = await createTimeSlot({
                                    fieldId: fieldId,
-                                   slotName: uniqueSlotName,
+                                   slotName: quickSlot.name,
                                    startTime: quickSlot.start,
                                    endTime: quickSlot.end,
                                    price: Number(slotFormData.price)
@@ -383,6 +387,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                          });
                          handleCloseSlotModal();
                          await loadData();
+                         await loadTimeSlotsForTable();
                     } else {
                          const errorList = errors.slice(0, 5); // Chỉ hiển thị 5 lỗi đầu
                          const moreErrors = errors.length > 5 ? `<p class="text-xs text-gray-500 mt-2">...và ${errors.length - 5} lỗi khác</p>` : '';
@@ -414,6 +419,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                          if (successCount > 0) {
                               handleCloseSlotModal();
                               await loadData();
+                              await loadTimeSlotsForTable();
                          }
                     }
                     return;
@@ -448,6 +454,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                     });
                     handleCloseSlotModal();
                     await loadData();
+                    await loadTimeSlotsForTable();
                } else {
                     await Swal.fire({
                          icon: 'error',
@@ -485,6 +492,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                const result = await deleteTimeSlot(slotId);
                if (result.success) {
                     await loadData();
+                    await loadTimeSlotsForTable();
                     await Swal.fire({
                          title: 'Đã xóa',
                          text: 'Xóa slot thời gian thành công',
@@ -1553,39 +1561,6 @@ export default function ScheduleManagement({ isDemo = false }) {
           return null;
      }, [fieldSchedules, bookings, packageSessions, bookingPackages, hydratePackageSessionsWithSchedules, packageSessionsRef]);
 
-     // Calculate statistics
-     const statistics = useMemo(() => {
-          if (!fields.length || !timeSlots.length) {
-               return {
-                    totalSlots: 0,
-                    bookedSlots: 0,
-                    availableSlots: 0,
-                    occupancyRate: 0
-               };
-          }
-
-          const totalSlots = fields.length * timeSlots.length * 7; // 7 days
-          let bookedSlots = 0;
-
-          fields.forEach(field => {
-               timeSlots.forEach(slot => {
-                    weekDates.forEach(date => {
-                         const slotId = slot.slotId || slot.SlotID;
-                         if (isSlotBooked(field.fieldId, date, slotId)) {
-                              bookedSlots++;
-                         }
-                    });
-               });
-          });
-
-          return {
-               totalSlots,
-               bookedSlots,
-               availableSlots: totalSlots - bookedSlots,
-               occupancyRate: totalSlots > 0 ? ((bookedSlots / totalSlots) * 100).toFixed(1) : 0
-          };
-     }, [fields, isSlotBooked, timeSlots, weekDates]);
-
      if (loading) {
           return (
                <div className="flex items-center justify-center h-64">
@@ -1693,8 +1668,6 @@ export default function ScheduleManagement({ isDemo = false }) {
                               </Alert>
                          )}
 
-                         {/* Statistics Cards */}
-                         <StatisticsCards statistics={statistics} />
 
                          {/* Complex Selector & Filter */}
                          <ComplexAndFieldSelector
@@ -1810,10 +1783,8 @@ export default function ScheduleManagement({ isDemo = false }) {
                                    });
                                    return;
                               }
-                              if (fieldId) {
-                                   setSlotFormData({ ...slotFormData, fieldId: fieldId.toString() });
-                              }
-                              handleOpenSlotModal();
+                              // Pass fieldId directly to handleOpenSlotModal
+                              handleOpenSlotModal(null, fieldId);
                          }}
                          onEditSlot={handleOpenSlotModal}
                          onDeleteSlot={handleDeleteSlot}

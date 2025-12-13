@@ -23,6 +23,7 @@ import {
      deleteOwnerBankAccount,
      setDefaultBankAccount
 } from "../../../shared/services/ownerBankAccount";
+import { fetchAllComplexesWithFields, updateField } from "../../../shared/services/fields";
 import { VIETNAM_BANKS, findVietnamBankByCode } from "../../../shared/constants/vietnamBanks";
 
 export default function BankAccountManagement({ isDemo = false }) {
@@ -337,11 +338,125 @@ export default function BankAccountManagement({ isDemo = false }) {
           try {
                // OwnerID must reference Users(UserID) from database
                const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
+               
+               // Đặt tài khoản mặc định
                await setDefaultBankAccount(account.bankAccountId, Number(currentUserId));
+               
+               // Cập nhật BankAccountID cho tất cả fields của owner
+               let updatedCount = 0;
+               let failedCount = 0;
+               try {
+                    console.log("📝 [UPDATE FIELDS] Updating BankAccountID for all fields of owner", currentUserId);
+                    const allComplexesWithFields = await fetchAllComplexesWithFields();
+                    console.log("📝 [UPDATE FIELDS] Total complexes fetched:", allComplexesWithFields.length);
+                    
+                    // Lọc các complexes thuộc về owner này
+                    const ownerComplexes = allComplexesWithFields.filter(
+                         complex => {
+                              const complexOwnerId = complex.ownerId || complex.OwnerID || complex.ownerID;
+                              return complexOwnerId === currentUserId || complexOwnerId === Number(currentUserId);
+                         }
+                    );
+                    console.log("📝 [UPDATE FIELDS] Owner complexes found:", ownerComplexes.length);
+                    
+                    // Lấy tất cả fields từ các complexes của owner
+                    const allFields = [];
+                    ownerComplexes.forEach(complex => {
+                         if (complex.fields && Array.isArray(complex.fields)) {
+                              allFields.push(...complex.fields);
+                         }
+                    });
+                    console.log("📝 [UPDATE FIELDS] Total fields to update:", allFields.length);
+                    
+                    // Cập nhật BankAccountID cho từng field
+                    if (allFields.length > 0) {
+                         const updateResults = await Promise.allSettled(
+                              allFields.map(async (field) => {
+                                   try {
+                                        const fieldId = field.fieldId || field.FieldID || field.id;
+                                        if (!fieldId) {
+                                             console.warn(`⚠️ [UPDATE FIELD] Field missing ID:`, field);
+                                             return { success: false, fieldId: null, error: "Missing fieldId" };
+                                        }
+                                        console.log(`📝 [UPDATE FIELD] Updating field ${fieldId} with BankAccountID ${account.bankAccountId}`);
+                                        
+                                        // Gọi hàm PUT của field với JSON payload
+                                        const jsonPayload = {
+                                             FieldId: Number(fieldId),
+                                             ComplexId: Number(field.complexId || field.ComplexID || field.complexID || 0),
+                                             Name: field.name || field.Name || "",
+                                             TypeId: field.typeId || field.TypeID || field.typeID || null,
+                                             Size: field.size || field.Size || "",
+                                             GrassType: field.grassType || field.GrassType || "",
+                                             Description: field.description || field.Description || "",
+                                             PricePerHour: Number(field.pricePerHour || field.PricePerHour || 0),
+                                             Status: field.status || field.Status || "Available",
+                                             BankAccountId: Number(account.bankAccountId),
+                                             BankName: account.bankName || "",
+                                             BankShortCode: account.bankShortCode || "",
+                                             AccountNumber: account.accountNumber || "",
+                                             AccountHolder: account.accountHolder || ""
+                                        };
+                                        
+                                        console.log(`📝 [UPDATE FIELD] Calling updateField PUT API for field ${fieldId} with payload:`, jsonPayload);
+                                        
+                                        const result = await updateField(fieldId, jsonPayload);
+                                        
+                                        // Kiểm tra xem BankAccountId có được cập nhật trong response không
+                                        const updatedBankAccountId = result?.bankAccountId || result?.BankAccountId || result?.BankAccountID;
+                                        const isUpdated = updatedBankAccountId && Number(updatedBankAccountId) === Number(account.bankAccountId);
+                                        
+                                        if (isUpdated) {
+                                             console.log(`✅ [UPDATE FIELD] Successfully updated field ${fieldId} with BankAccountID ${account.bankAccountId}`, result);
+                                        } else {
+                                             console.warn(`⚠️ [UPDATE FIELD] Field ${fieldId} update returned but BankAccountId mismatch. Expected: ${account.bankAccountId}, Got: ${updatedBankAccountId}`, result);
+                                        }
+                                        
+                                        return { success: isUpdated, fieldId, result, isUpdated };
+                                   } catch (error) {
+                                        console.error(`❌ [UPDATE FIELD] Error updating field ${field.fieldId || field.FieldID}:`, error);
+                                        return { success: false, fieldId: field.fieldId || field.FieldID, error: error.message || String(error) };
+                                   }
+                              })
+                         );
+                         
+                         // Đếm số lượng thành công và thất bại
+                         updateResults.forEach((result, index) => {
+                              if (result.status === 'fulfilled' && result.value.success) {
+                                   updatedCount++;
+                              } else {
+                                   failedCount++;
+                                   const field = allFields[index];
+                                   console.error(`❌ [UPDATE FIELD] Failed to update field ${field?.fieldId || field?.FieldID}:`, 
+                                        result.status === 'rejected' ? result.reason : result.value.error);
+                              }
+                         });
+                         
+                         console.log(`✅ [UPDATE FIELDS] Updated ${updatedCount}/${allFields.length} fields successfully. Failed: ${failedCount}`);
+                    } else {
+                         console.log("ℹ️ [UPDATE FIELDS] No fields found for owner");
+                    }
+               } catch (error) {
+                    console.error("❌ [UPDATE FIELDS] Error updating fields:", error);
+                    // Không throw error để không ảnh hưởng đến việc đặt tài khoản mặc định
+               }
+               
+               // Hiển thị thông báo với số lượng fields đã cập nhật
+               let message = `Tài khoản ${account.bankName} đã được đặt làm tài khoản mặc định.`;
+               if (updatedCount > 0) {
+                    message += `\nĐã cập nhật BankAccountID cho ${updatedCount} sân thành công.`;
+               }
+               if (failedCount > 0) {
+                    message += `\nCó ${failedCount} sân cập nhật thất bại.`;
+               }
+               if (updatedCount === 0 && failedCount === 0) {
+                    message += `\nKhông tìm thấy sân nào để cập nhật.`;
+               }
+               
                await Swal.fire({
-                    icon: 'success',
+                    icon: updatedCount > 0 ? 'success' : 'warning',
                     title: 'Đã đặt làm mặc định!',
-                    text: `Tài khoản ${account.bankName} đã được đặt làm tài khoản mặc định.`,
+                    text: message,
                     confirmButtonText: 'Đóng',
                     confirmButtonColor: '#10b981'
                });

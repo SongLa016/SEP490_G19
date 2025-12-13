@@ -14,9 +14,7 @@ export default function FieldList({
           <Card className="p-4 shadow-lg bg-white rounded-2xl">
                <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold text-gray-900 text-base">Danh sách sân</h3>
-                    <button className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
-                         <Plus className="w-4 h-4 text-gray-600 hover:text-teal-600" />
-                    </button>
+
                </div>
                <div className="space-y-2 max-h-[400px] overflow-y-auto">
                     {fields.length === 0 ? (

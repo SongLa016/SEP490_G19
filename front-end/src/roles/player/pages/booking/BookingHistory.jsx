@@ -24,7 +24,7 @@ import FindOpponentModal from "../../../../shared/components/FindOpponentModal";
 import RatingModal from "../../../../shared/components/RatingModal";
 import InvoiceModal from "../../../../shared/components/InvoiceModal";
 import CancelBookingModal from "../../../../shared/components/CancelBookingModal";
-import { fetchFieldScheduleById } from "../../../../shared/services/fieldSchedules";
+import { fetchFieldScheduleById, updateFieldScheduleStatus } from "../../../../shared/services/fieldSchedules";
 import Swal from 'sweetalert2';
 // Components
 import {
@@ -1771,10 +1771,28 @@ export default function BookingHistory({ user }) {
                     return;
                }
 
+               // Lấy scheduleId từ booking trước khi hủy để cập nhật FieldSchedule
+               const scheduleId = cancelBooking?.scheduleId || cancelBooking?.scheduleID || cancelBooking?.ScheduleID || cancelBooking?.ScheduleId;
+               
                // Call cancellation API (backend will handle based on token)
                const result = await cancelBookingAPI(bookingId, reason || "Hủy booking chưa được xác nhận");
 
                if (result.success) {
+                    // Cập nhật FieldSchedule status về "Available" khi hủy booking thành công
+                    if (scheduleId && Number(scheduleId) > 0) {
+                         try {
+                              console.log("📝 [UPDATE SCHEDULE] Updating FieldSchedule status to 'Available' for schedule", scheduleId);
+                              const updateResult = await updateFieldScheduleStatus(Number(scheduleId), "Available");
+                              if (updateResult.success) {
+                                   console.log(`✅ [UPDATE SCHEDULE] Updated schedule ${scheduleId} to Available after canceling booking`);
+                              } else {
+                                   console.warn(`⚠️ [UPDATE SCHEDULE] Failed to update schedule ${scheduleId}:`, updateResult.error);
+                              }
+                         } catch (error) {
+                              console.error(`❌ [UPDATE SCHEDULE] Error updating schedule ${scheduleId}:`, error);
+                         }
+                    }
+                    
                     const bookingKey = String(cancelBooking.id || cancelBooking.bookingId);
 
                     // Extract refund information from response

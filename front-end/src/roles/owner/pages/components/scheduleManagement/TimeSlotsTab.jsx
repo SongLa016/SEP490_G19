@@ -43,7 +43,7 @@ export default function TimeSlotsTab({
                                    <SelectItem value="all">Tất cả các sân ({fields.length})</SelectItem>
                                    {fields.map((field) => (
                                         <SelectItem key={field.fieldId} value={field.fieldId.toString()}>
-                                             {field.name} - {field.complexName}
+                                             {field.name}
                                         </SelectItem>
                                    ))}
                               </SelectContent>

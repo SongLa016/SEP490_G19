@@ -159,18 +159,26 @@ export default function HomePage({ user }) {
      // MẢNG COMPONENTS ĐƯỢC HIỂN THỊ
      // ============================================
 
-     // detailComponents: Mảng chứa các components sẽ được scroll ngang qua
-     // Mỗi component có:
-     //   - key: Unique identifier
-     //   - element: JSX element của component
-     // Thay đổi: Thêm/bớt components vào mảng này
-     // Các components này sẽ được hiển thị tuần tự khi scroll
-     const detailComponents = [
-          { key: "overview-quick", element: <QuickBookingSection user={user} /> },
-          { key: "overview-community", element: <CommunityMatchmakingSection /> },
-          { key: "overview-reviews", element: <UserReviewsSection /> },
-          { key: "overview-cancellation", element: <CancellationPoliciesSection /> }
-     ];
+    // detailComponents: Mảng chứa các components sẽ được scroll ngang qua
+    // Mỗi component có:
+    //   - key: Unique identifier
+    //   - element: JSX element của component
+    // Thay đổi: Thêm/bớt components vào mảng này
+    // Các components này sẽ được hiển thị tuần tự khi scroll
+    const detailComponents = [
+         { key: "overview-quick", element: <QuickBookingSection user={user} /> },
+         { key: "overview-community", element: <CommunityMatchmakingSection /> },
+         { key: "overview-reviews", element: <UserReviewsSection /> },
+         { key: "overview-cancellation", element: <CancellationPoliciesSection /> }
+    ];
+
+    // Tiêu đề tiếng Việt cho từng component (theo cùng thứ tự detailComponents)
+    const componentTitles = [
+         "Đặt sân nhanh chóng",
+         "Cộng đồng & Matchmaking",
+         "Đánh giá & Cộng đồng người dùng",
+         "Chính sách hủy đặt sân"
+    ];
 
      // ============================================
      // THAM SỐ KÍCH THƯỚC VÀ KHOẢNG CÁCH
@@ -635,7 +643,10 @@ export default function HomePage({ user }) {
                                    location: location,
                                    price: "Liên hệ",
                                    rating: 4.5,
-                                   mainImageUrl: item.imageUrl || null,
+                                   // Ưu tiên ảnh chính từ API
+                                   image: item.imageUrl || item.mainImageUrl || null,
+                                   mainImageUrl: item.imageUrl || item.mainImageUrl || null,
+                                   imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : [],
                                    amenities: [],
                                    availableSlots: item.totalBookings || 0
                               };
@@ -818,7 +829,7 @@ export default function HomePage({ user }) {
                                              <div className="relative px-12 py-6 space-y-6">
                                                   <div className="flex items-center justify-between">
                                                        <div className="text-xs uppercase tracking-[0.32em] text-slate-400">Artboard 1 • Showreel</div>
-                                                       <div className="text-sm font-semibold text-slate-300">Functional Overview</div>
+                                                       <div className="text-sm font-semibold text-slate-300">Tổng quan chức năng</div>
                                                   </div>
                                                   <div className="grid grid-cols-2 gap-6">
                                                        {detailComponents.map(({ key, element }, index) => (
@@ -827,8 +838,8 @@ export default function HomePage({ user }) {
                                                                  className="rounded-3xl bg-white/90 text-slate-900 pt-5  shadow-[0_30px_70px_rgba(15,23,42,0.25)] backdrop-blur border border-white/30"
                                                             >
                                                                  <div className="flex items-center justify-between text-xs px-4 uppercase tracking-[0.28em] text-slate-400">
-                                                                      <span>Component {index + 1}</span>
-                                                                      <span>Preview</span>
+                                                                      <span>{componentTitles[index] || `Component ${index + 1}`}</span>
+                                                                      <span>Xem trước</span>
                                                                  </div>
                                                                  <div className="mt-2 h-64 rounded-2xl overflow-hidden border border-white/50 bg-white shadow-[0_25px_60px_rgba(15,23,42,0.2)]">
                                                                       <div
@@ -899,7 +910,7 @@ export default function HomePage({ user }) {
                     </div>
                </div>
                <MobileAppSection />
-               <NewsletterSection />
+               {!user && <NewsletterSection />}
                <WhyChooseUsSection />
                {/* <FAQSection /> */}
                <CTASection user={user} />

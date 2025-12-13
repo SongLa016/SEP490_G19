@@ -628,20 +628,154 @@ export async function updateFieldScheduleStatus(
       endTime: endTimeStr,
     };
 
+    // Use the correct endpoint: /FieldSchedule/{id}
     const endpoint = `/FieldSchedule/${scheduleId}`;
+
+    console.log(`📤 [UPDATE SCHEDULE] Full PUT request to ${endpoint}`, {
+      scheduleId: scheduleId,
+      status: status,
+      payload: payload
+    });
 
     const response = await apiClient.put(endpoint, payload);
 
+    console.log(`📥 [UPDATE SCHEDULE] Full PUT response from ${endpoint}:`, response.data);
+
+    const updatedSchedule = normalizeFieldSchedule(response.data);
+    
+    // Verify the status was actually updated
+    const updatedStatus = updatedSchedule?.status || response.data?.status || response.data?.Status;
+    if (updatedStatus && updatedStatus.toLowerCase() !== status.toLowerCase()) {
+      console.warn(`⚠️ [UPDATE SCHEDULE] Status mismatch! Expected: ${status}, Got: ${updatedStatus}`);
+    }
+
     return {
       success: true,
-      data: normalizeFieldSchedule(response.data),
+      data: updatedSchedule,
       message: "Cập nhật trạng thái thành công",
     };
   } catch (error) {
+    console.error(`❌ [UPDATE SCHEDULE] Full update failed:`, {
+      scheduleId: scheduleId,
+      status: status,
+      endpoint: `/FieldSchedule/${scheduleId}`,
+      error: error.response?.data || error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      payload: error.config?.data
+    });
+    
     return {
       success: false,
       error: handleApiError(error),
     };
+  }
+}
+
+/**
+ * Update field schedule status only (simplified version)
+ * This function tries to update only the status field with minimal payload
+ * @param {number|string} scheduleId - Schedule ID
+ * @param {string} status - New status (Available, Booked, Maintenance)
+ * @returns {Promise<Object>} Updated schedule data
+ */
+export async function updateFieldScheduleStatusOnly(scheduleId, status) {
+  try {
+    // First, try to get minimal schedule info to build a valid PUT payload
+    const fetchResult = await fetchFieldScheduleByIdWithAuth(scheduleId);
+    if (!fetchResult.success || !fetchResult.data) {
+      // If we can't fetch, fall back to full update method
+      return await updateFieldScheduleStatus(scheduleId, status);
+    }
+
+    const schedule = fetchResult.data;
+    
+    // Build minimal payload with only required fields
+    let dateStr = "";
+    if (schedule.date) {
+      if (typeof schedule.date === "string") {
+        const dateMatch = schedule.date.match(/^\d{4}-\d{2}-\d{2}/);
+        dateStr = dateMatch ? dateMatch[0] : schedule.date;
+      } else if (schedule.date.year) {
+        dateStr = formatDateFromObject(schedule.date);
+      }
+    } else if (schedule.Date) {
+      dateStr = formatDateFromObject(schedule.Date);
+    }
+
+    let startTimeStr = schedule.startTime || schedule.StartTime || "00:00";
+    let endTimeStr = schedule.endTime || schedule.EndTime || "00:00";
+
+    if (typeof startTimeStr === "object" && startTimeStr.hour !== undefined) {
+      startTimeStr = formatTimeFromObject(startTimeStr);
+    }
+    if (typeof endTimeStr === "object" && endTimeStr.hour !== undefined) {
+      endTimeStr = formatTimeFromObject(endTimeStr);
+    }
+
+    // Minimal payload - only essential fields
+    // Ensure all required fields are included for backend validation
+    const payload = {
+      scheduleID: Number(scheduleId),
+      fieldID: Number(
+        schedule.fieldId ||
+        schedule.FieldId ||
+        schedule.fieldID ||
+        schedule.FieldID ||
+        0
+      ),
+      slotId: Number(
+        schedule.slotId ||
+        schedule.SlotId ||
+        schedule.slotID ||
+        schedule.SlotID ||
+        0
+      ),
+      date: dateStr || schedule.date || schedule.Date || "",
+      status: status, // Only field we want to change
+      fieldName: schedule.fieldName || schedule.FieldName || schedule.fieldName || "",
+      slotName: schedule.slotName || schedule.SlotName || schedule.slotName || "",
+      startTime: startTimeStr || schedule.startTime || schedule.StartTime || "00:00",
+      endTime: endTimeStr || schedule.endTime || schedule.EndTime || "00:00",
+    };
+    
+    // Log payload to verify format
+    console.log(`📋 [UPDATE SCHEDULE] Payload for simple update:`, JSON.stringify(payload, null, 2));
+
+    // Use the correct endpoint: /FieldSchedule/{id}
+    const endpoint = `/FieldSchedule/${scheduleId}`;
+    
+    try {
+      console.log(`📤 [UPDATE SCHEDULE] PUT request to ${endpoint}`, {
+        scheduleId: scheduleId,
+        status: status,
+        payload: payload
+      });
+      
+      const response = await apiClient.put(endpoint, payload);
+      
+      console.log(`✅ [UPDATE SCHEDULE] PUT success to ${endpoint}:`, response.data);
+      
+      return {
+        success: true,
+        data: normalizeFieldSchedule(response.data),
+        message: "Cập nhật trạng thái thành công",
+      };
+    } catch (error) {
+      // If PUT fails, log detailed error and fall back to full update method
+      console.error("❌ [UPDATE SCHEDULE] Simple status update failed:", {
+        endpoint: endpoint,
+        payload: payload,
+        error: error.response?.data || error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
+      return await updateFieldScheduleStatus(scheduleId, status);
+    }
+  } catch (error) {
+    // Final fallback to full update method
+    console.warn("Error in updateFieldScheduleStatusOnly, using full update:", error);
+    return await updateFieldScheduleStatus(scheduleId, status);
   }
 }
 
