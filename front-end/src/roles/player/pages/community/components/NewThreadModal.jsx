@@ -119,7 +119,7 @@ const NewThreadModal = ({
                     isOpen={isOpen}
                     onClose={onClose}
                     title={editingPost ? "Chỉnh sửa bài viết" : "Thêm chủ đề"}
-                    className="max-w-2xl px-2 bg-white rounded-2xl"
+                    className="max-w-2xl px-2 bg-white rounded-2xl overflow-y-auto max-h-[90vh] scrollbar-hide"
                >
                     <motion.div
                          className="space-y-1 p-2"

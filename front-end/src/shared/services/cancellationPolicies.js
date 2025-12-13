@@ -142,12 +142,20 @@ export async function fetchCancellationPolicyByComplex(complexId) {
       updatedAt: policy.updatedAt || policy.UpdatedAt,
     };
   } catch (error) {
-    console.error("Error fetching cancellation policy by complex:", error);
-    // Return null if not found (404), otherwise throw error
+    // Return null if not found (404) - this is normal, not all complexes have policies
+    // Don't log 404 errors to avoid console spam
     if (error.response?.status === 404) {
       return null;
     }
-    handleApiError(error);
+    // Only log non-404 errors
+    if (error.response?.status !== 404) {
+      console.error("Error fetching cancellation policy by complex:", error);
+    }
+    // Re-throw only non-404 errors
+    if (error.response?.status !== 404) {
+      handleApiError(error);
+    }
+    return null;
   }
 }
 
