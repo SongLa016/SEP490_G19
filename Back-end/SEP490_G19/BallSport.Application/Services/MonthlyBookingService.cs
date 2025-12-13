@@ -194,9 +194,7 @@ using BallSport.Infrastructure.Models;
             await _monthlyPayment.CreatePaymentAsync(payment);
             Console.WriteLine("[Confirm] Payment created");
 
-            // 4. Tính giá mỗi session
-            decimal pricePerSession = Math.Round(package.TotalPrice / totalSlots, 2);
-
+        
             // 5. Tạo PackageSession theo từng draft
             foreach (var draft in validDrafts)
             {
@@ -208,6 +206,9 @@ using BallSport.Infrastructure.Models;
                         Console.WriteLine($"[Confirm][WARN] ScheduleId {draft.ScheduleId} not found");
                         continue;
                     }
+
+                     decimal pricePerSession =
+                      await _packageSessionRepo.GetSlotPriceAsync(draft.SlotId, package.FieldId);
 
                     var session = new PackageSession
                     {
