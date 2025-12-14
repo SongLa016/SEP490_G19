@@ -952,11 +952,21 @@ const FieldManagement = ({ isDemo = false }) => {
                key => fieldTypeMap[key] === field.typeId
           ) || "";
 
-          // Find matching bank account if exists
-          const matchingAccount = bankAccounts.find(acc =>
-               acc.bankName === field.bankName &&
-               acc.accountNumber === field.accountNumber
-          );
+          // Find matching bank account - prioritize bankAccountId, fallback to bankName + accountNumber
+          let matchingAccount = null;
+          if (field.bankAccountId) {
+               matchingAccount = bankAccounts.find(acc =>
+                    acc.bankAccountId === Number(field.bankAccountId) ||
+                    acc.bankAccountId === field.bankAccountId
+               );
+          }
+          // Fallback: find by bankName and accountNumber if bankAccountId not found
+          if (!matchingAccount && field.bankName && field.accountNumber) {
+               matchingAccount = bankAccounts.find(acc =>
+                    acc.bankName === field.bankName &&
+                    acc.accountNumber === field.accountNumber
+               );
+          }
 
           // Extract main image and gallery images from field (only URLs from Cloudinary)
           let mainImage = null;
@@ -986,11 +996,12 @@ const FieldManagement = ({ isDemo = false }) => {
                imageFiles: galleryImages,
                pricePerHour: field.pricePerHour || "",
                status: field.status || "Available",
-               bankAccountId: matchingAccount ? String(matchingAccount.bankAccountId) : "",
-               bankName: field.bankName || "",
-               bankShortCode: field.bankShortCode || "",
-               accountNumber: field.accountNumber || "",
-               accountHolder: field.accountHolder || "",
+               // Lấy thông tin bank account từ matchingAccount nếu có, fallback về field data
+               bankAccountId: matchingAccount ? String(matchingAccount.bankAccountId) : (field.bankAccountId ? String(field.bankAccountId) : ""),
+               bankName: matchingAccount?.bankName || field.bankName || "",
+               bankShortCode: matchingAccount?.bankShortCode || field.bankShortCode || "",
+               accountNumber: matchingAccount?.accountNumber || field.accountNumber || "",
+               accountHolder: matchingAccount?.accountHolder || field.accountHolder || "",
           });
           setIsEditModalOpen(true);
      };
@@ -1556,7 +1567,7 @@ const FieldManagement = ({ isDemo = false }) => {
                          <Button
                               onClick={handleAddComplex}
                               variant="outline"
-                              className="flex items-center space-x-2 rounded-2xl border-blue-200 text-blue-600 hover:bg-blue-50"
+                              className="flex items-center space-x-2 rounded-2xl border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-600"
                          >
                               <Plus className="w-4 h-4" />
                               <span>Thêm khu sân</span>
@@ -1660,7 +1671,7 @@ const FieldManagement = ({ isDemo = false }) => {
                                                             <Button
                                                                  variant="outline"
                                                                  size="sm"
-                                                                 className="text-teal-600 border-teal-200 hover:bg-teal-50 rounded-full"
+                                                                 className="text-teal-600 border-teal-200 hover:text-teal-600 hover:bg-teal-50 rounded-full"
                                                                  onClick={() => handleAddField(complex.complexId)}
                                                             >
                                                                  <Plus className="w-4 h-4 mr-1" />
@@ -1796,12 +1807,14 @@ const FieldManagement = ({ isDemo = false }) => {
                                                             </div>
                                                        </div>
 
-                                                       {field.pricePerHour > 0 && (
-                                                            <div className="flex items-center font-bold text-lg text-red-500">
-                                                                 <DollarSign className="w-4 h-4 mr-1" />
-                                                                 <span>{formatCurrency(field.pricePerHour)}/giờ</span>
-                                                            </div>
-                                                       )}
+                                                       <div className="flex items-center font-bold text-lg text-red-500">
+                                                            <DollarSign className="w-4 h-4 mr-1" />
+                                                            <span>
+                                                                 {field.pricePerHour > 0
+                                                                      ? `${formatCurrency(field.pricePerHour)}/giờ`
+                                                                      : "Chưa cập nhật giá"}
+                                                            </span>
+                                                       </div>
 
                                                        {field.description && (
                                                             <p className="text-sm text-gray-600 line-clamp-2">

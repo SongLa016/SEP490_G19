@@ -113,23 +113,15 @@ export default function GroupedViewSection({
 
                                              </div>
                                              <div className="flex items-center justify-between mb-3">
-
-                                                  <h3 className="text-base font-bold h-10 gap-2 flex items-center text-teal-800 line-clamp-1">
-                                                       <StadiumIcon className="w-4 h-4 text-teal-500 fill-teal-500" />
-                                                       {item.name}
-                                                  </h3>
-                                                  {type === 'field' && title === 'Giá tốt' && (
-                                                       <div className="flex items-center">
-                                                            <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-1 rounded-full">Giá tốt nhất</span>
-                                                       </div>
-                                                  )}
-                                                  {type === 'field' && title === 'Đánh giá cao' && (
-                                                       <div className="flex items-center">
-                                                            <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                                                            <span className="text-sm font-bold text-yellow-600">{item.rating}</span>
-                                                            <span className="text-sm text-yellow-500 ml-1">({item.reviewCount})</span>
-                                                       </div>
-                                                  )}
+                                                  <div className="flex flex-col flex-1 min-w-0">
+                                                       <h3 className="text-base font-bold gap-2 flex items-center text-teal-800 line-clamp-1">
+                                                            <StadiumIcon className="w-4 h-4 text-teal-500 fill-teal-500 flex-shrink-0" />
+                                                            <span className="truncate">{item.name}</span>
+                                                       </h3>
+                                                       {type === 'field' && item.complexName && (
+                                                            <p className="text-xs text-gray-500 ml-6 truncate">{item.complexName}</p>
+                                                       )}
+                                                  </div>
                                              </div>
                                              {type === 'complex' && (
                                                   <div className="flex item-center justify-between">
@@ -171,13 +163,40 @@ export default function GroupedViewSection({
 
                                              )}
                                              {type === 'field' && (
-                                                  <div className="flex items-center gap-2 mb-2">
-                                                       {Array.isArray(item.amenities) && item.amenities.length > 0 && (
+                                                  <div className="flex items-center justify-between mb-2">
+                                                       {title === 'Giá tốt' ? (
                                                             <>
-                                                                 <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">{item.amenities[0]}</span>
-                                                                 {item.amenities.length > 1 && (
-                                                                      <span className="bg-teal-50 border border-teal-100 text-teal-600 px-2 py-1 rounded-full text-xs">+{item.amenities.length - 1}</span>
-                                                                 )}
+                                                                 <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-1 rounded-full">Giá tốt nhất</span>
+                                                                 <span className="text-sm font-bold text-red-500">
+                                                                      {item.priceForSelectedSlot > 0
+                                                                           ? `${item.priceForSelectedSlot.toLocaleString('vi-VN')}đ/h`
+                                                                           : 'Liên hệ'}
+                                                                 </span>
+                                                            </>
+                                                       ) : title === 'Đánh giá cao' ? (
+                                                            <>
+                                                                 <div className="flex items-center gap-1">
+                                                                      <Star className="w-4 h-4 text-yellow-500" />
+                                                                      <span className="text-sm font-bold text-yellow-600">{item.rating || 0}</span>
+                                                                      <span className="text-sm text-yellow-500">({item.reviewCount || 0})</span>
+                                                                 </div>
+                                                                 <span className="text-sm font-bold text-red-500">
+                                                                      {item.priceForSelectedSlot > 0
+                                                                           ? `${item.priceForSelectedSlot.toLocaleString('vi-VN')}đ/h`
+                                                                           : 'Liên hệ'}
+                                                                 </span>
+                                                            </>
+                                                       ) : (
+                                                            <>
+                                                                 <div className="flex items-center gap-1">
+                                                                      <Star className="w-4 h-4 text-yellow-500" />
+                                                                      <span className="text-sm text-gray-600">{item.rating || 0} ({item.reviewCount || 0})</span>
+                                                                 </div>
+                                                                 <span className="text-sm font-bold text-red-500">
+                                                                      {item.priceForSelectedSlot > 0
+                                                                           ? `${item.priceForSelectedSlot.toLocaleString('vi-VN')}đ/h`
+                                                                           : 'Liên hệ'}
+                                                                 </span>
                                                             </>
                                                        )}
                                                   </div>

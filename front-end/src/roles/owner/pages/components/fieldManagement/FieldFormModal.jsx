@@ -115,6 +115,7 @@ const FieldFormModal = ({
                                    onChange={onInputChange}
                                    placeholder="Nhập tên sân"
                                    required
+                                   maxLength={100}
                               />
                          </div>
                          <div>
@@ -148,6 +149,7 @@ const FieldFormModal = ({
                                    value={formData.size}
                                    onChange={onInputChange}
                                    placeholder="Ví dụ: 20x40m"
+                                   maxLength={50}
                               />
                          </div>
                          <div>
@@ -186,6 +188,7 @@ const FieldFormModal = ({
                               placeholder="Mô tả về sân bóng"
                               rows={2}
                               className="w-full"
+                              maxLength={500}
                          />
                     </div>
 

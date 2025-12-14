@@ -14,6 +14,7 @@ import {
      FadeIn
 } from "../../../../shared/components/ui";
 import { bankingService } from "../../../../shared/services/bankingService";
+import { fetchAllComplexesWithFields, updateField } from "../../../../shared/services/fields";
 import ErrorDisplay from "../../../../shared/components/ErrorDisplay";
 import { VIETNAM_BANKS, findVietnamBankByCode } from "../../../../shared/constants/vietnamBanks";
 import Swal from "sweetalert2";
@@ -125,6 +126,29 @@ export default function BankingManagement({ user }) {
                return;
           }
 
+          // Kiểm tra trùng số tài khoản
+          const normalizedAccountNumber = formData.accountNumber.replace(/\s/g, '');
+          const currentAccountId = editingAccount?.bankAccountId || editingAccount?.accountID;
+          const duplicateAccount = bankAccounts.find(acc => {
+               const accId = acc.bankAccountId || acc.accountID;
+               // Bỏ qua tài khoản đang edit
+               if (editingAccount && accId === currentAccountId) {
+                    return false;
+               }
+               return acc.accountNumber === normalizedAccountNumber;
+          });
+
+          if (duplicateAccount) {
+               Swal.fire({
+                    icon: 'warning',
+                    title: 'Số tài khoản đã tồn tại',
+                    text: `Số tài khoản ${normalizedAccountNumber} đã được đăng ký với ngân hàng ${duplicateAccount.bankName}. Vui lòng sử dụng số tài khoản khác.`,
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#f59e0b'
+               });
+               return;
+          }
+
           setIsLoading(true);
           setError('');
           setInfo('');
@@ -134,7 +158,7 @@ export default function BankingManagement({ user }) {
                     userID: user.userID,
                     bankName: formData.bankName,
                     bankShortCode: formData.bankShortCode,
-                    accountNumber: formData.accountNumber.replace(/\s/g, ''),
+                    accountNumber: normalizedAccountNumber,
                     accountHolder: formData.accountHolder,
                     isDefault: formData.isDefault
                };
@@ -220,14 +244,109 @@ export default function BankingManagement({ user }) {
 
      const handleSetDefault = async (account) => {
           const accountId = account.bankAccountId || account.accountID;
+          const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
           setIsLoading(true);
           try {
-               const result = await bankingService.setDefaultBankAccount(accountId, user.userID);
+               const result = await bankingService.setDefaultBankAccount(accountId, currentUserId);
                if (result.ok) {
+                    // Cập nhật BankAccountID cho tất cả fields của owner
+                    let updatedCount = 0;
+                    let failedCount = 0;
+                    try {
+                         const allComplexesWithFields = await fetchAllComplexesWithFields();
+
+                         // Lọc các complexes thuộc về owner này
+                         const ownerComplexes = allComplexesWithFields.filter(
+                              complex => {
+                                   const complexOwnerId = complex.ownerId || complex.OwnerID || complex.ownerID;
+                                   return complexOwnerId === currentUserId || complexOwnerId === Number(currentUserId);
+                              }
+                         );
+
+                         // Lấy tất cả fields từ các complexes của owner
+                         const allFields = [];
+                         ownerComplexes.forEach(complex => {
+                              if (complex.fields && Array.isArray(complex.fields)) {
+                                   allFields.push(...complex.fields);
+                              }
+                         });
+
+                         // Cập nhật BankAccountID cho từng field
+                         if (allFields.length > 0) {
+                              const updateResults = await Promise.allSettled(
+                                   allFields.map(async (field) => {
+                                        try {
+                                             const fieldId = field.fieldId || field.FieldID || field.id;
+                                             if (!fieldId) return { success: false, skipped: true };
+
+                                             // Kiểm tra các trường bắt buộc
+                                             const complexId = field.complexId || field.ComplexID;
+                                             const typeId = field.typeId || field.TypeID;
+                                             const name = field.name || field.Name;
+
+                                             if (!complexId || !typeId || !name) {
+                                                  console.warn(`Field ${fieldId} missing required fields. Skipping.`);
+                                                  return { success: false, skipped: true };
+                                             }
+
+                                             // Sử dụng FormData thay vì JSON vì API yêu cầu multipart/form-data
+                                             const formDataToSend = new FormData();
+                                             formDataToSend.append("FieldId", String(fieldId));
+                                             formDataToSend.append("ComplexId", String(complexId));
+                                             formDataToSend.append("Name", name);
+                                             formDataToSend.append("TypeId", String(typeId));
+                                             formDataToSend.append("Size", field.size || field.Size || "");
+                                             formDataToSend.append("GrassType", field.grassType || field.GrassType || "");
+                                             formDataToSend.append("Description", field.description || field.Description || "");
+                                             formDataToSend.append("PricePerHour", String(field.pricePerHour || field.PricePerHour || 0));
+                                             formDataToSend.append("Status", field.status || field.Status || "Available");
+                                             formDataToSend.append("BankAccountId", String(account.bankAccountId));
+                                             formDataToSend.append("BankName", account.bankName || "");
+                                             formDataToSend.append("BankShortCode", account.bankShortCode || "");
+                                             formDataToSend.append("AccountNumber", account.accountNumber || "");
+                                             formDataToSend.append("AccountHolder", account.accountHolder || "");
+
+                                             // Giữ lại ảnh hiện có nếu có
+                                             if (field.mainImageUrl || field.MainImageUrl) {
+                                                  formDataToSend.append("MainImageUrl", field.mainImageUrl || field.MainImageUrl);
+                                             }
+                                             const imageUrls = field.imageUrls || field.ImageUrls || [];
+                                             if (Array.isArray(imageUrls) && imageUrls.length > 0) {
+                                                  imageUrls.forEach(url => {
+                                                       if (url) formDataToSend.append("ImageUrls", url);
+                                                  });
+                                             }
+
+                                             await updateField(fieldId, formDataToSend);
+                                             return { success: true };
+                                        } catch (err) {
+                                             console.error('Error updating field:', err);
+                                             return { success: false };
+                                        }
+                                   })
+                              );
+
+                              // Đếm số sân thực sự được cập nhật (không tính các sân bị skip)
+                              const validResults = updateResults.filter(r => r.status === 'fulfilled' && !r.value?.skipped);
+                              updatedCount = validResults.filter(r => r.value?.success).length;
+                              failedCount = validResults.filter(r => !r.value?.success).length;
+                         }
+                    } catch (err) {
+                         console.error('Error updating fields with new bank account:', err);
+                    }
+
+                    let successMessage = `Tài khoản ${account.bankName} đã được đặt làm tài khoản mặc định.`;
+                    if (updatedCount > 0) {
+                         successMessage += ` Đã cập nhật ${updatedCount} sân.`;
+                    }
+                    if (failedCount > 0) {
+                         successMessage += ` (${failedCount} sân không cập nhật được)`;
+                    }
+
                     await Swal.fire({
                          icon: 'success',
                          title: 'Đã đặt làm mặc định!',
-                         text: `Tài khoản ${account.bankName} đã được đặt làm tài khoản mặc định.`,
+                         text: successMessage,
                          confirmButtonText: 'Đóng',
                          confirmButtonColor: '#10b981'
                     });

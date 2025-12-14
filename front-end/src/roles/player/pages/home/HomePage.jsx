@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Lenis from "lenis";
 import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, QuickBookingSection, CommunityMatchmakingSection, UserReviewsSection, CancellationPoliciesSection, MobileAppSection, WhyChooseUsSection, NewsletterSection, CTASection } from "./components";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
-import { fetchTopBookingFields, fetchFieldComplex, fetchFieldDetail, fetchComplexes } from "../../../../shared/services/fields";
+import { fetchTopBookingFields, fetchFieldComplex, fetchComplexes } from "../../../../shared/services/fields";
 
 // Helpers giống FieldSearch để chuẩn hóa quận/huyện
 const normalizeText = (text) => {
@@ -22,7 +22,7 @@ const normalizeDistrictKey = (text) => {
 
 // Fallback danh sách khu vực nếu không tải được từ backend
 const HOMEPAGE_LOCATION_OPTIONS = [
-     { value: "Tất cả khu vực", label: "Tất cả khu vực", query: "" },
+     { value: "all", label: "Tất cả khu vực", query: "" },
 ];
 
 export default function HomePage({ user }) {
@@ -607,51 +607,54 @@ export default function HomePage({ user }) {
                     setLoadingTopFields(true);
                     const data = await fetchTopBookingFields();
 
-                    // Lấy địa chỉ từ complex cho mỗi field
-                    const mappedFields = await Promise.all(
-                         data.map(async (item) => {
-                              let location = "Đang cập nhật";
-                              let complexId = item.complexId;
+                    // Lấy danh sách complexId duy nhất từ data (chỉ những cái có sẵn)
+                    const uniqueComplexIds = [...new Set(
+                         data
+                              .map(item => item.complexId)
+                              .filter(id => id != null && id !== undefined && id !== '')
+                    )];
 
-                              // Nếu không có complexId trong response, lấy từ field detail
-                              if (!complexId && item.fieldId) {
-                                   try {
-                                        const fieldDetail = await fetchFieldDetail(item.fieldId);
-                                        if (fieldDetail && fieldDetail.complexId) {
-                                             complexId = fieldDetail.complexId;
-                                        }
-                                   } catch (error) {
-                                        console.error(`Error loading field detail ${item.fieldId}:`, error);
+                    // Fetch tất cả complexes một lần duy nhất (nếu có complexId)
+                    const complexMap = new Map();
+                    if (uniqueComplexIds.length > 0) {
+                         const complexPromises = uniqueComplexIds.map(async (complexId) => {
+                              try {
+                                   const complex = await fetchFieldComplex(complexId);
+                                   if (complex) {
+                                        complexMap.set(complexId, complex);
                                    }
+                              } catch (error) {
+                                   // Bỏ qua lỗi, không log để tránh spam console
                               }
+                         });
+                         await Promise.all(complexPromises);
+                    }
 
-                              // Lấy địa chỉ từ complex
-                              if (complexId) {
-                                   try {
-                                        const complex = await fetchFieldComplex(complexId);
-                                        if (complex && complex.address) {
-                                             location = complex.address;
-                                        }
-                                   } catch (error) {
-                                        console.error(`Error loading complex ${complexId}:`, error);
-                                   }
+                    // Map fields với thông tin complex đã cache
+                    const mappedFields = data.map((item) => {
+                         let location = "Đang cập nhật";
+
+                         // Chỉ lấy địa chỉ nếu có complexId và đã fetch được complex
+                         if (item.complexId && complexMap.has(item.complexId)) {
+                              const complex = complexMap.get(item.complexId);
+                              if (complex?.address) {
+                                   location = complex.address;
                               }
+                         }
 
-                              return {
-                                   id: item.fieldId,
-                                   name: item.fieldName || "Sân bóng",
-                                   location: location,
-                                   price: "Liên hệ",
-                                   rating: 4.5,
-                                   // Ưu tiên ảnh chính từ API
-                                   image: item.imageUrl || item.mainImageUrl || null,
-                                   mainImageUrl: item.imageUrl || item.mainImageUrl || null,
-                                   imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : [],
-                                   amenities: [],
-                                   availableSlots: item.totalBookings || 0
-                              };
-                         })
-                    );
+                         return {
+                              id: item.fieldId,
+                              name: item.fieldName || "Sân bóng",
+                              location: location,
+                              price: "Liên hệ",
+                              rating: 4.5,
+                              image: item.imageUrl || item.mainImageUrl || null,
+                              mainImageUrl: item.imageUrl || item.mainImageUrl || null,
+                              imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : [],
+                              amenities: [],
+                              availableSlots: item.totalBookings || 0
+                         };
+                    });
 
                     setTopBookingFields(mappedFields);
                } catch (error) {

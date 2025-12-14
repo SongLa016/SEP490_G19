@@ -679,11 +679,15 @@ export async function fetchComplexes(params = {}) {
       })
     );
 
-    const filtered = complexesWithFields.filter(
-      (item) =>
-        item.name.toLowerCase().includes(query.toLowerCase()) ||
-        item.address.toLowerCase().includes(query.toLowerCase())
-    );
+    const filtered = complexesWithFields.filter((item) => {
+      if (!query) return true; // Return all if no query
+      const q = query.toLowerCase();
+      return (
+        item.name.toLowerCase().includes(q) ||
+        item.address.toLowerCase().includes(q) ||
+        (item.district || "").toLowerCase().includes(q)
+      );
+    });
 
     return filtered;
   } catch (error) {
@@ -752,9 +756,14 @@ export async function fetchFields(params = {}) {
         );
       })
       .filter((f) => !typeId || f.typeId === Number(typeId))
+      // Chỉ hiển thị sân có trạng thái "Available" - không hiển thị sân đang bảo trì
+      .filter((f) => {
+        const fieldStatus = (f.status || f.Status || "Available").toLowerCase();
+        return fieldStatus === "available";
+      })
       .map((f) => {
         const complex = complexMap.get(String(f.complexId));
-        const status = f.status || "Available";
+        const status = f.status || f.Status || "Available";
 
         // Only use URLs from Cloudinary
         const mainImageUrl = f.mainImageUrl || f.MainImageUrl || null;
@@ -771,6 +780,10 @@ export async function fetchFields(params = {}) {
           grassType: f.grassType || "",
           description: f.description || "",
           address: complex?.address || "",
+          complexAddress: complex?.address || "",
+          district: complex?.district || complex?.District || "",
+          ward: complex?.ward || complex?.Ward || "",
+          province: complex?.province || complex?.Province || "",
           // Only use URLs from Cloudinary
           mainImageUrl: mainImageUrl,
           imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
@@ -785,11 +798,16 @@ export async function fetchFields(params = {}) {
           accountHolder: f.accountHolder || "",
         };
       })
-      .filter(
-        (item) =>
-          item.name.toLowerCase().includes(query.toLowerCase()) ||
-          item.address.toLowerCase().includes(query.toLowerCase())
-      );
+      .filter((item) => {
+        if (!query) return true; // Return all if no query
+        const q = query.toLowerCase();
+        return (
+          item.name.toLowerCase().includes(q) ||
+          item.address.toLowerCase().includes(q) ||
+          (item.district || "").toLowerCase().includes(q) ||
+          (item.complexName || "").toLowerCase().includes(q)
+        );
+      });
   } catch (error) {
     throw error;
   }

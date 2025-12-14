@@ -48,6 +48,7 @@ const ComplexFormModal = ({
                               placeholder="Ví dụ: Sân bóng ABC, Khu thể thao XYZ..."
                               required
                               className="w-full"
+                              maxLength={100}
                          />
                     </div>
 
@@ -104,9 +105,10 @@ const ComplexFormModal = ({
                               placeholder="Mô tả về khu sân, tiện ích, quy mô..."
                               rows={2}
                               className="w-full"
+                              maxLength={500}
                          />
                          <p className="text-xs text-gray-500">
-                              Mô tả chi tiết về khu sân sẽ giúp khách hàng hiểu rõ hơn
+                              Mô tả chi tiết về khu sân sẽ giúp khách hàng hiểu rõ hơn ({formData.description?.length || 0}/500)
                          </p>
                     </div>
 

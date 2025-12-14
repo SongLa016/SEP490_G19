@@ -378,7 +378,7 @@ export default function Community() {
                                                   animate={{ opacity: 1 }}
                                                   transition={{ delay: 0.3 }}
                                              >
-                                                  Đăng ký ngay để tìm đối thủ, tạo đội bóng và tham gia các trận đấu thú vị!
+                                                  Đăng ký ngay để tìm đối thủ, trao đổi và tham gia các trận đấu thú vị!
                                              </motion.p>
                                         </div>
 

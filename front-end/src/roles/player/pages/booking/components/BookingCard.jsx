@@ -52,11 +52,11 @@ export default function BookingCard({ booking, user, handlers, matchRequestData 
                               {statusBadge(b.status)}
                               {paymentStatusBadge(b.paymentStatus)}
                          </div>
-                         <h3 className="text-lg font-bold text-teal-800 mb-1">{b.fieldName}</h3>
+                         <h3 className="text-lg font-bold text-teal-800 mb-1 truncate">{b.fieldName}</h3>
                          <div className="space-y-1 text-sm text-gray-600">
                               <div className="flex items-center gap-2">
-                                   <MapPin className="w-4 h-4 text-teal-600" />
-                                   <span>{b.address || "Chưa có địa chỉ"}</span>
+                                   <MapPin className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                                   <span className="truncate">{b.address || "Chưa có địa chỉ"}</span>
                               </div>
                               <div className="flex items-center gap-2">
                                    <Calendar className="w-4 h-4 text-teal-600" />
@@ -79,7 +79,7 @@ export default function BookingCard({ booking, user, handlers, matchRequestData 
                </div>
 
                {stripRefundQrInfo(b.cancelReason) && (
-                    <div className="text-xs text-red-600 italic mb-2">
+                    <div className="text-xs text-red-600 italic mb-2 line-clamp-2">
                          Lý do hủy: {stripRefundQrInfo(b.cancelReason)}
                     </div>
                )}

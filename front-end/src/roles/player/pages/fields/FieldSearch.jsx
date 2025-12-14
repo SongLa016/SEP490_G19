@@ -38,7 +38,8 @@ const normalizeDistrictKey = (text) => {
      const normalized = normalizeText(text);
      return normalized.replace(/^(quan|huyen|thi xa)\s+/i, "");
 };
-const ALLOWED_FIELD_STATUSES = new Set(["available", "active"]);
+// Chỉ hiển thị sân có trạng thái "Available" - không hiển thị sân đang bảo trì
+const ALLOWED_FIELD_STATUSES = new Set(["available"]);
 const FIELD_TYPE_ALIASES = {
      "5vs5": ["5vs5", "5v5", "san5", "san5nguoi", "5nguoi"],
      "7vs7": ["7vs7", "7v7", "san7", "san7nguoi", "7nguoi"],
@@ -237,50 +238,97 @@ export default function FieldSearch({ user }) {
      }, []);
 
      const didInitRef = useRef(false);
+     // Track previous search to detect changes
+     const prevSearchRef = useRef(location.search);
+
      useEffect(() => {
           window.scrollTo(0, 0);
      }, []);
-     useEffect(() => {
-          if (didInitRef.current) return;
-          didInitRef.current = true;
-          try {
-               const params = new URLSearchParams(location.search || "");
-               let found = false;
-               const q = params.get("searchQuery");
-               if (q !== null) { setSearchQuery(q); found = true; }
-               const sl = params.get("selectedLocation");
-               if (sl !== null) { setSelectedLocation(sl === "all" ? "" : sl); found = true; }
-               const sp = params.get("selectedPrice");
-               if (sp !== null) { setSelectedPrice(sp === "all" ? "" : sp); found = true; }
-               const sr = params.get("selectedRating");
-               if (sr !== null) { setSelectedRating(sr === "all" ? "" : sr); found = true; }
-               const sb = params.get("sortBy");
-               if (sb !== null) { setSortBy(sb); found = true; }
-               const tt = params.get("typeTab");
-               if (tt !== null) { setTypeTab(tt); found = true; }
-               const at = params.get("activeTab");
-               if (at !== null) { setActiveTab(at); found = true; }
-               const p = params.get("page");
-               if (p !== null) { const pn = parseInt(p, 10); if (!Number.isNaN(pn)) setPage(pn); found = true; }
-               const et = params.get("entityTab");
-               if (et !== null) { setEntityTab(et); found = true; }
-               const d = params.get("date");
-               if (d !== null) { setDate(d); found = true; }
-               const s = params.get("slotId");
-               if (s !== null) { setSlotId(s); found = true; }
-               if (found) setForceList(true);
 
-               // Load persisted preferences - keep existing behavior for prefs
-               const saved = window.localStorage.getItem("fieldSearchPrefs");
-               if (saved) {
-                    const prefs = JSON.parse(saved);
-                    if (prefs.viewMode) setViewMode(prefs.viewMode);
-                    if (prefs.activeTab) setActiveTab(prefs.activeTab);
-                    if (prefs.page) setPage(prefs.page);
-                    if (prefs.entityTab) setEntityTab(prefs.entityTab);
-                    if (prefs.date) setDate(prefs.date);
-                    if (prefs.slotId) setSlotId(prefs.slotId);
-                    if (prefs.typeTab) setTypeTab(prefs.typeTab);
+     useEffect(() => {
+          const currentSearch = location.search || "";
+          const isFirstLoad = !didInitRef.current;
+          const searchChanged = prevSearchRef.current !== currentSearch;
+
+          // Update ref for next comparison
+          prevSearchRef.current = currentSearch;
+
+          // Only process if first load OR search params changed
+          if (!isFirstLoad && !searchChanged) return;
+
+          didInitRef.current = true;
+
+          try {
+               const params = new URLSearchParams(currentSearch);
+               let foundUrlParams = false;
+
+               // Read URL params - use default values if param is not present
+               // This ensures state is reset when navigating to /search without params
+               const q = params.get("searchQuery");
+               setSearchQuery(q || "");
+               if (q !== null) foundUrlParams = true;
+
+               const sl = params.get("selectedLocation");
+               setSelectedLocation(sl === "all" ? "" : (sl || ""));
+               if (sl !== null) foundUrlParams = true;
+
+               const sp = params.get("selectedPrice");
+               setSelectedPrice(sp === "all" ? "" : (sp || ""));
+               if (sp !== null) foundUrlParams = true;
+
+               const sr = params.get("selectedRating");
+               setSelectedRating(sr === "all" ? "" : (sr || ""));
+               if (sr !== null) foundUrlParams = true;
+
+               const sb = params.get("sortBy");
+               setSortBy(sb || "relevance");
+               if (sb !== null) foundUrlParams = true;
+
+               const tt = params.get("typeTab");
+               setTypeTab(tt || "all");
+               if (tt !== null) foundUrlParams = true;
+
+               const at = params.get("activeTab");
+               setActiveTab(at || "all");
+               if (at !== null) foundUrlParams = true;
+
+               const p = params.get("page");
+               if (p !== null) {
+                    const pn = parseInt(p, 10);
+                    if (!Number.isNaN(pn)) setPage(pn);
+                    foundUrlParams = true;
+               } else {
+                    setPage(1);
+               }
+
+               const et = params.get("entityTab");
+               setEntityTab(et || "fields");
+               if (et !== null) foundUrlParams = true;
+
+               const d = params.get("date");
+               setDate(d || "");
+               if (d !== null) foundUrlParams = true;
+
+               const s = params.get("slotId");
+               setSlotId(s || "");
+               if (s !== null) foundUrlParams = true;
+
+               if (foundUrlParams) {
+                    setForceList(true);
+               } else {
+                    setForceList(false);
+               }
+
+               // Only load from localStorage on first load AND when no URL params provided
+               // This ensures URL params always take priority
+               if (isFirstLoad && !foundUrlParams) {
+                    const saved = window.localStorage.getItem("fieldSearchPrefs");
+                    if (saved) {
+                         const prefs = JSON.parse(saved);
+                         if (prefs.viewMode) setViewMode(prefs.viewMode);
+                         // Don't restore activeTab, typeTab from localStorage when no URL params
+                         // to ensure clean state when navigating to /search directly
+                    }
                }
           } catch (e) {
                console.error("Error parsing search query params:", e);
@@ -400,15 +448,12 @@ export default function FieldSearch({ user }) {
      // Load data whenever key filters change (fetch both complexes and fields to support grouped view)
      useEffect(() => {
           let ignore = false;
-          const hasNoData = !hasExistingDataRef.current;
 
           const debounceTimer = setTimeout(() => {
                const loadData = async () => {
                     try {
-                         // Only show loading if we don't have any data yet
-                         if (hasNoData) {
-                              setIsLoading(true);
-                         }
+                         // Always show loading when fetching data
+                         setIsLoading(true);
                          // Start fetching immediately for better perceived performance
                          const [cList, fList] = await Promise.all([
                               fetchComplexes({ query: searchQuery, date, slotId, useApi: true }),
@@ -465,13 +510,7 @@ export default function FieldSearch({ user }) {
                                    })
                               );
 
-                              // Apply favorite flags based on favoriteFieldIds
-                              const fieldsWithFavorites = fieldsWithRatings.map(f => ({
-                                   ...f,
-                                   isFavorite: favoriteFieldIds.has(Number(f.fieldId)),
-                              }));
-
-                              setFields(fieldsWithFavorites);
+                              setFields(fieldsWithRatings);
                          }
                     } catch (error) {
                          console.error("Error loading data:", error);
@@ -496,7 +535,11 @@ export default function FieldSearch({ user }) {
      }, [searchQuery, date, slotId, sortBy, fieldTypeMap]);
 
      useEffect(() => {
-          let filtered = Array.isArray(fields) ? [...fields] : [];
+          // Apply favorite flags to fields
+          let filtered = Array.isArray(fields) ? fields.map(f => ({
+               ...f,
+               isFavorite: favoriteFieldIds.has(Number(f.fieldId)),
+          })) : [];
 
           // Filter by search query
           if (searchQuery) {
@@ -519,6 +562,19 @@ export default function FieldSearch({ user }) {
           if (selectedLocation) {
                const normalizedLocation = normalizeText(selectedLocation);
                const normalizedBase = normalizeDistrictKey(selectedLocation);
+
+               // Generate alternative patterns for district matching
+               // e.g., "Quận 1" -> ["quan 1", "q.1", "q1", "quan1", "1"]
+               const patterns = [normalizedLocation];
+               if (normalizedBase) patterns.push(normalizedBase);
+
+               // Extract number from district name (e.g., "quan 1" -> "1")
+               const numMatch = normalizedLocation.match(/\d+/);
+               if (numMatch) {
+                    const num = numMatch[0];
+                    patterns.push(`q.${num}`, `q${num}`, `quan${num}`, `quan ${num}`);
+               }
+
                filtered = filtered.filter(field => {
                     const addr = normalizeText(field.address || "");
                     const dist = normalizeText(field.district || "");
@@ -527,26 +583,20 @@ export default function FieldSearch({ user }) {
                     const locationText = normalizeText(field.location || field.Location || "");
                     const complexAddress = normalizeText(field.complexAddress || "");
 
-                    const matchesFull =
-                         addr.includes(normalizedLocation) ||
-                         dist.includes(normalizedLocation) ||
-                         ward.includes(normalizedLocation) ||
-                         complexName.includes(normalizedLocation) ||
-                         locationText.includes(normalizedLocation) ||
-                         complexAddress.includes(normalizedLocation);
+                    // Combine all searchable text
+                    const allText = [addr, dist, ward, complexName, locationText, complexAddress].join(" ");
 
-                    const matchesBase = normalizedBase
-                         ? (
-                              addr.includes(normalizedBase) ||
-                              dist.includes(normalizedBase) ||
-                              ward.includes(normalizedBase) ||
-                              complexName.includes(normalizedBase) ||
-                              locationText.includes(normalizedBase) ||
-                              complexAddress.includes(normalizedBase)
-                         )
-                         : false;
+                    // Check if any pattern matches
+                    const matchesAnyPattern = patterns.some(pattern => allText.includes(pattern));
 
-                    return matchesFull || matchesBase;
+                    // Also check exact district match (after normalization)
+                    const exactDistrictMatch = dist && (
+                         dist === normalizedLocation ||
+                         dist === normalizedBase ||
+                         normalizeDistrictKey(dist) === normalizedBase
+                    );
+
+                    return matchesAnyPattern || exactDistrictMatch;
                });
           }
 
@@ -632,7 +682,7 @@ export default function FieldSearch({ user }) {
           setFilteredFields(fieldsWithTypeName);
 
           // Reset trang chỉ khi thực sự là thay đổi filter, không reset khi chỉ chuyển trang
-     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields, fieldTypeMap]);
+     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields, fieldTypeMap, date, availableFieldIds, favoriteFieldIds]);
 
      // Persist preferences
      useEffect(() => {

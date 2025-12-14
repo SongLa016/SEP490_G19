@@ -27,12 +27,11 @@ import {
      XCircle,
      Building,
      Calendar,
-     DollarSign,
-     User,
      RefreshCw
 } from "lucide-react";
-import { fetchFields, fetchFieldComplexes, fetchField, fetchFieldComplex } from "../../../shared/services/fields";
+import { fetchFields, fetchFieldComplexes, fetchField, fetchFieldComplex, fetchFieldsByComplex } from "../../../shared/services/fields";
 import { updateFieldComplex } from "../../../shared/services/fields";
+import { profileService } from "../../../shared/services/profileService";
 import Swal from "sweetalert2";
 
 export default function FieldManagement() {
@@ -49,6 +48,7 @@ export default function FieldManagement() {
 
      useEffect(() => {
           loadData();
+          // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [statusFilter, viewMode]);
 
      useEffect(() => {
@@ -81,14 +81,33 @@ export default function FieldManagement() {
                // Lấy tất cả complexes
                const allComplexes = await fetchFieldComplexes();
 
-               // Lấy số lượng sân cho mỗi complex và fields
+               // Lấy số lượng sân và thông tin chủ sân cho mỗi complex
                const complexesWithFieldCount = await Promise.all(
                     allComplexes.map(async (complex) => {
                          try {
                               const fields = await fetchFields({ complexId: complex.complexId });
+
+                              // Lấy thông tin chủ sân từ API PlayerProfile
+                              let ownerProfile = null;
+                              const ownerId = complex.ownerId || complex.OwnerId;
+                              if (ownerId) {
+                                   try {
+                                        const profileResponse = await profileService.getPlayerProfile(ownerId);
+                                        if (profileResponse.ok) {
+                                             ownerProfile = profileResponse.data;
+                                        }
+                                   } catch (profileError) {
+                                        console.error(`Error fetching owner profile for complex ${complex.complexId}:`, profileError);
+                                   }
+                              }
+
                               return {
                                    ...complex,
-                                   fieldCount: Array.isArray(fields) ? fields.length : 0
+                                   fieldCount: Array.isArray(fields) ? fields.length : 0,
+                                   ownerProfile: ownerProfile,
+                                   ownerName: ownerProfile?.fullName || complex.ownerName || complex.OwnerName || "",
+                                   ownerEmail: ownerProfile?.email || complex.ownerEmail || complex.OwnerEmail || "",
+                                   ownerPhone: ownerProfile?.phone || ownerProfile?.phoneNumber || ""
                               };
                          } catch (error) {
                               console.error(`Error fetching fields for complex ${complex.complexId}:`, error);
@@ -111,17 +130,20 @@ export default function FieldManagement() {
 
                setComplexes(filteredComplexes);
 
-               // Lấy tất cả fields từ tất cả complexes
-               const allFieldsPromises = allComplexes.map(async (complex) => {
+               // Lấy tất cả fields từ tất cả complexes (sử dụng fetchFieldsByComplex để lấy cả Pending)
+               const allFieldsPromises = complexesWithFieldCount.map(async (complex) => {
                     try {
-                         const fields = await fetchFields({ complexId: complex.complexId });
-                         return fields.map(field => ({
+                         const fields = await fetchFieldsByComplex(complex.complexId);
+                         return (fields || []).map(field => ({
                               ...field,
                               complexName: complex.name || complex.Name || "",
                               complexAddress: complex.address || complex.Address || "",
                               complexStatus: complex.status || complex.Status || "Active",
-                              ownerName: complex.ownerName || complex.OwnerName || "",
-                              ownerEmail: complex.ownerEmail || complex.OwnerEmail || ""
+                              ownerName: complex.ownerName || "",
+                              ownerEmail: complex.ownerEmail || "",
+                              ownerPhone: complex.ownerPhone || "",
+                              ownerProfile: complex.ownerProfile,
+                              ownerId: complex.ownerId || complex.OwnerId
                          }));
                     } catch (error) {
                          console.error(`Error fetching fields for complex ${complex.complexId}:`, error);
@@ -172,14 +194,45 @@ export default function FieldManagement() {
                     const complexDetail = await fetchFieldComplex(item.complexId || item.ComplexID);
                     // Lấy danh sách sân trong khu sân
                     const fieldsInComplex = await fetchFields({ complexId: item.complexId || item.ComplexID });
+
+                    // Lấy thông tin chủ sân qua API PlayerProfile
+                    let ownerProfile = null;
+                    const ownerId = complexDetail.ownerId || complexDetail.OwnerId || item.ownerId;
+                    if (ownerId) {
+                         try {
+                              const profileResponse = await profileService.getPlayerProfile(ownerId);
+                              if (profileResponse.ok) {
+                                   ownerProfile = profileResponse.data;
+                              }
+                         } catch (profileError) {
+                              console.error("Error fetching owner profile:", profileError);
+                         }
+                    }
+
                     setSelectedItem({
                          ...complexDetail,
                          type: "complex",
-                         fields: fieldsInComplex || []
+                         fields: fieldsInComplex || [],
+                         ownerProfile: ownerProfile
                     });
                } else {
                     // Xem chi tiết sân nhỏ
                     const fieldDetail = await fetchField(item.fieldId);
+
+                    // Lấy thông tin chủ sân qua API PlayerProfile
+                    let ownerProfile = null;
+                    const ownerId = fieldDetail.ownerId || item.ownerId;
+                    if (ownerId) {
+                         try {
+                              const profileResponse = await profileService.getPlayerProfile(ownerId);
+                              if (profileResponse.ok) {
+                                   ownerProfile = profileResponse.data;
+                              }
+                         } catch (profileError) {
+                              console.error("Error fetching owner profile:", profileError);
+                         }
+                    }
+
                     setSelectedItem({
                          ...fieldDetail,
                          type: "field",
@@ -187,7 +240,8 @@ export default function FieldManagement() {
                          complexAddress: item.complexAddress,
                          complexStatus: item.complexStatus,
                          ownerName: item.ownerName,
-                         ownerEmail: item.ownerEmail
+                         ownerEmail: item.ownerEmail,
+                         ownerProfile: ownerProfile
                     });
                }
                setShowDetailModal(true);
@@ -365,18 +419,18 @@ export default function FieldManagement() {
                key: "complex",
                label: "Khu sân",
                render: (complex) => (
-                    <div className="flex items-center space-x-3">
-                         <Avatar className="w-10 h-10">
+                    <div className="flex items-center space-x-2">
+                         <Avatar className="w-8 h-8 flex-shrink-0">
                               {complex.imageUrl ? (
                                    <AvatarImage src={complex.imageUrl} alt={complex.name || complex.Name} />
                               ) : null}
-                              <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600 text-white">
-                                   {(complex.name || complex.Name || "Khu sân").charAt(0)}
+                              <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600 text-white text-xs">
+                                   {(complex.name || complex.Name || "K").charAt(0)}
                               </AvatarFallback>
                          </Avatar>
-                         <div>
-                              <p className="font-medium text-slate-900">{complex.name || complex.Name || "N/A"}</p>
-                              <p className="text-sm text-slate-500">{complex.address || complex.Address || "N/A"}</p>
+                         <div className="min-w-0">
+                              <p className="font-medium text-slate-900 text-sm truncate ">{complex.name || complex.Name || "N/A"}</p>
+                              <p className="text-xs text-slate-500 truncate max-w-[250px]">{complex.address || complex.Address || "N/A"}</p>
                          </div>
                     </div>
                )
@@ -385,9 +439,9 @@ export default function FieldManagement() {
                key: "owner",
                label: "Chủ sân",
                render: (complex) => (
-                    <div className="flex items-center space-x-2">
-                         <User className="w-4 h-4 text-slate-400" />
-                         <span className="text-sm text-slate-600">{complex.ownerName || complex.OwnerName || "N/A"}</span>
+                    <div className="min-w-0">
+                         <p className="text-sm text-slate-900 truncate ">{complex.ownerName || "N/A"}</p>
+                         <p className="text-xs text-slate-500 truncate ">{complex.ownerPhone || "N/A"}</p>
                     </div>
                )
           },
@@ -397,7 +451,7 @@ export default function FieldManagement() {
                render: (complex) => {
                     const status = complex.status || complex.Status || "Active";
                     return (
-                         <Badge className={getStatusBadgeVariant(status)}>
+                         <Badge className={`${getStatusBadgeVariant(status)} text-xs`}>
                               {getStatusLabel(status)}
                          </Badge>
                     );
@@ -407,10 +461,7 @@ export default function FieldManagement() {
                key: "fieldCount",
                label: "Số sân",
                render: (complex) => (
-                    <div className="flex items-center space-x-2">
-                         <Building className="w-4 h-4 text-slate-400" />
-                         <span className="text-sm text-slate-600">{complex.fieldCount || 0}</span>
-                    </div>
+                    <span className="text-sm text-slate-600">{complex.fieldCount || 0}</span>
                )
           },
           {
@@ -419,12 +470,12 @@ export default function FieldManagement() {
                render: (complex) => {
                     const status = complex.status || complex.Status || "Active";
                     return (
-                         <div className="flex items-center space-x-2">
+                         <div className="flex items-center space-x-1">
                               <Button
                                    onClick={() => handleViewItem(complex)}
                                    variant="ghost"
                                    size="sm"
-                                   className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                   className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1"
                                    title="Xem chi tiết"
                               >
                                    <Eye className="w-4 h-4" />
@@ -435,7 +486,7 @@ export default function FieldManagement() {
                                              onClick={() => handleApproveItem(complex)}
                                              variant="ghost"
                                              size="sm"
-                                             className="text-green-600 hover:text-green-800 hover:bg-green-50"
+                                             className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1"
                                              title="Duyệt khu sân"
                                         >
                                              <CheckCircle className="w-4 h-4" />
@@ -444,7 +495,7 @@ export default function FieldManagement() {
                                              onClick={() => handleRejectItem(complex)}
                                              variant="ghost"
                                              size="sm"
-                                             className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                             className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1"
                                              title="Từ chối khu sân"
                                         >
                                              <XCircle className="w-4 h-4" />
@@ -463,19 +514,16 @@ export default function FieldManagement() {
                key: "field",
                label: "Sân",
                render: (field) => (
-                    <div className="flex items-center space-x-3">
-                         <Avatar className="w-10 h-10">
+                    <div className="flex items-center space-x-2">
+                         <Avatar className="w-8 h-8 flex-shrink-0">
                               {field.mainImageUrl ? (
                                    <AvatarImage src={field.mainImageUrl} alt={field.name} />
                               ) : null}
-                              <AvatarFallback className="bg-gradient-to-br from-green-400 to-green-600 text-white">
-                                   {(field.name || "Sân").charAt(0)}
+                              <AvatarFallback className="bg-gradient-to-br from-green-400 to-green-600 text-white text-xs">
+                                   {(field.name || "S").charAt(0)}
                               </AvatarFallback>
                          </Avatar>
-                         <div>
-                              <p className="font-medium text-slate-900">{field.name || "N/A"}</p>
-                              <p className="text-sm text-slate-500">{field.complexName || "N/A"}</p>
-                         </div>
+                         <p className="font-medium text-slate-900 text-sm truncate max-w-[100px]">{field.name || "N/A"}</p>
                     </div>
                )
           },
@@ -483,19 +531,16 @@ export default function FieldManagement() {
                key: "complex",
                label: "Khu sân",
                render: (field) => (
-                    <div className="flex items-center space-x-2">
-                         <Building className="w-4 h-4 text-slate-400" />
-                         <span className="text-sm text-slate-600">{field.complexName || "N/A"}</span>
-                    </div>
+                    <p className="text-sm text-slate-600 truncate max-w-[120px]">{field.complexName || "N/A"}</p>
                )
           },
           {
                key: "owner",
                label: "Chủ sân",
                render: (field) => (
-                    <div className="flex items-center space-x-2">
-                         <User className="w-4 h-4 text-slate-400" />
-                         <span className="text-sm text-slate-600">{field.fullName || "N/A"}</span>
+                    <div className="min-w-0">
+                         <p className="text-sm text-slate-900 truncate max-w-[100px]">{field.ownerName || "N/A"}</p>
+                         <p className="text-xs text-slate-500 truncate max-w-[100px]">{field.ownerPhone || "N/A"}</p>
                     </div>
                )
           },
@@ -505,7 +550,7 @@ export default function FieldManagement() {
                render: (field) => {
                     const status = field.complexStatus || "Active";
                     return (
-                         <Badge className={getStatusBadgeVariant(status)}>
+                         <Badge className={`${getStatusBadgeVariant(status)} text-xs`}>
                               {getStatusLabel(status)}
                          </Badge>
                     );
@@ -515,12 +560,9 @@ export default function FieldManagement() {
                key: "price",
                label: "Giá/giờ",
                render: (field) => (
-                    <div className="flex items-center space-x-2">
-                         <DollarSign className="w-4 h-4 text-slate-400" />
-                         <span className="text-sm text-slate-600">
-                              {field.pricePerHour ? `${field.pricePerHour.toLocaleString('vi-VN')} đ` : "N/A"}
-                         </span>
-                    </div>
+                    <span className="text-sm text-slate-600">
+                         {field.pricePerHour ? `${field.pricePerHour.toLocaleString('vi-VN')}đ` : "N/A"}
+                    </span>
                )
           },
           {
@@ -529,12 +571,12 @@ export default function FieldManagement() {
                render: (field) => {
                     const status = field.complexStatus || "Active";
                     return (
-                         <div className="flex items-center space-x-2">
+                         <div className="flex items-center space-x-1">
                               <Button
                                    onClick={() => handleViewItem(field)}
                                    variant="ghost"
                                    size="sm"
-                                   className="text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                   className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 p-1"
                                    title="Xem chi tiết"
                               >
                                    <Eye className="w-4 h-4" />
@@ -545,7 +587,7 @@ export default function FieldManagement() {
                                              onClick={() => handleApproveItem(field)}
                                              variant="ghost"
                                              size="sm"
-                                             className="text-green-600 hover:text-green-800 hover:bg-green-50"
+                                             className="text-green-600 hover:text-green-800 hover:bg-green-50 p-1"
                                              title="Duyệt sân"
                                         >
                                              <CheckCircle className="w-4 h-4" />
@@ -554,7 +596,7 @@ export default function FieldManagement() {
                                              onClick={() => handleRejectItem(field)}
                                              variant="ghost"
                                              size="sm"
-                                             className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                                             className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1"
                                              title="Từ chối sân"
                                         >
                                              <XCircle className="w-4 h-4" />
@@ -618,12 +660,12 @@ export default function FieldManagement() {
                          </div>
                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-3 sm:space-y-0">
                               {/* Tabs để chuyển đổi giữa khu sân và sân nhỏ */}
-                              <div className="flex bg-slate-100 rounded-2xl border border-slate-200 p-1">
+                              <div className="flex bg-slate-100 rounded-2xl border border-slate-200 p-1 ">
                                    <Button
                                         variant={viewMode === "complexes" ? "default" : "ghost"}
                                         size="sm"
                                         onClick={() => setViewMode("complexes")}
-                                        className={`rounded-xl ${viewMode === "complexes" ? "bg-teal-600 shadow-sm text-white hover:text-white hover:bg-teal-700" : ""}`}
+                                        className={`rounded-xl transition-all duration-300 ${viewMode === "complexes" ? "bg-teal-600 shadow-sm text-white hover:text-white hover:bg-teal-700" : ""}`}
                                    >
                                         <Building className="w-4 h-4 mr-2" />
                                         Khu sân
@@ -632,7 +674,7 @@ export default function FieldManagement() {
                                         variant={viewMode === "fields" ? "default" : "ghost"}
                                         size="sm"
                                         onClick={() => setViewMode("fields")}
-                                        className={`rounded-xl ${viewMode === "fields" ? "bg-teal-600 shadow-sm text-white hover:text-white hover:bg-teal-700" : ""}`}
+                                        className={`rounded-xl transition-all duration-300 ${viewMode === "fields" ? "bg-teal-600 shadow-sm text-white hover:text-white hover:bg-teal-700" : ""}`}
                                    >
                                         Sân nhỏ
                                    </Button>
@@ -780,14 +822,30 @@ export default function FieldManagement() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                              <div>
                                                   <p className="text-sm font-medium text-slate-600">Chủ sân</p>
-                                                  <p className="text-slate-900">{selectedItem.ownerName || selectedItem.OwnerName || "N/A"}</p>
+                                                  <p className="text-slate-900">
+                                                       {selectedItem.ownerProfile?.fullName || selectedItem.ownerName || selectedItem.OwnerName || "N/A"}
+                                                  </p>
                                              </div>
                                              <div>
                                                   <p className="text-sm font-medium text-slate-600">Email</p>
-                                                  <p className="text-slate-900">{selectedItem.ownerEmail || selectedItem.OwnerEmail || "N/A"}</p>
+                                                  <p className="text-slate-900">
+                                                       {selectedItem.ownerProfile?.email || selectedItem.ownerEmail || selectedItem.OwnerEmail || "N/A"}
+                                                  </p>
                                              </div>
                                              <div>
-                                                  <p className="text-sm font-medium text-slate-600">Địa chỉ</p>
+                                                  <p className="text-sm font-medium text-slate-600">Số điện thoại</p>
+                                                  <p className="text-slate-900">
+                                                       {selectedItem.ownerProfile?.phone || selectedItem.ownerProfile?.phoneNumber || "N/A"}
+                                                  </p>
+                                             </div>
+                                             <div>
+                                                  <p className="text-sm font-medium text-slate-600">Địa chỉ chủ sân</p>
+                                                  <p className="text-slate-900">
+                                                       {selectedItem.ownerProfile?.address || "N/A"}
+                                                  </p>
+                                             </div>
+                                             <div>
+                                                  <p className="text-sm font-medium text-slate-600">Địa chỉ khu sân</p>
                                                   <p className="text-slate-900">{selectedItem.address || selectedItem.Address || "N/A"}</p>
                                              </div>
                                              <div>
@@ -880,14 +938,24 @@ export default function FieldManagement() {
                                              </div>
                                              <div>
                                                   <p className="text-sm font-medium text-slate-600">Chủ sân</p>
-                                                  <p className="text-slate-900">{selectedItem.ownerName || "N/A"}</p>
+                                                  <p className="text-slate-900">
+                                                       {selectedItem.ownerProfile?.fullName || selectedItem.ownerName || "N/A"}
+                                                  </p>
                                              </div>
                                              <div>
                                                   <p className="text-sm font-medium text-slate-600">Email</p>
-                                                  <p className="text-slate-900">{selectedItem.ownerEmail || "N/A"}</p>
+                                                  <p className="text-slate-900">
+                                                       {selectedItem.ownerProfile?.email || selectedItem.ownerEmail || "N/A"}
+                                                  </p>
                                              </div>
                                              <div>
-                                                  <p className="text-sm font-medium text-slate-600">Địa chỉ</p>
+                                                  <p className="text-sm font-medium text-slate-600">Số điện thoại</p>
+                                                  <p className="text-slate-900">
+                                                       {selectedItem.ownerProfile?.phone || selectedItem.ownerProfile?.phoneNumber || "N/A"}
+                                                  </p>
+                                             </div>
+                                             <div>
+                                                  <p className="text-sm font-medium text-slate-600">Địa chỉ khu sân</p>
                                                   <p className="text-slate-900">{selectedItem.complexAddress || "N/A"}</p>
                                              </div>
                                              <div>
