@@ -8,9 +8,6 @@ public interface IFieldTypeService
 {
     Task<List<FieldTypeReadDTO>> GetAllAsync();
     Task<FieldTypeReadDTO?> GetByIdAsync(int typeId);
-    Task<FieldTypeReadDTO> CreateAsync(FieldTypeDTO dto, int ownerId);
-    Task<FieldTypeReadDTO?> UpdateAsync(int typeId, FieldTypeDTO dto, int ownerId);
-    Task DeleteAsync(int typeId, int ownerId);
 }
 
 public class FieldTypeService : IFieldTypeService
@@ -43,63 +40,5 @@ public class FieldTypeService : IFieldTypeService
             TypeId = ft.TypeId,
             TypeName = ft.TypeName
         };
-    }
-
-    public async Task<FieldTypeReadDTO> CreateAsync(FieldTypeDTO dto, int ownerId)
-    {
-        // Owner check: chỉ cho phép thêm kiểu sân nếu owner có ít nhất 1 sân
-        var ownsField = await _context.Fields
-            .Include(f => f.Complex)
-            .AnyAsync(f => f.Complex.OwnerId == ownerId);
-
-        if (!ownsField)
-            throw new UnauthorizedAccessException("Bạn không có quyền thêm kiểu sân.");
-
-        var entity = new FieldType { TypeName = dto.TypeName };
-        await _repo.AddAsync(entity);
-
-        return new FieldTypeReadDTO
-        {
-            TypeId = entity.TypeId,
-            TypeName = entity.TypeName
-        };
-    }
-
-    public async Task<FieldTypeReadDTO?> UpdateAsync(int typeId, FieldTypeDTO dto, int ownerId)
-    {
-        var entity = await _repo.GetByIdAsync(typeId);
-        if (entity == null) return null;
-
-        // Owner check: chỉ update nếu có sân thuộc type này mà owner sở hữu
-        var ownsField = await _context.Fields
-            .Include(f => f.Complex)
-            .AnyAsync(f => f.TypeId == typeId && f.Complex.OwnerId == ownerId);
-
-        if (!ownsField)
-            throw new UnauthorizedAccessException("Bạn không có quyền sửa kiểu sân này.");
-
-        entity.TypeName = dto.TypeName;
-        await _repo.UpdateAsync(entity);
-
-        return new FieldTypeReadDTO
-        {
-            TypeId = entity.TypeId,
-            TypeName = entity.TypeName
-        };
-    }
-
-    public async Task DeleteAsync(int typeId, int ownerId)
-    {
-        var entity = await _repo.GetByIdAsync(typeId);
-        if (entity == null) return;
-
-        var ownsField = await _context.Fields
-            .Include(f => f.Complex)
-            .AnyAsync(f => f.TypeId == typeId && f.Complex.OwnerId == ownerId);
-
-        if (!ownsField)
-            throw new UnauthorizedAccessException("Bạn không có quyền xóa kiểu sân này.");
-
-        await _repo.DeleteAsync(entity);
     }
 }
