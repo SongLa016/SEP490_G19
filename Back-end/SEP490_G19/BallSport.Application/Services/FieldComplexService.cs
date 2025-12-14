@@ -8,6 +8,7 @@ using CloudinaryDotNet.Actions;
 
 public class FieldComplexService
 {
+  
     private readonly FieldComplexRepository _complexRepository;
     private readonly Cloudinary _cloudinary;
     private readonly GoongMapService _goongMapService;
@@ -24,49 +25,65 @@ public class FieldComplexService
     }
 
     //  thêm khu sân
-    public async Task<FieldComplexResponseDTO> AddComplexAsync(FieldComplexDTO dto)
+    public async Task<FieldComplexResponseDTO> AddComplexAsync(
+    FieldComplexDTO dto,
+    int userId,
+    string role)
     {
+        //  AUTHORIZATION
+        if (role != "Owner")
+            throw new UnauthorizedAccessException("Chỉ Owner mới được thêm khu sân.");
+
         string? imageUrl = null;
 
+        //  UPLOAD IMAGE
         if (dto.ImageFile != null)
         {
             var uploadParams = new ImageUploadParams
             {
-                File = new FileDescription(dto.ImageFile.FileName, dto.ImageFile.OpenReadStream()),
+                File = new FileDescription(
+                    dto.ImageFile.FileName,
+                    dto.ImageFile.OpenReadStream()),
                 Folder = "field-complexes"
             };
+
             var uploadResult = await _cloudinary.UploadAsync(uploadParams);
             imageUrl = uploadResult.SecureUrl.AbsoluteUri;
         }
 
-        //  lấy tọa độ
+        // GEOCODING
         var location = await _goongMapService.GetLocationDetailAsync(dto.Address);
         if (location == null)
             throw new Exception("Không lấy được tọa độ từ địa chỉ.");
-        var (ward, district, province) = ExtractAdministrativeUnits(location.Value.formattedAddress);
 
+        var (ward, district, province) =
+            ExtractAdministrativeUnits(location.Value.formattedAddress);
+
+        //  CREATE ENTITY 
         var complex = new FieldComplex
         {
-            OwnerId = dto.OwnerId,
+            OwnerId = userId,
             Name = dto.Name,
             Address = location.Value.formattedAddress,
             Description = dto.Description,
             ImageUrl = imageUrl,
-            Status = dto.Status ?? "Active",
-            CreatedAt = DateTime.Now,
-            //Tọa độ
+            Status = string.IsNullOrWhiteSpace(dto.Status) ? "Active" : dto.Status,
+            CreatedAt = DateTime.UtcNow,
             Latitude = location.Value.lat,
             Longitude = location.Value.lng,
-            // Tách vị trí hành chính
             Ward = ward,
             District = district,
             Province = province
         };
 
         var created = await _complexRepository.AddComplexAsync(complex);
+
+        // ♻ CACHE INVALIDATE
         _cacheService.ClearNearbyCache();
+
         return MapToResponseDTO(created);
     }
+
 
     //  Lấy tất cả
     public async Task<List<FieldComplexResponseDTO>> GetAllComplexesAsync()
@@ -84,27 +101,40 @@ public class FieldComplexService
     }
 
 
-    //  CẬP NHẬT (NẾU ĐỔI ADDRESS → CẬP NHẬT LẠI TỌA ĐỘ)
-
-    public async Task<FieldComplexResponseDTO?> UpdateComplexAsync(FieldComplexDTO dto)
+    //  CẬP NHẬT
+    public async Task<FieldComplexResponseDTO?> UpdateComplexAsync(
+    FieldComplexDTO dto,
+    int userId,
+    string role)
     {
         var existing = await _complexRepository.GetComplexByIdAsync(dto.ComplexId);
-        if (existing == null) return null;
+        if (existing == null)
+            return null;
 
+        //  AUTHORIZATION
+        if (role == "Owner")
+        {
+            if (existing.OwnerId != userId)
+                throw new UnauthorizedAccessException(
+                    "Owner không được sửa khu sân của người khác.");
+        }
+        else if (role != "Admin")
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền cập nhật khu sân.");
+        }
+
+        // ❗ KHÔNG BAO GIỜ ĐỔI OWNER ID
         existing.Name = dto.Name;
         existing.Description = dto.Description;
-        existing.OwnerId = dto.OwnerId;
         existing.Status = dto.Status;
 
-        // ✅ NẾU ĐỔI ĐỊA CHỈ → CẬP NHẬT LẠI TỌA ĐỘ
-        if (!string.IsNullOrWhiteSpace(dto.Address))
+        //  ĐỔI ĐỊA CHỈ → CẬP NHẬT TỌA ĐỘ
+        if (!string.IsNullOrWhiteSpace(dto.Address)
+            && dto.Address != existing.Address)
         {
             var location = await _goongMapService.GetLocationDetailAsync(dto.Address);
-
             if (location == null)
-            {
-                throw new Exception("Không tìm được địa chỉ hợp lệ trên bản đồ.");
-            }
+                throw new Exception("Không tìm được địa chỉ hợp lệ.");
 
             var (ward, district, province) =
                 ExtractAdministrativeUnits(location.Value.formattedAddress);
@@ -117,12 +147,14 @@ public class FieldComplexService
             existing.Province = province;
         }
 
-        // ✅ UPDATE ẢNH
+        //  UPDATE ẢNH
         if (dto.ImageFile != null)
         {
             var uploadParams = new ImageUploadParams
             {
-                File = new FileDescription(dto.ImageFile.FileName, dto.ImageFile.OpenReadStream()),
+                File = new FileDescription(
+                    dto.ImageFile.FileName,
+                    dto.ImageFile.OpenReadStream()),
                 Folder = "field-complexes"
             };
 
@@ -132,23 +164,39 @@ public class FieldComplexService
 
         var updated = await _complexRepository.UpdateComplexAsync(existing);
 
-        // ✅ CLEAR CACHE SAU UPDATE (NẾU BẠN ĐANG DÙNG NEARBY CACHE)
-        _cacheService?.ClearNearbyCache();
+        //  CLEAR CACHE
+        _cacheService.ClearNearbyCache();
 
         return MapToResponseDTO(updated);
     }
 
-
     //  XÓA
-    public async Task<bool> DeleteComplexAsync(int complexId)
+    public async Task<bool> DeleteComplexAsync(
+    int complexId,
+    int userId,
+    string role)
     {
+        if (role != "Owner")
+            throw new UnauthorizedAccessException("Chỉ Owner mới được xóa khu sân.");
+
+        var existing = await _complexRepository.GetComplexByIdAsync(complexId);
+        if (existing == null)
+            return false;
+
+        if (existing.OwnerId != userId)
+            throw new UnauthorizedAccessException(
+                "Bạn không có quyền xóa khu sân này."
+            );
+
         var result = await _complexRepository.DeleteComplexAsync(complexId);
 
         if (result)
-            _cacheService.ClearNearbyCache(); 
+            _cacheService.ClearNearbyCache();
 
         return result;
     }
+
+
 
     // HÀM MAP CHUNG
     private static (string? ward, string? district, string? province)
