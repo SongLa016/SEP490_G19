@@ -109,17 +109,12 @@ public class Program
                     // ===================== CORS =====================
                     services.AddCors(options =>
                     {
-                        options.AddPolicy("AllowAll", builder =>
+                        options.AddPolicy("AllowFrontend", policy =>
                         {
-                            builder
-                                .WithOrigins(
-                                    "http://localhost:3000",
-                                    "https://localhost:3000",
-                                    "https://sep490-g19-zxph.onrender.com"
-                                )
-                                .AllowAnyHeader()
+                            policy
+                                .AllowAnyOrigin()
                                 .AllowAnyMethod()
-                                .AllowCredentials();
+                                .AllowAnyHeader();
                         });
                     });
 
@@ -320,10 +315,10 @@ public class Program
                     // ===================== KESTREL UPLOAD LIMIT =====================
                     services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = 100_000_000);
                 });
-
+                
                 webBuilder.Configure((context, app) =>
                 {
-                    var env = context.HostingEnvironment;
+                    var env = context.HostingEnvironment;   
 
                     app.UseRouting();
                     app.UseCors("AllowAll");

@@ -51,6 +51,11 @@ namespace BallSport.Infrastructure.Repositories
                 .Include(f => f.FieldImages)
                 .ToListAsync();
         }
+        public async Task<FieldComplex?> GetComplexByIdAsync(int complexId)
+        {
+            return await _context.FieldComplexes
+                .FirstOrDefaultAsync(c => c.ComplexId == complexId);
+        }
 
         // GET FIELD BY ID
         public async Task<Field?> GetFieldByIdAsync(int fieldId)
@@ -81,6 +86,22 @@ namespace BallSport.Infrastructure.Repositories
                 .Include(f => f.FieldImages)
                 .FirstOrDefaultAsync(f => f.FieldId == field.FieldId)
                 ?? field;
+        }
+        // Xóa ảnh cũ khi update
+        public async Task ReplaceFieldImagesAsync(int fieldId, List<string> imageUrls)
+        {
+            var oldImages = await _context.FieldImages.Where(f => f.FieldId == fieldId).ToListAsync();
+            if (oldImages.Any())
+                _context.FieldImages.RemoveRange(oldImages);
+
+            var newImages = imageUrls.Select(url => new FieldImage
+            {
+                FieldId = fieldId,
+                ImageUrl = url
+            }).ToList();
+
+            _context.FieldImages.AddRange(newImages);
+            await _context.SaveChangesAsync();
         }
 
         // DELETE

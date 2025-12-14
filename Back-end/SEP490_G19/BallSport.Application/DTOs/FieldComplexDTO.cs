@@ -11,8 +11,6 @@ namespace BallSport.Application.DTOs
     {
         public int ComplexId { get; set; }
 
-        public int? OwnerId { get; set; }
-
         public string Name { get; set; } = null!;
 
         public string Address { get; set; } = null!;

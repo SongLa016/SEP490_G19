@@ -27,12 +27,8 @@ namespace BallSport.Application.DTOs
 
         public DateTime? CreatedAt { get; set; }
 
-        // 🏦 Thông tin tài khoản ngân hàng (user nhập)
-        public string? BankName { get; set; }
 
-        public string? BankShortCode { get; set; }
-        public string? AccountNumber { get; set; }
-        public string? AccountHolder { get; set; }
+        public int? BankAccountId { get; set; }
 
 
     }

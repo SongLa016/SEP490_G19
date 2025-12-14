@@ -37,36 +37,37 @@ namespace BallSport.Application.Services
             return uploadResult.SecureUrl?.ToString();
         }
 
-        //  CREATE FIELD
+        public async Task<FieldComplex?> GetComplexByIdAsync(int complexId)
+        {
+            return await _fieldRepository.GetComplexByIdAsync(complexId);
+        }
+
+        // ============== ADD FIELD =================
         public async Task<FieldResponseDTO> AddFieldAsync(FieldDTO dto, int ownerId)
         {
-            int? bankAccountId = null;
+            if (dto.ComplexId == null)
+                throw new ArgumentException("ComplexId không được null.");
 
-            // bank account
-            if (!string.IsNullOrEmpty(dto.BankName) &&
-                !string.IsNullOrEmpty(dto.AccountNumber) &&
-                !string.IsNullOrEmpty(dto.AccountHolder))
-            {
-                var bank = new OwnerBankAccount
-                {
-                    OwnerId = ownerId,
-                    BankName = dto.BankName,
-                    BankShortCode = dto.BankShortCode,
-                    AccountNumber = dto.AccountNumber,
-                    AccountHolder = dto.AccountHolder,
-                    IsDefault = true
-                };
+            var complex = await _fieldRepository.GetComplexByIdAsync(dto.ComplexId.Value);
+            if (complex == null)
+                throw new ArgumentException($"ComplexId = {dto.ComplexId} không tồn tại.");
 
-                await _bankAccountRepository.AddOwnerBankAccountAsync(bank);
-                bankAccountId = bank.BankAccountId;
-            }
+            if (complex.OwnerId != ownerId)
+                throw new UnauthorizedAccessException("Chỉ Owner của Complex mới được thêm sân.");
 
-            // main image
+            // Bank account
+            if (dto.BankAccountId == null)
+                throw new ArgumentException("BankAccountId không được null.");
+
+            var bank = await _bankAccountRepository.GetByIdAsync(dto.BankAccountId.Value);
+            if (bank == null || bank.OwnerId != ownerId)
+                throw new UnauthorizedAccessException("BankAccount không hợp lệ hoặc không thuộc Owner này.");
+
+            // Upload main image
             string? mainImageUrl = null;
             if (dto.MainImage != null)
                 mainImageUrl = await UploadToCloudinary(dto.MainImage);
 
-            // create field
             var field = new Field
             {
                 ComplexId = dto.ComplexId,
@@ -75,27 +76,26 @@ namespace BallSport.Application.Services
                 Size = dto.Size,
                 GrassType = dto.GrassType,
                 Description = dto.Description,
-                PricePerHour = dto.PricePerHour,
-                Status = dto.Status ?? "Available",
+                PricePerHour = dto.PricePerHour ?? 0,
+                Status = string.IsNullOrEmpty(dto.Status) ? "Available" : dto.Status,
                 CreatedAt = DateTime.Now,
-                BankAccountId = bankAccountId,
+                BankAccountId = dto.BankAccountId,
                 ImageUrl = mainImageUrl
             };
 
             var created = await _fieldRepository.AddFieldAsync(field);
 
-            // extra images
+            // Extra images
             var extraUrls = new List<string>();
-
             if (dto.ImageFiles != null)
             {
                 foreach (var img in dto.ImageFiles)
                 {
                     var url = await UploadToCloudinary(img);
-                    if (url != null) extraUrls.Add(url);
+                    if (!string.IsNullOrEmpty(url)) extraUrls.Add(url);
                 }
-
-                await _fieldRepository.AddFieldImagesAsync(created.FieldId, extraUrls);
+                if (extraUrls.Count > 0)
+                    await _fieldRepository.AddFieldImagesAsync(created.FieldId, extraUrls);
             }
 
             return new FieldResponseDTO
@@ -110,44 +110,61 @@ namespace BallSport.Application.Services
                 PricePerHour = created.PricePerHour,
                 Status = created.Status,
                 CreatedAt = created.CreatedAt,
-                BankAccountId = created.BankAccountId,
+                BankAccountId = created.BankAccountId ?? 0,
                 MainImageUrl = created.ImageUrl,
                 ImageUrls = extraUrls
             };
         }
-
-        //  UPDATE FIELD
-        public async Task<FieldResponseDTO?> UpdateFieldAsync(FieldDTO dto)
+        // UPDATE FIELD
+        public async Task<FieldResponseDTO?> UpdateFieldAsync(FieldDTO dto, int ownerId)
         {
             var field = await _fieldRepository.GetFieldByIdAsync(dto.FieldId);
             if (field == null) return null;
 
+            // Kiểm tra quyền owner thông qua Complex
+            if (field.ComplexId == null)
+                throw new UnauthorizedAccessException("Field không thuộc Complex nào.");
+
+            var complex = await _fieldRepository.GetComplexByIdAsync(field.ComplexId.Value);
+            if (complex == null || complex.OwnerId != ownerId)
+                throw new UnauthorizedAccessException("Bạn không có quyền sửa field này.");
+            // Kiểm tra BankAccount
+            if (dto.BankAccountId != null)
+            {
+                var bank = await _bankAccountRepository.GetByIdAsync(dto.BankAccountId.Value);
+                if (bank == null || bank.OwnerId != ownerId)
+                    throw new UnauthorizedAccessException("BankAccount không hợp lệ hoặc không thuộc Owner này.");
+
+                field.BankAccountId = dto.BankAccountId;
+            }
+            // Cập nhật thông tin cơ bản
             field.Name = dto.Name;
             field.Size = dto.Size;
             field.GrassType = dto.GrassType;
             field.Description = dto.Description;
             field.TypeId = dto.TypeId;
             field.PricePerHour = dto.PricePerHour;
-            field.Status = dto.Status;
-
-            // main image
+            field.Status = dto.Status ?? field.Status;
+            field.BankAccountId = dto.BankAccountId;            
+            // Main image
             if (dto.MainImage != null)
             {
-                var url = await UploadToCloudinary(dto.MainImage);
-                if (url != null) field.ImageUrl = url;
+                var mainUrl = await UploadToCloudinary(dto.MainImage);
+                if (!string.IsNullOrEmpty(mainUrl)) field.ImageUrl = mainUrl;
             }
 
-            // extra images
-            var extraUrls = new List<string>();
-            if (dto.ImageFiles != null)
+            // Extra images - thay thế hoàn toàn
+            if (dto.ImageFiles != null && dto.ImageFiles.Any())
             {
+                var extraUrls = new List<string>();
                 foreach (var img in dto.ImageFiles)
                 {
                     var url = await UploadToCloudinary(img);
-                    if (url != null) extraUrls.Add(url);
+                    if (!string.IsNullOrEmpty(url)) extraUrls.Add(url);
                 }
 
-                await _fieldRepository.AddFieldImagesAsync(field.FieldId, extraUrls);
+                if (extraUrls.Any())
+                    await _fieldRepository.ReplaceFieldImagesAsync(field.FieldId, extraUrls); // Thay thế ảnh cũ
             }
 
             var updated = await _fieldRepository.UpdateFieldAsync(field);
@@ -164,14 +181,14 @@ namespace BallSport.Application.Services
                 PricePerHour = updated.PricePerHour,
                 Status = updated.Status,
                 CreatedAt = updated.CreatedAt,
-                BankAccountId = updated.BankAccountId,
+                BankAccountId = updated.BankAccountId ?? 0,
                 MainImageUrl = updated.ImageUrl,
-                ImageUrls = updated.FieldImages?.Select(x => x.ImageUrl).ToList()
+                ImageUrls = updated.FieldImages?.Select(x => x.ImageUrl).ToList() ?? new List<string>()
             };
         }
 
         //  GET FIELD BY ID
- 
+
         public async Task<FieldResponseDTO?> GetFieldByIdAsync(int id)
         {
             var f = await _fieldRepository.GetFieldByIdAsync(id);
@@ -245,9 +262,16 @@ namespace BallSport.Application.Services
         }
 
         //  DELETE FIELD
-   
-        public async Task<bool> DeleteFieldAsync(int fieldId)
+
+        public async Task<bool> DeleteFieldAsync(int fieldId, int ownerId)
         {
+            var field = await _fieldRepository.GetFieldByIdAsync(fieldId);
+            if (field == null) return false;
+
+            var complex = await _fieldRepository.GetComplexByIdAsync(field.ComplexId ?? 0);
+            if (complex == null || complex.OwnerId != ownerId)
+                throw new UnauthorizedAccessException("Bạn không có quyền xóa field này.");
+
             return await _fieldRepository.DeleteFieldAsync(fieldId);
         }
     }

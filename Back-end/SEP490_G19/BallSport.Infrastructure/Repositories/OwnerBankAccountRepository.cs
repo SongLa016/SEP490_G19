@@ -1,7 +1,4 @@
 ﻿
-using BallSport.Infrastructure.Data;
-
-using BallSport.Infrastructure.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Data;
+using BallSport.Infrastructure.Data;
+using BallSport.Infrastructure.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace BallSport.Infrastructure.Repositories
 {
@@ -49,6 +49,11 @@ namespace BallSport.Infrastructure.Repositories
                 .ToList();
         }
 
+        public async Task<OwnerBankAccount?> GetByIdAsync(int bankAccountId)
+        {
+            return await _context.OwnerBankAccounts
+                                 .FirstOrDefaultAsync(b => b.BankAccountId == bankAccountId);
+        }
 
         public async Task UpdateOwnerBankAccountAsync(OwnerBankAccount account)
         {

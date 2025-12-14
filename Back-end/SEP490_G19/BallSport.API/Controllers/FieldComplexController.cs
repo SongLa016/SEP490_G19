@@ -1,11 +1,12 @@
 ﻿using BallSport.Application.DTOs;
 using BallSport.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BallSport.API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class FieldComplexController : ControllerBase
     {
         private readonly FieldComplexService _service;
@@ -15,26 +16,8 @@ namespace BallSport.API.Controllers
             _service = service;
         }
 
-        // Thêm khu sân mới
-        [HttpPost]
-        public async Task<IActionResult> AddComplex([FromForm] FieldComplexDTO dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            try
-            {
-                var created = await _service.AddComplexAsync(dto);
-                return CreatedAtAction(nameof(GetById), new { id = created.ComplexId }, created);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-
-        // Lấy tất cả khu sân
+        // PUBLIC
+        [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -42,7 +25,7 @@ namespace BallSport.API.Controllers
             return Ok(result);
         }
 
-        // Lấy chi tiết khu sân theo ID
+        [AllowAnonymous]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -53,29 +36,100 @@ namespace BallSport.API.Controllers
             return Ok(complex);
         }
 
-        // UPDATE 
+
+        // OWNER - CREATE
+        [Authorize(Roles = "Owner")]
+        [HttpPost]
+        public async Task<IActionResult> AddComplex([FromForm] FieldComplexDTO dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var userId = int.Parse(User.FindFirst("UserID")!.Value);
+
+                var created = await _service.AddComplexAsync(
+                    dto,
+                    userId,
+                    "Owner"
+                );
+
+                return CreatedAtAction(
+                    nameof(GetById),
+                    new { id = created.ComplexId },
+                    created
+                );
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message); 
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // OWNER, ADMIN 
+        [Authorize(Roles = "Owner,Admin")]
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateComplex(int id, [FromForm] FieldComplexDTO dto)
+        public async Task<IActionResult> UpdateComplex(int id,[FromForm] FieldComplexDTO dto)
         {
             if (!ModelState.IsValid || id != dto.ComplexId)
                 return BadRequest("Dữ liệu không hợp lệ");
 
-            var updated = await _service.UpdateComplexAsync(dto);
-            if (updated == null)
-                return NotFound($"Không tìm thấy khu sân có ID = {id}");
+            var userId = int.Parse(User.FindFirst("UserID")!.Value);
+            var role = User.FindFirst("Role")?.Value;
 
-            return Ok(updated);
+            try
+            {
+                var updated = await _service.UpdateComplexAsync(dto, userId, role!);
+
+                if (updated == null)
+                    return NotFound($"Không tìm thấy khu sân có ID = {id}");
+
+                return Ok(updated);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
         }
 
-        // DELETE 
+        // OWNER - DELETE
+        [Authorize(Roles = "Owner")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteComplex(int id)
         {
-            var deleted = await _service.DeleteComplexAsync(id);
-            if (!deleted)
-                return NotFound($"Không tìm thấy khu sân có ID = {id}");
+            try
+            {
+                var userId = int.Parse(User.FindFirst("UserID")!.Value);
+                var role = User.FindFirst("Role")!.Value;
 
-            return NoContent();
+                var deleted = await _service.DeleteComplexAsync(id, userId, role);
+
+                if (!deleted)
+                    return NotFound(new
+                    {
+                        message = $"Không tìm thấy khu sân có ID = {id}"
+                    });
+
+                // XÓA THÀNH CÔNG
+                return Ok(new
+                {
+                    message = "Xóa khu sân thành công."
+                });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                // 
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    message = ex.Message
+                });
+            }
         }
+
     }
 }
