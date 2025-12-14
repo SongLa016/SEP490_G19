@@ -49,7 +49,46 @@ export default function Community() {
 
      // Function to handle post submission
      const handlePostSubmit = async (title, content, field, imageFile) => {
-          if (!user || !content.trim()) return;
+          if (!user) {
+               Swal.fire({
+                    icon: 'warning',
+                    title: 'Chưa đăng nhập',
+                    text: 'Vui lòng đăng nhập để đăng bài viết',
+                    confirmButtonText: 'Đóng'
+               });
+               return;
+          }
+
+          const trimmedContent = content?.trim() || "";
+          if (!trimmedContent) {
+               Swal.fire({
+                    icon: 'warning',
+                    title: 'Nội dung trống',
+                    text: 'Vui lòng nhập nội dung bài viết',
+                    confirmButtonText: 'Đóng'
+               });
+               return;
+          }
+
+          if (trimmedContent.length < 10) {
+               Swal.fire({
+                    icon: 'warning',
+                    title: 'Nội dung quá ngắn',
+                    text: 'Nội dung bài viết phải có ít nhất 10 ký tự',
+                    confirmButtonText: 'Đóng'
+               });
+               return;
+          }
+
+          if (trimmedContent.length > 2000) {
+               Swal.fire({
+                    icon: 'warning',
+                    title: 'Nội dung quá dài',
+                    text: 'Nội dung bài viết không được quá 2000 ký tự',
+                    confirmButtonText: 'Đóng'
+               });
+               return;
+          }
 
           try {
                await createPost({

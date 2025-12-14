@@ -120,9 +120,15 @@ export default function AdminProfileSettings() {
     if (!token) {
       Swal.fire({
         icon: "warning",
-        title: "Phiên đăng nhập đã hết hạn",
-        text: "Vui lòng đăng nhập lại",
-        confirmButtonText: "Đóng",
+        title: "Phiên đăng nhập hết hạn",
+        text: "Vui lòng đăng nhập lại để tiếp tục.",
+        confirmButtonText: "Đăng nhập",
+        confirmButtonColor: "#0ea5e9",
+        allowOutsideClick: false,
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = "/login";
+        }
       });
       return;
     }

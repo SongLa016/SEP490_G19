@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { authService, validateRegistrationData, formatRegistrationData } from '../services/authService';
+import { authService, validateRegistrationData, formatRegistrationData, validateVietnamPhone, validateStrongPassword } from '../services/authService';
 import { Button, Input, Card, CardContent, CardHeader, CardTitle, CardDescription, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '../components/ui';
 import { FadeIn, SlideIn, ScaleIn } from '../components/ui/animations';
 import { Eye, EyeOff, Mail, Lock, User, Phone, X, Camera, CheckCircle, Loader2, ArrowLeft } from 'lucide-react';
@@ -415,7 +415,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                                                   <Input
                                                        value={phone}
                                                        onChange={(e) => setPhone(e.target.value)}
-                                                       onBlur={() => setPhoneError(!phone || !/^[0-9]{10,11}$/.test(phone.replace(/\s/g, '')) ? 'Số điện thoại không hợp lệ' : '')}
+                                                       onBlur={() => { const v = validateVietnamPhone(phone); setPhoneError(v.isValid ? '' : v.message); }}
                                                        required
                                                        className={`pl-12 h-12 text-sm transition-all duration-200 rounded-2xl border-gray-200 ${phoneError ? 'border-red-500 focus:ring-red-500 animate-shake' : 'focus:ring-teal-500 focus:border-teal-500'}`}
                                                        placeholder="0123456789"
@@ -440,7 +440,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                                                   <Input
                                                        value={password}
                                                        onChange={(e) => setPassword(e.target.value)}
-                                                       onBlur={() => setPasswordError(!password || password.length < 6 ? 'Mật khẩu phải có ít nhất 6 ký tự' : '')}
+                                                       onBlur={() => { const v = validateStrongPassword(password); setPasswordError(v.isValid ? '' : v.message); }}
                                                        required
                                                        type={showPassword ? "text" : "password"}
                                                        className={`pl-12 pr-12 h-12 text-sm transition-all duration-200 rounded-2xl border-gray-200 ${passwordError ? 'border-red-500 focus:ring-red-500 animate-shake' : 'focus:ring-teal-500 focus:border-teal-500'}`}

@@ -487,9 +487,9 @@ export default function ManageSchedulesTab({
                                         </SelectTrigger>
                                         <SelectContent>
                                              <SelectItem value="all">Tất cả</SelectItem>
-                                             <SelectItem value="Available">Available</SelectItem>
-                                             <SelectItem value="Booked">Booked</SelectItem>
-                                             <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                             <SelectItem value="Available">Có sẵn</SelectItem>
+                                             <SelectItem value="Booked">Đã đặt</SelectItem>
+                                             <SelectItem value="Maintenance">Bảo trì</SelectItem>
                                         </SelectContent>
                                    </Select>
                               </div>
@@ -546,17 +546,17 @@ export default function ManageSchedulesTab({
 
                               <div className="flex items-center gap-2">
                                    <span className="font-medium text-gray-700">Năm:</span>
-                                   <Select value={filterYear || 'all'} onValueChange={setFilterYear}>
+                                   <Select value={filterYear} onValueChange={setFilterYear}>
                                         <SelectTrigger className="w-[120px] rounded-2xl">
                                              <SelectValue placeholder="Tất cả năm" />
                                         </SelectTrigger>
                                         <SelectContent>
                                              <SelectItem value="all">Tất cả năm</SelectItem>
-                                             {[new Date().getFullYear(), new Date().getFullYear() + 1, new Date().getFullYear() + 2].map(y => (
-                                                  <SelectItem key={y} value={y.toString()}>
-                                                       {y}
-                                                  </SelectItem>
-                                             ))}
+                                             <SelectItem value="2024">2024</SelectItem>
+                                             <SelectItem value="2025">2025</SelectItem>
+                                             <SelectItem value="2026">2026</SelectItem>
+                                             <SelectItem value="2027">2027</SelectItem>
+                                             <SelectItem value="2028">2028</SelectItem>
                                         </SelectContent>
                                    </Select>
                               </div>

@@ -21,7 +21,9 @@ import {
      fetchAllComplexesWithFields,
      createFieldPrice,
      updateFieldComplex,
-     deleteFieldComplex
+     deleteFieldComplex,
+     validateComplexData,
+     validateFieldData
 } from "../../../shared/services/fields";
 import { fetchTimeSlots } from "../../../shared/services/timeSlots";
 import { fetchOwnerBankAccounts } from "../../../shared/services/ownerBankAccount";
@@ -179,6 +181,7 @@ const FieldManagement = ({ isDemo = false }) => {
                                    ...f,
                                    complexName: complex.name,
                                    complexAddress: complex.address,
+                                   complexStatus: complex.status, // Thêm trạng thái khu sân để lọc
                                    typeName: fieldType ? (fieldType.typeName || fieldType.TypeName) : null,
                               };
 
@@ -402,43 +405,18 @@ const FieldManagement = ({ isDemo = false }) => {
           const isEditingComplex = Boolean(isEditComplexModalOpen && editingComplexId);
           const actionLabel = isEditingComplex ? 'cập nhật khu sân' : 'tạo khu sân';
 
-          // Validate required fields for creating new complex
-          if (!isEditingComplex) {
-               // Validate image is required for new complexes
-               if (!complexFormData.imageFile && !complexFormData.imageUrl) {
-                    await Swal.fire({
-                         icon: 'warning',
-                         title: 'Thiếu hình ảnh!',
-                         text: 'Vui lòng chọn hình ảnh cho khu sân.',
-                         confirmButtonText: 'Đóng',
-                         confirmButtonColor: '#f59e0b'
-                    });
-                    return;
-               }
-
-               // Validate name
-               if (!complexFormData.name || complexFormData.name.trim() === '') {
-                    await Swal.fire({
-                         icon: 'warning',
-                         title: 'Thiếu tên khu sân!',
-                         text: 'Vui lòng nhập tên khu sân.',
-                         confirmButtonText: 'Đóng',
-                         confirmButtonColor: '#f59e0b'
-                    });
-                    return;
-               }
-
-               // Validate address
-               if (!complexFormData.address || complexFormData.address.trim() === '') {
-                    await Swal.fire({
-                         icon: 'warning',
-                         title: 'Thiếu địa chỉ!',
-                         text: 'Vui lòng nhập địa chỉ khu sân.',
-                         confirmButtonText: 'Đóng',
-                         confirmButtonColor: '#f59e0b'
-                    });
-                    return;
-               }
+          // Validate dữ liệu khu sân bằng validation function
+          const complexValidation = validateComplexData(complexFormData, isEditingComplex);
+          if (!complexValidation.isValid) {
+               const firstError = Object.values(complexValidation.errors)[0];
+               await Swal.fire({
+                    icon: 'warning',
+                    title: 'Dữ liệu không hợp lệ!',
+                    text: firstError,
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#f59e0b'
+               });
+               return;
           }
 
           try {
@@ -795,24 +773,16 @@ const FieldManagement = ({ isDemo = false }) => {
           }
 
           try {
-               if (!formData.complexId) {
-                    await Swal.fire({
-                         icon: 'warning',
-                         title: 'Chưa chọn khu sân!',
-                         text: 'Vui lòng chọn khu sân để thêm sân vào.',
-                         confirmButtonColor: '#f59e0b'
-                    });
-                    return;
-               }
-
                const isEditingField = Boolean(isEditModalOpen && formData.fieldId);
 
-               // Validate main image is required for new fields
-               if (!isEditingField && !formData.mainImage) {
+               // Validate dữ liệu sân bằng validation function
+               const fieldValidation = validateFieldData(formData, isEditingField);
+               if (!fieldValidation.isValid) {
+                    const firstError = Object.values(fieldValidation.errors)[0];
                     await Swal.fire({
                          icon: 'warning',
-                         title: 'Thiếu ảnh chính!',
-                         text: 'Vui lòng chọn ảnh chính cho sân.',
+                         title: 'Dữ liệu không hợp lệ!',
+                         text: firstError,
                          confirmButtonColor: '#f59e0b'
                     });
                     return;
@@ -828,17 +798,6 @@ const FieldManagement = ({ isDemo = false }) => {
                     if (!value || typeof value !== 'string') return false;
                     return value.startsWith('http://') || value.startsWith('https://');
                };
-
-               // Validate bank account selection
-               if (!formData.bankAccountId) {
-                    await Swal.fire({
-                         icon: 'warning',
-                         title: 'Chưa chọn tài khoản ngân hàng!',
-                         text: 'Vui lòng chọn tài khoản ngân hàng để nhận thanh toán.',
-                         confirmButtonColor: '#f59e0b'
-                    });
-                    return;
-               }
 
                // Create or update field with FormData for File objects
                const formDataToSend = new FormData();
@@ -1517,7 +1476,12 @@ const FieldManagement = ({ isDemo = false }) => {
           itemsPerPage: complexesPerPage,
      } = usePagination(complexes, 4);
 
-     // Pagination for fields (3 per page)
+     // Lọc chỉ hiển thị sân nhỏ của khu sân đã được duyệt (Active)
+     const activeFields = useMemo(() => {
+          return fields.filter(field => field.complexStatus === "Active");
+     }, [fields]);
+
+     // Pagination for fields (6 per page) - chỉ hiển thị sân của khu sân Active
      const {
           currentPage: fieldsPage,
           totalPages: fieldsTotalPages,
@@ -1525,7 +1489,7 @@ const FieldManagement = ({ isDemo = false }) => {
           handlePageChange: handleFieldsPageChange,
           totalItems: fieldsTotalItems,
           itemsPerPage: fieldsPerPage,
-     } = usePagination(fields, 3);
+     } = usePagination(activeFields, 6);
 
      if (loading) {
           return (
@@ -1549,8 +1513,13 @@ const FieldManagement = ({ isDemo = false }) => {
                               Khu sân: {complexes.length}
                          </span>
                          <span className="px-3 py-1 rounded-full bg-teal-50 text-teal-600 border border-teal-200 font-medium">
-                              Sân nhỏ: {fields.length}
+                              Sân nhỏ: {activeFields.length}
                          </span>
+                         {fields.length > activeFields.length && (
+                              <span className="px-3 py-1 rounded-full bg-yellow-50 text-yellow-600 border border-yellow-200 font-medium">
+                                   Chờ duyệt: {fields.length - activeFields.length} sân
+                              </span>
+                         )}
                     </div>
                </div>
 
@@ -1589,16 +1558,24 @@ const FieldManagement = ({ isDemo = false }) => {
                                    {paginatedComplexes.map((complex) => {
                                         const fieldCount = complexFieldCounts[complex.complexId] || 0;
                                         return (
-                                             <Card key={complex.complexId} className={`h-full border rounded-2xl hover:shadow-lg transition-all duration-300 ${(complex.status || "Active") === "Active"
+                                             <Card key={complex.complexId} className={`h-full border rounded-2xl hover:shadow-lg transition-all duration-300 ${complex.status === "Active"
                                                   ? "border-blue-100 bg-white"
-                                                  : "border-gray-200 bg-gray-50/50 opacity-75"
+                                                  : complex.status === "Pending"
+                                                       ? "border-yellow-200 bg-yellow-50/30"
+                                                       : complex.status === "Rejected"
+                                                            ? "border-red-200 bg-red-50/30 opacity-75"
+                                                            : "border-gray-200 bg-gray-50/50 opacity-75"
                                                   }`}>
                                                   <div className="p-4 space-y-4">
                                                        <div className="flex items-start justify-between">
                                                             <div className="flex-1 min-w-0">
-                                                                 <h3 className={`text-xl font-bold line-clamp-1 ${(complex.status || "Active") === "Active"
+                                                                 <h3 className={`text-xl font-bold line-clamp-1 ${complex.status === "Active"
                                                                       ? "text-gray-900"
-                                                                      : "text-gray-500"
+                                                                      : complex.status === "Pending"
+                                                                           ? "text-yellow-800"
+                                                                           : complex.status === "Rejected"
+                                                                                ? "text-red-800"
+                                                                                : "text-gray-500"
                                                                       }`}>
                                                                       {complex.name}
                                                                  </h3>
@@ -1607,29 +1584,35 @@ const FieldManagement = ({ isDemo = false }) => {
                                                                  </p>
                                                             </div>
                                                             <div className="flex items-center gap-1.5 ml-2">
-                                                                 <button
-                                                                      type="button"
-                                                                      onClick={() => handleToggleComplexStatus(complex)}
-                                                                      className={`p-1.5 rounded-lg transition-all duration-200 ${(complex.status || "Active") === "Active"
-                                                                           ? "bg-green-100 text-green-600 hover:bg-green-200"
-                                                                           : "bg-gray-200 text-gray-500 hover:bg-gray-300"
-                                                                           }`}
-                                                                      title={(complex.status || "Active") === "Active" ? "Vô hiệu hóa" : "Kích hoạt"}
-                                                                 >
-                                                                      {(complex.status || "Active") === "Active" ? (
-                                                                           <Power className="w-4 h-4" />
-                                                                      ) : (
-                                                                           <PowerOff className="w-4 h-4" />
-                                                                      )}
-                                                                 </button>
-                                                                 <button
-                                                                      type="button"
-                                                                      onClick={() => handleEditComplex(complex)}
-                                                                      className="p-1.5 rounded-lg text-yellow-600 hover:bg-yellow-50 transition-colors"
-                                                                      title="Chỉnh sửa"
-                                                                 >
-                                                                      <Edit className="w-4 h-4" />
-                                                                 </button>
+                                                                 {/* Chỉ hiển thị nút toggle khi status là Active hoặc Deactive */}
+                                                                 {(complex.status === "Active" || complex.status === "Deactive") && (
+                                                                      <button
+                                                                           type="button"
+                                                                           onClick={() => handleToggleComplexStatus(complex)}
+                                                                           className={`p-1.5 rounded-lg transition-all duration-200 ${complex.status === "Active"
+                                                                                ? "bg-green-100 text-green-600 hover:bg-green-200"
+                                                                                : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+                                                                                }`}
+                                                                           title={complex.status === "Active" ? "Vô hiệu hóa" : "Kích hoạt"}
+                                                                      >
+                                                                           {complex.status === "Active" ? (
+                                                                                <Power className="w-4 h-4" />
+                                                                           ) : (
+                                                                                <PowerOff className="w-4 h-4" />
+                                                                           )}
+                                                                      </button>
+                                                                 )}
+                                                                 {/* Chỉ cho phép chỉnh sửa khi không phải Pending */}
+                                                                 {complex.status !== "Pending" && (
+                                                                      <button
+                                                                           type="button"
+                                                                           onClick={() => handleEditComplex(complex)}
+                                                                           className="p-1.5 rounded-lg text-yellow-600 hover:bg-yellow-50 transition-colors"
+                                                                           title="Chỉnh sửa"
+                                                                      >
+                                                                           <Edit className="w-4 h-4" />
+                                                                      </button>
+                                                                 )}
                                                                  <button
                                                                       type="button"
                                                                       onClick={() => handleDeleteComplex(complex.complexId || complex.ComplexID)}
@@ -1641,11 +1624,23 @@ const FieldManagement = ({ isDemo = false }) => {
                                                             </div>
                                                        </div>
                                                        <div className="flex items-center gap-2">
-                                                            <span className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${(complex.status || "Active") === "Active"
+                                                            <span className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${complex.status === "Active"
                                                                  ? "bg-green-50 text-green-700 border-green-200"
-                                                                 : "bg-gray-100 text-gray-600 border-gray-300"
+                                                                 : complex.status === "Pending"
+                                                                      ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                                                      : complex.status === "Rejected"
+                                                                           ? "bg-red-50 text-red-700 border-red-200"
+                                                                           : "bg-gray-100 text-gray-600 border-gray-300"
                                                                  }`}>
-                                                                 {(complex.status || "Active") === "Active" ? "Đang hoạt động" : (complex.status === "Deactive" ? "Đã vô hiệu hóa" : "Đã vô hiệu hóa")}
+                                                                 {complex.status === "Active"
+                                                                      ? "Đang hoạt động"
+                                                                      : complex.status === "Pending"
+                                                                           ? "Chờ duyệt"
+                                                                           : complex.status === "Rejected"
+                                                                                ? "Đã bị từ chối"
+                                                                                : complex.status === "Deactive"
+                                                                                     ? "Đã vô hiệu hóa"
+                                                                                     : "Đã vô hiệu hóa"}
                                                             </span>
                                                        </div>
                                                        {complex.address && (
@@ -1668,15 +1663,25 @@ const FieldManagement = ({ isDemo = false }) => {
                                                             )}
                                                        </div>
                                                        <div className="flex justify-end">
-                                                            <Button
-                                                                 variant="outline"
-                                                                 size="sm"
-                                                                 className="text-teal-600 border-teal-200 hover:text-teal-600 hover:bg-teal-50 rounded-full"
-                                                                 onClick={() => handleAddField(complex.complexId)}
-                                                            >
-                                                                 <Plus className="w-4 h-4 mr-1" />
-                                                                 Thêm sân nhỏ
-                                                            </Button>
+                                                            {complex.status === "Active" ? (
+                                                                 <Button
+                                                                      variant="outline"
+                                                                      size="sm"
+                                                                      className="text-teal-600 border-teal-200 hover:text-teal-600 hover:bg-teal-50 rounded-full"
+                                                                      onClick={() => handleAddField(complex.complexId)}
+                                                                 >
+                                                                      <Plus className="w-4 h-4 mr-1" />
+                                                                      Thêm sân nhỏ
+                                                                 </Button>
+                                                            ) : complex.status === "Pending" ? (
+                                                                 <span className="text-xs text-yellow-600 italic">
+                                                                      Đang chờ Admin duyệt
+                                                                 </span>
+                                                            ) : complex.status === "Rejected" ? (
+                                                                 <span className="text-xs text-red-600 italic">
+                                                                      Khu sân đã bị từ chối
+                                                                 </span>
+                                                            ) : null}
                                                        </div>
                                                   </div>
                                              </Card>
@@ -1713,13 +1718,36 @@ const FieldManagement = ({ isDemo = false }) => {
                          </Button>
                     </div>
 
-                    {fields.length === 0 ? (
+                    {/* Thông báo sân đang chờ duyệt */}
+                    {fields.length > activeFields.length && (
+                         <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex items-center gap-3">
+                              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                                   <Building2 className="w-5 h-5 text-yellow-600" />
+                              </div>
+                              <div>
+                                   <p className="text-yellow-800 font-medium">
+                                        Có {fields.length - activeFields.length} sân nhỏ đang chờ duyệt
+                                   </p>
+                                   <p className="text-yellow-600 text-sm">
+                                        Các sân thuộc khu sân chưa được Admin duyệt sẽ không hiển thị cho người chơi
+                                   </p>
+                              </div>
+                         </div>
+                    )}
+
+                    {activeFields.length === 0 ? (
                          <Card className="p-12 text-center border-dashed border-2 border-teal-200 bg-teal-50/50 rounded-2xl">
-                              <p className="text-gray-500 mb-4">Chưa có sân nào. Hãy tạo sân đầu tiên!</p>
-                              <Button onClick={() => handleAddField()}>
-                                   <Plus className="w-4 h-4 mr-2" />
-                                   Thêm sân mới
-                              </Button>
+                              <p className="text-gray-500 mb-4">
+                                   {fields.length > 0
+                                        ? "Tất cả sân đang chờ Admin duyệt khu sân"
+                                        : "Chưa có sân nào. Hãy tạo sân đầu tiên!"}
+                              </p>
+                              {fields.length === 0 && (
+                                   <Button onClick={() => handleAddField()}>
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Thêm sân mới
+                                   </Button>
+                              )}
                          </Card>
                     ) : (
                          <>

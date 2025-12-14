@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Lenis from "lenis";
 import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, QuickBookingSection, CommunityMatchmakingSection, UserReviewsSection, CancellationPoliciesSection, MobileAppSection, WhyChooseUsSection, NewsletterSection, CTASection } from "./components";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
-import { fetchTopBookingFields, fetchFieldComplex, fetchComplexes } from "../../../../shared/services/fields";
+import { fetchTopBookingFields, fetchFieldComplex, fetchComplexes, fetchField } from "../../../../shared/services/fields";
 
 // Helpers giống FieldSearch để chuẩn hóa quận/huyện
 const normalizeText = (text) => {
@@ -607,14 +607,25 @@ export default function HomePage({ user }) {
                     setLoadingTopFields(true);
                     const data = await fetchTopBookingFields();
 
-                    // Lấy danh sách complexId duy nhất từ data (chỉ những cái có sẵn)
+                    // Fetch chi tiết từng field để lấy imageUrls và complexId
+                    const fieldDetailsPromises = data.map(async (item) => {
+                         try {
+                              const fieldDetail = await fetchField(item.fieldId);
+                              return { ...item, fieldDetail };
+                         } catch {
+                              return { ...item, fieldDetail: null };
+                         }
+                    });
+                    const fieldsWithDetails = await Promise.all(fieldDetailsPromises);
+
+                    // Lấy danh sách complexId duy nhất từ fieldDetails
                     const uniqueComplexIds = [...new Set(
-                         data
-                              .map(item => item.complexId)
+                         fieldsWithDetails
+                              .map(item => item.fieldDetail?.complexId || item.complexId)
                               .filter(id => id != null && id !== undefined && id !== '')
                     )];
 
-                    // Fetch tất cả complexes một lần duy nhất (nếu có complexId)
+                    // Fetch tất cả complexes một lần duy nhất
                     const complexMap = new Map();
                     if (uniqueComplexIds.length > 0) {
                          const complexPromises = uniqueComplexIds.map(async (complexId) => {
@@ -623,34 +634,40 @@ export default function HomePage({ user }) {
                                    if (complex) {
                                         complexMap.set(complexId, complex);
                                    }
-                              } catch (error) {
-                                   // Bỏ qua lỗi, không log để tránh spam console
+                              } catch {
+                                   // Bỏ qua lỗi
                               }
                          });
                          await Promise.all(complexPromises);
                     }
 
-                    // Map fields với thông tin complex đã cache
-                    const mappedFields = data.map((item) => {
+                    // Map fields với thông tin đầy đủ
+                    const mappedFields = fieldsWithDetails.map((item) => {
+                         const fieldDetail = item.fieldDetail;
+                         const complexId = fieldDetail?.complexId || item.complexId;
                          let location = "Đang cập nhật";
 
-                         // Chỉ lấy địa chỉ nếu có complexId và đã fetch được complex
-                         if (item.complexId && complexMap.has(item.complexId)) {
-                              const complex = complexMap.get(item.complexId);
+                         // Lấy địa chỉ từ complex
+                         if (complexId && complexMap.has(complexId)) {
+                              const complex = complexMap.get(complexId);
                               if (complex?.address) {
                                    location = complex.address;
                               }
                          }
 
+                         // Lấy ảnh từ fieldDetail (ưu tiên) hoặc từ item gốc
+                         const mainImageUrl = fieldDetail?.mainImageUrl || fieldDetail?.MainImageUrl || item.imageUrl || item.mainImageUrl || null;
+                         const imageUrls = fieldDetail?.imageUrls || fieldDetail?.ImageUrls || item.imageUrls || [];
+
                          return {
                               id: item.fieldId,
-                              name: item.fieldName || "Sân bóng",
+                              name: item.fieldName || fieldDetail?.name || "Sân bóng",
                               location: location,
                               price: "Liên hệ",
                               rating: 4.5,
-                              image: item.imageUrl || item.mainImageUrl || null,
-                              mainImageUrl: item.imageUrl || item.mainImageUrl || null,
-                              imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : [],
+                              image: mainImageUrl,
+                              mainImageUrl: mainImageUrl,
+                              imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
                               amenities: [],
                               availableSlots: item.totalBookings || 0
                          };
