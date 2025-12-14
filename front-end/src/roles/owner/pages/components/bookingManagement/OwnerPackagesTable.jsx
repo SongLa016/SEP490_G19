@@ -9,7 +9,7 @@ import {
   fetchBookingPackageSessionsByOwnerToken,
   cancelBookingPackageSession
 } from "../../../../../shared/services/bookings";
-import { fetchFieldScheduleById } from "../../../../../shared/services/fieldSchedules";
+import { fetchFieldScheduleById, updateFieldScheduleStatus, fetchFieldSchedulesByField } from "../../../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
 
 export default function OwnerPackagesTable({
@@ -49,12 +49,49 @@ export default function OwnerPackagesTable({
     }
   };
 
+  // Hàm dịch booking status sang tiếng Việt
+  const getBookingStatusText = (status) => {
+    const statusLower = (status || "").toLowerCase();
+    if (statusLower.includes("pending")) return "Chờ xác nhận";
+    if (statusLower.includes("confirm")) return "Đã xác nhận";
+    if (statusLower.includes("complete")) return "Hoàn thành";
+    if (statusLower.includes("cancel")) return "Đã hủy";
+    return status || "—";
+  };
+
+  const getBookingStatusColor = (status) => {
+    const statusLower = (status || "").toLowerCase();
+    if (statusLower.includes("pending")) return "bg-yellow-100 text-yellow-800 border-yellow-200";
+    if (statusLower.includes("confirm")) return "bg-blue-100 text-blue-800 border-blue-200";
+    if (statusLower.includes("complete")) return "bg-green-100 text-green-800 border-green-200";
+    if (statusLower.includes("cancel")) return "bg-red-100 text-red-800 border-red-200";
+    return "bg-gray-100 text-gray-800 border-gray-200";
+  };
+
+  // Hàm dịch payment status sang tiếng Việt
+  const getPaymentStatusTextVi = (status) => {
+    const statusLower = (status || "").toLowerCase();
+    if (statusLower.includes("paid")) return "Đã thanh toán";
+    if (statusLower.includes("pending")) return "Chưa thanh toán";
+    if (statusLower.includes("refund")) return "Đã hoàn tiền";
+    if (statusLower.includes("fail")) return "Thất bại";
+    return status || "—";
+  };
+
+  const getPaymentStatusColorVi = (status) => {
+    const statusLower = (status || "").toLowerCase();
+    if (statusLower.includes("paid")) return "bg-green-100 text-green-800 border-green-200";
+    if (statusLower.includes("pending") || statusLower.includes("unpaid")) return "bg-yellow-100 text-yellow-800 border-yellow-200";
+    if (statusLower.includes("refund")) return "bg-blue-100 text-blue-800 border-blue-200";
+    if (statusLower.includes("fail")) return "bg-red-100 text-red-800 border-red-200";
+    return "bg-gray-100 text-gray-800 border-gray-200";
+  };
+
   const getPaymentIcon = (status) => {
     switch (status) {
       case "paid":
         return <CheckCircle className="w-3 h-3" />;
       case "unpaid":
-      case "pending":
         return <AlertTriangle className="w-3 h-3" />;
       case "refunded":
         return <RotateCcw className="w-3 h-3" />;
@@ -354,20 +391,277 @@ export default function OwnerPackagesTable({
   }, [isSessionsModalOpen, selectedPackageForSessions]);
 
   const handleConfirmPackage = async (pkgId) => {
+    // Tìm package để lấy thông tin
+    const pkg = bookingPackages.find(p => (p.bookingPackageId || p.id) === pkgId);
+
     const result = await Swal.fire({
       icon: "question",
       title: "Xác nhận gói định kỳ",
-      text: "Xác nhận thanh toán cho gói sân cố định này?",
+      html: `
+        <div class="text-left">
+          <p class="mb-3">💳 <strong>Xác nhận thanh toán</strong> - Gói sân cố định sẽ chuyển sang trạng thái "Đã xác nhận" và thanh toán "Đã thanh toán"</p>
+          ${pkg ? `
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+              <p class="text-sm text-blue-800 font-semibold mb-1">📋 Thông tin gói sân cố định:</p>
+              <div class="text-xs text-blue-700 space-y-1">
+                ${pkg.userId && userMap[pkg.userId] ? `<p><strong>Khách hàng:</strong> ${userMap[pkg.userId].name || "—"}</p>` : ''}
+                <p><strong>Tên gói:</strong> ${pkg.packageName || "—"}</p>
+                <p><strong>Sân:</strong> ${pkg.fieldName || `Sân #${pkg.fieldId}`}</p>
+                <p><strong>Từ ngày:</strong> ${formatDate(pkg.startDate)}</p>
+                <p><strong>Đến ngày:</strong> ${formatDate(pkg.endDate)}</p>
+                <p><strong>Số tiền:</strong> <span class="font-bold text-green-600">${(pkg.totalPrice || 0).toLocaleString("vi-VN")}₫</span></p>
+                <p><strong>Trạng thái:</strong> ${getBookingStatusText((pkg.bookingStatus || "").toLowerCase())}</p>
+                <p><strong>Thanh toán:</strong> ${getPaymentStatusTextVi((pkg.paymentStatus || "").toLowerCase())}</p>
+              </div>
+            </div>
+            <div class="bg-green-50 border border-green-200 rounded-lg p-2">
+              <p class="text-xs text-green-800">
+                Sau khi xác nhận, gói sân cố định sẽ được kích hoạt và khách hàng có thể sử dụng các buổi đặt sân.
+              </p>
+            </div>
+          ` : ''}
+        </div>
+      `,
       showCancelButton: true,
       confirmButtonText: "Xác nhận",
       cancelButtonText: "Hủy",
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#6b7280',
+      width: '550px'
     });
     if (!result.isConfirmed) return;
     const resp = await confirmBookingPackage(pkgId);
     if (!resp.success) {
       await Swal.fire("Lỗi", resp.error || "Không thể xác nhận gói.", "error");
     } else {
-      await Swal.fire("Thành công", "Đã xác nhận gói sân cố định.", "success");
+      // Cập nhật FieldSchedule status thành "Booked" cho tất cả sessions trong package
+      try {
+        // Sử dụng packageSessions đã có sẵn hoặc fetch lại nếu chưa có
+        let sessionsToUpdate = packageSessions[pkgId] || [];
+        
+        // Nếu chưa có sessions trong state, fetch lại
+        if (!sessionsToUpdate || sessionsToUpdate.length === 0) {
+          const sessionsResult = await fetchBookingPackageSessionsByOwnerToken();
+          if (sessionsResult.success && sessionsResult.data) {
+            sessionsToUpdate = sessionsResult.data.filter(session => 
+              (session.bookingPackageId || session.bookingPackageID) === pkgId
+            );
+          }
+        }
+        
+        console.log(`📝 [UPDATE SCHEDULE] Found ${sessionsToUpdate.length} sessions for package ${pkgId}`);
+        console.log(`📝 [UPDATE SCHEDULE] Sample session data:`, sessionsToUpdate[0]);
+        
+        if (sessionsToUpdate.length === 0) {
+          console.log(`📝 [UPDATE SCHEDULE] No sessions found for package ${pkgId}`);
+        } else {
+          // Helper function để normalize date
+          const normalizeDate = (dateValue) => {
+            if (!dateValue) return null;
+            if (typeof dateValue === 'string') {
+              // Lấy phần YYYY-MM-DD nếu có time
+              const dateMatch = dateValue.match(/^\d{4}-\d{2}-\d{2}/);
+              return dateMatch ? dateMatch[0] : dateValue.split('T')[0];
+            }
+            if (dateValue instanceof Date) {
+              return dateValue.toISOString().split('T')[0];
+            }
+            if (dateValue.year && dateValue.month && dateValue.day) {
+              return `${dateValue.year}-${String(dateValue.month).padStart(2, '0')}-${String(dateValue.day).padStart(2, '0')}`;
+            }
+            return null;
+          };
+          
+          // Lấy fieldId từ package (vì sessions có thể không có fieldId)
+          const fieldId = pkg?.fieldId || pkg?.fieldID || pkg?.FieldID;
+          
+          if (!fieldId) {
+            console.error(`❌ [UPDATE SCHEDULE] No fieldId found in package ${pkgId}`);
+            console.error(`❌ [UPDATE SCHEDULE] Package data:`, pkg);
+          } else {
+            console.log(`📝 [UPDATE SCHEDULE] Using fieldId ${fieldId} from package`);
+            
+            // Chuẩn bị thông tin sessions với fieldId, slotId, và date
+            const sessionsInfo = sessionsToUpdate.map((session, index) => {
+              // Lấy slotId từ session hoặc từ scheduleId (cần fetch schedule để lấy slotId)
+              const slotId = session.slotId || session.slotID || session.SlotID;
+              const sessionDate = normalizeDate(session.sessionDate || session.date);
+              const scheduleId = session.scheduleId || session.scheduleID || session.ScheduleID;
+              
+              return {
+                sessionIndex: index,
+                scheduleId: scheduleId ? Number(scheduleId) : null,
+                slotId: slotId ? Number(slotId) : null,
+                date: sessionDate,
+                session: session
+              };
+            });
+            
+            console.log(`📝 [UPDATE SCHEDULE] Prepared ${sessionsInfo.length} sessions info:`, sessionsInfo.map(s => ({
+              scheduleId: s.scheduleId,
+              slotId: s.slotId,
+              date: s.date
+            })));
+            
+            // Fetch tất cả schedules của field này
+            const schedulesResult = await fetchFieldSchedulesByField(Number(fieldId));
+            
+            if (!schedulesResult.success || !schedulesResult.data) {
+              console.error(`❌ [UPDATE SCHEDULE] Failed to fetch schedules for field ${fieldId}`);
+            } else {
+              const allSchedules = schedulesResult.data;
+              console.log(`📝 [UPDATE SCHEDULE] Found ${allSchedules.length} schedules for field ${fieldId}`);
+              
+              // Tìm schedule cho từng session dựa trên scheduleId hoặc (slotId + date)
+              const sessionsToUpdateList = sessionsInfo.map(sessionInfo => {
+                let targetSchedule = null;
+                let slotIdToUse = sessionInfo.slotId;
+                
+                // Bước 1: Tìm schedule bằng scheduleId để lấy slotId (dù date không khớp)
+                if (sessionInfo.scheduleId) {
+                  const scheduleByScheduleId = allSchedules.find(s => {
+                    const sId = s.scheduleId || s.ScheduleId || s.scheduleID || s.ScheduleID;
+                    return sId && Number(sId) === Number(sessionInfo.scheduleId);
+                  });
+                  
+                  if (scheduleByScheduleId) {
+                    // Lấy slotId từ schedule này
+                    slotIdToUse = scheduleByScheduleId.slotId || scheduleByScheduleId.SlotId || scheduleByScheduleId.slotID || scheduleByScheduleId.SlotID;
+                    const scheduleDate = normalizeDate(scheduleByScheduleId.date || scheduleByScheduleId.Date);
+                    
+                    // Kiểm tra xem date có khớp không
+                    if (scheduleDate === sessionInfo.date) {
+                      // Date khớp, dùng schedule này
+                      targetSchedule = scheduleByScheduleId;
+                      console.log(`✅ [UPDATE SCHEDULE] Session ${sessionInfo.sessionIndex}: Found schedule ${sessionInfo.scheduleId} with matching date ${sessionInfo.date}`);
+                    } else {
+                      // Date không khớp, sẽ tìm lại bằng slotId + date
+                      console.log(`📝 [UPDATE SCHEDULE] Session ${sessionInfo.sessionIndex}: ScheduleId ${sessionInfo.scheduleId} date mismatch (schedule: ${scheduleDate}, session: ${sessionInfo.date}). Will find by slotId ${slotIdToUse} + date ${sessionInfo.date}`);
+                    }
+                  }
+                }
+                
+                // Bước 2: Tìm bằng slotId + date (nếu chưa tìm thấy hoặc date không khớp)
+                if (!targetSchedule && slotIdToUse && sessionInfo.date) {
+                  targetSchedule = allSchedules.find(s => {
+                    const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
+                    const scheduleDate = normalizeDate(s.date || s.Date);
+                    return Number(scheduleSlotId) === Number(slotIdToUse) && 
+                           scheduleDate === sessionInfo.date;
+                  });
+                  
+                  if (targetSchedule) {
+                    console.log(`✅ [UPDATE SCHEDULE] Session ${sessionInfo.sessionIndex}: Found schedule by slotId ${slotIdToUse} + date ${sessionInfo.date}`);
+                  }
+                }
+                
+                if (targetSchedule) {
+                  const scheduleId = targetSchedule.scheduleId || targetSchedule.ScheduleId || targetSchedule.scheduleID || targetSchedule.ScheduleID;
+                  const finalSlotId = targetSchedule.slotId || targetSchedule.SlotId || targetSchedule.slotID || targetSchedule.SlotID;
+                  return {
+                    scheduleId: Number(scheduleId),
+                    date: sessionInfo.date,
+                    slotId: Number(finalSlotId),
+                    sessionIndex: sessionInfo.sessionIndex
+                  };
+                }
+                
+                console.warn(`⚠️ [UPDATE SCHEDULE] No matching schedule found for session ${sessionInfo.sessionIndex}:`, {
+                  scheduleId: sessionInfo.scheduleId,
+                  slotId: sessionInfo.slotId,
+                  slotIdFromSchedule: slotIdToUse,
+                  date: sessionInfo.date
+                });
+                
+                return null;
+              }).filter(item => item !== null);
+              
+              console.log(`📝 [UPDATE SCHEDULE] Found ${sessionsToUpdateList.length} matching schedules to update`);
+              
+              if (sessionsToUpdateList.length > 0) {
+                console.log(`📝 [UPDATE SCHEDULE] Owner confirmed package ${pkgId}, updating ${sessionsToUpdateList.length} FieldSchedules to Booked`);
+                
+                // Cập nhật từng schedule với delay nhỏ để tránh rate limiting
+                const updatePromises = sessionsToUpdateList.map(async (item, index) => {
+                  const { scheduleId, date, slotId } = item;
+                  
+                  // Thêm delay nhỏ giữa các requests (100ms mỗi request)
+                  if (index > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 100 * index));
+                  }
+                  
+                  try {
+                    console.log(`📝 [UPDATE SCHEDULE] [${index + 1}/${sessionsToUpdateList.length}] Updating schedule ${scheduleId} (slot: ${slotId}, date: ${date}) to Booked`);
+                    const updateResult = await updateFieldScheduleStatus(Number(scheduleId), "Booked");
+                    if (updateResult.success) {
+                      console.log(`✅ [UPDATE SCHEDULE] [${index + 1}/${sessionsToUpdateList.length}] Successfully updated schedule ${scheduleId} to Booked`);
+                      return { success: true, scheduleId, date, slotId };
+                    } else {
+                      console.error(`❌ [UPDATE SCHEDULE] [${index + 1}/${sessionsToUpdateList.length}] Failed to update schedule ${scheduleId}:`, updateResult.error);
+                      return { success: false, scheduleId, date, slotId, error: updateResult.error };
+                    }
+                  } catch (error) {
+                    console.error(`❌ [UPDATE SCHEDULE] [${index + 1}/${sessionsToUpdateList.length}] Exception updating schedule ${scheduleId}:`, error);
+                    console.error(`❌ [UPDATE SCHEDULE] Error details:`, {
+                      message: error.message,
+                      response: error.response?.data,
+                      status: error.response?.status
+                    });
+                    return { success: false, scheduleId, date, slotId, error: error.message };
+                  }
+                });
+                
+                // Chờ tất cả updates hoàn thành
+                const results = await Promise.allSettled(updatePromises);
+                
+                const successResults = results
+                  .filter(r => r.status === 'fulfilled' && r.value?.success)
+                  .map(r => r.value);
+                const failedResults = results
+                  .filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value?.success))
+                  .map(r => r.status === 'rejected' ? r.reason : r.value);
+                
+                console.log(`✅ [UPDATE SCHEDULE] ========================================`);
+                console.log(`✅ [UPDATE SCHEDULE] Update Summary for package ${pkgId}:`);
+                console.log(`✅ [UPDATE SCHEDULE] Total: ${sessionsToUpdateList.length} schedules`);
+                console.log(`✅ [UPDATE SCHEDULE] Success: ${successResults.length}`);
+                console.log(`✅ [UPDATE SCHEDULE] Failed: ${failedResults.length}`);
+                
+                if (successResults.length > 0) {
+                  console.log(`✅ [UPDATE SCHEDULE] Successfully updated schedules:`, successResults.map(r => ({
+                    scheduleId: r.scheduleId,
+                    slotId: r.slotId,
+                    date: r.date
+                  })));
+                }
+                
+                if (failedResults.length > 0) {
+                  console.error(`❌ [UPDATE SCHEDULE] Failed schedules:`, failedResults.map(r => ({
+                    scheduleId: r?.scheduleId,
+                    slotId: r?.slotId,
+                    date: r?.date,
+                    error: r?.error || r?.message
+                  })));
+                }
+                console.log(`✅ [UPDATE SCHEDULE] ========================================`);
+              } else {
+                console.warn(`⚠️ [UPDATE SCHEDULE] No matching schedules found for any sessions`);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`❌ [UPDATE SCHEDULE] Error updating FieldSchedules for package:`, error);
+        // Không block success message nếu update schedule thất bại
+      }
+      
+      const amountText = pkg ? `<br/><br/><p class="text-sm"><strong>Số tiền:</strong> <span class="font-bold text-green-600">${(pkg.totalPrice || 0).toLocaleString("vi-VN")}₫</span></p>` : '';
+      await Swal.fire({
+        icon: "success",
+        title: "Đã xác nhận thanh toán!",
+        html: `Đã xác nhận gói sân cố định thành công. Trạng thái đã chuyển sang "Đã xác nhận" và thanh toán "Đã thanh toán".${amountText}`,
+        confirmButtonColor: '#10b981'
+      });
       loadBookingPackages();
     }
   };
@@ -406,10 +700,25 @@ export default function OwnerPackagesTable({
 
     try {
       const sessionId = session.packageSessionId || session.id || session.sessionId;
+      const scheduleId = session.scheduleId || session.scheduleID || session.ScheduleID;
+      
       const resp = await cancelBookingPackageSession(sessionId);
       if (!resp.success) {
         await Swal.fire("Lỗi", resp.error || "Không thể hủy buổi đặt.", "error");
       } else {
+        // Cập nhật FieldSchedule status về "Available" khi hủy package session
+        if (scheduleId && Number(scheduleId) > 0) {
+          try {
+            const updateResult = await updateFieldScheduleStatus(Number(scheduleId), "Available");
+            if (updateResult.success) {
+              console.log(`✅ [UPDATE SCHEDULE] Updated schedule ${scheduleId} to Available after canceling session`);
+            } else {
+              console.warn(`⚠️ [UPDATE SCHEDULE] Failed to update schedule ${scheduleId}:`, updateResult.error);
+            }
+          } catch (error) {
+            console.error(`❌ [UPDATE SCHEDULE] Error updating schedule ${scheduleId}:`, error);
+          }
+        }
         // Lấy refundQr từ response - có thể ở nhiều vị trí
         const responseData = resp.data?.data || resp.data || {};
         const refundQr = responseData.refundQr || resp.data?.refundQr;
@@ -644,17 +953,17 @@ export default function OwnerPackagesTable({
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium text-teal-700">{pkg.packageName}</div>
+                        <div className="font-medium truncate text-teal-700">{pkg.packageName}</div>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm font-medium text-teal-700">{pkg.fieldName || `Sân #${pkg.fieldId}`}</div>
+                        <div className="text-sm font-medium truncate text-teal-700">{pkg.fieldName || `Sân #${pkg.fieldId}`}</div>
                       </TableCell>
                       <TableCell>
                         <div className="text-xs text-gray-700">
-                          <div>
+                          <div className="truncate">
                             Từ: <span className="font-medium text-teal-700">{formatDate(pkg.startDate)}</span>
                           </div>
-                          <div>
+                          <div className="truncate">
                             Đến: <span className="font-medium text-teal-700">{formatDate(pkg.endDate)}</span>
                           </div>
                         </div>
@@ -662,31 +971,34 @@ export default function OwnerPackagesTable({
                       <TableCell>
                         <span className="font-bold text-orange-500">{pkg.totalPrice?.toLocaleString("vi-VN")}₫</span>
                       </TableCell>
+
                       <TableCell>
                         {(() => {
-                          const StatusIcon = getStatusIcon(status);
+                          const bookingStatus = (pkg.bookingStatus || "").toLowerCase();
+                          const StatusIcon = getStatusIcon(bookingStatus);
                           return (
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(status)}`}>
+                            <span className={`inline-flex items-center truncate gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${getBookingStatusColor(bookingStatus)}`}>
                               {StatusIcon}
-                              {getStatusText(status)}
+                              {getBookingStatusText(bookingStatus)}
                             </span>
                           );
                         })()}
                       </TableCell>
+
                       <TableCell>
                         {(() => {
                           const payStatus = (pkg.paymentStatus || "").toLowerCase();
                           const PayIcon = getPaymentIcon(payStatus);
                           return (
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(payStatus)}`}>
+                            <span className={`inline-flex items-center truncate gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${getPaymentStatusColorVi(payStatus)}`}>
                               {PayIcon}
-                              {getPaymentStatusText(payStatus)}
+                              {getPaymentStatusTextVi(payStatus)}
                             </span>
                           );
                         })()}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -822,8 +1134,8 @@ export default function OwnerPackagesTable({
                     <CreditCard className="w-4 h-4 text-amber-600" />
                     Trạng thái thanh toán
                   </div>
-                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor((selectedPackage.paymentStatus || "").toLowerCase())}`}>
-                    {getPaymentStatusText((selectedPackage.paymentStatus || "").toLowerCase())}
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border ${getPaymentStatusColorVi((selectedPackage.paymentStatus || "").toLowerCase())}`}>
+                    {getPaymentStatusTextVi((selectedPackage.paymentStatus || "").toLowerCase())}
                   </span>
                 </div>
               </div>

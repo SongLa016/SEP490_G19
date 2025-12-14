@@ -37,8 +37,10 @@ export const QuickCategoriesSection = ({ featuredFields }) => {
                                              <Button
                                                   key={c.id}
                                                   onClick={() => {
-                                                       try { window.localStorage.setItem("searchPreset", JSON.stringify(c.preset || {})); } catch { }
-                                                       navigate("/search");
+                                                       // Navigate to /search with query param instead of using localStorage
+                                                       const params = new URLSearchParams();
+                                                       if (c.preset?.typeTab) params.set("typeTab", c.preset.typeTab);
+                                                       navigate(`/search?${params.toString()}`);
                                                   }}
                                                   aria-label={c.label}
                                                   className="group text-left flex flex-col items-center justify-center w-full hover:scale-105 transition-all duration-300 hover:cursor-pointer m-1 p-0 h-auto bg-transparent border-0 hover:bg-transparent"

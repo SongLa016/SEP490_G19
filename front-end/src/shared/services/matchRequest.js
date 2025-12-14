@@ -57,9 +57,23 @@ const handleApiError = (error) => {
 };
 
 const extractDataList = (responseData) => {
+  // Handle common shapes:
+  // - [ ... ]
+  // - { data: [ ... ] }
+  // - { items: [ ... ] }
+  // - { data: { items: [ ... ] } }
+  // - { data: { data: [ ... ] } }
+  // - { data: { results: [ ... ] } }
+  // - { results: [ ... ] }
+  // - { data: { list: [ ... ] } }
   if (Array.isArray(responseData)) return responseData;
   if (Array.isArray(responseData?.data)) return responseData.data;
   if (Array.isArray(responseData?.items)) return responseData.items;
+  if (Array.isArray(responseData?.data?.items)) return responseData.data.items;
+  if (Array.isArray(responseData?.data?.data)) return responseData.data.data;
+  if (Array.isArray(responseData?.data?.results)) return responseData.data.results;
+  if (Array.isArray(responseData?.results)) return responseData.results;
+  if (Array.isArray(responseData?.data?.list)) return responseData.data.list;
   return [];
 };
 

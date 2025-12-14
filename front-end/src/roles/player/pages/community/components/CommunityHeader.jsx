@@ -210,26 +210,39 @@ export default function CommunityHeader({ user, onLoggedOut }) {
                               </motion.div>
                          );
                     })}
+
+                    {/* Notification Bell */}
+                    {user && (
+                         <motion.div
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.3 + navigationItems.length * 0.1, duration: 0.3 }}
+                         >
+                              <motion.div
+                                   whileHover={{ scale: 1.1, y: -2 }}
+                                   whileTap={{ scale: 0.95 }}
+                              >
+                                   <div className="relative">
+                                        <NotificationBell
+                                             userId={user.id}
+                                             onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                                        />
+                                        <NotificationDropdown
+                                             userId={user.id}
+                                             isOpen={isNotificationOpen}
+                                             onClose={() => setIsNotificationOpen(false)}
+                                             className="left-16 right-auto -top-[430px]"
+                                        />
+                                   </div>
+                              </motion.div>
+                         </motion.div>
+                    )}
                </div>
 
                {/* User Profile Section */}
                <div className="mt-auto mb-4">
                     {user ? (
                          <>
-                              {/* Notification Bell */}
-                              <div className="relative mb-4 ml-3">
-                                   <NotificationBell
-                                        userId={user.id}
-                                        onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                                   />
-                                   <NotificationDropdown
-                                        userId={user.id}
-                                        isOpen={isNotificationOpen}
-                                        onClose={() => setIsNotificationOpen(false)}
-                                        className="left-16 right-auto -top-[400px]"
-                                   />
-                              </div>
-
                               {/* User Profile */}
                               <div className="relative">
                                    <Button

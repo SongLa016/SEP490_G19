@@ -129,7 +129,7 @@ export const HeroSection = ({
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: 0.3, duration: 0.6 }}
                          >
-                              Từ đặt sân, tìm đối thủ đến tạo đội – tất cả chỉ trong một nền tảng duy nhất.
+                              Từ đặt sân đến tìm đối thủ – tất cả chỉ trong một nền tảng duy nhất.
                          </motion.p>
 
                          <motion.div
@@ -187,7 +187,6 @@ export const HeroSection = ({
                                                             <SelectValue placeholder="Tất cả khu vực" />
                                                        </SelectTrigger>
                                                        <SelectContent>
-                                                            <SelectItem value="all">Tất cả khu vực</SelectItem>
                                                             {locationOptions.map((option) => (
                                                                  <SelectItem key={option.value} value={option.value}>
                                                                       {option.label}

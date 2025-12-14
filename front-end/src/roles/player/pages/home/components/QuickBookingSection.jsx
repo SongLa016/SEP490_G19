@@ -75,21 +75,29 @@ export const QuickBookingSection = ({ user }) => {
 
                     const ratingMap = new Map(ratingStats.map((stat) => [stat.complexId, stat]));
 
+                    const complexMap = new Map((complexes || []).map(c => [c.complexId, c]));
+
                     const fieldsWithMetadata = allFields
-                         .filter(f => f.address && f.mainImageUrl)
+                         .filter(f => f)
                          .map(field => {
                               const ratingInfo = ratingMap.get(field.complexId) || { averageRating: 0, reviewCount: 0 };
+                              const complex = complexMap.get(field.complexId);
+                              const primaryImage = field.mainImageUrl
+                                   || (Array.isArray(field.imageUrls) ? field.imageUrls.find((u) => u && u.trim() !== "") : null)
+                                   || null;
+
                               return {
                                    id: field.fieldId,
-                                   name: field.name,
-                                   location: field.address,
+                                   name: field.name || "Sân bóng",
+                                   location: field.address || complex?.address || "Đang cập nhật",
                                    distance: "Gần bạn",
                                    price: `${(field.pricePerHour || field.priceForSelectedSlot || 0).toLocaleString('vi-VN')} VNĐ`,
                                    rating: Number(ratingInfo.averageRating || 0),
                                    reviewCount: ratingInfo.reviewCount || 0,
-                                   mainImageUrl: field.mainImageUrl,
+                                   mainImageUrl: primaryImage,
                               };
-                         });
+                         })
+                         .filter(f => f.location); // bỏ các sân không có địa chỉ
 
                     setNearbyFields(fieldsWithMetadata.slice(0, 2));
 

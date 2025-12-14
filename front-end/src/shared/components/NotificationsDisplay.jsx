@@ -271,20 +271,50 @@ export default function NotificationsDisplay({ userId, className = "" }) {
 
      const handleDeleteNotification = async (notificationId, messagePreview = "") => {
           if (!notificationId) return;
-          if (!window.confirm(`Bạn có chắc muốn xóa thông báo "${messagePreview || notificationId}"?`)) {
+          
+          const result = await Swal.fire({
+               title: 'Xác nhận xóa?',
+               text: `Bạn có chắc muốn xóa thông báo "${messagePreview || notificationId}"?`,
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (!result.isConfirmed) {
                return;
           }
+
           try {
                setIsDeleting(true);
                const result = await deleteNotification(notificationId);
                if (result.ok) {
                     await Promise.all([loadNotifications(), fetchUnreadCount()]);
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đã xóa!',
+                         text: 'Thông báo đã được xóa thành công.',
+                         timer: 2000,
+                         showConfirmButton: false
+                    });
                } else {
-                    alert(result.reason || "Không thể xóa thông báo");
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: result.reason || "Không thể xóa thông báo",
+                         confirmButtonText: 'Đã hiểu'
+                    });
                }
           } catch (error) {
                console.error("Error deleting notification:", error);
-               alert("Có lỗi xảy ra khi xóa thông báo");
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: "Có lỗi xảy ra khi xóa thông báo",
+                    confirmButtonText: 'Đã hiểu'
+               });
           } finally {
                setIsDeleting(false);
           }
@@ -301,19 +331,41 @@ export default function NotificationsDisplay({ userId, className = "" }) {
           const isComment = message.toLowerCase().includes("bình luận");
 
           if (!targetId) {
-               alert('Không tìm thấy ID nội dung cần xóa.');
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Không tìm thấy ID nội dung cần xóa.',
+                    confirmButtonText: 'Đã hiểu'
+               });
                return;
           }
 
-          if (!window.confirm(
-               isPost
+          const confirmResult = await Swal.fire({
+               title: 'Xác nhận xóa?',
+               text: isPost
                     ? 'Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác.'
-                    : 'Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác.'
-          )) {
+                    : 'Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác.',
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (!confirmResult.isConfirmed) {
                return;
           }
 
           try {
+               Swal.fire({
+                    title: 'Đang xóa...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                         Swal.showLoading();
+                    }
+               });
+
                setIsDeleting(true);
                if (isPost) {
                     await deletePost(targetId);
@@ -333,11 +385,23 @@ export default function NotificationsDisplay({ userId, className = "" }) {
                     }
                }
 
-               alert(isPost ? 'Bài viết đã được xóa thành công.' : 'Bình luận đã được xóa thành công.');
+               Swal.fire({
+                    icon: 'success',
+                    title: 'Đã xóa!',
+                    text: isPost ? 'Bài viết đã được xóa thành công.' : 'Bình luận đã được xóa thành công.',
+                    timer: 2000,
+                    showConfirmButton: false
+               });
+
                await Promise.all([loadNotifications(), fetchUnreadCount()]);
           } catch (error) {
                console.error('Error deleting content:', error);
-               alert(error.message || 'Không thể xóa nội dung. Vui lòng thử lại.');
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: error.message || 'Không thể xóa nội dung. Vui lòng thử lại.',
+                    confirmButtonText: 'Đã hiểu'
+               });
           } finally {
                setIsDeleting(false);
           }
@@ -345,21 +409,50 @@ export default function NotificationsDisplay({ userId, className = "" }) {
 
      const handleDeleteAllNotifications = async () => {
           if (!notifications.length) return;
-          if (!window.confirm("Bạn có chắc muốn xóa toàn bộ thông báo?")) {
+          
+          const result = await Swal.fire({
+               title: 'Xác nhận xóa?',
+               text: "Bạn có chắc muốn xóa toàn bộ thông báo?",
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa tất cả',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (!result.isConfirmed) {
                return;
           }
+
           try {
                setIsDeleting(true);
                const result = await deleteAllNotifications();
                if (result.ok) {
                     await Promise.all([loadNotifications(), fetchUnreadCount()]);
-                    alert("Đã xóa toàn bộ thông báo");
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đã xóa!',
+                         text: "Đã xóa toàn bộ thông báo",
+                         timer: 2000,
+                         showConfirmButton: false
+                    });
                } else {
-                    alert(result.reason || "Không thể xóa toàn bộ thông báo");
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: result.reason || "Không thể xóa toàn bộ thông báo",
+                         confirmButtonText: 'Đã hiểu'
+                    });
                }
           } catch (error) {
                console.error("Error deleting all notifications:", error);
-               alert("Có lỗi xảy ra khi xóa toàn bộ thông báo");
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: "Có lỗi xảy ra khi xóa toàn bộ thông báo",
+                    confirmButtonText: 'Đã hiểu'
+               });
           } finally {
                setIsDeleting(false);
           }
@@ -748,20 +841,50 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
 
      const handleDeleteNotification = async (notificationId, messagePreview = "") => {
           if (!notificationId) return;
-          if (!window.confirm(`Bạn có chắc muốn xóa thông báo "${messagePreview || notificationId}"?`)) {
+          
+          const result = await Swal.fire({
+               title: 'Xác nhận xóa?',
+               text: `Bạn có chắc muốn xóa thông báo "${messagePreview || notificationId}"?`,
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (!result.isConfirmed) {
                return;
           }
+
           try {
                setIsDeleting(true);
                const result = await deleteNotification(notificationId);
                if (result.ok) {
                     await Promise.all([loadDropdownNotifications(), loadDropdownUnreadCount()]);
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đã xóa!',
+                         text: 'Thông báo đã được xóa thành công.',
+                         timer: 2000,
+                         showConfirmButton: false
+                    });
                } else {
-                    alert(result.reason || "Không thể xóa thông báo");
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: result.reason || "Không thể xóa thông báo",
+                         confirmButtonText: 'Đã hiểu'
+                    });
                }
           } catch (error) {
                console.error("Error deleting notification:", error);
-               alert("Có lỗi xảy ra khi xóa thông báo");
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: "Có lỗi xảy ra khi xóa thông báo",
+                    confirmButtonText: 'Đã hiểu'
+               });
           } finally {
                setIsDeleting(false);
           }
@@ -853,21 +976,50 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
 
      const handleDeleteAllNotifications = async () => {
           if (!notifications.length) return;
-          if (!window.confirm("Bạn có chắc muốn xóa toàn bộ thông báo?")) {
+          
+          const result = await Swal.fire({
+               title: 'Xác nhận xóa?',
+               text: "Bạn có chắc muốn xóa toàn bộ thông báo?",
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa tất cả',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (!result.isConfirmed) {
                return;
           }
+
           try {
                setIsDeleting(true);
                const result = await deleteAllNotifications();
                if (result.ok) {
                     await Promise.all([loadDropdownNotifications(), loadDropdownUnreadCount()]);
-                    alert("Đã xóa toàn bộ thông báo");
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đã xóa!',
+                         text: "Đã xóa toàn bộ thông báo",
+                         timer: 2000,
+                         showConfirmButton: false
+                    });
                } else {
-                    alert(result.reason || "Không thể xóa toàn bộ thông báo");
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: result.reason || "Không thể xóa toàn bộ thông báo",
+                         confirmButtonText: 'Đã hiểu'
+                    });
                }
           } catch (error) {
                console.error("Error deleting all notifications:", error);
-               alert("Có lỗi xảy ra khi xóa toàn bộ thông báo");
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: "Có lỗi xảy ra khi xóa toàn bộ thông báo",
+                    confirmButtonText: 'Đã hiểu'
+               });
           } finally {
                setIsDeleting(false);
           }
@@ -904,9 +1056,9 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
      if (!isOpen) return null;
 
      return (
-          <div className={`absolute right-0 top-full mt-2 w-96 bg-white border-2 border-teal-200 rounded-2xl shadow-2xl z-50 overflow-hidden ${className}`}>
+          <div className={`absolute right-0 top-full mt-2 w-96 bg-white border border-teal-100 rounded-2xl shadow-2xl z-50 overflow-hidden ${className}`}>
                {/* Header */}
-               <div className="p-4 border-b-2 border-teal-100 bg-gradient-to-r from-teal-50 to-white">
+               <div className="p-4 border-b border-teal-50 bg-white">
                     <div className="flex items-center justify-between">
                          <h3 className="font-bold text-lg text-gray-900">Thông báo</h3>
                          <div className="flex items-center gap-2">
@@ -915,30 +1067,20 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                                         variant="outline"
                                         size="sm"
                                         onClick={handleDeleteAllNotifications}
-                                        className="text-xs border-red-200 rounded-2xl text-red-500 hover:bg-red-50 font-medium"
+                                        className="text-xs border border-red-200 bg-white rounded-lg text-red-600 hover:bg-red-50 font-medium px-3 py-1.5"
                                         disabled={isDeleting}
                                    >
-                                        <Trash2 className="w-3 h-3 mr-1" />
+                                        <Trash2 className="w-3.5 h-3.5 mr-1.5" />
                                         Xóa tất cả
-                                   </Button>
-                              )}
-                              {unreadCount > 0 && (
-                                   <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleMarkAllAsRead}
-                                        className="text-xs border-teal-500 rounded-2xl text-teal-600 hover:bg-teal-50 font-medium"
-                                   >
-                                        Đọc tất cả
                                    </Button>
                               )}
                               <Button
                                    variant="outline"
                                    size="sm"
                                    onClick={onClose}
-                                   className="text-xs border-teal-200 rounded-2xl hover:bg-teal-50 hover:text-teal-600 p-1.5 h-7 w-7"
+                                   className="text-xs border border-teal-100 bg-white rounded-full hover:bg-gray-50 text-gray-600 hover:text-gray-700 p-1.5 h-8 w-8 flex items-center justify-center"
                               >
-                                   <X className="w-3 h-3" />
+                                   <X className="w-4 h-4" />
                               </Button>
                          </div>
                     </div>
@@ -969,12 +1111,12 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                                    return (
                                         <div
                                              key={notificationId}
-                                             className={`p-3 transition-all duration-200 hover:bg-teal-50 ${isUnread ? "bg-blue-50/50" : "bg-white"
+                                             className={`p-3 transition-all duration-200 hover:bg-gray-50 ${isUnread ? "bg-blue-50/30" : "bg-white"
                                                   }`}
                                         >
                                              <div className="flex items-start gap-3">
                                                   {/* Icon */}
-                                                  <span className="text-2xl border-2 border-teal-200 rounded-full p-2 flex-shrink-0">
+                                                  <span className="text-xl flex-shrink-0">
                                                        {getNotificationIcon(notification.type || notification.notificationType)}
                                                   </span>
 
@@ -982,24 +1124,24 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                                                   <div className="flex-1 min-w-0">
                                                        <div className="flex items-start justify-between mb-1">
                                                             <div className="flex-1">
-                                                                 <h4 className={`font-bold text-sm ${isUnread ? "text-gray-900" : "text-gray-700"
+                                                                 <h4 className={`font-semibold text-sm ${isUnread ? "text-gray-900" : "text-gray-700"
                                                                       }`}>
-                                                                      {message.length > 50 ? message.substring(0, 50) + "..." : message}
+                                                                      {message.length > 60 ? message.substring(0, 60) + "..." : message}
                                                                  </h4>
-                                                                 {message.length > 50 && (
-                                                                      <p className={`text-xs ${isUnread ? "text-teal-600" : "text-gray-500"
+                                                                 {message.length > 60 && (
+                                                                      <p className={`text-xs mt-1 ${isUnread ? "text-gray-600" : "text-gray-500"
                                                                            }`}>
                                                                            {message}
                                                                       </p>
                                                                  )}
                                                             </div>
                                                             {isUnread && (
-                                                                 <div className="w-2.5 h-2.5 bg-teal-600 rounded-full ml-2 flex-shrink-0 mt-1"></div>
+                                                                 <div className="w-2 h-2 bg-teal-600 rounded-full ml-2 flex-shrink-0 mt-1.5"></div>
                                                             )}
                                                        </div>
 
                                                        {/* Timestamp and Action */}
-                                                       <div className="flex items-center justify-between">
+                                                       <div className="flex items-center justify-between mt-2">
                                                             <span className="text-xs text-gray-500 flex items-center gap-1">
                                                                  <Clock className="w-3 h-3" />
                                                                  {formatDate(receivedAt)}
@@ -1010,7 +1152,7 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                                                                            variant="outline"
                                                                            size="sm"
                                                                            onClick={() => handleMarkAsRead(notificationId)}
-                                                                           className="text-xs border-teal-500 text-teal-600 hover:bg-teal-50 font-medium rounded-2xl"
+                                                                           className="text-xs border-teal-200 text-teal-600 hover:bg-teal-50 font-medium rounded-lg px-2 py-1"
                                                                       >
                                                                            Đọc
                                                                       </Button>
@@ -1023,7 +1165,7 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                                                                                 variant="outline"
                                                                                 size="sm"
                                                                                 onClick={() => handleDeleteReportedContent(notification)}
-                                                                                className="text-xs border-red-500 text-red-600 hover:bg-red-50 font-medium rounded-2xl"
+                                                                                className="text-xs border-red-200 text-red-600 hover:bg-red-50 font-medium rounded-lg px-2 py-1"
                                                                            >
                                                                                 <Trash2 className="w-3 h-3 mr-1" />
                                                                                 Xóa
@@ -1033,12 +1175,11 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                                                                  <Button
                                                                       variant="ghost"
                                                                       size="sm"
-                                                                      className="text-xs text-red-500 hover:text-red-600"
+                                                                      className="text-xs text-gray-400 hover:text-red-500"
                                                                       onClick={() => handleDeleteNotification(notificationId, notification.message)}
                                                                       disabled={isDeleting}
                                                                  >
-                                                                      <Trash2 className="w-3 h-3 mr-1" />
-                                                                      Xóa TB
+                                                                      <Trash2 className="w-3 h-3" />
                                                                  </Button>
                                                             </div>
                                                        </div>
@@ -1053,7 +1194,7 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
 
                {/* Footer */}
                {notifications.length > 0 && (
-                    <div className="p-2 border-t-2  border-teal-100 bg-gradient-to-r from-teal-50 to-white text-center">
+                    <div className="p-3 border-t border-teal-50 bg-white text-center">
                          <Button
                               variant="outline"
                               size="sm"
@@ -1061,7 +1202,7 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
                                    onClose && onClose();
                                    navigate("/notifications");
                               }}
-                              className="text-xs border-teal-500 rounded-2xl hover:text-teal-600 text-teal-600 hover:bg-teal-50 font-medium w-full"
+                              className="text-xs border-teal-200 rounded-xl hover:text-teal-600 text-teal-600 hover:bg-teal-50 font-medium w-full"
                          >
                               Xem tất cả thông báo
                          </Button>

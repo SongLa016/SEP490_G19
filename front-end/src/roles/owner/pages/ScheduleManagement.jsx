@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
-import {
-     Card,
-     Alert,
-     AlertDescription
-} from "../../../shared/components/ui";
+import { Card, Alert, AlertDescription } from "../../../shared/components/ui";
 import {
      Clock,
      Calendar,
@@ -15,44 +11,28 @@ import {
      Repeat
 } from "lucide-react";
 import { fetchAllComplexesWithFields } from "../../../shared/services/fields";
-import { fetchTimeSlots, fetchTimeSlotsByField, createTimeSlot, updateTimeSlot, deleteTimeSlot } from "../../../shared/services/timeSlots";
-import { createFieldSchedule, fetchFieldSchedulesByField, fetchFieldSchedules, updateFieldScheduleStatus, deleteFieldSchedule } from "../../../shared/services/fieldSchedules";
-import { fetchBookingsByOwner, fetchBookingPackageSessionsByOwnerToken, fetchBookingPackagesByOwnerToken } from "../../../shared/services/bookings";
+import {
+     fetchTimeSlots,
+     fetchTimeSlotsByField,
+     createTimeSlot,
+     updateTimeSlot,
+     deleteTimeSlot
+} from "../../../shared/services/timeSlots";
+import {
+     createFieldSchedule,
+     fetchFieldSchedulesByField,
+     fetchFieldSchedules,
+     updateFieldScheduleStatus,
+     deleteFieldSchedule
+} from "../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
-import axios from "axios";
 import { DateSelector, MonthlyCalendar, FieldList, ComplexAndFieldSelector, ScheduleGrid, ScheduleModal, TimeSlotModal, TimeSlotsTab, ManageSchedulesTab, StatisticsCards } from "./components/scheduleManagement";
-
-// Helper function to fetch player profile by ID using PlayerProfile API
-const fetchPlayerProfile = async (playerId) => {
-  try {
-    const token = localStorage.getItem("token");
-    const response = await axios.get(
-      `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${playerId}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-      }
-    );
-    // API returns: {fullName, phone, email, avatar, dateOfBirth, gender, address, preferredPositions, skillLevel}
-    const profileData = response.data || {};
-    return {
-      ok: true,
-      data: profileData,
-      profile: profileData,
-    };
-  } catch (error) {
-    console.error(`Failed to fetch player profile ${playerId}:`, error);
-    return {
-      ok: false,
-      reason: error.message || "Lấy thông tin khách hàng thất bại",
-    };
-  }
-};
+import { formatTime, formatDateToLocalString, normalizeDateString, getAllDatesForPeriod, getWeekDates, getFieldColor } from "./utils/scheduleUtils";
+import { useBookingData } from "./hooks/useBookingData";
 
 export default function ScheduleManagement({ isDemo = false }) {
-     const { user, logout } = useAuth();
+     const { user } = useAuth();
+     const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
      const [loading, setLoading] = useState(true);
      const [complexes, setComplexes] = useState([]);
      const [selectedComplex, setSelectedComplex] = useState(null);
@@ -131,16 +111,21 @@ export default function ScheduleManagement({ isDemo = false }) {
           if (names.length <= 3) {
                return names.join(', ');
           }
+
           return `${names.slice(0, 3).join(', ')} và ${names.length - 3} sân khác`;
      }, [maintenanceFields]);
      // Bookings state to track actual bookings
-     const [bookings, setBookings] = useState([]);
-     const [loadingBookings, setLoadingBookings] = useState(false);
-     // Package sessions state to track fixed booking sessions
-     const [packageSessions, setPackageSessions] = useState([]);
-     const [loadingPackageSessions, setLoadingPackageSessions] = useState(false);
-     // Booking packages state to get package names
-     const [bookingPackages, setBookingPackages] = useState([]);
+     const {
+          bookings,
+          packageSessions,
+          bookingPackages,
+          packageSessionsRef,
+          hydratePackageSessionsWithSchedules,
+          markSchedulesWithPackageSessions,
+          loadBookings,
+          loadPackageSessions,
+          loadBookingPackages
+     } = useBookingData(currentUserId);
 
      // Quick slot templates
      const quickSlotTemplates = [
@@ -157,9 +142,6 @@ export default function ScheduleManagement({ isDemo = false }) {
           { name: 'Slot 11', start: '21:00', end: '22:30' },
           { name: 'Slot 12', start: '22:30', end: '23:59' },
      ];
-
-     // Get current user ID
-     const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
 
      // Check if a time slot already exists for a field (using modal's separate state)
      const isSlotExistsForField = useCallback((fieldId, startTime, endTime) => {
@@ -201,7 +183,7 @@ export default function ScheduleManagement({ isDemo = false }) {
      }, []);
 
      // Handle Time Slot Modal
-     const handleOpenSlotModal = (slot = null) => {
+     const handleOpenSlotModal = (slot = null, fieldId = null) => {
           if (slot) {
                setEditingSlot(slot);
                const fieldIdValue = slot.fieldId || slot.FieldId || '';
@@ -218,12 +200,19 @@ export default function ScheduleManagement({ isDemo = false }) {
                }
           } else {
                setEditingSlot(null);
+               // Use provided fieldId if available, otherwise reset to empty
+               const fieldIdToUse = fieldId !== null && fieldId !== undefined ? fieldId.toString() : '';
                setSlotFormData({
-                    fieldId: '',
+                    fieldId: fieldIdToUse,
                     slotName: '',
                     startTime: '',
-                    endTime: ''
+                    endTime: '',
+                    price: ''
                });
+               // Load timeslots for the field if fieldId is set
+               if (fieldIdToUse) {
+                    loadTimeSlotsForField(fieldIdToUse);
+               }
           }
           setSlotFormErrors({});
           setSelectedQuickSlots([]);
@@ -361,13 +350,10 @@ export default function ScheduleManagement({ isDemo = false }) {
                                    continue;
                               }
 
-                              // Get field name to make slot name unique
-                              const field = fields.find(f => f.fieldId === fieldId);
-                              const fieldName = field?.name || `Field${fieldId}`;
-                              const uniqueSlotName = `${quickSlot.name} - ${fieldName}`;
+                              // Use the quick slot name as-is without adding field name
                               const result = await createTimeSlot({
                                    fieldId: fieldId,
-                                   slotName: uniqueSlotName,
+                                   slotName: quickSlot.name,
                                    startTime: quickSlot.start,
                                    endTime: quickSlot.end,
                                    price: Number(slotFormData.price)
@@ -401,6 +387,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                          });
                          handleCloseSlotModal();
                          await loadData();
+                         await loadTimeSlotsForTable();
                     } else {
                          const errorList = errors.slice(0, 5); // Chỉ hiển thị 5 lỗi đầu
                          const moreErrors = errors.length > 5 ? `<p class="text-xs text-gray-500 mt-2">...và ${errors.length - 5} lỗi khác</p>` : '';
@@ -432,6 +419,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                          if (successCount > 0) {
                               handleCloseSlotModal();
                               await loadData();
+                              await loadTimeSlotsForTable();
                          }
                     }
                     return;
@@ -466,6 +454,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                     });
                     handleCloseSlotModal();
                     await loadData();
+                    await loadTimeSlotsForTable();
                } else {
                     await Swal.fire({
                          icon: 'error',
@@ -503,6 +492,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                const result = await deleteTimeSlot(slotId);
                if (result.success) {
                     await loadData();
+                    await loadTimeSlotsForTable();
                     await Swal.fire({
                          title: 'Đã xóa',
                          text: 'Xóa slot thời gian thành công',
@@ -528,97 +518,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      };
 
-     const formatTime = (timeString) => {
-          if (!timeString) return '00:00';
-          const [hours, minutes] = timeString.split(':');
-          return `${hours || '00'}:${minutes || '00'}`;
-     };
-
-     // Helper function to format date to local date string (YYYY-MM-DD) without timezone issues
-     const formatDateToLocalString = (date) => {
-          if (!date) return '';
-          const d = new Date(date);
-          // Use local date components for Date objects (like selectedDate)
-          // This ensures the date displayed matches what the user selected
-          const year = d.getFullYear();
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const day = String(d.getDate()).padStart(2, '0');
-          return `${year}-${month}-${day}`;
-     };
-
-     // Helper function to normalize date string from API (handles both ISO strings and date objects)
-     const normalizeDateString = (dateValue) => {
-          if (!dateValue) return '';
-          
-          // Handle string dates
-          if (typeof dateValue === 'string') {
-               // If it's already a date string (YYYY-MM-DD), return as is
-               if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
-                    return dateValue;
-               }
-               // If it's an ISO string, extract date part (before T or space)
-               if (dateValue.includes('T')) {
-                    return dateValue.split('T')[0];
-               }
-               if (dateValue.includes(' ')) {
-                    return dateValue.split(' ')[0];
-               }
-               // Try to parse as date but use UTC to avoid timezone issues
-               try {
-                    const date = new Date(dateValue);
-                    if (!isNaN(date.getTime())) {
-                         // Use UTC to avoid timezone shift
-                         const year = date.getUTCFullYear();
-                         const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-                         const day = String(date.getUTCDate()).padStart(2, '0');
-                         return `${year}-${month}-${day}`;
-                    }
-               } catch (e) {
-                    // If parsing fails, try formatDateToLocalString
-                    return formatDateToLocalString(new Date(dateValue));
-               }
-          }
-          
-          // Handle date objects with year, month, day properties
-          if (dateValue && typeof dateValue === 'object' && dateValue.year && dateValue.month && dateValue.day) {
-               return `${dateValue.year}-${String(dateValue.month).padStart(2, '0')}-${String(dateValue.day).padStart(2, '0')}`;
-          }
-          
-          // Handle Date objects - use local date to match formatDateToLocalString
-          if (dateValue instanceof Date) {
-               const year = dateValue.getFullYear();
-               const month = String(dateValue.getMonth() + 1).padStart(2, '0');
-               const day = String(dateValue.getDate()).padStart(2, '0');
-               return `${year}-${month}-${day}`;
-          }
-          
-          // Fallback: try to parse as date
-          try {
-               const date = new Date(dateValue);
-               if (!isNaN(date.getTime())) {
-                    // For string dates that need parsing, use local date to match user's timezone
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}`;
-               }
-          } catch (e) {
-               // If all else fails, return empty string
-          }
-          
-          return '';
-     };
-
-     const isSchedulePast = (date, endTime) => {
-          const now = new Date();
-          const scheduleDate = new Date(date);
-
-          // Parse end time
-          const [hours, minutes] = (endTime || '00:00').split(':');
-          scheduleDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-          return scheduleDate < now;
-     };
+     // Using shared utils from scheduleUtils
 
      // Load data
      const loadData = useCallback(async () => {
@@ -655,6 +555,64 @@ export default function ScheduleManagement({ isDemo = false }) {
                setLoading(false);
           }
      }, [currentUserId, selectedComplex]);
+
+     // Process expired schedules: auto-update to Maintenance and auto-delete after 2 days
+     const processExpiredSchedules = useCallback(async (schedules) => {
+          if (!schedules || schedules.length === 0) return;
+
+          const now = new Date();
+          const twoDaysAgo = new Date(now);
+          twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+          for (const schedule of schedules) {
+               try {
+                    const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
+                    if (!scheduleId) continue;
+
+                    let scheduleDate = null;
+                    if (typeof schedule.date === 'string') {
+                         scheduleDate = new Date(schedule.date);
+                    } else if (schedule.date && schedule.date.year) {
+                         scheduleDate = new Date(schedule.date.year, schedule.date.month - 1, schedule.date.day);
+                    }
+
+                    if (!scheduleDate) continue;
+
+                    let endTime = schedule.endTime || schedule.EndTime || '23:59:59';
+                    if (typeof endTime === 'object' && endTime.hour !== undefined) {
+                         endTime = `${String(endTime.hour).padStart(2, '0')}:${String(endTime.minute).padStart(2, '0')}:00`;
+                    }
+
+                    const [hours, minutes] = endTime.split(':').map(Number);
+                    const scheduleEndDateTime = new Date(scheduleDate);
+                    scheduleEndDateTime.setHours(hours || 23, minutes || 59, 0, 0);
+
+                    if (scheduleEndDateTime < now) {
+                         const status = (schedule.status || schedule.Status || '').toLowerCase();
+
+                         if (scheduleEndDateTime < twoDaysAgo) {
+                              try {
+                                   await deleteFieldSchedule(scheduleId);
+                              } catch (error) {
+                                   // ignore best-effort delete
+                              }
+                         } else if (status !== 'maintenance') {
+                              try {
+                                   const updateResult = await updateFieldScheduleStatus(scheduleId, 'Maintenance');
+                                   if (updateResult.success) {
+                                        schedule.status = 'Maintenance';
+                                        schedule.Status = 'Maintenance';
+                                   }
+                              } catch (error) {
+                                   // ignore best-effort update
+                              }
+                         }
+                    }
+               } catch (error) {
+                    // continue loop on error
+               }
+          }
+     }, []);
 
      // Load time slots for table based on selected field
      const loadTimeSlotsForTable = useCallback(async () => {
@@ -746,137 +704,25 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      }, [selectedComplex, fields, selectedFieldForSchedule]);
 
-     // Load booking packages for owner
-     const loadBookingPackages = useCallback(async () => {
-          try {
-               const result = await fetchBookingPackagesByOwnerToken();
-               if (result.success && result.data) {
-                    setBookingPackages(result.data || []);
-               } else {
-                    console.warn('Failed to load booking packages:', result.error);
-                    setBookingPackages([]);
-               }
-          } catch (error) {
-               console.error('Error loading booking packages:', error);
-               setBookingPackages([]);
-          }
-     }, []);
+     // Keep ref in sync and re-apply package sessions to schedules when data changes (avoid loops)
+     useEffect(() => {
+          packageSessionsRef.current = packageSessions;
+          if (!packageSessions.length) return;
+          setFieldSchedules((prev) => markSchedulesWithPackageSessions(prev, packageSessions));
+     }, [packageSessions, markSchedulesWithPackageSessions, packageSessionsRef]);
 
-     // Load package sessions for owner
-     const loadPackageSessions = useCallback(async () => {
-          try {
-               setLoadingPackageSessions(true);
-               const result = await fetchBookingPackageSessionsByOwnerToken();
-               if (result.success && result.data) {
-                    // Normalize package sessions data
-                    const normalizedSessions = (result.data || []).map(session => ({
-                         ...session,
-                         // Map package session fields to match booking structure for easier processing
-                         scheduleId: session.scheduleId || session.scheduleID || session.ScheduleID,
-                         sessionId: session.packageSessionId || session.bookingPackageSessionId || session.id,
-                         bookingPackageId: session.bookingPackageId || session.bookingPackageID,
-                         date: session.sessionDate || session.date || session.Date,
-                         slotId: session.slotId || session.slotID || session.SlotID,
-                         fieldId: session.fieldId || session.fieldID || session.FieldID,
-                         userId: session.userId || session.userID,
-                         // Mark as package session for identification
-                         isPackageSession: true,
-                         bookingType: 'package'
-                    }));
+     // When schedules change after packages are loaded, re-apply marking once
+     useEffect(() => {
+          if (!packageSessionsRef.current.length || !fieldSchedules.length) return;
+          setFieldSchedules((prev) => {
+               const updated = markSchedulesWithPackageSessions(prev, packageSessionsRef.current);
+               const changed =
+                    updated.length !== prev.length ||
+                    updated.some((item, idx) => item?.status !== prev[idx]?.status);
+               return changed ? updated : prev;
+          });
+     }, [fieldSchedules, markSchedulesWithPackageSessions, packageSessionsRef]);
 
-                    // Fetch customer info for each package session using PlayerProfile API
-                    const sessionsWithUserInfo = await Promise.all(
-                         normalizedSessions.map(async (session) => {
-                              const userId = session.userId || session.userID;
-                              if (userId) {
-                                   try {
-                                        const userResult = await fetchPlayerProfile(userId);
-
-                                        if (userResult.ok && userResult.data) {
-                                             const userData = userResult.profile || userResult.data || userResult.data.profile || userResult.data.data;
-                                             // API returns: {fullName, phone, email, ...}
-                                             return {
-                                                  ...session,
-                                                  customerName: userData?.fullName || userData?.name || userData?.userName || userData?.FullName || userData?.Name || 'Khách hàng',
-                                                  customerPhone: userData?.phone || userData?.Phone || userData?.phoneNumber || userData?.PhoneNumber || '',
-                                                  customerEmail: userData?.email || userData?.Email || '',
-                                             };
-                                        } else {
-                                        }
-                                   } catch (error) {
-                                        console.error(`Failed to fetch customer profile ${userId} for package session:`, error);
-                                   }
-                              } else {
-                              }
-                              return session;
-                         })
-                    );
-
-                    setPackageSessions(sessionsWithUserInfo || []);
-               } else {
-                    console.warn('Failed to load package sessions:', result.error);
-                    setPackageSessions([]);
-               }
-          } catch (error) {
-               console.error('Error loading package sessions:', error);
-               setPackageSessions([]);
-          } finally {
-               setLoadingPackageSessions(false);
-          }
-     }, []);
-
-     // Load bookings for owner
-     const loadBookings = useCallback(async () => {
-          try {
-               setLoadingBookings(true);
-               if (!currentUserId) {
-                    setBookings([]);
-                    return;
-               }
-
-               const result = await fetchBookingsByOwner(currentUserId);
-               if (result.success && result.data) {
-
-                    // Fetch customer info for each booking using PlayerProfile API
-                    const bookingsWithUserInfo = await Promise.all(
-                         result.data.map(async (booking) => {
-                              const userId = booking.userId || booking.userID;
-                              if (userId) {
-                                   try {
-                                        const userResult = await fetchPlayerProfile(userId);
-
-                                        if (userResult.ok && userResult.data) {
-                                             const userData = userResult.profile || userResult.data || userResult.data.profile || userResult.data.data;
-                                             // API returns: {fullName, phone, email, ...}
-                                             return {
-                                                  ...booking,
-                                                  customerName: userData?.fullName || userData?.name || userData?.userName || userData?.FullName || userData?.Name || 'Khách hàng',
-                                                  customerPhone: userData?.phone || userData?.Phone || userData?.phoneNumber || userData?.PhoneNumber || '',
-                                                  customerEmail: userData?.email || userData?.Email || '',
-                                             };
-                                        } else {
-                                        }
-                                   } catch (error) {
-                                        console.error(`Failed to fetch customer profile ${userId}:`, error);
-                                   }
-                              } else {
-                              }
-                              return booking;
-                         })
-                    );
-
-                    setBookings(bookingsWithUserInfo || []);
-               } else {
-                    console.warn('Failed to load bookings:', result.error);
-                    setBookings([]);
-               }
-          } catch (error) {
-               console.error('Error loading bookings:', error);
-               setBookings([]);
-          } finally {
-               setLoadingBookings(false);
-          }
-     }, [currentUserId]);
 
      // Load schedules for table based on selected field
      const loadSchedulesForTable = useCallback(async () => {
@@ -907,8 +753,6 @@ export default function ScheduleManagement({ isDemo = false }) {
 
                     const results = await Promise.all(fetchPromises);
                     results.forEach((result, index) => {
-                         const fieldId = fieldIds[index];
-
                          if (result.success && result.data && Array.isArray(result.data)) {
                               allSchedules = [...allSchedules, ...result.data];
                          }
@@ -918,81 +762,14 @@ export default function ScheduleManagement({ isDemo = false }) {
                // Process expired schedules: auto-update to Maintenance and auto-delete after 2 days
                await processExpiredSchedules(allSchedules);
 
-               setFieldSchedules(allSchedules);
+               setFieldSchedules(markSchedulesWithPackageSessions(allSchedules, packageSessionsRef.current));
           } catch (error) {
 
                setFieldSchedules([]);
           } finally {
                setLoadingSchedules(false);
           }
-     }, [selectedComplex, fields, selectedFieldForSchedule]);
-
-     // Process expired schedules: auto-update to Maintenance and auto-delete after 2 days
-     const processExpiredSchedules = useCallback(async (schedules) => {
-          if (!schedules || schedules.length === 0) return;
-
-          const now = new Date();
-          const twoDaysAgo = new Date(now);
-          twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-
-          for (const schedule of schedules) {
-               try {
-                    const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
-                    if (!scheduleId) continue;
-
-                    // Get schedule date and end time
-                    let scheduleDate = null;
-                    if (typeof schedule.date === 'string') {
-                         scheduleDate = new Date(schedule.date);
-                    } else if (schedule.date && schedule.date.year) {
-                         scheduleDate = new Date(schedule.date.year, schedule.date.month - 1, schedule.date.day);
-                    }
-
-                    if (!scheduleDate) continue;
-
-                    // Get end time
-                    let endTime = schedule.endTime || schedule.EndTime || '23:59:59';
-                    if (typeof endTime === 'object' && endTime.hour !== undefined) {
-                         endTime = `${String(endTime.hour).padStart(2, '0')}:${String(endTime.minute).padStart(2, '0')}:00`;
-                    }
-
-                    // Parse end time
-                    const [hours, minutes] = endTime.split(':').map(Number);
-                    const scheduleEndDateTime = new Date(scheduleDate);
-                    scheduleEndDateTime.setHours(hours || 23, minutes || 59, 0, 0);
-
-                    // Check if schedule has expired
-                    if (scheduleEndDateTime < now) {
-                         const status = (schedule.status || schedule.Status || '').toLowerCase();
-
-                         // If expired more than 2 days, delete it
-                         if (scheduleEndDateTime < twoDaysAgo) {
-                              try {
-                                   const deleteResult = await deleteFieldSchedule(scheduleId);
-                                   if (deleteResult.success) {
-                                   } else {
-                                   }
-                              } catch (error) {
-                              }
-                         }
-                         // If expired but less than 2 days, update to Maintenance if not already
-                         else if (status !== 'maintenance') {
-                              try {
-                                   const updateResult = await updateFieldScheduleStatus(scheduleId, 'Maintenance');
-                                   if (updateResult.success) {
-                                        // Update the schedule in the array
-                                        schedule.status = 'Maintenance';
-                                        schedule.Status = 'Maintenance';
-                                   } else {
-                                   }
-                              } catch (error) {
-                              }
-                         }
-                    }
-               } catch (error) {
-               }
-          }
-     }, []);
+     }, [selectedComplex, fields, selectedFieldForSchedule, markSchedulesWithPackageSessions, processExpiredSchedules, packageSessionsRef]);
 
      useEffect(() => {
           loadData();
@@ -1007,19 +784,13 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      }, [currentUserId, loadBookings, loadPackageSessions, loadBookingPackages]);
 
-     // Load time slots and schedules when complex, fields, or selectedFieldForSchedule changes
+     // Load time slots và schedules khi thay đổi sân/khu hoặc filter
      useEffect(() => {
           if (selectedComplex && fields.length > 0) {
                loadTimeSlotsForTable();
                loadSchedulesForTable();
-               // Also reload bookings, package sessions, and booking packages to ensure we have the latest booking data
-               if (currentUserId) {
-                    loadBookings();
-                    loadPackageSessions();
-                    loadBookingPackages();
-               }
           }
-     }, [selectedComplex, fields, selectedFieldForSchedule, loadTimeSlotsForTable, loadSchedulesForTable, currentUserId, loadBookings, loadPackageSessions, loadBookingPackages]);
+     }, [selectedComplex, fields, selectedFieldForSchedule, loadTimeSlotsForTable, loadSchedulesForTable]);
 
      // Load FieldSchedules
      const loadFieldSchedules = useCallback(async () => {
@@ -1049,7 +820,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                     // Process expired schedules: auto-update to Maintenance and auto-delete after 2 days
                     await processExpiredSchedules(schedules);
 
-                    setFieldSchedules(schedules);
+                    setFieldSchedules(markSchedulesWithPackageSessions(schedules, packageSessionsRef.current));
                } else {
                     setFieldSchedules([]);
                }
@@ -1059,7 +830,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           } finally {
                setLoadingSchedules(false);
           }
-     }, [scheduleFilterField, selectedComplex, processExpiredSchedules]);
+     }, [scheduleFilterField, selectedComplex, processExpiredSchedules, markSchedulesWithPackageSessions, packageSessionsRef]);
 
      useEffect(() => {
           if (activeTab === 'manage-schedules') {
@@ -1080,7 +851,6 @@ export default function ScheduleManagement({ isDemo = false }) {
 
                          const results = await Promise.all(fetchPromises);
                          results.forEach((result, index) => {
-                              const fieldId = fields[index].fieldId;
                               if (result.success && result.data && Array.isArray(result.data)) {
                                    allSlots.push(...result.data);
                               }
@@ -1190,44 +960,6 @@ export default function ScheduleManagement({ isDemo = false }) {
                year: ''
           });
           setScheduleFormErrors({});
-     };
-
-     // Helper function to get all dates for month/quarter
-     const getAllDatesForPeriod = (scheduleType, month, quarter, year) => {
-          const dates = [];
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-
-          if (scheduleType === 'month' && month && year) {
-               const yearNum = Number(year);
-               const monthNum = Number(month);
-               const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
-
-               for (let day = 1; day <= daysInMonth; day++) {
-                    const date = new Date(yearNum, monthNum - 1, day);
-                    // Only include future dates
-                    if (date >= today) {
-                         dates.push(formatDateToLocalString(date));
-                    }
-               }
-          } else if (scheduleType === 'quarter' && quarter && year) {
-               const yearNum = Number(year);
-               const quarterNum = Number(quarter);
-               const startMonth = (quarterNum - 1) * 3 + 1;
-
-               for (let m = startMonth; m < startMonth + 3; m++) {
-                    const daysInMonth = new Date(yearNum, m, 0).getDate();
-                    for (let day = 1; day <= daysInMonth; day++) {
-                         const date = new Date(yearNum, m - 1, day);
-                         // Only include future dates
-                         if (date >= today) {
-                              dates.push(formatDateToLocalString(date));
-                         }
-                    }
-               }
-          }
-
-          return dates;
      };
 
      // Handle submit schedule
@@ -1428,12 +1160,12 @@ export default function ScheduleManagement({ isDemo = false }) {
                     } else {
                          // Check if error is related to booking
                          const errorMessage = deleteResult.error || '';
-                         const isBookingError = errorMessage.toLowerCase().includes('booking') || 
-                                               errorMessage.toLowerCase().includes('đặt sân') ||
-                                               errorMessage.toLowerCase().includes('entity changes') ||
-                                               errorMessage.toLowerCase().includes('foreign key') ||
-                                               errorMessage.toLowerCase().includes('constraint');
-                         
+                         const isBookingError = errorMessage.toLowerCase().includes('booking') ||
+                              errorMessage.toLowerCase().includes('đặt sân') ||
+                              errorMessage.toLowerCase().includes('entity changes') ||
+                              errorMessage.toLowerCase().includes('foreign key') ||
+                              errorMessage.toLowerCase().includes('constraint');
+
                          await Swal.fire({
                               icon: 'error',
                               title: 'Lỗi',
@@ -1445,12 +1177,12 @@ export default function ScheduleManagement({ isDemo = false }) {
                     console.error('Error deleting schedule:', error);
                     // Check if error is related to booking
                     const errorMessage = error.message || error.response?.data?.message || '';
-                    const isBookingError = errorMessage.toLowerCase().includes('booking') || 
-                                         errorMessage.toLowerCase().includes('đặt sân') ||
-                                         errorMessage.toLowerCase().includes('entity changes') ||
-                                         errorMessage.toLowerCase().includes('foreign key') ||
-                                         errorMessage.toLowerCase().includes('constraint');
-                    
+                    const isBookingError = errorMessage.toLowerCase().includes('booking') ||
+                         errorMessage.toLowerCase().includes('đặt sân') ||
+                         errorMessage.toLowerCase().includes('entity changes') ||
+                         errorMessage.toLowerCase().includes('foreign key') ||
+                         errorMessage.toLowerCase().includes('constraint');
+
                     await Swal.fire({
                          icon: 'error',
                          title: 'Lỗi',
@@ -1461,21 +1193,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      };
 
-     // Get week dates
-     const getWeekDates = () => {
-          const start = new Date(selectedDate);
-          start.setDate(start.getDate() - start.getDay() + 1); // Monday
-
-          const dates = [];
-          for (let i = 0; i < 7; i++) {
-               const date = new Date(start);
-               date.setDate(start.getDate() + i);
-               dates.push(date);
-          }
-          return dates;
-     };
-
-     const weekDates = getWeekDates();
+     const weekDates = getWeekDates(selectedDate);
 
      // Check if slot time has passed
      const isSlotTimePassed = (date, slot) => {
@@ -1490,16 +1208,6 @@ export default function ScheduleManagement({ isDemo = false }) {
      };
 
      // Get color for field
-     const getFieldColor = (fieldId) => {
-          const colors = [
-               'border-blue-500 border-l-4 text-blue-500', 'border-teal-500 border-l-4 text-teal-500', 'border-green-500 border-l-4 text-green-500', 'border-yellow-500 border-l-4 text-yellow-500',
-               'border-orange-500 border-l-4 text-orange-500', 'border-red-500 border-l-4 text-red-500', 'border-pink-500 border-l-4 text-pink-500', 'border-purple-500 border-l-4 text-purple-500',
-               'border-indigo-500 border-l-4 text-indigo-500', 'border-cyan-500 border-l-4 text-cyan-500', 'border-emerald-500 border-l-4 text-emerald-500', 'border-lime-500 border-l-4 text-lime-500 '
-          ];
-          const index = Number(fieldId) % colors.length;
-          return colors[index];
-     };
-
      // Get schedules for a specific time slot and date (all fields)
      const getSchedulesForTimeSlot = (slotId, date) => {
           const dateStr = formatDateToLocalString(date);
@@ -1512,21 +1220,27 @@ export default function ScheduleManagement({ isDemo = false }) {
                return matches;
           });
 
+          const matchingScheduleIds = matchingSchedules
+               .map(s => s.scheduleId ?? s.ScheduleID ?? s.id)
+               .filter(Boolean);
+
           // Update schedule status to "Booked" if there's a booking or package session for it
           const enrichedSchedules = matchingSchedules.map(schedule => {
                const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
                const scheduleFieldId = schedule.fieldId ?? schedule.FieldId;
                const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
                const scheduleDateStr = normalizeDateString(schedule.date);
-               
+
                // Check for regular booking
                const booking = bookings.find(b => {
                     const bookingScheduleId = b.scheduleId || b.scheduleID || b.ScheduleID;
                     return bookingScheduleId && Number(bookingScheduleId) === Number(scheduleId);
                });
 
+               const effectivePackageSessions = hydratePackageSessionsWithSchedules(packageSessionsRef.current || packageSessions, fieldSchedules);
+
                // Check for package session
-               const packageSession = packageSessions.find(ps => {
+               const packageSession = effectivePackageSessions.find(ps => {
                     const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
                     // Match by scheduleId if available
                     if (psScheduleId && Number(psScheduleId) === Number(scheduleId)) {
@@ -1551,6 +1265,65 @@ export default function ScheduleManagement({ isDemo = false }) {
                return schedule;
           });
 
+          const effectivePackageSessions = hydratePackageSessionsWithSchedules(packageSessionsRef.current || [], fieldSchedules);
+
+          // Ensure package sessions without schedules still appear as booked
+          const packageSessionsForSlot = effectivePackageSessions.filter(ps => {
+               const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
+               const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
+               const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
+               const slotMatch = Number(psSlotId) === Number(slotId);
+               const scheduleMatch = psScheduleId && matchingScheduleIds.some(id => Number(id) === Number(psScheduleId));
+               return (slotMatch || scheduleMatch) && psDateStr === dateStr;
+          });
+
+          packageSessionsForSlot.forEach(ps => {
+               const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
+               let derivedFieldId = psFieldId;
+               let derivedSlotId = ps.slotId || ps.slotID || ps.SlotID || slotId;
+
+               if (!derivedFieldId) {
+                    const matchedSchedule = matchingSchedules.find(ms => {
+                         const msId = ms.scheduleId ?? ms.ScheduleID ?? ms.id;
+                         const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
+                         return psScheduleId && msId && Number(msId) === Number(psScheduleId);
+                    });
+                    if (matchedSchedule) {
+                         derivedFieldId = matchedSchedule.fieldId ?? matchedSchedule.FieldId ?? matchedSchedule.fieldID ?? matchedSchedule.FieldID;
+                         derivedSlotId = matchedSchedule.slotId ?? matchedSchedule.SlotId ?? matchedSchedule.SlotID ?? derivedSlotId;
+                    }
+               }
+
+               if (!derivedFieldId) return;
+
+               const exists = enrichedSchedules.some(s => {
+                    const scheduleFieldId = s.fieldId ?? s.FieldId;
+                    const scheduleSlotId = s.slotId ?? s.SlotId ?? s.SlotID;
+                    const scheduleDateStr = normalizeDateString(s.date);
+                    return (
+                         Number(scheduleFieldId) === Number(derivedFieldId) &&
+                         Number(scheduleSlotId) === Number(derivedSlotId) &&
+                         scheduleDateStr === dateStr
+                    );
+               });
+
+               if (!exists) {
+                    enrichedSchedules.push({
+                         ...ps,
+                         scheduleId: ps.scheduleId || ps.sessionId || `pkg-${ps.bookingPackageId || 'session'}-${dateStr}-${slotId}`,
+                         slotId: derivedSlotId,
+                         fieldId: derivedFieldId,
+                         date: dateStr,
+                         status: 'Booked',
+                         isPackageSession: true,
+                         bookingType: 'package',
+                         packageName: ps.packageName || 'Gói đặt cố định',
+                         customerName: ps.customerName,
+                         paymentStatus: ps.paymentStatus || 'Paid'
+                    });
+               }
+          });
+
           return enrichedSchedules;
      };
 
@@ -1572,23 +1345,10 @@ export default function ScheduleManagement({ isDemo = false }) {
           setFields(complex.fields || []);
      };
 
-     // Check if schedule exists for field/date/slot
-     const getScheduleForSlot = (fieldId, date, slotId) => {
-          const dateStr = formatDateToLocalString(date);
-          return fieldSchedules.find(schedule => {
-               const scheduleFieldId = schedule.fieldId ?? schedule.FieldId;
-               const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
-               const scheduleDateStr = normalizeDateString(schedule.date);
-
-               return Number(scheduleFieldId) === Number(fieldId) &&
-                    Number(scheduleSlotId) === Number(slotId) &&
-                    scheduleDateStr === dateStr;
-          });
-     };
-
      // Check if slot is booked - wrapped in useCallback for useMemo dependency
      const isSlotBooked = useCallback((fieldId, date, slotId) => {
           const dateStr = formatDateToLocalString(date);
+          const effectivePackageSessions = hydratePackageSessionsWithSchedules(packageSessionsRef.current || packageSessions, fieldSchedules);
 
           // First check if there's a booking for this schedule
           const booking = bookings.find(b => {
@@ -1618,7 +1378,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
 
           // Check for package session
-          const packageSession = packageSessions.find(ps => {
+          const packageSession = effectivePackageSessions.find(ps => {
                const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
                const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
                const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
@@ -1642,8 +1402,8 @@ export default function ScheduleManagement({ isDemo = false }) {
                     scheduleDateStr === dateStr;
           });
           // Nếu có schedule và status là "Booked" thì coi như đã đặt
-          return schedule && (schedule.status === 'Booked' || schedule.status === 'booked');
-     }, [fieldSchedules, bookings, packageSessions]);
+          return schedule && (schedule.status === 'Booked' || schedule.status === 'booked' || schedule.status === 'Booking');
+     }, [fieldSchedules, bookings, packageSessions, hydratePackageSessionsWithSchedules, packageSessionsRef]);
 
      // Get booking info
      const getBookingInfo = useCallback((fieldId, date, slotId) => {
@@ -1652,44 +1412,27 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
 
           const dateStr = formatDateToLocalString(date);
-          // Debug: Show sample schedules and bookings
-          if (fieldSchedules.length > 0) {
-               const sampleSchedule = fieldSchedules[0];
-          }
-          if (bookings.length > 0) {
-               const sampleBooking = bookings[0];
-          }
 
           // First, try to find booking directly by scheduleId
-          // Find the schedule first
           const schedule = fieldSchedules.find(s => {
                const scheduleFieldId = s.fieldId ?? s.FieldId ?? s.fieldID;
                const scheduleSlotId = s.slotId ?? s.SlotId ?? s.SlotID ?? s.slotID;
                const scheduleDateStr = normalizeDateString(s.date);
-               const fieldMatch = Number(scheduleFieldId) === Number(fieldId);
-               const slotMatch = Number(scheduleSlotId) === Number(slotId);
-               const dateMatch = scheduleDateStr === dateStr;
-
-               if (fieldMatch && slotMatch && !dateMatch) {
-               }
-
-               return fieldMatch && slotMatch && dateMatch;
+               return Number(scheduleFieldId) === Number(fieldId) &&
+                    Number(scheduleSlotId) === Number(slotId) &&
+                    scheduleDateStr === dateStr;
           });
 
           if (schedule) {
                const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
                const booking = bookings.find(b => {
                     const bookingScheduleId = b.scheduleId || b.scheduleID || b.ScheduleID;
-                    const match = bookingScheduleId && Number(bookingScheduleId) === Number(scheduleId);
-                    if (match) {
-                    }
-                    return match;
+                    return bookingScheduleId && Number(bookingScheduleId) === Number(scheduleId);
                });
 
                if (booking) {
                     return {
                          bookingId: booking.bookingId || booking.BookingID || booking.id,
-                         // Prioritize customerName, customerPhone, customerEmail from API response
                          customerName: booking.customerName || booking.CustomerName || booking.playerName || booking.PlayerName || booking.fullName || booking.name || 'Khách hàng',
                          customerPhone: booking.customerPhone || booking.CustomerPhone || booking.playerPhone || booking.PlayerPhone || booking.phone || booking.Phone || booking.phoneNumber || 'N/A',
                          customerEmail: booking.customerEmail || booking.CustomerEmail || booking.email || booking.Email || 'N/A',
@@ -1704,13 +1447,12 @@ export default function ScheduleManagement({ isDemo = false }) {
                }
 
                // Check for package session
-               const packageSession = packageSessions.find(ps => {
+               const effectivePackageSessions = hydratePackageSessionsWithSchedules(packageSessionsRef.current || packageSessions, fieldSchedules);
+               const packageSession = effectivePackageSessions.find(ps => {
                     const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
-                    // Match by scheduleId if available
                     if (psScheduleId && Number(psScheduleId) === Number(scheduleId)) {
                          return true;
                     }
-                    // Fallback: match by fieldId, slotId, and date
                     const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
                     const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
                     const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
@@ -1723,7 +1465,6 @@ export default function ScheduleManagement({ isDemo = false }) {
                });
 
                if (packageSession) {
-                    // Package session already has customer info from loadPackageSessions
                     return {
                          bookingId: packageSession.sessionId || packageSession.packageSessionId || packageSession.id,
                          bookingPackageId: packageSession.bookingPackageId || packageSession.bookingPackageID,
@@ -1744,30 +1485,18 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
 
           // Fallback: try to find booking by fieldId, slotId, and date directly
-          // Some bookings might have these fields directly
           const directBooking = bookings.find(b => {
                const bookingFieldId = b.fieldId || b.fieldID || b.FieldID;
                const bookingSlotId = b.slotId || b.slotID || b.SlotID;
                const bookingDateStr = normalizeDateString(b.date || b.bookingDate || b.Date || b.BookingDate);
-
-               const fieldMatch = Number(bookingFieldId) === Number(fieldId);
-               const slotMatch = Number(bookingSlotId) === Number(slotId);
-               const dateMatch = bookingDateStr === dateStr;
-
-               if (fieldMatch && slotMatch && !dateMatch) {
-               }
-
-               const match = fieldMatch && slotMatch && dateMatch;
-
-               if (match) {
-               }
-               return match;
+               return Number(bookingFieldId) === Number(fieldId) &&
+                    Number(bookingSlotId) === Number(slotId) &&
+                    bookingDateStr === dateStr;
           });
 
           if (directBooking) {
                return {
                     bookingId: directBooking.bookingId || directBooking.BookingID || directBooking.id,
-                    // Prioritize customerName, customerPhone, customerEmail from API response
                     customerName: directBooking.customerName || directBooking.CustomerName || directBooking.playerName || directBooking.PlayerName || directBooking.fullName || directBooking.name || 'Khách hàng',
                     customerPhone: directBooking.customerPhone || directBooking.CustomerPhone || directBooking.playerPhone || directBooking.PlayerPhone || directBooking.phone || directBooking.Phone || directBooking.phoneNumber || 'N/A',
                     customerEmail: directBooking.customerEmail || directBooking.CustomerEmail || directBooking.email || directBooking.Email || 'N/A',
@@ -1792,18 +1521,15 @@ export default function ScheduleManagement({ isDemo = false }) {
           });
 
           if (directPackageSession) {
-               // Find package info to get package name
                const packageId = directPackageSession.bookingPackageId || directPackageSession.bookingPackageID;
-               const packageInfo = bookingPackages.find(pkg => 
+               const packageInfo = bookingPackages.find(pkg =>
                     (pkg.bookingPackageId || pkg.id || pkg.bookingPackageID) === packageId
                );
                const packageName = packageInfo?.packageName || packageInfo?.PackageName || packageInfo?.name || 'Gói đặt cố định';
-               
-               // Determine payment status - if session status is booked/active, consider it successful
+
                const sessionStatus = (directPackageSession.sessionStatus || directPackageSession.status || '').toLowerCase();
                let paymentStatus = directPackageSession.paymentStatus || directPackageSession.PaymentStatus || directPackageSession.bookingPackagePaymentStatus;
                if (!paymentStatus || paymentStatus === 'N/A') {
-                    // If session is booked and not cancelled, consider payment successful
                     if (sessionStatus.includes('booked') || sessionStatus.includes('active') || sessionStatus === 'booked') {
                          paymentStatus = 'Paid';
                     } else if (sessionStatus.includes('cancel')) {
@@ -1812,8 +1538,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                          paymentStatus = 'Pending';
                     }
                }
-               
-               // Package session already has customer info from loadPackageSessions
+
                return {
                     bookingId: directPackageSession.sessionId || directPackageSession.packageSessionId || directPackageSession.id,
                     bookingPackageId: packageId,
@@ -1834,40 +1559,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
 
           return null;
-     }, [fieldSchedules, bookings, packageSessions, bookingPackages]);
-
-     // Calculate statistics
-     const statistics = useMemo(() => {
-          if (!fields.length || !timeSlots.length) {
-               return {
-                    totalSlots: 0,
-                    bookedSlots: 0,
-                    availableSlots: 0,
-                    occupancyRate: 0
-               };
-          }
-
-          const totalSlots = fields.length * timeSlots.length * 7; // 7 days
-          let bookedSlots = 0;
-
-          fields.forEach(field => {
-               timeSlots.forEach(slot => {
-                    weekDates.forEach(date => {
-                         const slotId = slot.slotId || slot.SlotID;
-                         if (isSlotBooked(field.fieldId, date, slotId)) {
-                              bookedSlots++;
-                         }
-                    });
-               });
-          });
-
-          return {
-               totalSlots,
-               bookedSlots,
-               availableSlots: totalSlots - bookedSlots,
-               occupancyRate: totalSlots > 0 ? ((bookedSlots / totalSlots) * 100).toFixed(1) : 0
-          };
-     }, [fields, isSlotBooked, timeSlots, weekDates]);
+     }, [fieldSchedules, bookings, packageSessions, bookingPackages, hydratePackageSessionsWithSchedules, packageSessionsRef]);
 
      if (loading) {
           return (
@@ -1879,330 +1571,326 @@ export default function ScheduleManagement({ isDemo = false }) {
 
      if (complexes.length === 0) {
           return (
-                    <div className="space-y-6">
-                         <div className="flex items-center justify-between">
-                              <div>
-                                   <h1 className="text-3xl font-bold text-gray-900">Quản lý lịch trình</h1>
-                                   <p className="text-gray-600 mt-1">Xem lịch đặt sân theo tuần</p>
-                              </div>
+               <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                         <div>
+                              <h1 className="text-3xl font-bold text-gray-900">Quản lý lịch trình</h1>
+                              <p className="text-gray-600 mt-1">Xem lịch đặt sân theo tuần</p>
                          </div>
-
-                         <Card className="p-12">
-                              <div className="text-center">
-                                   <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                                   <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có khu sân nào</h3>
-                                   <p className="text-gray-500">Vui lòng thêm khu sân để quản lý lịch trình</p>
-                              </div>
-                         </Card>
                     </div>
+
+                    <Card className="p-12">
+                         <div className="text-center">
+                              <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                              <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có khu sân nào</h3>
+                              <p className="text-gray-500">Vui lòng thêm khu sân để quản lý lịch trình</p>
+                         </div>
+                    </Card>
+               </div>
           );
      }
 
      return (
-               <div className="space-y-4">
-                    {/* Header */}
-                    <div className="flex items-center justify-between flex-wrap gap-4">
-                         <div>
-                              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                                   <Timer className="w-8 h-8 text-teal-600" />
-                                   Lịch trình & Time Slots
-                              </h1>
-                              <p className="text-gray-600 mt-1">Quản lý khung giờ và xem lịch đặt sân</p>
-                         </div>
+          <div className="space-y-4">
+               {/* Header */}
+               <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div>
+                         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                              <Timer className="w-8 h-8 text-teal-600" />
+                              Lịch trình & khung giờ
+                         </h1>
+                         <p className="text-gray-600 mt-1">Quản lý khung giờ và xem lịch đặt sân</p>
                     </div>
+               </div>
 
-                    {/* Tabs */}
-                    <div className="border-b border-gray-200">
-                         <nav className="flex space-x-8">
-                              <button
-                                   onClick={() => setActiveTab('schedule')}
-                                   className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'schedule'
-                                        ? 'border-teal-500 text-teal-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                              >
-                                   <Calendar className="w-4 h-4" />
-                                   <span>Lịch trình</span>
-                              </button>
-                              <button
-                                   onClick={() => setActiveTab('timeslots')}
-                                   className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'timeslots'
-                                        ? 'border-teal-500 text-teal-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                              >
-                                   <Timer className="w-4 h-4" />
-                                   <span>Quản lý Time Slots</span>
-                              </button>
-                              <button
-                                   onClick={() => setActiveTab('manage-schedules')}
-                                   className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'manage-schedules'
-                                        ? 'border-teal-500 text-teal-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                        }`}
-                              >
-                                   <BarChart3 className="w-4 h-4" />
-                                   <span>Quản lý Lịch trình</span>
-                              </button>
-                         </nav>
-                    </div>
+               {/* Tabs */}
+               <div className="border-b border-gray-200">
+                    <nav className="flex space-x-8">
+                         <button
+                              onClick={() => setActiveTab('schedule')}
+                              className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'schedule'
+                                   ? 'border-teal-500 text-teal-600'
+                                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                   }`}
+                         >
+                              <Calendar className="w-4 h-4" />
+                              <span>Lịch trình</span>
+                         </button>
+                         <button
+                              onClick={() => setActiveTab('timeslots')}
+                              className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'timeslots'
+                                   ? 'border-teal-500 text-teal-600'
+                                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                   }`}
+                         >
+                              <Timer className="w-4 h-4" />
+                              <span>Quản lý khung giờ</span>
+                         </button>
+                         <button
+                              onClick={() => setActiveTab('manage-schedules')}
+                              className={`flex items-center space-x-2 py-3 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'manage-schedules'
+                                   ? 'border-teal-500 text-teal-600'
+                                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                   }`}
+                         >
+                              <BarChart3 className="w-4 h-4" />
+                              <span>Quản lý lịch trình</span>
+                         </button>
+                    </nav>
+               </div>
 
-                    {/* Schedule Tab Content */}
-                    {activeTab === 'schedule' && (
-                         <>
-                              {/* Info Alert */}
-                              {timeSlots.length === 0 && (
-                                   <Alert className="border-amber-200 bg-amber-50">
-                                        <Info className="h-4 w-4 text-amber-600" />
-                                        <AlertDescription className="text-amber-800">
-                                             Bạn chưa có Time Slot nào. Vui lòng chuyển sang tab{' '}
-                                             <button
-                                                  onClick={() => setActiveTab('timeslots')}
-                                                  className="underline font-semibold hover:text-amber-900"
-                                             >
-                                                  Quản lý Time Slots
-                                             </button>
-                                             {' '}để tạo khung giờ hoạt động.
-                                        </AlertDescription>
-                                   </Alert>
-                              )}
-                              {maintenanceFields.length > 0 && (
-                                   <Alert className="border-orange-200 bg-orange-50">
-                                        <Info className="h-4 w-4 text-orange-600" />
-                                        <AlertDescription className="text-orange-900">
-                                             Có {maintenanceFields.length} sân đang ở trạng thái <strong>Bảo trì</strong>
-                                             {maintenanceNoticeText ? `: ${maintenanceNoticeText}` : ''}. Các Time Slot và lịch trình mới sẽ bị khóa cho đến khi bạn đổi trạng thái sân sang "Available".
-                                        </AlertDescription>
-                                   </Alert>
-                              )}
+               {/* Schedule Tab Content */}
+               {activeTab === 'schedule' && (
+                    <>
+                         {/* Info Alert */}
+                         {timeSlots.length === 0 && (
+                              <Alert className="border-amber-200 bg-amber-50">
+                                   <Info className="h-4 w-4 text-amber-600" />
+                                   <AlertDescription className="text-amber-800">
+                                        Bạn chưa có khung giờ nào. Vui lòng chuyển sang tab{' '}
+                                        <button
+                                             onClick={() => setActiveTab('timeslots')}
+                                             className="underline font-semibold hover:text-amber-900"
+                                        >
+                                             Quản lý khung giờ
+                                        </button>
+                                        {' '}để tạo khung giờ hoạt động.
+                                   </AlertDescription>
+                              </Alert>
+                         )}
+                         {maintenanceFields.length > 0 && (
+                              <Alert className="border-orange-200 bg-orange-50">
+                                   <Info className="h-4 w-4 text-orange-600" />
+                                   <AlertDescription className="text-orange-900">
+                                        Có {maintenanceFields.length} sân đang ở trạng thái <strong>Bảo trì</strong>
+                                        {maintenanceNoticeText ? `: ${maintenanceNoticeText}` : ''}. Các khung giờ và lịch trình mới sẽ bị khóa cho đến khi bạn đổi trạng thái sân sang "Available".
+                                   </AlertDescription>
+                              </Alert>
+                         )}
 
-                              {/* Statistics Cards */}
-                              <StatisticsCards statistics={statistics} />
 
-                              {/* Complex Selector & Filter */}
-                              <ComplexAndFieldSelector
-                                   complexes={complexes}
-                                   selectedComplex={selectedComplex}
-                                   onComplexChange={(complex) => {
-                                        handleComplexChange(complex);
-                                        setSelectedFieldForSchedule('all');
-                                   }}
-                                   fields={fields}
-                                   selectedFieldForSchedule={selectedFieldForSchedule}
-                                   onFieldChange={setSelectedFieldForSchedule}
-                                   filterStatus={filterStatus}
-                                   onFilterStatusChange={setFilterStatus}
-                              />
-
-                              {/* Date Selector */}
-                              <DateSelector
-                                   selectedDate={selectedDate}
-                                   onDateChange={setSelectedDate}
-                                   weekDates={weekDates}
-                              />
-
-                              {/* Field Info - Show when specific field is selected */}
-                              {selectedFieldForSchedule !== 'all' && (
-                                   <Alert className="border-teal-300 bg-gradient-to-r items-center from-teal-50 to-blue-50 rounded-2xl">
-                                        <Info className="h-5 w-5 text-teal-600" />
-                                        <AlertDescription className="text-teal-900 text-sm font-medium">
-                                             Đang xem lịch trình của: <strong>{fields.find(f => f.fieldId.toString() === selectedFieldForSchedule)?.name}</strong>
-                                        </AlertDescription>
-                                   </Alert>
-                              )}
-
-                              {/* Single Day Grid Timetable - Improved Design */}
-                              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                                   {/* Main Schedule Grid */}
-                                   <div className="lg:col-span-3">
-                                        <ScheduleGrid
-                                             timeSlots={timeSlots}
-                                             selectedDate={selectedDate}
-                                             fieldSchedules={fieldSchedules}
-                                             fields={fields}
-                                             selectedFieldForSchedule={selectedFieldForSchedule}
-                                             filterStatus={filterStatus}
-                                             isSlotTimePassed={isSlotTimePassed}
-                                             getSchedulesForTimeSlot={getSchedulesForTimeSlot}
-                                             getFieldColor={getFieldColor}
-                                             formatTime={formatTime}
-                                             getBookingInfo={getBookingInfo}
-                                             isFieldMaintenance={isFieldMaintenance}
-                                             onRequestAddSchedule={handleQuickScheduleRequest}
-                                        />
-                                   </div>
-
-                                   {/* Sidebar with Calendar and Field List */}
-                                   <div className="lg:col-span-1 space-y-4">
-                                        <MonthlyCalendar
-                                             calendarMonth={calendarMonth}
-                                             onMonthChange={setCalendarMonth}
-                                             selectedDate={selectedDate}
-                                             onDateSelect={(date) => {
-                                                  setSelectedDate(date);
-                                                  setCalendarMonth(new Date(date));
-                                             }}
-                                             weekDates={weekDates}
-                                        />
-
-                                        <FieldList
-                                             fields={fields}
-                                             selectedFieldForSchedule={selectedFieldForSchedule}
-                                             selectedFields={selectedFields}
-                                             onFieldToggle={(fieldIdStr) => {
-                                                  const newSet = new Set(selectedFields);
-                                                  if (newSet.has(fieldIdStr)) {
-                                                       newSet.delete(fieldIdStr);
-                                                  } else {
-                                                       newSet.add(fieldIdStr);
-                                                  }
-                                                  setSelectedFields(newSet);
-                                             }}
-                                             onFieldSelect={setSelectedFieldForSchedule}
-                                             getFieldColor={getFieldColor}
-                                        />
-                                   </div>
-                              </div>
-                         </>
-                    )}
-
-                    {/* Time Slots Management Tab */}
-                    {activeTab === 'timeslots' && (
-                         <TimeSlotsTab
-                              fields={fields}
-                              selectedFieldFilter={selectedFieldFilter}
-                              onFieldFilterChange={setSelectedFieldFilter}
-                              timeSlots={timeSlots}
-                              formatTime={formatTime}
-                              onAddSlot={(fieldId) => {
-                                   if (!fieldId && !hasActiveFields) {
-                                        Swal.fire({
-                                             icon: 'info',
-                                             title: 'Không có sân khả dụng',
-                                             text: 'Tất cả các sân hiện đang ở trạng thái bảo trì. Vui lòng kích hoạt lại sân trước khi thêm Time Slot mới.',
-                                             confirmButtonColor: '#f97316'
-                                        });
-                                        return;
-                                   }
-                                   if (fieldId && isFieldMaintenance(fieldId)) {
-                                        Swal.fire({
-                                             icon: 'info',
-                                             title: 'Sân đang bảo trì',
-                                             text: 'Không thể thêm Time Slot mới cho sân đang bảo trì.',
-                                             confirmButtonColor: '#f97316'
-                                        });
-                                        return;
-                                   }
-                                   if (fieldId) {
-                                        setSlotFormData({ ...slotFormData, fieldId: fieldId.toString() });
-                                   }
-                                   handleOpenSlotModal();
+                         {/* Complex Selector & Filter */}
+                         <ComplexAndFieldSelector
+                              complexes={complexes}
+                              selectedComplex={selectedComplex}
+                              onComplexChange={(complex) => {
+                                   handleComplexChange(complex);
+                                   setSelectedFieldForSchedule('all');
                               }}
-                              onEditSlot={handleOpenSlotModal}
-                              onDeleteSlot={handleDeleteSlot}
-                         />
-                    )}
-
-                    {/* Manage Schedules Tab - Bảng quản lý lịch trình */}
-                    {activeTab === 'manage-schedules' && (
-                         <ManageSchedulesTab
                               fields={fields}
-                              scheduleFilterField={scheduleFilterField}
-                              onScheduleFilterFieldChange={setScheduleFilterField}
-                              scheduleFilterStatus={scheduleFilterStatus}
-                              onScheduleFilterStatusChange={setScheduleFilterStatus}
-                              scheduleFilterDate={scheduleFilterDate}
-                              onScheduleFilterDateChange={setScheduleFilterDate}
-                              loadingSchedules={loadingSchedules}
-                              fieldSchedules={fieldSchedules}
-                              onAddSchedule={handleOpenScheduleModal}
-                              onRefresh={loadFieldSchedules}
-                              onUpdateStatus={handleUpdateScheduleStatus}
-                              onDeleteSchedule={handleDeleteSchedule}
-                              getBookingInfo={getBookingInfo}
+                              selectedFieldForSchedule={selectedFieldForSchedule}
+                              onFieldChange={setSelectedFieldForSchedule}
+                              filterStatus={filterStatus}
+                              onFilterStatusChange={setFilterStatus}
                          />
-                    )}
 
-                    {/* Legend & Info - Only show in schedule tab */}
-                    {activeTab === 'schedule' && (
-                         <Card className="p-5 bg-gradient-to-r from-gray-50 to-blue-50 border-2 border-gray-200">
-                              <div className="space-y-4">
-                                   <div className="flex items-center gap-6 flex-wrap">
-                                        <span className="font-bold text-gray-800 flex items-center gap-2">
-                                             <Info className="w-5 h-5 text-teal-600" />
-                                             Chú thích:
-                                        </span>
-                                        <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border border-gray-200">
-                                             <div className="w-6 h-6 bg-white border-2 border-gray-300 rounded flex items-center justify-center">
-                                                  <span className="text-gray-400 text-lg">○</span>
-                                             </div>
-                                             <span className="text-sm font-medium text-gray-700">Trống</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border border-gray-200">
-                                             <div className="w-6 h-6 bg-green-500 border-2 border-green-600 rounded flex items-center justify-center">
-                                                  <span className="text-white text-xs font-bold">✓</span>
-                                             </div>
-                                             <span className="text-sm font-medium text-gray-700">Đã đặt</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-sm border border-purple-700">
-                                             <Repeat className="w-4 h-4 text-white" />
-                                             <span className="text-sm font-medium text-white">Lịch cố định</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg shadow-md border border-teal-700">
-                                             <Calendar className="w-4 h-4 text-white" />
-                                             <span className="text-sm font-bold text-white">Cột hôm nay</span>
-                                        </div>
-                                   </div>
+                         {/* Date Selector */}
+                         <DateSelector
+                              selectedDate={selectedDate}
+                              onDateChange={setSelectedDate}
+                              weekDates={weekDates}
+                         />
 
-                                   <Alert className="border-blue-300 bg-gradient-to-r from-blue-50 to-blue-100 shadow-sm">
-                                        <Info className="h-5 w-5 text-blue-600" />
-                                        <AlertDescription className="text-blue-900 text-sm font-medium">
-                                             <strong>💡 Mẹo:</strong> Click vào ô <span className="font-semibold text-green-700">"Đã đặt"</span> hoặc <span className="font-semibold text-purple-700">"Lịch cố định"</span> để xem chi tiết booking và thông tin khách hàng.
-                                             Để thay đổi khung giờ hoạt động, chuyển sang tab{' '}
-                                             <button
-                                                  onClick={() => setActiveTab('timeslots')}
-                                                  className="underline font-bold hover:text-blue-700 transition-colors"
-                                             >
-                                                  Quản lý Time Slots
-                                             </button>.
-                                        </AlertDescription>
-                                   </Alert>
+                         {/* Field Info - Show when specific field is selected */}
+                         {selectedFieldForSchedule !== 'all' && (
+                              <Alert className="border-teal-300 bg-gradient-to-r items-center from-teal-50 to-blue-50 rounded-2xl">
+                                   <Info className="h-5 w-5 text-teal-600" />
+                                   <AlertDescription className="text-teal-900 text-sm font-medium">
+                                        Đang xem lịch trình của: <strong>{fields.find(f => f.fieldId.toString() === selectedFieldForSchedule)?.name}</strong>
+                                   </AlertDescription>
+                              </Alert>
+                         )}
+
+                         {/* Single Day Grid Timetable - Improved Design */}
+                         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                              {/* Main Schedule Grid */}
+                              <div className="lg:col-span-3">
+                                   <ScheduleGrid
+                                        timeSlots={timeSlots}
+                                        selectedDate={selectedDate}
+                                        fieldSchedules={fieldSchedules}
+                                        fields={fields}
+                                        selectedFieldForSchedule={selectedFieldForSchedule}
+                                        filterStatus={filterStatus}
+                                        isSlotTimePassed={isSlotTimePassed}
+                                        getSchedulesForTimeSlot={getSchedulesForTimeSlot}
+                                        getFieldColor={getFieldColor}
+                                        formatTime={formatTime}
+                                        getBookingInfo={getBookingInfo}
+                                        isFieldMaintenance={isFieldMaintenance}
+                                        onRequestAddSchedule={handleQuickScheduleRequest}
+                                   />
                               </div>
-                         </Card>
-                    )}
 
-                    {/* Time Slot Modal */}
-                    <TimeSlotModal
-                         isOpen={showSlotModal}
-                         onClose={handleCloseSlotModal}
-                         editingSlot={editingSlot}
-                         slotFormData={slotFormData}
-                         setSlotFormData={setSlotFormData}
-                         slotFormErrors={slotFormErrors}
-                         fields={fields}
-                         selectedQuickSlots={selectedQuickSlots}
-                         setSelectedQuickSlots={setSelectedQuickSlots}
-                         quickSlotTemplates={quickSlotTemplates}
-                         isSlotExistsForField={isSlotExistsForField}
-                         handleQuickSlotSelect={handleQuickSlotSelect}
-                         isSubmittingSlot={isSubmittingSlot}
-                         onSubmit={handleSubmitSlot}
-                         loadTimeSlotsForField={loadTimeSlotsForField}
-                    />
+                              {/* Sidebar with Calendar and Field List */}
+                              <div className="lg:col-span-1 space-y-4">
+                                   <MonthlyCalendar
+                                        calendarMonth={calendarMonth}
+                                        onMonthChange={setCalendarMonth}
+                                        selectedDate={selectedDate}
+                                        onDateSelect={(date) => {
+                                             setSelectedDate(date);
+                                             setCalendarMonth(new Date(date));
+                                        }}
+                                        weekDates={weekDates}
+                                   />
 
-                    {/* Schedule Modal - Thêm lịch trình */}
-                    <ScheduleModal
-                         isOpen={showScheduleModal}
-                         onClose={handleCloseScheduleModal}
-                         scheduleFormData={scheduleFormData}
-                         onFormDataChange={setScheduleFormData}
-                         scheduleFormErrors={scheduleFormErrors}
+                                   <FieldList
+                                        fields={fields}
+                                        selectedFieldForSchedule={selectedFieldForSchedule}
+                                        selectedFields={selectedFields}
+                                        onFieldToggle={(fieldIdStr) => {
+                                             const newSet = new Set(selectedFields);
+                                             if (newSet.has(fieldIdStr)) {
+                                                  newSet.delete(fieldIdStr);
+                                             } else {
+                                                  newSet.add(fieldIdStr);
+                                             }
+                                             setSelectedFields(newSet);
+                                        }}
+                                        onFieldSelect={setSelectedFieldForSchedule}
+                                        getFieldColor={getFieldColor}
+                                   />
+                              </div>
+                         </div>
+                    </>
+               )}
+
+               {/* Time Slots Management Tab */}
+               {activeTab === 'timeslots' && (
+                    <TimeSlotsTab
                          fields={fields}
+                         selectedFieldFilter={selectedFieldFilter}
+                         onFieldFilterChange={setSelectedFieldFilter}
                          timeSlots={timeSlots}
                          formatTime={formatTime}
-                         isSubmitting={isSubmittingSchedule}
-                         onSubmit={handleSubmitSchedule}
+                         onAddSlot={(fieldId) => {
+                              if (!fieldId && !hasActiveFields) {
+                                   Swal.fire({
+                                        icon: 'info',
+                                        title: 'Không có sân khả dụng',
+                                        text: 'Tất cả các sân hiện đang ở trạng thái bảo trì. Vui lòng kích hoạt lại sân trước khi thêm Time Slot mới.',
+                                        confirmButtonColor: '#f97316'
+                                   });
+                                   return;
+                              }
+                              if (fieldId && isFieldMaintenance(fieldId)) {
+                                   Swal.fire({
+                                        icon: 'info',
+                                        title: 'Sân đang bảo trì',
+                                        text: 'Không thể thêm Time Slot mới cho sân đang bảo trì.',
+                                        confirmButtonColor: '#f97316'
+                                   });
+                                   return;
+                              }
+                              // Pass fieldId directly to handleOpenSlotModal
+                              handleOpenSlotModal(null, fieldId);
+                         }}
+                         onEditSlot={handleOpenSlotModal}
+                         onDeleteSlot={handleDeleteSlot}
                     />
-               </div>
+               )}
+
+               {/* Manage Schedules Tab - Bảng quản lý lịch trình */}
+               {activeTab === 'manage-schedules' && (
+                    <ManageSchedulesTab
+                         fields={fields}
+                         scheduleFilterField={scheduleFilterField}
+                         onScheduleFilterFieldChange={setScheduleFilterField}
+                         scheduleFilterStatus={scheduleFilterStatus}
+                         onScheduleFilterStatusChange={setScheduleFilterStatus}
+                         scheduleFilterDate={scheduleFilterDate}
+                         onScheduleFilterDateChange={setScheduleFilterDate}
+                         loadingSchedules={loadingSchedules}
+                         fieldSchedules={fieldSchedules}
+                         onAddSchedule={handleOpenScheduleModal}
+                         onRefresh={loadFieldSchedules}
+                         onUpdateStatus={handleUpdateScheduleStatus}
+                         onDeleteSchedule={handleDeleteSchedule}
+                         getBookingInfo={getBookingInfo}
+                    />
+               )}
+
+               {/* Legend & Info - Only show in schedule tab */}
+               {activeTab === 'schedule' && (
+                    <Card className="p-5 bg-gradient-to-r from-gray-50 to-blue-50 border-2 border-gray-200">
+                         <div className="space-y-4">
+                              <div className="flex items-center gap-6 flex-wrap">
+                                   <span className="font-bold text-gray-800 flex items-center gap-2">
+                                        <Info className="w-5 h-5 text-teal-600" />
+                                        Chú thích:
+                                   </span>
+                                   <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border border-gray-200">
+                                        <div className="w-6 h-6 bg-white border-2 border-gray-300 rounded flex items-center justify-center">
+                                             <span className="text-gray-400 text-lg">○</span>
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-700">Trống</span>
+                                   </div>
+                                   <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg shadow-sm border border-gray-200">
+                                        <div className="w-6 h-6 bg-green-500 border-2 border-green-600 rounded flex items-center justify-center">
+                                             <span className="text-white text-xs font-bold">✓</span>
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-700">Đã đặt</span>
+                                   </div>
+                                   <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-sm border border-purple-700">
+                                        <Repeat className="w-4 h-4 text-white" />
+                                        <span className="text-sm font-medium text-white">Lịch cố định</span>
+                                   </div>
+                                   <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg shadow-md border border-teal-700">
+                                        <Calendar className="w-4 h-4 text-white" />
+                                        <span className="text-sm font-bold text-white">Cột hôm nay</span>
+                                   </div>
+                              </div>
+
+                              <Alert className="border-blue-300 bg-gradient-to-r from-blue-50 to-blue-100 shadow-sm">
+                                   <Info className="h-5 w-5 text-blue-600" />
+                                   <AlertDescription className="text-blue-900 text-sm font-medium">
+                                        <strong>💡 Mẹo:</strong> Click vào ô <span className="font-semibold text-green-700">"Đã đặt"</span> hoặc <span className="font-semibold text-purple-700">"Lịch cố định"</span> để xem chi tiết booking và thông tin khách hàng.
+                                        Để thay đổi khung giờ hoạt động, chuyển sang tab{' '}
+                                        <button
+                                             onClick={() => setActiveTab('timeslots')}
+                                             className="underline font-bold hover:text-blue-700 transition-colors"
+                                        >
+                                             Quản lý khung giờ
+                                        </button>.
+                                   </AlertDescription>
+                              </Alert>
+                         </div>
+                    </Card>
+               )}
+
+               {/* Time Slot Modal */}
+               <TimeSlotModal
+                    isOpen={showSlotModal}
+                    onClose={handleCloseSlotModal}
+                    editingSlot={editingSlot}
+                    slotFormData={slotFormData}
+                    setSlotFormData={setSlotFormData}
+                    slotFormErrors={slotFormErrors}
+                    fields={fields}
+                    selectedQuickSlots={selectedQuickSlots}
+                    setSelectedQuickSlots={setSelectedQuickSlots}
+                    quickSlotTemplates={quickSlotTemplates}
+                    isSlotExistsForField={isSlotExistsForField}
+                    handleQuickSlotSelect={handleQuickSlotSelect}
+                    isSubmittingSlot={isSubmittingSlot}
+                    onSubmit={handleSubmitSlot}
+                    loadTimeSlotsForField={loadTimeSlotsForField}
+               />
+
+               {/* Schedule Modal - Thêm lịch trình */}
+               <ScheduleModal
+                    isOpen={showScheduleModal}
+                    onClose={handleCloseScheduleModal}
+                    scheduleFormData={scheduleFormData}
+                    onFormDataChange={setScheduleFormData}
+                    scheduleFormErrors={scheduleFormErrors}
+                    fields={fields}
+                    timeSlots={timeSlots}
+                    formatTime={formatTime}
+                    isSubmitting={isSubmittingSchedule}
+                    onSubmit={handleSubmitSchedule}
+               />
+          </div>
      );
 }

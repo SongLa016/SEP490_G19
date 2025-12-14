@@ -69,7 +69,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
 
                     // Xử lý các loại lỗi phổ biến
                     if (errorMessage.includes('400') || errorMessage.includes('Bad Request')) {
-                         errorMessage = 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin';
+                         errorMessage = 'Vui lòng nhập đầy đủ các thông tin';
                     } else if (errorMessage.includes('409') || errorMessage.includes('Conflict')) {
                          if (errorMessage.includes('email') || errorMessage.includes('Email')) {
                               errorMessage = 'Email này đã được sử dụng. Vui lòng chọn email khác';

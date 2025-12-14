@@ -33,7 +33,7 @@ import {
      confirmByOwner,
      fetchCancellationRequestById,
 } from "../../../shared/services/bookings";
-import { fetchFieldScheduleById } from "../../../shared/services/fieldSchedules";
+import { fetchFieldScheduleById, updateFieldScheduleStatus } from "../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
 import axios from "axios";
 
@@ -85,6 +85,7 @@ const BookingManagement = ({ isDemo = false }) => {
      const [isCancellationDetailModalOpen, setIsCancellationDetailModalOpen] = useState(false);
      const [loadingCancellationDetail, setLoadingCancellationDetail] = useState(false);
      const [autoCompletedIds, setAutoCompletedIds] = useState({});
+     const [exporting, setExporting] = useState(false);
 
      // Get owner ID from user
      const ownerId = user?.userID || user?.UserID || user?.id || user?.userId;
@@ -213,13 +214,11 @@ const BookingManagement = ({ isDemo = false }) => {
           if (result.isConfirmed) {
                try {
                     let confirmResult;
-
                     if (isConfirmedAndPaid) {
-
                          confirmResult = await confirmByOwner(numericBookingId);
-
                          if (confirmResult.success) {
-
+                              // FieldSchedule status đã được cập nhật thành "Booked" khi confirm payment
+                              // Không cần cập nhật lại ở đây vì booking đã hoàn thành
                               await Swal.fire({
                                    icon: 'success',
                                    title: 'Đã hoàn thành!',
@@ -234,6 +233,21 @@ const BookingManagement = ({ isDemo = false }) => {
                          confirmResult = await confirmPaymentAPI(numericBookingId, amount);
 
                          if (confirmResult.success) {
+                              // Cập nhật FieldSchedule status thành "Booked" khi owner xác nhận booking
+                              if (booking?.scheduleId || booking?.scheduleID) {
+                                   const scheduleId = booking.scheduleId || booking.scheduleID;
+                                   try {
+                                        console.log(`📝 [UPDATE SCHEDULE] Owner confirmed booking, updating FieldSchedule ${scheduleId} to Booked`);
+                                        const updateResult = await updateFieldScheduleStatus(Number(scheduleId), "Booked");
+                                        if (updateResult.success) {
+                                             console.log(`✅ [UPDATE SCHEDULE] Successfully updated schedule ${scheduleId} to Booked`);
+                                        } else {
+                                             console.warn(`⚠️ [UPDATE SCHEDULE] Failed to update schedule ${scheduleId}:`, updateResult.error);
+                                        }
+                                   } catch (error) {
+                                        console.error(`❌ [UPDATE SCHEDULE] Error updating schedule:`, error);
+                                   }
+                              }
 
                               await Swal.fire({
                                    icon: 'success',
@@ -400,10 +414,28 @@ const BookingManagement = ({ isDemo = false }) => {
 
           if (isConfirmed && reason) {
                try {
+                    // Lấy scheduleId từ booking trước khi hủy để cập nhật FieldSchedule
+                    const scheduleId = booking?.scheduleId || booking?.scheduleID || booking?.ScheduleID || booking?.ScheduleId;
+                    
                     // Use the same API as player - backend will check token to determine if Owner or Player is cancelling
                     const result = await cancelBooking(numericBookingId, reason);
 
                     if (result.success) {
+                         // Cập nhật FieldSchedule status về "Available" khi hủy booking thành công
+                         if (scheduleId && Number(scheduleId) > 0) {
+                              try {
+                                   console.log("📝 [UPDATE SCHEDULE] Updating FieldSchedule status to 'Available' for schedule", scheduleId);
+                                   const updateResult = await updateFieldScheduleStatus(Number(scheduleId), "Available");
+                                   if (updateResult.success) {
+                                        console.log(`✅ [UPDATE SCHEDULE] Updated schedule ${scheduleId} to Available after canceling booking`);
+                                   } else {
+                                        console.warn(`⚠️ [UPDATE SCHEDULE] Failed to update schedule ${scheduleId}:`, updateResult.error);
+                                   }
+                              } catch (error) {
+                                   console.error(`❌ [UPDATE SCHEDULE] Error updating schedule ${scheduleId}:`, error);
+                              }
+                         }
+                         
                          // Extract cancellation request ID from response (if available)
                          const cancellationId = result.data?.cancellationId || result.data?.id || result.data?.cancellationRequestId;
 
@@ -1151,6 +1183,85 @@ const BookingManagement = ({ isDemo = false }) => {
           return new Date(dateString).toLocaleDateString('vi-VN');
      };
 
+     const toCsvValue = (value) => {
+          if (value === null || value === undefined) return "";
+          const str = String(value);
+          if (str.includes('"') || str.includes(",") || str.includes("\n")) {
+               return `"${str.replace(/"/g, '""')}"`;
+          }
+          return str;
+     };
+
+     const handleExportReport = async () => {
+          if (isDemo) {
+               setShowDemoRestrictedModal(true);
+               return;
+          }
+          if (!filteredBookings.length) {
+               await Swal.fire({
+                    icon: "info",
+                    title: "Không có dữ liệu",
+                    text: "Không có booking nào để xuất theo bộ lọc hiện tại.",
+                    confirmButtonColor: "#0ea5e9",
+               });
+               return;
+          }
+          try {
+               setExporting(true);
+               const headers = [
+                    "Mã booking",
+                    "Khách hàng",
+                    "Số điện thoại",
+                    "Email",
+                    "Sân",
+                    "Ngày",
+                    "Khung giờ",
+                    "Trạng thái",
+                    "Thanh toán",
+                    "Tiền cọc",
+                    "Tổng tiền",
+               ];
+               const rows = filteredBookings.map((b) => [
+                    b.bookingId || b.id || "",
+                    b.customer || "",
+                    b.phone || "",
+                    b.email || "",
+                    b.field || "",
+                    formatDate(b.date),
+                    b.timeSlot || "",
+                    getStatusText(String(b.status || "").toLowerCase()),
+                    getPaymentStatusText(String(b.paymentStatus || "").toLowerCase()),
+                    b.depositAmount ?? 0,
+                    b.amount ?? 0,
+               ]);
+
+               const csv = [
+                    headers.map(toCsvValue).join(","),
+                    ...rows.map((row) => row.map(toCsvValue).join(",")),
+               ].join("\n");
+
+               const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+               const url = URL.createObjectURL(blob);
+               const link = document.createElement("a");
+               link.href = url;
+               link.download = `booking-report-${new Date().toISOString().slice(0, 10)}.csv`;
+               document.body.appendChild(link);
+               link.click();
+               document.body.removeChild(link);
+               URL.revokeObjectURL(url);
+          } catch (error) {
+               console.error("Export report error:", error);
+               await Swal.fire({
+                    icon: "error",
+                    title: "Xuất báo cáo thất bại",
+                    text: "Vui lòng thử lại sau.",
+                    confirmButtonColor: "#ef4444",
+               });
+          } finally {
+               setExporting(false);
+          }
+     };
+
      return (
           <>
                <div className="space-y-6">
@@ -1165,9 +1276,14 @@ const BookingManagement = ({ isDemo = false }) => {
                          </div>
 
                          <div className="flex items-center space-x-3">
-                              <Button variant="outline" className="rounded-2xl border-teal-300 text-teal-700 hover:bg-teal-50">
+                              <Button
+                                   variant="outline"
+                                   className="rounded-2xl border-teal-300 text-teal-700 hover:bg-teal-50"
+                                   onClick={handleExportReport}
+                                   disabled={exporting}
+                              >
                                    <Download className="w-4 h-4 mr-2" />
-                                   Xuất báo cáo
+                                   {exporting ? "Đang xuất..." : "Xuất báo cáo"}
                               </Button>
                               <Button
                                    className="rounded-2xl bg-teal-600 hover:bg-teal-700"

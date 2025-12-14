@@ -42,7 +42,7 @@ export default function LocationTabContent({ complex }) {
                                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(complex?.address || "")}`}
                                              target="_blank"
                                              rel="noreferrer"
-                                             className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all font-medium"
+                                             className="inline-flex items-center px-4 py-2 bg-gradient-to-r truncate from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all font-medium"
                                         >
                                              <MapPin className="w-4 h-4 mr-2" />
                                              Mở Google Maps

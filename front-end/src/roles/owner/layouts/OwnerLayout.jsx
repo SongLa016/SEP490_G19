@@ -77,8 +77,8 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
           { id: "owner", label: "Tổng quan", icon: Home, path: "/owner" },
           { id: "fields", label: "Quản lý sân", icon: Building2, path: "/owner/fields" },
           { id: "field-types", label: "Loại sân", icon: Tag, path: "/owner/field-types" },
-          { id: "schedule", label: "Lịch trình & Slots", icon: CalendarCog, path: "/owner/schedule" },
-          { id: "bookings", label: "Quản lý booking", icon: ClipboardList, path: "/owner/bookings" },
+          { id: "schedule", label: "Lịch trình & khung giờ", icon: CalendarCog, path: "/owner/schedule" },
+          { id: "bookings", label: "Quản lý đặt sân", icon: ClipboardList, path: "/owner/bookings" },
           { id: "policies", label: "Chính sách hủy", icon: Shield, path: "/owner/policies" },
           { id: "deposit-policies", label: "Chính sách đặt cọc", icon: Wallet, path: "/owner/deposit-policies" },
           { id: "notifications", label: "Thông báo", icon: Bell, path: "/owner/notifications" },
@@ -200,7 +200,7 @@ export default function OwnerLayout({ user, onLoggedOut, children, isDemo = fals
                          </nav>
 
                          {/* User Info */}
-                         <div className="sticky bottom-0 p-4 border-t border-slate-200/50 bg-gradient-to-r from-slate-50 to-slate-100 backdrop-blur-sm z-10">
+                         <div className="sticky bottom-0 p-2 border-t border-slate-200/50 bg-gradient-to-r from-slate-50 to-slate-100 backdrop-blur-sm z-10">
                               <div className="flex items-center">
                                    <Avatar className="w-12 h-12 border-2 border-white shadow-lg ring-2 ring-teal-100">
                                         <AvatarImage

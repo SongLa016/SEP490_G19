@@ -169,7 +169,9 @@ export default function OwnerDashboard({ isDemo = false }) {
                          day: item.day || item.date || `Ngày ${index + 1}`,
                          amount: extractNumber(item, 'revenue', 'amount', 'total')
                     }));
-                    setRevenueData(formattedData.length > 0 ? formattedData : [
+                    // Giới hạn hiển thị 10 ngày gần nhất
+                    const trimmedData = formattedData.slice(-10);
+                    setRevenueData(trimmedData.length > 0 ? trimmedData : [
                          { day: "T2", amount: 0 },
                          { day: "T3", amount: 0 },
                          { day: "T4", amount: 0 },
@@ -337,6 +339,9 @@ export default function OwnerDashboard({ isDemo = false }) {
      const displayRevenueData = isDemo ? demoRevenueData : (revenueData.length > 0 ? revenueData : demoRevenueData);
      const displayRecentBookings = isDemo ? demoRecentBookings : (recentBookings.length > 0 ? recentBookings : demoRecentBookings);
      const displayFieldPerformance = isDemo ? demoFieldPerformance : (fieldPerformance.length > 0 ? fieldPerformance : demoFieldPerformance);
+     const maxRevenueAmount = displayRevenueData.length > 0
+          ? Math.max(...displayRevenueData.map(d => d.amount || 0), 1)
+          : 1;
 
      console.log("displayRecentBookings", displayRecentBookings);
      return (
@@ -416,7 +421,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                               <h3 className="text-lg font-semibold text-teal-900">Doanh thu theo ngày</h3>
                               <div className="flex items-center space-x-2">
                                    <BarChart3 className="w-5 h-5 text-teal-500" />
-                                   <span className="text-sm text-teal-600">7 ngày qua</span>
+                                   <span className="text-sm text-teal-600">10 ngày qua</span>
                               </div>
                          </div>
                          <div className="space-y-4">
@@ -437,7 +442,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                                                   <div className="bg-teal-200 rounded-full h-2">
                                                        <div
                                                             className="bg-teal-500 h-2 rounded-full transition-all duration-300"
-                                                            style={{ width: `${(item.amount / Math.max(...revenueData.map(d => d.amount))) * 100}%` }}
+                                                            style={{ width: `${(item.amount / maxRevenueAmount) * 100}%` }}
                                                        ></div>
                                                   </div>
                                              </div>
@@ -564,7 +569,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                                    onClick={() => navigate(isDemo ? "/demo/bookings" : "/owner/bookings")}
                               >
                                    <Calendar className="w-4 h-4 mr-2" />
-                                   Xem booking
+                                   Xem đặt sân
                               </Button>
                               <Button
                                    className="w-full justify-start rounded-2xl"
@@ -580,7 +585,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                                    onClick={() => navigate(isDemo ? "/demo/schedule" : "/owner/schedule")}
                               >
                                    <Calendar className="w-4 h-4 mr-2" />
-                                   Lịch trình & Slots
+                                   Lịch trình & khung giờ
                               </Button>
                          </div>
 

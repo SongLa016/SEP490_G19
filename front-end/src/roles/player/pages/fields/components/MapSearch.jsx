@@ -17,6 +17,8 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
      const userLocationMarkerRef = useRef(null);
      const accuracyCircleRef = useRef(null);
 
+     const displayLocation = selectedLocation?.field || selectedLocation;
+
      // Goong API Keys
      // Maptiles Key để hiển thị bản đồ
      const GOONG_API_KEY = process.env.REACT_APP_GOONG_API_KEY || "tnV2EmQTmY2Vqez3KWtC5DHadHJQllNegQXV3lOV";
@@ -134,13 +136,17 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                                    duration: 1000,
                               });
 
-                              onLocationSelect({
+                              const pickedLocation = {
                                    lat: field.lat,
                                    lng: field.lng,
                                    address: field.address,
                                    name: field.name,
                                    field: field
-                              });
+                              };
+
+                              // Keep internal selection so detail card shows up
+                              setSelectedLocation(pickedLocation);
+                              onLocationSelect(pickedLocation);
                          });
 
                          return marker;
@@ -907,36 +913,71 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                          {/* Selected Location Info */}
                          {selectedLocation && (
                               <div className="absolute bottom-3 left-3 right-3 bg-white rounded-2xl shadow-lg p-3 border border-gray-200 max-w-md">
-                                   <div className="flex items-center justify-between mb-3">
-                                        <div className="flex-1">
-                                             <div className="font-semibold text-gray-900 text-lg">{selectedLocation.name}</div>
-                                             <div className="text-xs text-gray-600">{selectedLocation.address}</div>
+                                   <div className="flex items-center gap-3 mb-3">
+                                        {displayLocation?.imageUrl && (
+                                             <div className="w-20 h-20 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+                                                  <img
+                                                       src={displayLocation.imageUrl}
+                                                       alt={displayLocation.name}
+                                                       className="w-full h-full object-cover"
+                                                  />
+                                             </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                             <div className="font-semibold text-gray-900 text-lg truncate">
+                                                  {selectedLocation.name}
+                                             </div>
+                                             <div className="text-xs text-gray-600 line-clamp-2">
+                                                  {selectedLocation.address || displayLocation?.location}
+                                             </div>
                                              {selectedLocation.accuracy && (
                                                   <div className="text-xs text-blue-600 mt-1 flex items-center">
                                                        <MapPin className="w-3 h-3 mr-1" />
                                                        Độ chính xác: ±{Math.round(selectedLocation.accuracy)}m
                                                   </div>
                                              )}
+                                             {displayLocation && (
+                                                  <div className="flex flex-wrap gap-2 mt-2 text-xs">
+                                                       {displayLocation.rating !== undefined && (
+                                                            <span className="px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-100">
+                                                                 ⭐ {displayLocation.rating}
+                                                            </span>
+                                                       )}
+                                                       {displayLocation.price !== undefined && (
+                                                            <span className="px-2 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-100">
+                                                                 {formatPrice(displayLocation.price)}
+                                                            </span>
+                                                       )}
+                                                       {displayLocation.totalFields !== undefined && (
+                                                            <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                                                                 {displayLocation.totalFields} sân
+                                                            </span>
+                                                       )}
+
+                                                  </div>
+                                             )}
+
                                         </div>
-                                        <div className="flex gap-2 ml-3">
+                                        <div className="flex items-center justify-end gap-2">
                                              <Button
                                                   onClick={() => {
                                                        setSelectedLocation(null);
                                                        setFilteredFields([]);
                                                   }}
                                                   variant="outline"
-                                                  className="px-3 py-0.5 rounded-2xl text-gray-600 hover:bg-gray-50"
+                                                  className="px-2 py-0.5 h-7 hover:text-teal-600 text-xs rounded-2xl text-gray-600 hover:bg-gray-50"
                                              >
                                                   Hủy
                                              </Button>
                                              <Button
                                                   onClick={handleConfirm}
-                                                  className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-0.5 font-semibold rounded-2xl"
+                                                  className="bg-teal-500 h-7 text-xs hover:bg-teal-600 text-white px-2 py-0.5 font-semibold rounded-2xl"
                                              >
                                                   Chọn
                                              </Button>
                                         </div>
                                    </div>
+
 
                                    {/* Nearby Fields List */}
                                    {filteredFields.length > 0 && (

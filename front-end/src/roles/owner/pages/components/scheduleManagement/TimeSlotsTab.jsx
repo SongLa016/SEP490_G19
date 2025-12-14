@@ -17,8 +17,8 @@ export default function TimeSlotsTab({
           <>
                <div className="flex items-center justify-between flex-wrap gap-4">
                     <div>
-                         <h3 className="text-lg font-semibold text-gray-900">Quản lý Time Slots</h3>
-                         <p className="text-gray-600">Xem thời gian hoạt động của từng sân</p>
+                         <h3 className="text-lg font-semibold text-gray-900">Quản lý khung giờ</h3>
+                         <p className="text-gray-600">Xem khung giờ hoạt động của từng sân</p>
                     </div>
                     <Button
                          onClick={onAddSlot}
@@ -27,7 +27,7 @@ export default function TimeSlotsTab({
                          className="bg-teal-600 hover:bg-teal-700 text-white rounded-2xl"
                     >
                          <Plus className="w-4 h-4 mr-1" />
-                         Thêm Time Slot
+                         Thêm khung giờ
                     </Button>
                </div>
 
@@ -43,7 +43,7 @@ export default function TimeSlotsTab({
                                    <SelectItem value="all">Tất cả các sân ({fields.length})</SelectItem>
                                    {fields.map((field) => (
                                         <SelectItem key={field.fieldId} value={field.fieldId.toString()}>
-                                             {field.name} - {field.complexName}
+                                             {field.name}
                                         </SelectItem>
                                    ))}
                               </SelectContent>
@@ -54,14 +54,14 @@ export default function TimeSlotsTab({
                <Alert className="border-yellow-200 bg-yellow-50 rounded-2xl">
                     <Info className="h-4 w-4 " />
                     <AlertDescription className="text-yellow-600 text-sm">
-                         Mỗi sân có thể có các khung giờ hoạt động riêng. Giá sẽ được thiết lập ngay khi tạo slot.
+                         Mỗi sân có thể có các khung giờ hoạt động riêng. Giá sẽ được thiết lập ngay khi tạo khung giờ.
                     </AlertDescription>
                </Alert>
                {fields.length > 0 && !hasAvailableFields && (
                     <Alert className="border-orange-200 bg-orange-50 rounded-2xl">
                          <Wrench className="h-4 w-4 text-orange-600" />
                          <AlertDescription className="text-orange-800 text-sm">
-                              Tất cả các sân đang ở trạng thái <strong>Bảo trì</strong>. Bạn sẽ không thể thêm Time Slot mới cho đến khi đổi trạng thái sân.
+                              Tất cả các sân đang ở trạng thái <strong>Bảo trì</strong>. Bạn sẽ không thể thêm khung giờ mới cho đến khi đổi trạng thái sân.
                          </AlertDescription>
                     </Alert>
                )}
@@ -72,7 +72,7 @@ export default function TimeSlotsTab({
                          <div className="text-center">
                               <Timer className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                               <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có sân nào</h3>
-                              <p className="text-gray-500">Vui lòng thêm sân trước khi quản lý time slots</p>
+                              <p className="text-gray-500">Vui lòng thêm sân trước khi quản lý khung giờ</p>
                          </div>
                     </Card>
                ) : (
@@ -109,7 +109,7 @@ export default function TimeSlotsTab({
                                                   </div>
                                                   <div className="flex items-center gap-2">
                                                        <Badge className="bg-gray-100 text-gray-800">
-                                                            {fieldSlots.length} slots
+                                                            {fieldSlots.length} khung giờ
                                                        </Badge>
                                                        <Badge className={isMaintenance ? 'bg-orange-100 text-orange-700' : 'bg-teal-100 text-teal-800'}>
                                                             {isMaintenance ? 'Bảo trì' : 'Hoạt động'}
@@ -117,20 +117,20 @@ export default function TimeSlotsTab({
                                                        <Button
                                                             onClick={() => onAddSlot(field.fieldId)}
                                                             disabled={isMaintenance}
-                                                            title={isMaintenance ? 'Sân đang bảo trì, không thể thêm Time Slot' : undefined}
+                                                            title={isMaintenance ? 'Sân đang bảo trì, không thể thêm khung giờ' : undefined}
                                                             variant="outline"
                                                             size="sm"
                                                             className="text-teal-600 hover:text-teal-700 rounded-2xl hover:bg-teal-50 border-teal-200"
                                                        >
                                                             <Plus className="w-4 h-4 mr-1" />
-                                                            Thêm slot
+                                                            Thêm khung giờ
                                                        </Button>
                                                   </div>
                                              </div>
                                              {isMaintenance && (
                                                   <div className="mb-4 flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-medium text-orange-700">
                                                        <Wrench className="w-4 h-4" />
-                                                       <span>Sân đang bảo trì. Toàn bộ Time Slots sẽ bị khóa cho tới khi bạn đổi trạng thái.</span>
+                                                       <span>Sân đang bảo trì. Toàn bộ khung giờ sẽ bị khóa cho tới khi bạn đổi trạng thái.</span>
                                                   </div>
                                              )}
 
@@ -138,7 +138,7 @@ export default function TimeSlotsTab({
                                              {fieldSlots.length === 0 ? (
                                                   <div className="text-center py-5 text-gray-500">
                                                        <Clock className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                                                       <p className="text-sm">Sân này chưa có time slot nào</p>
+                                                       <p className="text-sm">Sân này chưa có khung giờ nào</p>
                                                        <Button
                                                             onClick={() => onAddSlot(field.fieldId)}
                                                             variant="outline"
@@ -146,7 +146,7 @@ export default function TimeSlotsTab({
                                                             className="mt-3 rounded-2xl"
                                                        >
                                                             <Plus className="w-4 h-4 mr-1" />
-                                                            Thêm slot đầu tiên
+                                                            Thêm khung giờ đầu tiên
                                                        </Button>
                                                   </div>
                                              ) : (

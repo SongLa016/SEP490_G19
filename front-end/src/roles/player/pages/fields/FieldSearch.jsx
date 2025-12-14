@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Star } from "lucide-react";
 import { Section, Container, Card, CardContent, StaggerContainer } from "../../../../shared/components/ui";
 import { ScrollReveal } from "../../../../shared/components/ScrollReveal";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import MapSearch from "./components/MapSearch";
-import { fetchComplexes, fetchFields, fetchTimeSlots, fetchPublicFieldSchedulesByDate, fetchPublicFieldSchedulesByField, fetchFavoriteFields, toggleFavoriteField } from "../../../../shared/index";
+import { fetchComplexes, fetchFields, fetchTimeSlots, fetchFavoriteFields, toggleFavoriteField } from "../../../../shared/index";
+import { usePublicFieldSchedulesByDate } from "../../../../shared/hooks/useFieldSchedules";
 import { fetchFieldTypes, normalizeFieldType } from "../../../../shared/services/fieldTypes";
 import { fetchRatingsByField } from "../../../../shared/services/ratings";
 import Swal from 'sweetalert2';
@@ -25,7 +26,20 @@ import ComplexListItem from "./components/ComplexListItem";
 import GroupedViewSection from "./components/GroupedViewSection";
 
 const normalizeStatus = (status) => (typeof status === "string" ? status.trim().toLowerCase() : "");
-const ALLOWED_FIELD_STATUSES = new Set(["available", "active"]);
+const normalizeText = (text) => {
+     if (typeof text !== "string") return "";
+     return text
+          .normalize("NFD")
+          .replace(/\p{Diacritic}/gu, "")
+          .toLowerCase()
+          .trim();
+};
+const normalizeDistrictKey = (text) => {
+     const normalized = normalizeText(text);
+     return normalized.replace(/^(quan|huyen|thi xa)\s+/i, "");
+};
+// Chỉ hiển thị sân có trạng thái "Available" - không hiển thị sân đang bảo trì
+const ALLOWED_FIELD_STATUSES = new Set(["available"]);
 const FIELD_TYPE_ALIASES = {
      "5vs5": ["5vs5", "5v5", "san5", "san5nguoi", "5nguoi"],
      "7vs7": ["7vs7", "7v7", "san7", "san7nguoi", "7nguoi"],
@@ -37,6 +51,14 @@ const normalizeTypeString = (value = "") => value
      .replace(/[\u0300-\u036f]/g, "")
      .toLowerCase()
      .replace(/[^a-z0-9]/g, "");
+// Format time range like "HH:mm - HH:mm" when slot name is missing
+const formatTimeRange = (start, end) => {
+     if (!start && !end) return "";
+     const s = start ? String(start).slice(0, 5) : "";
+     const e = end ? String(end).slice(0, 5) : "";
+     if (s && e) return `${s} - ${e}`;
+     return s || e;
+};
 const resolveFieldTypeName = (field, fieldTypeMap = {}) => {
      if (!field) return "";
      if (field.typeName && field.typeName.trim()) return field.typeName;
@@ -68,9 +90,10 @@ const isFieldDisplayable = (field) => {
 
 export default function FieldSearch({ user }) {
      const navigate = useNavigate();
+     const location = useLocation();
      const [entityTab, setEntityTab] = useState("fields"); // complexes | fields
      const [searchQuery, setSearchQuery] = useState("");
-     const [selectedLocation, setSelectedLocation] = useState("all");
+     const [selectedLocation, setSelectedLocation] = useState("");
      const [selectedPrice, setSelectedPrice] = useState("all");
      const [selectedRating, setSelectedRating] = useState("all");
      const [viewMode, setViewMode] = useState("grid"); // grid or list
@@ -86,9 +109,42 @@ export default function FieldSearch({ user }) {
      const [showMapSearch, setShowMapSearch] = useState(false);
      // removed unused mapLocation state
      const [mapSearchKey, setMapSearchKey] = useState(0); // Key to force MapSearch reset
-     const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+     // Default không lọc theo ngày để tránh mất kết quả ban đầu
+     const [date, setDate] = useState("");
      const [slotId, setSlotId] = useState("");
      const [timeSlots, setTimeSlots] = useState([]);
+     const [availableFieldIds, setAvailableFieldIds] = useState(null); // Set of fieldIds available for selected date
+
+     // Helpers to avoid redundant state updates (prevent extra renders/loops)
+     const setTimeSlotsSafe = (nextSlots) => {
+          setTimeSlots((prev) => {
+               if (!Array.isArray(prev) || !Array.isArray(nextSlots)) return nextSlots;
+               if (prev.length !== nextSlots.length) return nextSlots;
+               for (let i = 0; i < prev.length; i++) {
+                    const a = prev[i];
+                    const b = nextSlots[i];
+                    if ((a.slotId || a.slotID) !== (b.slotId || b.slotID) || a.name !== b.name) {
+                         return nextSlots;
+                    }
+               }
+               return prev;
+          });
+     };
+
+     const setAvailableFieldIdsSafe = (nextSet) => {
+          setAvailableFieldIds((prev) => {
+               if (prev === null && nextSet === null) return prev;
+               if (prev instanceof Set && nextSet instanceof Set) {
+                    if (prev.size === nextSet.size) {
+                         for (const v of prev) {
+                              if (!nextSet.has(v)) return nextSet;
+                         }
+                         return prev;
+                    }
+               }
+               return nextSet;
+          });
+     };
      const heroRef = useRef(null);
      const hasExistingDataRef = useRef(false);
      const complexesRef = useRef([]);
@@ -126,6 +182,27 @@ export default function FieldSearch({ user }) {
      const [complexes, setComplexes] = useState([]);
      const [filteredFields, setFilteredFields] = useState([]);
      const [favoriteFieldIds, setFavoriteFieldIds] = useState(new Set());
+     // District options derived from fetched complexes (deduped by base district name)
+     const districtOptions = useMemo(() => {
+          const map = new Map(); // baseKey -> label
+          complexes.forEach((c) => {
+               const raw = typeof c?.district === "string" ? c.district.trim() : "";
+               if (!raw) return;
+               const baseKey = normalizeDistrictKey(raw);
+               const hasPrefix = /^(Quận|Huyện|Thị xã)/i.test(raw);
+               if (!map.has(baseKey)) {
+                    map.set(baseKey, raw);
+                    return;
+               }
+               const current = map.get(baseKey);
+               const currentHasPrefix = /^(Quận|Huyện|Thị xã)/i.test(current);
+               // Prefer label with administrative prefix if available
+               if (hasPrefix && !currentHasPrefix) {
+                    map.set(baseKey, raw);
+               }
+          });
+          return Array.from(map.values()).sort((a, b) => a.localeCompare(b, "vi"));
+     }, [complexes]);
      const [isLoading, setIsLoading] = useState(false);
      const [userLocation, setUserLocation] = useState(null); // { lat, lng }
      const [fieldTypeMap, setFieldTypeMap] = useState({}); // Map typeId -> typeName
@@ -161,51 +238,102 @@ export default function FieldSearch({ user }) {
      }, []);
 
      const didInitRef = useRef(false);
+     // Track previous search to detect changes
+     const prevSearchRef = useRef(location.search);
+
      useEffect(() => {
           window.scrollTo(0, 0);
      }, []);
+
      useEffect(() => {
-          if (didInitRef.current) return;
+          const currentSearch = location.search || "";
+          const isFirstLoad = !didInitRef.current;
+          const searchChanged = prevSearchRef.current !== currentSearch;
+
+          // Update ref for next comparison
+          prevSearchRef.current = currentSearch;
+
+          // Only process if first load OR search params changed
+          if (!isFirstLoad && !searchChanged) return;
+
           didInitRef.current = true;
+
           try {
-               const raw = window.localStorage.getItem("searchPreset");
-               if (raw) {
-                    const preset = JSON.parse(raw);
-                    if (preset.searchQuery !== undefined) setSearchQuery(preset.searchQuery);
-                    if (preset.selectedLocation !== undefined) setSelectedLocation(preset.selectedLocation);
-                    if (preset.selectedPrice !== undefined) setSelectedPrice(preset.selectedPrice);
-                    if (preset.selectedRating !== undefined) setSelectedRating(preset.selectedRating);
-                    if (preset.sortBy !== undefined) setSortBy(preset.sortBy);
-                    if (preset.typeTab !== undefined) setTypeTab(preset.typeTab);
-                    if (preset.activeTab !== undefined) setActiveTab(preset.activeTab);
-                    window.localStorage.removeItem("searchPreset");
+               const params = new URLSearchParams(currentSearch);
+               let foundUrlParams = false;
+
+               // Read URL params - use default values if param is not present
+               // This ensures state is reset when navigating to /search without params
+               const q = params.get("searchQuery");
+               setSearchQuery(q || "");
+               if (q !== null) foundUrlParams = true;
+
+               const sl = params.get("selectedLocation");
+               setSelectedLocation(sl === "all" ? "" : (sl || ""));
+               if (sl !== null) foundUrlParams = true;
+
+               const sp = params.get("selectedPrice");
+               setSelectedPrice(sp === "all" ? "" : (sp || ""));
+               if (sp !== null) foundUrlParams = true;
+
+               const sr = params.get("selectedRating");
+               setSelectedRating(sr === "all" ? "" : (sr || ""));
+               if (sr !== null) foundUrlParams = true;
+
+               const sb = params.get("sortBy");
+               setSortBy(sb || "relevance");
+               if (sb !== null) foundUrlParams = true;
+
+               const tt = params.get("typeTab");
+               setTypeTab(tt || "all");
+               if (tt !== null) foundUrlParams = true;
+
+               const at = params.get("activeTab");
+               setActiveTab(at || "all");
+               if (at !== null) foundUrlParams = true;
+
+               const p = params.get("page");
+               if (p !== null) {
+                    const pn = parseInt(p, 10);
+                    if (!Number.isNaN(pn)) setPage(pn);
+                    foundUrlParams = true;
+               } else {
+                    setPage(1);
+               }
+
+               const et = params.get("entityTab");
+               setEntityTab(et || "fields");
+               if (et !== null) foundUrlParams = true;
+
+               const d = params.get("date");
+               setDate(d || "");
+               if (d !== null) foundUrlParams = true;
+
+               const s = params.get("slotId");
+               setSlotId(s || "");
+               if (s !== null) foundUrlParams = true;
+
+               if (foundUrlParams) {
                     setForceList(true);
                } else {
-                    setSearchQuery("");
-                    setSelectedLocation("");
-                    setSelectedPrice("");
-                    setSelectedRating("");
-                    setSortBy("relevance");
-                    setActiveTab("all");
-                    setViewMode("grid");
-                    setPage(1);
                     setForceList(false);
                }
 
-               // Load persisted preferences
-               const saved = window.localStorage.getItem("fieldSearchPrefs");
-               if (saved) {
-                    const prefs = JSON.parse(saved);
-                    if (prefs.viewMode) setViewMode(prefs.viewMode);
-                    if (prefs.activeTab) setActiveTab(prefs.activeTab);
-                    if (prefs.page) setPage(prefs.page);
-                    if (prefs.entityTab) setEntityTab(prefs.entityTab);
-                    if (prefs.date) setDate(prefs.date);
-                    if (prefs.slotId) setSlotId(prefs.slotId);
-                    if (prefs.typeTab) setTypeTab(prefs.typeTab);
+               // Only load from localStorage on first load AND when no URL params provided
+               // This ensures URL params always take priority
+               if (isFirstLoad && !foundUrlParams) {
+                    const saved = window.localStorage.getItem("fieldSearchPrefs");
+                    if (saved) {
+                         const prefs = JSON.parse(saved);
+                         if (prefs.viewMode) setViewMode(prefs.viewMode);
+                         // Don't restore activeTab, typeTab from localStorage when no URL params
+                         // to ensure clean state when navigating to /search directly
+                    }
                }
-          } catch { }
-     }, []);
+          } catch (e) {
+               console.error("Error parsing search query params:", e);
+          }
+     }, [location.search]);
 
      // Load danh sách sân yêu thích khi đã có user đăng nhập
      useEffect(() => {
@@ -226,145 +354,88 @@ export default function FieldSearch({ user }) {
      }, [user]);
 
      // Load available slots from schedules when date changes
+     // React Query: fetch schedules by date (cached)
+     const { data: schedulesByDate = [], isFetching: isFetchingSchedules } = usePublicFieldSchedulesByDate(
+          date ? date.split("T")[0] : ""
+     );
+     const schedulesData = useMemo(() => (Array.isArray(schedulesByDate) ? schedulesByDate : []), [schedulesByDate]);
+
+     // Derive slot options and available fields when date or schedules change
      useEffect(() => {
           let mounted = true;
-          const loadSlotsFromSchedules = async () => {
+
+          const loadAllSlotsWhenNoDate = async () => {
                try {
-                    if (!date) {
-                         // If no date, fetch all time slots
-                         const response = await fetchTimeSlots();
-                         if (!mounted) return;
-                         const slots = response?.success && Array.isArray(response.data)
-                              ? response.data
-                              : [];
-                         setTimeSlots(slots);
-                         return;
-                    }
-
-                    // Normalize date format
-                    const normalizedDate = date.split('T')[0]; // Ensure YYYY-MM-DD format
-
-                    // Try to fetch schedules by date first
-                    let schedulesResponse = await fetchPublicFieldSchedulesByDate(normalizedDate);
-
-                    // If endpoint doesn't exist or returns empty, fetch from all fields
-                    if (!schedulesResponse?.success || !Array.isArray(schedulesResponse.data) || schedulesResponse.data.length === 0) {
-                         // Fetch all fields first to get fieldIds
-                         const fList = await fetchFields({ query: "", date: normalizedDate, slotId: "", sortBy: "relevance", useApi: true });
-
-                         if (!mounted) return;
-
-                         // Get unique fieldIds
-                         const fieldIds = new Set();
-                         if (Array.isArray(fList)) {
-                              fList.forEach(field => {
-                                   if (field.fieldId) fieldIds.add(field.fieldId);
-                              });
-                         }
-
-                         // Fetch schedules for all fields in parallel
-                         const schedulePromises = Array.from(fieldIds).map(fieldId =>
-                              fetchPublicFieldSchedulesByField(fieldId)
-                         );
-
-                         const scheduleResults = await Promise.all(schedulePromises);
-
-                         // Combine all schedules
-                         let allSchedules = [];
-                         scheduleResults.forEach(result => {
-                              if (result?.success && Array.isArray(result.data)) {
-                                   allSchedules = allSchedules.concat(result.data);
-                              }
-                         });
-
-                         // Filter schedules by date
-                         const filteredSchedules = allSchedules.filter(schedule => {
-                              const scheduleDate = schedule.date || schedule.Date;
-                              if (!scheduleDate) return false;
-                              const normalizedScheduleDate = typeof scheduleDate === 'string'
-                                   ? scheduleDate.split('T')[0]
-                                   : scheduleDate;
-                              return normalizedScheduleDate === normalizedDate;
-                         });
-
-                         schedulesResponse = {
-                              success: true,
-                              data: filteredSchedules
-                         };
-                    }
-
+                    const response = await fetchTimeSlots();
                     if (!mounted) return;
-
-                    if (schedulesResponse?.success && Array.isArray(schedulesResponse.data) && schedulesResponse.data.length > 0) {
-                         // Extract unique slotIds from schedules
-                         const slotIdSet = new Set();
-                         const slotMap = new Map(); // Map slotId to slot info
-
-                         schedulesResponse.data.forEach(schedule => {
-                              const slotId = schedule.slotId || schedule.SlotId;
-                              if (slotId) {
-                                   slotIdSet.add(slotId);
-                                   // Store slot info if available in schedule
-                                   if (!slotMap.has(slotId) && (schedule.slotName || schedule.SlotName)) {
-                                        slotMap.set(slotId, {
-                                             slotId: slotId,
-                                             name: schedule.slotName || schedule.SlotName,
-                                             startTime: schedule.startTime || schedule.StartTime,
-                                             endTime: schedule.endTime || schedule.EndTime
-                                        });
-                                   }
-                              }
-                         });
-
-                         // If we have slot info from schedules, use it
-                         if (slotMap.size > 0) {
-                              const slots = Array.from(slotMap.values());
-                              setTimeSlots(slots);
-                         } else {
-                              // Otherwise, fetch all time slots and filter by available slotIds
-                              const allSlotsResponse = await fetchTimeSlots();
-                              if (!mounted) return;
-
-                              const allSlots = allSlotsResponse?.success && Array.isArray(allSlotsResponse.data)
-                                   ? allSlotsResponse.data
-                                   : [];
-
-                              // Filter slots that are available in schedules
-                              const availableSlots = allSlots.filter(slot =>
-                                   slotIdSet.has(slot.slotId || slot.SlotID)
-                              );
-
-                              setTimeSlots(availableSlots.length > 0 ? availableSlots : allSlots);
-                         }
-                    } else {
-                         // If no schedules found, fetch all time slots
-                         const response = await fetchTimeSlots();
-                         if (!mounted) return;
-                         const slots = response?.success && Array.isArray(response.data)
-                              ? response.data
-                              : [];
-                         setTimeSlots(slots);
-                    }
+                    const slots = response?.success && Array.isArray(response.data) ? response.data : [];
+                    setTimeSlotsSafe(
+                         slots.map((slot) => {
+                              const timeLabel = formatTimeRange(slot.startTime || slot.StartTime, slot.endTime || slot.EndTime);
+                              const baseName = slot.name || slot.slotName || slot.SlotName;
+                              const label = baseName
+                                   ? timeLabel
+                                        ? `${baseName} (${timeLabel})`
+                                        : baseName
+                                   : timeLabel || `Slot ${slot.slotId || slot.SlotID}`;
+                              return { ...slot, name: label };
+                         })
+                    );
+                    setAvailableFieldIdsSafe(null);
                } catch (error) {
-                    console.error("Error loading slots from schedules:", error);
+                    console.error("Error loading all time slots:", error);
                     if (!mounted) return;
-                    // Fallback to fetch all time slots
-                    try {
-                         const response = await fetchTimeSlots();
-                         if (!mounted) return;
-                         const slots = response?.success && Array.isArray(response.data)
-                              ? response.data
-                              : [];
-                         setTimeSlots(slots);
-                    } catch (fallbackError) {
-                         console.error("Error loading time slots (fallback):", fallbackError);
-                         setTimeSlots([]);
-                    }
+                    setTimeSlotsSafe([]);
+                    setAvailableFieldIdsSafe(null);
                }
           };
-          loadSlotsFromSchedules();
-          return () => { mounted = false; };
-     }, [date]);
+
+          if (!date) {
+               loadAllSlotsWhenNoDate();
+               return () => {
+                    mounted = false;
+               };
+          }
+
+          // With date selected, use schedulesByDate from React Query
+          const slotMap = new Map();
+          const fieldIdSet = new Set();
+
+          schedulesData.forEach((schedule) => {
+               const status = normalizeStatus(schedule.status || schedule.Status);
+               if (status && status !== "available") return;
+
+               const slotId = schedule.slotId || schedule.SlotId;
+               const fieldId = schedule.fieldId || schedule.FieldId || schedule.fieldID || schedule.FieldID;
+               const slotName = schedule.slotName || schedule.SlotName;
+               const timeLabel = formatTimeRange(schedule.startTime || schedule.StartTime, schedule.endTime || schedule.EndTime);
+               const label = slotName
+                    ? timeLabel
+                         ? `${slotName} (${timeLabel})`
+                         : slotName
+                    : timeLabel || (slotId ? `Slot ${slotId}` : "");
+
+               if (slotId && !slotMap.has(slotId)) {
+                    slotMap.set(slotId, {
+                         slotId,
+                         name: label || `Slot ${slotId}`,
+                         startTime: schedule.startTime || schedule.StartTime,
+                         endTime: schedule.endTime || schedule.EndTime,
+                    });
+               }
+
+               if (fieldId) {
+                    fieldIdSet.add(String(fieldId));
+               }
+          });
+
+          setTimeSlotsSafe(slotMap.size > 0 ? Array.from(slotMap.values()) : []);
+          setAvailableFieldIdsSafe(fieldIdSet.size > 0 ? new Set(fieldIdSet) : null);
+
+          return () => {
+               mounted = false;
+          };
+     }, [date, schedulesData]);
 
      // Reset slotId when date changes to avoid invalid slot selection
      useEffect(() => {
@@ -377,15 +448,12 @@ export default function FieldSearch({ user }) {
      // Load data whenever key filters change (fetch both complexes and fields to support grouped view)
      useEffect(() => {
           let ignore = false;
-          const hasNoData = !hasExistingDataRef.current;
 
           const debounceTimer = setTimeout(() => {
                const loadData = async () => {
                     try {
-                         // Only show loading if we don't have any data yet
-                         if (hasNoData) {
-                              setIsLoading(true);
-                         }
+                         // Always show loading when fetching data
+                         setIsLoading(true);
                          // Start fetching immediately for better perceived performance
                          const [cList, fList] = await Promise.all([
                               fetchComplexes({ query: searchQuery, date, slotId, useApi: true }),
@@ -442,13 +510,7 @@ export default function FieldSearch({ user }) {
                                    })
                               );
 
-                              // Apply favorite flags based on favoriteFieldIds
-                              const fieldsWithFavorites = fieldsWithRatings.map(f => ({
-                                   ...f,
-                                   isFavorite: favoriteFieldIds.has(Number(f.fieldId)),
-                              }));
-
-                              setFields(fieldsWithFavorites);
+                              setFields(fieldsWithRatings);
                          }
                     } catch (error) {
                          console.error("Error loading data:", error);
@@ -473,7 +535,11 @@ export default function FieldSearch({ user }) {
      }, [searchQuery, date, slotId, sortBy, fieldTypeMap]);
 
      useEffect(() => {
-          let filtered = Array.isArray(fields) ? [...fields] : [];
+          // Apply favorite flags to fields
+          let filtered = Array.isArray(fields) ? fields.map(f => ({
+               ...f,
+               isFavorite: favoriteFieldIds.has(Number(f.fieldId)),
+          })) : [];
 
           // Filter by search query
           if (searchQuery) {
@@ -483,9 +549,55 @@ export default function FieldSearch({ user }) {
                );
           }
 
-          // Filter by location
+          // Filter by available fieldIds for selected date (from schedules)
+          if (date && availableFieldIds instanceof Set) {
+               filtered = filtered.filter(field => {
+                    const fid = field.fieldId ?? field.FieldID ?? field.fieldID ?? field.id;
+                    if (!fid) return false;
+                    return availableFieldIds.has(String(fid));
+               });
+          }
+
+          // Filter by location (support both full label and base district without prefix)
           if (selectedLocation) {
-               filtered = filtered.filter(field => (field.address || "").includes(selectedLocation));
+               const normalizedLocation = normalizeText(selectedLocation);
+               const normalizedBase = normalizeDistrictKey(selectedLocation);
+
+               // Generate alternative patterns for district matching
+               // e.g., "Quận 1" -> ["quan 1", "q.1", "q1", "quan1", "1"]
+               const patterns = [normalizedLocation];
+               if (normalizedBase) patterns.push(normalizedBase);
+
+               // Extract number from district name (e.g., "quan 1" -> "1")
+               const numMatch = normalizedLocation.match(/\d+/);
+               if (numMatch) {
+                    const num = numMatch[0];
+                    patterns.push(`q.${num}`, `q${num}`, `quan${num}`, `quan ${num}`);
+               }
+
+               filtered = filtered.filter(field => {
+                    const addr = normalizeText(field.address || "");
+                    const dist = normalizeText(field.district || "");
+                    const ward = normalizeText(field.ward || field.Ward || "");
+                    const complexName = normalizeText(field.complexName || field.fieldName || field.name || "");
+                    const locationText = normalizeText(field.location || field.Location || "");
+                    const complexAddress = normalizeText(field.complexAddress || "");
+
+                    // Combine all searchable text
+                    const allText = [addr, dist, ward, complexName, locationText, complexAddress].join(" ");
+
+                    // Check if any pattern matches
+                    const matchesAnyPattern = patterns.some(pattern => allText.includes(pattern));
+
+                    // Also check exact district match (after normalization)
+                    const exactDistrictMatch = dist && (
+                         dist === normalizedLocation ||
+                         dist === normalizedBase ||
+                         normalizeDistrictKey(dist) === normalizedBase
+                    );
+
+                    return matchesAnyPattern || exactDistrictMatch;
+               });
           }
 
           // Filter by field type via tabs
@@ -570,7 +682,7 @@ export default function FieldSearch({ user }) {
           setFilteredFields(fieldsWithTypeName);
 
           // Reset trang chỉ khi thực sự là thay đổi filter, không reset khi chỉ chuyển trang
-     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields, fieldTypeMap]);
+     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields, fieldTypeMap, date, availableFieldIds, favoriteFieldIds]);
 
      // Persist preferences
      useEffect(() => {
@@ -729,16 +841,17 @@ export default function FieldSearch({ user }) {
      // Flip to list view whenever user adjusts any filter/search/sort or tab is not "all"
      useEffect(() => {
           const hasAny = !!searchQuery || !!selectedLocation || !!selectedPrice || !!selectedRating || sortBy !== "relevance";
-          setForceList(hasAny || activeTab !== "all");
+          const nextForceList = hasAny || activeTab !== "all";
+          setForceList((prev) => (prev === nextForceList ? prev : nextForceList));
      }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab]);
 
      const updateViewMode = (mode) => {
           setViewMode(mode);
           if (mode === "grid") {
                const noFilter = !searchQuery && !selectedLocation && !selectedPrice && !selectedRating && sortBy === "relevance" && activeTab === "all";
-               setForceList(!noFilter);
+               setForceList((prev) => (prev === !noFilter ? prev : !noFilter));
           } else {
-               setForceList(true);
+               setForceList((prev) => (prev === true ? prev : true));
           }
      };
 
@@ -876,7 +989,7 @@ export default function FieldSearch({ user }) {
                return distA - distB;
           })
           .slice(0, 4);
-     
+
      const bestPriceGroup = [...filteredFields].sort((a, b) => (a.priceForSelectedSlot || 0) - (b.priceForSelectedSlot || 0)).slice(0, 4);
      const topRatedGroup = [...filteredFields].sort((a, b) => b.rating - a.rating).slice(0, 4);
 
@@ -986,6 +1099,7 @@ export default function FieldSearch({ user }) {
                                              selectedLocation={selectedLocation}
                                              handleLocationChange={handleLocationChange}
                                              getLocationValue={getLocationValue}
+                                             districtOptions={districtOptions}
                                              selectedPrice={selectedPrice}
                                              handlePriceChange={handlePriceChange}
                                              getPriceValue={getPriceValue}
@@ -1002,10 +1116,9 @@ export default function FieldSearch({ user }) {
                                                   setPage(1);
                                                   setForceList(false);
                                                   setEntityTab("fields");
-                                                  setDate(new Date().toISOString().split('T')[0]);
+                                                  setDate("");
                                                   setSlotId("");
                                                   setMapSearchKey(prev => prev + 1);
-                                                  localStorage.removeItem('searchPreset');
                                              }}
                                         />
                                         <QuickPresets
@@ -1036,7 +1149,7 @@ export default function FieldSearch({ user }) {
                                              onResetAdvancedFilters={() => {
                                                   setSelectedRating("");
                                                   setSortBy("relevance");
-                                                  setDate(new Date().toISOString().split('T')[0]);
+                                                  setDate("");
                                                   setSlotId("");
                                              }}
                                         />

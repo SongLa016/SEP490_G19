@@ -12,6 +12,7 @@ import {
      Building2,
      AlertTriangle,
 } from "lucide-react";
+import Swal from "sweetalert2";
 import {
      fetchDepositPolicies,
      createDepositPolicy,
@@ -349,14 +350,36 @@ export default function DepositPolicies({ isDemo = false }) {
                setShowDemoRestrictedModal(true);
                return;
           }
-          if (window.confirm('Bạn có chắc chắn muốn xóa chính sách này?')) {
-               try {
-                    await deleteDepositPolicy(policyId);
-                    loadData();
-               } catch (error) {
-                    console.error('Error deleting policy:', error);
-                    alert(error.message || 'Có lỗi xảy ra khi xóa chính sách');
-               }
+          const result = await Swal.fire({
+               title: 'Xác nhận xóa',
+               text: 'Bạn có chắc chắn muốn xóa chính sách này?',
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#ef4444',
+               cancelButtonColor: '#6b7280',
+               confirmButtonText: 'Xóa',
+               cancelButtonText: 'Hủy'
+          });
+
+          if (!result.isConfirmed) return;
+
+          try {
+               await deleteDepositPolicy(policyId);
+               await Swal.fire({
+                    icon: 'success',
+                    title: 'Đã xóa',
+                    text: 'Chính sách đã được xóa thành công',
+                    timer: 1500,
+                    showConfirmButton: false
+               });
+               loadData();
+          } catch (error) {
+               console.error('Error deleting policy:', error);
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: error.message || 'Có lỗi xảy ra khi xóa chính sách'
+               });
           }
      };
 

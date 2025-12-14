@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { Container, Section, LoadingPage, LoadingSpinner } from "../../../../shared/components/ui";
 import { fetchComplexDetail, fetchTimeSlotsByField, fetchFieldDetail, fetchCancellationPolicyByComplex, fetchPromotionsByComplex, fetchPublicFieldSchedulesByField, fetchFieldTypes, fetchDepositPolicyByField, fetchFavoriteFields, toggleFavoriteField as toggleFavoriteFieldApi } from "../../../../shared/index";
 import { fetchRatingsByComplex, fetchRatingsByField } from "../../../../shared/services/ratings";
 import { normalizeFieldType } from "../../../../shared/services/fieldTypes";
 import { useFieldSchedules } from "../../../../shared/hooks";
+import { fetchBookingPackageSessionsByPlayerToken } from "../../../../shared/services/bookings";
 import BookingModal from "../../../../shared/components/BookingModal";
 import { useModal } from "../../../../contexts/ModalContext";
 import Swal from 'sweetalert2';
@@ -47,6 +48,23 @@ const calculateSlotDurationHours = (startTime, endTime) => {
           console.warn("Unable to compute slot duration:", { startTime, endTime, error });
      }
      return null;
+};
+
+const normalizeDateValue = (value) => {
+     if (!value) return "";
+     if (typeof value === "string") return value.split("T")[0];
+     if (value && typeof value === "object" && value.year && value.month && value.day) {
+          return `${value.year}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}`;
+     }
+     try {
+          const parsed = new Date(value);
+          if (!Number.isNaN(parsed.getTime())) {
+               return parsed.toISOString().split("T")[0];
+          }
+     } catch {
+          // ignore parse error
+     }
+     return String(value);
 };
 
 export default function ComplexDetail({ user }) {
@@ -94,6 +112,8 @@ export default function ComplexDetail({ user }) {
      const [bookingType, setBookingType] = useState("field"); // "field" | "complex" | "quick"
      const [favoriteFieldIds, setFavoriteFieldIds] = useState(new Set());
      const favoritesLoadedRef = useRef(false);
+     const [playerPackageSessions, setPlayerPackageSessions] = useState([]);
+     const [isLoadingPlayerPackages, setIsLoadingPlayerPackages] = useState(false);
      const showToastMessage = (message, type = 'info') => {
           const config = {
                title: type === 'success' ? 'Thành công!' :
@@ -117,6 +137,89 @@ export default function ComplexDetail({ user }) {
           selectedDate,
           !!selectedFieldId
      );
+
+     const normalizePlayerPackageSession = useCallback((session) => {
+          if (!session) return null;
+          return {
+               bookingPackageId: session.bookingPackageId || session.bookingPackageID || session.packageId || session.packageID,
+               scheduleId: session.scheduleId || session.scheduleID || session.ScheduleID,
+               fieldId: session.fieldId || session.fieldID || session.FieldID,
+               slotId: session.slotId || session.slotID || session.SlotID,
+               date: session.sessionDate || session.date || session.Date || session.startDate,
+               status: session.sessionStatus || session.status || "",
+          };
+     }, []);
+
+     useEffect(() => {
+          if (!user) {
+               setPlayerPackageSessions([]);
+               return;
+          }
+          let ignore = false;
+          const loadPlayerPackageSessions = async () => {
+               setIsLoadingPlayerPackages(true);
+               try {
+                    const resp = await fetchBookingPackageSessionsByPlayerToken();
+                    if (ignore) return;
+                    if (resp.success && Array.isArray(resp.data)) {
+                         const normalized = resp.data
+                              .map(normalizePlayerPackageSession)
+                              .filter(Boolean);
+                         setPlayerPackageSessions(normalized);
+                    } else {
+                         setPlayerPackageSessions([]);
+                    }
+               } catch (error) {
+                    if (!ignore) {
+                         console.warn("Không thể tải lịch đặt cố định của bạn:", error);
+                         setPlayerPackageSessions([]);
+                    }
+               } finally {
+                    if (!ignore) {
+                         setIsLoadingPlayerPackages(false);
+                    }
+               }
+          };
+          loadPlayerPackageSessions();
+          return () => { ignore = true; };
+     }, [user, normalizePlayerPackageSession]);
+
+     const selectedFieldSchedulesWithPackages = useMemo(() => {
+          if (!Array.isArray(selectedFieldSchedules)) return [];
+          if (!selectedFieldId || !playerPackageSessions.length) return selectedFieldSchedules;
+
+          const sessionsForField = playerPackageSessions.filter((ps) => {
+               const psFieldId = ps?.fieldId || ps?.fieldID || ps?.FieldID;
+               if (psFieldId === undefined || psFieldId === null) return true;
+               return Number(psFieldId) === Number(selectedFieldId);
+          });
+
+          if (!sessionsForField.length) return selectedFieldSchedules;
+
+          return selectedFieldSchedules.map((schedule) => {
+               const scheduleId = schedule.scheduleId || schedule.ScheduleID || schedule.id;
+               const scheduleSlotId = schedule.slotId || schedule.SlotId || schedule.slotID || schedule.SlotID;
+               const scheduleDateStr = normalizeDateValue(schedule.date);
+
+               const matched = sessionsForField.some((ps) => {
+                    const statusLower = (ps?.status || "").toLowerCase();
+                    if (statusLower.includes("cancel")) return false;
+
+                    const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
+                    if (psScheduleId && scheduleId && Number(psScheduleId) === Number(scheduleId)) {
+                         return true;
+                    }
+
+                    const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
+                    const psDateStr = normalizeDateValue(ps.date);
+                    if (!psSlotId || !psDateStr) return false;
+
+                    return Number(psSlotId) === Number(scheduleSlotId) && psDateStr === scheduleDateStr;
+               });
+
+               return matched ? { ...schedule, status: "Booked", bookingType: "package" } : schedule;
+          });
+     }, [selectedFieldSchedules, playerPackageSessions, selectedFieldId]);
 
      useEffect(() => {
           let ignore = false;
@@ -499,7 +602,7 @@ export default function ComplexDetail({ user }) {
 
      const normalizedFieldScheduleEntries = useMemo(() => {
           if (!selectedFieldId) return [];
-          return (selectedFieldSchedules || [])
+          return (selectedFieldSchedulesWithPackages || [])
                .map(schedule => {
                     const slotId = schedule.slotId || schedule.SlotId || schedule.slotID || schedule.SlotID;
                     if (!slotId) return null;
@@ -511,10 +614,18 @@ export default function ComplexDetail({ user }) {
                     };
                })
                .filter(Boolean);
-     }, [selectedFieldId, selectedFieldSchedules, slotPriceMap]);
+     }, [selectedFieldId, selectedFieldSchedulesWithPackages, slotPriceMap]);
 
      const visibleScheduleEntries = useMemo(
-          () => normalizedFieldScheduleEntries.filter(entry => entry.status === "Available"),
+          () => {
+               // Filter out schedules that are not Available
+               // This includes: Booked, Maintenance, or any other non-Available status
+               return normalizedFieldScheduleEntries.filter(entry => {
+                    const status = (entry.status || "").trim();
+                    // Only show Available schedules
+                    return status === "Available" || status === "";
+               });
+          },
           [normalizedFieldScheduleEntries]
      );
 
@@ -1027,16 +1138,16 @@ export default function ComplexDetail({ user }) {
      // Nếu đã chọn slot & field cụ thể: dựa trên lịch trình của sân đó trong ngày được chọn
      const availableCount = useMemo(() => {
           // Đã chọn một sân cụ thể
-          if (selectedFieldId && Array.isArray(selectedFieldSchedules)) {
+          if (selectedFieldId && Array.isArray(selectedFieldSchedulesWithPackages)) {
                // Nếu không có bất kỳ lịch trình nào cho ngày đã chọn → coi như hết chỗ
-               if (selectedFieldSchedules.length === 0) {
+               if (selectedFieldSchedulesWithPackages.length === 0) {
                     return 0;
                }
 
                // Nếu đã chọn slot cụ thể: kiểm tra lịch trình của slot đó
                if (selectedSlotId) {
                     const slotIdStr = String(selectedSlotId);
-                    const relatedSchedules = selectedFieldSchedules.filter((s) => {
+                    const relatedSchedules = selectedFieldSchedulesWithPackages.filter((s) => {
                          const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
                          return String(scheduleSlotId) === slotIdStr;
                     });
@@ -1051,7 +1162,7 @@ export default function ComplexDetail({ user }) {
                }
 
                // Chưa chọn slot nhưng đã chọn sân: nếu có ít nhất một lịch trình Available trong ngày → 1, ngược lại 0
-               const hasAnyAvailable = selectedFieldSchedules.some(
+               const hasAnyAvailable = selectedFieldSchedulesWithPackages.some(
                     (s) => (s.status || s.Status || "Available") === "Available"
                );
                return hasAnyAvailable ? 1 : 0;
@@ -1059,7 +1170,7 @@ export default function ComplexDetail({ user }) {
 
           // Chưa chọn sân nhỏ: hiển thị tổng số sân nhỏ trong khu
           return fields.length;
-     }, [selectedFieldId, selectedSlotId, selectedFieldSchedules, fields.length]);
+     }, [selectedFieldId, selectedSlotId, selectedFieldSchedulesWithPackages, fields.length]);
 
      // Dynamic pricing derived from visible schedules
      const selectedSlotPrice = selectedSlotId
@@ -1211,7 +1322,7 @@ export default function ComplexDetail({ user }) {
                                    fields={fields}
                                    selectedDate={selectedDate}
                                    selectedSlotId={selectedSlotId}
-                                   fieldSchedules={selectedFieldSchedules}
+                                   fieldSchedules={selectedFieldSchedulesWithPackages}
                                    isLoadingSchedules={isLoadingSelectedFieldSchedules}
                                    isRecurring={isRecurring}
                                    repeatDays={repeatDays}

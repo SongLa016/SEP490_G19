@@ -460,13 +460,29 @@ export async function createBookingPackage(packageData) {
     const endpoint =
       "https://sep490-g19-zxph.onrender.com/api/BookingPackage/create";
 
+    // Parse date string (YYYY-MM-DD) thành DateTime format cho BE
+    // BE mong đợi DateTime, nhưng chúng ta gửi YYYY-MM-DD và BE sẽ parse
+    // Đảm bảo format đúng: YYYY-MM-DD hoặc ISO string
+    const formatDateForBackend = (dateStr) => {
+      if (!dateStr) return "";
+      // Nếu đã là ISO string, giữ nguyên
+      if (typeof dateStr === "string" && dateStr.includes("T")) {
+        return dateStr;
+      }
+      // Nếu là YYYY-MM-DD, chuyển thành ISO string với time 00:00:00 UTC
+      if (typeof dateStr === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return `${dateStr}T00:00:00.000Z`;
+      }
+      return dateStr;
+    };
+
     // Chuẩn hoá payload theo spec backend
     const payload = {
       userId: Number(packageData.userId) || 0,
       fieldId: Number(packageData.fieldId) || 0,
       packageName: packageData.packageName || "Gói đặt định kỳ",
-      startDate: packageData.startDate, // ISO string
-      endDate: packageData.endDate, // ISO string
+      startDate: formatDateForBackend(packageData.startDate), // DateTime format cho BE
+      endDate: formatDateForBackend(packageData.endDate), // DateTime format cho BE
       totalPrice: Number(packageData.totalPrice) || 0,
       selectedSlots: Array.isArray(packageData.selectedSlots)
         ? packageData.selectedSlots.map((s) => ({
@@ -477,6 +493,13 @@ export async function createBookingPackage(packageData) {
           }))
         : [],
     };
+
+    console.log("📤 [API] Sending package payload:", {
+      startDate: payload.startDate,
+      endDate: payload.endDate,
+      selectedSlotsCount: payload.selectedSlots.length,
+      selectedSlots: payload.selectedSlots
+    });
 
     const response = await apiClient.post(endpoint, payload);
 

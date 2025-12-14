@@ -31,11 +31,11 @@ export default function ManageSchedulesTab({
      const getStatusBadge = (status) => {
           const statusLower = status.toLowerCase();
           if (statusLower === 'available') {
-               return <Badge className="bg-green-100 rounded-2xl hover:bg-green-200 cursor-pointer text-green-800">Available</Badge>;
+               return <Badge className="bg-green-100 rounded-2xl hover:bg-green-200 cursor-pointer text-green-800">Có sẵn</Badge>;
           } else if (statusLower === 'booked') {
-               return <Badge className="bg-blue-100 rounded-2xl hover:bg-blue-200 cursor-pointer text-blue-800">Booked</Badge>;
+               return <Badge className="bg-blue-100 rounded-2xl hover:bg-blue-200 cursor-pointer text-blue-800">Đã đặt</Badge>;
           } else if (statusLower === 'maintenance') {
-               return <Badge className="bg-orange-100 rounded-2xl hover:bg-orange-200 cursor-pointer text-orange-800">Maintenance</Badge>;
+               return <Badge className="bg-orange-100 rounded-2xl hover:bg-orange-200 cursor-pointer text-orange-800">Bảo trì</Badge>;
           }
           return <Badge className="bg-gray-100 rounded-2xl hover:bg-gray-200 cursor-pointer text-gray-800">{status}</Badge>;
      };
@@ -113,7 +113,7 @@ export default function ManageSchedulesTab({
                     } else {
                          return false; // Invalid type
                     }
-                    
+
                     const scheduleDateStr = date ? date.toISOString().split('T')[0] : '';
                     if (scheduleDateStr !== filterDateStr) {
                          return false;
@@ -290,12 +290,12 @@ export default function ManageSchedulesTab({
                               errorCount++;
                               // Check if error is related to booking
                               const errorMessage = result.error || '';
-                              const isBookingError = errorMessage.toLowerCase().includes('booking') || 
-                                                   errorMessage.toLowerCase().includes('đặt sân') ||
-                                                   errorMessage.toLowerCase().includes('entity changes') ||
-                                                   errorMessage.toLowerCase().includes('foreign key') ||
-                                                   errorMessage.toLowerCase().includes('constraint');
-                              
+                              const isBookingError = errorMessage.toLowerCase().includes('booking') ||
+                                   errorMessage.toLowerCase().includes('đặt sân') ||
+                                   errorMessage.toLowerCase().includes('entity changes') ||
+                                   errorMessage.toLowerCase().includes('foreign key') ||
+                                   errorMessage.toLowerCase().includes('constraint');
+
                               errors.push(`ID ${scheduleId}: ${isBookingError ? 'Bạn không thể xóa vì đang có lịch đặt sân này' : (result.error || 'Lỗi không xác định')}`);
                          }
                          // Small delay to avoid overwhelming server
@@ -304,12 +304,12 @@ export default function ManageSchedulesTab({
                          errorCount++;
                          // Check if error is related to booking
                          const errorMessage = error.message || error.response?.data?.message || '';
-                         const isBookingError = errorMessage.toLowerCase().includes('booking') || 
-                                              errorMessage.toLowerCase().includes('đặt sân') ||
-                                              errorMessage.toLowerCase().includes('entity changes') ||
-                                              errorMessage.toLowerCase().includes('foreign key') ||
-                                              errorMessage.toLowerCase().includes('constraint');
-                         
+                         const isBookingError = errorMessage.toLowerCase().includes('booking') ||
+                              errorMessage.toLowerCase().includes('đặt sân') ||
+                              errorMessage.toLowerCase().includes('entity changes') ||
+                              errorMessage.toLowerCase().includes('foreign key') ||
+                              errorMessage.toLowerCase().includes('constraint');
+
                          errors.push(`ID ${scheduleId}: ${isBookingError ? 'Bạn không thể xóa vì đang có lịch đặt sân này' : (error.message || 'Lỗi không xác định')}`);
                     }
                }
@@ -696,7 +696,7 @@ export default function ManageSchedulesTab({
                                                             if (startTime && endTime) {
                                                                  timeStr = `${formatTimeObj(startTime)} - ${formatTimeObj(endTime)}`;
                                                             }
-                                                            
+
                                                             // Create unique key for grouped view
                                                             const fieldId = schedule.fieldId ?? schedule.FieldID ?? schedule.fieldID;
                                                             const slotId = schedule.slotId ?? schedule.SlotID ?? schedule.SlotId ?? schedule.slotID;
@@ -760,7 +760,7 @@ export default function ManageSchedulesTab({
                                                                                      bookingDate.setHours(12, 0, 0, 0);
                                                                                 }
                                                                                 const hasBooking = getBookingInfo && bookingDate && fieldId && slotId ? getBookingInfo(Number(fieldId), bookingDate, Number(slotId)) : null;
-                                                                                
+
                                                                                 return (
                                                                                      <Select
                                                                                           value={status}
@@ -896,25 +896,25 @@ export default function ManageSchedulesTab({
                                              const scheduleId = schedule.scheduleId || schedule.ScheduleID;
                                              const fieldName = schedule.fieldName || schedule.FieldName || 'N/A';
                                              const slotName = schedule.slotName || schedule.SlotName || 'N/A';
-                                             
+
                                              // Get fieldId, slotId, and scheduleDateRaw first (needed for multiple purposes)
                                              const fieldId = schedule.fieldId ?? schedule.FieldID ?? schedule.fieldID;
                                              const slotId = schedule.slotId ?? schedule.SlotID ?? schedule.SlotId ?? schedule.slotID;
                                              const scheduleDateRaw = schedule.date || schedule.scheduleDate || schedule.ScheduleDate;
-                                             
+
                                              // Format date for display
                                              let dateStr = 'N/A';
                                              const date = getScheduleDate(schedule);
                                              if (date) {
                                                   dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
                                              }
-                                             
+
                                              // Create unique key combining scheduleId, fieldId, slotId, and date to avoid duplicate keys
                                              const uniqueKey = `${scheduleId}-${fieldId}-${slotId}-${scheduleDateRaw}-${index}`;
-                                             
+
                                              // Get base status from schedule
                                              let status = schedule.status || schedule.Status || 'Available';
-                                             
+
                                              // Calculate bookingDate for checking booking
                                              let bookingDate = null;
                                              if (typeof scheduleDateRaw === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(scheduleDateRaw)) {
@@ -925,7 +925,7 @@ export default function ManageSchedulesTab({
                                                   bookingDate = new Date(date);
                                                   bookingDate.setHours(12, 0, 0, 0);
                                              }
-                                             
+
                                              // Check if there's a booking for this schedule and update status to "Booked"
                                              // This ensures that if a schedule has a booking, it shows as "Booked" even if the status in DB is "Available"
                                              let bookingInfo = null;
@@ -939,7 +939,7 @@ export default function ManageSchedulesTab({
                                                        status = 'Available';
                                                   }
                                              }
-                                             
+
                                              const isSelected = selectedSchedules.has(scheduleId);
 
                                              // Format time
@@ -1014,9 +1014,9 @@ export default function ManageSchedulesTab({
                                                                            <SelectValue />
                                                                       </SelectTrigger>
                                                                       <SelectContent>
-                                                                           <SelectItem value="Available" className="text-green-600">Available</SelectItem>
-                                                                           <SelectItem value="Booked" className="text-blue-600">Booked</SelectItem>
-                                                                           <SelectItem value="Maintenance" className="text-orange-600">Maintenance</SelectItem>
+                                                                           <SelectItem value="Available" className="text-green-600">Có sẵn</SelectItem>
+                                                                           <SelectItem value="Booked" className="text-blue-600">Đã đặt</SelectItem>
+                                                                           <SelectItem value="Maintenance" className="text-orange-600">Bảo trì</SelectItem>
                                                                       </SelectContent>
                                                                  </Select>
                                                                  <Button

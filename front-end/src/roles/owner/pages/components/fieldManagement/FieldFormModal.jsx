@@ -47,7 +47,7 @@ const FieldFormModal = ({
                isOpen={isOpen}
                onClose={onClose}
                title={isEdit ? "Chỉnh sửa sân" : "Thêm sân mới"}
-               className="max-w-2xl rounded-2xl shadow-lg px-3 max-h-[90vh]"
+               className="max-w-2xl rounded-2xl shadow-lg px-3 max-h-[90vh] overflow-y-auto scrollbar-hide"
           >
                <form onSubmit={onSubmit} className="space-y-3">
                     {!isEdit && (
@@ -115,6 +115,7 @@ const FieldFormModal = ({
                                    onChange={onInputChange}
                                    placeholder="Nhập tên sân"
                                    required
+                                   maxLength={100}
                               />
                          </div>
                          <div>
@@ -148,6 +149,7 @@ const FieldFormModal = ({
                                    value={formData.size}
                                    onChange={onInputChange}
                                    placeholder="Ví dụ: 20x40m"
+                                   maxLength={50}
                               />
                          </div>
                          <div>
@@ -186,6 +188,7 @@ const FieldFormModal = ({
                               placeholder="Mô tả về sân bóng"
                               rows={2}
                               className="w-full"
+                              maxLength={500}
                          />
                     </div>
 

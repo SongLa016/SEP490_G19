@@ -1,5 +1,31 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchPublicFieldSchedulesByField } from "../services/fieldSchedules";
+import {
+  fetchPublicFieldSchedulesByDate,
+  fetchPublicFieldSchedulesByField,
+} from "../services/fieldSchedules";
+
+/**
+ * Fetch public field schedules by date (cached)
+ * @param {string} date - YYYY-MM-DD
+ */
+export function usePublicFieldSchedulesByDate(date) {
+  return useQuery({
+    queryKey: ["publicFieldSchedules", date || "all"],
+    enabled: !!date,
+    queryFn: async () => {
+      if (!date) return [];
+      const res = await fetchPublicFieldSchedulesByDate(date);
+      if (!res.success) {
+        throw new Error(res.error || "Không thể tải lịch sân");
+      }
+      return Array.isArray(res.data) ? res.data : [];
+    },
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: 1,
+  });
+}
 
 /**
  * Custom hook to fetch and cache field schedules

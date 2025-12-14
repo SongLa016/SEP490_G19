@@ -68,6 +68,26 @@ const handleApiError = (error) => {
 };
 
 export const profileService = {
+  // Get player profile by userId
+  async getPlayerProfile(userId) {
+    try {
+      const response = await apiClient.get(
+        `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`
+      );
+
+      return {
+        ok: true,
+        data: response.data,
+      };
+    } catch (error) {
+      handleApiError(error);
+      return {
+        ok: false,
+        reason: error.message || "Lấy thông tin profile thất bại",
+      };
+    }
+  },
+
   // Update user profile (lấy user từ token)
   async updateProfile(userId, profileData, avatarFile = null) {
     try {

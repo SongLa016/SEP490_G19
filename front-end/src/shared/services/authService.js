@@ -5,10 +5,10 @@ import { roleMapping } from "../utils/roleMapping";
 // Helper function to safely decode UTF-8 strings
 // Handles cases where backend might URL-encode or double-encode UTF-8 characters
 function safeDecodeUTF8(str) {
-  if (!str || typeof str !== 'string') return str;
+  if (!str || typeof str !== "string") return str;
   try {
     // Check if string contains URL-encoded characters
-    if (str.includes('%')) {
+    if (str.includes("%")) {
       try {
         // Try to decode URL-encoded string
         const decoded = decodeURIComponent(str);
@@ -20,23 +20,23 @@ function safeDecodeUTF8(str) {
         try {
           return decodeURIComponent(decodeURIComponent(str));
         } catch (e2) {
-          console.warn('Failed to decode UTF-8 string (double decode):', e2);
+          console.warn("Failed to decode UTF-8 string (double decode):", e2);
           return str;
         }
       }
     }
     // If string contains mojibake patterns (common encoding errors), try to fix
     // Example: "Nguyá»…n" should be "Nguyễn"
-    if (str.includes('á»') || str.includes('Æ')) {
+    if (str.includes("á»") || str.includes("Æ")) {
       // This might be a backend encoding issue, return as is for now
       // Backend should fix encoding, but we log it
-      console.warn('Potential encoding issue detected in string:', str);
+      console.warn("Potential encoding issue detected in string:", str);
     }
     // If it's already a valid UTF-8 string, return as is
     return str;
   } catch (e) {
     // If decoding fails, return original string
-    console.warn('Failed to decode UTF-8 string:', e);
+    console.warn("Failed to decode UTF-8 string:", e);
     return str;
   }
 }
@@ -64,7 +64,7 @@ const handleApiError = (error) => {
     } else if (status === 500) {
       errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau.";
     } else if (status === 400) {
-      errorMessage = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.";
+      errorMessage = "Vui lòng nhập đầy đủ các thông tin.";
     } else if (status === 401) {
       errorMessage = "Không có quyền truy cập. Vui lòng đăng nhập lại.";
     } else if (status === 403) {
@@ -189,8 +189,6 @@ export const authService = {
   // Login user
   async loginUser(credentials) {
     try {
-      const loginUrl = "https://sep490-g19-zxph.onrender.com/api/Login/login";
-      // Test connection first
       const response = await apiClient.post(
         "https://sep490-g19-zxph.onrender.com/api/Login/login",
         {
@@ -200,6 +198,16 @@ export const authService = {
       );
       // Decode JWT token to get user info
       const token = response.data.token || response.data.accessToken;
+
+      // If API trả về 200 nhưng không có token (ví dụ sai mật khẩu), coi như thất bại
+      if (!token) {
+        // Backend đôi khi trả message thành công nhưng thiếu token => xem như sai thông tin đăng nhập
+        return {
+          ok: false,
+          reason: "Số điện thoại hoặc mật khẩu không đúng",
+        };
+      }
+
       let userData = null;
 
       if (token) {
@@ -273,43 +281,46 @@ export const authService = {
     } catch (error) {
       // Extract error message without throwing
       let errorMessage = "Đăng nhập thất bại";
-      
+
       if (error.response) {
         // Server responded with error status
         const { status, statusText, data } = error.response;
-        
+
         // Handle specific status codes
         if (status === 401) {
           errorMessage = "Số điện thoại hoặc mật khẩu không đúng";
         } else if (status === 404) {
           errorMessage = "Không tìm thấy tài khoản với số điện thoại này";
         } else if (status === 400) {
-          errorMessage = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.";
+          errorMessage =
+            "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.";
         } else if (status === 500) {
           errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau.";
         } else if (status === 403) {
           errorMessage = "Truy cập bị từ chối. Vui lòng kiểm tra quyền hạn.";
         }
-        
+
         // Try to get error message from response data
         if (data && (data.message || data.error || data.detail)) {
-          errorMessage = data.message || data.error || data.detail || errorMessage;
+          errorMessage =
+            data.message || data.error || data.detail || errorMessage;
         } else if (statusText) {
           errorMessage = statusText;
         }
       } else if (error.request) {
         // Request was made but no response received
-        errorMessage = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet.";
+        errorMessage =
+          "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet.";
       } else {
         // Something else happened
         errorMessage = error.message || errorMessage;
       }
-      
+
       console.error("Login error:", {
         errorMessage,
-        originalError: error
+        originalError: error,
       });
-      
+
       return {
         ok: false,
         reason: errorMessage,

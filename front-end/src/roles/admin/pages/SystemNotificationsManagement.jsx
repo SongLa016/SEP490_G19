@@ -1209,9 +1209,9 @@ export default function SystemNotificationsManagement() {
 
                          {/* Preview */}
                          {newNotification.message && (
-                              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2">
                                    <p className="text-xs font-medium text-slate-600 mb-2">Preview:</p>
-                                   <div className="bg-white rounded p-3 border border-slate-200">
+                                   <div className="bg-white rounded-xl p-3 border border-slate-200">
                                         <div className="flex items-start gap-2">
                                              <span className="text-lg">
                                                   {newNotification.type === "System" ? "📢" :

@@ -4,13 +4,25 @@ import { useNavigate } from "react-router-dom";
 import Lenis from "lenis";
 import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, QuickBookingSection, CommunityMatchmakingSection, UserReviewsSection, CancellationPoliciesSection, MobileAppSection, WhyChooseUsSection, NewsletterSection, CTASection } from "./components";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
-import { fetchTopBookingFields, fetchFieldComplex, fetchFieldDetail } from "../../../../shared/services/fields";
+import { fetchTopBookingFields, fetchFieldComplex, fetchComplexes } from "../../../../shared/services/fields";
 
+// Helpers giống FieldSearch để chuẩn hóa quận/huyện
+const normalizeText = (text) => {
+     if (typeof text !== "string") return "";
+     return text
+          .normalize("NFD")
+          .replace(/\p{Diacritic}/gu, "")
+          .toLowerCase()
+          .trim();
+};
+const normalizeDistrictKey = (text) => {
+     const normalized = normalizeText(text);
+     return normalized.replace(/^(quan|huyen|thi xa)\s+/i, "");
+};
+
+// Fallback danh sách khu vực nếu không tải được từ backend
 const HOMEPAGE_LOCATION_OPTIONS = [
-     { value: "quan1", label: "Quận Hoàn Kiếm", query: "Quận Hoàn Kiếm" },
-     { value: "quan3", label: "Quận Ba Đình", query: "Quận Ba Đình" },
-     { value: "quan7", label: "Quận Đống Đa", query: "Quận Đống Đa" },
-     { value: "quan10", label: "Quận 10 (TP.HCM)", query: "Quận 10" },
+     { value: "all", label: "Tất cả khu vực", query: "" },
 ];
 
 export default function HomePage({ user }) {
@@ -18,9 +30,59 @@ export default function HomePage({ user }) {
      const [searchQuery, setSearchQuery] = useState("");
      const [selectedLocation, setSelectedLocation] = useState("");
      const [selectedPrice, setSelectedPrice] = useState("");
+     const [locationOptions, setLocationOptions] = useState(HOMEPAGE_LOCATION_OPTIONS);
      const [hoveredCardId, setHoveredCardId] = useState(null);
      const [topBookingFields, setTopBookingFields] = useState([]);
      const [loadingTopFields, setLoadingTopFields] = useState(true);
+
+     // Load danh sách khu vực giống FieldSearch (từ complexes)
+     useEffect(() => {
+          let ignore = false;
+          async function loadDistricts() {
+               try {
+                    const res = await fetchComplexes({ page: 1, size: 200 });
+                    if (ignore) return;
+                    const list = Array.isArray(res?.data?.data)
+                         ? res.data.data
+                         : Array.isArray(res?.data)
+                              ? res.data
+                              : Array.isArray(res)
+                                   ? res
+                                   : [];
+                    const map = new Map();
+                    list.forEach((c) => {
+                         const raw = typeof c?.district === "string" ? c.district.trim() : "";
+                         if (!raw) return;
+                         const baseKey = normalizeDistrictKey(raw);
+                         const hasPrefix = /^(Quận|Huyện|Thị xã)/i.test(raw);
+                         if (!map.has(baseKey)) {
+                              map.set(baseKey, raw);
+                              return;
+                         }
+                         const current = map.get(baseKey);
+                         const currentHasPrefix = /^(Quận|Huyện|Thị xã)/i.test(current);
+                         if (hasPrefix && !currentHasPrefix) {
+                              map.set(baseKey, raw);
+                         }
+                    });
+                    const districts = Array.from(map.values())
+                         .sort((a, b) => a.localeCompare(b, "vi"))
+                         .map((v) => ({ value: v, label: v, query: v }));
+                    if (districts.length > 0) {
+                         setLocationOptions([{ value: "all", label: "Tất cả khu vực", query: "" }, ...districts]);
+                    } else {
+                         setLocationOptions([{ value: "all", label: "Tất cả khu vực", query: "" }]);
+                    }
+               } catch (error) {
+                    console.error("Error loading districts for HomePage:", error);
+                    setLocationOptions([{ value: "all", label: "Tất cả khu vực", query: "" }]);
+               }
+          }
+          loadDistricts();
+          return () => {
+               ignore = true;
+          };
+     }, []);
 
      // ============================================
      // KHAI BÁO CÁC THAM SỐ VÀ STATE CHO HORIZONTAL SCROLL
@@ -108,6 +170,14 @@ export default function HomePage({ user }) {
           { key: "overview-community", element: <CommunityMatchmakingSection /> },
           { key: "overview-reviews", element: <UserReviewsSection /> },
           { key: "overview-cancellation", element: <CancellationPoliciesSection /> }
+     ];
+
+     // Tiêu đề tiếng Việt cho từng component (theo cùng thứ tự detailComponents)
+     const componentTitles = [
+          "Đặt sân nhanh chóng",
+          "Cộng đồng & Matchmaking",
+          "Đánh giá & Cộng đồng người dùng",
+          "Chính sách hủy đặt sân"
      ];
 
      // ============================================
@@ -536,50 +606,56 @@ export default function HomePage({ user }) {
                try {
                     setLoadingTopFields(true);
                     const data = await fetchTopBookingFields();
-                    
-                    // Lấy địa chỉ từ complex cho mỗi field
-                    const mappedFields = await Promise.all(
-                         data.map(async (item) => {
-                              let location = "Đang cập nhật";
-                              let complexId = item.complexId;
-                              
-                              // Nếu không có complexId trong response, lấy từ field detail
-                              if (!complexId && item.fieldId) {
-                                   try {
-                                        const fieldDetail = await fetchFieldDetail(item.fieldId);
-                                        if (fieldDetail && fieldDetail.complexId) {
-                                             complexId = fieldDetail.complexId;
-                                        }
-                                   } catch (error) {
-                                        console.error(`Error loading field detail ${item.fieldId}:`, error);
+
+                    // Lấy danh sách complexId duy nhất từ data (chỉ những cái có sẵn)
+                    const uniqueComplexIds = [...new Set(
+                         data
+                              .map(item => item.complexId)
+                              .filter(id => id != null && id !== undefined && id !== '')
+                    )];
+
+                    // Fetch tất cả complexes một lần duy nhất (nếu có complexId)
+                    const complexMap = new Map();
+                    if (uniqueComplexIds.length > 0) {
+                         const complexPromises = uniqueComplexIds.map(async (complexId) => {
+                              try {
+                                   const complex = await fetchFieldComplex(complexId);
+                                   if (complex) {
+                                        complexMap.set(complexId, complex);
                                    }
+                              } catch (error) {
+                                   // Bỏ qua lỗi, không log để tránh spam console
                               }
-                              
-                              // Lấy địa chỉ từ complex
-                              if (complexId) {
-                                   try {
-                                        const complex = await fetchFieldComplex(complexId);
-                                        if (complex && complex.address) {
-                                             location = complex.address;
-                                        }
-                                   } catch (error) {
-                                        console.error(`Error loading complex ${complexId}:`, error);
-                                   }
+                         });
+                         await Promise.all(complexPromises);
+                    }
+
+                    // Map fields với thông tin complex đã cache
+                    const mappedFields = data.map((item) => {
+                         let location = "Đang cập nhật";
+
+                         // Chỉ lấy địa chỉ nếu có complexId và đã fetch được complex
+                         if (item.complexId && complexMap.has(item.complexId)) {
+                              const complex = complexMap.get(item.complexId);
+                              if (complex?.address) {
+                                   location = complex.address;
                               }
-                              
-                              return {
-                                   id: item.fieldId,
-                                   name: item.fieldName || "Sân bóng",
-                                   location: location,
-                                   price: "Liên hệ",
-                                   rating: 4.5,
-                                   mainImageUrl: item.imageUrl || null,
-                                   amenities: [],
-                                   availableSlots: item.totalBookings || 0
-                              };
-                         })
-                    );
-                    
+                         }
+
+                         return {
+                              id: item.fieldId,
+                              name: item.fieldName || "Sân bóng",
+                              location: location,
+                              price: "Liên hệ",
+                              rating: 4.5,
+                              image: item.imageUrl || item.mainImageUrl || null,
+                              mainImageUrl: item.imageUrl || item.mainImageUrl || null,
+                              imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : [],
+                              amenities: [],
+                              availableSlots: item.totalBookings || 0
+                         };
+                    });
+
                     setTopBookingFields(mappedFields);
                } catch (error) {
                     console.error("Error loading top booking fields:", error);
@@ -677,19 +753,23 @@ export default function HomePage({ user }) {
 
      const handleSearch = () => {
           try {
+               const params = new URLSearchParams();
+               const q = (searchQuery || "").trim();
+               if (q) params.set("searchQuery", q);
+               // map selectedLocation to underlying query value if available
                const locationFilter = selectedLocation
-                    ? (HOMEPAGE_LOCATION_OPTIONS.find((opt) => opt.value === selectedLocation)?.query || "")
+                    ? (locationOptions.find((opt) => opt.value === selectedLocation)?.query || selectedLocation)
                     : "";
+               if (locationFilter) params.set("selectedLocation", locationFilter);
                const normalizedPrice = selectedPrice && selectedPrice !== "all" ? selectedPrice : "";
-               const preset = {
-                    searchQuery: (searchQuery || "").trim(),
-                    selectedLocation: locationFilter,
-                    selectedPrice: normalizedPrice,
-                    sortBy: "relevance",
-               };
-               window.localStorage.setItem("searchPreset", JSON.stringify(preset));
-          } catch { }
-          navigate("/search");
+               if (normalizedPrice) params.set("selectedPrice", normalizedPrice);
+               // default sortBy preserved
+               params.set("sortBy", "relevance");
+               const qs = params.toString();
+               navigate(qs ? `/search?${qs}` : "/search");
+          } catch {
+               navigate("/search");
+          }
      };
 
      return (
@@ -701,7 +781,7 @@ export default function HomePage({ user }) {
                     setSelectedLocation={setSelectedLocation}
                     selectedPrice={selectedPrice}
                     setSelectedPrice={setSelectedPrice}
-                    locationOptions={HOMEPAGE_LOCATION_OPTIONS}
+                    locationOptions={locationOptions}
                     onSearch={handleSearch}
                />
 
@@ -756,7 +836,7 @@ export default function HomePage({ user }) {
                                              <div className="relative px-12 py-6 space-y-6">
                                                   <div className="flex items-center justify-between">
                                                        <div className="text-xs uppercase tracking-[0.32em] text-slate-400">Artboard 1 • Showreel</div>
-                                                       <div className="text-sm font-semibold text-slate-300">Functional Overview</div>
+                                                       <div className="text-sm font-semibold text-slate-300">Tổng quan chức năng</div>
                                                   </div>
                                                   <div className="grid grid-cols-2 gap-6">
                                                        {detailComponents.map(({ key, element }, index) => (
@@ -765,8 +845,8 @@ export default function HomePage({ user }) {
                                                                  className="rounded-3xl bg-white/90 text-slate-900 pt-5  shadow-[0_30px_70px_rgba(15,23,42,0.25)] backdrop-blur border border-white/30"
                                                             >
                                                                  <div className="flex items-center justify-between text-xs px-4 uppercase tracking-[0.28em] text-slate-400">
-                                                                      <span>Component {index + 1}</span>
-                                                                      <span>Preview</span>
+                                                                      <span>{componentTitles[index] || `Component ${index + 1}`}</span>
+                                                                      <span>Xem trước</span>
                                                                  </div>
                                                                  <div className="mt-2 h-64 rounded-2xl overflow-hidden border border-white/50 bg-white shadow-[0_25px_60px_rgba(15,23,42,0.2)]">
                                                                       <div
@@ -837,7 +917,7 @@ export default function HomePage({ user }) {
                     </div>
                </div>
                <MobileAppSection />
-               <NewsletterSection />
+               {!user && <NewsletterSection />}
                <WhyChooseUsSection />
                {/* <FAQSection /> */}
                <CTASection user={user} />

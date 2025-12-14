@@ -83,13 +83,13 @@ export const MobileAppSection = () => {
                                              <Globe className="w-5 h-5" />
                                              Dùng phiên bản website
                                         </Button>
-                                        <Button
+                                        {/* <Button
                                              className="bg-transparent border-2 border-white/60 hover:border-white text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2"
                                         >
                                              <Bell className="w-5 h-5" />
                                              Nhận thông báo khi ra mắt
                                              <ArrowRight className="w-4 h-4" />
-                                        </Button>
+                                        </Button> */}
                                    </div>
                               </motion.div>
 

@@ -172,15 +172,16 @@ export default function PaymentStepSection({
      // Giá đại diện để hiển thị khi không phải gói cố định hoặc tất cả slot cùng giá
      const slotPrice = isRecurringPackage ? (minPrice || bookingData.price || 0) : (bookingData.price || 0);
 
-     // Tổng tiền gói cố định: tính lại từ các session + giá từng slot (không phụ thuộc totalPrice backend)
+     // Tổng tiền gói cố định: ưu tiên dùng totalPrice từ backend (đã tính từ pattern 1 tuần x4)
+     // Nếu không có, tính từ tất cả sessions (fallback)
      const recurringTotal = isRecurringPackage
-          ? (() => {
+          ? (bookingData.totalPrice || bookingInfo?.totalPrice || (() => {
                if (recurringSessions.length === 0) return 0;
                return recurringSessions.reduce((sum, session) => {
                     const price = getSlotPrice(session.slotId);
                     return sum + (Number(price) || 0);
                }, 0);
-          })()
+          })())
           : (bookingData.totalPrice || bookingInfo?.totalPrice || bookingData.subtotal || 0);
 
      const subtotal = isRecurringPackage
@@ -200,7 +201,7 @@ export default function PaymentStepSection({
                               <p>Vui lòng giữ cửa sổ mở trong <span className="font-semibold text-blue-600">{formatCountdown(lockCountdownSeconds)}</span> hoặc sử dụng nút <span className="font-semibold text-red-600 underline">Hủy đặt sân</span> nếu muốn thoát.</p>
                          </div>
                     )}
-                    <div className="p-4 border border-blue-400 rounded-2xl bg-white shadow-sm space-y-2">
+                    <div className="p-4 border border-teal-400 rounded-2xl bg-white shadow-sm space-y-2">
                          {bookingInfo?.bookingId && (
                               <div className="flex items-center justify-between text-base font-medium text-gray-600">
                                    <span>Mã đặt sân</span>
@@ -211,7 +212,7 @@ export default function PaymentStepSection({
                          <div className="space-y-2 text-sm">
                               <div className="text-gray-600 font-medium">Số tiền cần thanh toán</div>
                               {isRecurringPackage ? (
-                                   <div className="flex items-center justify-between py-2 px-4 border rounded-2xl bg-emerald-50">
+                                   <div className="flex items-center justify-between py-2 px-4 border border-teal-200 rounded-2xl bg-emerald-50">
                                         <span className="text-sm font-medium text-gray-700">Thanh toán toàn bộ gói đặt cố định</span>
                                         <span className="text-xl font-bold text-emerald-700">
                                              {formatPrice(transferAmount)}
@@ -341,7 +342,7 @@ export default function PaymentStepSection({
 
                                         <div className="flex justify-between">
                                              <span className="text-gray-600">Tổng số buổi</span>
-                                             <span className="font-medium text-teal-600">{bookingData.totalSessions || (recurringWeeks * selectedDays.length)} buổi</span>
+                                             <span className="font-medium text-teal-600">{totalSessions} buổi</span>
                                         </div>
                                    </>
                               )}

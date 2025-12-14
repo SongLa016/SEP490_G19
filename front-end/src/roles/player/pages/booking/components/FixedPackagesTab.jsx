@@ -73,7 +73,7 @@ export default function FixedPackagesTab({
       return { label: "Đã thanh toán", badge: "bg-emerald-500 text-white", icon: CheckCircle };
     }
     if (statusLower.includes("pending") || statusLower.includes("waiting")) {
-      return { label: "Chờ thanh toán", badge: "bg-orange-500 text-white", icon: AlertTriangle };
+      return { label: "Chờ xác nhận", badge: "bg-orange-500 text-white", icon: AlertTriangle };
     }
     if (statusLower.includes("failed") || statusLower.includes("error")) {
       return { label: "Thanh toán thất bại", badge: "bg-red-500 text-white", icon: XCircle };

@@ -153,41 +153,25 @@ export default function FindOpponentModal({
 
           setIsProcessing(true);
           try {
-               // Check if this is a recurring booking
-               const isRecurring = booking.isRecurring && booking.recurringGroupId;
+               // Removed: recurring opponent feature - check for recurring booking
+               const payload = {
+                    bookingId: booking.bookingId || booking.id || 0,
+                    description: note.trim(),
+                    playerCount: Number(playerCount) || 7,
+                    expiresInHours: Number(expiresInHours) || 24
+               };
 
-               if (isRecurring) {
-                    // For recurring bookings, show the RecurringOpponentSelection modal
-                    // This will be handled by the parent component
-                    onSuccess({
-                         type: "recurring",
-                         booking,
-                         level,
-                         note,
-                         playerCount: Number(playerCount),
-                         expiresInHours: Number(expiresInHours),
-                         termsAccepted
-                    });
-               } else {
-                    const payload = {
-                         bookingId: booking.bookingId || booking.id || 0,
-                         description: note.trim(),
-                         playerCount: Number(playerCount) || 7,
-                         expiresInHours: Number(expiresInHours) || 24
-                    };
+               const response = await createMatchRequestAPI(payload);
 
-                    const response = await createMatchRequestAPI(payload);
-
-                    if (!response.success) {
-                         throw new Error(response.error || "Không thể tạo yêu cầu tìm đối");
-                    }
-
-                    onSuccess?.({
-                         type: "single",
-                         matchRequest: response.data,
-                         booking
-                    });
+               if (!response.success) {
+                    throw new Error(response.error || "Không thể tạo yêu cầu tìm đối");
                }
+
+               onSuccess?.({
+                    type: "single",
+                    matchRequest: response.data,
+                    booking
+               });
           } catch (error) {
                console.error("Error creating match request:", error);
                setErrors({ general: error.message || "Không thể tạo yêu cầu tìm đối" });
@@ -198,7 +182,7 @@ export default function FindOpponentModal({
 
      if (!isOpen || !booking) return null;
 
-     const isRecurring = booking.isRecurring && booking.recurringGroupId;
+     // Removed: isRecurring check - recurring opponent feature
 
      return (
           <Modal
@@ -215,7 +199,7 @@ export default function FindOpponentModal({
                          </div>
                          <div>
                               <p className="text-base text-gray-700 font-semibold">
-                                   {isRecurring ? "Cho lịch cố định" : "Cho buổi đặt sân"}
+                                   Cho buổi đặt sân
                               </p>
                          </div>
                     </div>
@@ -553,20 +537,7 @@ export default function FindOpponentModal({
                               )}
                          </div>
 
-                         {/* Recurring Notice */}
-                         {isRecurring && (
-                              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                   <div className="flex items-start gap-2">
-                                        <MessageSquare className="w-5 h-5 text-blue-600 mt-0.5" />
-                                        <div className="text-sm text-blue-800">
-                                             <p className="font-medium mb-1">Lịch cố định</p>
-                                             <p>
-                                                  Bạn sẽ được chọn cách tìm đối thủ cho toàn bộ lịch cố định sau khi xác nhận.
-                                             </p>
-                                        </div>
-                                   </div>
-                              </div>
-                         )}
+                         {/* Removed: Recurring Notice - recurring opponent feature */}
                     </div>
 
                     {/* Info Box */}
