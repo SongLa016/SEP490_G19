@@ -112,9 +112,9 @@ public class Program
                         options.AddPolicy("AllowFrontend", policy =>
                         {
                             policy
-                                .AllowAnyOrigin()
-                                .AllowAnyMethod()
-                                .AllowAnyHeader();
+                                 .WithOrigins("http://localhost:3000") 
+                                 .AllowAnyHeader()
+                                 .AllowAnyMethod();
                         });
                     });
 
