@@ -52,11 +52,11 @@ namespace BallSport.Application.Services
                 user.FullName = request.FullName;
 
 
-            if (role == "Player")
+            if (role.Equals("Player", StringComparison.OrdinalIgnoreCase))
             {
                 if (user.UserProfile == null)
                 {
-                    user.UserProfile = new Infrastructure.Models.UserProfile
+                    user.UserProfile = new UserProfile
                     {
                         UserId = userId
                     };

@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
 public class FieldTypeController : ControllerBase
 {
     private readonly IFieldTypeService _service;
@@ -28,7 +27,7 @@ public class FieldTypeController : ControllerBase
         if (ft == null) return NotFound();
         return Ok(ft);
     }
-
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] FieldTypeDTO dto)
     {
@@ -43,7 +42,7 @@ public class FieldTypeController : ControllerBase
             return Forbid(ex.Message);
         }
     }
-
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] FieldTypeDTO dto)
     {
@@ -59,7 +58,7 @@ public class FieldTypeController : ControllerBase
             return Forbid(ex.Message);
         }
     }
-
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
