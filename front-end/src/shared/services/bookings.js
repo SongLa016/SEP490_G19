@@ -1,6 +1,7 @@
 // Mocked booking/payment services with pending hold logic
 import axios from "axios";
 import { decodeTokenPayload, isTokenExpired } from "../utils/tokenManager";
+import { validateVietnamPhone } from "./authService";
 
 // In-memory pending holds (front-end only). Each item: { bookingId, fieldId, date, slotId, expiresAt }
 const pendingHolds = [];
@@ -138,6 +139,37 @@ export async function checkFieldAvailability(fieldId, date, slotId) {
   };
 }
 
+// Validate ngày đặt sân (không được trong quá khứ)
+export function validateBookingDate(dateStr) {
+  if (!dateStr) {
+    return { isValid: false, message: "Vui lòng chọn ngày" };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const bookingDate = new Date(dateStr);
+  bookingDate.setHours(0, 0, 0, 0);
+
+  if (isNaN(bookingDate.getTime())) {
+    return { isValid: false, message: "Ngày không hợp lệ" };
+  }
+
+  if (bookingDate < today) {
+    return { isValid: false, message: "Không thể đặt sân cho ngày trong quá khứ" };
+  }
+
+  // Giới hạn đặt trước tối đa 30 ngày
+  const maxDate = new Date(today);
+  maxDate.setDate(maxDate.getDate() + 30);
+
+  if (bookingDate > maxDate) {
+    return { isValid: false, message: "Chỉ có thể đặt sân trước tối đa 30 ngày" };
+  }
+
+  return { isValid: true, message: "" };
+}
+
 // Validate booking data
 export function validateBookingData(bookingData) {
   const errors = {};
@@ -146,22 +178,28 @@ export function validateBookingData(bookingData) {
     errors.fieldId = "Vui lòng chọn sân";
   }
 
-  if (!bookingData.date) {
-    errors.date = "Vui lòng chọn ngày";
+  // Validate ngày đặt sân
+  const dateValidation = validateBookingDate(bookingData.date);
+  if (!dateValidation.isValid) {
+    errors.date = dateValidation.message;
   }
 
   if (!bookingData.slotId) {
     errors.slotId = "Vui lòng chọn giờ";
   }
 
-  if (!bookingData.customerName?.trim()) {
+  // Validate họ tên (tối thiểu 2 ký tự)
+  const customerName = bookingData.customerName?.trim() || "";
+  if (!customerName) {
     errors.customerName = "Vui lòng nhập họ và tên";
+  } else if (customerName.length < 2) {
+    errors.customerName = "Họ tên phải có ít nhất 2 ký tự";
   }
 
-  if (!bookingData.customerPhone?.trim()) {
-    errors.customerPhone = "Vui lòng nhập số điện thoại";
-  } else if (!/^[0-9+\-\s()]{10,15}$/.test(bookingData.customerPhone)) {
-    errors.customerPhone = "Số điện thoại không hợp lệ";
+  // Validate số điện thoại Việt Nam
+  const phoneValidation = validateVietnamPhone(bookingData.customerPhone);
+  if (!phoneValidation.isValid) {
+    errors.customerPhone = phoneValidation.message;
   }
 
   // Email is only required if user doesn't have one or if explicitly required
@@ -206,6 +244,40 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Flag to prevent multiple session expired alerts
+let isShowingSessionExpired = false;
+
+// Add response interceptor to handle 401 errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401 && !isShowingSessionExpired) {
+      isShowingSessionExpired = true;
+      // Clear auth data
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      
+      // Show alert and redirect
+      const Swal = (await import("sweetalert2")).default;
+      await Swal.fire({
+        icon: "warning",
+        title: "Phiên đăng nhập hết hạn",
+        text: "Vui lòng đăng nhập lại để tiếp tục.",
+        confirmButtonText: "Đăng nhập",
+        confirmButtonColor: "#0ea5e9",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      }).then((result) => {
+        isShowingSessionExpired = false;
+        if (result.isConfirmed) {
+          window.location.href = "/login";
+        }
+      });
+    }
     return Promise.reject(error);
   }
 );

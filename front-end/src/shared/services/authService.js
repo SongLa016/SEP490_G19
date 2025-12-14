@@ -440,6 +440,47 @@ export const authService = {
 };
 
 // Validation helpers
+
+// Regex số điện thoại Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08, 09)
+export const VIETNAM_PHONE_REGEX = /^(03|05|07|08|09)[0-9]{8}$/;
+
+// Validate mật khẩu mạnh: ít nhất 8 ký tự, 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt
+export const validateStrongPassword = (password) => {
+  const errors = [];
+  if (!password || password.length < 8) {
+    errors.push("Tối thiểu 8 ký tự");
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push("Ít nhất 1 chữ hoa");
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push("Ít nhất 1 chữ thường");
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push("Ít nhất 1 số");
+  }
+  if (!/[!@#$%^&*(),.?":{}|<>_\-+=[\]\\/`~]/.test(password)) {
+    errors.push("Ít nhất 1 ký tự đặc biệt (!@#$%...)");
+  }
+  return {
+    isValid: errors.length === 0,
+    errors,
+    message: errors.length > 0 ? errors.join(", ") : "",
+  };
+};
+
+// Validate số điện thoại Việt Nam
+export const validateVietnamPhone = (phone) => {
+  const cleanPhone = phone?.replace(/\s/g, "") || "";
+  if (!cleanPhone) {
+    return { isValid: false, message: "Vui lòng nhập số điện thoại" };
+  }
+  if (!VIETNAM_PHONE_REGEX.test(cleanPhone)) {
+    return { isValid: false, message: "SĐT phải 10 số, bắt đầu bằng 03/05/07/08/09" };
+  }
+  return { isValid: true, message: "" };
+};
+
 export const validateRegistrationData = (data) => {
   const errors = {};
 
@@ -451,12 +492,16 @@ export const validateRegistrationData = (data) => {
     errors.fullName = "Họ tên phải có ít nhất 2 ký tự";
   }
 
-  if (!data.password || data.password.length < 6) {
-    errors.password = "Mật khẩu phải có ít nhất 6 ký tự";
+  // Validate mật khẩu mạnh
+  const passwordValidation = validateStrongPassword(data.password);
+  if (!passwordValidation.isValid) {
+    errors.password = passwordValidation.message;
   }
 
-  if (!data.phone || !/^[0-9]{10,11}$/.test(data.phone.replace(/\s/g, ""))) {
-    errors.phone = "Số điện thoại không hợp lệ";
+  // Validate số điện thoại Việt Nam
+  const phoneValidation = validateVietnamPhone(data.phone);
+  if (!phoneValidation.isValid) {
+    errors.phone = phoneValidation.message;
   }
 
   if (!data.roleName) {

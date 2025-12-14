@@ -550,12 +550,37 @@ export default function FindMatch() {
 
      const validateForm = () => {
           const errors = {};
-          if (!formData.teamName.trim()) {
+
+          // Validate tên đội
+          const trimmedTeamName = formData.teamName?.trim() || "";
+          if (!trimmedTeamName) {
                errors.teamName = "Vui lòng nhập tên đội";
+          } else if (trimmedTeamName.length < 2) {
+               errors.teamName = "Tên đội phải có ít nhất 2 ký tự";
+          } else if (trimmedTeamName.length > 50) {
+               errors.teamName = "Tên đội không được quá 50 ký tự";
           }
-          if (!formData.contactPhone.trim()) {
+
+          // Validate số điện thoại VN
+          const trimmedPhone = formData.contactPhone?.replace(/\s/g, "") || "";
+          if (!trimmedPhone) {
                errors.contactPhone = "Vui lòng nhập số điện thoại liên hệ";
+          } else if (!/^(03|05|07|08|09)[0-9]{8}$/.test(trimmedPhone)) {
+               errors.contactPhone = "SĐT phải 10 số, bắt đầu bằng 03/05/07/08/09";
           }
+
+          // Validate số người chơi
+          const numPlayerCount = Number(formData.playerCount);
+          if (isNaN(numPlayerCount) || numPlayerCount < 1 || numPlayerCount > 22) {
+               errors.playerCount = "Số người phải từ 1 đến 22";
+          }
+
+          // Validate ghi chú (optional nhưng nếu có thì phải hợp lệ)
+          const trimmedNote = formData.note?.trim() || "";
+          if (trimmedNote && trimmedNote.length > 500) {
+               errors.note = "Ghi chú không được quá 500 ký tự";
+          }
+
           setFormErrors(errors);
           return Object.keys(errors).length === 0;
      };

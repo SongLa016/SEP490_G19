@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
-import { authService } from '../services/authService';
+import { authService, validateVietnamPhone } from '../services/authService';
 import { Button, Input } from '../components/ui';
 import { FadeIn, SlideIn } from '../components/ui/animations';
 import { Eye, EyeOff, Phone, Lock, Loader2 } from 'lucide-react';
@@ -55,12 +55,12 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
           setIsLoading(true);
 
           // Validation
-          const phoneOk = phone && /^[0-9]{10,11}$/.test(phone.replace(/\s/g, ''));
+          const phoneValidation = validateVietnamPhone(phone);
           const passOk = String(password).length >= 6;
-          setPhoneError(phoneOk ? '' : 'Số điện thoại không hợp lệ');
+          setPhoneError(phoneValidation.isValid ? '' : phoneValidation.message);
           setPasswordError(passOk ? '' : 'Mật khẩu tối thiểu 6 ký tự');
 
-          if (!phoneOk || !passOk) {
+          if (!phoneValidation.isValid || !passOk) {
                setIsLoading(false);
                return;
           }
@@ -274,7 +274,7 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
                                              <Input
                                                   value={phone}
                                                   onChange={(e) => setPhone(e.target.value)}
-                                                  onBlur={() => setPhoneError(!phone || !/^[0-9]{10,11}$/.test(phone.replace(/\s/g, '')) ? 'Số điện thoại không hợp lệ' : '')}
+                                                  onBlur={() => { const v = validateVietnamPhone(phone); setPhoneError(v.isValid ? '' : v.message); }}
                                                   required
                                                   type="tel"
                                                   className={`pl-12 h-12 text-sm transition-all duration-200 rounded-2xl ${phoneError ? 'border-red-500 focus:ring-red-500 animate-shake' : 'focus:ring-teal-500 focus:border-teal-500 border-gray-200'}`}

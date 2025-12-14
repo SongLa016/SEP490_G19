@@ -528,9 +528,11 @@ export default function ScheduleManagement({ isDemo = false }) {
                // Fetch all complexes with fields
                const allComplexesWithFields = await fetchAllComplexesWithFields();
 
-               // Filter only owner's complexes
+               // Filter only owner's complexes that are Active (approved by admin)
                const ownerComplexes = allComplexesWithFields.filter(
-                    complex => complex.ownerId === currentUserId || complex.ownerId === Number(currentUserId)
+                    complex =>
+                         (complex.ownerId === currentUserId || complex.ownerId === Number(currentUserId)) &&
+                         (complex.status || complex.Status || "Active") === "Active"
                );
 
                setComplexes(ownerComplexes);

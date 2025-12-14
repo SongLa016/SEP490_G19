@@ -1,6 +1,170 @@
 // Service layer for Field, FieldComplex, FieldPrice APIs
 import axios from "axios";
 
+// ==================== VALIDATION FUNCTIONS ====================
+
+/**
+ * Validate tên (sân hoặc khu sân)
+ * @param {string} name - Tên cần validate
+ * @param {string} label - Nhãn hiển thị (vd: "Tên sân", "Tên khu sân")
+ * @returns {{ isValid: boolean, message: string }}
+ */
+export const validateFieldName = (name, label = "Tên") => {
+  const trimmedName = name?.trim() || "";
+  if (!trimmedName) {
+    return { isValid: false, message: `Vui lòng nhập ${label.toLowerCase()}` };
+  }
+  if (trimmedName.length < 2) {
+    return { isValid: false, message: `${label} phải có ít nhất 2 ký tự` };
+  }
+  if (trimmedName.length > 100) {
+    return { isValid: false, message: `${label} không được quá 100 ký tự` };
+  }
+  return { isValid: true, message: "" };
+};
+
+/**
+ * Validate giá sân
+ * @param {number|string} price - Giá cần validate
+ * @returns {{ isValid: boolean, message: string }}
+ */
+export const validateFieldPrice = (price) => {
+  const numPrice = Number(price);
+  if (isNaN(numPrice) || price === "" || price === null || price === undefined) {
+    return { isValid: false, message: "Vui lòng nhập giá sân" };
+  }
+  if (numPrice <= 0) {
+    return { isValid: false, message: "Giá sân phải lớn hơn 0" };
+  }
+  if (numPrice < 10000) {
+    return { isValid: false, message: "Giá sân tối thiểu 10,000 VND" };
+  }
+  if (numPrice > 10000000) {
+    return { isValid: false, message: "Giá sân tối đa 10,000,000 VND" };
+  }
+  return { isValid: true, message: "" };
+};
+
+/**
+ * Validate kích thước sân (format: 20x40m hoặc 20m x 40m)
+ * @param {string} size - Kích thước cần validate
+ * @returns {{ isValid: boolean, message: string }}
+ */
+export const validateFieldSize = (size) => {
+  if (!size || size.trim() === "") {
+    return { isValid: true, message: "" }; // Optional field
+  }
+  const sizeRegex = /^\d+(\.\d+)?\s*[xX×]\s*\d+(\.\d+)?\s*m?$/;
+  if (!sizeRegex.test(size.trim())) {
+    return { isValid: false, message: "Kích thước không hợp lệ (VD: 20x40m)" };
+  }
+  return { isValid: true, message: "" };
+};
+
+/**
+ * Validate địa chỉ
+ * @param {string} address - Địa chỉ cần validate
+ * @returns {{ isValid: boolean, message: string }}
+ */
+export const validateAddress = (address) => {
+  const trimmedAddress = address?.trim() || "";
+  if (!trimmedAddress) {
+    return { isValid: false, message: "Vui lòng nhập địa chỉ" };
+  }
+  if (trimmedAddress.length < 10) {
+    return { isValid: false, message: "Địa chỉ phải có ít nhất 10 ký tự" };
+  }
+  if (trimmedAddress.length > 200) {
+    return { isValid: false, message: "Địa chỉ không được quá 200 ký tự" };
+  }
+  return { isValid: true, message: "" };
+};
+
+/**
+ * Validate toàn bộ dữ liệu khu sân (Complex)
+ * @param {Object} data - Dữ liệu khu sân
+ * @param {boolean} isEdit - Đang chỉnh sửa hay tạo mới
+ * @returns {{ isValid: boolean, errors: Object }}
+ */
+export const validateComplexData = (data, isEdit = false) => {
+  const errors = {};
+
+  // Validate tên
+  const nameValidation = validateFieldName(data.name, "Tên khu sân");
+  if (!nameValidation.isValid) {
+    errors.name = nameValidation.message;
+  }
+
+  // Validate địa chỉ
+  const addressValidation = validateAddress(data.address);
+  if (!addressValidation.isValid) {
+    errors.address = addressValidation.message;
+  }
+
+  // Validate hình ảnh (bắt buộc khi tạo mới)
+  if (!isEdit && !data.imageFile && !data.imageUrl && !data.image) {
+    errors.image = "Vui lòng chọn hình ảnh cho khu sân";
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+  };
+};
+
+/**
+ * Validate toàn bộ dữ liệu sân (Field)
+ * @param {Object} data - Dữ liệu sân
+ * @param {boolean} isEdit - Đang chỉnh sửa hay tạo mới
+ * @returns {{ isValid: boolean, errors: Object }}
+ */
+export const validateFieldData = (data, isEdit = false) => {
+  const errors = {};
+
+  // Validate khu sân
+  if (!data.complexId) {
+    errors.complexId = "Vui lòng chọn khu sân";
+  }
+
+  // Validate tên sân
+  const nameValidation = validateFieldName(data.name, "Tên sân");
+  if (!nameValidation.isValid) {
+    errors.name = nameValidation.message;
+  }
+
+  // Validate loại sân
+  if (!data.typeId) {
+    errors.typeId = "Vui lòng chọn loại sân";
+  }
+
+  // Validate giá
+  const priceValidation = validateFieldPrice(data.pricePerHour);
+  if (!priceValidation.isValid) {
+    errors.pricePerHour = priceValidation.message;
+  }
+
+  // Validate kích thước (optional)
+  const sizeValidation = validateFieldSize(data.size);
+  if (!sizeValidation.isValid) {
+    errors.size = sizeValidation.message;
+  }
+
+  // Validate ảnh chính (bắt buộc khi tạo mới)
+  if (!isEdit && !data.mainImage) {
+    errors.mainImage = "Vui lòng chọn ảnh chính cho sân";
+  }
+
+  // Validate tài khoản ngân hàng
+  if (!data.bankAccountId) {
+    errors.bankAccountId = "Vui lòng chọn tài khoản ngân hàng";
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+  };
+};
+
 const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
 // Always use full URL to avoid proxy issues
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
@@ -37,6 +201,40 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Flag to prevent multiple session expired alerts
+let isShowingSessionExpired = false;
+
+// Add response interceptor to handle 401 errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401 && !isShowingSessionExpired) {
+      isShowingSessionExpired = true;
+      // Clear auth data
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      
+      // Show alert and redirect
+      const Swal = (await import("sweetalert2")).default;
+      await Swal.fire({
+        icon: "warning",
+        title: "Phiên đăng nhập hết hạn",
+        text: "Vui lòng đăng nhập lại để tiếp tục.",
+        confirmButtonText: "Đăng nhập",
+        confirmButtonColor: "#0ea5e9",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      }).then((result) => {
+        isShowingSessionExpired = false;
+        if (result.isConfirmed) {
+          window.location.href = "/login";
+        }
+      });
+    }
     return Promise.reject(error);
   }
 );
@@ -129,7 +327,8 @@ export async function createFieldComplex(complexData) {
         // Only include imageUrl if it's a URL string (existing image)
         // File objects should be sent via FormData
         imageUrl: complexData.imageUrl || "",
-        status: complexData.status || "Active",
+        // Default to Pending - Admin will approve to Active
+        status: complexData.status || "Pending",
       };
 
       for (const endpoint of endpoints) {
@@ -703,22 +902,30 @@ export async function fetchFields(params = {}) {
     let complexes = [];
 
     if (complexId) {
-      // Fetch fields for a specific complex
-      // Always try to fetch fields, regardless of complex status
-      // The status check will be done later when filtering
-      try {
-        const fields = await fetchFieldsByComplex(complexId);
-        allFields = Array.isArray(fields) ? fields : [];
-      } catch (error) {
-        console.error(
-          `[fetchFields] Error fetching fields for complex ${complexId}:`,
-          error
-        );
+      // Fetch complexes first to check status
+      complexes = await fetchFieldComplexes();
+      
+      // Check if the specific complex is Active
+      const targetComplex = complexes.find(c => 
+        String(c.complexId) === String(complexId)
+      );
+      
+      // Only fetch fields if complex is Active
+      if (targetComplex && (targetComplex.status || targetComplex.Status || "Active") === "Active") {
+        try {
+          const fields = await fetchFieldsByComplex(complexId);
+          allFields = Array.isArray(fields) ? fields : [];
+        } catch (error) {
+          console.error(
+            `[fetchFields] Error fetching fields for complex ${complexId}:`,
+            error
+          );
+          allFields = [];
+        }
+      } else {
+        // Complex is not Active (Pending/Rejected), return empty
         allFields = [];
       }
-
-      // Fetch complexes for address mapping
-      complexes = await fetchFieldComplexes();
     } else {
       // Fetch all fields from all complexes
       complexes = await fetchFieldComplexes();

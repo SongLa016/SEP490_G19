@@ -130,18 +130,33 @@ export default function FindOpponentModal({
      const handleSubmit = async () => {
           // Validation
           const newErrors = {};
-          if (!note.trim()) {
+
+          // Validate ghi chú
+          const trimmedNote = note?.trim() || "";
+          if (!trimmedNote) {
                newErrors.note = "Vui lòng nhập ghi chú";
+          } else if (trimmedNote.length < 10) {
+               newErrors.note = "Ghi chú phải có ít nhất 10 ký tự";
+          } else if (trimmedNote.length > 500) {
+               newErrors.note = "Ghi chú không được quá 500 ký tự";
           }
-          if (!playerCount || playerCount < 1 || playerCount > 22) {
+
+          // Validate số người chơi
+          const numPlayerCount = Number(playerCount);
+          if (!playerCount || isNaN(numPlayerCount)) {
+               newErrors.playerCount = "Vui lòng nhập số người chơi";
+          } else if (numPlayerCount < 1 || numPlayerCount > 22) {
                newErrors.playerCount = "Số người phải từ 1 đến 22";
           }
+
           // Validate expiresInHours - should be calculated automatically from schedule
           if (!expiresInHours || expiresInHours < 1) {
                newErrors.expiresInHours = "Thời gian hết hạn không hợp lệ. Vui lòng kiểm tra lại lịch sân.";
           } else if (expiresInHours > 168) {
                newErrors.expiresInHours = "Thời gian hết hạn không được vượt quá 168 giờ (7 ngày)";
           }
+
+          // Validate điều khoản
           if (!termsAccepted) {
                newErrors.terms = "Bạn cần đồng ý quy tắc cộng đồng";
           }
