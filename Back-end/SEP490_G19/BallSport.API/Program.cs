@@ -109,12 +109,17 @@ public class Program
                     // ===================== CORS =====================
                     services.AddCors(options =>
                     {
-                        options.AddPolicy("AllowFrontend", policy =>
+                        options.AddPolicy("AllowAll", builder =>
                         {
-                            policy
-                                 .WithOrigins("http://localhost:3000") 
-                                 .AllowAnyHeader()
-                                 .AllowAnyMethod();
+                            builder
+                                .WithOrigins(
+                                    "http://localhost:3000",
+                                    "https://localhost:3000",
+                                    "https://sep490-g19-zxph.onrender.com"
+                                )
+                                .AllowAnyHeader()
+                                .AllowAnyMethod()
+                                .AllowCredentials();
                         });
                     });
 
