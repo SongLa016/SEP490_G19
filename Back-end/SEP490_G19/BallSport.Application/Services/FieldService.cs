@@ -22,9 +22,7 @@ namespace BallSport.Application.Services
             _cloudinary = cloudinary;
         }
 
-        // =======================
-        // 📌 Upload ảnh lên Cloudinary
-        // =======================
+        //  Upload ảnh lên Cloudinary
         private async Task<string?> UploadToCloudinary(IFormFile file)
         {
             if (file == null || file.Length == 0) return null;
@@ -39,9 +37,7 @@ namespace BallSport.Application.Services
             return uploadResult.SecureUrl?.ToString();
         }
 
-        // =======================
-        // 🏟️ CREATE FIELD
-        // =======================
+        //  CREATE FIELD
         public async Task<FieldResponseDTO> AddFieldAsync(FieldDTO dto, int ownerId)
         {
             int? bankAccountId = null;
@@ -120,9 +116,7 @@ namespace BallSport.Application.Services
             };
         }
 
-        // =======================
-        // 🔄 UPDATE FIELD
-        // =======================
+        //  UPDATE FIELD
         public async Task<FieldResponseDTO?> UpdateFieldAsync(FieldDTO dto)
         {
             var field = await _fieldRepository.GetFieldByIdAsync(dto.FieldId);
@@ -176,9 +170,8 @@ namespace BallSport.Application.Services
             };
         }
 
-        // =======================
-        // 🔍 GET FIELD BY ID
-        // =======================
+        //  GET FIELD BY ID
+ 
         public async Task<FieldResponseDTO?> GetFieldByIdAsync(int id)
         {
             var f = await _fieldRepository.GetFieldByIdAsync(id);
@@ -202,9 +195,9 @@ namespace BallSport.Application.Services
             };
         }
 
-        // =======================
-        // 🔍 GET FIELDS BY COMPLEX
-        // =======================
+        
+        //  GET FIELDS BY COMPLEX
+     
         public async Task<List<FieldResponseDTO>> GetFieldsByComplexIdAsync(int complexId)
         {
             var list = await _fieldRepository.GetFieldsByComplexIdAsync(complexId);
@@ -227,9 +220,8 @@ namespace BallSport.Application.Services
             }).ToList();
         }
 
-        // =======================
-        // 🔍 GET FIELDS BY OWNER
-        // =======================
+        //  GET FIELDS BY OWNER
+       
         public async Task<List<FieldResponseDTO>> GetFieldsByOwnerIdAsync(int ownerId)
         {
             var list = await _fieldRepository.GetFieldsByOwnerIdAsync(ownerId);
@@ -252,9 +244,8 @@ namespace BallSport.Application.Services
             }).ToList();
         }
 
-        // =======================
-        // ❌ DELETE FIELD
-        // =======================
+        //  DELETE FIELD
+   
         public async Task<bool> DeleteFieldAsync(int fieldId)
         {
             return await _fieldRepository.DeleteFieldAsync(fieldId);
