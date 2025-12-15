@@ -155,16 +155,7 @@ export default function InvoiceModal({ isOpen, booking, onClose }) {
                                         <div>Mã yêu cầu đối: <span className="font-medium">{booking.matchRequestId}</span></div>
                                    )}
                               </div>
-                              <div className="flex items-center justify-end gap-2">
-                                   <Button
-                                        variant="outline"
-                                        onClick={() => window.print()}
-                                        className="rounded-full px-3 py-1 text-xs flex items-center gap-2"
-                                   >
-                                        <Printer className="w-4 h-4" />
-                                        In / Lưu lại
-                                   </Button>
-                              </div>
+
                          </div>
                     </div>
 

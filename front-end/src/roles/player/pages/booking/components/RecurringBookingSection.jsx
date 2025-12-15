@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Repeat, CalendarDays, Clock, DollarSign } from "lucide-react";
 import { Button, DatePicker } from "../../../../../shared/components/ui";
 
@@ -26,6 +27,9 @@ export default function RecurringBookingSection({
           { value: 6, label: "T7", name: "Thứ 7" },
           { value: 0, label: "CN", name: "Chủ nhật" }
      ];
+
+     // Memoize minDate để tránh re-render không cần thiết
+     const todayString = useMemo(() => new Date().toISOString().split('T')[0], []);
 
      // Chuẩn hoá khoảng ngày bắt đầu/kết thúc để so sánh
      const startDateObj = startDate ? new Date(startDate) : null;
@@ -238,11 +242,8 @@ export default function RecurringBookingSection({
                                    </label>
                                    <DatePicker
                                         value={startDate}
-                                        onChange={(date) => {
-                                             setStartDate(date);
-                                             onBookingDataChange("startDate", date);
-                                        }}
-                                        min={new Date().toISOString().split('T')[0]}
+                                        onChange={setStartDate}
+                                        min={todayString}
                                         className="rounded-xl"
                                    />
                               </div>
@@ -252,11 +253,8 @@ export default function RecurringBookingSection({
                                    </label>
                                    <DatePicker
                                         value={endDate}
-                                        onChange={(date) => {
-                                             setEndDate(date);
-                                             onBookingDataChange("endDate", date);
-                                        }}
-                                        min={startDate || new Date().toISOString().split('T')[0]}
+                                        onChange={setEndDate}
+                                        min={startDate || todayString}
                                         className="rounded-xl"
                                    />
                               </div>

@@ -278,82 +278,98 @@ export default function FixedPackagesTab({
                         </Button>
                       </div>
                       <div>
+                        {/* Chỉ hiển thị chi tiết buổi đặt khi booking package đã được confirm */}
                         {isExpanded && (
                           <div className="mt-2 pt-2 border-t border-teal-200">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-medium text-gray-900">Chi tiết các buổi đặt sân: {sessionCount > 0 && `(${sessionCount} buổi)`}</h4>
-                              {sessionCount > 0 && (() => {
-                                const cancelledCount = sessions.filter(s => {
-                                  const status = (s.sessionStatus || s.status || "").toLowerCase();
-                                  return status.includes("cancel");
-                                }).length;
-                                const bookedCount = sessions.filter(s => {
-                                  const status = (s.sessionStatus || s.status || "").toLowerCase();
-                                  return !status.includes("cancel");
-                                }).length;
-                                return (
-                                  <div className="flex items-center gap-2 text-xs">
-                                    <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
-                                      <CheckCircle className="w-3 h-3" />
-                                      <span className="font-semibold">Đã đặt: {bookedCount}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-100 text-red-700 border border-red-200">
-                                      <XCircle className="w-3 h-3" />
-                                      <span className="font-semibold">Đã hủy: {cancelledCount}</span>
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                            <div className="space-y-2">
-                              {sessionCount > 0 ? (
-                                sessions.map((session, sessionIndex) => {
-                                  const scheduleData = session.scheduleId ? sessionScheduleDataMap[session.scheduleId] : null;
-                                  const pricePerSession = session.pricePerSession;
-                                  const sessionStatus = session.sessionStatus || session.status;
-                                  const sessionStatusConfig = getSessionStatusConfig(sessionStatus);
-                                  const SessionStatusIcon = sessionStatusConfig.icon;
-
-                                  const isCancelled = (sessionStatus || "").toLowerCase().includes("cancel");
-
-                                  return (
-                                    <div key={session.id || sessionIndex} className="flex flex-col gap-2 p-3 bg-white/80 backdrop-blur rounded-xl border border-teal-100">
-                                      <div className="flex justify-between items-center">
-                                        <div className="flex items-center gap-3 flex-wrap">
-                                          <span className="inline-flex items-center gap-1 text-sm text-gray-700 bg-gray-50 border border-gray-200 font-semibold px-2 py-1 rounded-full">
-                                            <Calendar className="w-3.5 h-3.5" /> {formatSessionDateLabel(session.date)}
-                                          </span>
-                                          <span className="inline-flex items-center gap-1 text-sm text-gray-700 bg-gray-50 border border-gray-200 font-semibold px-2 py-1 rounded-full">
-                                            <Clock className="w-3.5 h-3.5" /> {formatScheduleTimeRange(scheduleData, session)}
-                                          </span>
-                                          {sessionStatus && (
-                                            <Badge className={`${sessionStatusConfig.badge} hover:${sessionStatusConfig.badge} text-xs flex items-center gap-1`}>
-                                              <SessionStatusIcon className="w-3 h-3" />
-                                              {sessionStatusConfig.label}
-                                            </Badge>
-                                          )}
-                                          {isCancelled && (
-                                            <Badge className="bg-purple-100 text-purple-700 hover:text-purple-700 hover:bg-purple-200 border-purple-200 text-xs flex items-center gap-1">
-                                              <RotateCcw className="w-3 h-3" />
-                                              Đã hoàn tiền
-                                            </Badge>
-                                          )}
+                            {/* Kiểm tra trạng thái booking package - ẩn danh sách buổi nếu chưa confirm */}
+                            {!bookingStatusConfig.label.includes("Đã xác nhận") && !bookingStatusConfig.label.includes("Đã hoàn thành") ? (
+                              <div className="p-4 rounded-xl border border-yellow-200 bg-yellow-50 text-center">
+                                <AlertTriangle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+                                <p className="text-sm text-yellow-700 font-medium">
+                                  Danh sách buổi đặt sẽ hiển thị sau khi gói được xác nhận
+                                </p>
+                                <p className="text-xs text-yellow-600 mt-1">
+                                  Vui lòng chờ chủ sân xác nhận thanh toán
+                                </p>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="font-medium text-gray-900">Chi tiết các buổi đặt sân: {sessionCount > 0 && `(${sessionCount} buổi)`}</h4>
+                                  {sessionCount > 0 && (() => {
+                                    const cancelledCount = sessions.filter(s => {
+                                      const status = (s.sessionStatus || s.status || "").toLowerCase();
+                                      return status.includes("cancel");
+                                    }).length;
+                                    const bookedCount = sessions.filter(s => {
+                                      const status = (s.sessionStatus || s.status || "").toLowerCase();
+                                      return !status.includes("cancel");
+                                    }).length;
+                                    return (
+                                      <div className="flex items-center gap-2 text-xs">
+                                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
+                                          <CheckCircle className="w-3 h-3" />
+                                          <span className="font-semibold">Đã đặt: {bookedCount}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-100 text-red-700 border border-red-200">
+                                          <XCircle className="w-3 h-3" />
+                                          <span className="font-semibold">Đã hủy: {cancelledCount}</span>
                                         </div>
                                       </div>
-                                      {pricePerSession && (
-                                        <div className="flex items-center gap-2 text-xs">
-                                          <span className="font-semibold text-gray-600">Giá mỗi buổi:</span>
-                                          <span className="font-bold text-orange-600">{formatPrice ? formatPrice(pricePerSession) : `${pricePerSession.toLocaleString('vi-VN')} VNĐ`}</span>
-                                        </div>
-                                      )}
+                                    );
+                                  })()}
+                                </div>
+                                <div className="space-y-2">
+                                  {sessionCount > 0 ? (
+                                    sessions.map((session, sessionIndex) => {
+                                      const scheduleData = session.scheduleId ? sessionScheduleDataMap[session.scheduleId] : null;
+                                      const pricePerSession = session.pricePerSession;
+                                      const sessionStatus = session.sessionStatus || session.status;
+                                      const sessionStatusConfig = getSessionStatusConfig(sessionStatus);
+                                      const SessionStatusIcon = sessionStatusConfig.icon;
 
-                                    </div>
-                                  );
-                                })
-                              ) : (
-                                <div className="text-sm text-gray-500 italic text-center py-4">Chưa có dữ liệu buổi cho gói này.</div>
-                              )}
-                            </div>
+                                      const isCancelled = (sessionStatus || "").toLowerCase().includes("cancel");
+
+                                      return (
+                                        <div key={session.id || sessionIndex} className="flex flex-col gap-2 p-3 bg-white/80 backdrop-blur rounded-xl border border-teal-100">
+                                          <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                              <span className="inline-flex items-center gap-1 text-sm text-gray-700 bg-gray-50 border border-gray-200 font-semibold px-2 py-1 rounded-full">
+                                                <Calendar className="w-3.5 h-3.5" /> {formatSessionDateLabel(session.date)}
+                                              </span>
+                                              <span className="inline-flex items-center gap-1 text-sm text-gray-700 bg-gray-50 border border-gray-200 font-semibold px-2 py-1 rounded-full">
+                                                <Clock className="w-3.5 h-3.5" /> {formatScheduleTimeRange(scheduleData, session)}
+                                              </span>
+                                              {sessionStatus && (
+                                                <Badge className={`${sessionStatusConfig.badge} hover:${sessionStatusConfig.badge} text-xs flex items-center gap-1`}>
+                                                  <SessionStatusIcon className="w-3 h-3" />
+                                                  {sessionStatusConfig.label}
+                                                </Badge>
+                                              )}
+                                              {isCancelled && (
+                                                <Badge className="bg-purple-100 text-purple-700 hover:text-purple-700 hover:bg-purple-200 border-purple-200 text-xs flex items-center gap-1">
+                                                  <RotateCcw className="w-3 h-3" />
+                                                  Đã hoàn tiền
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          </div>
+                                          {pricePerSession && (
+                                            <div className="flex items-center gap-2 text-xs">
+                                              <span className="font-semibold text-gray-600">Giá mỗi buổi:</span>
+                                              <span className="font-bold text-orange-600">{formatPrice ? formatPrice(pricePerSession) : `${pricePerSession.toLocaleString('vi-VN')} VNĐ`}</span>
+                                            </div>
+                                          )}
+
+                                        </div>
+                                      );
+                                    })
+                                  ) : (
+                                    <div className="text-sm text-gray-500 italic text-center py-4">Chưa có dữ liệu buổi cho gói này.</div>
+                                  )}
+                                </div>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>

@@ -1,13 +1,17 @@
-// Service layer for Field, FieldComplex, FieldPrice APIs
+/**
+ * Service layer cho Field, FieldComplex, FieldPrice APIs
+ * Chứa các hàm gọi API và validate dữ liệu liên quan đến sân bóng
+ */
 import axios from "axios";
 
-// ==================== VALIDATION FUNCTIONS ====================
+// ==================== HÀM VALIDATE DỮ LIỆU ====================
 
 /**
  * Validate tên (sân hoặc khu sân)
+ * Kiểm tra: không rỗng, độ dài 2-100 ký tự
  * @param {string} name - Tên cần validate
  * @param {string} label - Nhãn hiển thị (vd: "Tên sân", "Tên khu sân")
- * @returns {{ isValid: boolean, message: string }}
+ * @returns {{ isValid: boolean, message: string }} - Kết quả validate
  */
 export const validateFieldName = (name, label = "Tên") => {
   const trimmedName = name?.trim() || "";
@@ -25,20 +29,25 @@ export const validateFieldName = (name, label = "Tên") => {
 
 /**
  * Validate giá sân
+ * Kiểm tra: là số, lớn hơn 0, trong khoảng 10,000 - 10,000,000 VND
  * @param {number|string} price - Giá cần validate
- * @returns {{ isValid: boolean, message: string }}
+ * @returns {{ isValid: boolean, message: string }} - Kết quả validate
  */
 export const validateFieldPrice = (price) => {
   const numPrice = Number(price);
+  // Kiểm tra giá trị hợp lệ
   if (isNaN(numPrice) || price === "" || price === null || price === undefined) {
     return { isValid: false, message: "Vui lòng nhập giá sân" };
   }
+  // Kiểm tra giá dương
   if (numPrice <= 0) {
     return { isValid: false, message: "Giá sân phải lớn hơn 0" };
   }
+  // Kiểm tra giá tối thiểu
   if (numPrice < 10000) {
     return { isValid: false, message: "Giá sân tối thiểu 10,000 VND" };
   }
+  // Kiểm tra giá tối đa
   if (numPrice > 10000000) {
     return { isValid: false, message: "Giá sân tối đa 10,000,000 VND" };
   }
@@ -46,14 +55,18 @@ export const validateFieldPrice = (price) => {
 };
 
 /**
- * Validate kích thước sân (format: 20x40m hoặc 20m x 40m)
+ * Validate kích thước sân
+ * Format hợp lệ: 20x40m, 20X40, 20 x 40m, 20.5x40.5m
+ * Trường này không bắt buộc
  * @param {string} size - Kích thước cần validate
- * @returns {{ isValid: boolean, message: string }}
+ * @returns {{ isValid: boolean, message: string }} - Kết quả validate
  */
 export const validateFieldSize = (size) => {
+  // Trường không bắt buộc - bỏ qua nếu rỗng
   if (!size || size.trim() === "") {
-    return { isValid: true, message: "" }; // Optional field
+    return { isValid: true, message: "" };
   }
+  // Regex kiểm tra format: số x số (có thể có đơn vị m)
   const sizeRegex = /^\d+(\.\d+)?\s*[xX×]\s*\d+(\.\d+)?\s*m?$/;
   if (!sizeRegex.test(size.trim())) {
     return { isValid: false, message: "Kích thước không hợp lệ (VD: 20x40m)" };
@@ -62,9 +75,10 @@ export const validateFieldSize = (size) => {
 };
 
 /**
- * Validate địa chỉ
+ * Validate địa chỉ khu sân
+ * Kiểm tra: không rỗng, độ dài 10-200 ký tự
  * @param {string} address - Địa chỉ cần validate
- * @returns {{ isValid: boolean, message: string }}
+ * @returns {{ isValid: boolean, message: string }} - Kết quả validate
  */
 export const validateAddress = (address) => {
   const trimmedAddress = address?.trim() || "";
@@ -82,14 +96,15 @@ export const validateAddress = (address) => {
 
 /**
  * Validate toàn bộ dữ liệu khu sân (Complex)
- * @param {Object} data - Dữ liệu khu sân
- * @param {boolean} isEdit - Đang chỉnh sửa hay tạo mới
- * @returns {{ isValid: boolean, errors: Object }}
+ * Kiểm tra: tên, địa chỉ, hình ảnh (bắt buộc khi tạo mới)
+ * @param {Object} data - Dữ liệu khu sân cần validate
+ * @param {boolean} isEdit - true nếu đang chỉnh sửa, false nếu tạo mới
+ * @returns {{ isValid: boolean, errors: Object }} - Kết quả validate và danh sách lỗi
  */
 export const validateComplexData = (data, isEdit = false) => {
   const errors = {};
 
-  // Validate tên
+  // Validate tên khu sân
   const nameValidation = validateFieldName(data.name, "Tên khu sân");
   if (!nameValidation.isValid) {
     errors.name = nameValidation.message;
@@ -101,7 +116,7 @@ export const validateComplexData = (data, isEdit = false) => {
     errors.address = addressValidation.message;
   }
 
-  // Validate hình ảnh (bắt buộc khi tạo mới)
+  // Validate hình ảnh (chỉ bắt buộc khi tạo mới)
   if (!isEdit && !data.imageFile && !data.imageUrl && !data.image) {
     errors.image = "Vui lòng chọn hình ảnh cho khu sân";
   }

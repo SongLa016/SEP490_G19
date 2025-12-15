@@ -24,6 +24,29 @@ import { deletePost } from "../services/posts";
 import { deleteComment, fetchCommentById } from "../services/comments";
 import Swal from "sweetalert2";
 
+// Helper function to fetch user profile by userId
+const fetchUserProfile = async (userId) => {
+     if (!userId) return null;
+     try {
+          const token = localStorage.getItem("token");
+          const response = await fetch(
+               `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`,
+               {
+                    headers: {
+                         "Content-Type": "application/json",
+                         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+               }
+          );
+          if (response.ok) {
+               return await response.json();
+          }
+     } catch (error) {
+          console.error("[NotificationsDisplay] Error fetching user profile:", error);
+     }
+     return null;
+};
+
 const NOTIFICATION_TYPES = [
      { label: "Tất cả", value: "all" },
      { label: "Hệ thống", value: "System" },
@@ -111,12 +134,73 @@ const formatNotificationMessage = (notification) => {
           : `${actorName} ${baseMessage}`;
 };
 
+const LIKE_NOTIFICATION_TYPES = new Set(["like", "newlike", "postlike"]);
+
+const isLikeNotification = (notification) => LIKE_NOTIFICATION_TYPES.has(getNotificationType(notification));
+
+const getActorIdFromNotification = (notification) => {
+     const candidates = [
+          // Direct actor/user ID fields
+          notification?.actorId,
+          notification?.actorID,
+          notification?.ActorId,
+          notification?.ActorID,
+          notification?.userId,
+          notification?.userID,
+          notification?.UserId,
+          notification?.UserID,
+          // Triggered by fields
+          notification?.triggeredByUserId,
+          notification?.triggeredByUserID,
+          notification?.TriggeredByUserId,
+          notification?.TriggeredByUserID,
+          notification?.triggeredBy,
+          notification?.TriggeredBy,
+          // Sender fields
+          notification?.senderId,
+          notification?.senderID,
+          notification?.SenderId,
+          notification?.SenderID,
+          // From user fields
+          notification?.fromUserId,
+          notification?.fromUserID,
+          notification?.FromUserId,
+          notification?.FromUserID,
+          // Liked by fields
+          notification?.likedByUserId,
+          notification?.likedByUserID,
+          notification?.LikedByUserId,
+          notification?.LikedByUserID,
+          notification?.likedBy,
+          notification?.LikedBy,
+          // Nested in metadata
+          notification?.metadata?.actorId,
+          notification?.metadata?.userId,
+          notification?.metadata?.UserId,
+          notification?.metadata?.triggeredBy,
+          notification?.metadata?.senderId,
+          notification?.metadata?.likedBy,
+          // Nested in data
+          notification?.data?.actorId,
+          notification?.data?.userId,
+          notification?.data?.UserId,
+          notification?.data?.triggeredBy,
+          notification?.data?.likedBy,
+          // Nested in additionalData
+          notification?.additionalData?.actorId,
+          notification?.additionalData?.userId,
+          notification?.additionalData?.UserId,
+     ];
+     return candidates.find((id) => id !== undefined && id !== null && id !== "") || null;
+};
+
 const enrichNotificationsWithActors = async (notifications) => {
      if (!Array.isArray(notifications) || notifications.length === 0) {
           return notifications || [];
      }
 
      const commentCache = new Map();
+     const userCache = new Map();
 
      const enriched = await Promise.all(
           notifications.map(async (notification) => {
@@ -126,6 +210,48 @@ const enrichNotificationsWithActors = async (notifications) => {
                     return { ...notification, actorName: existingActor };
                }
 
+               // Handle Like notifications - fetch user profile
+               if (isLikeNotification(notification)) {
+                    const actorId = getActorIdFromNotification(notification);
+                    console.log("[NotificationsDisplay] Like notification:", {
+                         type: notification?.type,
+                         actorId,
+                         notification: JSON.stringify(notification, null, 2)
+                    });
+                    if (!actorId) {
+                         return notification;
+                    }
+
+                    try {
+                         let userProfile = userCache.get(actorId);
+                         if (userProfile === undefined) {
+                              userProfile = await fetchUserProfile(actorId);
+                              userCache.set(actorId, userProfile || null);
+                         }
+
+                         if (!userProfile) {
+                              return notification;
+                         }
+
+                         const actorName =
+                              cleanString(userProfile.fullName) ||
+                              cleanString(userProfile.FullName) ||
+                              cleanString(userProfile.userName) ||
+                              cleanString(userProfile.UserName) ||
+                              cleanString(userProfile.username) ||
+                              cleanString(userProfile.Username);
+
+                         return {
+                              ...notification,
+                              actorName: actorName || notification.actorName,
+                         };
+                    } catch (error) {
+                         console.error("[NotificationsDisplay] Không thể tải profile cho thông báo like:", actorId, error);
+                         return notification;
+                    }
+               }
+
+               // Handle Comment notifications
                if (!isCommentNotification(notification)) {
                     return notification;
                }
@@ -271,7 +397,7 @@ export default function NotificationsDisplay({ userId, className = "" }) {
 
      const handleDeleteNotification = async (notificationId, messagePreview = "") => {
           if (!notificationId) return;
-          
+
           const result = await Swal.fire({
                title: 'Xác nhận xóa?',
                text: `Bạn có chắc muốn xóa thông báo "${messagePreview || notificationId}"?`,
@@ -409,7 +535,7 @@ export default function NotificationsDisplay({ userId, className = "" }) {
 
      const handleDeleteAllNotifications = async () => {
           if (!notifications.length) return;
-          
+
           const result = await Swal.fire({
                title: 'Xác nhận xóa?',
                text: "Bạn có chắc muốn xóa toàn bộ thông báo?",
@@ -841,7 +967,7 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
 
      const handleDeleteNotification = async (notificationId, messagePreview = "") => {
           if (!notificationId) return;
-          
+
           const result = await Swal.fire({
                title: 'Xác nhận xóa?',
                text: `Bạn có chắc muốn xóa thông báo "${messagePreview || notificationId}"?`,
@@ -976,7 +1102,7 @@ export function NotificationDropdown({ userId, isOpen, onClose, className = "" }
 
      const handleDeleteAllNotifications = async () => {
           if (!notifications.length) return;
-          
+
           const result = await Swal.fire({
                title: 'Xác nhận xóa?',
                text: "Bạn có chắc muốn xóa toàn bộ thông báo?",

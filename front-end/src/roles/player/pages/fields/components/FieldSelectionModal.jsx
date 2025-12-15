@@ -114,76 +114,12 @@ const FieldSelectionModal = ({
                          />
                     </div>
 
-                    {/* Field Type Tabs */}
-                    <div className="flex flex-wrap gap-2">
-                         <Button
-                              onClick={() => setActiveTypeTab("all")}
-                              size="sm"
-                              className={`px-3 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${activeTypeTab === "all"
-                                   ? "bg-blue-500 text-white"
-                                   : "bg-gray-100 text-blue-600 hover:bg-gray-200 hover:text-blue-600"
-                                   }`}
-                         >
-                              Tất cả loại
-                              <span className={`px-1.5 py-0.5 text-[10px] rounded-full ${activeTypeTab === "all" ? "bg-blue-600" : "bg-gray-300"
-                                   }`}>
-                                   {getFieldCountByType("all")}
-                              </span>
-                         </Button>
-                         <Button
-                              onClick={() => setActiveTypeTab("5vs5")}
-                              size="sm"
-                              className={`px-3 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${activeTypeTab === "5vs5"
-                                   ? "bg-blue-500 text-white"
-                                   : "bg-gray-100 text-blue-600 hover:bg-gray-200 hover:text-blue-600"
-                                   }`}
-                         >
-                              Sân 5vs5
-                              <span className={`px-1.5 py-0.5 text-[10px] rounded-full ${activeTypeTab === "5vs5" ? "bg-blue-600" : "bg-gray-300"
-                                   }`}>
-                                   {getFieldCountByType("5vs5")}
-                              </span>
-                         </Button>
-                         <Button
-                              onClick={() => setActiveTypeTab("7vs7")}
-                              size="sm"
-                              className={`px-3 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${activeTypeTab === "7vs7"
-                                   ? "bg-blue-500 text-white"
-                                   : "bg-gray-100 text-blue-600 hover:bg-gray-200 hover:text-blue-600"
-                                   }`}
-                         >
-                              Sân 7vs7
-                              <span className={`px-1.5 py-0.5 text-[10px] rounded-full ${activeTypeTab === "7vs7" ? "bg-blue-600" : "bg-gray-300"
-                                   }`}>
-                                   {getFieldCountByType("7vs7")}
-                              </span>
-                         </Button>
-                         <Button
-                              onClick={() => setActiveTypeTab("11vs11")}
-                              size="sm"
-                              className={`px-3 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${activeTypeTab === "11vs11"
-                                   ? "bg-blue-500 text-white"
-                                   : "bg-gray-100 text-blue-600 hover:bg-gray-200 hover:text-blue-600    "
-                                   }`}
-                         >
-                              Sân 11vs11
-                              <span className={`px-1.5 py-0.5 text-[10px] rounded-full ${activeTypeTab === "11vs11" ? "bg-blue-600" : "bg-gray-300"
-                                   }`}>
-                                   {getFieldCountByType("11vs11")}
-                              </span>
-                         </Button>
-                    </div>
+
 
                     {/* Results Info */}
                     <div className="flex items-center justify-between text-sm text-gray-600">
                          <span>
-                              {activeFieldTab === "all" ? "Tất cả sân" :
-                                   activeFieldTab === "hoan-kiem" ? "Sân tại Hoàn Kiếm" :
-                                        activeFieldTab === "ba-dinh" ? "Sân tại Ba Đình" :
-                                             activeFieldTab === "dong-da" ? "Sân tại Đống Đa" :
-                                                  activeFieldTab === "cau-giay" ? "Sân tại Cầu Giấy" :
-                                                       activeFieldTab === "hai-ba-trung" ? "Sân tại Hai Bà Trưng" : "Sân"}
-                              {activeTypeTab !== "all" && ` - ${activeTypeTab}`}
+                              Tổng số sân
                          </span>
                          <span className="text-teal-600 font-medium">
                               {filteredFields.length} sân
