@@ -930,7 +930,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           });
      }, [scheduleFilterField, isFieldMaintenance, openScheduleModal]);
 
-     const handleQuickScheduleRequest = useCallback((fieldId, slotId, date) => {
+     const handleQuickScheduleRequest = useCallback(async (fieldId, slotId, date) => {
           if (isFieldMaintenance(fieldId)) {
                Swal.fire({
                     icon: 'info',
@@ -941,12 +941,75 @@ export default function ScheduleManagement({ isDemo = false }) {
                return;
           }
 
-          openScheduleModal({
-               fieldId: fieldId?.toString() || '',
-               slotId: slotId?.toString() || '',
-               date: date || ''
+          // Tìm field và slot để lấy thông tin
+          const field = fields.find(f => f.fieldId === fieldId || f.fieldId === Number(fieldId));
+          const slot = timeSlots.find(s => {
+               const sId = s.slotId || s.SlotID;
+               return sId === slotId || sId === Number(slotId);
           });
-     }, [isFieldMaintenance, openScheduleModal]);
+
+          if (!field || !slot) {
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: 'Không tìm thấy thông tin sân hoặc slot',
+                    confirmButtonColor: '#ef4444'
+               });
+               return;
+          }
+
+          // Format date
+          const dateStr = date instanceof Date
+               ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+               : date;
+
+          // Lấy thông tin time từ slot
+          const slotStartTime = slot.startTime || slot.StartTime || '00:00';
+          const slotEndTime = slot.endTime || slot.EndTime || '00:00';
+          const slotName = slot.slotName || slot.SlotName || slot.name || "";
+
+          try {
+               // Tạo lịch trình ngay lập tức
+               const result = await createFieldSchedule({
+                    scheduleId: 0,
+                    fieldId: Number(fieldId),
+                    fieldName: String(field.name || ""),
+                    slotId: Number(slotId),
+                    slotName: String(slotName),
+                    date: dateStr,
+                    startTime: slotStartTime,
+                    endTime: slotEndTime,
+                    status: "Available"
+               });
+
+               if (result.success) {
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Tạo lịch trình thành công!',
+                         text: `Đã tạo lịch trình cho ${field.name} - ${slotName}`,
+                         confirmButtonColor: '#10b981',
+                         timer: 2000,
+                         showConfirmButton: false
+                    });
+                    await loadFieldSchedules();
+               } else {
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Tạo lịch trình thất bại',
+                         text: result.error || 'Có lỗi xảy ra khi tạo lịch trình',
+                         confirmButtonColor: '#ef4444'
+                    });
+               }
+          } catch (error) {
+               console.error('Error creating quick schedule:', error);
+               Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: error.message || 'Có lỗi xảy ra khi tạo lịch trình',
+                    confirmButtonColor: '#ef4444'
+               });
+          }
+     }, [isFieldMaintenance, fields, timeSlots, loadFieldSchedules]);
 
      // Handle close schedule modal
      const handleCloseScheduleModal = () => {
@@ -1257,7 +1320,17 @@ export default function ScheduleManagement({ isDemo = false }) {
                          psDateStr === scheduleDateStr;
                });
 
-               if (booking || packageSession) {
+               // Check if booking/packageSession is cancelled
+               const isBookingCancelled = booking &&
+                    ((booking.status || booking.bookingStatus || '').toLowerCase() === 'cancelled' ||
+                         (booking.status || booking.bookingStatus || '').toLowerCase() === 'canceled');
+
+               const isPackageSessionCancelled = packageSession &&
+                    ((packageSession.sessionStatus || packageSession.status || '').toLowerCase() === 'cancelled' ||
+                         (packageSession.sessionStatus || packageSession.status || '').toLowerCase() === 'canceled');
+
+               // Only show as "Booked" if there's an active (non-cancelled) booking or package session
+               if ((booking && !isBookingCancelled) || (packageSession && !isPackageSessionCancelled)) {
                     // Return schedule with Booked status
                     return {
                          ...schedule,

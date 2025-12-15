@@ -166,13 +166,17 @@ export default function FieldInfoSection({
                               </span>
                               <span className="font-medium">{bookingData.date}</span>
                          </div>
-                         {bookingData.slotName && (
+                         {(bookingData.slotName || bookingData.startTime) && (
                               <div className="flex justify-between">
                                    <span className="text-gray-600 flex items-center">
                                         <span className="mr-2">⏰</span>
                                         Thời gian
                                    </span>
-                                   <span className="font-medium">{bookingData.slotName}</span>
+                                   <span className="font-medium">
+                                        {bookingData.startTime && bookingData.endTime
+                                             ? `${bookingData.slotName ? `${bookingData.slotName} (` : ''}${bookingData.startTime} - ${bookingData.endTime}${bookingData.slotName ? ')' : ''}`
+                                             : bookingData.slotName}
+                                   </span>
                               </div>
                          )}
                          {!isRecurring && (

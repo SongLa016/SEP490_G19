@@ -926,17 +926,24 @@ export default function ManageSchedulesTab({
                                                   bookingDate.setHours(12, 0, 0, 0);
                                              }
 
-                                             // Check if there's a booking for this schedule and update status to "Booked"
-                                             // This ensures that if a schedule has a booking, it shows as "Booked" even if the status in DB is "Available"
+                                             // Check if there's an ACTIVE booking for this schedule and update status to "Booked"
+                                             // Only show "Booked" if booking is not cancelled
                                              let bookingInfo = null;
                                              if (getBookingInfo && status.toLowerCase() !== 'maintenance' && bookingDate && fieldId && slotId) {
                                                   bookingInfo = getBookingInfo(Number(fieldId), bookingDate, Number(slotId));
                                                   if (bookingInfo) {
-                                                       // If there's a booking, status must be "Booked"
-                                                       status = 'Booked';
-                                                  } else if (status.toLowerCase() === 'available') {
-                                                       // If no booking and current status is Available, keep it as Available (Trống)
-                                                       status = 'Available';
+                                                       // Check if booking is cancelled
+                                                       const bookingStatus = (bookingInfo.status || bookingInfo.bookingStatus || '').toLowerCase();
+                                                       const isCancelled = bookingStatus === 'cancelled' || bookingStatus === 'canceled';
+
+                                                       if (isCancelled) {
+                                                            // Booking is cancelled, use status from database (should be "Available")
+                                                            // Don't override with "Booked"
+                                                            bookingInfo = null; // Clear bookingInfo so it doesn't show booking details
+                                                       } else {
+                                                            // Booking is active, show as "Booked"
+                                                            status = 'Booked';
+                                                       }
                                                   }
                                              }
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authService, validateRegistrationData, formatRegistrationData, validateVietnamPhone, validateStrongPassword } from '../services/authService';
-import { Button, Input, Card, CardContent, CardHeader, CardTitle, CardDescription, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '../components/ui';
+import { Button, Input, PhoneInput, Card, CardContent, CardHeader, CardTitle, CardDescription, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '../components/ui';
 import { FadeIn, SlideIn, ScaleIn } from '../components/ui/animations';
 import { Eye, EyeOff, Mail, Lock, User, Phone, X, Camera, CheckCircle, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -412,11 +412,12 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                                              <label className="text-sm font-medium text-gray-700">Số điện thoại <span className="text-red-500">*</span></label>
                                              <div className="relative">
                                                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 transition-colors" />
-                                                  <Input
+                                                  <PhoneInput
                                                        value={phone}
                                                        onChange={(e) => setPhone(e.target.value)}
                                                        onBlur={() => { const v = validateVietnamPhone(phone); setPhoneError(v.isValid ? '' : v.message); }}
                                                        required
+                                                       maxLength={10}
                                                        className={`pl-12 h-12 text-sm transition-all duration-200 rounded-2xl border-gray-200 ${phoneError ? 'border-red-500 focus:ring-red-500 animate-shake' : 'focus:ring-teal-500 focus:border-teal-500'}`}
                                                        placeholder="0123456789"
                                                   />

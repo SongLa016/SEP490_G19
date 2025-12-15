@@ -1772,27 +1772,61 @@ export default function BookingHistory({ user }) {
                }
 
                // Lấy scheduleId từ booking trước khi hủy để cập nhật FieldSchedule
-               const scheduleId = cancelBooking?.scheduleId || cancelBooking?.scheduleID || cancelBooking?.ScheduleID || cancelBooking?.ScheduleId;
-               
+               // Thử nhiều nguồn: normalized data, apiSource (raw API response)
+               const scheduleId = cancelBooking?.scheduleId
+                    || cancelBooking?.scheduleID
+                    || cancelBooking?.ScheduleID
+                    || cancelBooking?.ScheduleId
+                    || cancelBooking?.apiSource?.scheduleId
+                    || cancelBooking?.apiSource?.scheduleID
+                    || cancelBooking?.apiSource?.ScheduleID
+                    || cancelBooking?.apiSource?.ScheduleId;
+
+               console.log("🔍 [CANCEL BOOKING] Booking data:", {
+                    bookingId,
+                    scheduleId,
+                    cancelBookingKeys: Object.keys(cancelBooking || {}),
+                    apiSourceKeys: Object.keys(cancelBooking?.apiSource || {}),
+                    rawScheduleId: cancelBooking?.scheduleId,
+                    apiSourceScheduleId: cancelBooking?.apiSource?.scheduleId
+               });
+
                // Call cancellation API (backend will handle based on token)
                const result = await cancelBookingAPI(bookingId, reason || "Hủy booking chưa được xác nhận");
 
                if (result.success) {
+                    // Thử lấy scheduleId từ response của cancel API nếu có
+                    const responseScheduleId = result.data?.scheduleId
+                         || result.data?.scheduleID
+                         || result.data?.ScheduleID
+                         || result.data?.booking?.scheduleId
+                         || result.data?.booking?.scheduleID;
+
+                    const finalScheduleId = scheduleId || responseScheduleId;
+
+                    console.log("🔍 [CANCEL BOOKING] Schedule ID resolution:", {
+                         fromBooking: scheduleId,
+                         fromResponse: responseScheduleId,
+                         final: finalScheduleId
+                    });
+
                     // Cập nhật FieldSchedule status về "Available" khi hủy booking thành công
-                    if (scheduleId && Number(scheduleId) > 0) {
+                    if (finalScheduleId && Number(finalScheduleId) > 0) {
                          try {
-                              console.log("📝 [UPDATE SCHEDULE] Updating FieldSchedule status to 'Available' for schedule", scheduleId);
-                              const updateResult = await updateFieldScheduleStatus(Number(scheduleId), "Available");
+                              console.log("📝 [UPDATE SCHEDULE] Updating FieldSchedule status to 'Available' for schedule", finalScheduleId);
+                              const updateResult = await updateFieldScheduleStatus(Number(finalScheduleId), "Available");
                               if (updateResult.success) {
-                                   console.log(`✅ [UPDATE SCHEDULE] Updated schedule ${scheduleId} to Available after canceling booking`);
+                                   console.log(`✅ [UPDATE SCHEDULE] Updated schedule ${finalScheduleId} to Available after canceling booking`);
                               } else {
-                                   console.warn(`⚠️ [UPDATE SCHEDULE] Failed to update schedule ${scheduleId}:`, updateResult.error);
+                                   console.warn(`⚠️ [UPDATE SCHEDULE] Failed to update schedule ${finalScheduleId}:`, updateResult.error);
                               }
                          } catch (error) {
-                              console.error(`❌ [UPDATE SCHEDULE] Error updating schedule ${scheduleId}:`, error);
+                              console.error(`❌ [UPDATE SCHEDULE] Error updating schedule ${finalScheduleId}:`, error);
                          }
+                    } else {
+                         console.warn("⚠️ [CANCEL BOOKING] No scheduleId found in booking data or API response, cannot update FieldSchedule status. Backend should handle this automatically.");
                     }
-                    
+
                     const bookingKey = String(cancelBooking.id || cancelBooking.bookingId);
 
                     // Extract refund information from response

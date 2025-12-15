@@ -2,7 +2,7 @@
 export { Container, Section, Row, Col } from "./layout";
 
 // Form components
-export { Input } from "./input";
+export { Input, PhoneInput } from "./input";
 export {
   InputOTP,
   InputOTPGroup,

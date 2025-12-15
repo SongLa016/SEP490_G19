@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import {
      clearPersistedAuth,
      getStoredToken,
@@ -29,6 +29,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
      const [user, setUser] = useState(null);
      const [isLoading, setIsLoading] = useState(true);
+     const profileLoadedRef = useRef(false);
 
      useEffect(() => {
           // Get current user from localStorage on app start
@@ -45,6 +46,7 @@ export const AuthProvider = ({ children }) => {
      }, []);
 
      const login = (userData, token = null) => {
+          profileLoadedRef.current = false; // Reset flag khi login mới
           setUser(userData);
           if (token) {
                storeToken(token);
@@ -55,6 +57,7 @@ export const AuthProvider = ({ children }) => {
      };
 
      const logoutUser = () => {
+          profileLoadedRef.current = false; // Reset flag khi logout
           logout();
           setUser(null);
      };
@@ -64,24 +67,27 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('user', JSON.stringify(userData));
      };
 
-     // Sau khi có user nhưng chưa có avatar, tự động gọi API profile để lấy avatar/fullName
+     // Sau khi có user, tự động gọi API profile để lấy avatar/fullName (ưu tiên dữ liệu từ API để tránh lỗi encoding)
      useEffect(() => {
-          if (!user || user.avatar) return;
+          const userId = user?.userID || user?.userId || user?.id;
+          if (!user || !userId || profileLoadedRef.current) return;
 
           let isCancelled = false;
+          profileLoadedRef.current = true; // Đánh dấu đã load để tránh gọi lại
 
           const loadProfile = async () => {
                try {
-                    const userId = user.userID || user.userId || user.id;
                     const result = await profileService.getProfile(userId);
                     const profile = result?.profile || result?.data || null;
 
                     if (!isCancelled && profile) {
+                         // Ưu tiên fullName từ profile API để tránh lỗi encoding từ JWT token
+                         const profileFullName = profile.fullName || profile.FullName;
                          const enrichedUser = {
                               ...user,
                               avatar: profile.avatar || profile.avatarUrl || user.avatar || null,
-                              fullName: user.fullName || profile.fullName || profile.FullName || user.fullName,
-                              name: user.name || profile.fullName || profile.FullName || user.name,
+                              fullName: profileFullName || user.fullName,
+                              name: profileFullName || user.name,
                          };
                          setUser(enrichedUser);
                          localStorage.setItem('user', JSON.stringify(enrichedUser));

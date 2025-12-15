@@ -59,7 +59,7 @@ export default function CancelBookingModal({
                          <span className="text-xl font-bold text-gray-900">Xác nhận hủy đặt sân</span>
                     </div>
                }
-               className="max-w-3xl w-full rounded-2xl shadow-2xl max-h-[90vh]"
+               className="max-w-3xl w-full rounded-2xl overflow-y-auto scrollbar-hide shadow-2xl max-h-[90vh]"
           >
                <div className="flex flex-col flex-1 min-h-0">
                     {/* Scrollable Content */}
