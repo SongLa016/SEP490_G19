@@ -30,7 +30,7 @@ export default function BookingModal({
      fieldData,
      user,
      onSuccess,
-     bookingType = "field", // "field" | "complex" | "quick"
+     bookingType = "field",
      navigate,
      fieldSchedules = []
 }) {
@@ -99,12 +99,12 @@ export default function BookingModal({
                     body.removeAttribute("data-prev-padding-right");
                };
           } catch {
-               // no-op
+
           }
      }, [isOpen]);
 
      // Nếu sân chưa được owner cấu hình chính sách đặt cọc, mặc định không yêu cầu cọc (0%)
-     const DEFAULT_DEPOSIT_PERCENT = 0; // 0% fallback when policy missing
+     const DEFAULT_DEPOSIT_PERCENT = 0; // 0% 
 
      // Calculate duration from slot times if available
      const calculateDuration = (startTime, endTime) => {
@@ -133,7 +133,7 @@ export default function BookingModal({
           return Math.round(numeric);
      };
 
-     const extractDepositConfig = (source) => {
+     const extractDepositConfig = useCallback((source) => {
           if (!source) {
                return { percent: null, min: 0, max: 0 };
           }
@@ -146,7 +146,7 @@ export default function BookingModal({
                min: normalizeMoneyValue(rawMin),
                max: normalizeMoneyValue(rawMax)
           };
-     };
+     }, []);
 
      const computeDepositAmount = (baseAmount, percent, minDeposit = 0, maxDeposit = 0) => {
           const normalizedBase = Number(baseAmount) || 0;
@@ -210,7 +210,7 @@ export default function BookingModal({
      });
 
      // Tạo danh sách các buổi định kỳ dự kiến từ startDate + endDate + các ngày trong tuần
-     const generateRecurringSessions = () => {
+     const generateRecurringSessions = useCallback(() => {
           if (!isRecurring || !recurringStartDate || !recurringEndDate || !Array.isArray(selectedDays) || selectedDays.length === 0) {
                return [];
           }
@@ -399,9 +399,10 @@ export default function BookingModal({
 
                return [];
           }
-     };
+     }, [isRecurring, recurringStartDate, recurringEndDate, selectedDays, selectedSlotsByDay, bookingData.fieldSchedules, bookingData.fieldTimeSlots]);
+
      // Tính giá cho từng slot dựa trên TimeSlots (chứa giá) hoặc fieldSchedules
-     const getSlotPrice = (slotId) => {
+     const getSlotPrice = useCallback((slotId) => {
           if (!slotId) return bookingData.price || 0;
 
           if (Array.isArray(bookingData?.fieldTimeSlots) && bookingData.fieldTimeSlots.length > 0) {
@@ -435,7 +436,7 @@ export default function BookingModal({
           }
 
           return bookingData.price || 0;
-     };
+     }, [bookingData.fieldTimeSlots, bookingData.price, fieldSchedules]);
 
      useEffect(() => {
           if (!isRecurring) {
@@ -513,12 +514,9 @@ export default function BookingModal({
           bookingData.depositPercent,
           bookingData.minDeposit,
           bookingData.maxDeposit,
-          bookingData.fieldSchedules,
           isRecurring,
-          recurringStartDate,
-          recurringEndDate,
-          selectedDays,
-          selectedSlotsByDay
+          generateRecurringSessions,
+          getSlotPrice
      ]);
 
      // Cập nhật bookingData khi fieldData thay đổi

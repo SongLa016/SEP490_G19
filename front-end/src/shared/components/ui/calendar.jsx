@@ -31,11 +31,23 @@ export function Calendar({
   const monthRef = React.useRef(null)
   const yearRef = React.useRef(null)
 
+  // Chỉ cập nhật currentMonth khi selected thực sự thay đổi (so sánh theo year/month)
+  const selectedYear = selected ? getYear(selected) : null
+  const selectedMonth = selected ? getMonth(selected) : null
+
   React.useEffect(() => {
-    if (selected) {
-      setCurrentMonth(new Date(getYear(selected), getMonth(selected), 1))
+    if (selectedYear !== null && selectedMonth !== null) {
+      setCurrentMonth(prev => {
+        const prevYear = getYear(prev)
+        const prevMonth = getMonth(prev)
+        // Chỉ cập nhật nếu year hoặc month thay đổi
+        if (prevYear !== selectedYear || prevMonth !== selectedMonth) {
+          return new Date(selectedYear, selectedMonth, 1)
+        }
+        return prev
+      })
     }
-  }, [selected])
+  }, [selectedYear, selectedMonth])
 
   React.useEffect(() => {
     const handleClickOutside = (event) => {

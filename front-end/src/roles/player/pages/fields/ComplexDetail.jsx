@@ -429,7 +429,7 @@ export default function ComplexDetail({ user }) {
           }, 300);
 
           return () => { ignore = true; clearTimeout(timer); };
-     }, [id, selectedDate, selectedSlotId, selectedFieldId, isFieldRoute]);
+     }, [id, selectedDate, selectedSlotId, selectedFieldId, isFieldRoute, favoriteFieldIds]);
 
      // Load danh sách sân yêu thích khi người dùng đã đăng nhập
      useEffect(() => {
@@ -899,6 +899,23 @@ export default function ComplexDetail({ user }) {
           showToastMessage("Đặt sân thành công!", 'success');
      };
 
+     // Xử lý quay lại khu sân - nếu đang ở route /field/:id thì navigate về /complex/:complexId
+     const handleBackToComplex = () => {
+          if (isFieldRoute) {
+               // Khi đang ở route /field/:id, cần navigate về trang khu sân
+               const complexId = complexData.complex?.complexId || complexData.complex?.id;
+               if (complexId) {
+                    navigate(`/complex/${complexId}`);
+               } else {
+                    // Fallback: quay lại trang trước đó
+                    navigate(-1);
+               }
+          } else {
+               // Khi đang ở route /complex/:id, chỉ cần clear selectedFieldId
+               setSelectedFieldId(null);
+          }
+     };
+
      const complex = complexData.complex;
      const fields = useMemo(() => {
           if (!rawFields.length) return rawFields;
@@ -1034,17 +1051,7 @@ export default function ComplexDetail({ user }) {
      }, [selectedFieldId, complexIdForRatings]);
 
      // Map ratings từ API sang format dùng cho ReviewTabContent
-     // JSON backend:
-     // {
-     //   "fieldId": 50,
-     //   "fieldName": "Sân A3 - BTN",
-     //   "userId": 2,
-     //   "userName": "DanhThuc",
-     //   "stars": 5,
-     //   "comment": "Khá ổn",
-     //   "createdAt": "2025-12-01T13:28:19.297",
-     //   "replies": [ { replyId, userId, userName, replyText, createdAt } ]
-     // }
+
      const complexReviews = useMemo(() => {
           return fieldRatings.map(raw => ({
                id: raw.id || raw.ratingId || undefined,
@@ -1191,29 +1198,15 @@ export default function ComplexDetail({ user }) {
           return repeatDays.length * weeks;
      };
 
-     // Không còn yêu cầu minRecurringWeeks nữa, người dùng tự chọn startDate/endDate
-
-     // Chính sách giảm giá đặt cố định theo số buổi
-     const getRecurringDiscountPercent = (totalSessions) => {
-          if (!totalSessions || totalSessions <= 0) return 0;
-          if (totalSessions >= 16) return 15; // 16 buổi trở lên: 15%
-          if (totalSessions >= 8) return 10;  // 8-15 buổi: 10%
-          if (totalSessions >= 4) return 5;   // 4-7 buổi: 5%
-          return 0;                            // <4 buổi: không giảm
-     };
-
      // Tính tóm tắt giá cho đặt cố định (sân nhỏ)
      const recurringSummary = (() => {
           if (!isRecurring || !selectedField) return null;
           const totalSessions = calculateTotalSessions();
-          if (!totalSessions) return { totalSessions: 0, unitPrice: 0, discountPercent: 0, subtotal: 0, discountedTotal: 0, discountAmount: 0 };
+          if (!totalSessions) return { totalSessions: 0, unitPrice: 0, subtotal: 0 };
           // Use price from TimeSlot
           const unitPrice = Number(selectedSlotPrice || minPrice || 0);
           const subtotal = unitPrice * totalSessions;
-          const discountPercent = getRecurringDiscountPercent(totalSessions);
-          const discountAmount = Math.round(subtotal * (discountPercent / 100));
-          const discountedTotal = subtotal - discountAmount;
-          return { totalSessions, unitPrice, subtotal, discountPercent, discountAmount, discountedTotal };
+          return { totalSessions, unitPrice, subtotal };
      })();
 
      return (
@@ -1275,7 +1268,7 @@ export default function ComplexDetail({ user }) {
                                         selectedFieldCheapestSlot={selectedFieldCheapestSlot}
                                         selectedFieldPriciestSlot={selectedFieldPriciestSlot}
                                         reviewStats={reviewStats}
-                                        onBack={() => setSelectedFieldId(null)}
+                                        onBack={handleBackToComplex}
                                         onFieldSelect={(fieldId) => setSelectedFieldId(fieldId)}
                                         onQuickBookField={handleQuickBookField}
                                         onToggleFavoriteField={handleToggleFavoriteField}

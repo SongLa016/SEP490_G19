@@ -1,3 +1,8 @@
+/**
+ * Component TimeSlotManagement - Quản lý các slot thời gian cho sân bóng
+ * Cho phép Owner tạo, sửa, xóa các khung giờ hoạt động
+ * Hỗ trợ thêm hàng loạt slot từ template có sẵn
+ */
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button, Card, Input, Modal, Table, Badge, Alert, AlertDescription } from '../../../shared/components/ui';
 import {
@@ -25,23 +30,31 @@ import { useAuth } from '../../../contexts/AuthContext';
 import Swal from 'sweetalert2';
 
 export default function TimeSlotManagement({ isDemo = false }) {
-     const [timeSlots, setTimeSlots] = useState([]);
-     const [loading, setLoading] = useState(false);
-     const [showModal, setShowModal] = useState(false);
-     const [editingSlot, setEditingSlot] = useState(null);
-     const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
-     const [activeTab, setActiveTab] = useState('manage');
+     // ==================== STATE MANAGEMENT ====================
+     const [timeSlots, setTimeSlots] = useState([]); // Danh sách slot thời gian
+     const [loading, setLoading] = useState(false); // Trạng thái loading
+     const [showModal, setShowModal] = useState(false); // Hiển thị modal thêm/sửa
+     const [editingSlot, setEditingSlot] = useState(null); // Slot đang chỉnh sửa (null = tạo mới)
+     const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false); // Modal thông báo demo
+     const [activeTab, setActiveTab] = useState('manage'); // Tab đang active
+     // Dữ liệu form thêm/sửa slot
      const [formData, setFormData] = useState({
-          SlotName: '',
-          StartTime: '',
-          EndTime: ''
+          SlotName: '', // Tên slot
+          StartTime: '', // Giờ bắt đầu (HH:MM)
+          EndTime: '' // Giờ kết thúc (HH:MM)
      });
-     const [formErrors, setFormErrors] = useState({});
-     const [isSubmitting, setIsSubmitting] = useState(false);
-     const [selectedSlots, setSelectedSlots] = useState([]);
-     const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
-     const { user, logout } = useAuth();
+     const [formErrors, setFormErrors] = useState({}); // Lỗi validate form
+     const [isSubmitting, setIsSubmitting] = useState(false); // Đang submit form
+     const [selectedSlots, setSelectedSlots] = useState([]); // Các slot được chọn để thêm hàng loạt
+     const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 }); // Tiến trình thêm hàng loạt
+     const { user, logout } = useAuth(); // Thông tin user đăng nhập
 
+     // ==================== TẢI DỮ LIỆU ====================
+
+     /**
+      * Tải danh sách slot thời gian từ API
+      * Được gọi khi component mount và sau mỗi thao tác CRUD
+      */
      const loadData = useCallback(async () => {
           setLoading(true);
           try {
@@ -49,33 +62,43 @@ export default function TimeSlotManagement({ isDemo = false }) {
                if (result.success) {
                     setTimeSlots(result.data);
                } else {
-                    console.error('Error loading time slots:', result.error);
+                    console.error('Lỗi khi tải danh sách slot:', result.error);
                }
           } catch (error) {
-               console.error('Error loading time slots:', error);
+               console.error('Lỗi khi tải danh sách slot:', error);
           } finally {
                setLoading(false);
           }
      }, []);
 
+     // Tải dữ liệu khi component mount
      useEffect(() => {
           loadData();
      }, [loadData]);
 
+     // ==================== XỬ LÝ MODAL ====================
+
+     /**
+      * Mở modal thêm/sửa slot
+      * @param {Object|null} slot - Slot cần sửa (null = tạo mới)
+      */
      const handleOpenModal = (slot = null) => {
+          // Kiểm tra chế độ demo
           if (isDemo) {
                setShowDemoRestrictedModal(true);
                return;
           }
 
           if (slot) {
+               // Chế độ sửa: điền dữ liệu slot vào form
                setEditingSlot(slot);
                setFormData({
                     SlotName: slot.SlotName,
-                    StartTime: slot.StartTime.substring(0, 5), // Convert HH:MM:SS to HH:MM
+                    StartTime: slot.StartTime.substring(0, 5), // Chuyển HH:MM:SS thành HH:MM
                     EndTime: slot.EndTime.substring(0, 5)
                });
           } else {
+               // Chế độ tạo mới: reset form
                setEditingSlot(null);
                setFormData({
                     SlotName: '',
@@ -83,12 +106,16 @@ export default function TimeSlotManagement({ isDemo = false }) {
                     EndTime: ''
                });
           }
+          // Reset các state khác
           setFormErrors({});
           setSelectedSlots([]);
           setBatchProgress({ current: 0, total: 0 });
           setShowModal(true);
      };
 
+     /**
+      * Đóng modal và reset tất cả state liên quan
+      */
      const handleCloseModal = () => {
           setShowModal(false);
           setEditingSlot(null);
@@ -103,37 +130,58 @@ export default function TimeSlotManagement({ isDemo = false }) {
           setBatchProgress({ current: 0, total: 0 });
      };
 
+     // ==================== VALIDATE FORM ====================
+
+     /**
+      * Validate dữ liệu form trước khi submit
+      * Kiểm tra: tên slot, giờ bắt đầu/kết thúc, trùng lặp với slot có sẵn
+      * @returns {boolean} - true nếu form hợp lệ
+      */
      const validateForm = () => {
           const errors = {};
 
-          if (!formData.SlotName.trim()) {
+          // Validate tên slot
+          const trimmedSlotName = formData.SlotName.trim();
+          if (!trimmedSlotName) {
                errors.SlotName = 'Vui lòng nhập tên slot';
+          } else if (trimmedSlotName.length < 2) {
+               errors.SlotName = 'Tên slot phải có ít nhất 2 ký tự';
+          } else if (trimmedSlotName.length > 50) {
+               errors.SlotName = 'Tên slot không được vượt quá 50 ký tự';
+          } else if (!/^[a-zA-Z0-9\sÀ-ỹ]+$/.test(trimmedSlotName)) {
+               errors.SlotName = 'Tên slot chỉ được chứa chữ cái, số và khoảng trắng';
           }
 
+          // Validate giờ bắt đầu
           if (!formData.StartTime) {
                errors.StartTime = 'Vui lòng chọn giờ bắt đầu';
           }
 
+          // Validate giờ kết thúc
           if (!formData.EndTime) {
                errors.EndTime = 'Vui lòng chọn giờ kết thúc';
           }
 
+          // Validate logic thời gian
           if (formData.StartTime && formData.EndTime) {
+               // Giờ kết thúc phải sau giờ bắt đầu
                if (formData.StartTime >= formData.EndTime) {
                     errors.EndTime = 'Giờ kết thúc phải lớn hơn giờ bắt đầu';
                }
 
-               // Check for conflicts with existing slots (only when creating new)
+               // Kiểm tra trùng lặp với slot đã có (chỉ khi tạo mới)
                if (!editingSlot) {
                     const conflictSlot = timeSlots.find((slot) => {
                          const slotStart = slot.StartTime.substring(0, 5);
                          const slotEnd = slot.EndTime.substring(0, 5);
+                         // Kiểm tra overlap: slot mới bắt đầu trước khi slot cũ kết thúc
+                         // VÀ slot mới kết thúc sau khi slot cũ bắt đầu
                          return formData.StartTime < slotEnd && formData.EndTime > slotStart;
                     });
 
                     if (conflictSlot) {
                          errors.EndTime = 'Slot này trùng với slot đã có';
-                         // Notify with SweetAlert2
+                         // Hiển thị thông báo chi tiết
                          Swal.fire({
                               title: 'Slot bị trùng',
                               html: `Đã có slot: <strong>${conflictSlot.SlotName}</strong><br/>` +
@@ -651,343 +699,343 @@ export default function TimeSlotManagement({ isDemo = false }) {
 
      return (
           <div className="space-y-6">
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                         <div>
-                              <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-                                   <Timer className="w-8 h-8 mr-3 text-blue-600" />
-                                   Quản Lý Slot Thời Gian
-                              </h1>
-                              <p className="text-gray-600 mt-1">
-                                   Thiết lập và quản lý các khung giờ hoạt động cho sân bóng
-                              </p>
-                         </div>
-                         {isDemo && (
-                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                                   <AlertCircle className="w-4 h-4 mr-1" />
-                                   Demo Mode
-                              </Badge>
-                         )}
-                    </div>
-
-                    {/* Navigation */}
-                    <div className="border-b border-gray-200">
-                         <nav className="flex space-x-8">
-                              {navigationItems.map((item) => {
-                                   const Icon = item.icon;
-                                   return (
-                                        <button
-                                             key={item.id}
-                                             onClick={() => setActiveTab(item.id)}
-                                             className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === item.id
-                                                  ? 'border-blue-500 text-blue-600'
-                                                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                                  }`}
-                                        >
-                                             <Icon className="w-4 h-4" />
-                                             <span>{item.label}</span>
-                                        </button>
-                                   );
-                              })}
-                         </nav>
-                    </div>
-
-                    {/* Content */}
+               {/* Header */}
+               <div className="flex items-center justify-between">
                     <div>
-                         {activeTab === 'overview' && renderOverview()}
-                         {activeTab === 'manage' && renderManage()}
-                         {activeTab === 'calendar' && renderCalendar()}
+                         <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+                              <Timer className="w-8 h-8 mr-3 text-blue-600" />
+                              Quản Lý Slot Thời Gian
+                         </h1>
+                         <p className="text-gray-600 mt-1">
+                              Thiết lập và quản lý các khung giờ hoạt động cho sân bóng
+                         </p>
                     </div>
+                    {isDemo && (
+                         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                              <AlertCircle className="w-4 h-4 mr-1" />
+                              Demo Mode
+                         </Badge>
+                    )}
+               </div>
 
-                    {/* Add/Edit Modal */}
-                    <Modal
-                         isOpen={showModal}
-                         onClose={handleCloseModal}
-                         title={editingSlot ? 'Chỉnh Sửa Slot Thời Gian' : 'Thêm Slot Thời Gian Mới'}
-                         size="lg"
-                         className="max-w-2xl rounded-2xl"
-                    >
-                         <form onSubmit={handleSubmit} className="space-y-6">
-                              {/* Quick Add Templates - Only show when creating new */}
-                              {!editingSlot && (
-                                   <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-200">
-                                        <div className="flex items-center justify-between mb-3">
-                                             <div className="flex items-center">
-                                                  <Zap className="w-4 h-4 mr-2 text-blue-600" />
-                                                  <span className="text-sm font-semibold text-gray-700">
-                                                       Thêm Nhanh - Chọn nhiều slot để thêm cùng lúc
-                                                  </span>
-                                                  {selectedSlots.length > 0 && (
-                                                       <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-800">
-                                                            {selectedSlots.length} đã chọn
-                                                       </Badge>
-                                                  )}
-                                             </div>
-                                             <button
-                                                  type="button"
-                                                  onClick={handleSelectAllSlots}
-                                                  className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center"
-                                             >
-                                                  {selectedSlots.length === quickSlotTemplates.length ? (
-                                                       <>
-                                                            <Square className="w-3 h-3 mr-1" />
-                                                            Bỏ chọn tất cả
-                                                       </>
-                                                  ) : (
-                                                       <>
-                                                            <CheckSquare className="w-3 h-3 mr-1" />
-                                                            Chọn tất cả
-                                                       </>
-                                                  )}
-                                             </button>
-                                        </div>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-64 overflow-y-auto">
-                                             {quickSlotTemplates.map((template, index) => {
-                                                  const slotKey = `${template.name}-${template.start}-${template.end}`;
-                                                  const isSelected = selectedSlots.some(s => s.key === slotKey);
+               {/* Navigation */}
+               <div className="border-b border-gray-200">
+                    <nav className="flex space-x-8">
+                         {navigationItems.map((item) => {
+                              const Icon = item.icon;
+                              return (
+                                   <button
+                                        key={item.id}
+                                        onClick={() => setActiveTab(item.id)}
+                                        className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === item.id
+                                             ? 'border-blue-500 text-blue-600'
+                                             : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                             }`}
+                                   >
+                                        <Icon className="w-4 h-4" />
+                                        <span>{item.label}</span>
+                                   </button>
+                              );
+                         })}
+                    </nav>
+               </div>
 
-                                                  return (
-                                                       <button
-                                                            key={index}
-                                                            type="button"
-                                                            onClick={() => handleQuickAdd(template.name, template.start, template.end)}
-                                                            className={`px-3 py-2.5 text-xs rounded-xl transition-all text-left shadow-sm ${isSelected
-                                                                 ? 'bg-blue-100 border-2 border-blue-500 hover:bg-blue-200'
-                                                                 : 'bg-white border border-blue-200 hover:bg-blue-50 hover:border-blue-400'
-                                                                 }`}
-                                                       >
-                                                            <div className="flex items-center mb-1">
-                                                                 {isSelected ? (
-                                                                      <CheckSquare className="w-3 h-3 text-blue-600 mr-1" />
-                                                                 ) : (
-                                                                      <Square className="w-3 h-3 text-gray-400 mr-1" />
-                                                                 )}
-                                                            </div>
-                                                            <div className="font-semibold text-gray-800 mb-0.5">{template.name}</div>
-                                                            <div className="text-gray-600 text-xs">{template.start} - {template.end}</div>
-                                                       </button>
-                                                  );
-                                             })}
-                                        </div>
-                                   </div>
-                              )}
+               {/* Content */}
+               <div>
+                    {activeTab === 'overview' && renderOverview()}
+                    {activeTab === 'manage' && renderManage()}
+                    {activeTab === 'calendar' && renderCalendar()}
+               </div>
 
-                              {/* Batch Progress */}
-                              {isSubmitting && batchProgress.total > 0 && (
-                                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                        <div className="flex items-center justify-between mb-2">
-                                             <span className="text-sm font-medium text-blue-800">
-                                                  Đang thêm slot {batchProgress.current}/{batchProgress.total}...
+               {/* Add/Edit Modal */}
+               <Modal
+                    isOpen={showModal}
+                    onClose={handleCloseModal}
+                    title={editingSlot ? 'Chỉnh Sửa Slot Thời Gian' : 'Thêm Slot Thời Gian Mới'}
+                    size="lg"
+                    className="max-w-2xl rounded-2xl"
+               >
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                         {/* Quick Add Templates - Only show when creating new */}
+                         {!editingSlot && (
+                              <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border border-blue-200">
+                                   <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center">
+                                             <Zap className="w-4 h-4 mr-2 text-blue-600" />
+                                             <span className="text-sm font-semibold text-gray-700">
+                                                  Thêm Nhanh - Chọn nhiều slot để thêm cùng lúc
                                              </span>
-                                             <span className="text-sm text-blue-600">
-                                                  {Math.round((batchProgress.current / batchProgress.total) * 100)}%
-                                             </span>
+                                             {selectedSlots.length > 0 && (
+                                                  <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-800">
+                                                       {selectedSlots.length} đã chọn
+                                                  </Badge>
+                                             )}
                                         </div>
-                                        <div className="w-full bg-blue-200 rounded-full h-2">
-                                             <div
-                                                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                                  style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
-                                             ></div>
-                                        </div>
+                                        <button
+                                             type="button"
+                                             onClick={handleSelectAllSlots}
+                                             className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center"
+                                        >
+                                             {selectedSlots.length === quickSlotTemplates.length ? (
+                                                  <>
+                                                       <Square className="w-3 h-3 mr-1" />
+                                                       Bỏ chọn tất cả
+                                                  </>
+                                             ) : (
+                                                  <>
+                                                       <CheckSquare className="w-3 h-3 mr-1" />
+                                                       Chọn tất cả
+                                                  </>
+                                             )}
+                                        </button>
                                    </div>
-                              )}
+                                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-64 overflow-y-auto">
+                                        {quickSlotTemplates.map((template, index) => {
+                                             const slotKey = `${template.name}-${template.start}-${template.end}`;
+                                             const isSelected = selectedSlots.some(s => s.key === slotKey);
 
-                              {/* Error Alert */}
-                              {formErrors.submit && (
-                                   <Alert className="border-red-200 bg-red-50">
-                                        <XCircle className="h-4 w-4 text-red-600" />
-                                        <AlertDescription className="text-red-800">
-                                             {formErrors.submit}
-                                        </AlertDescription>
-                                   </Alert>
-                              )}
-
-                              {/* Divider */}
-                              {!editingSlot && selectedSlots.length > 0 && (
-                                   <div className="relative">
-                                        <div className="absolute inset-0 flex items-center">
-                                             <div className="w-full border-t border-gray-300"></div>
-                                        </div>
-                                        <div className="relative flex justify-center text-xs uppercase">
-                                             <span className="bg-white px-2 text-gray-500">Hoặc thêm thủ công</span>
-                                        </div>
+                                             return (
+                                                  <button
+                                                       key={index}
+                                                       type="button"
+                                                       onClick={() => handleQuickAdd(template.name, template.start, template.end)}
+                                                       className={`px-3 py-2.5 text-xs rounded-xl transition-all text-left shadow-sm ${isSelected
+                                                            ? 'bg-blue-100 border-2 border-blue-500 hover:bg-blue-200'
+                                                            : 'bg-white border border-blue-200 hover:bg-blue-50 hover:border-blue-400'
+                                                            }`}
+                                                  >
+                                                       <div className="flex items-center mb-1">
+                                                            {isSelected ? (
+                                                                 <CheckSquare className="w-3 h-3 text-blue-600 mr-1" />
+                                                            ) : (
+                                                                 <Square className="w-3 h-3 text-gray-400 mr-1" />
+                                                            )}
+                                                       </div>
+                                                       <div className="font-semibold text-gray-800 mb-0.5">{template.name}</div>
+                                                       <div className="text-gray-600 text-xs">{template.start} - {template.end}</div>
+                                                  </button>
+                                             );
+                                        })}
                                    </div>
-                              )}
+                              </div>
+                         )}
 
-                              {/* Manual Form */}
+                         {/* Batch Progress */}
+                         {isSubmitting && batchProgress.total > 0 && (
+                              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                   <div className="flex items-center justify-between mb-2">
+                                        <span className="text-sm font-medium text-blue-800">
+                                             Đang thêm slot {batchProgress.current}/{batchProgress.total}...
+                                        </span>
+                                        <span className="text-sm text-blue-600">
+                                             {Math.round((batchProgress.current / batchProgress.total) * 100)}%
+                                        </span>
+                                   </div>
+                                   <div className="w-full bg-blue-200 rounded-full h-2">
+                                        <div
+                                             className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                             style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                                        ></div>
+                                   </div>
+                              </div>
+                         )}
+
+                         {/* Error Alert */}
+                         {formErrors.submit && (
+                              <Alert className="border-red-200 bg-red-50">
+                                   <XCircle className="h-4 w-4 text-red-600" />
+                                   <AlertDescription className="text-red-800">
+                                        {formErrors.submit}
+                                   </AlertDescription>
+                              </Alert>
+                         )}
+
+                         {/* Divider */}
+                         {!editingSlot && selectedSlots.length > 0 && (
+                              <div className="relative">
+                                   <div className="absolute inset-0 flex items-center">
+                                        <div className="w-full border-t border-gray-300"></div>
+                                   </div>
+                                   <div className="relative flex justify-center text-xs uppercase">
+                                        <span className="bg-white px-2 text-gray-500">Hoặc thêm thủ công</span>
+                                   </div>
+                              </div>
+                         )}
+
+                         {/* Manual Form */}
+                         <div>
+                              {/* Slot Name */}
                               <div>
-                                   {/* Slot Name */}
+                                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Tên Slot *
+                                   </label>
+                                   <Input
+                                        type="text"
+                                        value={formData.SlotName}
+                                        onChange={(e) => {
+                                             setFormData({ ...formData, SlotName: e.target.value });
+                                             if (formErrors.SlotName) {
+                                                  setFormErrors({ ...formErrors, SlotName: '' });
+                                             }
+                                        }}
+                                        placeholder="Ví dụ: Slot Sáng, Slot Chiều, Slot Tối..."
+                                        className={formErrors.SlotName ? 'border-red-500' : ''}
+                                        required={selectedSlots.length === 0}
+                                   />
+                                   {formErrors.SlotName && (
+                                        <p className="mt-1 text-sm text-red-600 flex items-center">
+                                             <AlertCircle className="w-3 h-3 mr-1" />
+                                             {formErrors.SlotName}
+                                        </p>
+                                   )}
+                              </div>
+
+                              {/* Time Selection */}
+                              <div className="grid grid-cols-2 gap-4 mt-4">
                                    <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                             Tên Slot *
+                                             <Clock className="w-4 h-4 inline mr-1 text-green-600" />
+                                             Giờ Bắt Đầu *
                                         </label>
                                         <Input
-                                             type="text"
-                                             value={formData.SlotName}
+                                             type="time"
+                                             value={formData.StartTime}
                                              onChange={(e) => {
-                                                  setFormData({ ...formData, SlotName: e.target.value });
-                                                  if (formErrors.SlotName) {
-                                                       setFormErrors({ ...formErrors, SlotName: '' });
+                                                  setFormData({ ...formData, StartTime: e.target.value });
+                                                  if (formErrors.StartTime || formErrors.EndTime) {
+                                                       setFormErrors({ ...formErrors, StartTime: '', EndTime: '' });
                                                   }
                                              }}
-                                             placeholder="Ví dụ: Slot Sáng, Slot Chiều, Slot Tối..."
-                                             className={formErrors.SlotName ? 'border-red-500' : ''}
+                                             className={formErrors.StartTime ? 'border-red-500' : ''}
                                              required={selectedSlots.length === 0}
                                         />
-                                        {formErrors.SlotName && (
+                                        {formErrors.StartTime && (
                                              <p className="mt-1 text-sm text-red-600 flex items-center">
                                                   <AlertCircle className="w-3 h-3 mr-1" />
-                                                  {formErrors.SlotName}
+                                                  {formErrors.StartTime}
                                              </p>
                                         )}
                                    </div>
-
-                                   {/* Time Selection */}
-                                   <div className="grid grid-cols-2 gap-4 mt-4">
-                                        <div>
-                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                  <Clock className="w-4 h-4 inline mr-1 text-green-600" />
-                                                  Giờ Bắt Đầu *
-                                             </label>
-                                             <Input
-                                                  type="time"
-                                                  value={formData.StartTime}
-                                                  onChange={(e) => {
-                                                       setFormData({ ...formData, StartTime: e.target.value });
-                                                       if (formErrors.StartTime || formErrors.EndTime) {
-                                                            setFormErrors({ ...formErrors, StartTime: '', EndTime: '' });
-                                                       }
-                                                  }}
-                                                  className={formErrors.StartTime ? 'border-red-500' : ''}
-                                                  required={selectedSlots.length === 0}
-                                             />
-                                             {formErrors.StartTime && (
-                                                  <p className="mt-1 text-sm text-red-600 flex items-center">
-                                                       <AlertCircle className="w-3 h-3 mr-1" />
-                                                       {formErrors.StartTime}
-                                                  </p>
-                                             )}
-                                        </div>
-                                        <div>
-                                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                  <Clock className="w-4 h-4 inline mr-1 text-red-600" />
-                                                  Giờ Kết Thúc *
-                                             </label>
-                                             <Input
-                                                  type="time"
-                                                  value={formData.EndTime}
-                                                  onChange={(e) => {
-                                                       setFormData({ ...formData, EndTime: e.target.value });
-                                                       if (formErrors.EndTime) {
-                                                            setFormErrors({ ...formErrors, EndTime: '' });
-                                                       }
-                                                  }}
-                                                  className={formErrors.EndTime ? 'border-red-500' : ''}
-                                                  required={selectedSlots.length === 0}
-                                             />
-                                             {formErrors.EndTime && (
-                                                  <p className="mt-1 text-sm text-red-600 flex items-center">
-                                                       <AlertCircle className="w-3 h-3 mr-1" />
-                                                       {formErrors.EndTime}
-                                                  </p>
-                                             )}
-                                        </div>
+                                   <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                             <Clock className="w-4 h-4 inline mr-1 text-red-600" />
+                                             Giờ Kết Thúc *
+                                        </label>
+                                        <Input
+                                             type="time"
+                                             value={formData.EndTime}
+                                             onChange={(e) => {
+                                                  setFormData({ ...formData, EndTime: e.target.value });
+                                                  if (formErrors.EndTime) {
+                                                       setFormErrors({ ...formErrors, EndTime: '' });
+                                                  }
+                                             }}
+                                             className={formErrors.EndTime ? 'border-red-500' : ''}
+                                             required={selectedSlots.length === 0}
+                                        />
+                                        {formErrors.EndTime && (
+                                             <p className="mt-1 text-sm text-red-600 flex items-center">
+                                                  <AlertCircle className="w-3 h-3 mr-1" />
+                                                  {formErrors.EndTime}
+                                             </p>
+                                        )}
                                    </div>
                               </div>
+                         </div>
 
-                              {/* Duration Preview */}
-                              {formData.StartTime && formData.EndTime && calculateDuration() && (
-                                   <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border border-green-200">
+                         {/* Duration Preview */}
+                         {formData.StartTime && formData.EndTime && calculateDuration() && (
+                              <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border border-green-200">
+                                   <div className="flex items-center justify-between">
+                                        <div className="flex items-center">
+                                             <Timer className="w-5 h-5 text-green-600 mr-2" />
+                                             <span className="text-sm font-medium text-gray-700">Thời lượng slot:</span>
+                                        </div>
+                                        <Badge variant="secondary" className="bg-green-100 text-green-800 text-base px-3 py-1">
+                                             {calculateDuration().toFixed(1)} giờ
+                                        </Badge>
+                                   </div>
+                                   <div className="mt-2 text-sm text-gray-600">
+                                        <span className="font-medium">{formData.StartTime}</span>
+                                        <span className="mx-2">→</span>
+                                        <span className="font-medium">{formData.EndTime}</span>
+                                   </div>
+                              </div>
+                         )}
+
+                         {/* Preview Card */}
+                         {formData.SlotName && formData.StartTime && formData.EndTime && calculateDuration() && (
+                              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                   <div className="flex items-center mb-2">
+                                        <Info className="w-4 h-4 mr-2 text-blue-600" />
+                                        <span className="text-sm font-semibold text-gray-700">Preview Slot</span>
+                                   </div>
+                                   <div className="bg-white p-3 rounded border border-blue-200">
                                         <div className="flex items-center justify-between">
-                                             <div className="flex items-center">
-                                                  <Timer className="w-5 h-5 text-green-600 mr-2" />
-                                                  <span className="text-sm font-medium text-gray-700">Thời lượng slot:</span>
+                                             <div>
+                                                  <div className="font-semibold text-gray-900">{formData.SlotName}</div>
+                                                  <div className="text-sm text-gray-600 mt-1">
+                                                       {formData.StartTime} - {formData.EndTime}
+                                                  </div>
                                              </div>
-                                             <Badge variant="secondary" className="bg-green-100 text-green-800 text-base px-3 py-1">
-                                                  {calculateDuration().toFixed(1)} giờ
+                                             <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                                                  {calculateDuration().toFixed(1)}h
                                              </Badge>
                                         </div>
-                                        <div className="mt-2 text-sm text-gray-600">
-                                             <span className="font-medium">{formData.StartTime}</span>
-                                             <span className="mx-2">→</span>
-                                             <span className="font-medium">{formData.EndTime}</span>
-                                        </div>
                                    </div>
-                              )}
-
-                              {/* Preview Card */}
-                              {formData.SlotName && formData.StartTime && formData.EndTime && calculateDuration() && (
-                                   <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                        <div className="flex items-center mb-2">
-                                             <Info className="w-4 h-4 mr-2 text-blue-600" />
-                                             <span className="text-sm font-semibold text-gray-700">Preview Slot</span>
-                                        </div>
-                                        <div className="bg-white p-3 rounded border border-blue-200">
-                                             <div className="flex items-center justify-between">
-                                                  <div>
-                                                       <div className="font-semibold text-gray-900">{formData.SlotName}</div>
-                                                       <div className="text-sm text-gray-600 mt-1">
-                                                            {formData.StartTime} - {formData.EndTime}
-                                                       </div>
-                                                  </div>
-                                                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                                                       {calculateDuration().toFixed(1)}h
-                                                  </Badge>
-                                             </div>
-                                        </div>
-                                   </div>
-                              )}
-
-                              {/* Action Buttons */}
-                              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-                                   <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={handleCloseModal}
-                                        disabled={isSubmitting}
-                                   >
-                                        <X className="w-4 h-4 mr-2" />
-                                        Hủy
-                                   </Button>
-                                   <Button
-                                        type="submit"
-                                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                                        disabled={isSubmitting || (!editingSlot && selectedSlots.length === 0 && !formData.SlotName)}
-                                   >
-                                        {isSubmitting ? (
-                                             <>
-                                                  <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                                  {batchProgress.total > 0
-                                                       ? `Đang thêm ${batchProgress.current}/${batchProgress.total}...`
-                                                       : 'Đang xử lý...'
-                                                  }
-                                             </>
-                                        ) : (
-                                             <>
-                                                  {selectedSlots.length > 0 ? (
-                                                       <>
-                                                            <CheckSquare className="w-4 h-4 mr-2" />
-                                                            Thêm {selectedSlots.length} Slot
-                                                       </>
-                                                  ) : (
-                                                       <>
-                                                            <Save className="w-4 h-4 mr-2" />
-                                                            {editingSlot ? 'Cập Nhật' : 'Tạo Slot'}
-                                                       </>
-                                                  )}
-                                             </>
-                                        )}
-                                   </Button>
                               </div>
-                         </form>
-                    </Modal>
+                         )}
 
-                    {/* Demo Restricted Modal */}
-                    <DemoRestrictedModal
-                         isOpen={showDemoRestrictedModal}
-                         onClose={() => setShowDemoRestrictedModal(false)}
-                         featureName="Quản Lý Slot Thời Gian"
-                    />
-               </div>
+                         {/* Action Buttons */}
+                         <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                              <Button
+                                   type="button"
+                                   variant="outline"
+                                   onClick={handleCloseModal}
+                                   disabled={isSubmitting}
+                              >
+                                   <X className="w-4 h-4 mr-2" />
+                                   Hủy
+                              </Button>
+                              <Button
+                                   type="submit"
+                                   className="bg-blue-600 hover:bg-blue-700 text-white"
+                                   disabled={isSubmitting || (!editingSlot && selectedSlots.length === 0 && !formData.SlotName)}
+                              >
+                                   {isSubmitting ? (
+                                        <>
+                                             <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                             {batchProgress.total > 0
+                                                  ? `Đang thêm ${batchProgress.current}/${batchProgress.total}...`
+                                                  : 'Đang xử lý...'
+                                             }
+                                        </>
+                                   ) : (
+                                        <>
+                                             {selectedSlots.length > 0 ? (
+                                                  <>
+                                                       <CheckSquare className="w-4 h-4 mr-2" />
+                                                       Thêm {selectedSlots.length} Slot
+                                                  </>
+                                             ) : (
+                                                  <>
+                                                       <Save className="w-4 h-4 mr-2" />
+                                                       {editingSlot ? 'Cập Nhật' : 'Tạo Slot'}
+                                                  </>
+                                             )}
+                                        </>
+                                   )}
+                              </Button>
+                         </div>
+                    </form>
+               </Modal>
+
+               {/* Demo Restricted Modal */}
+               <DemoRestrictedModal
+                    isOpen={showDemoRestrictedModal}
+                    onClose={() => setShowDemoRestrictedModal(false)}
+                    featureName="Quản Lý Slot Thời Gian"
+               />
+          </div>
      );
 }

@@ -52,8 +52,37 @@ export function useComments(user, posts, setPosts) {
     content,
     parentCommentId = null
   ) => {
+    // Validate nội dung comment
     if (!content || !content.trim()) {
-      return;
+      Swal.fire({
+        icon: "warning",
+        title: "Thiếu nội dung",
+        text: "Vui lòng nhập nội dung bình luận",
+        confirmButtonColor: "#0d9488"
+      });
+      return false;
+    }
+
+    const trimmedContent = content.trim();
+
+    if (trimmedContent.length < 2) {
+      Swal.fire({
+        icon: "warning",
+        title: "Nội dung quá ngắn",
+        text: "Bình luận phải có ít nhất 2 ký tự",
+        confirmButtonColor: "#0d9488"
+      });
+      return false;
+    }
+
+    if (trimmedContent.length > 2000) {
+      Swal.fire({
+        icon: "warning",
+        title: "Nội dung quá dài",
+        text: "Bình luận không được vượt quá 2000 ký tự",
+        confirmButtonColor: "#0d9488"
+      });
+      return false;
     }
 
     const token = getStoredToken();

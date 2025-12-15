@@ -217,24 +217,23 @@ export default function CommunityHeader({ user, onLoggedOut }) {
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: 0.3 + navigationItems.length * 0.1, duration: 0.3 }}
+                              className="relative"
                          >
                               <motion.div
                                    whileHover={{ scale: 1.1, y: -2 }}
                                    whileTap={{ scale: 0.95 }}
                               >
-                                   <div className="relative">
-                                        <NotificationBell
-                                             userId={user.id}
-                                             onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                                        />
-                                        <NotificationDropdown
-                                             userId={user.id}
-                                             isOpen={isNotificationOpen}
-                                             onClose={() => setIsNotificationOpen(false)}
-                                             className="left-16 right-auto -top-[430px]"
-                                        />
-                                   </div>
+                                   <NotificationBell
+                                        userId={user.id}
+                                        onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                                   />
                               </motion.div>
+                              <NotificationDropdown
+                                   userId={user.id}
+                                   isOpen={isNotificationOpen}
+                                   onClose={() => setIsNotificationOpen(false)}
+                                   className="left-10 right-auto -top-28"
+                              />
                          </motion.div>
                     )}
                </div>
@@ -272,7 +271,7 @@ export default function CommunityHeader({ user, onLoggedOut }) {
                                                        <p className="text-sm flex truncate items-center gap-2 font-medium text-gray-900">{user.fullName || `@${user.username}`}<span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.role)}`}>
                                                             {getRoleDisplayName(user.role)}
                                                        </span></p>
-                                                       {user.name && <p className="text-xs text-gray-500">@{user.username}</p>}
+                                                       {/* {user.name && <p className="text-xs text-gray-500">@{user.username}</p>} */}
                                                   </div>
                                                   <Button
                                                        onClick={() => {

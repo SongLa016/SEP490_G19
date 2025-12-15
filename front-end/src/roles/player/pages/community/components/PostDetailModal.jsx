@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { X, Heart, MessageCircle, Bookmark, MoreHorizontal, Trash2, Edit, MapPin, Building2, Share, List, ExternalLink, Flag } from "lucide-react";
 import { Modal, Button, Avatar, AvatarImage, AvatarFallback, Badge, Textarea } from '../../../../../shared/components/ui';
@@ -29,6 +29,15 @@ const PostDetailModal = ({
      const [replyContent, setReplyContent] = useState({});
      const [fieldDetails, setFieldDetails] = useState(null);
      const { avatarUrl: currentUserAvatar, initial: currentUserInitial } = getUserAvatarAndName(user);
+     const commentInputRef = useRef(null);
+
+     // Auto-resize textarea
+     const autoResize = useCallback((element, maxHeight = 200) => {
+          if (element) {
+               element.style.height = 'auto';
+               element.style.height = Math.min(element.scrollHeight, maxHeight) + 'px';
+          }
+     }, []);
 
      // Helper: yêu cầu đăng nhập trước khi thực hiện thao tác
      const requireLogin = (actionLabel = "sử dụng tính năng này") => {
@@ -532,16 +541,24 @@ const PostDetailModal = ({
                                    </Avatar>
                                    <div className="flex-1">
                                         <Textarea
+                                             ref={commentInputRef}
                                              placeholder="Viết bình luận..."
                                              value={commentContent}
-                                             onChange={(e) => setCommentContent(e.target.value)}
-                                             className="min-h-[70px] resize-none border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500"
+                                             maxLength={2000}
+                                             onChange={(e) => {
+                                                  setCommentContent(e.target.value);
+                                                  autoResize(e.target, 200);
+                                             }}
+                                             className={`min-h-[70px] resize-none border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 overflow-hidden ${commentContent.length > 2000 ? 'border-red-500' : 'border-gray-300'}`}
                                         />
-                                        <div className="flex justify-end mt-2">
+                                        <div className="flex justify-between items-center mt-2">
+                                             <span className={`text-xs ${commentContent.length > 2000 ? 'text-red-500' : 'text-gray-400'}`}>
+                                                  {commentContent.length}/2000
+                                             </span>
                                              <Button
                                                   onClick={handleCommentSubmit}
-                                                  disabled={!commentContent.trim()}
-                                                  className={`px-6 rounded-full ${commentContent.trim()
+                                                  disabled={!commentContent.trim() || commentContent.length > 2000}
+                                                  className={`px-6 rounded-full ${commentContent.trim() && commentContent.length <= 2000
                                                        ? "bg-blue-500 hover:bg-blue-600 text-white"
                                                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
                                                        }`}
@@ -684,35 +701,44 @@ const PostDetailModal = ({
                                                                            <Textarea
                                                                                 placeholder={`Trả lời ${comment.userName || "comment"}...`}
                                                                                 value={replyContent[commentId] || ""}
-                                                                                onChange={(e) => handleReplyChange(commentId, e.target.value)}
-                                                                                className="min-h-[60px] text-sm border border-gray-300 rounded-lg"
+                                                                                maxLength={2000}
+                                                                                onChange={(e) => {
+                                                                                     handleReplyChange(commentId, e.target.value);
+                                                                                     autoResize(e.target, 150);
+                                                                                }}
+                                                                                className={`min-h-[60px] text-sm border rounded-lg resize-none overflow-hidden ${(replyContent[commentId]?.length || 0) > 2000 ? 'border-red-500' : 'border-gray-300'}`}
                                                                            />
-                                                                           <div className="flex gap-2 justify-end mt-2">
-                                                                                <Button
-                                                                                     size="sm"
-                                                                                     onClick={() => handleReplySubmit(commentId)}
-                                                                                     disabled={!replyContent[commentId]?.trim()}
-                                                                                     className={`rounded-full ${replyContent[commentId]?.trim()
-                                                                                          ? "bg-blue-500 hover:bg-blue-600 text-white"
-                                                                                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                                                          }`}
-                                                                                >
-                                                                                     Trả lời
-                                                                                </Button>
-                                                                                <Button
-                                                                                     size="sm"
-                                                                                     variant="ghost"
-                                                                                     onClick={() => {
-                                                                                          setReplyingToCommentId(null);
-                                                                                          setReplyContent(prev => ({
-                                                                                               ...prev,
-                                                                                               [commentId]: ""
-                                                                                          }));
-                                                                                     }}
-                                                                                     className="rounded-full"
-                                                                                >
-                                                                                     Hủy
-                                                                                </Button>
+                                                                           <div className="flex justify-between items-center mt-2">
+                                                                                <span className={`text-xs ${(replyContent[commentId]?.length || 0) > 2000 ? 'text-red-500' : 'text-gray-400'}`}>
+                                                                                     {replyContent[commentId]?.length || 0}/2000
+                                                                                </span>
+                                                                                <div className="flex gap-2">
+                                                                                     <Button
+                                                                                          size="sm"
+                                                                                          onClick={() => handleReplySubmit(commentId)}
+                                                                                          disabled={!replyContent[commentId]?.trim() || (replyContent[commentId]?.length || 0) > 2000}
+                                                                                          className={`rounded-full ${replyContent[commentId]?.trim() && (replyContent[commentId]?.length || 0) <= 2000
+                                                                                               ? "bg-blue-500 hover:bg-blue-600 text-white"
+                                                                                               : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                                               }`}
+                                                                                     >
+                                                                                          Trả lời
+                                                                                     </Button>
+                                                                                     <Button
+                                                                                          size="sm"
+                                                                                          variant="ghost"
+                                                                                          onClick={() => {
+                                                                                               setReplyingToCommentId(null);
+                                                                                               setReplyContent(prev => ({
+                                                                                                    ...prev,
+                                                                                                    [commentId]: ""
+                                                                                               }));
+                                                                                          }}
+                                                                                          className="rounded-full"
+                                                                                     >
+                                                                                          Hủy
+                                                                                     </Button>
+                                                                                </div>
                                                                            </div>
                                                                       </div>
                                                                  </div>
