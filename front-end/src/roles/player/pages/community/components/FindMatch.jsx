@@ -22,6 +22,7 @@ import {
      CardContent,
      Button,
      Input,
+     PhoneInput,
      Badge,
      DatePicker,
      Select,
@@ -861,10 +862,10 @@ export default function FindMatch() {
                                    </span>
                               </label>
                               <div className="relative">
-                                   <Input
-                                        type="tel"
+                                   <PhoneInput
                                         placeholder="0909xxxxxx"
                                         value={formData.contactPhone}
+                                        maxLength={10}
                                         onChange={(e) =>
                                              setFormData({ ...formData, contactPhone: e.target.value })
                                         }

@@ -1445,8 +1445,20 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
+     // Normalize field status - "Booked" is not a valid Field status, it's for FieldSchedule
+     // If backend returns "Booked" for Field, treat it as "Available"
+     const normalizeFieldStatus = (status) => {
+          const validStatuses = ['Available', 'Maintenance', 'Unavailable'];
+          if (!status || !validStatuses.includes(status)) {
+               // "Booked" or any invalid status should be treated as "Available" for Field
+               return 'Available';
+          }
+          return status;
+     };
+
      const getStatusColor = (status) => {
-          switch (status) {
+          const normalizedStatus = normalizeFieldStatus(status);
+          switch (normalizedStatus) {
                case 'Available': return 'bg-green-100 text-green-800';
                case 'Maintenance': return 'bg-yellow-100 text-yellow-800';
                case 'Unavailable': return 'bg-red-100 text-red-800';
@@ -1455,8 +1467,9 @@ const FieldManagement = ({ isDemo = false }) => {
      };
 
      const getStatusText = (status) => {
-          const statusObj = fieldStatuses.find(s => s.value === status);
-          return statusObj ? statusObj.label : status;
+          const normalizedStatus = normalizeFieldStatus(status);
+          const statusObj = fieldStatuses.find(s => s.value === normalizedStatus);
+          return statusObj ? statusObj.label : normalizedStatus;
      };
 
      const formatCurrency = (amount) => {

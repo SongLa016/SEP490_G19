@@ -1,5 +1,5 @@
 import { User, Phone, Mail } from "lucide-react";
-import { Input, Textarea } from "../../../../../shared/components/ui";
+import { Input, PhoneInput, Textarea } from "../../../../../shared/components/ui";
 
 export default function ContactFormSection({
      bookingData,
@@ -34,9 +34,10 @@ export default function ContactFormSection({
                               <Phone className="w-4 h-4 inline mr-1" />
                               Số điện thoại <span className="text-red-500">*</span>
                          </label>
-                         <Input
+                         <PhoneInput
                               value={bookingData.customerPhone}
                               onChange={(e) => onInputChange("customerPhone", e.target.value)}
+                              maxLength={10}
                               className={errors.customerPhone ? "border-red-500" : "border border-teal-200 rounded-lg"}
                               placeholder="Nhập số điện thoại"
                          />

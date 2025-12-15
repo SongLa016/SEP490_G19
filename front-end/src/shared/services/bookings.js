@@ -128,15 +128,91 @@ export async function confirmPayment(bookingId, method) {
   return { bookingId, status: "Confirmed", paymentStatus: "Paid", method };
 }
 
-// Check field availability (synchronous vs pending holds + confirmed)
+// Check field availability - gọi API backend để kiểm tra real-time
 export async function checkFieldAvailability(fieldId, date, slotId) {
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  const available = !hasConflict({ fieldId, date, slotId });
-  return {
-    available,
-    message: available ? "Sân còn trống" : "Sân đã được đặt",
-    alternativeSlots: [],
-  };
+  try {
+    // Kiểm tra local hold trước (để tránh double-booking trong cùng session)
+    if (hasConflict({ fieldId, date, slotId })) {
+      return {
+        available: false,
+        message: "Khung giờ này đang được giữ chỗ bởi người khác",
+        alternativeSlots: [],
+      };
+    }
+
+    // Gọi API backend để kiểm tra trạng thái schedule real-time
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/FieldSchedule/public/field/${fieldId}`;
+    const response = await axios.get(endpoint);
+    
+    const schedules = Array.isArray(response.data) 
+      ? response.data 
+      : (response.data?.data || []);
+
+    // Tìm schedule matching với slotId và date
+    const matchingSchedule = schedules.find(s => {
+      const scheduleSlotId = String(s.slotId || s.SlotId || s.slotID || s.SlotID);
+      const scheduleDate = s.date || s.Date;
+      
+      // So sánh date
+      let scheduleDateStr = "";
+      if (typeof scheduleDate === "string") {
+        scheduleDateStr = scheduleDate.split("T")[0];
+      } else if (scheduleDate?.year && scheduleDate?.month && scheduleDate?.day) {
+        scheduleDateStr = `${scheduleDate.year}-${String(scheduleDate.month).padStart(2, "0")}-${String(scheduleDate.day).padStart(2, "0")}`;
+      }
+      
+      return scheduleSlotId === String(slotId) && scheduleDateStr === String(date);
+    });
+
+    if (!matchingSchedule) {
+      // Không tìm thấy schedule - có thể slot không tồn tại hoặc chưa được tạo
+      return {
+        available: true,
+        message: "Sân còn trống",
+        alternativeSlots: [],
+      };
+    }
+
+    // Kiểm tra trạng thái schedule
+    const status = (matchingSchedule.status || matchingSchedule.Status || "").toLowerCase();
+    
+    // Các trạng thái không khả dụng
+    const unavailableStatuses = ["booked", "pending", "maintenance", "locked", "reserved"];
+    const isUnavailable = unavailableStatuses.includes(status);
+
+    if (isUnavailable) {
+      return {
+        available: false,
+        message: status === "booked" 
+          ? "Khung giờ này đã có người đặt" 
+          : status === "pending"
+          ? "Khung giờ này đang chờ xác nhận thanh toán"
+          : status === "maintenance"
+          ? "Sân đang bảo trì"
+          : "Khung giờ này không khả dụng",
+        alternativeSlots: [],
+        scheduleStatus: status,
+      };
+    }
+
+    return {
+      available: true,
+      message: "Sân còn trống",
+      alternativeSlots: [],
+      scheduleStatus: status,
+    };
+  } catch (error) {
+    console.error("Error checking field availability:", error);
+    
+    // Fallback về kiểm tra local nếu API lỗi
+    const localAvailable = !hasConflict({ fieldId, date, slotId });
+    return {
+      available: localAvailable,
+      message: localAvailable ? "Sân còn trống" : "Sân đã được đặt",
+      alternativeSlots: [],
+      warning: "Không thể kiểm tra real-time từ server",
+    };
+  }
 }
 
 // Validate ngày đặt sân (không được trong quá khứ)
