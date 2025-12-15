@@ -62,6 +62,7 @@ namespace BallSport.Application.Services.Community
             var createdComment = await _commentRepository.CreateCommentAsync(comment);
 
             // Gửi thông báo
+            // Thay đổi từ dòng 68-76
             if (dto.ParentCommentId.HasValue)
             {
                 var parentComment = await _commentRepository.GetCommentByIdAsync(dto.ParentCommentId.Value);
@@ -70,7 +71,7 @@ namespace BallSport.Application.Services.Community
                     await _notificationService.CreateNotificationAsync(new CreateNotificationDTO
                     {
                         UserId = parentComment.UserId,
-                        Type = "Reply",
+                        Type = "Comment", // ĐỔI TỪ "Reply" → "Comment"
                         TargetId = createdComment.CommentId,
                         Message = "đã trả lời bình luận của bạn"
                     });
@@ -84,13 +85,12 @@ namespace BallSport.Application.Services.Community
                     await _notificationService.CreateNotificationAsync(new CreateNotificationDTO
                     {
                         UserId = post.UserId,
-                        Type = "NewComment",
+                        Type = "Comment", // ĐỔI TỪ "NewComment" → "Comment"
                         TargetId = createdComment.CommentId,
                         Message = "đã bình luận bài viết của bạn"
                     });
                 }
             }
-
             return MapToCommentDTO(createdComment);
         }
 
