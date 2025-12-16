@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { Container, Section, LoadingPage, LoadingSpinner } from "../../../../shared/components/ui";
-import { fetchComplexDetail, fetchTimeSlotsByField, fetchFieldDetail, fetchCancellationPolicyByComplex, fetchPromotionsByComplex, fetchPublicFieldSchedulesByField, fetchFieldTypes, fetchDepositPolicyByField, fetchFavoriteFields, toggleFavoriteField as toggleFavoriteFieldApi } from "../../../../shared/index";
+import { fetchComplexDetail, fetchTimeSlotsByField, fetchFieldDetail, fetchPublicFieldSchedulesByField, fetchFieldTypes, fetchDepositPolicyByField, fetchFavoriteFields, toggleFavoriteField as toggleFavoriteFieldApi } from "../../../../shared/index";
 import { fetchRatingsByComplex, fetchRatingsByField } from "../../../../shared/services/ratings";
 import { normalizeFieldType } from "../../../../shared/services/fieldTypes";
 import { useFieldSchedules } from "../../../../shared/hooks";
@@ -81,8 +81,6 @@ export default function ComplexDetail({ user }) {
      const [selectedDate, setSelectedDate] = useState(() => searchParams.get("date") || new Date().toISOString().split("T")[0]);
      const [selectedSlotId, setSelectedSlotId] = useState(() => searchParams.get("slotId") || "");
      const [complexData, setComplexData] = useState({ complex: null, fields: [] });
-     const [cancellationPolicy, setCancellationPolicy] = useState(null);
-     const [promotions, setPromotions] = useState([]);
      const [depositPolicy, setDepositPolicy] = useState(null);
      const [fieldTimeSlots, setFieldTimeSlots] = useState([]); // TimeSlots for selected field with prices
      const [cheapestSlot, setCheapestSlot] = useState(null); // { slotId, name, price }
@@ -349,28 +347,17 @@ export default function ComplexDetail({ user }) {
                          slotId: selectedSlotId
                     });
 
-                    // Only fetch cancellation policy and promotions when viewing a specific field
-                    // Do not fetch for complex view
-                    let policyData = null;
-                    let promotionsData = [];
-
                     const fieldIdForPolicy = (fieldData?.fieldId ? Number(fieldData.fieldId) : null) || selectedFieldId;
 
                     if (fieldIdForPolicy) {
-                         // Fetch field-specific policies and promotions
+                         // Fetch deposit policy for field
                          try {
-                              const [policyDataResult, promotionsDataResult, depositPolicyResult] = await Promise.all([
-                                   fetchCancellationPolicyByComplex(complexIdToUse).catch(() => null),
-                                   fetchPromotionsByComplex(complexIdToUse).catch(() => []),
-                                   fetchDepositPolicyByField(fieldIdForPolicy).catch(() => null)
-                              ]);
-                              policyData = policyDataResult;
-                              promotionsData = promotionsDataResult;
+                              const depositPolicyResult = await fetchDepositPolicyByField(fieldIdForPolicy).catch(() => null);
                               if (!ignore) {
                                    setDepositPolicy(depositPolicyResult);
                               }
                          } catch (error) {
-                              console.warn("Error fetching policies/promotions/deposit:", error);
+                              console.warn("Error fetching deposit policy:", error);
                          }
                     } else {
                          // If no fieldId, clear deposit policy
@@ -408,8 +395,6 @@ export default function ComplexDetail({ user }) {
                          };
 
                          setComplexData(complexWithFavorites);
-                         setCancellationPolicy(policyData);
-                         setPromotions(Array.isArray(promotionsData) ? promotionsData : []);
                          setIsLoading(false);
                     }
                } catch (e) {
@@ -1261,8 +1246,6 @@ export default function ComplexDetail({ user }) {
                                         availableCount={availableCount}
                                         cheapestSlot={cheapestSlot}
                                         priciestSlot={priciestSlot}
-                                        cancellationPolicy={cancellationPolicy}
-                                        promotions={promotions}
                                         depositPolicy={depositPolicy}
                                         fieldTypeMap={fieldTypeMap}
                                         selectedFieldCheapestSlot={selectedFieldCheapestSlot}

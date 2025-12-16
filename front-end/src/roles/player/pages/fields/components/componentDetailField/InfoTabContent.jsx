@@ -11,8 +11,6 @@ export default function InfoTabContent({
      cheapestSlot,
      priciestSlot,
      bigComposeCount,
-     cancellationPolicy,
-     promotions,
      depositPolicy,
      selectedFieldCheapestSlot,
      selectedFieldPriciestSlot,
@@ -40,8 +38,6 @@ export default function InfoTabContent({
                               selectedSlotId={selectedSlotId}
                               selectedFieldCheapestSlot={selectedFieldCheapestSlot}
                               selectedFieldPriciestSlot={selectedFieldPriciestSlot}
-                              cancellationPolicy={cancellationPolicy}
-                              promotions={promotions}
                               depositPolicy={depositPolicy}
                               fieldTypeMap={fieldTypeMap}
                               onBack={onBack}

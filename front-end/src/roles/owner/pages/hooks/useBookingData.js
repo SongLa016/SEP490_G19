@@ -101,36 +101,86 @@ export const useBookingData = (currentUserId) => {
           schedule.slotID;
         const scheduleDateStr = normalizeDateString(schedule.date);
 
+        // Check if there's an active (non-cancelled) package session for this schedule AND date
         const matched = hydratedSessions.some((ps) => {
           const statusLower = (
             ps.sessionStatus ||
             ps.status ||
             ""
           ).toLowerCase();
-          if (statusLower.includes("cancel")) return false;
+          
+          // Skip cancelled sessions
+          if (statusLower.includes("cancel")) {
+            return false;
+          }
 
+          const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
+          
+          // Must match by date first (critical for recurring packages)
+          if (psDateStr !== scheduleDateStr) {
+            return false;
+          }
+
+          // Then match by scheduleId or field/slot combination
           const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
           if (
             psScheduleId &&
             scheduleId &&
             Number(psScheduleId) === Number(scheduleId)
-          )
+          ) {
             return true;
+          }
 
           const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
           const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
-          const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
 
           return (
             Number(psFieldId) === Number(scheduleFieldId) &&
-            Number(psSlotId) === Number(scheduleSlotId) &&
-            psDateStr === scheduleDateStr
+            Number(psSlotId) === Number(scheduleSlotId)
           );
         });
 
-        return matched
-          ? { ...schedule, status: "Booked", bookingType: "package" }
-          : schedule;
+        // Check if there's a cancelled session for this schedule AND date (to reset status)
+        const hasCancelledSession = hydratedSessions.some((ps) => {
+          const statusLower = (
+            ps.sessionStatus ||
+            ps.status ||
+            ""
+          ).toLowerCase();
+          
+          if (!statusLower.includes("cancel")) return false;
+
+          const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
+          
+          // Must match by date first
+          if (psDateStr !== scheduleDateStr) {
+            return false;
+          }
+
+          const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
+          if (psScheduleId && scheduleId && Number(psScheduleId) === Number(scheduleId)) {
+            return true;
+          }
+
+          const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
+          const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
+
+          return (
+            Number(psFieldId) === Number(scheduleFieldId) &&
+            Number(psSlotId) === Number(scheduleSlotId)
+          );
+        });
+
+        // If matched with active session -> Booked
+        // If has cancelled session and no active session -> reset to Available (if currently Booked)
+        // Otherwise -> keep original status
+        if (matched) {
+          return { ...schedule, status: "Booked", bookingType: "package" };
+        } else if (hasCancelledSession && (schedule.status || schedule.Status || "").toLowerCase() === "booked") {
+          console.log("🔄 [MARK SCHEDULES] Resetting cancelled schedule to Available:", scheduleId);
+          return { ...schedule, status: "Available", bookingType: undefined };
+        }
+        return schedule;
       });
     },
     [hydratePackageSessionsWithSchedules]
@@ -169,9 +219,19 @@ export const useBookingData = (currentUserId) => {
           slotId: session.slotId || session.slotID || session.SlotID,
           fieldId: session.fieldId || session.fieldID || session.FieldID,
           userId: session.userId || session.userID,
+          // Normalize sessionStatus - API may return different field names
+          sessionStatus: session.sessionStatus || session.SessionStatus || session.status || session.Status || "",
           isPackageSession: true,
           bookingType: "package",
         }));
+        
+        // Debug: Log sessions with their status
+        console.log("📦 [PACKAGE SESSIONS] Loaded sessions:", normalizedSessions.map(s => ({
+          sessionId: s.sessionId,
+          scheduleId: s.scheduleId,
+          sessionStatus: s.sessionStatus,
+          date: s.date
+        })));
 
         const sessionsWithUserInfo = await Promise.all(
           normalizedSessions.map(async (session) => {

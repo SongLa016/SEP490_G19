@@ -707,23 +707,10 @@ export default function ScheduleManagement({ isDemo = false }) {
      }, [selectedComplex, fields, selectedFieldForSchedule]);
 
      // Keep ref in sync and re-apply package sessions to schedules when data changes (avoid loops)
+     // Keep packageSessionsRef in sync with packageSessions state
      useEffect(() => {
           packageSessionsRef.current = packageSessions;
-          if (!packageSessions.length) return;
-          setFieldSchedules((prev) => markSchedulesWithPackageSessions(prev, packageSessions));
-     }, [packageSessions, markSchedulesWithPackageSessions, packageSessionsRef]);
-
-     // When schedules change after packages are loaded, re-apply marking once
-     useEffect(() => {
-          if (!packageSessionsRef.current.length || !fieldSchedules.length) return;
-          setFieldSchedules((prev) => {
-               const updated = markSchedulesWithPackageSessions(prev, packageSessionsRef.current);
-               const changed =
-                    updated.length !== prev.length ||
-                    updated.some((item, idx) => item?.status !== prev[idx]?.status);
-               return changed ? updated : prev;
-          });
-     }, [fieldSchedules, markSchedulesWithPackageSessions, packageSessionsRef]);
+     }, [packageSessions, packageSessionsRef]);
 
 
      // Load schedules for table based on selected field
@@ -786,6 +773,18 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      }, [currentUserId, loadBookings, loadPackageSessions, loadBookingPackages]);
 
+     // Refresh data when window gains focus (user returns to tab)
+     useEffect(() => {
+          const handleFocus = () => {
+               if (currentUserId) {
+                    loadPackageSessions();
+                    loadSchedulesForTable();
+               }
+          };
+          window.addEventListener('focus', handleFocus);
+          return () => window.removeEventListener('focus', handleFocus);
+     }, [currentUserId, loadPackageSessions, loadSchedulesForTable]);
+
      // Load time slots và schedules khi thay đổi sân/khu hoặc filter
      useEffect(() => {
           if (selectedComplex && fields.length > 0) {
@@ -795,9 +794,15 @@ export default function ScheduleManagement({ isDemo = false }) {
      }, [selectedComplex, fields, selectedFieldForSchedule, loadTimeSlotsForTable, loadSchedulesForTable]);
 
      // Load FieldSchedules
-     const loadFieldSchedules = useCallback(async () => {
+     const loadFieldSchedules = useCallback(async (refreshPackageSessions = false) => {
           try {
                setLoadingSchedules(true);
+
+               // Optionally refresh package sessions first to get latest data
+               if (refreshPackageSessions) {
+                    await loadPackageSessions();
+               }
+
                let result;
 
                // Nếu có filter field, lấy theo field
@@ -832,7 +837,12 @@ export default function ScheduleManagement({ isDemo = false }) {
           } finally {
                setLoadingSchedules(false);
           }
-     }, [scheduleFilterField, selectedComplex, processExpiredSchedules, markSchedulesWithPackageSessions, packageSessionsRef]);
+     }, [scheduleFilterField, selectedComplex, processExpiredSchedules, markSchedulesWithPackageSessions, packageSessionsRef, loadPackageSessions]);
+
+     // Full refresh function that reloads both package sessions and schedules
+     const handleFullRefresh = useCallback(async () => {
+          await loadFieldSchedules(true);
+     }, [loadFieldSchedules]);
 
      useEffect(() => {
           if (activeTab === 'manage-schedules') {
@@ -1342,8 +1352,13 @@ export default function ScheduleManagement({ isDemo = false }) {
 
           const effectivePackageSessions = hydratePackageSessionsWithSchedules(packageSessionsRef.current || [], fieldSchedules);
 
-          // Ensure package sessions without schedules still appear as booked
+          // Ensure package sessions without schedules still appear as booked (exclude cancelled sessions)
           const packageSessionsForSlot = effectivePackageSessions.filter(ps => {
+               // Check if session is cancelled
+               const sessionStatus = (ps.sessionStatus || ps.status || '').toLowerCase();
+               const isCancelled = sessionStatus.includes('cancel');
+               if (isCancelled) return false;
+
                const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
                const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
                const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
@@ -1452,17 +1467,22 @@ export default function ScheduleManagement({ isDemo = false }) {
                return true;
           }
 
-          // Check for package session
+          // Check for package session (exclude cancelled sessions)
           const packageSession = effectivePackageSessions.find(ps => {
                const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
                const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
                const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
+               // Check if session is cancelled
+               const sessionStatus = (ps.sessionStatus || ps.status || '').toLowerCase();
+               const isCancelled = sessionStatus.includes('cancel');
+               if (isCancelled) return false;
+
                return Number(psFieldId) === Number(fieldId) &&
                     Number(psSlotId) === Number(slotId) &&
                     psDateStr === dateStr;
           });
 
-          // If there's a package session, consider it booked
+          // If there's an active (non-cancelled) package session, consider it booked
           if (packageSession) {
                return true;
           }
@@ -1521,22 +1541,30 @@ export default function ScheduleManagement({ isDemo = false }) {
                     };
                }
 
-               // Check for package session
+               // Check for package session (exclude cancelled sessions, must match date)
                const effectivePackageSessions = hydratePackageSessionsWithSchedules(packageSessionsRef.current || packageSessions, fieldSchedules);
                const packageSession = effectivePackageSessions.find(ps => {
+                    // Check if session is cancelled
+                    const sessionStatus = (ps.sessionStatus || ps.status || '').toLowerCase();
+                    const isCancelled = sessionStatus.includes('cancel');
+                    if (isCancelled) return false;
+
+                    // MUST check date first (critical for recurring packages with same scheduleId)
+                    const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
+                    const scheduleDateStr = normalizeDateString(schedule.date);
+                    if (psDateStr !== scheduleDateStr) return false;
+
+                    // Then match by scheduleId or field/slot
                     const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
                     if (psScheduleId && Number(psScheduleId) === Number(scheduleId)) {
                          return true;
                     }
                     const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
                     const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
-                    const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
                     const scheduleFieldId = schedule.fieldId ?? schedule.FieldId;
                     const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
-                    const scheduleDateStr = normalizeDateString(schedule.date);
                     return Number(psFieldId) === Number(scheduleFieldId) &&
-                         Number(psSlotId) === Number(scheduleSlotId) &&
-                         psDateStr === scheduleDateStr;
+                         Number(psSlotId) === Number(scheduleSlotId);
                });
 
                if (packageSession) {
@@ -1585,8 +1613,13 @@ export default function ScheduleManagement({ isDemo = false }) {
                };
           }
 
-          // Fallback: try to find package session by fieldId, slotId, and date directly
+          // Fallback: try to find package session by fieldId, slotId, and date directly (exclude cancelled)
           const directPackageSession = packageSessions.find(ps => {
+               // Check if session is cancelled
+               const sessionStatus = (ps.sessionStatus || ps.status || '').toLowerCase();
+               const isCancelled = sessionStatus.includes('cancel');
+               if (isCancelled) return false;
+
                const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
                const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
                const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
@@ -1879,7 +1912,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                          loadingSchedules={loadingSchedules}
                          fieldSchedules={fieldSchedules}
                          onAddSchedule={handleOpenScheduleModal}
-                         onRefresh={loadFieldSchedules}
+                         onRefresh={handleFullRefresh}
                          onUpdateStatus={handleUpdateScheduleStatus}
                          onDeleteSchedule={handleDeleteSchedule}
                          getBookingInfo={getBookingInfo}

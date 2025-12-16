@@ -55,6 +55,7 @@ export default function PaymentStepSection({
           return "—";
      };
      // Tạo danh sách buổi định kỳ (local) từ startDate + endDate + selectedDays + selectedSlotsByDay
+     // CHỈ đếm những ngày thực sự có schedule
      const generateRecurringSessionsLocal = () => {
           if (!isRecurringPackage || !startDate || !endDate || !Array.isArray(selectedDays) || selectedDays.length === 0) {
                return [];
@@ -66,9 +67,39 @@ export default function PaymentStepSection({
                const end = new Date(endDate);
                end.setHours(23, 59, 59, 999);
 
+               // Tạo Set các ngày có schedule để lookup nhanh
+               const scheduleDatesSet = new Set();
+               if (Array.isArray(fieldSchedules)) {
+                    fieldSchedules.forEach(s => {
+                         const scheduleDate = s.date ?? s.Date ?? s.scheduleDate ?? s.ScheduleDate;
+                         if (scheduleDate) {
+                              try {
+                                   const date = typeof scheduleDate === 'string'
+                                        ? new Date(scheduleDate)
+                                        : (scheduleDate.year && scheduleDate.month && scheduleDate.day
+                                             ? new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day)
+                                             : new Date(scheduleDate));
+                                   if (!isNaN(date.getTime())) {
+                                        // Chỉ thêm nếu ngày nằm trong khoảng start-end
+                                        const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                                        if (dateOnly >= start && dateOnly <= end) {
+                                             const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                                             scheduleDatesSet.add(dateStr);
+                                        }
+                                   }
+                              } catch (e) {
+                                   // ignore
+                              }
+                         }
+                    });
+               }
+
                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                     const weekday = d.getDay(); // 0=CN..6=T7
-                    if (selectedDays.includes(weekday)) {
+                    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+                    // Chỉ thêm session nếu ngày đó có schedule VÀ thuộc ngày trong tuần đã chọn
+                    if (selectedDays.includes(weekday) && scheduleDatesSet.has(dateStr)) {
                          const selectedSlotId = selectedSlotsByDay?.[weekday];
                          if (selectedSlotId) {
                               sessions.push({
@@ -86,6 +117,8 @@ export default function PaymentStepSection({
      };
 
      const recurringSessions = generateRecurringSessionsLocal();
+
+     console.log("📊 [PAYMENT SECTION] recurringSessions count:", recurringSessions.length, "bookingData.totalSessions:", bookingData.totalSessions);
 
      // Số buổi thực tế: với gói cố định ưu tiên theo sessions local, fallback bookingData
      const totalSessions = isRecurringPackage

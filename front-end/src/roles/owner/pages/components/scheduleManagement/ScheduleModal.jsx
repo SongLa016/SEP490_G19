@@ -73,6 +73,7 @@ export default function ScheduleModal({
                onClose={onClose}
                title="Thêm lịch trình mới"
                size="lg"
+               className="overflow-y-auto scrollbar-hide"
           >
                <form onSubmit={onSubmit} className="space-y-4">
                     {creationLocked && (

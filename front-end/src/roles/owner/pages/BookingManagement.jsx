@@ -176,24 +176,78 @@ const BookingManagement = ({ isDemo = false }) => {
                ? '✅ <strong>Hoàn thành booking</strong> - Booking sẽ chuyển sang trạng thái "Hoàn thành"'
                : '💳 <strong>Xác nhận thanh toán</strong> - Booking sẽ chuyển sang trạng thái "Đã xác nhận" và thanh toán "Đã thanh toán"';
 
+          // Tính số tiền còn lại và fetch QR code URL từ API cho dialog hoàn thành
+          const totalAmount = booking?.amount || booking?.totalAmount || 0;
+          const depositAmount = booking?.depositAmount || booking?.deposit || booking?.paidAmount || 0;
+          const remainingAmount = Math.max(0, totalAmount - depositAmount);
+
+          // Fetch QR code URL từ API nếu là hoàn thành booking
+          let qrCodeImageUrl = '';
+          if (isConfirmedAndPaid) {
+               try {
+                    const token = localStorage.getItem("token");
+                    const qrResponse = await axios.get(
+                         `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${numericBookingId}`,
+                         {
+                              headers: {
+                                   "Content-Type": "application/json",
+                                   ...(token && { Authorization: `Bearer ${token}` }),
+                              },
+                         }
+                    );
+                    qrCodeImageUrl = qrResponse.data?.qrCodeUrl || '';
+                    console.log("✅ [QR CODE] Fetched QR code URL:", qrCodeImageUrl);
+               } catch (error) {
+                    console.error("❌ [QR CODE] Error fetching QR code:", error);
+               }
+          }
+
+          // Luôn hiển thị QR code khi hoàn thành booking để player thanh toán số tiền còn lại
+          const qrImageHtml = qrCodeImageUrl
+               ? '<img src="' + qrCodeImageUrl + '" alt="Payment QR Code" id="qr-code-img" class="mx-auto border-2 border-orange-300 rounded-lg shadow-sm cursor-pointer hover:opacity-80 transition-opacity" style="max-width: 180px; max-height: 180px;" title="Click để xem to hơn" />'
+               : '<p class="text-xs text-red-500 py-4">Không thể tải mã QR</p>';
+
+          const qrCodeSection = isConfirmedAndPaid ? `
+               <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-2">
+                    <p class="text-sm text-orange-800 font-semibold mb-2">💰 Thông tin thanh toán:</p>
+                    <div class="text-xs text-orange-700 space-y-1 mb-3">
+                         <p><strong>Tổng tiền:</strong> <span class="font-bold">${formatCurrency(totalAmount)}</span></p>
+                         <p><strong>Đã cọc:</strong> <span class="font-bold text-green-600">${formatCurrency(depositAmount)}</span></p>
+                         <p><strong>Còn lại:</strong> <span class="font-bold text-orange-600 text-base">${formatCurrency(remainingAmount)}</span></p>
+                    </div>
+                    <div class="bg-white rounded-lg p-3 text-center border border-orange-200">
+                         <p class="text-xs font-semibold text-gray-700 mb-2">📱 Mã QR thanh toán số tiền còn lại:</p>
+                         ${qrImageHtml}
+                         <p class="text-xs text-gray-500 mt-2">${qrCodeImageUrl ? 'Click vào mã QR để xem to hơn' : ''}</p>
+                    </div>
+               </div>
+          ` : '';
+
+          // Lưu URL để dùng cho việc hiển thị QR to hơn
+          const savedQrCodeUrl = qrCodeImageUrl;
+
           const result = await Swal.fire({
                title: dialogTitle,
                html: `
                     <div class="text-left">
                          <p class="mb-3">${dialogMessage}</p>
                          ${booking ? `
-                              <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
-                                   <p class="text-sm text-blue-800 font-semibold mb-1">📋 Thông tin booking:</p>
-                                   <div class="text-xs text-blue-700 space-y-1">
-                                        <p><strong>Khách hàng:</strong> ${booking.customer}</p>
-                                        <p><strong>Sân:</strong> ${booking.field}</p>
-                                        <p><strong>Ngày:</strong> ${formatDate(booking.date)}</p>
-                                        <p><strong>Giờ:</strong> ${booking.timeSlot}</p>
-                                        <p><strong>Số tiền:</strong> <span class="font-bold text-green-600">${formatCurrency(booking.amount)}</span></p>
-                                        <p><strong>Trạng thái:</strong> ${getStatusText(booking.status)}</p>
-                                        <p><strong>Thanh toán:</strong> ${getPaymentStatusText(booking.paymentStatus)}</p>
+                              ${isConfirmedAndPaid ? `
+                                   ${qrCodeSection}
+                              ` : `
+                                   <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+                                        <p class="text-sm text-blue-800 font-semibold mb-1">📋 Thông tin booking:</p>
+                                        <div class="text-xs text-blue-700 space-y-1">
+                                             <p><strong>Khách hàng:</strong> ${booking.customer}</p>
+                                             <p><strong>Sân:</strong> ${booking.field}</p>
+                                             <p><strong>Ngày:</strong> ${formatDate(booking.date)}</p>
+                                             <p><strong>Giờ:</strong> ${booking.timeSlot}</p>
+                                             <p><strong>Số tiền:</strong> <span class="font-bold text-green-600">${formatCurrency(booking.amount)}</span></p>
+                                             <p><strong>Trạng thái:</strong> ${getStatusText(booking.status)}</p>
+                                             <p><strong>Thanh toán:</strong> ${getPaymentStatusText(booking.paymentStatus)}</p>
+                                        </div>
                                    </div>
-                              </div>
+                              `}
                               <div class="bg-green-50 border border-green-200 rounded-lg p-2">
                                    <p class="text-xs text-green-800">
                                         ${infoMessage}
@@ -208,7 +262,28 @@ const BookingManagement = ({ isDemo = false }) => {
                cancelButtonText: 'Hủy',
                confirmButtonColor: '#10b981',
                cancelButtonColor: '#6b7280',
-               width: '550px'
+               width: isConfirmedAndPaid ? '600px' : '550px',
+               didOpen: () => {
+                    // Thêm click handler cho QR code để hiển thị to hơn
+                    const qrImg = document.getElementById('qr-code-img');
+                    if (qrImg && savedQrCodeUrl) {
+                         qrImg.addEventListener('click', () => {
+                              Swal.fire({
+                                   title: 'Mã QR thanh toán',
+                                   html: `
+                                        <div class="text-center">
+                                             <img src="${savedQrCodeUrl}" alt="Payment QR Code" class="mx-auto border-2 border-orange-300 rounded-lg shadow-lg" style="max-width: 350px; max-height: 350px;" />
+                                             <p class="text-sm text-gray-600 mt-3">Số tiền: <strong class="text-orange-600">${formatCurrency(remainingAmount)}</strong></p>
+                                        </div>
+                                   `,
+                                   showConfirmButton: true,
+                                   confirmButtonText: 'Đóng',
+                                   confirmButtonColor: '#6b7280',
+                                   width: '450px'
+                              });
+                         });
+                    }
+               }
           });
 
           if (result.isConfirmed) {
@@ -219,12 +294,45 @@ const BookingManagement = ({ isDemo = false }) => {
                          if (confirmResult.success) {
                               // FieldSchedule status đã được cập nhật thành "Booked" khi confirm payment
                               // Không cần cập nhật lại ở đây vì booking đã hoàn thành
-                              await Swal.fire({
-                                   icon: 'success',
-                                   title: 'Đã hoàn thành!',
-                                   text: confirmResult.message || 'Booking đã được hoàn thành thành công. Trạng thái đã chuyển sang "Hoàn thành".',
-                                   confirmButtonColor: '#10b981'
-                              });
+
+                              // Tính số tiền còn lại cần thanh toán
+                              const totalAmount = booking?.amount || booking?.totalAmount || 0;
+                              const depositAmount = booking?.depositAmount || booking?.deposit || 0;
+                              const remainingAmount = Math.max(0, totalAmount - depositAmount);
+
+                              // Tạo URL QR code để player thanh toán số tiền còn lại
+                              const qrCodeUrl = `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${numericBookingId}`;
+
+                              // Hiển thị thông báo với QR code nếu còn số tiền cần thanh toán
+                              if (remainingAmount > 0) {
+                                   await Swal.fire({
+                                        icon: 'success',
+                                        title: 'Đã hoàn thành!',
+                                        html: `
+                                             <div class="text-left">
+                                                  <p class="mb-3">${confirmResult.message || 'Booking đã được hoàn thành thành công.'}</p>
+                                                  <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                                                       <p class="text-sm text-blue-800 font-semibold mb-2">💰 Thông tin thanh toán:</p>
+                                                       <div class="text-xs text-blue-700 space-y-1">
+                                                            <p><strong>Tổng tiền:</strong> <span class="font-bold">${formatCurrency(totalAmount)}</span></p>
+                                                            <p><strong>Đã cọc:</strong> <span class="font-bold text-green-600">${formatCurrency(depositAmount)}</span></p>
+                                                            <p><strong>Đã thanh toán còn lại:</strong> <span class="font-bold text-orange-600">${formatCurrency(remainingAmount)}</span></p>
+                                                       </div>
+                                                  </div>
+                                                 
+                                             </div>
+                                        `,
+                                        confirmButtonColor: '#10b981',
+                                        width: '500px'
+                                   });
+                              } else {
+                                   await Swal.fire({
+                                        icon: 'success',
+                                        title: 'Đã hoàn thành!',
+                                        text: confirmResult.message || 'Booking đã được hoàn thành thành công. Trạng thái đã chuyển sang "Hoàn thành".',
+                                        confirmButtonColor: '#10b981'
+                                   });
+                              }
                          }
                     } else {
                          // Booking pending -> gọi confirm-payment để xác nhận thanh toán
