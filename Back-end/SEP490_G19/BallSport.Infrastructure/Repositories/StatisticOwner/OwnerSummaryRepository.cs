@@ -24,12 +24,14 @@ namespace BallSport.Infrastructure.Repositories.StatisticOwner
         {
             return await _context.Bookings
                 .Where(b => b.Schedule.Field.Complex.OwnerId == ownerId)
+                .Where(b => b.BookingStatus == "Completed")
                 .SumAsync(b => b.TotalPrice); 
         }
 
         public async Task<int> GetTotalBookingAsync(int ownerId)
         {
             return await _context.Bookings
+                .Where(b=>b.BookingStatus=="Completed")
                 .CountAsync(b => b.Schedule.Field.Complex.OwnerId == ownerId);
         }
     }
