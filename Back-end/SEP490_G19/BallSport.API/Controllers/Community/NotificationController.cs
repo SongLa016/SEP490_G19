@@ -1,5 +1,4 @@
-﻿// File: BallSport.API/Controllers/Community/NotificationController.cs
-using BallSport.Application.DTOs.Community;
+﻿using BallSport.Application.DTOs.Community;
 using BallSport.Application.Services.Community;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,23 +13,28 @@ namespace BallSport.API.Controllers.Community
     {
         private readonly INotificationService _notificationService;
 
+        private const string SYSTEM_TYPE = "System";
+
         public NotificationController(INotificationService notificationService)
         {
-            _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
+            _notificationService = notificationService
+                ?? throw new ArgumentNullException(nameof(notificationService));
         }
 
-        // CHUẨN NHẤT CHO MODEL User CỦA ANH: UserId là int
+        // ===================== HELPER =====================
+        // Chuẩn cho hệ thống của bạn: UserID là int
         private int GetCurrentUserId()
         {
             var claim = User.FindFirst("UserID") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+
             if (claim == null || !int.TryParse(claim.Value, out int userId))
-            {
                 throw new UnauthorizedAccessException("Không tìm thấy UserID trong token");
-            }
+
             return userId;
         }
 
         // ===================== USER ENDPOINTS =====================
+
         [HttpGet]
         public async Task<IActionResult> GetNotifications(
             [FromQuery] int pageNumber = 1,
@@ -39,7 +43,8 @@ namespace BallSport.API.Controllers.Community
         {
             int userId = GetCurrentUserId();
 
-            var result = await _notificationService.GetNotificationsByUserIdAsync(userId, pageNumber, pageSize, isRead);
+            var result = await _notificationService
+                .GetNotificationsByUserIdAsync(userId, pageNumber, pageSize, isRead);
 
             return Ok(new
             {
@@ -67,8 +72,13 @@ namespace BallSport.API.Controllers.Community
         public async Task<IActionResult> GetUnreadCount()
         {
             int userId = GetCurrentUserId();
-            var count = await _notificationService.GetUnreadCountAsync(userId);
-            return Ok(new { success = true, data = new { unreadCount = count } });
+            int count = await _notificationService.GetUnreadCountAsync(userId);
+
+            return Ok(new
+            {
+                success = true,
+                data = new { unreadCount = count }
+            });
         }
 
         [HttpGet("type/{type}")]
@@ -76,11 +86,13 @@ namespace BallSport.API.Controllers.Community
         {
             int userId = GetCurrentUserId();
 
-            var validTypes = new[] { "NewComment", "Reply", "Mention", "Like", "ReportResult", "MatchRequest", "MatchAccepted", "System" };
-            if (!validTypes.Contains(type))
-                return BadRequest(new { success = false, message = $"Type không hợp lệ. Chỉ chấp nhận: {string.Join(", ", validTypes)}" });
+            // Không hard-code quá nhiều loại – chỉ chặn rỗng
+            if (string.IsNullOrWhiteSpace(type))
+                return BadRequest(new { success = false, message = "Type không hợp lệ" });
 
-            var notifications = await _notificationService.GetNotificationsByTypeAsync(userId, type);
+            var notifications = await _notificationService
+                .GetNotificationsByTypeAsync(userId, type);
+
             return Ok(new { success = true, data = notifications });
         }
 
@@ -88,7 +100,9 @@ namespace BallSport.API.Controllers.Community
         public async Task<IActionResult> MarkAsRead(int id)
         {
             int userId = GetCurrentUserId();
+
             bool success = await _notificationService.MarkAsReadAsync(id, userId);
+
             return success
                 ? Ok(new { success = true, message = "Đã đánh dấu đã đọc" })
                 : NotFound(new { success = false, message = "Không tìm thấy hoặc không có quyền" });
@@ -99,16 +113,23 @@ namespace BallSport.API.Controllers.Community
         {
             int userId = GetCurrentUserId();
             await _notificationService.MarkAllAsReadAsync(userId);
-            return Ok(new { success = true, message = "Đã đánh dấu tất cả là đã đọc" });
+
+            return Ok(new
+            {
+                success = true,
+                message = "Đã đánh dấu tất cả thông báo là đã đọc"
+            });
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
             int userId = GetCurrentUserId();
+
             bool success = await _notificationService.DeleteNotificationAsync(id, userId);
+
             return success
-                ? Ok(new { success = true, message = "Xóa thành công" })
+                ? Ok(new { success = true, message = "Xóa thông báo thành công" })
                 : NotFound(new { success = false, message = "Không tìm thấy hoặc không có quyền" });
         }
 
@@ -117,21 +138,34 @@ namespace BallSport.API.Controllers.Community
         {
             int userId = GetCurrentUserId();
             await _notificationService.DeleteAllNotificationsAsync(userId);
-            return Ok(new { success = true, message = "Đã xóa toàn bộ thông báo" });
+
+            return Ok(new
+            {
+                success = true,
+                message = "Đã xóa toàn bộ thông báo"
+            });
         }
 
         // ===================== ADMIN ENDPOINTS =====================
+        // ADMIN CHỈ XEM + XÓA THÔNG BÁO HỆ THỐNG
+
         [HttpGet("admin")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllAdmin(
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 20,
             [FromQuery] string? search = null,
-            [FromQuery] string? type = null,
-            [FromQuery] int? userId = null,
             [FromQuery] bool? isRead = null)
         {
-            var result = await _notificationService.GetAllNotificationsAdminAsync(pageNumber, pageSize, search, type, userId, isRead);
+            var result = await _notificationService.GetAllNotificationsAdminAsync(
+                pageNumber,
+                pageSize,
+                search,
+                SYSTEM_TYPE, // ép cứng System
+                null,
+                isRead
+            );
+
             return Ok(new
             {
                 success = true,
@@ -151,53 +185,42 @@ namespace BallSport.API.Controllers.Community
         public async Task<IActionResult> GetOneAdmin(int id)
         {
             var noti = await _notificationService.GetNotificationByIdAdminAsync(id);
+
             return noti == null
-                ? NotFound(new { success = false, message = "Không tìm thấy thông báo" })
+                ? NotFound(new { success = false, message = "Không tìm thấy thông báo hệ thống" })
                 : Ok(new { success = true, data = noti });
-        }
-
-        [HttpPost("admin")]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> CreateByAdmin([FromBody] CreateNotificationDTO dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ", errors = ModelState });
-
-            var created = await _notificationService.CreateNotificationAsync(dto);
-            return CreatedAtAction(nameof(GetOneAdmin), new { id = created.NotificationId }, new
-            {
-                success = true,
-                message = "Tạo thông báo thành công",
-                data = created
-            });
         }
 
         [HttpPost("admin/bulk")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> CreateBulkByAdmin([FromBody] IEnumerable<CreateNotificationDTO> dtos)
+        public async Task<IActionResult> CreateBulkByAdmin(
+            [FromBody] IEnumerable<CreateNotificationDTO> dtos)
         {
             if (dtos == null || !dtos.Any())
-                return BadRequest(new { success = false, message = "Danh sách thông báo không được để trống" });
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Danh sách thông báo không được để trống"
+                });
 
-            int createdCount = await _notificationService.CreateBulkNotificationsAsync(dtos); // Trả int
+            int createdCount = await _notificationService.CreateBulkNotificationsAsync(dtos);
 
             return Ok(new
             {
                 success = true,
-                message = $"Đã tạo thành công {createdCount} thông báo thành công"
+                message = $"Đã tạo thành công {createdCount} thông báo"
             });
         }
 
-        // Chỉ thay đổi 1 method DeleteAdmin
         [HttpDelete("admin/{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteAdmin(int id)
         {
-            bool success = await _notificationService.DeleteNotificationAdminAsync(id);  // DÙNG bool
+            bool success = await _notificationService.DeleteNotificationAdminAsync(id);
 
             return success
-                ? Ok(new { success = true, message = "Xóa thành công" })
-                : NotFound(new { success = false, message = "Không tìm thấy thông báo" });
+                ? Ok(new { success = true, message = "Xóa thông báo hệ thống thành công" })
+                : NotFound(new { success = false, message = "Không tìm thấy hoặc không phải thông báo hệ thống" });
         }
 
         [HttpDelete("admin/bulk")]
@@ -205,10 +228,19 @@ namespace BallSport.API.Controllers.Community
         public async Task<IActionResult> DeleteBulkAdmin([FromBody] List<int> ids)
         {
             if (ids == null || ids.Count == 0)
-                return BadRequest(new { success = false, message = "Danh sách ID không được để trống" });
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Danh sách ID không được để trống"
+                });
 
             int deletedCount = await _notificationService.DeleteMultipleNotificationsAdminAsync(ids);
-            return Ok(new { success = true, message = $"Đã xóa thành công {deletedCount} thông báo" });
+
+            return Ok(new
+            {
+                success = true,
+                message = $"Đã xóa thành công {deletedCount} thông báo hệ thống"
+            });
         }
     }
 }
