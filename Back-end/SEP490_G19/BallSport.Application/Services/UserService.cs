@@ -254,6 +254,44 @@ namespace BallSport.Application.Services
 
         ////////////////////////////////// UPdate profile /////////////////////////
         ///
-       
+
+
+
+        public async Task<bool> ChangePasswordAsync(  int userId,string oldPassword,string newPassword, string confirmNewPassword)
+        {
+            // 1. Check user tồn tại
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+                throw new Exception("User not found.");
+
+            // 2. Check mật khẩu hiện tại
+            var isCorrectPassword = _userRepository.CheckCurrentPassword(userId, oldPassword);
+            if (!isCorrectPassword)
+                throw new Exception("Mật khẩu hiện tại không đúng.");
+
+            // 3. Check mật khẩu mới
+            if (newPassword != confirmNewPassword)
+                throw new Exception("Mật khẩu mới không khớp.");
+
+            if (newPassword.Length < 6)
+                throw new Exception("Mật khẩu mới phải có ít nhất 6 ký tự.");
+
+            // 4. Update mật khẩu
+            _userRepository.UpdatePassword(userId, newPassword);
+            if (!string.IsNullOrEmpty(user.Email))
+            {
+                string subject = "Thông báo thay đổi mật khẩu BallSport";
+                string message =
+                    $"<p>Xin chào <b>{user.FullName}</b>,</p>" +
+                    $"<p>Mật khẩu tài khoản BallSport của bạn vừa được <b>thay đổi thành công</b>.</p>" +
+                    $"<p>Thời gian: {DateTime.Now:dd/MM/yyyy HH:mm}</p>" +
+                    $"<p>Trân trọng,<br/>Đội ngũ BallSport</p>";
+
+                await _emailService.SendEmailAsync(user.Email, subject, message);
+            }
+            return true;
+        }
+
+
     }
 }

@@ -140,6 +140,24 @@ namespace BallSport.Infrastructure.Repositories
                 .FirstOrDefaultAsync();
         }
 
+        public bool CheckCurrentPassword(int userId, string password)
+        {
+            return _context.Users.Any(u =>
+                u.UserId == userId &&
+                u.PasswordHash == password
+            );
+        }
+
+        public void UpdatePassword(int userId, string newPassword)
+        {
+            var user = _context.Users.FirstOrDefault(u => u.UserId == userId);
+            if (user == null)
+                throw new Exception("User not found.");
+
+            user.PasswordHash = newPassword;
+            _context.SaveChanges();
+        }
+
 
     }
 }
