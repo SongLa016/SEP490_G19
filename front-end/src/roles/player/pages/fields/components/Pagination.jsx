@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "../../../../../shared/components/ui";
 
-export default function Pagination({ currentPage, totalPages, onPrev, onNext, onPageChange, totalItems, startIdx, endIdx }) {
+export default function Pagination({ currentPage, totalPages, onPrev, onNext, onPageChange, totalItems, endIdx }) {
      return (
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
                <div className="text-sm text-teal-700">

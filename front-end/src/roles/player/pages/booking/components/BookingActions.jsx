@@ -2,22 +2,29 @@ import React from "react";
 import { Receipt, CreditCard, Trash2, Star, UserSearchIcon } from "lucide-react";
 import { Button } from "../../../../../shared/components/ui";
 
+/**
+ * Component hiển thị các nút hành động cho một booking
+ * Trang: Lịch sử đặt sân (BookingHistory)
+ * Vị trí: Phần dưới của mỗi BookingCard
+ */
 export default function BookingActions({ booking, user, handlers }) {
      const {
-          handleViewInvoice,
-          handleContinuePayment,
-          handleCancel,
-          handleRating,
-          handleEditRating,
-          handleDeleteRating,
-          handleFindOpponent,
-          isPendingUnpaidWithin2Hours,
-          shouldShowCancelButton,
-          shouldShowFindOpponentButton,
-          hasExistingMatchRequest
+          handleViewInvoice,        // Xử lý khi nhấn nút "Xem hóa đơn"
+          handleContinuePayment,    // Xử lý khi nhấn nút "Tiếp tục thanh toán"
+          handleCancel,             // Xử lý khi nhấn nút "Hủy đặt"
+          handleRating,             // Xử lý khi nhấn nút "Đánh giá" (tạo mới)
+          handleEditRating,         // Xử lý khi nhấn nút "Sửa đánh giá"
+          handleDeleteRating,       // Xử lý khi nhấn nút "Xóa đánh giá"
+          handleFindOpponent,       // Xử lý khi nhấn nút "Tìm đối thủ"
+          isPendingUnpaidWithin2Hours,    // Kiểm tra booking đang chờ thanh toán trong 2 giờ
+          shouldShowCancelButton,         // Kiểm tra có hiển thị nút hủy không
+          shouldShowFindOpponentButton,   // Kiểm tra có hiển thị nút tìm đối không
+          hasExistingMatchRequest         // Kiểm tra đã có yêu cầu tìm đối chưa
      } = handlers;
 
+     // Kiểm tra có thể hiển thị nút tìm đối thủ không
      const canShowFindOpponent = shouldShowFindOpponentButton(booking) && !hasExistingMatchRequest(booking);
+     // Kiểm tra booking đã có đánh giá chưa
      const hasRating = !!(booking.ratingId || booking.ratingStars);
 
      return (

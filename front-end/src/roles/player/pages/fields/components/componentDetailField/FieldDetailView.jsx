@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, User, CheckCircle, XCircle, Tag, Ruler, Leaf, MapPin, Heart } from "lucide-react";
 import { Button } from "../../../../../../shared/components/ui";
 import CancellationPolicyDisplay from "../../../../../../shared/components/CancellationPolicyDisplay";
-import PromotionsDisplay from "../../../../../../shared/components/PromotionsDisplay";
 import DepositPolicyDisplay from "../../../../../../shared/components/DepositPolicyDisplay";
 import { fetchFieldTypes, normalizeFieldType } from "../../../../../../shared/services/fieldTypes";
 
@@ -12,12 +11,9 @@ export default function FieldDetailView({
      selectedSlotId,
      selectedFieldCheapestSlot,
      selectedFieldPriciestSlot,
-     cancellationPolicy,
-     promotions,
      depositPolicy,
      fieldTypeMap = {},
      onBack,
-     onQuickBook,
      onToggleFavoriteField
 }) {
      const [localFieldTypeMap, setLocalFieldTypeMap] = useState(fieldTypeMap);
@@ -69,7 +65,7 @@ export default function FieldDetailView({
                loadFieldTypes();
                return () => { ignore = true; };
           }
-     }, [selectedField, fieldTypeMap]);
+     }, [selectedField, fieldTypeMap, localFieldTypeMap]);
 
      if (!selectedField) {
           return (
@@ -263,13 +259,10 @@ export default function FieldDetailView({
                </div>
 
                {/* Chính sách hủy */}
-               <CancellationPolicyDisplay policy={cancellationPolicy} />
+               <CancellationPolicyDisplay />
 
                {/* Chính sách đặt cọc */}
                <DepositPolicyDisplay policy={depositPolicy} />
-
-               {/* Khuyến mãi */}
-               <PromotionsDisplay promotions={promotions} />
           </div>
      );
 }

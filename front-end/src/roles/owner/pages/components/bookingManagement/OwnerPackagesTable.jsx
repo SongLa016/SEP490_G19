@@ -12,6 +12,23 @@ import {
 import { fetchFieldScheduleById, updateFieldScheduleStatus, fetchFieldSchedulesByField } from "../../../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
 
+/**
+ * Component hiển thị bảng danh sách gói đặt sân cố định của Owner
+ * 
+ * Chức năng:
+ * - Hiển thị danh sách gói đặt sân cố định (booking packages)
+ * - Xác nhận thanh toán gói
+ * - Hoàn thành gói (tự động khi hết hạn)
+ * - Xem chi tiết gói và danh sách buổi đặt (sessions)
+ * - Hủy buổi đặt trong gói
+ * 
+ * @param {Object} props - Props của component
+ * @param {Function} props.getStatusColor - Lấy màu theo trạng thái
+ * @param {Function} props.getStatusText - Lấy text theo trạng thái
+ * @param {Function} props.getPaymentStatusColor - Lấy màu theo trạng thái thanh toán
+ * @param {Function} props.getPaymentStatusText - Lấy text theo trạng thái thanh toán
+ * @param {number} props.ownerId - ID của owner (fallback nếu không có token)
+ */
 export default function OwnerPackagesTable({
   getStatusColor = () => "bg-gray-100 text-gray-800",
   getStatusText = (s) => s || "—",
@@ -35,6 +52,11 @@ export default function OwnerPackagesTable({
     return new Date(date).toLocaleDateString("vi-VN");
   };
 
+  /**
+   * Lấy icon tương ứng với trạng thái booking
+   * @param {string} status - Trạng thái (pending, confirmed, completed, cancelled)
+   * @returns {JSX.Element} Icon component
+   */
   const getStatusIcon = (status) => {
     switch (status) {
       case "pending":
@@ -49,7 +71,11 @@ export default function OwnerPackagesTable({
     }
   };
 
-  // Hàm dịch booking status sang tiếng Việt
+  /**
+   * Dịch booking status sang tiếng Việt
+   * @param {string} status - Trạng thái tiếng Anh
+   * @returns {string} Trạng thái tiếng Việt
+   */
   const getBookingStatusText = (status) => {
     const statusLower = (status || "").toLowerCase();
     if (statusLower.includes("pending")) return "Chờ xác nhận";
@@ -68,7 +94,11 @@ export default function OwnerPackagesTable({
     return "bg-gray-100 text-gray-800 border-gray-200";
   };
 
-  // Hàm dịch payment status sang tiếng Việt
+  /**
+   * Dịch payment status sang tiếng Việt
+   * @param {string} status - Trạng thái thanh toán tiếng Anh
+   * @returns {string} Trạng thái thanh toán tiếng Việt
+   */
   const getPaymentStatusTextVi = (status) => {
     const statusLower = (status || "").toLowerCase();
     if (statusLower.includes("paid")) return "Đã thanh toán";
@@ -102,6 +132,13 @@ export default function OwnerPackagesTable({
     }
   };
 
+  /**
+   * Tải danh sách gói đặt sân cố định từ API
+   * - Fetch danh sách packages
+   * - Fetch thông tin user cho mỗi package
+   * - Fetch sessions cho mỗi package
+   * - Tự động hoàn thành các gói đã hết hạn
+   */
   const loadBookingPackages = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -390,6 +427,13 @@ export default function OwnerPackagesTable({
     }
   }, [isSessionsModalOpen, selectedPackageForSessions]);
 
+  /**
+   * Xử lý xác nhận thanh toán gói đặt sân cố định
+   * - Hiển thị dialog xác nhận với thông tin gói
+   * - Gọi API xác nhận package
+   * - Cập nhật tất cả FieldSchedule của sessions thành "Booked"
+   * @param {number} pkgId - ID của booking package
+   */
   const handleConfirmPackage = async (pkgId) => {
     // Tìm package để lấy thông tin
     const pkg = bookingPackages.find(p => (p.bookingPackageId || p.id) === pkgId);

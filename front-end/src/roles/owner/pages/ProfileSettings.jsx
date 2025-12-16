@@ -94,6 +94,11 @@ export default function ProfileSettings({ isDemo = false }) {
           }
      };
 
+     /**
+      * Xử lý thay đổi input trong form profile
+      * @param {string} field - Tên field cần cập nhật
+      * @param {any} value - Giá trị mới
+      */
      const handleInputChange = (field, value) => {
           setFormData(prev => ({
                ...prev,
@@ -101,6 +106,12 @@ export default function ProfileSettings({ isDemo = false }) {
           }));
      };
 
+     /**
+      * Xử lý lưu thông tin profile
+      * - Validate token
+      * - Upload avatar mới (nếu có)
+      * - Gọi API cập nhật profile
+      */
      const handleSave = async () => {
           const token = localStorage.getItem("token");
           if (!token) {
@@ -182,12 +193,22 @@ export default function ProfileSettings({ isDemo = false }) {
           }
      };
 
+     /**
+      * Hủy bỏ thay đổi và reset form về dữ liệu gốc
+      */
      const handleCancel = () => {
           setFormData({ ...profileData });
           setAvatarFile(null);
           setIsEditing(false);
      };
 
+     /**
+      * Xử lý upload avatar mới
+      * - Validate file type (chỉ chấp nhận ảnh)
+      * - Validate file size (tối đa 10MB)
+      * - Tạo preview URL
+      * @param {Event} event - Event từ input file
+      */
      const handleAvatarUpload = (event) => {
           const file = event.target.files[0];
           if (!file) return;

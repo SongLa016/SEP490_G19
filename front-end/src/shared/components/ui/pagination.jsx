@@ -128,8 +128,6 @@ export function Pagination({
 
 /**
  * Custom hook for pagination logic
- * @param {Array} items - Array of items to paginate
- * @param {number} itemsPerPage - Number of items per page
  */
 export function usePagination(items = [], itemsPerPage = 10) {
      const [currentPage, setCurrentPage] = React.useState(1);

@@ -10,30 +10,25 @@ export default function UserProfile({ user }) {
      const [isLoading, setIsLoading] = useState(false);
      const [avatarFile, setAvatarFile] = useState(null); // Lưu file avatar để gửi khi save
      const [profileData, setProfileData] = useState({
-          // Basic user info from registration
           email: user?.email || "",
           fullName: user?.fullName || "",
           phone: user?.phone || "",
           avatar: user?.avatar || null,
           roleName: user?.roleName || "Player",
           emailVerified: user?.emailVerified || true, // Mặc định true vì đã qua OTP khi đăng ký
-
-          // Additional fields from UserProfiles table
           dateOfBirth: user?.dateOfBirth || "",
           gender: user?.gender || "",
           address: user?.address || "",
           preferredPositions: user?.preferredPositions || "",
           skillLevel: user?.skillLevel || "",
           bio: user?.bio || "",
-
-          // Account status
           status: user?.status || "Active",
           createdAt: user?.createdAt || new Date().toISOString()
      });
 
      const [formData, setFormData] = useState({ ...profileData });
 
-     // Load profile data on component mount
+     // Tải dữ liệu profile khi component mount
      useEffect(() => {
           // Kiểm tra token thay vì userId vì API lấy thông tin theo token
           const token = localStorage.getItem("token");
@@ -41,15 +36,12 @@ export default function UserProfile({ user }) {
                setIsLoading(true);
                loadProfileData();
           }
-          // Scroll to top on mount
           window.scrollTo({
                top: 0,
                behavior: 'smooth'
           });
-          // eslint-disable-next-line react-hooks/exhaustive-deps
      }, []);
 
-     // Scroll to top when entering edit mode
      useEffect(() => {
           if (isEditing) {
                window.scrollTo({
@@ -59,8 +51,8 @@ export default function UserProfile({ user }) {
           }
      }, [isEditing]);
 
+     //Tải dữ liệu profile từ API
      const loadProfileData = async () => {
-          // Kiểm tra token thay vì userId vì API lấy thông tin theo token
           const token = localStorage.getItem("token");
           if (!token) {
                console.warn('No token found, cannot load profile');
@@ -69,7 +61,6 @@ export default function UserProfile({ user }) {
 
           try {
                setIsLoading(true);
-               // Gọi API không cần userId, API sẽ lấy từ token
                const result = await profileService.getProfile();
                if (result.ok && result.profile) {
                     const profile = result.profile;
@@ -85,7 +76,6 @@ export default function UserProfile({ user }) {
                          preferredPositions: profile.preferredPositions || profile.PreferredPositions || "",
                          skillLevel: profile.skillLevel || profile.SkillLevel || "",
                          bio: profile.bio || profile.Bio || "",
-                         // Lấy ngày tạo tài khoản từ API (createdAt)
                          createdAt: profile.createdAt || profile.CreatedAt || user?.createdAt || new Date().toISOString(),
                     };
 
@@ -135,6 +125,7 @@ export default function UserProfile({ user }) {
 
      const genders = ["Nam", "Nữ", "Khác"];
 
+     // thay đổi input
      const handleInputChange = (field, value) => {
           setFormData(prev => ({
                ...prev,
@@ -142,8 +133,8 @@ export default function UserProfile({ user }) {
           }));
      };
 
+     // Luu thông tin
      const handleSave = async () => {
-          // Kiểm tra token thay vì userId
           const token = localStorage.getItem("token");
           if (!token) {
                Swal.fire({
@@ -164,7 +155,7 @@ export default function UserProfile({ user }) {
           setIsLoading(true);
 
           try {
-               // Prepare data theo JSON structure của API
+               // dữ liệu cần update
                const updateData = {
                     fullName: formData.fullName || "",
                     phone: formData.phone || "",
@@ -177,8 +168,6 @@ export default function UserProfile({ user }) {
                     skillLevel: formData.skillLevel || "",
                     bio: formData.bio || "",
                };
-
-               // Gọi API update, truyền file avatar nếu có
                const result = await profileService.updateProfile(null, updateData, avatarFile);
 
                if (!result.ok) {
@@ -192,9 +181,7 @@ export default function UserProfile({ user }) {
                     return;
                }
 
-               // Update avatar URL nếu có trong response
                let updatedFormData = { ...formData };
-               // API trả về avatarUrl trong response
                if (result.data?.avatarUrl) {
                     updatedFormData.avatar = result.data.avatarUrl;
                } else if (result.data?.avatar) {
@@ -203,22 +190,18 @@ export default function UserProfile({ user }) {
                     updatedFormData.avatar = result.data.data.avatarUrl;
                } else if (result.data?.data?.avatar) {
                     updatedFormData.avatar = result.data.data.avatar;
-               } else if (avatarFile) {
-                    // Nếu có file nhưng response không có URL, giữ preview tạm thời
-                    // (BE sẽ trả về URL trong lần load tiếp theo)
                }
 
-               // Update local state
+               // Cập nhật state và UI
                setProfileData(updatedFormData);
                setFormData(updatedFormData);
-               setAvatarFile(null); // Clear file sau khi save thành công
+               setAvatarFile(null);
                setIsEditing(false);
 
-               // Update user in localStorage
+               // Cap nhật localStorage
                const updatedUser = { ...user, ...updatedFormData };
                localStorage.setItem('user', JSON.stringify(updatedUser));
 
-               // Hiển thị thông báo thành công
                Swal.fire({
                     icon: 'success',
                     title: 'Thành công',
@@ -241,17 +224,17 @@ export default function UserProfile({ user }) {
           }
      };
 
+     // Hủy chỉnh sửa
      const handleCancel = () => {
           setFormData({ ...profileData });
-          setAvatarFile(null); // Clear file khi cancel
+          setAvatarFile(null);
           setIsEditing(false);
      };
 
+     // tải ảnh đại diện
      const handleAvatarUpload = (event) => {
           const file = event.target.files[0];
           if (!file) return;
-
-          // Validate file type
           if (!file.type.startsWith('image/')) {
                Swal.fire({
                     icon: 'error',
@@ -262,7 +245,7 @@ export default function UserProfile({ user }) {
                return;
           }
 
-          // Validate file size (max 10MB)
+          // Validate ảnh (max 10MB)
           const maxSize = 10 * 1024 * 1024; // 10MB
           if (file.size > maxSize) {
                Swal.fire({
@@ -277,12 +260,11 @@ export default function UserProfile({ user }) {
           // Lưu file để gửi khi save
           setAvatarFile(file);
 
-          // Show preview immediately
           const reader = new FileReader();
           reader.onload = (e) => {
                setFormData(prev => ({
                     ...prev,
-                    avatar: e.target.result // Temporary preview
+                    avatar: e.target.result
                }));
           };
           reader.readAsDataURL(file);
@@ -306,7 +288,6 @@ export default function UserProfile({ user }) {
           const day = String(date.getDate()).padStart(2, "0");
           const month = String(date.getMonth() + 1).padStart(2, "0");
           const year = date.getFullYear();
-
           // Định dạng dd-MM-yyyy
           return `${day}-${month}-${year}`;
      };

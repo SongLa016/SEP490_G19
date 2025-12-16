@@ -19,10 +19,20 @@ import { createPost } from "../../../../shared/services/posts";
 import FindMatch from "./components/FindMatch";
 import Swal from 'sweetalert2';
 
+/**
+ * Trang Cộng đồng của người chơi
+ * URL: /community
+ * 
+ * Chức năng:
+ * - Tab "Dành cho bạn": Hiển thị danh sách bài viết (ThreadsFeed)
+ * - Tab "Tìm đối thủ": Hiển thị danh sách yêu cầu tìm đối (FindMatch) - chỉ khi đã đăng nhập
+ * - Nút "Đăng" để tạo bài viết mới (NewThreadModal)
+ * - Card đăng nhập/đăng ký cho khách (góc phải dưới)
+ */
 export default function Community() {
      const locationRouter = useLocation();
      const { user, logout } = useAuth();
-     const [activeTab, setActiveTab] = useState("danh-cho-ban"); // danh-cho-ban | tim-doi-thu
+     const [activeTab, setActiveTab] = useState("danh-cho-ban"); // Tab hiện tại: danh-cho-ban | tim-doi-thu
      const [filterLocation] = useState("");
      const [filterDate] = useState("");
      const [matchRequests, setMatchRequests] = useState([]);
@@ -47,7 +57,14 @@ export default function Community() {
                displayName
           )}&background=0ea5e9&color=fff&size=100`;
 
-     // Function to handle post submission
+     /**
+      * Xử lý khi submit bài viết mới - Nút "Đăng" trong NewThreadModal
+      * Validate nội dung và gọi API tạo bài viết
+      * @param {string} title - Tiêu đề bài viết
+      * @param {string} content - Nội dung bài viết
+      * @param {Object} field - Sân được gắn thẻ (nếu có)
+      * @param {File} imageFile - File ảnh đính kèm (nếu có)
+      */
      const handlePostSubmit = async (title, content, field, imageFile) => {
           if (!user) {
                Swal.fire({

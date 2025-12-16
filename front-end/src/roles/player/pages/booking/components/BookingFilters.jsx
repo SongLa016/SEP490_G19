@@ -2,18 +2,29 @@ import React from "react";
 import { Search, X } from "lucide-react";
 import { Input, Button, Select, SelectTrigger, SelectContent, SelectItem, SelectValue, DatePicker } from "../../../../../shared/components/ui";
 
+/**
+ * Component bộ lọc cho danh sách booking
+ * Trang: Lịch sử đặt sân (BookingHistory)
+ * Vị trí: Phần đầu trang, trên danh sách booking
+ * 
+ * Chức năng:
+ * - Tìm kiếm theo mã booking, tên sân, địa chỉ
+ * - Lọc theo trạng thái (chờ xác nhận, đã xác nhận, hoàn tất, đã hủy, hết hạn)
+ * - Lọc theo khoảng ngày (từ ngày - đến ngày)
+ * - Sắp xếp theo mã booking hoặc giá
+ */
 export default function BookingFilters({
-     query,
-     setQuery,
-     statusFilter,
-     setStatusFilter,
-     dateFrom,
-     setDateFrom,
-     dateTo,
-     setDateTo,
-     sortBy,
-     setSortBy,
-     onReset
+     query,              // Từ khóa tìm kiếm
+     setQuery,           // Hàm cập nhật từ khóa tìm kiếm
+     statusFilter,       // Trạng thái đang lọc
+     setStatusFilter,    // Hàm cập nhật trạng thái lọc
+     dateFrom,           // Ngày bắt đầu lọc
+     setDateFrom,        // Hàm cập nhật ngày bắt đầu
+     dateTo,             // Ngày kết thúc lọc
+     setDateTo,          // Hàm cập nhật ngày kết thúc
+     sortBy,             // Kiểu sắp xếp hiện tại
+     setSortBy,          // Hàm cập nhật kiểu sắp xếp
+     onReset             // Hàm xử lý khi nhấn nút reset bộ lọc (nút X)
 }) {
      return (
           <>

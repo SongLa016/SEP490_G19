@@ -1,25 +1,35 @@
 import { MapPin, AlertTriangle, ShieldCheck } from "lucide-react";
 import { Button } from "../../../../../shared/components/ui";
 
+/**
+ * Component hiển thị bước thanh toán trong modal đặt sân
+ * Trang: Modal đặt sân (BookingModal)
+ * Vị trí: Bước 2 - Thanh toán (sau khi nhập thông tin liên hệ)
+ * 
+ * Chức năng:
+ * - Hiển thị mã QR thanh toán
+ * - Hiển thị thông tin tài khoản ngân hàng chủ sân
+ * - Hiển thị tóm tắt đặt sân và chi phí
+ * - Nút "Hoàn tất đặt sân" và "Hủy đặt sân"
+ */
 export default function PaymentStepSection({
-     bookingInfo,
-     ownerBankAccount,
-     bookingData,
-     isRecurring,
-     recurringWeeks,
-     selectedDays,
-     selectedSlotsByDay,
-     isProcessing,
-     formatPrice,
-     errors = {},
-     onConfirmPayment,
-     onCancelBooking = () => { },
-     isPaymentLocked = false,
-     lockCountdownSeconds = 0,
-     // Khoảng thời gian gói cố định (từ BookingModal truyền xuống)
-     startDate,
-     endDate,
-     fieldSchedules = []
+     bookingInfo,              // Thông tin booking đã tạo (bookingId, qrCodeUrl, qrExpiresAt)
+     ownerBankAccount,         // Thông tin tài khoản ngân hàng chủ sân
+     bookingData,              // Dữ liệu booking hiện tại
+     isRecurring,              // Có phải đặt sân cố định không
+     recurringWeeks,           // Số tuần đặt cố định
+     selectedDays,             // Các ngày trong tuần đã chọn
+     selectedSlotsByDay,       // Map dayOfWeek -> slotId đã chọn
+     isProcessing,             // Đang xử lý thanh toán
+     formatPrice,              // Hàm format giá tiền
+     errors = {},              // Lỗi validation
+     onConfirmPayment,         // Xử lý khi nhấn nút "Hoàn tất đặt sân"
+     onCancelBooking = () => { },  // Xử lý khi nhấn nút "Hủy đặt sân"
+     isPaymentLocked = false,  // QR đang hoạt động, không cho thoát
+     lockCountdownSeconds = 0, // Thời gian còn lại của QR
+     startDate,                // Ngày bắt đầu gói cố định
+     endDate,                  // Ngày kết thúc gói cố định
+     fieldSchedules = []       // Danh sách schedule của sân
 }) {
      const fallbackAccount = ownerBankAccount || {
           bankName: bookingData.bankName,
@@ -34,12 +44,23 @@ export default function PaymentStepSection({
      const rawDepositAmount = bookingData.depositAmount || bookingInfo?.depositAmount || 0;
      const depositAmount = isRecurringPackage ? 0 : rawDepositAmount;
      const depositAvailable = !isRecurringPackage && depositAmount > 0;
+     /**
+      * Format thời gian đếm ngược QR (mm:ss)
+      * @param {number} seconds - Số giây còn lại
+      * @returns {string} Chuỗi thời gian format "mm:ss"
+      */
      const formatCountdown = (seconds) => {
           const safeSeconds = Math.max(0, seconds || 0);
           const minutes = Math.floor(safeSeconds / 60);
           const secs = safeSeconds % 60;
           return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
      };
+
+     /**
+      * Format thời lượng đặt sân (VD: 1h30 phút)
+      * @param {number} hours - Số giờ
+      * @returns {string} Chuỗi thời lượng đã format
+      */
      const formatDurationLabel = (hours) => {
           if (hours == null) return "—";
           const numericHours = Number(hours);
@@ -54,7 +75,11 @@ export default function PaymentStepSection({
           if (minutes > 0) return `${minutes} phút`;
           return "—";
      };
-     // Tạo danh sách buổi định kỳ (local) từ startDate + endDate + selectedDays + selectedSlotsByDay
+     /**
+      * Tạo danh sách buổi định kỳ (local) từ startDate + endDate + selectedDays + selectedSlotsByDay
+      * CHỈ đếm những ngày thực sự có schedule trong fieldSchedules
+      * @returns {Array} Danh sách các buổi { date, dayOfWeek, slotId }
+      */
      const generateRecurringSessionsLocal = () => {
           if (!isRecurringPackage || !startDate || !endDate || !Array.isArray(selectedDays) || selectedDays.length === 0) {
                return [];
@@ -66,9 +91,39 @@ export default function PaymentStepSection({
                const end = new Date(endDate);
                end.setHours(23, 59, 59, 999);
 
+               // Tạo Set các ngày có schedule để lookup nhanh
+               const scheduleDatesSet = new Set();
+               if (Array.isArray(fieldSchedules)) {
+                    fieldSchedules.forEach(s => {
+                         const scheduleDate = s.date ?? s.Date ?? s.scheduleDate ?? s.ScheduleDate;
+                         if (scheduleDate) {
+                              try {
+                                   const date = typeof scheduleDate === 'string'
+                                        ? new Date(scheduleDate)
+                                        : (scheduleDate.year && scheduleDate.month && scheduleDate.day
+                                             ? new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day)
+                                             : new Date(scheduleDate));
+                                   if (!isNaN(date.getTime())) {
+                                        // Chỉ thêm nếu ngày nằm trong khoảng start-end
+                                        const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                                        if (dateOnly >= start && dateOnly <= end) {
+                                             const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                                             scheduleDatesSet.add(dateStr);
+                                        }
+                                   }
+                              } catch (e) {
+                                   // ignore
+                              }
+                         }
+                    });
+               }
+
                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                     const weekday = d.getDay(); // 0=CN..6=T7
-                    if (selectedDays.includes(weekday)) {
+                    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+                    // Chỉ thêm session nếu ngày đó có schedule VÀ thuộc ngày trong tuần đã chọn
+                    if (selectedDays.includes(weekday) && scheduleDatesSet.has(dateStr)) {
                          const selectedSlotId = selectedSlotsByDay?.[weekday];
                          if (selectedSlotId) {
                               sessions.push({
@@ -87,12 +142,18 @@ export default function PaymentStepSection({
 
      const recurringSessions = generateRecurringSessionsLocal();
 
+     console.log("📊 [PAYMENT SECTION] recurringSessions count:", recurringSessions.length, "bookingData.totalSessions:", bookingData.totalSessions);
+
      // Số buổi thực tế: với gói cố định ưu tiên theo sessions local, fallback bookingData
      const totalSessions = isRecurringPackage
           ? (recurringSessions.length || bookingData.totalSessions || 0)
           : (bookingData.totalSessions || 1);
 
-     // Lấy giá theo slotId từ TimeSlots (ưu tiên) hoặc schedule, giống BookingModal/PriceSummarySection
+     /**
+      * Lấy giá theo slotId từ TimeSlots (ưu tiên) hoặc schedule
+      * @param {string|number} slotId - ID của slot cần lấy giá
+      * @returns {number} Giá của slot
+      */
      const getSlotPrice = (slotId) => {
           if (!slotId) return bookingData.price || 0;
 
@@ -129,7 +190,10 @@ export default function PaymentStepSection({
           return bookingData.price || 0;
      };
 
-     // Tính min/max giá từ các slot đã chọn để hiển thị khoảng giá (250k - 300k)
+     /**
+      * Tính min/max giá từ các slot đã chọn để hiển thị khoảng giá (VD: 250k - 300k)
+      * @returns {Object} { minPrice, maxPrice, hasMultiplePrices }
+      */
      const getRecurringPriceStats = () => {
           if (!isRecurringPackage || !selectedSlotsByDay || Object.keys(selectedSlotsByDay).length === 0) {
                const base = bookingData.price || 0;

@@ -6,7 +6,8 @@ import {
      cancelBooking as cancelBookingAPI,
      fetchBookingPackagesByPlayer,
      fetchBookingPackagesByPlayerToken,
-     fetchBookingPackageSessionsByPlayerToken
+     fetchBookingPackageSessionsByPlayerToken,
+     updateBookingStatus
 } from "../../../../shared/services/bookings";
 import {
      fetchMatchRequestById,
@@ -1755,8 +1756,6 @@ export default function BookingHistory({ user }) {
                     cancelBooking.bookingStatus === "Pending" ||
                     cancelBooking.bookingStatus === "pending";
 
-               // For all bookings (pending or confirmed), use the same API
-               // Backend will automatically determine if it's player or owner based on token
                const bookingId = cancelBooking.bookingId || cancelBooking.id;
 
                // For confirmed bookings, reason is required
@@ -1785,14 +1784,32 @@ export default function BookingHistory({ user }) {
                console.log("🔍 [CANCEL BOOKING] Booking data:", {
                     bookingId,
                     scheduleId,
+                    isPending,
                     cancelBookingKeys: Object.keys(cancelBooking || {}),
                     apiSourceKeys: Object.keys(cancelBooking?.apiSource || {}),
                     rawScheduleId: cancelBooking?.scheduleId,
                     apiSourceScheduleId: cancelBooking?.apiSource?.scheduleId
                });
 
-               // Call cancellation API (backend will handle based on token)
-               const result = await cancelBookingAPI(bookingId, reason || "Hủy booking chưa được xác nhận");
+               let result;
+
+               // Thử cập nhật trạng thái trực tiếp trước
+               if (isPending) {
+                    console.log("📝 [CANCEL BOOKING] Pending booking - trying to update status to Canceled directly");
+                    result = await updateBookingStatus(bookingId, "Canceled");
+
+                    // Nếu API updateBookingStatus không hoạt động, fallback sang cancelBookingAPI
+                    if (!result.success) {
+                         console.log("⚠️ [CANCEL BOOKING] updateBookingStatus failed, falling back to cancelBookingAPI");
+                         result = await cancelBookingAPI(bookingId, reason || "Hủy booking chưa được xác nhận");
+                    } else {
+                         result.message = "Đã hủy booking thành công!";
+                    }
+               } else {
+                    // Booking confirmed: Gửi yêu cầu hủy qua API
+                    console.log("📝 [CANCEL BOOKING] Confirmed booking - sending cancellation request");
+                    result = await cancelBookingAPI(bookingId, reason || "Hủy booking");
+               }
 
                if (result.success) {
                     // Thử lấy scheduleId từ response của cancel API nếu có

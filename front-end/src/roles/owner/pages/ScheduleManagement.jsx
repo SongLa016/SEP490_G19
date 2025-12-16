@@ -182,7 +182,13 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      }, []);
 
-     // Handle Time Slot Modal
+     /**
+      * Mở modal thêm/sửa Time Slot
+      * - Nếu có slot: Chế độ sửa, điền dữ liệu slot vào form
+      * - Nếu không có slot: Chế độ tạo mới
+      * @param {Object|null} slot - Slot cần sửa (null = tạo mới)
+      * @param {number|null} fieldId - ID sân mặc định cho slot mới
+      */
      const handleOpenSlotModal = (slot = null, fieldId = null) => {
           if (slot) {
                setEditingSlot(slot);
@@ -219,7 +225,12 @@ export default function ScheduleManagement({ isDemo = false }) {
           setShowSlotModal(true);
      };
 
-     // Handle quick slot selection
+     /**
+      * Xử lý chọn/bỏ chọn slot nhanh từ template
+      * - Toggle selection của slot template
+      * - Kiểm tra slot đã tồn tại cho sân chưa
+      * @param {Object} template - Template slot { name, start, end }
+      */
      const handleQuickSlotSelect = (template) => {
           const slotKey = `${template.start}-${template.end}`;
 
@@ -241,6 +252,9 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      };
 
+     /**
+      * Đóng modal Time Slot và reset tất cả state liên quan
+      */
      const handleCloseSlotModal = () => {
           setShowSlotModal(false);
           setEditingSlot(null);
@@ -256,6 +270,12 @@ export default function ScheduleManagement({ isDemo = false }) {
           setModalTimeSlots([]); // Clear modal slots
      };
 
+     /**
+      * Validate dữ liệu form Time Slot
+      * - Kiểm tra fieldId, slotName, startTime, endTime, price
+      * - Kiểm tra logic thời gian (endTime > startTime)
+      * @returns {boolean} - true nếu form hợp lệ
+      */
      const validateSlotForm = () => {
           const errors = {};
 
@@ -301,6 +321,14 @@ export default function ScheduleManagement({ isDemo = false }) {
           return Object.keys(errors).length === 0;
      };
 
+     /**
+      * Xử lý submit form tạo/cập nhật Time Slot
+      * - Hỗ trợ tạo hàng loạt từ quick slots
+      * - Validate quyền sở hữu sân
+      * - Kiểm tra sân không đang bảo trì
+      * - Gọi API tạo/cập nhật slot
+      * @param {Event} e - Event từ form submit
+      */
      const handleSubmitSlot = async (e) => {
           e.preventDefault();
 
@@ -476,6 +504,13 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      };
 
+     /**
+      * Xử lý xóa Time Slot
+      * - Hiển thị dialog xác nhận
+      * - Gọi API xóa slot
+      * - Reload danh sách slots
+      * @param {number} slotId - ID của slot cần xóa
+      */
      const handleDeleteSlot = async (slotId) => {
           try {
                const confirm = await Swal.fire({
@@ -707,23 +742,10 @@ export default function ScheduleManagement({ isDemo = false }) {
      }, [selectedComplex, fields, selectedFieldForSchedule]);
 
      // Keep ref in sync and re-apply package sessions to schedules when data changes (avoid loops)
+     // Keep packageSessionsRef in sync with packageSessions state
      useEffect(() => {
           packageSessionsRef.current = packageSessions;
-          if (!packageSessions.length) return;
-          setFieldSchedules((prev) => markSchedulesWithPackageSessions(prev, packageSessions));
-     }, [packageSessions, markSchedulesWithPackageSessions, packageSessionsRef]);
-
-     // When schedules change after packages are loaded, re-apply marking once
-     useEffect(() => {
-          if (!packageSessionsRef.current.length || !fieldSchedules.length) return;
-          setFieldSchedules((prev) => {
-               const updated = markSchedulesWithPackageSessions(prev, packageSessionsRef.current);
-               const changed =
-                    updated.length !== prev.length ||
-                    updated.some((item, idx) => item?.status !== prev[idx]?.status);
-               return changed ? updated : prev;
-          });
-     }, [fieldSchedules, markSchedulesWithPackageSessions, packageSessionsRef]);
+     }, [packageSessions, packageSessionsRef]);
 
 
      // Load schedules for table based on selected field
@@ -786,6 +808,18 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      }, [currentUserId, loadBookings, loadPackageSessions, loadBookingPackages]);
 
+     // Refresh data when window gains focus (user returns to tab)
+     useEffect(() => {
+          const handleFocus = () => {
+               if (currentUserId) {
+                    loadPackageSessions();
+                    loadSchedulesForTable();
+               }
+          };
+          window.addEventListener('focus', handleFocus);
+          return () => window.removeEventListener('focus', handleFocus);
+     }, [currentUserId, loadPackageSessions, loadSchedulesForTable]);
+
      // Load time slots và schedules khi thay đổi sân/khu hoặc filter
      useEffect(() => {
           if (selectedComplex && fields.length > 0) {
@@ -795,9 +829,15 @@ export default function ScheduleManagement({ isDemo = false }) {
      }, [selectedComplex, fields, selectedFieldForSchedule, loadTimeSlotsForTable, loadSchedulesForTable]);
 
      // Load FieldSchedules
-     const loadFieldSchedules = useCallback(async () => {
+     const loadFieldSchedules = useCallback(async (refreshPackageSessions = false) => {
           try {
                setLoadingSchedules(true);
+
+               // Optionally refresh package sessions first to get latest data
+               if (refreshPackageSessions) {
+                    await loadPackageSessions();
+               }
+
                let result;
 
                // Nếu có filter field, lấy theo field
@@ -832,7 +872,15 @@ export default function ScheduleManagement({ isDemo = false }) {
           } finally {
                setLoadingSchedules(false);
           }
-     }, [scheduleFilterField, selectedComplex, processExpiredSchedules, markSchedulesWithPackageSessions, packageSessionsRef]);
+     }, [scheduleFilterField, selectedComplex, processExpiredSchedules, markSchedulesWithPackageSessions, packageSessionsRef, loadPackageSessions]);
+
+     /**
+      * Làm mới toàn bộ dữ liệu (package sessions và schedules)
+      * Được gọi khi user click nút refresh
+      */
+     const handleFullRefresh = useCallback(async () => {
+          await loadFieldSchedules(true);
+     }, [loadFieldSchedules]);
 
      useEffect(() => {
           if (activeTab === 'manage-schedules') {
@@ -866,7 +914,13 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      }, [activeTab, selectedComplex, fields]);
 
-     // Handle update schedule status
+     /**
+      * Cập nhật trạng thái của lịch trình (FieldSchedule)
+      * - Gọi API cập nhật status
+      * - Reload danh sách schedules
+      * @param {number} scheduleId - ID của schedule cần cập nhật
+      * @param {string} newStatus - Trạng thái mới (Available, Booked, Maintenance...)
+      */
      const handleUpdateScheduleStatus = async (scheduleId, newStatus) => {
           try {
                const result = await updateFieldScheduleStatus(scheduleId, newStatus);
@@ -914,6 +968,11 @@ export default function ScheduleManagement({ isDemo = false }) {
           setShowScheduleModal(true);
      }, []);
 
+     /**
+      * Mở modal thêm lịch trình mới
+      * - Tự động chọn sân đang filter (nếu không đang bảo trì)
+      * - Reset form về giá trị mặc định
+      */
      const handleOpenScheduleModal = useCallback(() => {
           const defaultFieldId = scheduleFilterField !== 'all' && !isFieldMaintenance(Number(scheduleFilterField))
                ? scheduleFilterField
@@ -930,6 +989,14 @@ export default function ScheduleManagement({ isDemo = false }) {
           });
      }, [scheduleFilterField, isFieldMaintenance, openScheduleModal]);
 
+     /**
+      * Tạo nhanh lịch trình từ calendar grid
+      * - Kiểm tra sân không đang bảo trì
+      * - Tạo schedule ngay lập tức không cần mở modal
+      * @param {number} fieldId - ID của sân
+      * @param {number} slotId - ID của time slot
+      * @param {Date|string} date - Ngày cần tạo schedule
+      */
      const handleQuickScheduleRequest = useCallback(async (fieldId, slotId, date) => {
           if (isFieldMaintenance(fieldId)) {
                Swal.fire({
@@ -1011,7 +1078,9 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      }, [isFieldMaintenance, fields, timeSlots, loadFieldSchedules]);
 
-     // Handle close schedule modal
+     /**
+      * Đóng modal lịch trình và reset form
+      */
      const handleCloseScheduleModal = () => {
           setShowScheduleModal(false);
           setScheduleFormData({
@@ -1027,7 +1096,14 @@ export default function ScheduleManagement({ isDemo = false }) {
           setScheduleFormErrors({});
      };
 
-     // Handle submit schedule
+     /**
+      * Xử lý submit form tạo lịch trình
+      * - Hỗ trợ tạo đơn lẻ (single), theo tháng (month), theo quý (quarter)
+      * - Validate dữ liệu form
+      * - Kiểm tra sân không đang bảo trì
+      * - Tạo hàng loạt schedules cho các ngày trong khoảng thời gian
+      * @param {Event} e - Event từ form submit
+      */
      const handleSubmitSchedule = async (e) => {
           e.preventDefault();
 
@@ -1198,7 +1274,14 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      };
 
-     // Handle delete schedule
+     /**
+      * Xử lý xóa lịch trình (FieldSchedule)
+      * - Hiển thị dialog xác nhận với thông tin schedule
+      * - Kiểm tra nếu có booking liên quan thì không cho xóa
+      * - Gọi API xóa schedule
+      * @param {number} scheduleId - ID của schedule cần xóa
+      * @param {string} scheduleInfo - Thông tin hiển thị trong dialog
+      */
      const handleDeleteSchedule = async (scheduleId, scheduleInfo) => {
           const result = await Swal.fire({
                title: 'Xác nhận xóa',
@@ -1342,8 +1425,13 @@ export default function ScheduleManagement({ isDemo = false }) {
 
           const effectivePackageSessions = hydratePackageSessionsWithSchedules(packageSessionsRef.current || [], fieldSchedules);
 
-          // Ensure package sessions without schedules still appear as booked
+          // Ensure package sessions without schedules still appear as booked (exclude cancelled sessions)
           const packageSessionsForSlot = effectivePackageSessions.filter(ps => {
+               // Check if session is cancelled
+               const sessionStatus = (ps.sessionStatus || ps.status || '').toLowerCase();
+               const isCancelled = sessionStatus.includes('cancel');
+               if (isCancelled) return false;
+
                const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
                const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
                const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
@@ -1414,7 +1502,12 @@ export default function ScheduleManagement({ isDemo = false }) {
           }
      }, [selectedDate, calendarMonth]);
 
-     // Handle complex change
+     /**
+      * Xử lý thay đổi khu sân được chọn
+      * - Cập nhật khu sân hiện tại
+      * - Load danh sách sân nhỏ của khu sân mới
+      * @param {Object} complex - Khu sân được chọn
+      */
      const handleComplexChange = (complex) => {
           setSelectedComplex(complex);
           setFields(complex.fields || []);
@@ -1452,17 +1545,22 @@ export default function ScheduleManagement({ isDemo = false }) {
                return true;
           }
 
-          // Check for package session
+          // Check for package session (exclude cancelled sessions)
           const packageSession = effectivePackageSessions.find(ps => {
                const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
                const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
                const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
+               // Check if session is cancelled
+               const sessionStatus = (ps.sessionStatus || ps.status || '').toLowerCase();
+               const isCancelled = sessionStatus.includes('cancel');
+               if (isCancelled) return false;
+
                return Number(psFieldId) === Number(fieldId) &&
                     Number(psSlotId) === Number(slotId) &&
                     psDateStr === dateStr;
           });
 
-          // If there's a package session, consider it booked
+          // If there's an active (non-cancelled) package session, consider it booked
           if (packageSession) {
                return true;
           }
@@ -1521,22 +1619,30 @@ export default function ScheduleManagement({ isDemo = false }) {
                     };
                }
 
-               // Check for package session
+               // Check for package session (exclude cancelled sessions, must match date)
                const effectivePackageSessions = hydratePackageSessionsWithSchedules(packageSessionsRef.current || packageSessions, fieldSchedules);
                const packageSession = effectivePackageSessions.find(ps => {
+                    // Check if session is cancelled
+                    const sessionStatus = (ps.sessionStatus || ps.status || '').toLowerCase();
+                    const isCancelled = sessionStatus.includes('cancel');
+                    if (isCancelled) return false;
+
+                    // MUST check date first (critical for recurring packages with same scheduleId)
+                    const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
+                    const scheduleDateStr = normalizeDateString(schedule.date);
+                    if (psDateStr !== scheduleDateStr) return false;
+
+                    // Then match by scheduleId or field/slot
                     const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
                     if (psScheduleId && Number(psScheduleId) === Number(scheduleId)) {
                          return true;
                     }
                     const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
                     const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
-                    const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
                     const scheduleFieldId = schedule.fieldId ?? schedule.FieldId;
                     const scheduleSlotId = schedule.slotId ?? schedule.SlotId ?? schedule.SlotID;
-                    const scheduleDateStr = normalizeDateString(schedule.date);
                     return Number(psFieldId) === Number(scheduleFieldId) &&
-                         Number(psSlotId) === Number(scheduleSlotId) &&
-                         psDateStr === scheduleDateStr;
+                         Number(psSlotId) === Number(scheduleSlotId);
                });
 
                if (packageSession) {
@@ -1585,8 +1691,13 @@ export default function ScheduleManagement({ isDemo = false }) {
                };
           }
 
-          // Fallback: try to find package session by fieldId, slotId, and date directly
+          // Fallback: try to find package session by fieldId, slotId, and date directly (exclude cancelled)
           const directPackageSession = packageSessions.find(ps => {
+               // Check if session is cancelled
+               const sessionStatus = (ps.sessionStatus || ps.status || '').toLowerCase();
+               const isCancelled = sessionStatus.includes('cancel');
+               if (isCancelled) return false;
+
                const psFieldId = ps.fieldId || ps.fieldID || ps.FieldID;
                const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
                const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
@@ -1879,7 +1990,7 @@ export default function ScheduleManagement({ isDemo = false }) {
                          loadingSchedules={loadingSchedules}
                          fieldSchedules={fieldSchedules}
                          onAddSchedule={handleOpenScheduleModal}
-                         onRefresh={loadFieldSchedules}
+                         onRefresh={handleFullRefresh}
                          onUpdateStatus={handleUpdateScheduleStatus}
                          onDeleteSchedule={handleDeleteSchedule}
                          getBookingInfo={getBookingInfo}

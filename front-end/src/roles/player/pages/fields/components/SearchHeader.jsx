@@ -1,6 +1,6 @@
 import { Button } from "../../../../../shared/components/ui";
 
-export default function SearchHeader({ entityTab, setEntityTab, resultCount, user }) {
+export default function SearchHeader({ entityTab, setEntityTab, resultCount }) {
      return (
           <>
                <div className="pt-4">

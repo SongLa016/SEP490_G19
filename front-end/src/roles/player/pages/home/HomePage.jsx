@@ -160,10 +160,6 @@ export default function HomePage({ user }) {
      // ============================================
 
      // detailComponents: Mảng chứa các components sẽ được scroll ngang qua
-     // Mỗi component có:
-     //   - key: Unique identifier
-     //   - element: JSX element của component
-     // Thay đổi: Thêm/bớt components vào mảng này
      // Các components này sẽ được hiển thị tuần tự khi scroll
      const detailComponents = [
           { key: "overview-quick", element: <QuickBookingSection user={user} /> },
@@ -768,19 +764,19 @@ export default function HomePage({ user }) {
           }
      ];
 
+     // Xử lý tìm kiếm
      const handleSearch = () => {
           try {
                const params = new URLSearchParams();
                const q = (searchQuery || "").trim();
                if (q) params.set("searchQuery", q);
-               // map selectedLocation to underlying query value if available
+               // Tìm kiếm theo location 
                const locationFilter = selectedLocation
                     ? (locationOptions.find((opt) => opt.value === selectedLocation)?.query || selectedLocation)
                     : "";
                if (locationFilter) params.set("selectedLocation", locationFilter);
                const normalizedPrice = selectedPrice && selectedPrice !== "all" ? selectedPrice : "";
                if (normalizedPrice) params.set("selectedPrice", normalizedPrice);
-               // default sortBy preserved
                params.set("sortBy", "relevance");
                const qs = params.toString();
                navigate(qs ? `/search?${qs}` : "/search");

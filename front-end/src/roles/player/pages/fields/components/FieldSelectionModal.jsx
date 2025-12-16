@@ -12,8 +12,6 @@ const FieldSelectionModal = ({
      const [searchField, setSearchField] = useState("");
      const [fields, setFields] = useState([]);
      const [loading, setLoading] = useState(false);
-     const [activeFieldTab, setActiveFieldTab] = useState("all");
-     const [activeTypeTab, setActiveTypeTab] = useState("all");
 
      // Fetch fields from service
      useEffect(() => {
@@ -39,57 +37,22 @@ const FieldSelectionModal = ({
           const matchesSearch = field.name.toLowerCase().includes(searchField.toLowerCase()) ||
                field.complexName.toLowerCase().includes(searchField.toLowerCase()) ||
                field.address.toLowerCase().includes(searchField.toLowerCase());
-
-          // Filter by area
-          let matchesArea = true;
-          if (activeFieldTab !== "all") {
-               const address = field.address.toLowerCase();
-               if (activeFieldTab === "hoan-kiem" && !address.includes("hoàn kiếm")) matchesArea = false;
-               if (activeFieldTab === "ba-dinh" && !address.includes("ba đình")) matchesArea = false;
-               if (activeFieldTab === "dong-da" && !address.includes("đống đa")) matchesArea = false;
-               if (activeFieldTab === "cau-giay" && !address.includes("cầu giấy")) matchesArea = false;
-               if (activeFieldTab === "hai-ba-trung" && !address.includes("hai bà trưng")) matchesArea = false;
-          }
-
-          // Filter by type
-          let matchesType = true;
-          if (activeTypeTab !== "all") {
-               if (activeTypeTab === "5vs5" && field.typeName !== "5vs5") matchesType = false;
-               if (activeTypeTab === "7vs7" && field.typeName !== "7vs7") matchesType = false;
-               if (activeTypeTab === "11vs11" && field.typeName !== "11vs11") matchesType = false;
-          }
-
-          return matchesSearch && matchesArea && matchesType;
+          return matchesSearch;
      });
 
-     // Count fields by area for tab badges
-     const getFieldCountByArea = (area) => {
-          if (area === "all") return fields.length;
-
-          const address = area.toLowerCase();
-          return fields.filter(field => {
-               const fieldAddress = field.address.toLowerCase();
-               if (address === "hoan-kiem" && fieldAddress.includes("hoàn kiếm")) return true;
-               if (address === "ba-dinh" && fieldAddress.includes("ba đình")) return true;
-               if (address === "dong-da" && fieldAddress.includes("đống đa")) return true;
-               if (address === "cau-giay" && fieldAddress.includes("cầu giấy")) return true;
-               if (address === "hai-ba-trung" && fieldAddress.includes("hai bà trưng")) return true;
-               return false;
-          }).length;
-     };
-
-     // Count fields by type for tab badges
-     const getFieldCountByType = (type) => {
-          if (type === "all") return fields.length;
-          return fields.filter(field => field.typeName === type).length;
-     };
-
+     /**
+      * Xử lý khi chọn sân - Nút "Chọn" bên cạnh mỗi sân
+      * @param {Object} field - Thông tin sân được chọn
+      */
      const handleFieldSelect = (field) => {
           onFieldSelect(field);
           onClose();
           setSearchField("");
      };
 
+     /**
+      * Xử lý khi đóng modal - Nút X hoặc click outside
+      */
      const handleClose = () => {
           onClose();
           setSearchField("");
@@ -169,24 +132,7 @@ const FieldSelectionModal = ({
                                         </div>
                                    ))}
 
-                                   {filteredFields.length === 0 && !loading && (
-                                        <div className="text-center py-8 text-gray-500">
-                                             <MapPin className="w-12 h-12 mx-auto mb-2 text-red-300" />
-                                             <p className="text-red-500 font-semibold">
-                                                  {activeFieldTab === "all" && activeTypeTab === "all" ? "Không tìm thấy sân bóng nào" :
-                                                       `Không có sân ${activeTypeTab !== "all" ? activeTypeTab : ""} ${activeFieldTab !== "all" ? `tại ${activeFieldTab === "hoan-kiem" ? "Hoàn Kiếm" :
-                                                            activeFieldTab === "ba-dinh" ? "Ba Đình" :
-                                                                 activeFieldTab === "dong-da" ? "Đống Đa" :
-                                                                      activeFieldTab === "cau-giay" ? "Cầu Giấy" :
-                                                                           activeFieldTab === "hai-ba-trung" ? "Hai Bà Trưng" : "khu vực này"}` : ""}`}
-                                             </p>
-                                             {searchField && (
-                                                  <p className="text-gray-400 text-sm mt-2">
-                                                       Thử tìm kiếm với từ khóa khác hoặc chọn tab khác
-                                                  </p>
-                                             )}
-                                        </div>
-                                   )}
+
                               </>
                          )}
                     </div>

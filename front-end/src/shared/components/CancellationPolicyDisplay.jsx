@@ -1,40 +1,20 @@
-import React from "react";
-import { Card, Badge } from "../components/ui/index";
+import { Card } from "../components/ui/index";
 import {
      Shield,
      Clock,
-     Percent,
      AlertTriangle,
-     CheckCircle,
-     Info
+     CheckCircle
 } from "lucide-react";
+import { getCancellationPolicyRanges } from "../utils/cancellationCalculator";
 
-export default function CancellationPolicyDisplay({ policy, className = "" }) {
-     if (!policy) {
-          return (
-               <Card className={`p-4 bg-gradient-to-br from-gray-50 to-teal-50/30 border border-teal-200/50 rounded-2xl ${className}`}>
-                    <div className="flex items-center gap-2 text-teal-600">
-                         <Info className="w-5 h-5" />
-                         <span className="text-sm font-medium">Chưa có thông tin chính sách hủy</span>
-                    </div>
-               </Card>
-          );
-     }
-
-     const getPolicyStatus = () => {
-          if (!policy.isActive) {
-               return { text: "Tạm dừng", color: "bg-red-100 text-red-800" };
-          }
-          return { text: "Hoạt động", color: "bg-green-100 text-green-800" };
-     };
-
-     const status = getPolicyStatus();
+export default function CancellationPolicyDisplay({ className = "" }) {
+     const policyRanges = getCancellationPolicyRanges();
 
      return (
           <Card className={`p-4 bg-gradient-to-br from-orange-50 via-amber-50/50 to-orange-50 border border-orange-200/50 rounded-2xl shadow-md hover:shadow-lg transition-shadow ${className}`}>
-               <div className="space-y-4">
+               <div className="space-y-3">
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-2">
                          <div className="flex items-center gap-2">
                               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-md">
                                    <Shield className="w-5 h-5 text-white" />
@@ -44,48 +24,66 @@ export default function CancellationPolicyDisplay({ policy, className = "" }) {
                                    <div className="h-1 w-32 bg-gradient-to-r from-orange-400 via-amber-400 to-orange-400 rounded-full mt-1" />
                               </div>
                          </div>
-
-                         <Badge className={status.color}>
-                              {status.text}
-                         </Badge>
+                         <div className="flex items-center gap-1">
+                              <CheckCircle className="w-4 h-4 text-green-500" />
+                              <span className="text-sm text-green-600 font-medium">Hoạt động</span>
+                         </div>
                     </div>
 
                     {/* Policy Name */}
                     <div className="bg-white/60 p-3 rounded-xl border border-orange-200/50">
-                         <h4 className="font-semibold text-orange-900 mb-1">{policy.name}</h4>
-                         {policy.description && (
-                              <p className="text-sm text-orange-700 leading-relaxed">{policy.description}</p>
-                         )}
+                         <h4 className="font-semibold text-orange-900 mb-1">Chính sách hủy cho các sân nhỏ</h4>
+                         <p className="text-sm text-orange-700 leading-relaxed">
+                              Mức hoàn cọc và mức phạt sẽ được tính theo các mốc thời gian sau khi chủ sân xác nhận đặt sân.
+                         </p>
                     </div>
 
-                    {/* Policy Details */}
-                    <div className="grid grid-cols-2 gap-3">
-                         <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-emerald-50/60 to-green-50/60 border border-emerald-200/50">
-                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center shadow-sm">
-                                   <Clock className="w-4 h-4 text-white" />
-                              </div>
-                              <div>
-                                   <div className="text-sm font-semibold text-emerald-900">
-                                        Hủy miễn phí
-                                   </div>
-                                   <div className="text-xs text-emerald-700 font-medium">
-                                        Trước {policy.freeCancellationHours}h
-                                   </div>
-                              </div>
+                    {/* Cancellation Policy Table */}
+                    <div className="space-y-2">
+                         <div className="flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-orange-600" />
+                              <span className="text-sm font-semibold text-orange-900">Bảng chính sách hủy</span>
                          </div>
-
-                         <div className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-blue-50/60 to-indigo-50/60 border border-blue-200/50">
-                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center shadow-sm">
-                                   <Percent className="w-4 h-4 text-white" />
-                              </div>
-                              <div>
-                                   <div className="text-sm font-semibold text-blue-900">
-                                        Phí hủy
-                                   </div>
-                                   <div className="text-xs text-blue-700 font-medium">
-                                        {policy.cancellationFeePercentage}% giá trị
-                                   </div>
-                              </div>
+                         <div className="border-2 border-orange-200 rounded-xl overflow-hidden">
+                              <table className="w-full">
+                                   <thead>
+                                        <tr className="bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                                             <th className="px-4 py-3 text-left text-xs font-bold">Mốc thời gian sau Confirm</th>
+                                             <th className="px-4 py-3 text-center text-xs font-bold">Mức hoàn cọc</th>
+                                             <th className="px-4 py-3 text-center text-xs font-bold">Mức phạt</th>
+                                        </tr>
+                                   </thead>
+                                   <tbody>
+                                        {policyRanges.map((range, index) => (
+                                             <tr
+                                                  key={index}
+                                                  className={`border-b border-orange-100 ${index % 2 === 0 ? "bg-white" : "bg-orange-50/30"}`}
+                                             >
+                                                  <td className="px-4 py-2.5">
+                                                       <span className="text-xs font-medium text-gray-700">
+                                                            {range.label}
+                                                       </span>
+                                                  </td>
+                                                  <td className="px-4 py-2.5 text-center">
+                                                       <span className={`text-xs font-semibold ${range.refundRate === 100 ? "text-green-600" :
+                                                            range.refundRate === 0 ? "text-red-600" :
+                                                                 "text-blue-600"
+                                                            }`}>
+                                                            {range.refundRate}% hoàn
+                                                       </span>
+                                                  </td>
+                                                  <td className="px-4 py-2.5 text-center">
+                                                       <span className={`text-xs font-semibold ${range.penaltyRate === 0 ? "text-green-600" :
+                                                            range.penaltyRate === 100 ? "text-red-600" :
+                                                                 "text-blue-600"
+                                                            }`}>
+                                                            {range.penaltyRate}% phạt
+                                                       </span>
+                                                  </td>
+                                             </tr>
+                                        ))}
+                                   </tbody>
+                              </table>
                          </div>
                     </div>
 
@@ -99,15 +97,15 @@ export default function CancellationPolicyDisplay({ policy, className = "" }) {
                               <ul className="text-xs space-y-1.5">
                                    <li className="flex items-start gap-2">
                                         <span className="text-amber-600 font-bold">•</span>
-                                        <span>Hủy trước {policy.freeCancellationHours} giờ: Hoàn tiền 100%</span>
+                                        <span>Thời gian tính từ lúc Confirm đến giờ bắt đầu sử dụng</span>
                                    </li>
                                    <li className="flex items-start gap-2">
                                         <span className="text-amber-600 font-bold">•</span>
-                                        <span>Hủy sau {policy.freeCancellationHours} giờ: Phí hủy {policy.cancellationFeePercentage}%</span>
+                                        <span>Hủy càng sớm càng được hoàn nhiều tiền cọc</span>
                                    </li>
                                    <li className="flex items-start gap-2">
                                         <span className="text-amber-600 font-bold">•</span>
-                                        <span>Thời gian tính từ lúc đặt sân đến giờ bắt đầu sử dụng</span>
+                                        <span>Hủy sau 5 giờ sẽ không được hoàn tiền cọc</span>
                                    </li>
                               </ul>
                          </div>

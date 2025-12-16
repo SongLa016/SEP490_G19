@@ -1,22 +1,34 @@
 import { useMemo } from "react";
-import { Repeat, CalendarDays, Clock, DollarSign } from "lucide-react";
+import { Repeat, CalendarDays, Clock, DollarSign, AlertTriangle } from "lucide-react";
 import { Button, DatePicker } from "../../../../../shared/components/ui";
 
+/**
+ * Component cấu hình đặt sân cố định hàng tuần
+ * Trang: Modal đặt sân (BookingModal)
+ * Vị trí: Phần cấu hình đặt cố định trong modal
+ * 
+ * Chức năng:
+ * - Toggle bật/tắt chế độ đặt cố định
+ * - Chọn khoảng thời gian (ngày bắt đầu - ngày kết thúc)
+ * - Chọn các ngày trong tuần muốn đặt
+ * - Chọn khung giờ cho từng ngày đã chọn
+ * - Hiển thị tổng số buổi và chi phí dự kiến
+ */
 export default function RecurringBookingSection({
-     isRecurring,
-     setIsRecurring,
-     startDate,
-     setStartDate,
-     endDate,
-     setEndDate,
-     selectedDays,
-     handleDayToggle,
-     selectedSlotsByDay, // { dayOfWeek: slotId } - slot đã chọn cho mỗi thứ
-     onSlotSelect, // (dayOfWeek, slotId) => void
-     fieldSchedules = [], // Danh sách schedule để filter theo dayOfWeek
-     onBookingDataChange,
-     generateRecurringSessions,
-     fieldTimeSlots = [] // TimeSlots chứa giá theo slotId
+     isRecurring,              // Có bật chế độ đặt cố định không
+     setIsRecurring,           // Hàm toggle chế độ đặt cố định - Toggle switch "Đặt lịch cố định hàng tuần"
+     startDate,                // Ngày bắt đầu gói
+     setStartDate,             // Hàm cập nhật ngày bắt đầu - DatePicker "Ngày bắt đầu"
+     endDate,                  // Ngày kết thúc gói
+     setEndDate,               // Hàm cập nhật ngày kết thúc - DatePicker "Ngày kết thúc"
+     selectedDays,             // Các ngày trong tuần đã chọn [0-6]
+     handleDayToggle,          // Hàm toggle chọn ngày trong tuần - Các nút T2, T3, T4...
+     selectedSlotsByDay,       // Map { dayOfWeek: slotId } - slot đã chọn cho mỗi thứ
+     onSlotSelect,             // Hàm chọn slot cho ngày - Các nút khung giờ trong từng ngày
+     fieldSchedules = [],      // Danh sách schedule để filter theo dayOfWeek
+     onBookingDataChange,      // Callback khi thay đổi dữ liệu booking
+     generateRecurringSessions,// Hàm tạo danh sách các buổi dự kiến
+     fieldTimeSlots = []       // TimeSlots chứa giá theo slotId
 }) {
      const dayOptions = [
           { value: 1, label: "T2", name: "Thứ 2" },
@@ -30,6 +42,71 @@ export default function RecurringBookingSection({
 
      // Memoize minDate để tránh re-render không cần thiết
      const todayString = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+     // Phân tích schedule coverage trong khoảng thời gian đã chọn
+     const scheduleCoverageInfo = useMemo(() => {
+          if (!startDate || !endDate || !Array.isArray(fieldSchedules) || fieldSchedules.length === 0) {
+               return { hasSchedules: false, coveredDates: [], uncoveredDates: [], availableDaysOfWeek: new Set() };
+          }
+
+          const start = new Date(startDate);
+          const end = new Date(endDate);
+          start.setHours(0, 0, 0, 0);
+          end.setHours(23, 59, 59, 999);
+
+          if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
+               return { hasSchedules: false, coveredDates: [], uncoveredDates: [], availableDaysOfWeek: new Set() };
+          }
+
+          // Lấy tất cả các ngày có schedule trong khoảng thời gian
+          const scheduleDatesSet = new Set();
+          const availableDaysOfWeek = new Set();
+
+          fieldSchedules.forEach(s => {
+               const scheduleDate = s.date ?? s.Date ?? s.scheduleDate ?? s.ScheduleDate;
+               if (scheduleDate) {
+                    try {
+                         const date = typeof scheduleDate === 'string'
+                              ? new Date(scheduleDate)
+                              : (scheduleDate.year && scheduleDate.month && scheduleDate.day
+                                   ? new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day)
+                                   : new Date(scheduleDate));
+                         if (!isNaN(date.getTime())) {
+                              date.setHours(0, 0, 0, 0);
+                              if (date >= start && date <= end) {
+                                   const dateStr = date.toISOString().split('T')[0];
+                                   scheduleDatesSet.add(dateStr);
+                                   availableDaysOfWeek.add(date.getDay());
+                              }
+                         }
+                    } catch (e) {
+                         // ignore
+                    }
+               }
+          });
+
+          // Duyệt qua tất cả các ngày trong khoảng để tìm ngày không có schedule
+          const coveredDates = [];
+          const uncoveredDates = [];
+          let current = new Date(start);
+          while (current <= end) {
+               const dateStr = current.toISOString().split('T')[0];
+               if (scheduleDatesSet.has(dateStr)) {
+                    coveredDates.push(new Date(current));
+               } else {
+                    uncoveredDates.push(new Date(current));
+               }
+               current.setDate(current.getDate() + 1);
+          }
+
+          return {
+               hasSchedules: coveredDates.length > 0,
+               coveredDates,
+               uncoveredDates,
+               availableDaysOfWeek,
+               totalDays: coveredDates.length + uncoveredDates.length
+          };
+     }, [startDate, endDate, fieldSchedules]);
 
      // Chuẩn hoá khoảng ngày bắt đầu/kết thúc để so sánh
      const startDateObj = startDate ? new Date(startDate) : null;
@@ -132,7 +209,7 @@ export default function RecurringBookingSection({
           return `${startTime} - ${endTime}`;
      };
 
-     // Tính số buổi sẽ tạo
+     // Tính số buổi sẽ tạo (chỉ đếm những ngày thực sự có schedule)
      const calculateTotalSessions = () => {
           if (!startDate || !endDate || selectedDays.length === 0) return 0;
           try {
@@ -140,11 +217,35 @@ export default function RecurringBookingSection({
                const end = new Date(endDate);
                if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return 0;
 
+               // Tạo Set các ngày có schedule để lookup nhanh
+               const scheduleDatesSet = new Set();
+               if (Array.isArray(fieldSchedules)) {
+                    fieldSchedules.forEach(s => {
+                         const scheduleDate = s.date ?? s.Date ?? s.scheduleDate ?? s.ScheduleDate;
+                         if (scheduleDate) {
+                              try {
+                                   const date = typeof scheduleDate === 'string'
+                                        ? new Date(scheduleDate)
+                                        : (scheduleDate.year && scheduleDate.month && scheduleDate.day
+                                             ? new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day)
+                                             : new Date(scheduleDate));
+                                   if (!isNaN(date.getTime())) {
+                                        scheduleDatesSet.add(date.toISOString().split('T')[0]);
+                                   }
+                              } catch (e) {
+                                   // ignore
+                              }
+                         }
+                    });
+               }
+
                let count = 0;
                const current = new Date(start);
                while (current <= end) {
                     const weekday = current.getDay(); // 0 = CN, 1 = T2, ..., 6 = T7
-                    if (selectedDays.includes(weekday)) {
+                    const dateStr = current.toISOString().split('T')[0];
+                    // Chỉ đếm nếu ngày đó có schedule VÀ thuộc ngày trong tuần đã chọn
+                    if (selectedDays.includes(weekday) && scheduleDatesSet.has(dateStr)) {
                          count++;
                     }
                     current.setDate(current.getDate() + 1);
@@ -155,7 +256,7 @@ export default function RecurringBookingSection({
           }
      };
 
-     // Tính số buổi theo từng mức giá
+     // Tính số buổi theo từng mức giá (chỉ đếm những ngày thực sự có schedule)
      const calculateSessionsByPrice = () => {
           if (!startDate || !endDate || selectedDays.length === 0 || !selectedSlotsByDay) return {};
 
@@ -164,12 +265,36 @@ export default function RecurringBookingSection({
                const end = new Date(endDate);
                if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) return {};
 
-               // Đếm số buổi cho mỗi ngày được chọn
+               // Tạo Set các ngày có schedule để lookup nhanh
+               const scheduleDatesSet = new Set();
+               if (Array.isArray(fieldSchedules)) {
+                    fieldSchedules.forEach(s => {
+                         const scheduleDate = s.date ?? s.Date ?? s.scheduleDate ?? s.ScheduleDate;
+                         if (scheduleDate) {
+                              try {
+                                   const date = typeof scheduleDate === 'string'
+                                        ? new Date(scheduleDate)
+                                        : (scheduleDate.year && scheduleDate.month && scheduleDate.day
+                                             ? new Date(scheduleDate.year, scheduleDate.month - 1, scheduleDate.day)
+                                             : new Date(scheduleDate));
+                                   if (!isNaN(date.getTime())) {
+                                        scheduleDatesSet.add(date.toISOString().split('T')[0]);
+                                   }
+                              } catch (e) {
+                                   // ignore
+                              }
+                         }
+                    });
+               }
+
+               // Đếm số buổi cho mỗi ngày được chọn (chỉ những ngày có schedule)
                const sessionsByDay = {};
                const current = new Date(start);
                while (current <= end) {
                     const weekday = current.getDay();
-                    if (selectedDays.includes(weekday)) {
+                    const dateStr = current.toISOString().split('T')[0];
+                    // Chỉ đếm nếu ngày đó có schedule VÀ thuộc ngày trong tuần đã chọn
+                    if (selectedDays.includes(weekday) && scheduleDatesSet.has(dateStr)) {
                          if (!sessionsByDay[weekday]) {
                               sessionsByDay[weekday] = 0;
                          }
@@ -260,27 +385,50 @@ export default function RecurringBookingSection({
                               </div>
                          </div>
 
+                         {/* Cảnh báo nếu một phần khoảng thời gian không có lịch trình */}
+                         {startDate && endDate && scheduleCoverageInfo.uncoveredDates.length > 0 && (
+                              <div className="bg-amber-50 border border-amber-300 rounded-lg p-3">
+                                   <div className="flex items-start gap-2">
+                                        <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                        <div className="text-sm text-amber-800">
+                                             <p className="font-medium mb-1">Lưu ý về lịch trình</p>
+                                             {!scheduleCoverageInfo.hasSchedules ? (
+                                                  <p>Không có lịch trình nào trong khoảng thời gian từ <span className="font-semibold">{new Date(startDate).toLocaleDateString("vi-VN")}</span> đến <span className="font-semibold">{new Date(endDate).toLocaleDateString("vi-VN")}</span>. Vui lòng chọn khoảng thời gian khác hoặc liên hệ chủ sân.</p>
+                                             ) : (
+                                                  <p>Có <span className="font-semibold text-amber-700">{scheduleCoverageInfo.uncoveredDates.length}</span> ngày trong khoảng thời gian này chưa có lịch trình. Hệ thống sẽ chỉ đặt cho <span className="font-semibold text-green-700">{scheduleCoverageInfo.coveredDates.length}</span> ngày có lịch trình.</p>
+                                             )}
+                                        </div>
+                                   </div>
+                              </div>
+                         )}
+
                          {/* Bước 2: Chọn các thứ trong tuần */}
-                         {startDate && endDate && (
+                         {startDate && endDate && scheduleCoverageInfo.hasSchedules && (
                               <div>
                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Chọn ngày trong tuần
+                                        Chọn ngày trong tuần {scheduleCoverageInfo.availableDaysOfWeek.size < 7 && (
+                                             <span className="text-xs text-gray-500 font-normal">(chỉ hiển thị ngày có lịch trình)</span>
+                                        )}
                                    </label>
                                    <div className="grid grid-cols-7 gap-2">
                                         {dayOptions.map((day) => {
                                              const isSelected = selectedDays.includes(day.value);
+                                             const hasSchedule = scheduleCoverageInfo.availableDaysOfWeek.has(day.value);
                                              return (
                                                   <Button
                                                        key={day.value}
                                                        type="button"
-                                                       onClick={() => handleDayToggle(day.value)}
+                                                       onClick={() => hasSchedule && handleDayToggle(day.value)}
+                                                       disabled={!hasSchedule}
                                                        variant={isSelected ? "default" : "outline"}
                                                        size="sm"
-                                                       className={`p-2 text-sm rounded-xl font-medium ${isSelected
-                                                            ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600"
-                                                            : "bg-white text-gray-700 hover:text-teal-500 hover:bg-teal-50 border-teal-300"
+                                                       className={`p-2 text-sm rounded-xl font-medium ${!hasSchedule
+                                                            ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50"
+                                                            : isSelected
+                                                                 ? "bg-teal-500 text-white border-teal-500 hover:bg-teal-600"
+                                                                 : "bg-white text-gray-700 hover:text-teal-500 hover:bg-teal-50 border-teal-300"
                                                             }`}
-                                                       title={day.name}
+                                                       title={hasSchedule ? day.name : `${day.name} - Không có lịch trình`}
                                                   >
                                                        {day.label}
                                                   </Button>

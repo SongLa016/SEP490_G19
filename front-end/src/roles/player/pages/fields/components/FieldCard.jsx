@@ -10,7 +10,7 @@ export default function FieldCard({ field, index, activeTab, slotId, formatPrice
           <FadeIn key={field.fieldId} delay={index * 50}>
                <div
                     onClick={(e) => {
-                         // If any child marked to stop navigation is clicked, do nothing
+                         // nếu click vào phần tử có data-stop-propagation thì không điều hướng
                          const blocker = (e.target instanceof Element) ? e.target.closest('[data-stop-propagation="true"]') : null;
                          if (blocker || e.defaultPrevented) {
                               return;

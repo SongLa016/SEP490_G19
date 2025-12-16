@@ -645,9 +645,11 @@ export async function createBookingPackage(packageData) {
     console.log("📤 [API] Sending package payload:", {
       startDate: payload.startDate,
       endDate: payload.endDate,
+      totalPrice: payload.totalPrice,
       selectedSlotsCount: payload.selectedSlots.length,
       selectedSlots: payload.selectedSlots
     });
+    console.log("⚠️ [API] IMPORTANT: Backend should use totalPrice =", payload.totalPrice, "NOT recalculate!");
 
     const response = await apiClient.post(endpoint, payload);
 
