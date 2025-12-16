@@ -95,7 +95,7 @@ namespace BallSport.Infrastructure.Repositories
             booking.BookingStatus = "Confirmed";
             booking.ConfirmedAt = DateTime.Now;
 
-            field.Status = "Booked";
+           // field.Status = "Booked";
 
             await _context.SaveChangesAsync();
             return true;
