@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { MapPin, Star, User, EyeIcon, Heart } from "lucide-react";
 import StadiumIcon from '@mui/icons-material/Stadium';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
@@ -19,10 +19,9 @@ export default function GroupedViewSection({
      user,
      handleLoginRequired,
      onToggleFavoriteField,
-     onToggleFavoriteComplex,
      delay = 100
 }) {
-     // handleViewAll is passed as prop from parent
+     // chuyển trang
      const nav = useNavigate();
 
      return (

@@ -1,15 +1,30 @@
+/**
+ * Component hiển thị tóm tắt chi phí đặt sân
+ * Trang: Modal đặt sân (BookingModal)
+ * Vị trí: Phần bên phải của modal, hiển thị chi tiết giá
+ * 
+ * Chức năng:
+ * - Hiển thị giá/trận
+ * - Với đặt cố định: hiển thị số buổi, tổng giá
+ * - Với đặt lẻ: hiển thị tạm tính, giảm giá, tiền cọc, còn lại
+ * - Hiển thị tổng cộng
+ */
 export default function PriceSummarySection({
-     bookingData,
-     isRecurring,
-     recurringWeeks, // Không dùng nữa, để tương thích
-     selectedDays,
-     selectedSlotsByDay,
-     fieldSchedules,
-     formatPrice
+     bookingData,              // Dữ liệu booking hiện tại
+     isRecurring,              // Có phải đặt sân cố định không
+     recurringWeeks,           // Số tuần đặt cố định (không dùng nữa)
+     selectedDays,             // Các ngày trong tuần đã chọn
+     selectedSlotsByDay,       // Map dayOfWeek -> slotId đã chọn
+     fieldSchedules,           // Danh sách schedule của sân
+     formatPrice               // Hàm format giá tiền
 }) {
-     const totalSessions = bookingData.totalSessions || 0;
+     const totalSessions = bookingData.totalSessions || 0;  // Tổng số buổi đặt
 
-     // Lấy giá từ TimeSlots hoặc schedule đã chọn cho từng thứ
+     /**
+      * Lấy giá từ TimeSlots hoặc schedule đã chọn cho từng thứ
+      * @param {string|number} slotId - ID của slot cần lấy giá
+      * @returns {number} Giá của slot
+      */
      const getSlotPrice = (slotId) => {
           if (!slotId) {
                return bookingData.price || 0;
@@ -43,7 +58,11 @@ export default function PriceSummarySection({
           return bookingData.price || 0;
      };
 
-     // Tính thống kê giá từ các slot đã chọn (để hiển thị khoảng giá khi các khung giờ có giá khác nhau)
+     /**
+      * Tính thống kê giá từ các slot đã chọn
+      * Dùng để hiển thị khoảng giá khi các khung giờ có giá khác nhau (VD: 250k - 300k)
+      * @returns {Object} { minPrice, maxPrice, hasMultiplePrices }
+      */
      const getRecurringPriceStats = () => {
           if (!isRecurring || !selectedSlotsByDay || Object.keys(selectedSlotsByDay).length === 0) {
                const base = bookingData.price || 0;

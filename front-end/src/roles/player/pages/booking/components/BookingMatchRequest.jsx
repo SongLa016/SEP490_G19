@@ -2,12 +2,27 @@ import React from "react";
 import { RefreshCw, Loader2 } from "lucide-react";
 import { Badge, Button } from "../../../../../shared/components/ui";
 
+/**
+ * Component hiển thị thông tin yêu cầu tìm đối của một booking
+ * Trang: Lịch sử đặt sân (BookingHistory)
+ * Vị trí: Bên trong BookingCard, hiển thị khi booking có yêu cầu tìm đối
+ * 
+ * Chức năng:
+ * - Hiển thị trạng thái yêu cầu tìm đối (đang mở, đã ghép đôi, đã đóng)
+ * - Nút "Tải đội tham gia" để refresh danh sách đội đăng ký
+ * - Hiển thị thông tin đội đối thủ khi đã ghép đôi thành công
+ */
 export default function BookingMatchRequest({ booking, user, matchRequestData, handlers }) {
-     const { bookingIdToRequest, refreshingRequests, refreshRequestForBooking, extractRequestId } = matchRequestData;
-     const { hasExistingMatchRequest } = handlers;
+     const {
+          bookingIdToRequest,           // Map bookingId -> matchRequest data
+          refreshingRequests,           // Trạng thái đang refresh của từng request
+          refreshRequestForBooking,     // Hàm refresh danh sách đội tham gia - Nút "Tải đội tham gia"
+          extractRequestId              // Hàm lấy requestId từ matchRequest object
+     } = matchRequestData;
+     const { hasExistingMatchRequest } = handlers;  // Kiểm tra booking có yêu cầu tìm đối không
 
-     const req = bookingIdToRequest[booking.id];
-     const hasRequest = hasExistingMatchRequest(booking);
+     const req = bookingIdToRequest[booking.id];    // Lấy matchRequest của booking hiện tại
+     const hasRequest = hasExistingMatchRequest(booking);  // Kiểm tra có yêu cầu tìm đối không
 
      if (!hasRequest) return null;
 

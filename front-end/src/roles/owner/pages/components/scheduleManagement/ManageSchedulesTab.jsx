@@ -3,6 +3,34 @@ import { Card, Button, Badge, Select, SelectContent, SelectItem, SelectTrigger, 
 import { Plus, Calendar, Loader2, Trash2, Loader, Search, X, ChevronDown, ChevronUp, Grid3x3, Table2, Clock, MapPin, User, Phone } from "lucide-react";
 import Swal from "sweetalert2";
 
+/**
+ * Tab quản lý lịch trình (FieldSchedules) của Owner
+ * 
+ * Chức năng:
+ * - Hiển thị danh sách lịch trình với bộ lọc (sân, trạng thái, ngày, tháng, quý, năm)
+ * - Tìm kiếm theo tên sân
+ * - Sắp xếp theo ngày, sân, slot, trạng thái
+ * - Chế độ xem: Bảng (table) hoặc Nhóm (grouped)
+ * - Chọn nhiều để xóa hàng loạt
+ * - Cập nhật trạng thái schedule
+ * - Xóa schedule (nếu không có booking)
+ * 
+ * @param {Object} props - Props của component
+ * @param {Array} props.fields - Danh sách sân
+ * @param {string} props.scheduleFilterField - ID sân đang lọc
+ * @param {Function} props.onScheduleFilterFieldChange - Callback thay đổi filter sân
+ * @param {string} props.scheduleFilterStatus - Trạng thái đang lọc
+ * @param {Function} props.onScheduleFilterStatusChange - Callback thay đổi filter trạng thái
+ * @param {string} props.scheduleFilterDate - Ngày đang lọc
+ * @param {Function} props.onScheduleFilterDateChange - Callback thay đổi filter ngày
+ * @param {boolean} props.loadingSchedules - Đang tải dữ liệu
+ * @param {Array} props.fieldSchedules - Danh sách lịch trình
+ * @param {Function} props.onAddSchedule - Callback thêm lịch trình mới
+ * @param {Function} props.onRefresh - Callback làm mới dữ liệu
+ * @param {Function} props.onUpdateStatus - Callback cập nhật trạng thái
+ * @param {Function} props.onDeleteSchedule - Callback xóa lịch trình
+ * @param {Function} props.getBookingInfo - Lấy thông tin booking
+ */
 export default function ManageSchedulesTab({
      fields,
      scheduleFilterField,
@@ -28,6 +56,11 @@ export default function ManageSchedulesTab({
      const [filterMonth, setFilterMonth] = useState('all');
      const [filterQuarter, setFilterQuarter] = useState('all');
      const [filterYear, setFilterYear] = useState('all');
+     /**
+      * Render badge trạng thái với màu sắc tương ứng
+      * @param {string} status - Trạng thái (available, booked, maintenance)
+      * @returns {JSX.Element} Badge component
+      */
      const getStatusBadge = (status) => {
           const statusLower = status.toLowerCase();
           if (statusLower === 'available') {
@@ -40,6 +73,11 @@ export default function ManageSchedulesTab({
           return <Badge className="bg-gray-100 rounded-2xl hover:bg-gray-200 cursor-pointer text-gray-800">{status}</Badge>;
      };
 
+     /**
+      * Format object thời gian thành chuỗi HH:MM
+      * @param {string|Object} time - Thời gian (string hoặc {hour, minute})
+      * @returns {string} Chuỗi thời gian HH:MM
+      */
      const formatTimeObj = (time) => {
           if (typeof time === 'string') {
                return time.substring(0, 5);
@@ -49,7 +87,11 @@ export default function ManageSchedulesTab({
           return '00:00';
      };
 
-     // Helper to get date from schedule
+     /**
+      * Lấy Date object từ schedule (xử lý nhiều format khác nhau)
+      * @param {Object} schedule - Thông tin schedule
+      * @returns {Date|null} Date object hoặc null
+      */
      const getScheduleDate = (schedule) => {
           const scheduleDate = schedule.date || schedule.scheduleDate || schedule.ScheduleDate;
           if (typeof scheduleDate === 'string') {

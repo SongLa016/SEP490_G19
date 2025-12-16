@@ -101,6 +101,11 @@ export default function PromotionsManagement({ isDemo = false }) {
           loadData();
      }, [loadData]);
 
+     /**
+      * Mở modal tạo khuyến mãi mới
+      * - Reset form về giá trị mặc định
+      * - Mở modal thêm mới
+      */
      const handleCreatePromotion = () => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -125,6 +130,11 @@ export default function PromotionsManagement({ isDemo = false }) {
           setShowModal(true);
      };
 
+     /**
+      * Mở modal chỉnh sửa khuyến mãi
+      * - Load dữ liệu khuyến mãi vào form
+      * @param {Object} promotion - Thông tin khuyến mãi cần sửa
+      */
      const handleEditPromotion = (promotion) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -149,6 +159,12 @@ export default function PromotionsManagement({ isDemo = false }) {
           setShowModal(true);
      };
 
+     /**
+      * Xử lý submit form tạo/cập nhật khuyến mãi
+      * - Gọi API tạo hoặc cập nhật promotion
+      * - Đóng modal và reload danh sách
+      * @param {Event} e - Event từ form submit
+      */
      const handleSubmit = async (e) => {
           e.preventDefault();
           try {
@@ -172,6 +188,12 @@ export default function PromotionsManagement({ isDemo = false }) {
           }
      };
 
+     /**
+      * Xử lý xóa khuyến mãi
+      * - Hiển thị confirm dialog
+      * - Gọi API xóa promotion
+      * @param {number} promotionId - ID của khuyến mãi cần xóa
+      */
      const handleDeletePromotion = async (promotionId) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -243,346 +265,346 @@ export default function PromotionsManagement({ isDemo = false }) {
      }
 
      return (
-               <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                         <div>
-                              <h1 className="text-3xl font-bold text-gray-900">Chiến dịch khuyến mãi</h1>
-                              <p className="text-gray-600 mt-1">Tạo và quản lý khuyến mãi, voucher cho các sân của bạn</p>
-                         </div>
-                         <Button onClick={handleCreatePromotion} className="flex items-center gap-2">
-                              <Plus className="w-4 h-4" />
-                              Tạo khuyến mãi
-                         </Button>
+          <div className="space-y-6">
+               <div className="flex items-center justify-between">
+                    <div>
+                         <h1 className="text-3xl font-bold text-gray-900">Chiến dịch khuyến mãi</h1>
+                         <p className="text-gray-600 mt-1">Tạo và quản lý khuyến mãi, voucher cho các sân của bạn</p>
                     </div>
+                    <Button onClick={handleCreatePromotion} className="flex items-center gap-2">
+                         <Plus className="w-4 h-4" />
+                         Tạo khuyến mãi
+                    </Button>
+               </div>
 
-                    {promotions.length === 0 ? (
-                         <Card className="p-6">
-                              <div className="text-center py-12">
-                                   <Gift className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                                   <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có chiến dịch khuyến mãi</h3>
-                                   <p className="text-gray-500 mb-4">Tạo chiến dịch khuyến mãi đầu tiên cho sân của bạn</p>
-                                   <Button onClick={handleCreatePromotion} className="flex items-center gap-2">
-                                        <Plus className="w-4 h-4" />
-                                        Tạo khuyến mãi
-                                   </Button>
-                              </div>
-                         </Card>
-                    ) : (
-                         <div className="grid gap-6">
-                              {promotions.map((promotion) => {
-                                   const status = getPromotionStatus(promotion);
-                                   return (
-                                        <Card key={promotion.promotionId} className="p-6">
-                                             <div className="flex items-start justify-between">
-                                                  <div className="flex-1">
-                                                       <div className="flex items-center gap-3 mb-2">
-                                                            <h3 className="text-lg font-semibold text-gray-900">{promotion.name}</h3>
-                                                            <div className="flex items-center gap-1">
-                                                                 <CheckCircle className="w-4 h-4 text-green-500" />
-                                                                 <span className={`text-sm px-2 py-1 rounded-full ${status.color}`}>
-                                                                      {status.text}
-                                                                 </span>
-                                                            </div>
-                                                       </div>
-
-                                                       <p className="text-gray-600 mb-3">{promotion.description}</p>
-
-                                                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500">
-                                                            <div className="flex items-center gap-1">
-                                                                 <Tag className="w-4 h-4" />
-                                                                 <span>Mã: {promotion.code}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1">
-                                                                 <Percent className="w-4 h-4" />
-                                                                 <span>
-                                                                      {promotion.type === 'percentage'
-                                                                           ? `Giảm ${promotion.value}%`
-                                                                           : `Giảm ${promotion.value.toLocaleString("vi-VN")} VNĐ`
-                                                                      }
-                                                                 </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1">
-                                                                 <Users className="w-4 h-4" />
-                                                                 <span>Đã dùng: {promotion.usedCount}/{promotion.usageLimit}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1">
-                                                                 <Gift className="w-4 h-4" />
-                                                                 <span>Sân: {getComplexName(promotion.complexId)}</span>
-                                                            </div>
-                                                       </div>
-
-                                                       <div className="mt-3 text-xs text-gray-500">
-                                                            <div className="flex items-center gap-1">
-                                                                 <Calendar className="w-3 h-3" />
-                                                                 <span>
-                                                                      Từ {new Date(promotion.startDate).toLocaleDateString("vi-VN")} đến {new Date(promotion.endDate).toLocaleDateString("vi-VN")}
-                                                                 </span>
-                                                            </div>
+               {promotions.length === 0 ? (
+                    <Card className="p-6">
+                         <div className="text-center py-12">
+                              <Gift className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                              <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có chiến dịch khuyến mãi</h3>
+                              <p className="text-gray-500 mb-4">Tạo chiến dịch khuyến mãi đầu tiên cho sân của bạn</p>
+                              <Button onClick={handleCreatePromotion} className="flex items-center gap-2">
+                                   <Plus className="w-4 h-4" />
+                                   Tạo khuyến mãi
+                              </Button>
+                         </div>
+                    </Card>
+               ) : (
+                    <div className="grid gap-6">
+                         {promotions.map((promotion) => {
+                              const status = getPromotionStatus(promotion);
+                              return (
+                                   <Card key={promotion.promotionId} className="p-6">
+                                        <div className="flex items-start justify-between">
+                                             <div className="flex-1">
+                                                  <div className="flex items-center gap-3 mb-2">
+                                                       <h3 className="text-lg font-semibold text-gray-900">{promotion.name}</h3>
+                                                       <div className="flex items-center gap-1">
+                                                            <CheckCircle className="w-4 h-4 text-green-500" />
+                                                            <span className={`text-sm px-2 py-1 rounded-full ${status.color}`}>
+                                                                 {status.text}
+                                                            </span>
                                                        </div>
                                                   </div>
 
-                                                  <div className="flex items-center gap-2">
-                                                       <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => handleEditPromotion(promotion)}
-                                                            className="flex items-center gap-1"
-                                                       >
-                                                            <Edit className="w-4 h-4" />
-                                                            Sửa
-                                                       </Button>
-                                                       <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => handleDeletePromotion(promotion.promotionId)}
-                                                            className="flex items-center gap-1 text-red-600 hover:text-red-700"
-                                                       >
-                                                            <Trash2 className="w-4 h-4" />
-                                                            Xóa
-                                                       </Button>
+                                                  <p className="text-gray-600 mb-3">{promotion.description}</p>
+
+                                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-500">
+                                                       <div className="flex items-center gap-1">
+                                                            <Tag className="w-4 h-4" />
+                                                            <span>Mã: {promotion.code}</span>
+                                                       </div>
+                                                       <div className="flex items-center gap-1">
+                                                            <Percent className="w-4 h-4" />
+                                                            <span>
+                                                                 {promotion.type === 'percentage'
+                                                                      ? `Giảm ${promotion.value}%`
+                                                                      : `Giảm ${promotion.value.toLocaleString("vi-VN")} VNĐ`
+                                                                 }
+                                                            </span>
+                                                       </div>
+                                                       <div className="flex items-center gap-1">
+                                                            <Users className="w-4 h-4" />
+                                                            <span>Đã dùng: {promotion.usedCount}/{promotion.usageLimit}</span>
+                                                       </div>
+                                                       <div className="flex items-center gap-1">
+                                                            <Gift className="w-4 h-4" />
+                                                            <span>Sân: {getComplexName(promotion.complexId)}</span>
+                                                       </div>
+                                                  </div>
+
+                                                  <div className="mt-3 text-xs text-gray-500">
+                                                       <div className="flex items-center gap-1">
+                                                            <Calendar className="w-3 h-3" />
+                                                            <span>
+                                                                 Từ {new Date(promotion.startDate).toLocaleDateString("vi-VN")} đến {new Date(promotion.endDate).toLocaleDateString("vi-VN")}
+                                                            </span>
+                                                       </div>
                                                   </div>
                                              </div>
-                                        </Card>
-                                   );
-                              })}
-                         </div>
-                    )}
 
-                    {/* Modal for creating/editing promotion */}
-                    <Modal
-                         isOpen={showModal}
-                         onClose={() => setShowModal(false)}
-                         title={editingPromotion ? 'Chỉnh sửa chiến dịch khuyến mãi' : 'Tạo chiến dịch khuyến mãi mới'}
-                         size="lg"
-                    >
-                         <form onSubmit={handleSubmit} className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                   <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                             Sân áp dụng
-                                        </label>
-                                        <select
-                                             value={formData.complexId}
-                                             onChange={(e) => setFormData({ ...formData, complexId: e.target.value })}
-                                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                             required
-                                        >
-                                             <option value="">Chọn sân</option>
-                                             {complexes.map((complex) => (
-                                                  <option key={complex.complexId} value={complex.complexId}>
-                                                       {complex.name}
-                                                  </option>
-                                             ))}
-                                        </select>
-                                   </div>
+                                             <div className="flex items-center gap-2">
+                                                  <Button
+                                                       variant="outline"
+                                                       size="sm"
+                                                       onClick={() => handleEditPromotion(promotion)}
+                                                       className="flex items-center gap-1"
+                                                  >
+                                                       <Edit className="w-4 h-4" />
+                                                       Sửa
+                                                  </Button>
+                                                  <Button
+                                                       variant="outline"
+                                                       size="sm"
+                                                       onClick={() => handleDeletePromotion(promotion.promotionId)}
+                                                       className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                                                  >
+                                                       <Trash2 className="w-4 h-4" />
+                                                       Xóa
+                                                  </Button>
+                                             </div>
+                                        </div>
+                                   </Card>
+                              );
+                         })}
+                    </div>
+               )}
 
-                                   <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                             Mã khuyến mãi
-                                        </label>
-                                        <Input
-                                             value={formData.code}
-                                             onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                                             placeholder="Ví dụ: WEEKEND20"
-                                             required
-                                        />
-                                   </div>
+               {/* Modal for creating/editing promotion */}
+               <Modal
+                    isOpen={showModal}
+                    onClose={() => setShowModal(false)}
+                    title={editingPromotion ? 'Chỉnh sửa chiến dịch khuyến mãi' : 'Tạo chiến dịch khuyến mãi mới'}
+                    size="lg"
+               >
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                         <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Sân áp dụng
+                                   </label>
+                                   <select
+                                        value={formData.complexId}
+                                        onChange={(e) => setFormData({ ...formData, complexId: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required
+                                   >
+                                        <option value="">Chọn sân</option>
+                                        {complexes.map((complex) => (
+                                             <option key={complex.complexId} value={complex.complexId}>
+                                                  {complex.name}
+                                             </option>
+                                        ))}
+                                   </select>
                               </div>
 
                               <div>
                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Tên chiến dịch
+                                        Mã khuyến mãi
                                    </label>
                                    <Input
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        placeholder="Ví dụ: Giảm giá cuối tuần"
+                                        value={formData.code}
+                                        onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                                        placeholder="Ví dụ: WEEKEND20"
+                                        required
+                                   />
+                              </div>
+                         </div>
+
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                   Tên chiến dịch
+                              </label>
+                              <Input
+                                   value={formData.name}
+                                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                   placeholder="Ví dụ: Giảm giá cuối tuần"
+                                   required
+                              />
+                         </div>
+
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                   Mô tả
+                              </label>
+                              <Textarea
+                                   value={formData.description}
+                                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                   placeholder="Mô tả chi tiết về chiến dịch khuyến mãi"
+                                   rows={3}
+                                   required
+                              />
+                         </div>
+
+                         <div className="grid grid-cols-3 gap-4">
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Loại khuyến mãi
+                                   </label>
+                                   <select
+                                        value={formData.type}
+                                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required
+                                   >
+                                        {promotionTypes.map((type) => (
+                                             <option key={type.value} value={type.value}>
+                                                  {type.label}
+                                             </option>
+                                        ))}
+                                   </select>
+                              </div>
+
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        {formData.type === 'percentage' ? 'Phần trăm (%)' : 'Số tiền (VNĐ)'}
+                                   </label>
+                                   <Input
+                                        type="number"
+                                        value={formData.value}
+                                        onChange={(e) => setFormData({ ...formData, value: parseInt(e.target.value) || 0 })}
+                                        min="0"
                                         required
                                    />
                               </div>
 
                               <div>
                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Mô tả
+                                        Đơn hàng tối thiểu (VNĐ)
                                    </label>
-                                   <Textarea
-                                        value={formData.description}
-                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        placeholder="Mô tả chi tiết về chiến dịch khuyến mãi"
-                                        rows={3}
+                                   <Input
+                                        type="number"
+                                        value={formData.minOrderAmount}
+                                        onChange={(e) => setFormData({ ...formData, minOrderAmount: parseInt(e.target.value) || 0 })}
+                                        min="0"
+                                   />
+                              </div>
+                         </div>
+
+                         <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Giảm giá tối đa (VNĐ)
+                                   </label>
+                                   <Input
+                                        type="number"
+                                        value={formData.maxDiscountAmount}
+                                        onChange={(e) => setFormData({ ...formData, maxDiscountAmount: parseInt(e.target.value) || 0 })}
+                                        min="0"
+                                   />
+                              </div>
+
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Giới hạn sử dụng
+                                   </label>
+                                   <Input
+                                        type="number"
+                                        value={formData.usageLimit}
+                                        onChange={(e) => setFormData({ ...formData, usageLimit: parseInt(e.target.value) || 0 })}
+                                        min="1"
+                                        required
+                                   />
+                              </div>
+                         </div>
+
+                         <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Ngày bắt đầu
+                                   </label>
+                                   <Input
+                                        type="date"
+                                        value={formData.startDate}
+                                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                                         required
                                    />
                               </div>
 
-                              <div className="grid grid-cols-3 gap-4">
-                                   <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                             Loại khuyến mãi
-                                        </label>
-                                        <select
-                                             value={formData.type}
-                                             onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                             required
+                              <div>
+                                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Ngày kết thúc
+                                   </label>
+                                   <Input
+                                        type="date"
+                                        value={formData.endDate}
+                                        onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                                        required
+                                   />
+                              </div>
+                         </div>
+
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   Áp dụng cho các ngày trong tuần
+                              </label>
+                              <div className="flex flex-wrap gap-2">
+                                   {daysOfWeek.map((day) => (
+                                        <Button
+                                             key={day.id}
+                                             type="button"
+                                             onClick={() => toggleDay(day.id)}
+                                             className={`px-3 py-1 rounded-lg border text-sm ${formData.applicableDays.includes(day.id)
+                                                  ? "bg-blue-600 text-white border-blue-600"
+                                                  : "bg-white text-gray-700 border-gray-300"
+                                                  }`}
                                         >
-                                             {promotionTypes.map((type) => (
-                                                  <option key={type.value} value={type.value}>
-                                                       {type.label}
-                                                  </option>
-                                             ))}
-                                        </select>
-                                   </div>
-
-                                   <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                             {formData.type === 'percentage' ? 'Phần trăm (%)' : 'Số tiền (VNĐ)'}
-                                        </label>
-                                        <Input
-                                             type="number"
-                                             value={formData.value}
-                                             onChange={(e) => setFormData({ ...formData, value: parseInt(e.target.value) || 0 })}
-                                             min="0"
-                                             required
-                                        />
-                                   </div>
-
-                                   <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                             Đơn hàng tối thiểu (VNĐ)
-                                        </label>
-                                        <Input
-                                             type="number"
-                                             value={formData.minOrderAmount}
-                                             onChange={(e) => setFormData({ ...formData, minOrderAmount: parseInt(e.target.value) || 0 })}
-                                             min="0"
-                                        />
-                                   </div>
+                                             {day.label}
+                                        </Button>
+                                   ))}
                               </div>
+                         </div>
 
-                              <div className="grid grid-cols-2 gap-4">
-                                   <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                             Giảm giá tối đa (VNĐ)
-                                        </label>
-                                        <Input
-                                             type="number"
-                                             value={formData.maxDiscountAmount}
-                                             onChange={(e) => setFormData({ ...formData, maxDiscountAmount: parseInt(e.target.value) || 0 })}
-                                             min="0"
-                                        />
-                                   </div>
-
-                                   <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                             Giới hạn sử dụng
-                                        </label>
-                                        <Input
-                                             type="number"
-                                             value={formData.usageLimit}
-                                             onChange={(e) => setFormData({ ...formData, usageLimit: parseInt(e.target.value) || 0 })}
-                                             min="1"
-                                             required
-                                        />
-                                   </div>
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   Áp dụng cho các slot (để trống = tất cả slot)
+                              </label>
+                              <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto border rounded-lg p-2">
+                                   {timeSlots.map((slot) => (
+                                        <Button
+                                             key={slot.id}
+                                             type="button"
+                                             onClick={() => toggleSlot(slot.id)}
+                                             className={`px-2 py-1 rounded text-xs ${formData.applicableSlots.includes(slot.id)
+                                                  ? "bg-green-600 text-white"
+                                                  : "bg-gray-100 text-gray-700"
+                                                  }`}
+                                        >
+                                             {slot.name}
+                                        </Button>
+                                   ))}
                               </div>
+                         </div>
 
-                              <div className="grid grid-cols-2 gap-4">
-                                   <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                             Ngày bắt đầu
-                                        </label>
-                                        <Input
-                                             type="date"
-                                             value={formData.startDate}
-                                             onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                                             required
-                                        />
-                                   </div>
+                         <div className="flex items-center gap-2 pt-4">
+                              <AlertTriangle className="w-4 h-4 text-amber-500" />
+                              <span className="text-sm text-gray-600">
+                                   Khuyến mãi sẽ được hiển thị cho khách hàng khi đặt sân và có thể áp dụng mã giảm giá
+                              </span>
+                         </div>
 
-                                   <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                             Ngày kết thúc
-                                        </label>
-                                        <Input
-                                             type="date"
-                                             value={formData.endDate}
-                                             onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                                             required
-                                        />
-                                   </div>
-                              </div>
+                         <div className="flex justify-end gap-3 pt-4">
+                              <Button
+                                   type="button"
+                                   variant="outline"
+                                   onClick={() => setShowModal(false)}
+                              >
+                                   Hủy
+                              </Button>
+                              <Button type="submit">
+                                   {editingPromotion ? 'Cập nhật' : 'Tạo khuyến mãi'}
+                              </Button>
+                         </div>
+                    </form>
+               </Modal>
 
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Áp dụng cho các ngày trong tuần
-                                   </label>
-                                   <div className="flex flex-wrap gap-2">
-                                        {daysOfWeek.map((day) => (
-                                             <Button
-                                                  key={day.id}
-                                                  type="button"
-                                                  onClick={() => toggleDay(day.id)}
-                                                  className={`px-3 py-1 rounded-lg border text-sm ${formData.applicableDays.includes(day.id)
-                                                       ? "bg-blue-600 text-white border-blue-600"
-                                                       : "bg-white text-gray-700 border-gray-300"
-                                                       }`}
-                                             >
-                                                  {day.label}
-                                             </Button>
-                                        ))}
-                                   </div>
-                              </div>
-
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Áp dụng cho các slot (để trống = tất cả slot)
-                                   </label>
-                                   <div className="grid grid-cols-3 gap-2 max-h-32 overflow-y-auto border rounded-lg p-2">
-                                        {timeSlots.map((slot) => (
-                                             <Button
-                                                  key={slot.id}
-                                                  type="button"
-                                                  onClick={() => toggleSlot(slot.id)}
-                                                  className={`px-2 py-1 rounded text-xs ${formData.applicableSlots.includes(slot.id)
-                                                       ? "bg-green-600 text-white"
-                                                       : "bg-gray-100 text-gray-700"
-                                                       }`}
-                                             >
-                                                  {slot.name}
-                                             </Button>
-                                        ))}
-                                   </div>
-                              </div>
-
-                              <div className="flex items-center gap-2 pt-4">
-                                   <AlertTriangle className="w-4 h-4 text-amber-500" />
-                                   <span className="text-sm text-gray-600">
-                                        Khuyến mãi sẽ được hiển thị cho khách hàng khi đặt sân và có thể áp dụng mã giảm giá
-                                   </span>
-                              </div>
-
-                              <div className="flex justify-end gap-3 pt-4">
-                                   <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => setShowModal(false)}
-                                   >
-                                        Hủy
-                                   </Button>
-                                   <Button type="submit">
-                                        {editingPromotion ? 'Cập nhật' : 'Tạo khuyến mãi'}
-                                   </Button>
-                              </div>
-                         </form>
-                    </Modal>
-
-                    {/* Demo Restricted Modal */}
-                    <DemoRestrictedModal
-                         isOpen={showDemoRestrictedModal}
-                         onClose={() => setShowDemoRestrictedModal(false)}
-                         featureName="Khuyến mãi"
-                    />
-               </div>
+               {/* Demo Restricted Modal */}
+               <DemoRestrictedModal
+                    isOpen={showDemoRestrictedModal}
+                    onClose={() => setShowDemoRestrictedModal(false)}
+                    featureName="Khuyến mãi"
+               />
+          </div>
      );
 }
 

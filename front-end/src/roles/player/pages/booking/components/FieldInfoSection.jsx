@@ -2,14 +2,25 @@ import { useEffect, useState, useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { fetchFieldTypes, normalizeFieldType } from "../../../../../shared/services/fieldTypes";
 
+/**
+ * Component hiển thị thông tin sân đã chọn trong modal đặt sân
+ * Trang: Modal đặt sân (BookingModal)
+ * Vị trí: Phần bên trái của modal, hiển thị thông tin sân và lịch đặt
+ * 
+ * Chức năng:
+ * - Hiển thị tên sân, địa chỉ, loại sân
+ * - Hiển thị ngày, thời gian, thời lượng đặt
+ * - Với đặt cố định: hiển thị số tuần, ngày trong tuần, tổng số buổi
+ * - Preview danh sách các buổi dự kiến
+ */
 export default function FieldInfoSection({
-     bookingData,
-     isRecurring,
-     recurringWeeks, // Không dùng nữa, để tương thích
-     startDate,
-     endDate,
-     selectedDays,
-     generateRecurringSessions
+     bookingData,              // Dữ liệu booking hiện tại
+     isRecurring,              // Có phải đặt sân cố định không
+     recurringWeeks,           // Số tuần đặt cố định (không dùng nữa)
+     startDate,                // Ngày bắt đầu gói cố định
+     endDate,                  // Ngày kết thúc gói cố định
+     selectedDays,             // Các ngày trong tuần đã chọn [0-6]
+     generateRecurringSessions // Hàm tạo danh sách các buổi dự kiến
 }) {
      // Memoize sessions để tránh gọi generateRecurringSessions nhiều lần
      const recurringSessions = useMemo(() => {

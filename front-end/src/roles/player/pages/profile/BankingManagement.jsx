@@ -42,8 +42,9 @@ export default function BankingManagement({ user }) {
           if (user?.userID) {
                loadBankAccounts();
           }
-          // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [user?.userID]);
+
+     // tải danh sách tài khoản ngân hàng
      const loadBankAccounts = async () => {
           setIsLoading(true);
           try {
@@ -60,12 +61,12 @@ export default function BankingManagement({ user }) {
           }
      };
 
+     // thay đổi input
      const handleInputChange = (field, value) => {
           setFormData(prev => ({
                ...prev,
                [field]: value
           }));
-          // Clear error when user starts typing
           if (errors[field]) {
                setErrors(prev => ({
                     ...prev,
@@ -74,6 +75,7 @@ export default function BankingManagement({ user }) {
           }
      };
 
+     // thay đổi mã ngân hàng
      const handleBankCodeChange = (code) => {
           const bank = findVietnamBankByCode(code);
           setFormData(prev => ({
@@ -89,6 +91,7 @@ export default function BankingManagement({ user }) {
           }
      };
 
+     // validate 
      const validateForm = () => {
           const newErrors = {};
 
@@ -242,6 +245,7 @@ export default function BankingManagement({ user }) {
           }
      };
 
+     // đặt tài khoản mặc định
      const handleSetDefault = async (account) => {
           const accountId = account.bankAccountId || account.accountID;
           const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
@@ -380,6 +384,7 @@ export default function BankingManagement({ user }) {
           }));
      };
 
+     // hàm mã hóa số tài khoản
      const maskAccountNumber = (accountNumber) => {
           if (!accountNumber) return '';
           const length = accountNumber.length;

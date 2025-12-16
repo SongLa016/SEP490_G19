@@ -7,11 +7,23 @@ import { useModal } from "../../../contexts/ModalContext";
 import { NotificationBell, NotificationDropdown } from "../../../shared/components/NotificationsDisplay";
 import { roleMapping } from "../../../shared/index";
 import { getUserAvatarAndName } from "../pages/community/components/utils";
+/**
+ * Component Header cho trang Player
+ * Vị trí: Fixed top, hiển thị trên tất cả các trang của Player
+ * 
+ * Chức năng:
+ * - Logo và điều hướng về trang chủ
+ * - Menu điều hướng các trang (Trang chủ, Danh sách sân, Đặt sân, Cộng đồng)
+ * - Nút thông báo (NotificationBell)
+ * - Avatar và dropdown profile (Cài đặt, Đăng xuất)
+ * - Nút "Tham gia ngay" cho khách
+ * - Menu mobile (hamburger)
+ */
 export default function Header({ user, onLoggedOut }) {
-     const [isMenuOpen, setIsMenuOpen] = useState(false);
-     const [isProfileOpen, setIsProfileOpen] = useState(false);
-     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-     const [isScrolled, setIsScrolled] = useState(false);
+     const [isMenuOpen, setIsMenuOpen] = useState(false);       // Trạng thái menu mobile
+     const [isProfileOpen, setIsProfileOpen] = useState(false); // Trạng thái dropdown profile
+     const [isNotificationOpen, setIsNotificationOpen] = useState(false); // Trạng thái dropdown thông báo
+     const [isScrolled, setIsScrolled] = useState(false);       // Đã scroll xuống chưa (ẩn header)
      const navigate = useNavigate();
      const location = useLocation();
      const { isBookingModalOpen } = useModal();
@@ -36,6 +48,11 @@ export default function Header({ user, onLoggedOut }) {
           return () => window.removeEventListener("scroll", handleScroll);
      }, []);
 
+     /**
+      * Lấy tên hiển thị của vai trò người dùng
+      * @param {string} role - Vai trò (Player, Owner, Admin)
+      * @returns {string} Tên tiếng Việt của vai trò
+      */
      const getRoleDisplayName = (role) => {
           if (role && roleMapping.isValidRoleName(role)) {
                return roleMapping.getRoleDisplayName(roleMapping.getRoleID(role));
@@ -43,6 +60,11 @@ export default function Header({ user, onLoggedOut }) {
           return "Khách";
      };
 
+     /**
+      * Lấy màu badge cho vai trò người dùng
+      * @param {string} role - Vai trò
+      * @returns {string} Class CSS cho màu badge
+      */
      const getRoleColor = (role) => {
           if (role && roleMapping.isValidRoleName(role)) {
                return roleMapping.getRoleColor(roleMapping.getRoleID(role));
@@ -50,6 +72,10 @@ export default function Header({ user, onLoggedOut }) {
           return "bg-gray-100 text-gray-800";
      };
 
+     /**
+      * Lấy danh sách menu điều hướng dựa trên vai trò người dùng
+      * @returns {Array} Danh sách các item menu { id, label, icon }
+      */
      const getNavigationItems = () => {
           if (!user) {
                return [

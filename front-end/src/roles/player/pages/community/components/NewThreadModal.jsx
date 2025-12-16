@@ -6,6 +6,18 @@ import FieldSelectionModal from "../../fields/components/FieldSelectionModal";
 import { getUserAvatarAndName } from "./utils";
 import Swal from "sweetalert2";
 
+/**
+ * Modal tạo bài viết mới hoặc chỉnh sửa bài viết
+ * Trang: Cộng đồng (Community)
+ * Vị trí: Modal popup khi nhấn nút "Đăng" hoặc "Có gì mới?"
+ * 
+ * Chức năng:
+ * - Nhập tiêu đề bài viết (5-200 ký tự)
+ * - Nhập nội dung bài viết (10-5000 ký tự)
+ * - Chọn ảnh đính kèm (tối đa 5MB)
+ * - Gắn thẻ sân bóng (tùy chọn)
+ * - Nút "Đăng" / "Cập nhật" để submit
+ */
 const NewThreadModal = ({
      isOpen,
      onClose,
@@ -41,10 +53,19 @@ const NewThreadModal = ({
      // Determine which image preview to show
      const currentImagePreview = editingPost ? editImagePreview : localImagePreview;
 
+     /**
+      * Xử lý khi chọn sân từ modal FieldSelectionModal
+      * @param {Object} field - Thông tin sân đã chọn
+      */
      const handleFieldSelect = (field) => {
           setSelectedField(field);
      };
 
+     /**
+      * Xử lý khi chọn ảnh từ input file
+      * Validate loại file và kích thước (max 5MB)
+      * @param {Event} event - Sự kiện change của input file
+      */
      const handleImageSelect = (event) => {
           const file = event.target.files?.[0];
           if (file) {
@@ -74,6 +95,9 @@ const NewThreadModal = ({
           }
      };
 
+     /**
+      * Xử lý khi xóa ảnh đã chọn - Nút X trên preview ảnh
+      */
      const handleRemoveImage = () => {
           if (editingPost) {
                if (setEditSelectedImage) setEditSelectedImage(null);
@@ -86,6 +110,10 @@ const NewThreadModal = ({
           }
      };
 
+     /**
+      * Xử lý khi nhấn nút "Đăng" / "Cập nhật"
+      * Validate tiêu đề và nội dung trước khi submit
+      */
      const handleSubmit = () => {
           // Validate tiêu đề
           const trimmedTitle = postTitle.trim();

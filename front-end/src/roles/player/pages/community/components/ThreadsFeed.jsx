@@ -14,6 +14,18 @@ import { usePostMenu } from "./hooks/usePostMenu";
 import { formatTimeAgo } from "./utils/formatTime";
 import Swal from 'sweetalert2';
 
+/**
+ * Component hiển thị danh sách bài viết trong tab "Dành cho bạn"
+ * Trang: Cộng đồng (Community)
+ * Vị trí: Nội dung chính của tab "Dành cho bạn"
+ * 
+ * Chức năng:
+ * - Hiển thị danh sách bài viết (PostCard)
+ * - Nút "+" để tạo bài viết mới (góc phải)
+ * - Modal tạo/sửa bài viết (NewThreadModal)
+ * - Modal reply bài viết (ReplyModal)
+ * - Modal chi tiết bài viết (PostDetailModal)
+ */
 export default function ThreadsFeed({ refreshTrigger }) {
      const { user } = useAuth();
      const [selectedPost, setSelectedPost] = useState(null);
@@ -81,19 +93,29 @@ export default function ThreadsFeed({ refreshTrigger }) {
           loadPosts
      );
 
+     /**
+      * Xử lý khi mở modal reply bài viết
+      * @param {Object} post - Bài viết cần reply
+      */
      const handleOpenReply = (post) => {
-
           setSelectedPost(post);
           setShowReplyModal(true);
      };
 
+     /**
+      * Xử lý khi mở modal chi tiết bài viết
+      * @param {Object} post - Bài viết cần xem chi tiết
+      */
      const handleOpenPostDetail = (post) => {
           setSelectedPost(post);
           setShowPostDetailModal(true);
      };
 
+     /**
+      * Xử lý khi submit reply từ ReplyModal
+      * @param {string} content - Nội dung reply
+      */
      const handleReplySubmit = async (content) => {
-
           if (selectedPost && content) {
                const success = await handleCreateComment(selectedPost.PostID, content);
                if (success) {
@@ -103,6 +125,12 @@ export default function ThreadsFeed({ refreshTrigger }) {
           }
      };
 
+     /**
+      * Xử lý khi submit comment từ PostDetailModal
+      * @param {number} postId - ID bài viết
+      * @param {string} content - Nội dung comment
+      * @param {number|null} parentCommentId - ID comment cha (nếu là reply)
+      */
      const handlePostDetailCommentSubmit = async (postId, content, parentCommentId = null) => {
           const success = await handleCreateComment(postId, content, parentCommentId);
           return success;

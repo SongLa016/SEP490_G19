@@ -41,7 +41,7 @@ const FieldManagement = ({ isDemo = false }) => {
      const { user, logout } = useAuth();
 
      // Use React Query hook for field types
-     const { data: apiFieldTypes = [], isLoading: loadingFieldTypes } = useFieldTypes();
+     const { data: apiFieldTypes = [] } = useFieldTypes();
 
      const [isAddModalOpen, setIsAddModalOpen] = useState(false);
      const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -227,6 +227,10 @@ const FieldManagement = ({ isDemo = false }) => {
           loadData();
      }, [loadData]);
 
+     /**
+      * Xử lý thay đổi input trong form thêm/sửa sân
+      * @param {Event} e - Event từ input element
+      */
      const handleInputChange = (e) => {
           const { name, value } = e.target;
           setFormData(prev => ({
@@ -235,7 +239,10 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
-     // Handle main image change (File object or URL string)
+     /**
+      * Xử lý thay đổi ảnh chính của sân
+      * @param {File|string} image - File object (upload mới) hoặc URL string (ảnh có sẵn từ Cloudinary)
+      */
      const handleMainImageChange = (image) => {
           setFormData(prev => ({
                ...prev,
@@ -243,7 +250,10 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
-     // Handle gallery images change (array of File objects or URL strings)
+     /**
+      * Xử lý thay đổi danh sách ảnh gallery của sân
+      * @param {Array<File|string>} imagesArray - Mảng File objects hoặc URL strings
+      */
      const handleImageFilesChange = (imagesArray) => {
           setFormData(prev => ({
                ...prev,
@@ -251,6 +261,13 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
+     /**
+      * Xử lý upload ảnh cho khu sân (Complex)
+      * - Validate file type (chỉ chấp nhận ảnh)
+      * - Validate file size (tối đa 5MB)
+      * - Tạo ObjectURL để preview
+      * @param {Event} e - Event từ input file
+      */
      const handleComplexImageUpload = (e) => {
           const file = e.target.files?.[0];
           if (file) {
@@ -298,6 +315,11 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     /**
+      * Xử lý thay đổi field trong form khu sân
+      * @param {string} field - Tên field cần cập nhật
+      * @param {any} value - Giá trị mới
+      */
      const handleComplexFieldChange = (field, value) => {
           setComplexFormData((prev) => ({
                ...prev,
@@ -305,6 +327,11 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
+     /**
+      * Xử lý thay đổi tài khoản ngân hàng cho sân
+      * - Tự động điền thông tin ngân hàng từ tài khoản đã chọn
+      * @param {string} bankAccountId - ID của tài khoản ngân hàng
+      */
      const handleBankAccountChange = (bankAccountId) => {
           const selectedAccount = bankAccounts.find(acc => acc.bankAccountId === Number(bankAccountId));
           if (selectedAccount) {
@@ -348,6 +375,10 @@ const FieldManagement = ({ isDemo = false }) => {
           complexImageInputRef.current?.click();
      };
 
+     /**
+      * Xử lý phím tắt cho vùng upload ảnh khu sân (accessibility)
+      * @param {KeyboardEvent} event - Event từ keyboard
+      */
      const handleComplexUploadAreaKeyDown = (event) => {
           if (event.key === 'Enter' || event.key === ' ') {
                event.preventDefault();
@@ -355,6 +386,14 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     /**
+      * Xử lý submit form tạo/cập nhật khu sân (Complex)
+      * - Validate dữ liệu form
+      * - Geocode địa chỉ để lấy tọa độ (nếu chưa có)
+      * - Gọi API tạo hoặc cập nhật khu sân
+      * - Upload ảnh lên Cloudinary (nếu có)
+      * @param {Event} e - Event từ form submit
+      */
      const handleComplexSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {
@@ -743,6 +782,14 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     /**
+      * Xử lý submit form tạo/cập nhật sân nhỏ (Field)
+      * - Validate dữ liệu form và quyền Owner
+      * - Upload ảnh chính và ảnh gallery lên Cloudinary
+      * - Gọi API tạo hoặc cập nhật sân
+      * - Tự động tạo giá mặc định cho các time slot (nếu có)
+      * @param {Event} e - Event từ form submit
+      */
      const handleSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {
@@ -902,6 +949,13 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     /**
+      * Mở modal chỉnh sửa sân với dữ liệu có sẵn
+      * - Load thông tin sân vào form
+      * - Load ảnh từ Cloudinary URL
+      * - Tìm và điền thông tin tài khoản ngân hàng
+      * @param {Object} field - Thông tin sân cần chỉnh sửa
+      */
      const handleEdit = (field) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -965,6 +1019,13 @@ const FieldManagement = ({ isDemo = false }) => {
           setIsEditModalOpen(true);
      };
 
+     /**
+      * Xử lý xóa sân nhỏ
+      * - Hiển thị dialog xác nhận
+      * - Gọi API xóa sân
+      * - Reload danh sách sân
+      * @param {number} fieldId - ID của sân cần xóa
+      */
      const handleDelete = async (fieldId) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1004,6 +1065,12 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     /**
+      * Mở modal thêm sân mới
+      * - Kiểm tra đã có khu sân chưa (yêu cầu tạo khu sân trước)
+      * - Reset form và chọn tài khoản ngân hàng mặc định
+      * @param {string} defaultComplexId - ID khu sân mặc định (optional)
+      */
      const handleAddField = (defaultComplexId = "") => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1041,6 +1108,11 @@ const FieldManagement = ({ isDemo = false }) => {
           setIsAddModalOpen(true);
      };
 
+     /**
+      * Mở modal thêm khu sân mới
+      * - Reset form khu sân
+      * - Mở modal thêm mới
+      */
      const handleAddComplex = () => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1052,6 +1124,12 @@ const FieldManagement = ({ isDemo = false }) => {
           setIsAddComplexModalOpen(true);
      };
 
+     /**
+      * Mở modal chỉnh sửa khu sân với dữ liệu có sẵn
+      * - Load thông tin khu sân vào form
+      * - Load ảnh từ Cloudinary URL
+      * @param {Object} complex - Thông tin khu sân cần chỉnh sửa
+      */
      const handleEditComplex = (complex) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1092,6 +1170,13 @@ const FieldManagement = ({ isDemo = false }) => {
           setIsEditComplexModalOpen(true);
      };
 
+     /**
+      * Xử lý xóa khu sân
+      * - Hiển thị dialog xác nhận (cảnh báo ảnh hưởng đến sân nhỏ)
+      * - Gọi API xóa khu sân
+      * - Reload danh sách khu sân
+      * @param {number} complexId - ID của khu sân cần xóa
+      */
      const handleDeleteComplex = async (complexId) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1132,6 +1217,13 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     /**
+      * Bật/tắt trạng thái hoạt động của khu sân
+      * - Toggle giữa "Active" và "Deactive"
+      * - Optimistic update UI trước khi gọi API
+      * - Gọi API cập nhật trạng thái
+      * @param {Object} complex - Thông tin khu sân cần toggle
+      */
      const handleToggleComplexStatus = async (complex) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1502,7 +1594,7 @@ const FieldManagement = ({ isDemo = false }) => {
           handlePageChange: handleFieldsPageChange,
           totalItems: fieldsTotalItems,
           itemsPerPage: fieldsPerPage,
-     } = usePagination(activeFields, 6);
+     } = usePagination(activeFields, 3);
 
      if (loading) {
           return (

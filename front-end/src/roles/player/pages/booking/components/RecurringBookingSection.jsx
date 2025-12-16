@@ -2,21 +2,33 @@ import { useMemo } from "react";
 import { Repeat, CalendarDays, Clock, DollarSign, AlertTriangle } from "lucide-react";
 import { Button, DatePicker } from "../../../../../shared/components/ui";
 
+/**
+ * Component cấu hình đặt sân cố định hàng tuần
+ * Trang: Modal đặt sân (BookingModal)
+ * Vị trí: Phần cấu hình đặt cố định trong modal
+ * 
+ * Chức năng:
+ * - Toggle bật/tắt chế độ đặt cố định
+ * - Chọn khoảng thời gian (ngày bắt đầu - ngày kết thúc)
+ * - Chọn các ngày trong tuần muốn đặt
+ * - Chọn khung giờ cho từng ngày đã chọn
+ * - Hiển thị tổng số buổi và chi phí dự kiến
+ */
 export default function RecurringBookingSection({
-     isRecurring,
-     setIsRecurring,
-     startDate,
-     setStartDate,
-     endDate,
-     setEndDate,
-     selectedDays,
-     handleDayToggle,
-     selectedSlotsByDay, // { dayOfWeek: slotId } - slot đã chọn cho mỗi thứ
-     onSlotSelect, // (dayOfWeek, slotId) => void
-     fieldSchedules = [], // Danh sách schedule để filter theo dayOfWeek
-     onBookingDataChange,
-     generateRecurringSessions,
-     fieldTimeSlots = [] // TimeSlots chứa giá theo slotId
+     isRecurring,              // Có bật chế độ đặt cố định không
+     setIsRecurring,           // Hàm toggle chế độ đặt cố định - Toggle switch "Đặt lịch cố định hàng tuần"
+     startDate,                // Ngày bắt đầu gói
+     setStartDate,             // Hàm cập nhật ngày bắt đầu - DatePicker "Ngày bắt đầu"
+     endDate,                  // Ngày kết thúc gói
+     setEndDate,               // Hàm cập nhật ngày kết thúc - DatePicker "Ngày kết thúc"
+     selectedDays,             // Các ngày trong tuần đã chọn [0-6]
+     handleDayToggle,          // Hàm toggle chọn ngày trong tuần - Các nút T2, T3, T4...
+     selectedSlotsByDay,       // Map { dayOfWeek: slotId } - slot đã chọn cho mỗi thứ
+     onSlotSelect,             // Hàm chọn slot cho ngày - Các nút khung giờ trong từng ngày
+     fieldSchedules = [],      // Danh sách schedule để filter theo dayOfWeek
+     onBookingDataChange,      // Callback khi thay đổi dữ liệu booking
+     generateRecurringSessions,// Hàm tạo danh sách các buổi dự kiến
+     fieldTimeSlots = []       // TimeSlots chứa giá theo slotId
 }) {
      const dayOptions = [
           { value: 1, label: "T2", name: "Thứ 2" },

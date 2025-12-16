@@ -37,7 +37,23 @@ import { fetchFieldScheduleById, updateFieldScheduleStatus } from "../../../shar
 import Swal from "sweetalert2";
 import axios from "axios";
 
-// Helper function to fetch player profile by ID using PlayerProfile API
+/**
+ * Trang quản lý đặt sân của chủ sân (Owner)
+ * URL: /owner/bookings
+ * 
+ * Chức năng:
+ * - Tab "Đặt sân": Danh sách booking, xác nhận thanh toán, xác nhận booking
+ * - Tab "Yêu cầu hủy": Danh sách yêu cầu hủy, duyệt/từ chối hủy
+ * - Tab "Gói cố định": Danh sách gói đặt sân cố định
+ * - Bộ lọc theo ngày, trạng thái, sân, tìm kiếm
+ * - Xuất Excel danh sách booking
+ */
+
+/**
+ * Lấy thông tin profile của người chơi từ API
+ * @param {number} playerId - ID của người chơi
+ * @returns {Object} Thông tin profile { fullName, phone, email, avatar... }
+ */
 const fetchPlayerProfile = async (playerId) => {
      try {
           const token = localStorage.getItem("token");
@@ -68,24 +84,24 @@ const fetchPlayerProfile = async (playerId) => {
 
 const BookingManagement = ({ isDemo = false }) => {
      const { user } = useAuth();
-     const [selectedDate, setSelectedDate] = useState("");
-     const [statusFilter, setStatusFilter] = useState("all");
-     const [fieldFilter, setFieldFilter] = useState("all");
-     const [searchTerm, setSearchTerm] = useState("");
-     const [selectedBooking, setSelectedBooking] = useState(null);
-     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+     const [selectedDate, setSelectedDate] = useState("");           // Ngày đang lọc
+     const [statusFilter, setStatusFilter] = useState("all");        // Trạng thái đang lọc
+     const [fieldFilter, setFieldFilter] = useState("all");          // Sân đang lọc
+     const [searchTerm, setSearchTerm] = useState("");               // Từ khóa tìm kiếm
+     const [selectedBooking, setSelectedBooking] = useState(null);   // Booking đang xem chi tiết
+     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // Modal chi tiết booking
      const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
-     const [activeTab, setActiveTab] = useState("bookings"); // bookings, cancellations, packages
-     const [cancellationRequests, setCancellationRequests] = useState([]);
+     const [activeTab, setActiveTab] = useState("bookings");         // Tab hiện tại: bookings | cancellations | packages
+     const [cancellationRequests, setCancellationRequests] = useState([]); // Danh sách yêu cầu hủy
      const [loadingCancellations, setLoadingCancellations] = useState(false);
-     const [bookings, setBookings] = useState([]);
+     const [bookings, setBookings] = useState([]);                   // Danh sách booking
      const [loadingBookings, setLoadingBookings] = useState(false);
      const [bookingError, setBookingError] = useState("");
-     const [selectedCancellation, setSelectedCancellation] = useState(null);
+     const [selectedCancellation, setSelectedCancellation] = useState(null); // Yêu cầu hủy đang xem
      const [isCancellationDetailModalOpen, setIsCancellationDetailModalOpen] = useState(false);
      const [loadingCancellationDetail, setLoadingCancellationDetail] = useState(false);
-     const [autoCompletedIds, setAutoCompletedIds] = useState({});
-     const [exporting, setExporting] = useState(false);
+     const [autoCompletedIds, setAutoCompletedIds] = useState({});   // Các booking đã tự động hoàn tất
+     const [exporting, setExporting] = useState(false);              // Đang xuất Excel
 
      // Get owner ID from user
      const ownerId = user?.userID || user?.UserID || user?.id || user?.userId;
@@ -114,6 +130,13 @@ const BookingManagement = ({ isDemo = false }) => {
      ];
 
 
+     /**
+      * Xử lý xác nhận thanh toán hoặc hoàn thành booking
+      * - Nếu booking đang pending: Xác nhận thanh toán -> chuyển sang confirmed
+      * - Nếu booking đã confirmed và paid: Hoàn thành booking -> chuyển sang completed
+      * - Hiển thị QR code để thanh toán số tiền còn lại (nếu có)
+      * @param {number} bookingId - ID của booking cần xác nhận
+      */
      const handleConfirmBooking = async (bookingId) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -449,6 +472,14 @@ const BookingManagement = ({ isDemo = false }) => {
           }
      };
 
+     /**
+      * Xử lý hủy booking từ phía Owner
+      * - Hiển thị dialog nhập lý do hủy
+      * - Nếu booking đã thanh toán: Hiển thị thông tin hoàn tiền và QR code
+      * - Cập nhật trạng thái FieldSchedule về "Available"
+      * - Tự động xác nhận yêu cầu hủy nếu có
+      * @param {number} bookingId - ID của booking cần hủy
+      */
      const handleCancelBooking = async (bookingId) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -688,7 +719,10 @@ const BookingManagement = ({ isDemo = false }) => {
           }
      };
 
-     // Load cancellation requests
+     /**
+      * Tải danh sách yêu cầu hủy booking từ API
+      * Được gọi khi chuyển sang tab "Yêu cầu hủy" hoặc sau khi xử lý yêu cầu
+      */
      const loadCancellationRequests = async () => {
           setLoadingCancellations(true);
           try {
@@ -705,7 +739,14 @@ const BookingManagement = ({ isDemo = false }) => {
           }
      };
 
-     // Handle confirm cancellation
+     /**
+      * Xử lý xác nhận yêu cầu hủy booking
+      * - Hiển thị dialog xác nhận
+      * - Gọi API xác nhận hủy
+      * - Cập nhật trạng thái FieldSchedule về "Available"
+      * - Reload danh sách yêu cầu hủy và bookings
+      * @param {number} cancellationId - ID của yêu cầu hủy
+      */
      const handleConfirmCancellation = async (cancellationId) => {
           const result = await Swal.fire({
                title: 'Xác nhận hủy booking',
@@ -808,7 +849,13 @@ const BookingManagement = ({ isDemo = false }) => {
           }
      };
 
-     // Handle delete cancellation request
+     /**
+      * Xử lý xóa yêu cầu hủy booking (từ chối yêu cầu hủy)
+      * - Hiển thị dialog xác nhận xóa
+      * - Gọi API xóa yêu cầu hủy
+      * - Reload danh sách yêu cầu hủy
+      * @param {number} cancellationId - ID của yêu cầu hủy cần xóa
+      */
      const handleDeleteCancellation = async (cancellationId) => {
           const result = await Swal.fire({
                title: 'Xóa yêu cầu hủy',
@@ -852,7 +899,12 @@ const BookingManagement = ({ isDemo = false }) => {
           }
      };
 
-     // Handle view cancellation details
+     /**
+      * Xem chi tiết yêu cầu hủy booking
+      * - Mở modal chi tiết
+      * - Gọi API lấy thông tin chi tiết yêu cầu hủy
+      * @param {number} cancellationId - ID của yêu cầu hủy cần xem
+      */
      const handleViewCancellationDetails = async (cancellationId) => {
           setLoadingCancellationDetail(true);
           setIsCancellationDetailModalOpen(true);

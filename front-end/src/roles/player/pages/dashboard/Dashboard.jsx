@@ -23,9 +23,8 @@ export default function Dashboard({ currentView, navigateTo }) {
      const [pwdMsg, setPwdMsg] = useState("");
      const [pwdErr, setPwdErr] = useState("");
 
-     // Scroll to top when view changes
+     // Cuộn lên đầu 
      useEffect(() => {
-          // Show loading briefly when switching views
           const loadingTimeout = setTimeout(() => {
                window.scrollTo({
                     top: 0,
@@ -35,7 +34,7 @@ export default function Dashboard({ currentView, navigateTo }) {
           return () => clearTimeout(loadingTimeout);
      }, [currentView]);
 
-     // Render different content based on current view
+     // Render nội dung dựa trên currentView
      const renderContent = () => {
           switch (currentView) {
                case "home":

@@ -14,7 +14,6 @@ export default function FieldDetailView({
      depositPolicy,
      fieldTypeMap = {},
      onBack,
-     onQuickBook,
      onToggleFavoriteField
 }) {
      const [localFieldTypeMap, setLocalFieldTypeMap] = useState(fieldTypeMap);

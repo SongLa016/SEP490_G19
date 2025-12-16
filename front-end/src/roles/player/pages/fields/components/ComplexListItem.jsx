@@ -3,11 +3,9 @@ import { MapPin, EyeIcon } from "lucide-react";
 import StadiumIcon from '@mui/icons-material/Stadium';
 import { Button, FadeIn } from "../../../../../shared/components/ui";
 
-// Helper to get image URL for complex (only from Cloudinary)
+//Láy ảnh cho khu sân từ Cloudinary
 const getComplexImageUrl = (complex) => {
-     // Only use imageUrl from Cloudinary
      const imageUrl = complex.imageUrl || complex.ImageUrl || null;
-
      return imageUrl || "https://images.pexels.com/photos/46792/the-ball-stadion-football-the-pitch-46792.jpeg";
 };
 
@@ -21,7 +19,6 @@ export default function ComplexListItem({ complex, index, navigate }) {
                     className="block bg-white p-4 rounded-2xl shadow-md overflow-hidden border border-gray-100 cursor-pointer transition-all duration-300 hover:shadow-lg hover:border-teal-200"
                >
                     <div className="flex gap-4">
-                         {/* Image */}
                          <div
                               className="w-48 h-32 flex-shrink-0 rounded-xl overflow-hidden"
                               style={{
@@ -31,21 +28,17 @@ export default function ComplexListItem({ complex, index, navigate }) {
                               }}
                          />
 
-                         {/* Content */}
                          <div className="flex-1 flex flex-col justify-between py-1">
-                              {/* Address */}
                               <div className="flex items-center text-teal-600 text-sm mb-2">
                                    <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
                                    <span className="line-clamp-1">{complex.address}</span>
                               </div>
 
-                              {/* Name */}
                               <h3 className="text-xl font-bold text-gray-800 flex items-center mb-2">
                                    <StadiumIcon className="w-5 h-5 mr-2 text-teal-500" />
                                    {complex.name}
                               </h3>
 
-                              {/* Footer */}
                               <div className="flex items-center justify-between">
                                    <span className="bg-teal-50 text-teal-600 px-3 py-1 rounded-full text-sm font-medium">
                                         {complex.availableFields}/{complex.totalFields} sân

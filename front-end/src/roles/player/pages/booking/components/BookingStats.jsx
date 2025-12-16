@@ -1,6 +1,16 @@
 import React from "react";
 import { Clock } from "lucide-react";
 
+/**
+ * Component hiển thị thống kê tổng quan về booking
+ * Trang: Lịch sử đặt sân (BookingHistory)
+ * Vị trí: Phần header của trang, hiển thị số lượng booking theo trạng thái
+ * 
+ * Hiển thị:
+ * - Số booking đã hoàn tất
+ * - Số booking đã hủy
+ * - Số booking đang chờ xác nhận (nếu có)
+ */
 export default function BookingStats({ stats }) {
      return (
           <div className="pt-2">

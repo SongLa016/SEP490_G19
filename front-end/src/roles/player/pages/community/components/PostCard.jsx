@@ -8,6 +8,19 @@ import CommentInput from "./CommentInput";
 import PostMenu from "./PostMenu";
 import { isCurrentUserPost } from "./utils";
 
+/**
+ * Component hiển thị một bài viết trong feed cộng đồng
+ * Trang: Cộng đồng (Community)
+ * Vị trí: Danh sách bài viết trong tab "Dành cho bạn"
+ * 
+ * Chức năng:
+ * - Hiển thị thông tin tác giả (avatar, tên, thời gian)
+ * - Hiển thị tiêu đề và nội dung bài viết
+ * - Hiển thị ảnh đính kèm (nếu có)
+ * - Hiển thị thông tin sân được gắn thẻ (nếu có)
+ * - Các nút tương tác (Like, Comment, Repost, Bookmark)
+ * - Menu tùy chọn (Sửa, Xóa, Báo cáo)
+ */
 const PostCard = ({
      post,
      index,

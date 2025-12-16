@@ -61,6 +61,12 @@ export default function NotificationsManagement() {
           loadData();
      }, [loadData]);
 
+     /**
+      * Đánh dấu một thông báo là đã đọc
+      * - Gọi API cập nhật trạng thái
+      * - Cập nhật state local
+      * @param {number} notificationId - ID của thông báo
+      */
      const handleMarkAsRead = async (notificationId) => {
           try {
                await markNotificationAsRead(notificationId);
@@ -73,6 +79,11 @@ export default function NotificationsManagement() {
           }
      };
 
+     /**
+      * Đánh dấu tất cả thông báo là đã đọc
+      * - Gọi API cập nhật trạng thái tất cả
+      * - Cập nhật state local
+      */
      const handleMarkAllAsRead = async () => {
           try {
                await markAllNotificationsAsRead(user?.id || 1);

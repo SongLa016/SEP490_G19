@@ -8,6 +8,18 @@ import { NotificationBell, NotificationDropdown } from "../../../../../shared/co
 import logo from "../../../../../shared/components/assets/logo.png";
 import { getUserAvatarAndName } from "./utils";
 
+/**
+ * Component header cho trang Cộng đồng
+ * Trang: Cộng đồng (Community)
+ * Vị trí: Sidebar bên trái (fixed)
+ * 
+ * Chức năng:
+ * - Logo và điều hướng về trang chủ
+ * - Menu điều hướng các trang (Home, Danh sách sân, Đặt sân, Cộng đồng)
+ * - Nút thông báo (NotificationBell)
+ * - Avatar và dropdown profile (Settings, Logout)
+ * - Nút đăng nhập cho khách
+ */
 export default function CommunityHeader({ user, onLoggedOut }) {
      const [isProfileOpen, setIsProfileOpen] = useState(false);
      const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -16,6 +28,11 @@ export default function CommunityHeader({ user, onLoggedOut }) {
      const headerRef = useRef(null);
      const { avatarUrl, initial } = getUserAvatarAndName(user);
 
+     /**
+      * Lấy tên hiển thị của vai trò người dùng
+      * @param {string} role - Vai trò (User, FieldOwner, Admin)
+      * @returns {string} Tên tiếng Việt của vai trò
+      */
      const getRoleDisplayName = (role) => {
           switch (role) {
                case "User": return "Người chơi";
@@ -25,6 +42,11 @@ export default function CommunityHeader({ user, onLoggedOut }) {
           }
      };
 
+     /**
+      * Lấy màu badge cho vai trò người dùng
+      * @param {string} role - Vai trò
+      * @returns {string} Class CSS cho màu badge
+      */
      const getRoleColor = (role) => {
           switch (role) {
                case "User": return "bg-blue-100 text-blue-800";
@@ -34,6 +56,10 @@ export default function CommunityHeader({ user, onLoggedOut }) {
           }
      };
 
+     /**
+      * Lấy danh sách menu điều hướng dựa trên vai trò người dùng
+      * @returns {Array} Danh sách các item menu { id, label, icon }
+      */
      const getNavigationItems = () => {
           if (!user) {
                return [

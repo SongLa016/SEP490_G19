@@ -6,11 +6,9 @@ import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, B
 export default function SearchFiltersBar({
      searchQuery,
      setSearchQuery,
-     selectedLocation,
      handleLocationChange,
      getLocationValue,
      districtOptions = [],
-     selectedPrice,
      handlePriceChange,
      getPriceValue,
      showFilters,

@@ -47,11 +47,11 @@ export default function ProfileSettings({ user }) {
           return `${day}-${month}-${year}`;
      };
 
-     // Load account info from API on mount
+     // Tải thông tin tài khoản 
      useEffect(() => {
           const token = localStorage.getItem("token");
           if (!token) return;
-
+          // Nếu đã có thông tin từ user prop, không cần tải lại
           const loadAccountInfo = async () => {
                try {
                     const result = await profileService.getProfile();
@@ -91,6 +91,7 @@ export default function ProfileSettings({ user }) {
 
      ];
 
+     // Xử lý thay đổi dữ liệu mật khẩu 
      const handlePasswordChange = (field, value) => {
           setPasswordData(prev => ({
                ...prev,
@@ -98,15 +99,19 @@ export default function ProfileSettings({ user }) {
           }));
      };
 
+     // xử lí nút đổi mật khẩu
      const handleChangePassword = () => {
           if (passwordData.newPassword !== passwordData.confirmPassword) {
                alert("Mật khẩu mới không khớp!");
                return;
           }
-          // API call to change password
           setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
      };
 
+     /**
+      * Xử lý khi nhấn nút "Xóa tài khoản"
+      * Hiển thị popup xác nhận trước khi xóa
+      */
      const handleDeleteAccount = () => {
           if (window.confirm("Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác!")) {
                // API call to delete account
