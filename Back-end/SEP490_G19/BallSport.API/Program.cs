@@ -115,7 +115,8 @@ public class Program
                                 .WithOrigins(
                                     "http://localhost:3000",
                                     "https://localhost:3000",
-                                    "https://sep490-g19-zxph.onrender.com"
+                                    "https://sep490-g19-zxph.onrender.com",
+                                    "https://sep490-g19.vercel.app/"
                                 )
                                 .AllowAnyHeader()
                                 .AllowAnyMethod()
