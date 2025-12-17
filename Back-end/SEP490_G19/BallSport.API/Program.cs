@@ -116,7 +116,9 @@ public class Program
                                     "http://localhost:3000",
                                     "https://localhost:3000",
                                     "https://sep490-g19-zxph.onrender.com",
-                                    "https://sep490-g19.vercel.app/"
+                                    "https://sep490-g19.vercel.app/",
+                                    "https://l.facebook.com/l.php?u=https%3A%2F%2Fsep490-g19.vercel.app%2F%3Ffbclid%3DIwZXh0bgNhZW0CMTAAYnJpZBExSlNKRUVHeGFnWHJGWlhaWXNydGMGYXBwX2lkEDIyMjAzOTE3ODgyMDA4OTIAAR68n8p0dDuwpB9WeBmLuQdvAGY6NB-1lGsKtImehwAx-oOm7hAS1_FOgj4hvg_aem_xwHAfWEp96jHW0NLTA9iEA&h=AT1G9qfBxWZFRI5BPBGqubI2ghQg4Lvjof3guPsbCqE87xzE701imeS1KOqfIrNwB6YUc6jaSUFAmtTyxXjb2YhhlKcMMFnRuqcEGEj-tqPQ0hL9ye-CW9X8pM-hMYYNABteIQ/"
+
                                 )
                                 .AllowAnyHeader()
                                 .AllowAnyMethod()
