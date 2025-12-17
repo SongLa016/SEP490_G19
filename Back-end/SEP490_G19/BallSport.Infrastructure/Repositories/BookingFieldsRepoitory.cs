@@ -171,6 +171,15 @@ namespace BallSport.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        //  Check slot đang bị giữ (Pending)
+        public async Task<bool> HasPendingBookingAsync(int scheduleId)
+        {
+            return await _context.Bookings.AnyAsync(b =>
+                b.ScheduleId == scheduleId
+                && b.BookingStatus == "Pending"
+            );
+        }
+
 
 
 
