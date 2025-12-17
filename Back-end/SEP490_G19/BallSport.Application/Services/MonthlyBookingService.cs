@@ -42,7 +42,7 @@ using BallSport.Infrastructure.Models;
                 TotalPrice = 0,
                 BookingStatus = "Pending",
                 PaymentStatus = "Pending",
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             package = await _bookingRepo.CreateBookingPackageAsync(package);
