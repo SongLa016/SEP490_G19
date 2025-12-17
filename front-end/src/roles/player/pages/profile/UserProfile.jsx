@@ -34,12 +34,68 @@ export default function UserProfile({ user }) {
           const token = localStorage.getItem("token");
           if (token) {
                setIsLoading(true);
-               loadProfileData();
+               loadProfile();
           }
           window.scrollTo({
                top: 0,
                behavior: 'smooth'
           });
+
+          async function loadProfile() {
+               const token = localStorage.getItem("token");
+               if (!token) {
+                    console.warn('No token found, cannot load profile');
+                    return;
+               }
+
+               try {
+                    setIsLoading(true);
+                    const result = await profileService.getProfile();
+                    if (result.ok && result.profile) {
+                         const profile = result.profile;
+                         const mappedProfile = {
+                              fullName: profile.fullName || profile.FullName || user?.fullName || "",
+                              phone: profile.phone || profile.Phone || user?.phone || "",
+                              email: profile.email || profile.Email || user?.email || "",
+                              avatar: profile.avatar || profile.Avatar || user?.avatar || null,
+                              dateOfBirth: profile.dateOfBirth || profile.DateOfBirth || "",
+                              gender: profile.gender || profile.Gender || "",
+                              address: profile.address || profile.Address || "",
+                              preferredPositions: profile.preferredPositions || profile.PreferredPositions || "",
+                              skillLevel: profile.skillLevel || profile.SkillLevel || "",
+                              bio: profile.bio || profile.Bio || "",
+                              createdAt: profile.createdAt || profile.CreatedAt || user?.createdAt || new Date().toISOString(),
+                         };
+
+                         setProfileData(prev => ({
+                              ...prev,
+                              ...mappedProfile
+                         }));
+                         setFormData(prev => ({
+                              ...prev,
+                              ...mappedProfile
+                         }));
+                    } else if (result.reason) {
+                         Swal.fire({
+                              icon: 'error',
+                              title: 'Lỗi',
+                              text: result.reason,
+                              confirmButtonText: 'Đóng'
+                         });
+                    }
+               } catch (error) {
+                    console.error('Error loading profile:', error);
+                    Swal.fire({
+                         icon: 'error',
+                         title: 'Lỗi',
+                         text: error.message || 'Không thể tải thông tin profile',
+                         confirmButtonText: 'Đóng'
+                    });
+               } finally {
+                    setIsLoading(false);
+               }
+          }
+          // eslint-disable-next-line react-hooks/exhaustive-deps
      }, []);
 
      useEffect(() => {
@@ -50,63 +106,6 @@ export default function UserProfile({ user }) {
                });
           }
      }, [isEditing]);
-
-     //Tải dữ liệu profile từ API
-     const loadProfileData = async () => {
-          const token = localStorage.getItem("token");
-          if (!token) {
-               console.warn('No token found, cannot load profile');
-               return;
-          }
-
-          try {
-               setIsLoading(true);
-               const result = await profileService.getProfile();
-               if (result.ok && result.profile) {
-                    const profile = result.profile;
-                    // Map profile data với đầy đủ các field từ API
-                    const mappedProfile = {
-                         fullName: profile.fullName || profile.FullName || user?.fullName || "",
-                         phone: profile.phone || profile.Phone || user?.phone || "",
-                         email: profile.email || profile.Email || user?.email || "",
-                         avatar: profile.avatar || profile.Avatar || user?.avatar || null,
-                         dateOfBirth: profile.dateOfBirth || profile.DateOfBirth || "",
-                         gender: profile.gender || profile.Gender || "",
-                         address: profile.address || profile.Address || "",
-                         preferredPositions: profile.preferredPositions || profile.PreferredPositions || "",
-                         skillLevel: profile.skillLevel || profile.SkillLevel || "",
-                         bio: profile.bio || profile.Bio || "",
-                         createdAt: profile.createdAt || profile.CreatedAt || user?.createdAt || new Date().toISOString(),
-                    };
-
-                    setProfileData(prev => ({
-                         ...prev,
-                         ...mappedProfile
-                    }));
-                    setFormData(prev => ({
-                         ...prev,
-                         ...mappedProfile
-                    }));
-               } else if (result.reason) {
-                    Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: result.reason,
-                         confirmButtonText: 'Đóng'
-                    });
-               }
-          } catch (error) {
-               console.error('Error loading profile:', error);
-               Swal.fire({
-                    icon: 'error',
-                    title: 'Lỗi',
-                    text: error.message || 'Không thể tải thông tin profile',
-                    confirmButtonText: 'Đóng'
-               });
-          } finally {
-               setIsLoading(false);
-          }
-     };
 
      const skillLevels = [
           { value: "beginner", label: "Mới bắt đầu" },
@@ -124,6 +123,21 @@ export default function UserProfile({ user }) {
      ];
 
      const genders = ["Nam", "Nữ", "Khác"];
+
+     // Character limits
+     const CHAR_LIMITS = {
+          fullName: 50,
+          bio: 200,
+          address: 100
+     };
+     const WARNING_THRESHOLD_PERCENT = 0.9; // 90%
+
+     // Helper function to get character count warning class
+     const getCharCountClass = (length, maxLength) => {
+          if (length >= maxLength) return "text-red-500 font-medium";
+          if (length >= maxLength * WARNING_THRESHOLD_PERCENT) return "text-yellow-600";
+          return "text-gray-400";
+     };
 
      // thay đổi input
      const handleInputChange = (field, value) => {
@@ -365,13 +379,20 @@ export default function UserProfile({ user }) {
                                                        <div className="flex-1">
                                                             <p className="text-sm font-semibold tracking-wide text-gray-700 mb-2">Giới thiệu</p>
                                                             {isEditing ? (
-                                                                 <Textarea
-                                                                      value={formData.bio}
-                                                                      onChange={(e) => handleInputChange('bio', e.target.value)}
-                                                                      placeholder="Viết một chút về bản thân..."
-                                                                      rows={3}
-                                                                      className="rounded-xl border-gray-200 focus:border-gray-600 focus:ring-gray-600 text-sm"
-                                                                 />
+                                                                 <>
+                                                                      <Textarea
+                                                                           value={formData.bio}
+                                                                           onChange={(e) => handleInputChange('bio', e.target.value)}
+                                                                           placeholder="Viết một chút về bản thân..."
+                                                                           rows={3}
+                                                                           maxLength={CHAR_LIMITS.bio}
+                                                                           className="rounded-xl border-gray-200 focus:border-gray-600 focus:ring-gray-600 text-sm"
+                                                                      />
+                                                                      <span className={`text-xs ${getCharCountClass(formData.bio.length, CHAR_LIMITS.bio)}`}>
+                                                                           {formData.bio.length}/{CHAR_LIMITS.bio}
+                                                                           {formData.bio.length >= CHAR_LIMITS.bio && " (đã đạt giới hạn)"}
+                                                                      </span>
+                                                                 </>
                                                             ) : (
                                                                  <p className="text-xs font-medium text-gray-900 leading-relaxed">
                                                                       {formData.bio || "Chưa có giới thiệu"}
@@ -452,12 +473,19 @@ export default function UserProfile({ user }) {
                                                                                 Họ và tên
                                                                            </p>
                                                                            {isEditing ? (
-                                                                                <Input
-                                                                                     value={formData.fullName}
-                                                                                     onChange={(e) => handleInputChange('fullName', e.target.value)}
-                                                                                     placeholder="Nhập họ và tên"
-                                                                                     className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
-                                                                                />
+                                                                                <>
+                                                                                     <Input
+                                                                                          value={formData.fullName}
+                                                                                          onChange={(e) => handleInputChange('fullName', e.target.value)}
+                                                                                          placeholder="Nhập họ và tên"
+                                                                                          maxLength={CHAR_LIMITS.fullName}
+                                                                                          className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
+                                                                                     />
+                                                                                     <span className={`text-xs ${getCharCountClass(formData.fullName.length, CHAR_LIMITS.fullName)}`}>
+                                                                                          {formData.fullName.length}/{CHAR_LIMITS.fullName}
+                                                                                          {formData.fullName.length >= CHAR_LIMITS.fullName && " (đã đạt giới hạn)"}
+                                                                                     </span>
+                                                                                </>
                                                                            ) : (
                                                                                 <p className="text-lg font-semibold text-teal-900 leading-tight">
                                                                                      {formData.fullName || "Chưa cập nhật"}
@@ -628,13 +656,20 @@ export default function UserProfile({ user }) {
                                                                            Địa chỉ
                                                                       </p>
                                                                       {isEditing ? (
-                                                                           <Textarea
-                                                                                value={formData.address}
-                                                                                onChange={(e) => handleInputChange('address', e.target.value)}
-                                                                                placeholder="Nhập địa chỉ"
-                                                                                rows={3}
-                                                                                className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
-                                                                           />
+                                                                           <>
+                                                                                <Textarea
+                                                                                     value={formData.address}
+                                                                                     onChange={(e) => handleInputChange('address', e.target.value)}
+                                                                                     placeholder="Nhập địa chỉ"
+                                                                                     rows={3}
+                                                                                     maxLength={CHAR_LIMITS.address}
+                                                                                     className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
+                                                                                />
+                                                                                <span className={`text-xs ${getCharCountClass(formData.address.length, CHAR_LIMITS.address)}`}>
+                                                                                     {formData.address.length}/{CHAR_LIMITS.address}
+                                                                                     {formData.address.length >= CHAR_LIMITS.address && " (đã đạt giới hạn)"}
+                                                                                </span>
+                                                                           </>
                                                                       ) : (
                                                                            <p className="text-base font-semibold text-teal-900 leading-relaxed">
                                                                                 {formData.address || "Chưa cập nhật"}

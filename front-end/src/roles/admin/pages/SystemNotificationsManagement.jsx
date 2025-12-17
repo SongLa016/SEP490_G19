@@ -997,10 +997,12 @@ export default function SystemNotificationsManagement() {
                                    onChange={(e) => setNewNotification({ ...newNotification, message: e.target.value })}
                                    placeholder="Nhập nội dung thông báo... (Ví dụ: Bạn có đặt sân mới, Hệ thống sẽ bảo trì từ 2:00-4:00, ...)"
                                    rows={3}
+                                   maxLength={500}
                                    className="resize-none"
                               />
-                              <p className="text-xs text-slate-500">
-                                   {newNotification.message.length} ký tự
+                              <p className={`text-xs ${newNotification.message.length >= 500 ? "text-red-500 font-medium" : newNotification.message.length >= 450 ? "text-yellow-600" : "text-slate-500"}`}>
+                                   {newNotification.message.length}/500 ký tự
+                                   {newNotification.message.length >= 500 && " (đã đạt giới hạn)"}
                               </p>
                          </div>
 

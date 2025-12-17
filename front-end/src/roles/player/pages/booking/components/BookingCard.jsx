@@ -5,24 +5,8 @@ import BookingActions from "./BookingActions";
 import BookingMatchRequest from "./BookingMatchRequest";
 import BookingParticipants from "./BookingParticipants";
 
-/**
- * Component hiển thị thông tin chi tiết một booking dưới dạng card
- * Trang: Lịch sử đặt sân (BookingHistory)
- * Vị trí: Danh sách các booking trong tab "Lịch đặt"
- */
-
-/**
- * Định dạng giá tiền theo format VND
- * @param {number} price - Số tiền cần format
- * @returns {string} Chuỗi tiền tệ đã format (VD: 400.000 ₫)
- */
 const formatPrice = (price) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price);
-
-/**
- * Loại bỏ thông tin QR hoàn tiền khỏi lý do hủy
- * @param {string} text - Chuỗi lý do hủy gốc
- * @returns {string} Chuỗi đã loại bỏ phần refundQR
- */
+//qr Hoàn tiền
 const stripRefundQrInfo = (text) => {
      if (!text) return "";
      const markerIndex = text.toLowerCase().indexOf("refundqr");
@@ -30,12 +14,7 @@ const stripRefundQrInfo = (text) => {
      const stripped = text.substring(0, markerIndex);
      return stripped.replace(/\|\s*$/, "").trim();
 };
-
-/**
- * Tạo badge hiển thị trạng thái booking
- * @param {string} status - Trạng thái booking (confirmed, pending, completed, cancelled, expired)
- * @returns {JSX.Element} Badge component với màu sắc tương ứng
- */
+// hiển thị badge trạng thái đặt sân
 const statusBadge = (status) => {
      const s = (status ?? "").toString().toLowerCase();
      switch (s) {
@@ -48,11 +27,7 @@ const statusBadge = (status) => {
      }
 };
 
-/**
- * Tạo badge hiển thị trạng thái thanh toán
- * @param {string} paymentStatus - Trạng thái thanh toán (paid, refunded, unpaid, pending)
- * @returns {JSX.Element} Badge component với màu sắc tương ứng
- */
+// hiển thị badge trạng thái thanh toán
 const paymentStatusBadge = (paymentStatus) => {
      const status = (paymentStatus ?? "").toString().toLowerCase();
      switch (status) {
@@ -66,14 +41,7 @@ const paymentStatusBadge = (paymentStatus) => {
                return <Badge variant="outline" className="bg-yellow-500 text-white border border-yellow-200 hover:bg-yellow-600 hover:text-white">Chờ Thanh Toán</Badge>;
      }
 };
-
-/**
- * Component chính hiển thị card booking
- * @param {Object} booking - Dữ liệu booking
- * @param {Object} user - Thông tin người dùng hiện tại
- * @param {Object} handlers - Các hàm xử lý sự kiện
- * @param {Object} matchRequestData - Dữ liệu yêu cầu tìm đối
- */
+// hiển thị card đặt sân
 export default function BookingCard({ booking, user, handlers, matchRequestData }) {
      const { b } = { b: booking };
 

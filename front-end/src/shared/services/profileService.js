@@ -68,6 +68,89 @@ const handleApiError = (error) => {
 };
 
 export const profileService = {
+  // Get player/owner profile by userId (for admin to view owner info)
+  async getPlayerProfile(userId) {
+    try {
+      const API_URL = `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`;
+
+      const response = await apiClient.get(API_URL);
+
+      return {
+        ok: true,
+        data: response.data,
+      };
+    } catch (error) {
+      console.error("Error fetching player profile:", error);
+      return {
+        ok: false,
+        reason: error.response?.data?.message || "Không thể lấy thông tin người dùng",
+      };
+    }
+  },
+
+  // Change password API
+  async changePassword(oldPassword, newPassword, confirmNewPassword) {
+    try {
+      const API_URL =
+        "https://sep490-g19-zxph.onrender.com/api/UserProfile/change-password";
+
+      const response = await apiClient.post(API_URL, {
+        oldPassword,
+        newPassword,
+        confirmNewPassword,
+      });
+
+      return {
+        ok: true,
+        data: response.data,
+        message: response.data?.message || "Đổi mật khẩu thành công",
+      };
+    } catch (error) {
+      let errorMessage = "Đổi mật khẩu thất bại";
+
+      // Log để debug
+      console.error("Change password error:", error);
+
+      if (error.response) {
+        const { data, status } = error.response;
+        console.error("Error response:", { status, data });
+
+        // Ưu tiên lấy message từ API response
+        if (typeof data === "string") {
+          errorMessage = data;
+        } else if (data?.message) {
+          errorMessage = data.message;
+        } else if (data?.Message) {
+          errorMessage = data.Message;
+        } else if (data?.title) {
+          errorMessage = data.title;
+        } else if (data?.errors) {
+          // Nếu có errors array/object từ validation
+          const errors = data.errors;
+          if (Array.isArray(errors) && errors.length > 0) {
+            errorMessage = errors[0];
+          } else if (typeof errors === "object") {
+            const firstError = Object.values(errors)[0];
+            errorMessage = Array.isArray(firstError)
+              ? firstError[0]
+              : firstError;
+          }
+        }
+      } else if (error.code === "ERR_NETWORK" || error.message === "Network Error") {
+        errorMessage = "Mật khẩu cũ không đúng. Vui lòng kiểm tra lại.";
+      } else if (error.request) {
+        errorMessage = "Không thể kết nối đến máy chủ";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      return {
+        ok: false,
+        reason: errorMessage,
+      };
+    }
+  },
+
   // Update user profile (lấy user từ token)
   async updateProfile(userId, profileData, avatarFile = null) {
     try {

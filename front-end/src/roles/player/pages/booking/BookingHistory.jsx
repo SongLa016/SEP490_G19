@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Calendar, MapPin, Receipt, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, RotateCcw, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, Info, RefreshCw, Loader2, User, Phone, Calendar as CalendarIcon } from "lucide-react";
+import { Calendar, MapPin, Receipt, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, Info, RefreshCw, Loader2, User, Phone, Calendar as CalendarIcon } from "lucide-react";
 import { Section, Container, Card, CardContent, Button, Badge, LoadingList, FadeIn, StaggerContainer, Modal } from "../../../../shared/components/ui";
 import { listBookingsByUser, updateBooking, fetchBookingsByPlayer, generateQRCode, confirmPaymentAPI } from "../../../../shared/index";
 import {
@@ -21,20 +21,16 @@ import {
      fetchMyMatchHistory
 } from "../../../../shared/services/matchRequest";
 import FindOpponentModal from "../../../../shared/components/FindOpponentModal";
-// import RecurringOpponentModal from "../../../../shared/components/RecurringOpponentModal"; // Removed: recurring opponent feature
 import RatingModal from "../../../../shared/components/RatingModal";
 import InvoiceModal from "../../../../shared/components/InvoiceModal";
 import CancelBookingModal from "../../../../shared/components/CancelBookingModal";
 import { fetchFieldScheduleById, updateFieldScheduleStatus } from "../../../../shared/services/fieldSchedules";
 import Swal from 'sweetalert2';
-// Components
 import {
      BookingStats,
      BookingFilters,
      FixedPackagesTab,
 } from './components';
-
-// Utils
 import {
      formatPrice,
      formatTimeRemaining,
@@ -68,21 +64,19 @@ export default function BookingHistory({ user }) {
      const [dateTo, setDateTo] = useState("");
      const [sortBy, setSortBy] = useState("newest");
      const [currentPage, setCurrentPage] = useState(1);
-     const pageSize = 5;
+
      const [bookingIdToRequest, setBookingIdToRequest] = useState({});
      const [requestJoins, setRequestJoins] = useState({});
      const [playerHistories, setPlayerHistories] = useState([]);
      const [showFindOpponentModal, setShowFindOpponentModal] = useState(false);
-     // const [showRecurringOpponentModal, setShowRecurringOpponentModal] = useState(false); // Removed: recurring opponent feature
      const [showRatingModal, setShowRatingModal] = useState(false);
      const [showInvoiceModal, setShowInvoiceModal] = useState(false);
      const [showCancelModal, setShowCancelModal] = useState(false);
      const [cancelBooking, setCancelBooking] = useState(null);
      const [isCancelling, setIsCancelling] = useState(false);
      const [selectedBooking, setSelectedBooking] = useState(null);
-     const [editingRating, setEditingRating] = useState(null); // { ratingId, stars, comment } when editing
+     const [editingRating, setEditingRating] = useState(null);
      const [invoiceBooking, setInvoiceBooking] = useState(null);
-     // const [opponentData, setOpponentData] = useState(null); // Removed: recurring opponent feature
      const [isLoadingBookings, setIsLoadingBookings] = useState(false);
      const [bookingError, setBookingError] = useState("");
      const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -90,17 +84,18 @@ export default function BookingHistory({ user }) {
      const [paymentQRCode, setPaymentQRCode] = useState(null);
      const [isLoadingQR, setIsLoadingQR] = useState(false);
      const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
-     const [timeRemaining, setTimeRemaining] = useState({}); // Track time remaining for each booking
-     const [scheduleDataMap, setScheduleDataMap] = useState({}); // Map scheduleId -> schedule data from API
-     const [activeTab, setActiveTab] = useState("bookings"); // "bookings" | "packages" | "matchHistory"
+     const [timeRemaining, setTimeRemaining] = useState({}); // thời gian còn lại cho mỗi đặt sân
+     const [scheduleDataMap, setScheduleDataMap] = useState({}); // map lịch trình 
+     const [activeTab, setActiveTab] = useState("bookings");
      const [bookingPackages, setBookingPackages] = useState([]);
      const [isLoadingPackages, setIsLoadingPackages] = useState(false);
      const [packageError, setPackageError] = useState("");
      const [packageSessionsMap, setPackageSessionsMap] = useState({});
      const [expandedPackageSessions, setExpandedPackageSessions] = useState({});
-     const [sessionScheduleDataMap, setSessionScheduleDataMap] = useState({}); // Map scheduleId -> schedule data for sessions
+     const [sessionScheduleDataMap, setSessionScheduleDataMap] = useState({}); // map lịch trình cho buổi đặt sân
      const playerId = user?.userID || user?.UserID || user?.id || user?.Id || user?.userId;
 
+     // chuẩn hóa dữ liệu gói đặt sân cố định
      const normalizePackageData = React.useCallback((pkg, fallbackIndex = 0) => {
           const pkgId = pkg?.bookingPackageId || pkg?.bookingPackageID || pkg?.id || pkg?.packageId;
           const fallbackId = pkgId || `pkg-${fallbackIndex}`;
@@ -122,6 +117,7 @@ export default function BookingHistory({ user }) {
           };
      }, []);
 
+     // buổi đặt sân cố định
      const normalizePackageSession = React.useCallback((session) => {
           if (!session) return null;
           const packageId = session.bookingPackageId ||
@@ -149,7 +145,7 @@ export default function BookingHistory({ user }) {
                sessionStatus: session.sessionStatus || session.status || ""
           };
      }, []);
-
+     // định dạng ngày buổi đặt sân
      const formatSessionDateLabel = (dateStr) => {
           if (!dateStr) return "Chưa có ngày";
           const parsed = new Date(dateStr);
@@ -164,30 +160,27 @@ export default function BookingHistory({ user }) {
           return dateStr;
      };
 
+     // định dạng thời gian buổi đặt sân
      const formatSessionTimeRange = (session) => {
           if (!session) return "Chưa rõ thời gian";
           if (session.slotName) return session.slotName;
           if (session.startTime && session.endTime) return `${session.startTime} - ${session.endTime}`;
           return session.startTime || session.endTime || "Chưa rõ thời gian";
      };
-
-     // Scroll to top when filters or sorting change
      useEffect(() => {
           window.scrollTo({
                top: 0,
                behavior: 'smooth'
           });
-          // Brief loading indication for filter changes
      }, [statusFilter, sortBy, dateFrom, dateTo, currentPage]);
 
-     // Create a reusable loadBookings function
+     // tải đặt sân
      const loadBookings = React.useCallback(async () => {
           if (!playerId) {
                setBookings([]);
                setGroupedBookings({});
                return;
           }
-
           setIsLoadingBookings(true);
           setBookingError("");
           try {
@@ -203,7 +196,7 @@ export default function BookingHistory({ user }) {
                setBookings(bookingList);
                setGroupedBookings(buildRecurringGroups(bookingList));
 
-               // Fetch schedule data for each booking
+               // tải lịch trình cho mỗi đặt sân
                const schedulePromises = bookingList
                     .filter(b => b.scheduleId)
                     .map(async (booking) => {
@@ -241,6 +234,7 @@ export default function BookingHistory({ user }) {
           }
      }, [playerId]);
 
+     // tải gói đặt sân cố định
      const loadBookingPackages = React.useCallback(async () => {
           if (!user) {
                setBookingPackages([]);
@@ -260,7 +254,6 @@ export default function BookingHistory({ user }) {
                if (apiResult.success) {
                     packageList = apiResult.data || [];
                } else if (playerId) {
-                    // Fallback to playerId-based endpoint if token claim missing
                     apiResult = await fetchBookingPackagesByPlayer(playerId);
                     if (apiResult.success) {
                          packageList = apiResult.data || [];
@@ -274,7 +267,7 @@ export default function BookingHistory({ user }) {
                const normalizedPackages = packageList.map((pkg, index) => normalizePackageData(pkg, index));
                setBookingPackages(normalizedPackages);
 
-               // Fetch sessions if we have at least one package
+               // buổi đặt sân cố định
                if (normalizedPackages.length > 0) {
                     try {
                          const sessionResp = await fetchBookingPackageSessionsByPlayerToken();
@@ -288,15 +281,14 @@ export default function BookingHistory({ user }) {
 
                               normalizedSessions.forEach((session) => {
                                    if (!session.bookingPackageId) return;
-                                   // Convert to string for consistent key matching
-                                   const packageIdKey = String(session.bookingPackageId);
+                                   const packageIdKey = String(session.bookingPackageId); // chuản hóa
                                    if (!groupedSessions[packageIdKey]) {
                                         groupedSessions[packageIdKey] = [];
                                    }
                                    groupedSessions[packageIdKey].push(session);
                               });
 
-                              // Also map by numeric keys for backward compatibility
+                              // map bằng key 
                               Object.keys(groupedSessions).forEach((key) => {
                                    const sessions = groupedSessions[key];
                                    sessions.sort((a, b) => {
@@ -305,8 +297,7 @@ export default function BookingHistory({ user }) {
                                         return dateA - dateB;
                                    });
 
-                                   // Store under both string and numeric keys for flexible lookup
-                                   const numKey = Number(key);
+                                   const numKey = Number(key); // chuản hóa 
                                    if (!isNaN(numKey) && numKey.toString() === key) {
                                         groupedSessions[numKey] = sessions;
                                    }
@@ -314,7 +305,7 @@ export default function BookingHistory({ user }) {
 
                               setPackageSessionsMap(groupedSessions);
 
-                              // Fetch schedule data for each session that has a scheduleId
+                              // tải lịch trình cho mỗi buổi 
                               const schedulePromises = normalizedSessions
                                    .filter(s => s.scheduleId)
                                    .map(async (session) => {
@@ -343,7 +334,6 @@ export default function BookingHistory({ user }) {
                               setSessionScheduleDataMap(scheduleMap);
                          } else if (sessionResp.error) {
                               console.warn("Không thể tải danh sách buổi của gói:", sessionResp.error);
-                              // Set empty map to avoid showing incorrect counts
                               setPackageSessionsMap({});
                               setSessionScheduleDataMap({});
                          }
@@ -374,6 +364,7 @@ export default function BookingHistory({ user }) {
           }
      }, [activeTab, loadBookingPackages]);
 
+     // tải yêu cầu tham gia trận đấu
      const loadMatchRequestsForBookings = React.useCallback(async () => {
           if (!bookings || bookings.length === 0) {
 
@@ -391,8 +382,7 @@ export default function BookingHistory({ user }) {
           const map = {};
           const joinsMap = {};
 
-          // First pass: Check bookings that already have matchRequestId in their data
-          // This is the most reliable way to find match requests after reload
+          // đặt sân có yêu cầu tham gia trận đấu
           const bookingsWithRequestId = bookings.filter(booking => {
                const requestId = booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
                if (requestId && booking.id) {
@@ -408,7 +398,7 @@ export default function BookingHistory({ user }) {
                          if (!requestId || !booking.id) return;
 
                          try {
-                              // Fetch detail of the match request using the ID from booking data
+                              // tải yêu cầu tham gia trận đấu
                               const detailResp = await fetchMatchRequestById(requestId);
                               if (detailResp?.success && detailResp.data) {
                                    map[booking.id] = detailResp.data;
@@ -423,49 +413,40 @@ export default function BookingHistory({ user }) {
           }
 
           try {
-               // Second pass: Fetch all match requests from database and match by bookingId
+               // tải tất cả yêu cầu tham gia trận đấu
                const matchRequestsResp = await fetchMatchRequests({ page: 1, size: 1000 });
 
                if (matchRequestsResp.success && Array.isArray(matchRequestsResp.data)) {
-                    // Create a map from bookingId to matchRequest (normalize to string for comparison)
                     const bookingIdToMatchRequestMap = {};
-
+                    // 
                     matchRequestsResp.data.forEach((matchRequest) => {
                          const matchRequestBookingId = matchRequest.bookingId || matchRequest.bookingID || matchRequest.BookingID;
                          if (matchRequestBookingId) {
-                              // Normalize to string for consistent comparison
                               const normalizedId = String(matchRequestBookingId);
                               bookingIdToMatchRequestMap[normalizedId] = matchRequest;
-
-                         } else {
-
                          }
                     });
 
                     await Promise.all(bookings.map(async (booking) => {
 
-                         // Only compare booking.bookingId (database ID) with matchRequest.bookingId
-                         // booking.id is just a display key, not the actual database ID
+                         // so sánh booking.bookingId (ID cơ sở dữ liệu) với matchRequest.bookingId
                          const bookingId = booking.bookingId ? String(booking.bookingId) : null;
 
-                         // Try to find match request by bookingId
+                         // tìm yêu cầu tham gia trận đấu bằng bookingId
                          let matchRequest = null;
                          if (bookingId && bookingIdToMatchRequestMap[bookingId]) {
                               matchRequest = bookingIdToMatchRequestMap[bookingId];
 
                          }
 
-                         // If not found in list, check if booking has match request using lightweight API
-                         // This handles cases where the list API doesn't return all match requests
+                         // nếu không tìm thấy trong danh sách, kiểm tra nếu đặt sân có yêu cầu tham gia trận đấu
                          if (!matchRequest && bookingId) {
                               try {
                                    const hasRequestResp = await checkBookingHasMatchRequest(bookingId);
                                    if (hasRequestResp?.success && hasRequestResp.hasRequest) {
-                                        // Extract matchRequestId if available in response
                                         const matchRequestId = hasRequestResp.data?.data?.matchRequestId ||
                                              hasRequestResp.data?.matchRequestId;
 
-                                        // If we have matchRequestId, fetch full details immediately
                                         if (matchRequestId) {
                                              try {
                                                   const detailResp = await fetchMatchRequestById(matchRequestId);
@@ -473,7 +454,6 @@ export default function BookingHistory({ user }) {
                                                        matchRequest = detailResp.data;
 
                                                   } else {
-                                                       // Fallback to placeholder if fetch fails
                                                        matchRequest = {
                                                             bookingId: bookingId,
                                                             hasRequest: true,
@@ -484,7 +464,6 @@ export default function BookingHistory({ user }) {
                                                   }
                                              } catch (error) {
                                                   console.warn("Error fetching match request details:", error);
-                                                  // Fallback to placeholder
                                                   matchRequest = {
                                                        bookingId: bookingId,
                                                        hasRequest: true,
@@ -494,7 +473,6 @@ export default function BookingHistory({ user }) {
                                                   };
                                              }
                                         } else {
-                                             // No matchRequestId in response, create placeholder
                                              matchRequest = {
                                                   bookingId: bookingId,
                                                   hasRequest: true,
@@ -502,24 +480,17 @@ export default function BookingHistory({ user }) {
                                              };
 
                                         }
-                                   } else {
-
                                    }
                               } catch (error) {
-
+                                   console.warn("Error checking booking has match request:", bookingId, error);
                               }
                          }
-
+                         // nếu có yêu cầu tham gia trận đấu
                          if (matchRequest) {
                               const requestId = extractRequestId(matchRequest);
 
-                              // For placeholder match requests, we don't have requestId
-                              // But we still need to add to map to hide "Find Opponent" button
                               if (booking.id) {
-                                   // Use booking.id as key (for display), but match by booking.bookingId
                                    map[booking.id] = matchRequest;
-
-                                   // Only add to joinsMap if we have requestId and participants
                                    if (requestId) {
                                         joinsMap[requestId] = extractParticipants(matchRequest);
                                    }
@@ -534,31 +505,25 @@ export default function BookingHistory({ user }) {
                console.warn("Error loading match requests:", error);
           }
 
-          // Third pass: Fallback for bookings that still don't have match requests
-          // Try individual checks for each booking that wasn't mapped yet
+          // tải yêu cầu tham gia trận đấu
           const unmappedBookings = bookings.filter(booking => !map[booking.id] && booking.bookingId);
           if (unmappedBookings.length > 0) {
                await Promise.all(
                     unmappedBookings.map(async (booking) => {
-                         // Use booking.bookingId (database ID) for API calls, not booking.id (display key)
                          const bookingId = booking.bookingId;
                          if (!bookingId) {
-
                               return;
                          }
                          try {
-                              // Check via API using booking.bookingId (database ID)
                               const hasRequestResp = await checkMatchRequestByBooking(bookingId);
                               if (!hasRequestResp?.success) return;
                               const requestId = extractRequestId(hasRequestResp.data ?? hasRequestResp);
 
                               if (!requestId) return;
 
-                              // Fetch detail of the match request
                               const detailResp = await fetchMatchRequestById(requestId);
                               if (!detailResp?.success) return;
 
-                              // Map using booking.id (display key) but matched by booking.bookingId
                               if (booking.id) {
                                    map[booking.id] = detailResp.data;
                                    joinsMap[requestId] = extractParticipants(detailResp.data);
@@ -571,11 +536,9 @@ export default function BookingHistory({ user }) {
                );
           }
 
-          // Merge with existing state instead of replacing completely
-          // This preserves match requests that were just created but might not be in API yet
+          // mapping với trạng thái hiện tại 
           setBookingIdToRequest(prev => {
                const merged = { ...prev, ...map };
-
                return merged;
           });
           setRequestJoins(prev => ({ ...prev, ...joinsMap }));
@@ -583,14 +546,14 @@ export default function BookingHistory({ user }) {
      }, [bookings]);
 
      useEffect(() => {
-          // Only load match requests when we have bookings
+          // tải yêu cầu tham gia trận đấu khi có đặt sân
           if (bookings && bookings.length > 0) {
                loadMatchRequestsForBookings();
           }
      }, [bookings, loadMatchRequestsForBookings]);
 
-     const [refreshingRequests, setRefreshingRequests] = useState({}); // Track which requests are being refreshed
-     const [processingParticipants, setProcessingParticipants] = useState({}); // Track which participants are being processed (accept/reject)
+     const [refreshingRequests, setRefreshingRequests] = useState({});
+     const [processingParticipants, setProcessingParticipants] = useState({});
 
      const refreshRequestForBooking = React.useCallback(async (bookingKey, requestIdOrBookingId) => {
           if (!bookingKey || !requestIdOrBookingId) return;
@@ -599,7 +562,7 @@ export default function BookingHistory({ user }) {
           setRefreshingRequests(prev => ({ ...prev, [requestIdOrBookingId]: true }));
 
           try {
-               // Check if we have a placeholder (no requestId)
+               // kiểm tra nếu có placeholder
                const currentReq = bookingIdToRequest[bookingKey];
                const isPlaceholder = currentReq?.placeholder === true;
 
@@ -607,11 +570,11 @@ export default function BookingHistory({ user }) {
                let actualRequestId;
 
                if (isPlaceholder) {
-                    // Fetch by bookingId first to get requestId
+                    // lấy bookingId đầu tiên làm requestId
                     detailResp = await fetchMatchRequestByBookingId(requestIdOrBookingId);
                     actualRequestId = extractRequestId(detailResp?.data);
                } else {
-                    // Fetch by requestId directly
+                    // tải yêu cầu tham gia trận đấu bằng requestId
                     detailResp = await fetchMatchRequestById(requestIdOrBookingId);
                     actualRequestId = requestIdOrBookingId;
                }
@@ -625,19 +588,19 @@ export default function BookingHistory({ user }) {
                     });
                     return;
                }
-
+               // lấy người tham gia
                const participants = extractParticipants(detailResp.data);
                setBookingIdToRequest(prev => ({ ...prev, [bookingKey]: detailResp.data }));
                if (actualRequestId) {
                     setRequestJoins(prev => ({ ...prev, [actualRequestId]: participants }));
                }
 
-               // Filter to show only joining teams (not owner team)
+               // lọc người tham gia
                const joiningTeams = filterParticipantsForDisplay(participants, detailResp.data);
 
-               // Show success message based on filtered participants
+               // hiển thị thông báo thành công
                if (joiningTeams && joiningTeams.length > 0) {
-                    // Count pending teams (statusFromB = "Pending")
+                    // đếm đội tham gia (statusFromB = "Pending")
                     const pendingCount = joiningTeams.filter(p => {
                          const statusFromB = String(p.statusFromB || "").toLowerCase();
                          return statusFromB === "pending";
@@ -679,7 +642,6 @@ export default function BookingHistory({ user }) {
                     showConfirmButton: false
                });
           } finally {
-               // Clear loading state
                setRefreshingRequests(prev => {
                     const updated = { ...prev };
                     delete updated[requestIdOrBookingId];
@@ -688,6 +650,7 @@ export default function BookingHistory({ user }) {
           }
      }, [bookingIdToRequest]);
 
+     // chấp nhận người tham gia
      const handleAcceptParticipant = async (bookingKey, requestId, participant) => {
           const participantId = getParticipantId(participant);
           if (!requestId || !participantId) {
@@ -698,7 +661,6 @@ export default function BookingHistory({ user }) {
                });
                return;
           }
-
           const confirm = await Swal.fire({
                icon: 'question',
                title: 'Chấp nhận đội tham gia?',
@@ -725,8 +687,6 @@ export default function BookingHistory({ user }) {
           });
 
           if (!confirm.isConfirmed) return;
-
-          // Set loading state
           const processingKey = `${requestId}-${participantId}`;
           setProcessingParticipants(prev => ({ ...prev, [processingKey]: true }));
 
@@ -735,7 +695,7 @@ export default function BookingHistory({ user }) {
                if (!response.success) {
                     throw new Error(response.error || "Không thể chấp nhận đội này.");
                }
-               // Refresh the request to get updated participant list
+               // làm mới yêu cầu tham gia trận đấu
                await refreshRequestForBooking(bookingKey, requestId);
 
                Swal.fire({
@@ -754,7 +714,6 @@ export default function BookingHistory({ user }) {
                     confirmButtonText: 'Đóng'
                });
           } finally {
-               // Clear loading state
                setProcessingParticipants(prev => {
                     const updated = { ...prev };
                     delete updated[processingKey];
@@ -763,6 +722,7 @@ export default function BookingHistory({ user }) {
           }
      };
 
+     // từ chối người tham gia
      const handleRejectParticipant = async (bookingKey, requestId, participant) => {
           const participantId = getParticipantId(participant);
           if (!requestId || !participantId) {
@@ -800,22 +760,16 @@ export default function BookingHistory({ user }) {
                confirmButtonColor: '#ef4444',
                width: '500px'
           });
-
           if (!confirm.isConfirmed) return;
-
-          // Set loading state
           const processingKey = `${requestId}-${participantId}`;
           setProcessingParticipants(prev => ({ ...prev, [processingKey]: true }));
 
           try {
-
                const response = await rejectOrWithdrawParticipant(requestId, participantId);
-
                if (!response.success) {
                     throw new Error(response.error || "Không thể từ chối đội này.");
                }
-
-               // Refresh the request to get updated participant list
+               // làm mới yêu cầu tham gia trận đấu
                await refreshRequestForBooking(bookingKey, requestId);
 
                Swal.fire({
@@ -826,7 +780,6 @@ export default function BookingHistory({ user }) {
                     showConfirmButton: false
                });
           } catch (error) {
-               console.error("❌ [RejectParticipant] Error:", error);
                Swal.fire({
                     icon: 'error',
                     title: 'Lỗi',
@@ -834,7 +787,6 @@ export default function BookingHistory({ user }) {
                     confirmButtonText: 'Đóng'
                });
           } finally {
-               // Clear loading state
                setProcessingParticipants(prev => {
                     const updated = { ...prev };
                     delete updated[processingKey];
@@ -844,6 +796,7 @@ export default function BookingHistory({ user }) {
      };
 
      useEffect(() => {
+          // tải lịch sử trận đấu
           const loadPlayerHistory = async () => {
                if (!user?.id && !user?.userID) {
                     setPlayerHistories([]);
@@ -854,7 +807,7 @@ export default function BookingHistory({ user }) {
                     if (response.success) {
                          setPlayerHistories(response.data || []);
                     } else {
-                         console.warn("Không thể tải lịch sử kèo:", response.error);
+                         console.warn("Không thể tải lịch sử trận đấu:", response.error);
                     }
                } catch (error) {
                     console.warn("Error loading player history:", error);
@@ -863,29 +816,27 @@ export default function BookingHistory({ user }) {
           loadPlayerHistory();
      }, [user?.id, user?.userID]);
 
-     // Use ref to track reloading state to prevent infinite loops
+     // sử dụng ref để theo dõi trạng thái reload để tránh vòng lặp vô hạn
      const isReloadingRef = React.useRef(false);
      const lastReloadTimeRef = React.useRef(0);
 
-     // Check and update booking status for pending + unpaid bookings (2 hours timeout)
+     // kiểm tra và cập nhật trạng thái đặt sân (2 giờ timeout)
      useEffect(() => {
           if (!playerId) return;
-
           const checkExpiredBookings = () => {
-               // Skip if already reloading or reloaded recently (within 5 seconds)
                const now = Date.now();
                if (isReloadingRef.current || (now - lastReloadTimeRef.current < 5000)) {
                     return;
                }
 
                const currentTime = new Date().getTime();
-               const TWO_HOURS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+               const TWO_HOURS = 2 * 60 * 60 * 1000; // 2 giờ 
 
                setBookings(prevBookings => {
                     let hasExpiredBookings = false;
                     const updatedTimeRemaining = {};
 
-                    // First, update time remaining without changing bookings
+                    // cập nhật thời gian còn lại mà không thay đổi đặt sân
                     prevBookings.forEach(booking => {
                          const isPending = (booking.status === "pending" || booking.bookingStatus === "Pending" || booking.bookingStatus === "pending");
                          const isUnpaid = (booking.paymentStatus === "Unpaid" || booking.paymentStatus === "unpaid" || booking.paymentStatus === "Pending");
@@ -895,11 +846,11 @@ export default function BookingHistory({ user }) {
                               const timeElapsed = currentTime - createdAt;
 
                               if (timeElapsed <= TWO_HOURS) {
-                                   // Calculate time remaining
+                                   // tính thời gian còn lại
                                    const remaining = TWO_HOURS - timeElapsed;
                                    updatedTimeRemaining[booking.id] = remaining;
                               } else {
-                                   // Check if expired
+                                   // kiểm tra nếu hết hạn
                                    if (booking.status !== "expired" && booking.bookingStatus !== "Expired") {
                                         hasExpiredBookings = true;
                                    }
@@ -907,7 +858,7 @@ export default function BookingHistory({ user }) {
                          }
                     });
 
-                    // Update time remaining separately (doesn't trigger bookings dependency)
+                    // cập nhật thời gian còn lại (không kích hoạt dependency đặt sân)
                     if (Object.keys(updatedTimeRemaining).length > 0) {
                          setTimeRemaining(prev => ({
                               ...prev,
@@ -915,12 +866,12 @@ export default function BookingHistory({ user }) {
                          }));
                     }
 
-                    // Only reload from API if there are newly expired bookings
+                    // làm mới từ API nếu có đặt sân hết hạn mới
                     if (hasExpiredBookings && !isReloadingRef.current) {
                          isReloadingRef.current = true;
                          lastReloadTimeRef.current = now;
 
-                         // Reload bookings from API to sync with backend (only once)
+                         // làm mới đặt sân
                          fetchBookingsByPlayer(playerId).then(apiResult => {
                               if (apiResult.success) {
                                    const bookingList = normalizeApiBookings(apiResult.data);
@@ -930,57 +881,45 @@ export default function BookingHistory({ user }) {
                          }).catch(error => {
                               console.error("Error reloading bookings after expiration:", error);
                          }).finally(() => {
-                              // Reset flag after a delay to allow reload to complete
                               setTimeout(() => {
                                    isReloadingRef.current = false;
                               }, 3000);
                          });
                     }
-
-                    // Return unchanged bookings if only updating time remaining
                     return prevBookings;
                });
           };
-
-          // Check immediately
           checkExpiredBookings();
 
-          // Check every 30 seconds (increased from 10 to reduce API calls)
+          // kiểm tra mỗi 30 giây
           const interval = setInterval(checkExpiredBookings, 30000);
 
           return () => clearInterval(interval);
      }, [playerId]);
 
+     // tìm đối thủ
      const handleFindOpponent = (booking) => {
           setSelectedBooking(booking);
           setShowFindOpponentModal(true);
      };
 
+     // tìm đối thủ thnah công
      const handleFindOpponentSuccess = async (result) => {
-          // Removed: recurring opponent feature - if (result.type === "recurring") logic
           setShowFindOpponentModal(false);
-
-          // If we have the match request data, add it to state immediately
           if (result.matchRequest) {
                const matchRequest = result.matchRequest;
                const requestId = extractRequestId(matchRequest);
-               // Use selectedBooking if available, otherwise use result.booking
                const booking = selectedBooking || result.booking;
-               // Use booking.id as display key (consistent with loadMatchRequestsForBookings)
                const bookingDisplayId = booking?.id;
                const matchRequestBookingId = matchRequest.bookingId || matchRequest.bookingID || matchRequest.BookingID;
 
                if (requestId && bookingDisplayId) {
-                    // Add to bookingIdToRequest map using booking.id (display key)
-                    // This is consistent with how loadMatchRequestsForBookings maps
+                    // map bằng booking.id 
                     setBookingIdToRequest(prev => {
                          const updated = { ...prev };
-
-                         // Map by booking.id (display key) - this is what we use in the UI
                          updated[bookingDisplayId] = matchRequest;
 
-                         // Also try to find and map any other bookings with the same bookingId
-                         // in case the booking list hasn't updated yet
+                         // trường hợp danh sách đặt sân chưa được cập nhật
                          if (matchRequestBookingId) {
                               const normalizedMatchRequestBookingId = String(matchRequestBookingId);
                               bookings.forEach(b => {
@@ -989,11 +928,10 @@ export default function BookingHistory({ user }) {
                                    }
                               });
                          }
-
                          return updated;
                     });
 
-                    // Add participants to requestJoins
+                    // thêm người tham gia vào requestJoins
                     const participants = extractParticipants(matchRequest);
                     if (participants && participants.length > 0) {
                          setRequestJoins(prev => ({
@@ -1008,22 +946,18 @@ export default function BookingHistory({ user }) {
                }
           }
 
-          // Preserve the match request we just added to state
+          // giữ lại yêu cầu tham gia trận đấu
           const preservedMatchRequest = result.matchRequest;
           const preservedRequestId = extractRequestId(preservedMatchRequest);
           const preservedBooking = selectedBooking || result.booking;
           const preservedBookingId = preservedBooking?.id || preservedBooking?.bookingId;
           const preservedBookingDatabaseId = preservedBooking?.bookingId;
-
-          // Wait longer to ensure backend has updated the booking with matchRequestId
-          // Retry mechanism to ensure backend has processed the update
-          const maxRetries = 3;
+          const maxRetries = 3;    // số lần retry
           let bookingUpdated = false;
 
           for (let retryCount = 0; retryCount < maxRetries && !bookingUpdated; retryCount++) {
-               // Wait before checking (longer delay for first retry)
                const currentRetry = retryCount;
-               const delay = currentRetry === 0 ? 2000 : 1000;
+               const delay = currentRetry === 0 ? 2000 : 1000;   // thời gian delay
                await new Promise(resolve => setTimeout(resolve, delay));
 
                try {
@@ -1032,7 +966,7 @@ export default function BookingHistory({ user }) {
                          if (apiResult.success) {
                               const bookingList = normalizeApiBookings(apiResult.data);
 
-                              // Find the booking in the new list that matches our preserved booking
+                              // tìm đặt sân trong danh sách mới
                               const updatedBooking = bookingList.find(b =>
                                    (preservedBookingDatabaseId && b.bookingId && String(b.bookingId) === String(preservedBookingDatabaseId)) ||
                                    (b.id === preservedBookingId) ||
@@ -1041,21 +975,16 @@ export default function BookingHistory({ user }) {
                               );
 
                               if (updatedBooking) {
-                                   // Check if booking now has matchRequestId (backend has updated)
                                    const hasMatchRequestId = updatedBooking.matchRequestId || updatedBooking.matchRequestID || updatedBooking.MatchRequestID;
 
                                    if (hasMatchRequestId || currentRetry === maxRetries - 1) {
-                                        // Backend has updated or this is the last retry
                                         setBookings(bookingList);
                                         setGroupedBookings(buildRecurringGroups(bookingList));
-
-                                        // Ensure our newly created match request is mapped
                                         if (preservedMatchRequest && preservedRequestId && updatedBooking.id) {
                                              setBookingIdToRequest(prev => ({
                                                   ...prev,
                                                   [updatedBooking.id]: preservedMatchRequest
                                              }));
-
                                         }
                                         bookingUpdated = true;
                                    }
@@ -1066,43 +995,28 @@ export default function BookingHistory({ user }) {
                     console.error("Error reloading bookings (retry", currentRetry + 1, "):", error);
                }
           }
-
-          // Then load match requests to ensure everything is in sync
-          // This will merge with our preserved state, not replace it
-          // The improved loadMatchRequestsForBookings will now prioritize matchRequestId from booking data
+          // tải yêu cầu tham gia trận đấu 
           await loadMatchRequestsForBookings();
-
           Swal.fire('Đã gửi!', 'Yêu cầu tìm đối đã được tạo.', 'success');
      };
 
-     // Removed: handleRecurringOpponentSuccess - recurring opponent feature
-
+     // đánh giá
      const handleRating = (booking) => {
           setSelectedBooking(booking);
           setEditingRating(null);
           setShowRatingModal(true);
      };
 
-     const handleEditRating = (booking) => {
-          const ratingInfo = {
-               ratingId: booking.ratingId,
-               stars: booking.ratingStars,
-               comment: booking.ratingComment
-          };
-          setSelectedBooking(booking);
-          setEditingRating(ratingInfo);
-          setShowRatingModal(true);
-     };
-
+     // đánh giá thành công
      const handleRatingSuccess = async () => {
           setShowRatingModal(false);
           setSelectedBooking(null);
           setEditingRating(null);
           Swal.fire('Thành công!', 'Đánh giá của bạn đã được lưu.', 'success');
-          // Reload bookings to refresh the UI
           await loadBookings();
      };
 
+     // chuyển gói
      const togglePackageSessions = (packageId) => {
           setExpandedPackageSessions(prev => ({
                ...prev,
@@ -1110,6 +1024,7 @@ export default function BookingHistory({ user }) {
           }));
      };
 
+     // xem hóa đơn
      const handleViewInvoice = (bookingPayload) => {
           if (!bookingPayload) return;
           setInvoiceBooking(bookingPayload);
@@ -1135,7 +1050,7 @@ export default function BookingHistory({ user }) {
           }
      };
 
-     // Helper function to check if booking is pending + unpaid and within 2 hours
+     // kiểm tra nếu đặt sân chưa thanh toán trong 2 giờ
      const isPendingUnpaidWithin2Hours = (booking) => {
           if (!booking) return false;
           const isPending = (booking.status === "pending" || booking.bookingStatus === "Pending" || booking.bookingStatus === "pending");
@@ -1151,28 +1066,22 @@ export default function BookingHistory({ user }) {
           return timeElapsed <= TWO_HOURS;
      };
 
+     // kiểm tra nếu đặt sân có yêu cầu tham gia trận đấu
      const hasExistingMatchRequest = (booking) => {
           if (!booking) return false;
-
-          // Check if booking has matchRequestId in its data
           const hasMatchRequestId = booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
           if (hasMatchRequestId) {
                return true;
           }
-
-          // Check if booking has opponent flag
           if (booking.hasOpponent) {
                return true;
           }
-
-          // Check if booking is in bookingIdToRequest map (including placeholders)
           if (!booking.id) return false;
           const matchRequest = bookingIdToRequest[booking.id];
-
-          // If we have a match request (even placeholder), booking has a request
           return Boolean(matchRequest);
      };
 
+     // nút tìm đối thủ
      const shouldShowFindOpponentButton = (booking) => {
           if (!booking) return false;
           const statusLower = String(booking.status || booking.bookingStatus || "").toLowerCase();
@@ -1200,6 +1109,7 @@ export default function BookingHistory({ user }) {
           return true;
      };
 
+     // chuẩn hóa trạng thái yêu cầu tham gia trận đấu
      const normalizeRequestStatus = (request) => {
           const raw = (request?.status || request?.state || "").toString().toLowerCase();
           if (raw.includes("match")) return "matched";
@@ -1218,6 +1128,7 @@ export default function BookingHistory({ user }) {
           return raw;
      };
 
+     // cấu hình badge yêu cầu tham gia trận đấu
      const getRequestBadgeConfig = (request) => {
           const status = normalizeRequestStatus(request);
           const participants = filterParticipantsForDisplay(extractParticipants(request), request);
@@ -1260,17 +1171,19 @@ export default function BookingHistory({ user }) {
           };
      };
 
+     // kiểm tra nếu yêu cầu tham gia trận đấu đã bị khóa
      const isRequestLocked = (request) => {
           const status = normalizeRequestStatus(request);
           return status === "matched" || status === "expired" || status === "cancelled";
      };
 
+     // lấy người tham gia đã được duyệt
      const getAcceptedParticipants = (request) => {
           const participants = filterParticipantsForDisplay(extractParticipants(request), request);
           return participants.filter(isParticipantAcceptedByOwner);
      };
 
-     // Helper function to check if booking is older than 2 hours (to hide cancel button)
+     // kiểm tra nếu đặt sân cũ hơn 2 giờ
      const isBookingOlderThan2Hours = (booking) => {
           if (!booking || !booking.createdAt) return false;
           const now = new Date().getTime();
@@ -1280,17 +1193,13 @@ export default function BookingHistory({ user }) {
           return timeElapsed > TWO_HOURS;
      };
 
-     // Helper function to check if booking match date has passed or is within 12 hours
+     // trong 12h không hiện buton hủy
      const shouldHideCancelButtonByDate = (booking) => {
           if (!booking) return false;
-
-          // Get match date and time from schedule data or booking data
           const scheduleData = booking.scheduleId ? scheduleDataMap[booking.scheduleId] : null;
-
           let matchDate = null;
           let matchTime = null;
 
-          // Try to get date from schedule data
           if (scheduleData && scheduleData.date) {
                try {
                     const [year, month, day] = scheduleData.date.split('-').map(Number);
@@ -1298,11 +1207,11 @@ export default function BookingHistory({ user }) {
                          matchDate = new Date(year, month - 1, day);
                     }
                } catch (e) {
-                    // Ignore
+
                }
           }
 
-          // Fallback to booking date
+          // nếu không tìm thấy ngày trong lịch, sử dụng ngày đặt sân
           if (!matchDate && booking.date) {
                try {
                     if (booking.date.includes('/')) {
@@ -1321,70 +1230,63 @@ export default function BookingHistory({ user }) {
                }
           }
 
-          // Get time from schedule data or booking
+          // lấy thời gian từ lịch hoặc đặt sân
           if (scheduleData && scheduleData.startTime) {
                matchTime = scheduleData.startTime;
           } else if (booking.startTime) {
                matchTime = booking.startTime;
           } else if (booking.time) {
-               // Try to extract start time from time range (e.g., "06:00 - 07:30")
                const timeMatch = booking.time.match(/^(\d{1,2}):(\d{2})/);
                if (timeMatch) {
                     matchTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
                }
           }
 
-          if (!matchDate) return false; // Can't determine, allow cancel button
+          if (!matchDate) return false;
 
-          // Check if match date has passed
+          // kiểm tra nếu trận đấu đã qua ngày
           const now = new Date();
           const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           const matchDateOnly = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate());
 
-          // If match date is in the past, hide cancel button
           if (matchDateOnly < today) {
                return true;
           }
 
-          // If match date is today, check if less than 12 hours before start time
+          // nếu trận đấu là hôm nay, kiểm tra nếu ít hơn 12 giờ trước thời gian bắt đầu
           if (matchDateOnly.getTime() === today.getTime() && matchTime) {
                try {
                     const [hours, minutes] = matchTime.split(':').map(Number);
                     if (!isNaN(hours) && !isNaN(minutes)) {
                          const matchDateTime = new Date(matchDate);
                          matchDateTime.setHours(hours, minutes, 0, 0);
-
                          const nowTime = new Date().getTime();
                          const matchTimeMs = matchDateTime.getTime();
                          const TWELVE_HOURS = 12 * 60 * 60 * 1000;
                          const timeUntilMatch = matchTimeMs - nowTime;
-
-                         // If less than 12 hours before match, hide cancel button
                          if (timeUntilMatch < TWELVE_HOURS && timeUntilMatch > 0) {
                               return true;
                          }
                     }
                } catch (e) {
-                    // Ignore parsing errors
+
                }
           }
 
           return false;
      };
 
-     // Handle continue payment
+     // tiếp tục thanh toán
      const handleContinuePayment = async (booking) => {
           if (!booking) return;
-
           setPaymentBooking(booking);
           setShowPaymentModal(true);
           setIsLoadingQR(true);
           setPaymentQRCode(null);
-
           try {
                const bookingId = booking.bookingId || booking.id;
                const result = await generateQRCode(bookingId, {
-                    paymentType: "deposit", // or "full" depending on your logic
+                    paymentType: "deposit",
                     amount: booking.depositAmount || booking.totalPrice || 0
                });
 
@@ -1413,11 +1315,9 @@ export default function BookingHistory({ user }) {
           }
      };
 
-     // Handle confirm payment
+     // xác nhận thanh toán
      const handleConfirmPayment = async () => {
           if (!paymentBooking) return;
-
-          // Show confirmation dialog first
           const confirmResult = await Swal.fire({
                title: 'Xác nhận thanh toán',
                html: `
@@ -1453,8 +1353,6 @@ export default function BookingHistory({ user }) {
           setIsConfirmingPayment(true);
           try {
                const bookingId = paymentBooking.bookingId || paymentBooking.id;
-
-               // Show loading state
                Swal.fire({
                     title: 'Đang xử lý...',
                     html: 'Vui lòng đợi trong giây lát',
@@ -1464,14 +1362,9 @@ export default function BookingHistory({ user }) {
                          Swal.showLoading();
                     }
                });
-
                const result = await confirmPaymentAPI(bookingId);
-
                if (result.success) {
-                    // Close loading
                     Swal.close();
-
-                    // Show success message with more details
                     await Swal.fire({
                          icon: 'success',
                          title: '✅ Thanh toán thành công!',
@@ -1508,7 +1401,7 @@ export default function BookingHistory({ user }) {
                     setPaymentBooking(null);
                     setPaymentQRCode(null);
 
-                    // Reload bookings
+                    // làm mới đặt sân
                     if (playerId) {
                          const apiResult = await fetchBookingsByPlayer(playerId);
                          if (apiResult.success) {
@@ -1587,6 +1480,7 @@ export default function BookingHistory({ user }) {
           }
      };
 
+     // thống kê đặt sân
      const stats = useMemo(() => {
           const total = bookings.length;
           const completed = bookings.filter(b => b.status === "completed").length;
@@ -1596,17 +1490,20 @@ export default function BookingHistory({ user }) {
           return { total, completed, cancelled, upcoming, pending };
      }, [bookings]);
 
-     // Prefer createdAt when filtering by date range
+     // ưu tiên createdAt khi lọc theo ngày
      const getFilterDateValue = React.useCallback((booking) => booking?.createdAt || booking?.date, []);
 
-     // Normalize bookingId to a sortable number (handles "#123", "BK-123", etc.)
+     // chuẩn hóa bookingId thành số sắp xếp (xử lý "#123", "BK-123", etc.)
+     // Trả về bookingId dưới dạng "BK-123"
      const getBookingIdValue = (booking) => {
           const raw = booking?.bookingId ?? booking?.id ?? 0;
           const numeric = Number(String(raw).replace(/[^\d]/g, ""));
-          return Number.isFinite(numeric) ? numeric : 0;
+          if (Number.isFinite(numeric) && numeric > 0) {
+               return `BK-${numeric}`;
+          }
+          return "BK-0";
      };
 
-     // Check if a match history item matches the current status filter
      const matchHistoryMatchesStatus = React.useCallback((history) => {
           if (statusFilter === "all") return true;
           const status = (history?.finalStatus || history?.status || "").toLowerCase();
@@ -1616,7 +1513,7 @@ export default function BookingHistory({ user }) {
           return status === statusFilter;
      }, [statusFilter]);
 
-     // Normalize match request/history id to a sortable number for match history tab
+     // Trả về id yêu cầu tham gia trận đấu dưới dạng "MR-123"
      const getRequestIdValue = (history) => {
           const raw = history?.matchRequestId ??
                history?.matchRequestID ??
@@ -1626,14 +1523,14 @@ export default function BookingHistory({ user }) {
                history?.historyId ??
                0;
           const numeric = Number(String(raw).replace(/[^\d]/g, ""));
-          return Number.isFinite(numeric) ? numeric : 0;
+          if (Number.isFinite(numeric) && numeric > 0) {
+               return `MR-${numeric}`;
+          }
+          return "MR-0";
      };
 
      const withinDateRange = React.useCallback(function withinDateRange(dateStr) {
-          // Không có ngày => luôn hiển thị
           if (!dateStr) return true;
-
-          // Hàm parse date an toàn cho nhiều format (dd/MM/yyyy, yyyy-MM-dd, Date object)
           const parseDateSafe = (value) => {
                if (!value) return null;
                if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
@@ -1654,8 +1551,6 @@ export default function BookingHistory({ user }) {
                          const dt = new Date(y, m - 1, d);
                          return isNaN(dt.getTime()) ? null : dt;
                     }
-
-                    // Thử parse mặc định của JS (fallback)
                     const dt = new Date(trimmed);
                     return isNaN(dt.getTime()) ? null : dt;
                }
@@ -1674,6 +1569,7 @@ export default function BookingHistory({ user }) {
           return true;
      }, [dateFrom, dateTo]);
 
+     // hiển thị đặt sân đơn
      const visibleSingles = useMemo(() => {
           const base = bookings.filter(b => !b.isRecurring);
           const filtered = base.filter(b => {
@@ -1684,10 +1580,10 @@ export default function BookingHistory({ user }) {
                const matchDate = withinDateRange(getFilterDateValue(b));
                return matchQuery && matchStatus && matchDate;
           });
+          // sắp xếp đặt sân đơn
           const sorted = filtered.sort((a, b) => {
                const idA = getBookingIdValue(a);
                const idB = getBookingIdValue(b);
-
                if (sortBy === "newest") return idB - idA;
                if (sortBy === "oldest") return idA - idB;
                if (sortBy === "price-asc") return (a.price || 0) - (b.price || 0);
@@ -1697,13 +1593,14 @@ export default function BookingHistory({ user }) {
           return sorted;
      }, [bookings, query, statusFilter, sortBy, withinDateRange, getFilterDateValue]);
 
-     // Pagination for single bookings
+     // phân trang đặt sân đơn
+     const pageSize = 5;
      const totalSingleBookings = visibleSingles.length;
      const totalPages = Math.max(1, Math.ceil(totalSingleBookings / pageSize));
      const startIndex = (currentPage - 1) * pageSize;
      const endIndex = startIndex + pageSize;
      const paginatedSingles = visibleSingles.slice(startIndex, endIndex);
-
+     // cố items hiển thị
      const visibleGroups = useMemo(() => {
           const groups = Object.values(groupedBookings || {});
           const filtered = groups.filter(group => {
@@ -1714,6 +1611,7 @@ export default function BookingHistory({ user }) {
                const anyInRange = (group.bookings || []).some(b => withinDateRange(getFilterDateValue(b)));
                return matchQuery && matchStatus && anyInRange;
           });
+          // sắp xếp đặt sân đơn
           const sorted = filtered.sort((a, b) => {
                const aId = (a.bookings || []).reduce((acc, cur) => Math.max(acc, getBookingIdValue(cur)), 0);
                const bId = (b.bookings || []).reduce((acc, cur) => Math.max(acc, getBookingIdValue(cur)), 0);
@@ -1726,18 +1624,18 @@ export default function BookingHistory({ user }) {
           return sorted;
      }, [groupedBookings, query, statusFilter, sortBy, withinDateRange, getFilterDateValue]);
 
-     // Sort match history by request id (newest/oldest) to match other tabs behavior
+     // sắp xếp lịch sử tham gia trận đấu
      const sortedPlayerHistories = useMemo(() => {
           const list = (playerHistories || []).filter(matchHistoryMatchesStatus);
           return list.sort((a, b) => {
                const aId = getRequestIdValue(a);
                const bId = getRequestIdValue(b);
                if (sortBy === "oldest") return aId - bId;
-               // default + "newest"
                return bId - aId;
           });
      }, [playerHistories, sortBy, matchHistoryMatchesStatus]);
 
+     // hủy đặt sân
      const handleCancel = (id) => {
           const booking = bookings.find(b => b.id === id);
           if (booking) {
@@ -1746,19 +1644,17 @@ export default function BookingHistory({ user }) {
           }
      };
 
+     // xác nhận hủy đặt sân
      const handleConfirmCancel = async (reason) => {
           if (!cancelBooking) return;
 
           setIsCancelling(true);
           try {
-               // Check if booking is pending (chưa được xác nhận)
                const isPending = cancelBooking.status === "pending" ||
                     cancelBooking.bookingStatus === "Pending" ||
                     cancelBooking.bookingStatus === "pending";
 
                const bookingId = cancelBooking.bookingId || cancelBooking.id;
-
-               // For confirmed bookings, reason is required
                if (!isPending && (!reason || !reason.trim())) {
                     await Swal.fire({
                          icon: 'warning',
@@ -1770,8 +1666,7 @@ export default function BookingHistory({ user }) {
                     return;
                }
 
-               // Lấy scheduleId từ booking trước khi hủy để cập nhật FieldSchedule
-               // Thử nhiều nguồn: normalized data, apiSource (raw API response)
+               // lấy scheduleId từ đặt sân
                const scheduleId = cancelBooking?.scheduleId
                     || cancelBooking?.scheduleID
                     || cancelBooking?.ScheduleID
@@ -1781,33 +1676,17 @@ export default function BookingHistory({ user }) {
                     || cancelBooking?.apiSource?.ScheduleID
                     || cancelBooking?.apiSource?.ScheduleId;
 
-               console.log("🔍 [CANCEL BOOKING] Booking data:", {
-                    bookingId,
-                    scheduleId,
-                    isPending,
-                    cancelBookingKeys: Object.keys(cancelBooking || {}),
-                    apiSourceKeys: Object.keys(cancelBooking?.apiSource || {}),
-                    rawScheduleId: cancelBooking?.scheduleId,
-                    apiSourceScheduleId: cancelBooking?.apiSource?.scheduleId
-               });
-
                let result;
 
                // Thử cập nhật trạng thái trực tiếp trước
                if (isPending) {
-                    console.log("📝 [CANCEL BOOKING] Pending booking - trying to update status to Canceled directly");
                     result = await updateBookingStatus(bookingId, "Canceled");
-
-                    // Nếu API updateBookingStatus không hoạt động, fallback sang cancelBookingAPI
                     if (!result.success) {
-                         console.log("⚠️ [CANCEL BOOKING] updateBookingStatus failed, falling back to cancelBookingAPI");
                          result = await cancelBookingAPI(bookingId, reason || "Hủy booking chưa được xác nhận");
                     } else {
                          result.message = "Đã hủy booking thành công!";
                     }
                } else {
-                    // Booking confirmed: Gửi yêu cầu hủy qua API
-                    console.log("📝 [CANCEL BOOKING] Confirmed booking - sending cancellation request");
                     result = await cancelBookingAPI(bookingId, reason || "Hủy booking");
                }
 
@@ -1821,19 +1700,11 @@ export default function BookingHistory({ user }) {
 
                     const finalScheduleId = scheduleId || responseScheduleId;
 
-                    console.log("🔍 [CANCEL BOOKING] Schedule ID resolution:", {
-                         fromBooking: scheduleId,
-                         fromResponse: responseScheduleId,
-                         final: finalScheduleId
-                    });
-
-                    // Cập nhật FieldSchedule status về "Available" khi hủy booking thành công
+                    // cập nhật FieldSchedule status về "Available" khi hủy booking thành công
                     if (finalScheduleId && Number(finalScheduleId) > 0) {
                          try {
-                              console.log("📝 [UPDATE SCHEDULE] Updating FieldSchedule status to 'Available' for schedule", finalScheduleId);
                               const updateResult = await updateFieldScheduleStatus(Number(finalScheduleId), "Available");
                               if (updateResult.success) {
-                                   console.log(`✅ [UPDATE SCHEDULE] Updated schedule ${finalScheduleId} to Available after canceling booking`);
                               } else {
                                    console.warn(`⚠️ [UPDATE SCHEDULE] Failed to update schedule ${finalScheduleId}:`, updateResult.error);
                               }
@@ -1846,7 +1717,7 @@ export default function BookingHistory({ user }) {
 
                     const bookingKey = String(cancelBooking.id || cancelBooking.bookingId);
 
-                    // Extract refund information from response
+                    // lấy thông tin hoàn tiền từ response
                     const refundInfo = {
                          message: result.message || result.data?.message,
                          cancelReason: result.cancelReason || result.data?.cancelReason,
@@ -1858,6 +1729,7 @@ export default function BookingHistory({ user }) {
 
                     const cleanReason = stripRefundQrInfo(refundInfo.cancelReason || result.data?.cancelReason || "");
 
+                    // cập nhật trạng thái đặt sân
                     if (bookingKey) {
                          setBookings(prev => {
                               const updated = prev.map(b => {
@@ -1877,7 +1749,6 @@ export default function BookingHistory({ user }) {
                          });
                     }
 
-                    // Build success message with cancellation reason only
                     let successHtml = `
                          <p class="mb-3">${refundInfo.message || 'Đã hủy booking thành công!'}</p>
                     `;
@@ -1903,9 +1774,6 @@ export default function BookingHistory({ user }) {
                               popup: 'text-left'
                          }
                     });
-
-                    // Reload bookings from BE to get updated status
-                    // BE will update: bookingStatus = "Cancelled", paymentStatus = "Refunded" (if refunded)
                     const playerId = user?.userID || user?.UserID || user?.id || user?.Id || user?.userId;
                     if (playerId) {
                          const apiResult = await fetchBookingsByPlayer(playerId);
@@ -1931,6 +1799,7 @@ export default function BookingHistory({ user }) {
           }
      };
 
+     // hủy lịch định kỳ
      const handleCancelRecurring = (groupId) => {
           Swal.fire({
                title: 'Xác nhận hủy lịch định kỳ',
@@ -1957,6 +1826,7 @@ export default function BookingHistory({ user }) {
           });
      };
 
+
      const handleCancelSingleRecurring = (id) => {
           const booking = bookings.find(b => b.id === id);
           if (booking) {
@@ -1972,54 +1842,7 @@ export default function BookingHistory({ user }) {
           }));
      };
 
-     const handlers = {
-          // View handlers
-          handleViewInvoice,
-          handleContinuePayment,
-          handleCancel,
-          handleRating,
-          handleFindOpponent,
 
-          // Match request handlers
-          handleAcceptParticipant,
-          handleRejectParticipant,
-          refreshRequestForBooking,
-
-          // Validation functions
-          isPendingUnpaidWithin2Hours,
-          shouldShowCancelButton,
-          shouldShowFindOpponentButton,
-          hasExistingMatchRequest: (booking) => hasExistingMatchRequest(booking, bookingIdToRequest),
-
-          // Helper functions
-          extractRequestId,
-          extractParticipants,
-          getRequestOwnerId,
-          getOwnerTeamNames,
-          getParticipantId,
-          filterParticipantsForDisplay,
-          normalizeParticipantStatus,
-          participantNeedsOwnerAction,
-          isParticipantAcceptedByOwner,
-          isParticipantRejectedByOwner,
-          getOwnerDecisionStatus,
-          getOpponentDecisionStatus,
-
-          // Badge and status functions
-          getRequestBadgeConfig,
-          getAcceptedParticipants,
-          isRequestLocked,
-          normalizeRequestStatus
-     };
-
-     const matchRequestData = {
-          bookingIdToRequest,
-          requestJoins,
-          refreshingRequests,
-          processingParticipants,
-          refreshRequestForBooking,
-          extractRequestId
-     };
 
      return (
           <Section className="min-h-screen bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center">
@@ -2069,7 +1892,7 @@ export default function BookingHistory({ user }) {
                                    </div>
                               )}
 
-                              {/* Tab Navigation */}
+                              {/* Tab nav */}
                               <div className="mb-4 flex items-center justify-center gap-2 border-b border-teal-200">
                                    <button
                                         onClick={() => setActiveTab("bookings")}
@@ -2108,7 +1931,7 @@ export default function BookingHistory({ user }) {
                                    </button>
                               </div>
 
-                              {/* Results Summary - Only show for bookings tab */}
+                              {/* kêt quả sân */}
                               {activeTab === "bookings" && (
                                    <div className=" p-2 px-3 bg-teal-50 border border-teal-200 rounded-3xl">
                                         <div className="flex items-center justify-between">
@@ -2129,7 +1952,7 @@ export default function BookingHistory({ user }) {
                                         </div>
                                    </div>
                               )}
-
+                              {/* lịch cố định */}
                               {activeTab === "packages" && (
                                    <div className=" p-2 px-3 bg-teal-50 border border-teal-200 rounded-3xl">
                                         <div className="flex items-center justify-between">
@@ -2143,11 +1966,10 @@ export default function BookingHistory({ user }) {
                                    </div>
                               )}
 
-                              {/* Action Buttons */}
 
                          </CardContent></Card>
 
-                    {/* Bookings Tab Content */}
+                    {/* lịch đơn */}
                     {activeTab === "bookings" && (
                          <div className="space-y-4">
                               {/* Recurring Bookings */}
@@ -3009,7 +2831,7 @@ export default function BookingHistory({ user }) {
                          </div>
                     )}
 
-                    {/* Fixed-field packages tab */}
+                    {/* lịch cố định */}
                     {activeTab === "packages" && (
                          <FixedPackagesTab
                               bookingPackages={bookingPackages}
@@ -3025,7 +2847,7 @@ export default function BookingHistory({ user }) {
                          />
                     )}
 
-                    {/* Match History Tab Content */}
+                    {/* lịch sử tham gia trận đấu */}
                     {activeTab === "matchHistory" && (
                          <div className="space-y-4">
                               {sortedPlayerHistories && sortedPlayerHistories.length > 0 ? (
@@ -3212,7 +3034,7 @@ export default function BookingHistory({ user }) {
                     )}
                </Container>
 
-               {/* Find Opponent Modal */}
+               {/* tìm đối thủ */}
                <FindOpponentModal
                     isOpen={showFindOpponentModal}
                     onClose={() => setShowFindOpponentModal(false)}
@@ -3221,9 +3043,8 @@ export default function BookingHistory({ user }) {
                     onSuccess={handleFindOpponentSuccess}
                />
 
-               {/* Removed: Recurring Opponent Modal - recurring opponent feature */}
 
-               {/* Rating Modal */}
+               {/* đánh giá */}
                <RatingModal
                     isOpen={showRatingModal}
                     onClose={() => {
@@ -3239,6 +3060,7 @@ export default function BookingHistory({ user }) {
                     onSuccess={handleRatingSuccess}
                />
 
+               {/* hóa đơn */}
                <InvoiceModal
                     isOpen={showInvoiceModal}
                     booking={invoiceBooking}
@@ -3248,7 +3070,7 @@ export default function BookingHistory({ user }) {
                     }}
                />
 
-               {/* Cancel Booking Modal */}
+               {/* hủy đặt sân */}
                <CancelBookingModal
                     isOpen={showCancelModal}
                     onClose={() => {
@@ -3260,7 +3082,7 @@ export default function BookingHistory({ user }) {
                     isLoading={isCancelling}
                />
 
-               {/* Payment Modal */}
+               {/* thanh toán */}
                <Modal
                     isOpen={showPaymentModal}
                     onClose={() => {
@@ -3280,7 +3102,7 @@ export default function BookingHistory({ user }) {
                >
                     {paymentBooking && (
                          <div className="space-y-5">
-                              {/* Booking Info Card */}
+                              {/* thông tin đặt sân */}
                               <div className="bg-gradient-to-br from-teal-50 to-emerald-50 rounded-xl p-5 border-2 border-teal-200 shadow-sm">
                                    <div className="space-y-3">
                                         <div className="flex items-center justify-between">
@@ -3307,7 +3129,7 @@ export default function BookingHistory({ user }) {
                                    </div>
                               </div>
 
-                              {/* QR Code Section */}
+                              {/* mã QR */}
                               {isLoadingQR ? (
                                    <div className="text-center py-12">
                                         <div className="relative inline-block">
@@ -3321,7 +3143,6 @@ export default function BookingHistory({ user }) {
                                    </div>
                               ) : paymentQRCode ? (
                                    <div className="space-y-4">
-                                        {/* Instructions */}
                                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                                              <div className="flex items-start gap-2">
                                                   <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />

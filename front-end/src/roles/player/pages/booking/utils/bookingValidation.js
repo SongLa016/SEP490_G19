@@ -1,4 +1,4 @@
-// Derive status from API response
+// lấy trạng thái từ api
 export const deriveStatusFromApi = (statusInput) => {
   const raw = (statusInput ?? "").toString().toLowerCase();
   if (!raw) return "confirmed";
@@ -10,7 +10,7 @@ export const deriveStatusFromApi = (statusInput) => {
   return raw;
 };
 
-// Check if booking can be cancelled
+// kiểm tra hủy đặt sân
 export const shouldShowCancelButton = (booking) => {
   const statusLower = String(
     booking.status || booking.bookingStatus || ""
@@ -24,19 +24,16 @@ export const shouldShowCancelButton = (booking) => {
     paymentLower === "unpaid" ||
     paymentLower === "chờ thanh toán";
   const isPaid = paymentLower === "paid" || paymentLower === "đã thanh toán";
-
   const isPendingWaitingPayment = isPending && isUnpaid;
   const isPendingPaid = isPending && isPaid;
   const isConfirmedPaid = isConfirmed && isPaid;
-
   const allowed = isPendingWaitingPayment || isPendingPaid || isConfirmedPaid;
-
   if (!allowed) return false;
   if (statusLower === "cancelled" || statusLower === "expired") return false;
   return true;
 };
 
-// Check if booking is pending and unpaid within 2 hours
+// kiểm tra đặt sân chưa thanh toán trong 2 giờ
 export const isPendingUnpaidWithin2Hours = (booking) => {
   const statusLower = String(
     booking.status || booking.bookingStatus || ""
@@ -55,41 +52,35 @@ export const isPendingUnpaidWithin2Hours = (booking) => {
   const currentTime = new Date().getTime();
   const TWO_HOURS = 2 * 60 * 60 * 1000;
   const timeElapsed = currentTime - createdAt;
-
   return timeElapsed <= TWO_HOURS;
 };
 
-// Check if booking can show "Find Opponent" button
+// kiểm tra nút "Tìm đối thủ"
 export const shouldShowFindOpponentButton = (booking) => {
   const statusLower = String(
     booking.status || booking.bookingStatus || ""
   ).toLowerCase();
   const paymentLower = String(booking.paymentStatus || "").toLowerCase();
-
-  // Must be confirmed or completed
+  // phải được xác nhận hoặc hoàn thành
   const isConfirmed = statusLower === "confirmed";
   const isCompleted = statusLower === "completed";
 
-  // Must be paid
+  // phải được thanh toán
   const isPaid = paymentLower === "paid" || paymentLower === "đã thanh toán";
-
   return (isConfirmed || isCompleted) && isPaid;
 };
 
-// Check if booking has existing match request
+// kiểm tra yêu cầu tham gia trận đấu
 export const hasExistingMatchRequest = (booking, bookingIdToRequest) => {
   if (!booking || !bookingIdToRequest) return false;
-
-  // Check if booking has match request in state
   if (bookingIdToRequest[booking.id]) return true;
-
-  // Check if booking has matchRequestId in data
+  // kiểm tra yêu cầu tham gia trận đấu trong dữ liệu
   const matchRequestId =
     booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
   return Boolean(matchRequestId);
 };
 
-// Get recurring status
+// lấy trạng thái lặp lại
 export const getRecurringStatus = (group) => {
   const totalBookings = group.bookings.length;
   const cancelledBookings = group.bookings.filter(

@@ -117,6 +117,10 @@ const FieldFormModal = ({
                                    required
                                    maxLength={100}
                               />
+                              <p className={`text-xs mt-1 text-right ${formData.name?.length >= 100 ? "text-red-500 font-medium" : formData.name?.length >= 90 ? "text-yellow-600" : "text-gray-400"}`}>
+                                   {formData.name?.length || 0}/100
+                                   {formData.name?.length >= 100 && " (đã đạt giới hạn)"}
+                              </p>
                          </div>
                          <div>
                               <label className="items-center flex text-sm font-medium text-gray-700">
@@ -151,6 +155,9 @@ const FieldFormModal = ({
                                    placeholder="Ví dụ: 20x40m"
                                    maxLength={50}
                               />
+                              <p className={`text-xs mt-1 text-right ${formData.size?.length >= 50 ? "text-red-500 font-medium" : formData.size?.length >= 45 ? "text-yellow-600" : "text-gray-400"}`}>
+                                   {formData.size?.length || 0}/50
+                              </p>
                          </div>
                          <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -190,6 +197,10 @@ const FieldFormModal = ({
                               className="w-full"
                               maxLength={500}
                          />
+                         <p className={`text-xs text-right ${formData.description?.length >= 500 ? "text-red-500 font-medium" : formData.description?.length >= 450 ? "text-yellow-600" : "text-gray-400"}`}>
+                              {formData.description?.length || 0}/500
+                              {formData.description?.length >= 500 && " (đã đạt giới hạn)"}
+                         </p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

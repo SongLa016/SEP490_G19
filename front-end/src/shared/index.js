@@ -20,6 +20,7 @@ export { default as RatingModal } from "./components/RatingModal";
 // export { default as RecurringOpponentModal } from "./components/RecurringOpponentModal";
 // export { default as RecurringOpponentSelection } from "./components/RecurringOpponentSelection";
 export { default as RescheduleModal } from "./components/RescheduleModal";
+export { default as ChangePasswordModal } from "./components/ChangePasswordModal";
 
 // Shared services exports
 export * from "./services/authService";

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Edit3, Save, X, Camera } from "lucide-react";
+import { User, Mail, Phone, Edit3, Save, X, Camera, Lock } from "lucide-react";
 import { Input, Button, Card, CardContent, CardHeader, CardTitle, Avatar, AvatarImage, AvatarFallback, LoadingSpinner } from "../../../shared/components/ui";
 import { profileService } from "../../../shared/index";
+import ChangePasswordModal from "../../../shared/components/ChangePasswordModal";
 import Swal from "sweetalert2";
 import { useAuth } from "../../../contexts/AuthContext";
 
@@ -10,6 +11,7 @@ export default function ProfileSettings({ isDemo = false }) {
      const [isEditing, setIsEditing] = useState(false);
      const [isLoading, setIsLoading] = useState(false);
      const [avatarFile, setAvatarFile] = useState(null);
+     const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
      const [profileData, setProfileData] = useState({
           email: user?.email || "",
           fullName: user?.fullName || user?.name || "",
@@ -92,6 +94,17 @@ export default function ProfileSettings({ isDemo = false }) {
           } finally {
                setIsLoading(false);
           }
+     };
+
+     // Character limits
+     const MAX_FULLNAME_LENGTH = 100;
+     const WARNING_THRESHOLD = 90;
+
+     // Helper function to get character count warning class
+     const getCharCountClass = (length) => {
+          if (length >= MAX_FULLNAME_LENGTH) return "text-red-500 font-medium";
+          if (length >= WARNING_THRESHOLD) return "text-yellow-600";
+          return "text-gray-400";
      };
 
      /**
@@ -348,12 +361,21 @@ export default function ProfileSettings({ isDemo = false }) {
                                         Họ và tên
                                    </label>
                                    {isEditing ? (
-                                        <Input
-                                             value={formData.fullName}
-                                             onChange={(e) => handleInputChange('fullName', e.target.value)}
-                                             placeholder="Nhập họ và tên"
-                                             className="w-full"
-                                        />
+                                        <>
+                                             <Input
+                                                  value={formData.fullName}
+                                                  onChange={(e) => handleInputChange('fullName', e.target.value)}
+                                                  placeholder="Nhập họ và tên"
+                                                  maxLength={MAX_FULLNAME_LENGTH}
+                                                  className="w-full"
+                                             />
+                                             <div className="flex justify-end mt-1">
+                                                  <span className={`text-xs ${getCharCountClass(formData.fullName.length)}`}>
+                                                       {formData.fullName.length}/{MAX_FULLNAME_LENGTH}
+                                                       {formData.fullName.length >= MAX_FULLNAME_LENGTH && " (đã đạt giới hạn)"}
+                                                  </span>
+                                             </div>
+                                        </>
                                    ) : (
                                         <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
                                              {profileData.fullName || "Chưa cập nhật"}
@@ -384,9 +406,28 @@ export default function ProfileSettings({ isDemo = false }) {
                                    </p>
                                    <p className="text-xs text-gray-500 mt-1">Số điện thoại không thể thay đổi</p>
                               </div>
+
+                              {/* Change Password Button */}
+                              <div className="pt-4 border-t">
+                                   <Button
+                                        onClick={() => setIsChangePasswordOpen(true)}
+                                        variant="outline"
+                                        className="w-full sm:w-auto flex items-center justify-center gap-2 border-teal-600 text-teal-600 hover:bg-teal-50"
+                                   >
+                                        <Lock className="w-4 h-4" />
+                                        Đổi mật khẩu
+                                   </Button>
+                              </div>
                          </div>
                     </CardContent>
                </Card>
+
+               {/* Change Password Modal */}
+               <ChangePasswordModal
+                    isOpen={isChangePasswordOpen}
+                    onClose={() => setIsChangePasswordOpen(false)}
+                    accentColor="teal"
+               />
           </div>
      );
 }

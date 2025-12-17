@@ -755,12 +755,19 @@ export default function BankAccountManagement({ isDemo = false }) {
                                    onChange={handleInputChange}
                                    placeholder="Nhập số tài khoản (8-20 chữ số)"
                                    required
+                                   maxLength={20}
                                    className={errors.accountNumber ? 'border-red-500' : ''}
                               />
-                              {errors.accountNumber && (
-                                   <p className="text-xs text-red-600 mt-1">{errors.accountNumber}</p>
-                              )}
-                              <p className="text-xs text-gray-500 mt-1">Số tài khoản phải từ 8-20 chữ số</p>
+                              <div className="flex justify-between items-center mt-1">
+                                   {errors.accountNumber ? (
+                                        <p className="text-xs text-red-600">{errors.accountNumber}</p>
+                                   ) : (
+                                        <p className="text-xs text-gray-500">Số tài khoản phải từ 8-20 chữ số</p>
+                                   )}
+                                   <span className={`text-xs ${formData.accountNumber?.length >= 20 ? "text-red-500 font-medium" : formData.accountNumber?.length >= 18 ? "text-yellow-600" : "text-gray-400"}`}>
+                                        {formData.accountNumber?.length || 0}/20
+                                   </span>
+                              </div>
                          </div>
 
                          {/* Account Holder */}
@@ -775,11 +782,18 @@ export default function BankAccountManagement({ isDemo = false }) {
                                    onChange={handleInputChange}
                                    placeholder="Nhập tên chủ tài khoản"
                                    required
+                                   maxLength={100}
                                    className={errors.accountHolder ? 'border-red-500' : ''}
                               />
-                              {errors.accountHolder && (
-                                   <p className="text-xs text-red-600 mt-1">{errors.accountHolder}</p>
-                              )}
+                              <div className="flex justify-between items-center mt-1">
+                                   {errors.accountHolder && (
+                                        <p className="text-xs text-red-600">{errors.accountHolder}</p>
+                                   )}
+                                   <span className={`text-xs ml-auto ${formData.accountHolder?.length >= 100 ? "text-red-500 font-medium" : formData.accountHolder?.length >= 90 ? "text-yellow-600" : "text-gray-400"}`}>
+                                        {formData.accountHolder?.length || 0}/100
+                                        {formData.accountHolder?.length >= 100 && " (đã đạt giới hạn)"}
+                                   </span>
+                              </div>
                          </div>
 
                          {/* Is Default */}

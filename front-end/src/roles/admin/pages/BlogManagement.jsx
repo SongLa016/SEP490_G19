@@ -420,7 +420,12 @@ export default function BlogManagement() {
                                    value={newPost.title}
                                    onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
                                    placeholder="Nhập tiêu đề bài viết..."
+                                   maxLength={200}
                               />
+                              <p className={`text-xs mt-1 text-right ${newPost.title?.length >= 200 ? "text-red-500 font-medium" : newPost.title?.length >= 180 ? "text-yellow-600" : "text-slate-400"}`}>
+                                   {newPost.title?.length || 0}/200
+                                   {newPost.title?.length >= 200 && " (đã đạt giới hạn)"}
+                              </p>
                          </div>
 
                          <div>
@@ -432,7 +437,12 @@ export default function BlogManagement() {
                                    onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
                                    placeholder="Nhập nội dung bài viết..."
                                    rows={12}
+                                   maxLength={5000}
                               />
+                              <p className={`text-xs mt-1 text-right ${newPost.content?.length >= 5000 ? "text-red-500 font-medium" : newPost.content?.length >= 4500 ? "text-yellow-600" : "text-slate-400"}`}>
+                                   {newPost.content?.length || 0}/5000
+                                   {newPost.content?.length >= 5000 && " (đã đạt giới hạn)"}
+                              </p>
                          </div>
 
                          <div>
@@ -490,7 +500,12 @@ export default function BlogManagement() {
                                         value={selectedPost.title}
                                         onChange={(e) => setSelectedPost({ ...selectedPost, title: e.target.value })}
                                         placeholder="Nhập tiêu đề bài viết..."
+                                        maxLength={200}
                                    />
+                                   <p className={`text-xs mt-1 text-right ${selectedPost.title?.length >= 200 ? "text-red-500 font-medium" : selectedPost.title?.length >= 180 ? "text-yellow-600" : "text-slate-400"}`}>
+                                        {selectedPost.title?.length || 0}/200
+                                        {selectedPost.title?.length >= 200 && " (đã đạt giới hạn)"}
+                                   </p>
                               </div>
 
                               <div>
@@ -502,7 +517,12 @@ export default function BlogManagement() {
                                         onChange={(e) => setSelectedPost({ ...selectedPost, content: e.target.value })}
                                         placeholder="Nhập nội dung bài viết..."
                                         rows={12}
+                                        maxLength={5000}
                                    />
+                                   <p className={`text-xs mt-1 text-right ${selectedPost.content?.length >= 5000 ? "text-red-500 font-medium" : selectedPost.content?.length >= 4500 ? "text-yellow-600" : "text-slate-400"}`}>
+                                        {selectedPost.content?.length || 0}/5000
+                                        {selectedPost.content?.length >= 5000 && " (đã đạt giới hạn)"}
+                                   </p>
                               </div>
 
                               <div>

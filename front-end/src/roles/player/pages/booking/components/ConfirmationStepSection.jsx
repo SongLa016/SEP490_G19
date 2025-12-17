@@ -1,26 +1,15 @@
 import { CheckCircle, Clock } from "lucide-react";
 import { Button } from "../../../../../shared/components/ui";
 
-/**
- * Component hiển thị màn hình xác nhận đặt sân thành công
- * Trang: Modal đặt sân (BookingModal)
- * Vị trí: Bước cuối cùng sau khi đặt sân thành công
- * 
- * Chức năng:
- * - Hiển thị thông báo đặt sân thành công
- * - Thông báo trạng thái chờ chủ sân xác nhận
- * - Nút "Đóng" để đóng modal
- * - Nút "Xem lịch sử đặt sân" để chuyển đến trang lịch sử
- */
 export default function ConfirmationStepSection({
-     isRecurring,              // Có phải đặt sân cố định không
-     recurringWeeks,           // Số tuần đặt cố định
-     hasOpponent,              // Có tìm đối thủ không
-     createdMatchRequest,      // Thông tin yêu cầu tìm đối đã tạo
-     createdCommunityPost,     // Thông tin bài đăng cộng đồng đã tạo
-     onClose,                  // Hàm xử lý khi nhấn nút "Đóng"
-     onSuccess,                // Callback sau khi đóng modal thành công
-     navigate                  // Hàm điều hướng trang
+     isRecurring,
+     recurringWeeks,
+     hasOpponent,
+     createdMatchRequest,
+     createdCommunityPost,
+     onClose,
+     onSuccess,
+     navigate
 }) {
      return (
           <div className="text-center py-8">
