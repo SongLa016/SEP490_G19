@@ -39,7 +39,6 @@ namespace BallSport.Application.Services
                 BookingStatus = "Pending",
                 PaymentStatus = "Unpaid",
                 HasOpponent = dto.HasOpponent,
-                CreatedAt = DateTime.Now
             };
 
             booking = await _bookingRepo.AddAsync(booking);
