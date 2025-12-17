@@ -114,11 +114,13 @@ public class Program
                             builder
                                 .WithOrigins(
                                     "http://localhost:3000",
-                                    "https://sep490-g19.vercel.app",
+                                    "https://localhost:3000",
                                     "https://sep490-g19-zxph.onrender.com"
                                 )
+
                                 .AllowAnyHeader()
-                                .AllowAnyMethod();
+                                .AllowAnyMethod()
+                                .AllowCredentials();
                         });
                     });
 
