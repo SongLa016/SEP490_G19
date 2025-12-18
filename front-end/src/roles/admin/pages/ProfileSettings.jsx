@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Edit3, Save, X, Camera } from "lucide-react";
+import { User, Mail, Phone, Edit3, Save, X, Camera, Lock } from "lucide-react";
 import {
   Input,
   Button,
@@ -13,6 +13,7 @@ import {
   LoadingSpinner,
 } from "../../../shared/components/ui";
 import { profileService } from "../../../shared/index";
+import ChangePasswordModal from "../../../shared/components/ChangePasswordModal";
 import Swal from "sweetalert2";
 import { useAuth } from "../../../contexts/AuthContext";
 
@@ -21,6 +22,7 @@ export default function AdminProfileSettings() {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [avatarFile, setAvatarFile] = useState(null);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [profileData, setProfileData] = useState({
     email: user?.email || "",
     fullName: user?.fullName || user?.name || "",
@@ -108,6 +110,17 @@ export default function AdminProfileSettings() {
     }
   };
 
+  // Character limits
+  const MAX_FULLNAME_LENGTH = 100;
+  const WARNING_THRESHOLD = 90;
+
+  // Helper function to get character count warning class
+  const getCharCountClass = (length) => {
+    if (length >= MAX_FULLNAME_LENGTH) return "text-red-500 font-medium";
+    if (length >= WARNING_THRESHOLD) return "text-yellow-600";
+    return "text-gray-400";
+  };
+
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -120,9 +133,15 @@ export default function AdminProfileSettings() {
     if (!token) {
       Swal.fire({
         icon: "warning",
-        title: "Phiên đăng nhập đã hết hạn",
-        text: "Vui lòng đăng nhập lại",
-        confirmButtonText: "Đóng",
+        title: "Phiên đăng nhập hết hạn",
+        text: "Vui lòng đăng nhập lại để tiếp tục.",
+        confirmButtonText: "Đăng nhập",
+        confirmButtonColor: "#0ea5e9",
+        allowOutsideClick: false,
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = "/login";
+        }
       });
       return;
     }
@@ -348,14 +367,23 @@ export default function AdminProfileSettings() {
                 Họ và tên
               </label>
               {isEditing ? (
-                <Input
-                  value={formData.fullName}
-                  onChange={(e) =>
-                    handleInputChange("fullName", e.target.value)
-                  }
-                  placeholder="Nhập họ và tên"
-                  className="w-full"
-                />
+                <>
+                  <Input
+                    value={formData.fullName}
+                    onChange={(e) =>
+                      handleInputChange("fullName", e.target.value)
+                    }
+                    placeholder="Nhập họ và tên"
+                    maxLength={MAX_FULLNAME_LENGTH}
+                    className="w-full"
+                  />
+                  <div className="flex justify-end mt-1">
+                    <span className={`text-xs ${getCharCountClass(formData.fullName.length)}`}>
+                      {formData.fullName.length}/{MAX_FULLNAME_LENGTH}
+                      {formData.fullName.length >= MAX_FULLNAME_LENGTH && " (đã đạt giới hạn)"}
+                    </span>
+                  </div>
+                </>
               ) : (
                 <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
                   {profileData.fullName || "Chưa cập nhật"}
@@ -388,9 +416,28 @@ export default function AdminProfileSettings() {
                 Số điện thoại không thể thay đổi
               </p>
             </div>
+
+            {/* Change Password Button */}
+            <div className="pt-4 border-t">
+              <Button
+                onClick={() => setIsChangePasswordOpen(true)}
+                variant="outline"
+                className="w-full sm:w-auto flex items-center justify-center gap-2 border-red-600 text-red-600 hover:bg-red-50"
+              >
+                <Lock className="w-4 h-4" />
+                Đổi mật khẩu
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        accentColor="red"
+      />
     </div>
   );
 }

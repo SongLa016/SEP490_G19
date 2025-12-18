@@ -1,15 +1,16 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Star } from "lucide-react";
 import { Section, Container, Card, CardContent, StaggerContainer } from "../../../../shared/components/ui";
 import { ScrollReveal } from "../../../../shared/components/ScrollReveal";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
-import { useNavigate } from "react-router-dom";
-import MapSearch from "./components/MapSearch";
-import { fetchComplexes, fetchFields, fetchTimeSlots, fetchPublicFieldSchedulesByDate, fetchPublicFieldSchedulesByField, fetchFavoriteFields, toggleFavoriteField } from "../../../../shared/index";
+import { useNavigate, useLocation } from "react-router-dom";
+import { fetchComplexes, fetchFields, fetchTimeSlots, fetchFavoriteFields, toggleFavoriteField } from "../../../../shared/index";
+import { usePublicFieldSchedulesByDate } from "../../../../shared/hooks/useFieldSchedules";
 import { fetchFieldTypes, normalizeFieldType } from "../../../../shared/services/fieldTypes";
 import { fetchRatingsByField } from "../../../../shared/services/ratings";
 import Swal from 'sweetalert2';
+import MapSearch from "./components/MapSearch";
 import SearchHeader from "./components/SearchHeader";
 import SearchFiltersBar from "./components/SearchFiltersBar";
 import QuickPresets from "./components/QuickPresets";
@@ -24,20 +25,49 @@ import ComplexCard from "./components/ComplexCard";
 import ComplexListItem from "./components/ComplexListItem";
 import GroupedViewSection from "./components/GroupedViewSection";
 
+// Chuẩn hóa trạng thái sân (lowercase, trim)
 const normalizeStatus = (status) => (typeof status === "string" ? status.trim().toLowerCase() : "");
-const ALLOWED_FIELD_STATUSES = new Set(["available", "active"]);
+
+// Chuẩn hóa text để so sánh (bỏ dấu, lowercase, trim)
+const normalizeText = (text) => {
+     if (typeof text !== "string") return "";
+     return text
+          .normalize("NFD")
+          .replace(/\p{Diacritic}/gu, "")
+          .toLowerCase()
+          .trim();
+};
+
+//Chuẩn hóa khóa quận/huyện để so sánh 
+const normalizeDistrictKey = (text) => {
+     const normalized = normalizeText(text);
+     return normalized.replace(/^(quan|huyen|thi xa)\s+/i, "");
+};
+// Chỉ hiển thị sân có trạng thái "Available" - không hiển thị sân đang bảo trì
+const ALLOWED_FIELD_STATUSES = new Set(["available"]);
 const FIELD_TYPE_ALIASES = {
      "5vs5": ["5vs5", "5v5", "san5", "san5nguoi", "5nguoi"],
      "7vs7": ["7vs7", "7v7", "san7", "san7nguoi", "7nguoi"],
      "11vs11": ["11vs11", "11v11", "san11", "san11nguoi", "11nguoi"],
 };
+
+// Chuẩn hóa chuỗi loại sân để so sánh
 const normalizeTypeString = (value = "") => value
      .toString()
      .normalize("NFD")
      .replace(/[\u0300-\u036f]/g, "")
      .toLowerCase()
      .replace(/[^a-z0-9]/g, "");
-const resolveFieldTypeName = (field, fieldTypeMap = {}) => {
+// Định dạng khoảng thời gian như "HH:mm - HH:mm" khi không có tên khung giờ
+const formatTimeRange = (start, end) => {
+     if (!start && !end) return "";
+     const s = start ? String(start).slice(0, 5) : "";
+     const e = end ? String(end).slice(0, 5) : "";
+     if (s && e) return `${s} - ${e}`;
+     return s || e;
+};
+// Xác định tên loại sân dựa trên đối tượng sân được cung cấp và một ánh xạ loại sân tùy chọn.
+function resolveFieldTypeName(field, fieldTypeMap = {}) {
      if (!field) return "";
      if (field.typeName && field.typeName.trim()) return field.typeName;
      if (field.TypeName && field.TypeName.trim()) return field.TypeName;
@@ -46,7 +76,9 @@ const resolveFieldTypeName = (field, fieldTypeMap = {}) => {
           return fieldTypeMap[String(typeId)] || "";
      }
      return "";
-};
+}
+
+//Xác định xem sân có khớp với tab loại sân mong muốn dựa trên loại và các bí danh của nó hay không.
 const doesFieldMatchTypeTab = (field, desiredType, fieldTypeMap = {}) => {
      if (desiredType === "all") return true;
      const directName = resolveFieldTypeName(field, fieldTypeMap);
@@ -55,7 +87,6 @@ const doesFieldMatchTypeTab = (field, desiredType, fieldTypeMap = {}) => {
      if (!normalizedName) return false;
      const aliases = FIELD_TYPE_ALIASES[desiredType] || [];
      if (aliases.length === 0) {
-          // fallback to exact match if we don't have aliases configured
           return normalizedName === normalizeTypeString(desiredType);
      }
      return aliases.some(alias => normalizedName.includes(alias));
@@ -66,80 +97,135 @@ const isFieldDisplayable = (field) => {
      return ALLOWED_FIELD_STATUSES.has(normalizedStatus);
 };
 
+/**
+ * Trang tìm kiếm sân bóng
+ * URL: /search
+ */
 export default function FieldSearch({ user }) {
      const navigate = useNavigate();
-     const [entityTab, setEntityTab] = useState("fields"); // complexes | fields
+     const location = useLocation();
+     const [entityTab, setEntityTab] = useState("fields");       // Tab hiển thị: complexes | fields
      const [searchQuery, setSearchQuery] = useState("");
-     const [selectedLocation, setSelectedLocation] = useState("all");
+     const [selectedLocation, setSelectedLocation] = useState("");
      const [selectedPrice, setSelectedPrice] = useState("all");
      const [selectedRating, setSelectedRating] = useState("all");
-     const [viewMode, setViewMode] = useState("grid"); // grid or list
-     const [showFilters, setShowFilters] = useState(false);
+     const [viewMode, setViewMode] = useState("grid");
+     const [showFilters, setShowFilters] = useState(false);      // Hiển thị bộ lọc nâng cao
      const [sortBy, setSortBy] = useState("relevance");
-     const [activeTab, setActiveTab] = useState("all"); // all | near | best-price | top-rated | favorites
-     const [typeTab, setTypeTab] = useState("all"); // all | 5vs5 | 7vs7 | 11vs11
+     const [activeTab, setActiveTab] = useState("all");
+     const [typeTab, setTypeTab] = useState("all");
      const [page, setPage] = useState(1);
      const [pageComplex, setPageComplex] = useState(1);
-     const fieldPageSize = 12;    // sân nhỏ
-     const complexPageSize = 9;   // khu sân
+     const fieldPageSize = 12;
+     const complexPageSize = 9;
      const [forceList, setForceList] = useState(false);
      const [showMapSearch, setShowMapSearch] = useState(false);
-     // removed unused mapLocation state
-     const [mapSearchKey, setMapSearchKey] = useState(0); // Key to force MapSearch reset
-     const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
-     const [slotId, setSlotId] = useState("");
-     const [timeSlots, setTimeSlots] = useState([]);
+     const [mapSearchKey, setMapSearchKey] = useState(0);        // Key để reset MapSearch
+     const [date, setDate] = useState("");                       // Ngày đã chọn để lọc
+     const [slotId, setSlotId] = useState("");                   // Khung giờ đã chọn
+     const [timeSlots, setTimeSlots] = useState([]);             // Danh sách khung giờ
+     const [availableFieldIds, setAvailableFieldIds] = useState(null); // Set fieldIds có lịch cho ngày đã chọn
+     const [fields, setFields] = useState([]);                   // Danh sách sân nhỏ tải về
+     const [complexes, setComplexes] = useState([]);                  // Danh sách khu sân tải về
+     const [filteredFields, setFilteredFields] = useState([]);      // Danh sách sân nhỏ đã lọc     
+     const [favoriteFieldIds, setFavoriteFieldIds] = useState(new Set()); // Set fieldIds yêu thích của user
+     const [isLoading, setIsLoading] = useState(false);               // Trạng thái tải dữ liệu
+     const [userLocation, setUserLocation] = useState(null);        //  Vị trí người dùng (nếu có)
+     const [fieldTypeMap, setFieldTypeMap] = useState({});           // Ánh xạ typeId -> typeName
+     const favoritesLoadedRef = useRef(false);                        // Đánh dấu đã tải danh sách yêu thích
      const heroRef = useRef(null);
      const hasExistingDataRef = useRef(false);
-     const complexesRef = useRef([]);
+     const complexesRef = useRef([]);                                 // Lưu trữ tạm thời danh sách complexes
+     const didInitRef = useRef(false);
+     const prevSearchRef = useRef(location.search);
+     // Cập nhật timeSlots một cách an toàn để tránh re-render không cần thiết
+     const setTimeSlotsSafe = (nextSlots) => {
+          setTimeSlots((prev) => {
+               if (!Array.isArray(prev) || !Array.isArray(nextSlots)) return nextSlots;
+               if (prev.length !== nextSlots.length) return nextSlots;
+               for (let i = 0; i < prev.length; i++) {
+                    const a = prev[i];
+                    const b = nextSlots[i];
+                    if ((a.slotId || a.slotID) !== (b.slotId || b.slotID) || a.name !== b.name) {
+                         return nextSlots;
+                    }
+               }
+               return prev;
+          });
+     };
+     // Cập nhật availableFieldIds một cách an toàn để tránh re-render không cần thiết
+     const setAvailableFieldIdsSafe = (nextSet) => {
+          setAvailableFieldIds((prev) => {
+               if (prev === null && nextSet === null) return prev;
+               if (prev instanceof Set && nextSet instanceof Set) {
+                    if (prev.size === nextSet.size) {
+                         for (const v of prev) {
+                              if (!nextSet.has(v)) return nextSet;
+                         }
+                         return prev;
+                    }
+               }
+               return nextSet;
+          });
+     };
 
-     // Helper functions to convert between "all" and empty string
+
+     // Xử lý thay đổi bộ lọc
      const handleLocationChange = (value) => {
           setSelectedLocation(value === "all" ? "" : value);
      };
-
      const handlePriceChange = (value) => {
           setSelectedPrice(value === "all" ? "" : value);
      };
-
      const handleRatingChange = (value) => {
           setSelectedRating(value === "all" ? "" : value);
      };
-
      const getLocationValue = () => {
           return selectedLocation === "" ? "all" : selectedLocation;
      };
-
      const getPriceValue = () => {
           return selectedPrice === "" ? "all" : selectedPrice;
      };
-
      const getRatingValue = () => {
           return selectedRating === "" ? "all" : selectedRating;
      };
-
      const getSlotValue = () => {
           return slotId === "" ? "all" : String(slotId);
      };
 
-     const [fields, setFields] = useState([]);
-     const [complexes, setComplexes] = useState([]);
-     const [filteredFields, setFilteredFields] = useState([]);
-     const [favoriteFieldIds, setFavoriteFieldIds] = useState(new Set());
-     const [isLoading, setIsLoading] = useState(false);
-     const [userLocation, setUserLocation] = useState(null); // { lat, lng }
-     const [fieldTypeMap, setFieldTypeMap] = useState({}); // Map typeId -> typeName
-     const favoritesLoadedRef = useRef(false);
+     // Tạo danh sách tùy chọn quận/huyện từ dữ liệu khu sân
+     const districtOptions = useMemo(() => {
+          const map = new Map(); // baseKey -> label
+          complexes.forEach((c) => {
+               const raw = typeof c?.district === "string" ? c.district.trim() : "";
+               if (!raw) return;
+               const baseKey = normalizeDistrictKey(raw);
+               const hasPrefix = /^(Quận|Huyện|Thị xã)/i.test(raw);
+               if (!map.has(baseKey)) {
+                    map.set(baseKey, raw);
+                    return;
+               }
+               const current = map.get(baseKey);
+               const currentHasPrefix = /^(Quận|Huyện|Thị xã)/i.test(current);
+               // Prefer label with administrative prefix if available
+               if (hasPrefix && !currentHasPrefix) {
+                    map.set(baseKey, raw);
+               }
+          });
+          return Array.from(map.values()).sort((a, b) => a.localeCompare(b, "vi"));
+     }, [complexes]);
 
+     // Cập nhật ref đánh dấu có dữ liệu tồn tại
      useEffect(() => {
           hasExistingDataRef.current = (fields.length > 0) || (complexes.length > 0);
      }, [fields.length, complexes.length]);
 
-     // Load field types on mount
+     // Tải loại sân khi component được gắn
      useEffect(() => {
-          let ignore = false;
           async function loadFieldTypes() {
+               let ignore = false;
                try {
+                    // tải dữ liệu loại sân
                     const result = await fetchFieldTypes();
                     if (ignore) return;
                     if (result.success && Array.isArray(result.data)) {
@@ -157,55 +243,92 @@ export default function FieldSearch({ user }) {
                }
           }
           loadFieldTypes();
-          return () => { ignore = true; };
      }, []);
 
-     const didInitRef = useRef(false);
      useEffect(() => {
           window.scrollTo(0, 0);
      }, []);
+
+     // cập nhật bộ lọc từ homepage khi nhấn tìm kiếm
      useEffect(() => {
-          if (didInitRef.current) return;
+          const currentSearch = location.search || "";
+          const isFirstLoad = !didInitRef.current;
+          const searchChanged = prevSearchRef.current !== currentSearch;
+          prevSearchRef.current = currentSearch;
+          if (!isFirstLoad && !searchChanged) return;
           didInitRef.current = true;
           try {
-               const raw = window.localStorage.getItem("searchPreset");
-               if (raw) {
-                    const preset = JSON.parse(raw);
-                    if (preset.searchQuery !== undefined) setSearchQuery(preset.searchQuery);
-                    if (preset.selectedLocation !== undefined) setSelectedLocation(preset.selectedLocation);
-                    if (preset.selectedPrice !== undefined) setSelectedPrice(preset.selectedPrice);
-                    if (preset.selectedRating !== undefined) setSelectedRating(preset.selectedRating);
-                    if (preset.sortBy !== undefined) setSortBy(preset.sortBy);
-                    if (preset.typeTab !== undefined) setTypeTab(preset.typeTab);
-                    if (preset.activeTab !== undefined) setActiveTab(preset.activeTab);
-                    window.localStorage.removeItem("searchPreset");
-                    setForceList(true);
+               const params = new URLSearchParams(currentSearch);
+               let foundUrlParams = false;
+
+               // Đọc các tham số từ URL query và cập nhật state tương ứng
+               const q = params.get("searchQuery");
+               setSearchQuery(q || "");
+               if (q !== null) foundUrlParams = true;
+
+               const sl = params.get("selectedLocation");
+               setSelectedLocation(sl === "all" ? "" : (sl || ""));
+               if (sl !== null) foundUrlParams = true;
+
+               const sp = params.get("selectedPrice");
+               setSelectedPrice(sp === "all" ? "" : (sp || ""));
+               if (sp !== null) foundUrlParams = true;
+
+               const sr = params.get("selectedRating");
+               setSelectedRating(sr === "all" ? "" : (sr || ""));
+               if (sr !== null) foundUrlParams = true;
+
+               const sb = params.get("sortBy");
+               setSortBy(sb || "relevance");
+               if (sb !== null) foundUrlParams = true;
+
+               const tt = params.get("typeTab");
+               setTypeTab(tt || "all");
+               if (tt !== null) foundUrlParams = true;
+
+               const at = params.get("activeTab");
+               setActiveTab(at || "all");
+               if (at !== null) foundUrlParams = true;
+
+               // Trang hiện tại
+               const p = params.get("page");
+               if (p !== null) {
+                    const pn = parseInt(p, 10);
+                    if (!Number.isNaN(pn)) setPage(pn);
+                    foundUrlParams = true;
                } else {
-                    setSearchQuery("");
-                    setSelectedLocation("");
-                    setSelectedPrice("");
-                    setSelectedRating("");
-                    setSortBy("relevance");
-                    setActiveTab("all");
-                    setViewMode("grid");
                     setPage(1);
-                    setForceList(false);
                }
 
-               // Load persisted preferences
-               const saved = window.localStorage.getItem("fieldSearchPrefs");
-               if (saved) {
-                    const prefs = JSON.parse(saved);
-                    if (prefs.viewMode) setViewMode(prefs.viewMode);
-                    if (prefs.activeTab) setActiveTab(prefs.activeTab);
-                    if (prefs.page) setPage(prefs.page);
-                    if (prefs.entityTab) setEntityTab(prefs.entityTab);
-                    if (prefs.date) setDate(prefs.date);
-                    if (prefs.slotId) setSlotId(prefs.slotId);
-                    if (prefs.typeTab) setTypeTab(prefs.typeTab);
+               const et = params.get("entityTab");
+               setEntityTab(et || "fields");
+               if (et !== null) foundUrlParams = true;
+
+               const d = params.get("date");
+               setDate(d || "");
+               if (d !== null) foundUrlParams = true;
+
+               const s = params.get("slotId");
+               setSlotId(s || "");
+               if (s !== null) foundUrlParams = true;
+
+               if (foundUrlParams) {
+                    setForceList(true);
+               } else {
+                    setForceList(false);
                }
-          } catch { }
-     }, []);
+               // Tải tùy chọn người dùng từ localStorage nếu không có tham số URL
+               if (isFirstLoad && !foundUrlParams) {
+                    const saved = window.localStorage.getItem("fieldSearchPrefs");
+                    if (saved) {
+                         const prefs = JSON.parse(saved);
+                         if (prefs.viewMode) setViewMode(prefs.viewMode);
+                    }
+               }
+          } catch (e) {
+               console.error("Error parsing search query params:", e);
+          }
+     }, [location.search]);
 
      // Load danh sách sân yêu thích khi đã có user đăng nhập
      useEffect(() => {
@@ -225,170 +348,103 @@ export default function FieldSearch({ user }) {
           loadFavorites();
      }, [user]);
 
-     // Load available slots from schedules when date changes
+     // Load dữ liệu lịch sử theo ngày đã chọn 
+     // React Query: fetch schedules by date (cached)
+     const { data: schedulesByDate = [], } = usePublicFieldSchedulesByDate(
+          date ? date.split("T")[0] : ""
+     );
+     const schedulesData = useMemo(() => (Array.isArray(schedulesByDate) ? schedulesByDate : []), [schedulesByDate]);
+
+     // Cập nhật khung giờ và fieldId có lịch khi ngày thay đổi
      useEffect(() => {
           let mounted = true;
-          const loadSlotsFromSchedules = async () => {
+          const loadAllSlotsWhenNoDate = async () => {
                try {
-                    if (!date) {
-                         // If no date, fetch all time slots
-                         const response = await fetchTimeSlots();
-                         if (!mounted) return;
-                         const slots = response?.success && Array.isArray(response.data)
-                              ? response.data
-                              : [];
-                         setTimeSlots(slots);
-                         return;
-                    }
-
-                    // Normalize date format
-                    const normalizedDate = date.split('T')[0]; // Ensure YYYY-MM-DD format
-
-                    // Try to fetch schedules by date first
-                    let schedulesResponse = await fetchPublicFieldSchedulesByDate(normalizedDate);
-
-                    // If endpoint doesn't exist or returns empty, fetch from all fields
-                    if (!schedulesResponse?.success || !Array.isArray(schedulesResponse.data) || schedulesResponse.data.length === 0) {
-                         // Fetch all fields first to get fieldIds
-                         const fList = await fetchFields({ query: "", date: normalizedDate, slotId: "", sortBy: "relevance", useApi: true });
-
-                         if (!mounted) return;
-
-                         // Get unique fieldIds
-                         const fieldIds = new Set();
-                         if (Array.isArray(fList)) {
-                              fList.forEach(field => {
-                                   if (field.fieldId) fieldIds.add(field.fieldId);
-                              });
-                         }
-
-                         // Fetch schedules for all fields in parallel
-                         const schedulePromises = Array.from(fieldIds).map(fieldId =>
-                              fetchPublicFieldSchedulesByField(fieldId)
-                         );
-
-                         const scheduleResults = await Promise.all(schedulePromises);
-
-                         // Combine all schedules
-                         let allSchedules = [];
-                         scheduleResults.forEach(result => {
-                              if (result?.success && Array.isArray(result.data)) {
-                                   allSchedules = allSchedules.concat(result.data);
-                              }
-                         });
-
-                         // Filter schedules by date
-                         const filteredSchedules = allSchedules.filter(schedule => {
-                              const scheduleDate = schedule.date || schedule.Date;
-                              if (!scheduleDate) return false;
-                              const normalizedScheduleDate = typeof scheduleDate === 'string'
-                                   ? scheduleDate.split('T')[0]
-                                   : scheduleDate;
-                              return normalizedScheduleDate === normalizedDate;
-                         });
-
-                         schedulesResponse = {
-                              success: true,
-                              data: filteredSchedules
-                         };
-                    }
-
+                    const response = await fetchTimeSlots();
                     if (!mounted) return;
-
-                    if (schedulesResponse?.success && Array.isArray(schedulesResponse.data) && schedulesResponse.data.length > 0) {
-                         // Extract unique slotIds from schedules
-                         const slotIdSet = new Set();
-                         const slotMap = new Map(); // Map slotId to slot info
-
-                         schedulesResponse.data.forEach(schedule => {
-                              const slotId = schedule.slotId || schedule.SlotId;
-                              if (slotId) {
-                                   slotIdSet.add(slotId);
-                                   // Store slot info if available in schedule
-                                   if (!slotMap.has(slotId) && (schedule.slotName || schedule.SlotName)) {
-                                        slotMap.set(slotId, {
-                                             slotId: slotId,
-                                             name: schedule.slotName || schedule.SlotName,
-                                             startTime: schedule.startTime || schedule.StartTime,
-                                             endTime: schedule.endTime || schedule.EndTime
-                                        });
-                                   }
-                              }
-                         });
-
-                         // If we have slot info from schedules, use it
-                         if (slotMap.size > 0) {
-                              const slots = Array.from(slotMap.values());
-                              setTimeSlots(slots);
-                         } else {
-                              // Otherwise, fetch all time slots and filter by available slotIds
-                              const allSlotsResponse = await fetchTimeSlots();
-                              if (!mounted) return;
-
-                              const allSlots = allSlotsResponse?.success && Array.isArray(allSlotsResponse.data)
-                                   ? allSlotsResponse.data
-                                   : [];
-
-                              // Filter slots that are available in schedules
-                              const availableSlots = allSlots.filter(slot =>
-                                   slotIdSet.has(slot.slotId || slot.SlotID)
-                              );
-
-                              setTimeSlots(availableSlots.length > 0 ? availableSlots : allSlots);
-                         }
-                    } else {
-                         // If no schedules found, fetch all time slots
-                         const response = await fetchTimeSlots();
-                         if (!mounted) return;
-                         const slots = response?.success && Array.isArray(response.data)
-                              ? response.data
-                              : [];
-                         setTimeSlots(slots);
-                    }
+                    const slots = response?.success && Array.isArray(response.data) ? response.data : [];
+                    setTimeSlotsSafe(
+                         slots.map((slot) => {
+                              const timeLabel = formatTimeRange(slot.startTime || slot.StartTime, slot.endTime || slot.EndTime);
+                              const baseName = slot.name || slot.slotName || slot.SlotName;
+                              const label = baseName
+                                   ? timeLabel
+                                        ? `${baseName} (${timeLabel})`
+                                        : baseName
+                                   : timeLabel || `Slot ${slot.slotId || slot.SlotID}`;
+                              return { ...slot, name: label };
+                         })
+                    );
+                    setAvailableFieldIdsSafe(null);
                } catch (error) {
-                    console.error("Error loading slots from schedules:", error);
+                    console.error("Error loading all time slots:", error);
                     if (!mounted) return;
-                    // Fallback to fetch all time slots
-                    try {
-                         const response = await fetchTimeSlots();
-                         if (!mounted) return;
-                         const slots = response?.success && Array.isArray(response.data)
-                              ? response.data
-                              : [];
-                         setTimeSlots(slots);
-                    } catch (fallbackError) {
-                         console.error("Error loading time slots (fallback):", fallbackError);
-                         setTimeSlots([]);
-                    }
+                    setTimeSlotsSafe([]);
+                    setAvailableFieldIdsSafe(null);
                }
           };
-          loadSlotsFromSchedules();
-          return () => { mounted = false; };
-     }, [date]);
 
-     // Reset slotId when date changes to avoid invalid slot selection
+          if (!date) {
+               loadAllSlotsWhenNoDate();
+               return () => {
+                    mounted = false;
+               };
+          }
+          const slotMap = new Map();
+          const fieldIdSet = new Set();
+
+          // Duyệt qua dữ liệu lịch để xây dựng danh sách khung giờ và fieldId có lịch
+          schedulesData.forEach((schedule) => {
+               const status = normalizeStatus(schedule.status || schedule.Status);
+               if (status && status !== "available") return;
+               const slotId = schedule.slotId || schedule.SlotId;
+               const fieldId = schedule.fieldId || schedule.FieldId || schedule.fieldID || schedule.FieldID;
+               const slotName = schedule.slotName || schedule.SlotName;
+               const timeLabel = formatTimeRange(schedule.startTime || schedule.StartTime, schedule.endTime || schedule.EndTime);
+               const label = slotName
+                    ? timeLabel
+                         ? `${slotName} (${timeLabel})`
+                         : slotName
+                    : timeLabel || (slotId ? `Slot ${slotId}` : "");
+
+               if (slotId && !slotMap.has(slotId)) {
+                    slotMap.set(slotId, {
+                         slotId,
+                         name: label || `Slot ${slotId}`,
+                         startTime: schedule.startTime || schedule.StartTime,
+                         endTime: schedule.endTime || schedule.EndTime,
+                    });
+               }
+
+               if (fieldId) {
+                    fieldIdSet.add(String(fieldId));
+               }
+          });
+          setTimeSlotsSafe(slotMap.size > 0 ? Array.from(slotMap.values()) : []);
+          setAvailableFieldIdsSafe(fieldIdSet.size > 0 ? new Set(fieldIdSet) : null);
+          return () => {
+               mounted = false;
+          };
+     }, [date, schedulesData]);
+
+     // Reset slotId khi ngày thay đổi
      useEffect(() => {
           if (slotId) {
                setSlotId("");
           }
-          // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [date]);
 
-     // Load data whenever key filters change (fetch both complexes and fields to support grouped view)
+     // Load dữ liệu sân và khu sân khi bộ lọc thay đổi
      useEffect(() => {
           let ignore = false;
-          const hasNoData = !hasExistingDataRef.current;
-
           const debounceTimer = setTimeout(() => {
                const loadData = async () => {
                     try {
-                         // Only show loading if we don't have any data yet
-                         if (hasNoData) {
-                              setIsLoading(true);
-                         }
-                         // Start fetching immediately for better perceived performance
+                         // luôn luôn hiển thị loading
+                         setIsLoading(true);
+                         // bắt đầu tải dữ liệu sân và khu sân 
                          const [cList, fList] = await Promise.all([
-                              fetchComplexes({ query: searchQuery, date, slotId, useApi: true }),
+                              fetchComplexes({ query: searchQuery, date, slotId, useApi: true }), // dữ liệu khu sân với bộ lọc
                               fetchFields({ query: searchQuery, date, slotId, sortBy, useApi: true })
                          ]);
                          if (!ignore) {
@@ -396,7 +452,7 @@ export default function FieldSearch({ user }) {
                               complexesRef.current = cList;
                               const sanitizedFields = Array.isArray(fList)
                                    ? fList.filter(isFieldDisplayable).map(field => {
-                                        // Map typeId to typeName if not already present
+                                        // Chuẩn hóa typeName nếu thiếu
                                         const typeId = field.typeId ?? field.TypeID ?? field.typeID ?? null;
                                         if (typeId != null && (!field.typeName || field.typeName.trim() === "")) {
                                              const typeName = fieldTypeMap[String(typeId)];
@@ -408,16 +464,16 @@ export default function FieldSearch({ user }) {
                                    })
                                    : [];
 
-                              // Load ratings for all fields in parallel
+                              // Load đánh giá
                               const fieldsWithRatings = await Promise.all(
                                    sanitizedFields.map(async (field) => {
                                         try {
                                              const fieldId = field.fieldId || field.FieldID;
                                              if (!fieldId) return field;
-
+                                             // tải dánh giá
                                              const ratings = await fetchRatingsByField(fieldId);
                                              if (Array.isArray(ratings) && ratings.length > 0) {
-                                                  // Calculate average rating
+                                                  // đánh giá trung bình
                                                   const totalStars = ratings.reduce((sum, r) => sum + (r.stars || 0), 0);
                                                   const averageRating = totalStars / ratings.length;
                                                   return {
@@ -441,14 +497,7 @@ export default function FieldSearch({ user }) {
                                         }
                                    })
                               );
-
-                              // Apply favorite flags based on favoriteFieldIds
-                              const fieldsWithFavorites = fieldsWithRatings.map(f => ({
-                                   ...f,
-                                   isFavorite: favoriteFieldIds.has(Number(f.fieldId)),
-                              }));
-
-                              setFields(fieldsWithFavorites);
+                              setFields(fieldsWithRatings);
                          }
                     } catch (error) {
                          console.error("Error loading data:", error);
@@ -463,19 +512,24 @@ export default function FieldSearch({ user }) {
                     }
                };
                loadData();
-          }, 500); // ⏱️ Debounce 500ms
+          }, 500);
 
-          // Use requestAnimationFrame to ensure smooth navigation before starting fetch
+          // Sử dụng debounce để tránh gọi API quá nhiều
           return () => {
                ignore = true;
                clearTimeout(debounceTimer);
           };
      }, [searchQuery, date, slotId, sortBy, fieldTypeMap]);
 
+     // Áp dụng bộ lọc cho danh sách sân khi dữ liệu hoặc bộ lọc thay đổi
      useEffect(() => {
-          let filtered = Array.isArray(fields) ? [...fields] : [];
+          // Thêm thông tin isFavorite
+          let filtered = Array.isArray(fields) ? fields.map(f => ({
+               ...f,
+               isFavorite: favoriteFieldIds.has(Number(f.fieldId)),
+          })) : [];
 
-          // Filter by search query
+          // Tìm kiếm theo tên và địa chỉ
           if (searchQuery) {
                filtered = filtered.filter(field =>
                     field.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -483,17 +537,55 @@ export default function FieldSearch({ user }) {
                );
           }
 
-          // Filter by location
-          if (selectedLocation) {
-               filtered = filtered.filter(field => (field.address || "").includes(selectedLocation));
+          // Tìm sân theo ngày và khung giờ đã chọn
+          if (date && availableFieldIds instanceof Set) {
+               filtered = filtered.filter(field => {
+                    const fid = field.fieldId ?? field.FieldID ?? field.fieldID ?? field.id;
+                    if (!fid) return false;
+                    return availableFieldIds.has(String(fid));
+               });
           }
 
-          // Filter by field type via tabs
+          //Tìm theo vị trí đã chọn
+          if (selectedLocation) {
+               const normalizedLocation = normalizeText(selectedLocation);
+               const normalizedBase = normalizeDistrictKey(selectedLocation);
+               const patterns = [normalizedLocation];
+               if (normalizedBase) patterns.push(normalizedBase);
+               const numMatch = normalizedLocation.match(/\d+/);
+               if (numMatch) {
+                    const num = numMatch[0];
+                    patterns.push(`q.${num}`, `q${num}`, `quan${num}`, `quan ${num}`);
+               }
+
+               filtered = filtered.filter(field => {
+                    const addr = normalizeText(field.address || "");
+                    const dist = normalizeText(field.district || "");
+                    const ward = normalizeText(field.ward || field.Ward || "");
+                    const complexName = normalizeText(field.complexName || field.fieldName || field.name || "");
+                    const locationText = normalizeText(field.location || field.Location || "");
+                    const complexAddress = normalizeText(field.complexAddress || "");
+
+                    // Kết hợp tất cả text để tìm kiếm
+                    const allText = [addr, dist, ward, complexName, locationText, complexAddress].join(" ");
+                    const matchesAnyPattern = patterns.some(pattern => allText.includes(pattern));
+
+                    // Kiểm tra khớp chính xác quận/huyện
+                    const exactDistrictMatch = dist && (
+                         dist === normalizedLocation ||
+                         dist === normalizedBase ||
+                         normalizeDistrictKey(dist) === normalizedBase
+                    );
+                    return matchesAnyPattern || exactDistrictMatch;
+               });
+          }
+
+          // Tìm theo loại sân
           if (typeTab !== "all") {
                filtered = filtered.filter(field => doesFieldMatchTypeTab(field, typeTab, fieldTypeMap));
           }
 
-          // Filter by price
+          // tìm theo giá
           if (selectedPrice) {
                switch (selectedPrice) {
                     case "under100":
@@ -513,13 +605,13 @@ export default function FieldSearch({ user }) {
                }
           }
 
-          // Filter by rating
+          // tìm theo ddnahs giá
           if (selectedRating) {
                const minRating = parseFloat(selectedRating);
                filtered = filtered.filter(field => field.rating >= minRating);
           }
 
-          // Sort
+          // sắp xêp
           switch (sortBy) {
                case "price-low":
                     filtered.sort((a, b) => (a.priceForSelectedSlot || 0) - (b.priceForSelectedSlot || 0));
@@ -534,11 +626,10 @@ export default function FieldSearch({ user }) {
                     filtered.sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
                     break;
                default:
-                    // relevance - keep original order
                     break;
           }
 
-          // Apply tab presets (computed filtering helper)
+          // Tabs hoạt động
           switch (activeTab) {
                case "near":
                     filtered = [...filtered].sort((a, b) => (a.distanceKm || 0) - (b.distanceKm || 0));
@@ -555,8 +646,6 @@ export default function FieldSearch({ user }) {
                default:
                     break;
           }
-
-          // Map typeId to typeName for filtered fields if needed
           const fieldsWithTypeName = filtered.map(field => {
                const typeId = field.typeId ?? field.TypeID ?? field.typeID ?? null;
                if (typeId != null && (!field.typeName || field.typeName.trim() === "")) {
@@ -568,18 +657,16 @@ export default function FieldSearch({ user }) {
                return field;
           });
           setFilteredFields(fieldsWithTypeName);
-
           // Reset trang chỉ khi thực sự là thay đổi filter, không reset khi chỉ chuyển trang
-     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields, fieldTypeMap]);
+     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields, fieldTypeMap, date, availableFieldIds, favoriteFieldIds]);
 
-     // Persist preferences
+     // Lưu tùy chọn người dùng vào localStorage khi thay đổi
      useEffect(() => {
           try {
                const prefs = { viewMode, activeTab, page, entityTab, date, slotId, typeTab };
                window.localStorage.setItem("fieldSearchPrefs", JSON.stringify(prefs));
           } catch { }
      }, [viewMode, activeTab, page, entityTab, date, slotId, typeTab]);
-
      const toggleFavoriteLocal = (fieldId, nextIsFavorite) => {
           setFields(prev => prev.map(field =>
                field.fieldId === fieldId ? { ...field, isFavorite: nextIsFavorite } : field
@@ -596,13 +683,7 @@ export default function FieldSearch({ user }) {
           });
      };
 
-     const toggleFavoriteComplex = (complexId) => {
-          setComplexes(prev => prev.map(c =>
-               c.complexId === complexId ? { ...c, isFavorite: !c.isFavorite } : c
-          ));
-     };
-
-     // Toast notification helper
+     // Thong báo 
      const showToastMessage = (message, type = 'info') => {
           const config = {
                text: message,
@@ -616,6 +697,7 @@ export default function FieldSearch({ user }) {
           Swal.fire(config);
      };
 
+     //yêu thích sân
      const handleToggleFavorite = async (fieldId) => {
           if (!user) {
                showToastMessage("Vui lòng đăng nhập để sử dụng danh sách yêu thích.", 'warning');
@@ -624,26 +706,16 @@ export default function FieldSearch({ user }) {
           const current = favoriteFieldIds.has(Number(fieldId));
           const nextIsFavorite = !current;
 
-          // Optimistic update
           toggleFavoriteLocal(fieldId, nextIsFavorite);
-
           try {
                await toggleFavoriteField(fieldId, current);
           } catch (error) {
-               // Revert on error
                toggleFavoriteLocal(fieldId, current);
                showToastMessage(error.message || "Không thể cập nhật danh sách yêu thích.", 'error');
           }
      };
 
-     const handleToggleFavoriteComplex = (complexId) => {
-          if (!user) {
-               showToastMessage("Vui lòng đăng nhập để sử dụng danh sách yêu thích.", 'warning');
-               return;
-          }
-          toggleFavoriteComplex(complexId);
-     };
-
+     // đặt sân
      const handleBook = (fieldId) => {
           if (!user) {
                Swal.fire({
@@ -668,22 +740,19 @@ export default function FieldSearch({ user }) {
           navigate(`/booking/${fieldId}`);
      };
 
+     // chọn từ bản đồ
      const handleMapLocationSelect = (location) => {
-          // Apply location filter based on selected map location
+          // Cập nhật bộ lọc dựa trên vị trí được chọn từ bản đồ
           if (location.field) {
-               // If a specific field was selected, filter to show only that field
                setSearchQuery(location.field.name);
                setSelectedLocation("");
           } else {
-               // If a general location was selected, filter by area
                const locationParts = location.address.split(',');
                const district = locationParts.find(part => part.includes('Quận'));
                if (district) {
                     setSelectedLocation(district.trim());
                }
           }
-
-          // Reset to first page when applying new filter
           setPage(1);
           setForceList(true);
      };
@@ -695,8 +764,7 @@ export default function FieldSearch({ user }) {
           }).format(price);
      };
 
-     // Pagination helpers
-     // Fields pagination (sân nhỏ)
+     // phân trang sân nhỏ
      const totalItems = filteredFields.length;
      const totalPages = Math.max(1, Math.ceil(totalItems / fieldPageSize));
      const currentPage = Math.min(page, totalPages);
@@ -704,7 +772,7 @@ export default function FieldSearch({ user }) {
      const endIdx = startIdx + fieldPageSize;
      const pageItems = filteredFields.slice(startIdx, endIdx);
 
-     // Complexes pagination (khu sân)
+     // phân trang khu sân
      const totalComplex = complexes.length;
      const totalPagesComplex = Math.max(1, Math.ceil(totalComplex / complexPageSize));
      const currentPageComplex = Math.min(pageComplex, totalPagesComplex);
@@ -712,6 +780,7 @@ export default function FieldSearch({ user }) {
      const endIdxComplex = startIdxComplex + complexPageSize;
      const pageItemsComplex = complexes.slice(startIdxComplex, endIdxComplex);
 
+     // chuyenr trang
      const handlePrev = () => { setForceList(true); setPage(prev => Math.max(1, prev - 1)); };
      const handleNext = () => { setForceList(true); setPage(prev => Math.min(totalPages, prev + 1)); };
      const handlePrevComplex = () => { setForceList(true); setPageComplex(prev => Math.max(1, prev - 1)); };
@@ -723,29 +792,31 @@ export default function FieldSearch({ user }) {
           { key: "top-rated", label: "Đánh giá cao" },
      ];
 
-     const isNoFilter = !searchQuery && !selectedLocation && !selectedPrice && !selectedRating;
+     const isNoFilter = !searchQuery && !selectedLocation && !selectedPrice && !selectedRating;  //không lọc
      const isGroupedView = activeTab === "all" && isNoFilter && !forceList && entityTab === "fields";
 
-     // Flip to list view whenever user adjusts any filter/search/sort or tab is not "all"
+     // Điều khiển chế độ hiển thị danh sách hoặc lưới dựa trên bộ lọc
      useEffect(() => {
           const hasAny = !!searchQuery || !!selectedLocation || !!selectedPrice || !!selectedRating || sortBy !== "relevance";
-          setForceList(hasAny || activeTab !== "all");
+          const nextForceList = hasAny || activeTab !== "all";
+          setForceList((prev) => (prev === nextForceList ? prev : nextForceList));
      }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab]);
 
+     // cập nhật chế độ hiển thị
      const updateViewMode = (mode) => {
           setViewMode(mode);
           if (mode === "grid") {
                const noFilter = !searchQuery && !selectedLocation && !selectedPrice && !selectedRating && sortBy === "relevance" && activeTab === "all";
-               setForceList(!noFilter);
+               setForceList((prev) => (prev === !noFilter ? prev : !noFilter));
           } else {
-               setForceList(true);
+               setForceList((prev) => (prev === true ? prev : true));
           }
      };
 
-     // Get user location once on mount
+     // lấy vị trí người dùng
      useEffect(() => {
           let cancelled = false;
-          const fallbackLat = 21.0285; // Hà Nội center
+          const fallbackLat = 21.0285; // Hà Nội
           const fallbackLng = 105.8542;
           if (navigator.geolocation) {
                navigator.geolocation.getCurrentPosition(
@@ -763,28 +834,27 @@ export default function FieldSearch({ user }) {
           return () => { cancelled = true; };
      }, []);
 
-     // Compute user distance for complexes and fields when location or data changes
+     //người dùng thay đổi vị trí, cập nhật khoảng cách khu sân
      useEffect(() => {
           if (!userLocation) return;
-
           function haversineKm(lat1, lng1, lat2, lng2) {
-               const R = 6371;
+               const R = 6371;                                   // Bán kính Trái Đất trong km
                const dLat = (lat2 - lat1) * Math.PI / 180;
                const dLng = (lng2 - lng1) * Math.PI / 180;
+               // Công thức Haversine
                const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
                const d = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
                return R * d;
           }
 
-          // Update complexes with distance
+          // cập nhật khoảng cách khu sân
           setComplexes(prev => {
                if (prev.length === 0) return prev;
                const updated = prev.map(c => {
-                    // Check if lat/lng exist and are valid numbers
                     const lat = c.lat ?? c.latitude;
                     const lng = c.lng ?? c.longitude;
+                    // luôn tính toán lại khoảng cách khi vị trí người dùng thay đổi
                     if (typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng)) {
-                         // Always recalculate when userLocation changes
                          return { ...c, distanceKm: haversineKm(userLocation.lat, userLocation.lng, lat, lng) };
                     }
                     return c;
@@ -794,7 +864,7 @@ export default function FieldSearch({ user }) {
           });
      }, [userLocation]);
 
-     // Recalculate distances when complexes data changes (new complexes loaded)
+     // tính khoảng cách khu sân khi có vị trí người dùng mới
      useEffect(() => {
           if (!userLocation || complexes.length === 0) return;
 
@@ -813,7 +883,6 @@ export default function FieldSearch({ user }) {
                     const lat = c.lat ?? c.latitude;
                     const lng = c.lng ?? c.longitude;
                     if (typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng)) {
-                         // Only calculate if distanceKm doesn't exist or is invalid
                          if (typeof c.distanceKm !== "number" || isNaN(c.distanceKm)) {
                               return { ...c, distanceKm: haversineKm(userLocation.lat, userLocation.lng, lat, lng) };
                          }
@@ -821,32 +890,31 @@ export default function FieldSearch({ user }) {
                     return c;
                });
           });
-          // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [userLocation, complexes.length]);
 
-     // Update fields distance based on their complex distance
+     // cập nhật khoảng cách sân khi có vị trí người dùng mới
      useEffect(() => {
           if (!userLocation || fields.length === 0 || complexes.length === 0) return;
           let missingCoordinatesCount = 0;
 
           setFields(prev => prev.map(f => {
                const cx = complexesRef.current.find(cc => cc.complexId === f.complexId) || complexes.find(cc => cc.complexId === f.complexId);
-               // If complex has distanceKm, use it; otherwise calculate from complex lat/lng
+               //nếu khu sân có distanceKm, sử dụng nó; nếu không tính từ lat/lng khu sân
                if (cx) {
                     if (typeof cx.distanceKm === "number" && !isNaN(cx.distanceKm)) {
                          return { ...f, distanceKm: cx.distanceKm };
                     }
-                    // Calculate from complex coordinates if distanceKm not available
+                    // tính khoảng cách từ toạ độ khu sân
                     const lat = cx.lat ?? cx.latitude;
                     const lng = cx.lng ?? cx.longitude;
                     if (typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng)) {
                          const R = 6371;
                          const dLat = (lat - userLocation.lat) * Math.PI / 180;
                          const dLng = (lng - userLocation.lng) * Math.PI / 180;
+                         // hàm tính haversine
                          const a = Math.sin(dLat / 2) ** 2 + Math.cos(userLocation.lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
                          const d = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
                          const distance = R * d;
-                         console.log(`✓ Field ${f.name}: Calculated distance = ${distance.toFixed(1)}km from coords (${lat}, ${lng})`);
                          return { ...f, distanceKm: distance };
                     } else {
                          missingCoordinatesCount++;
@@ -857,13 +925,11 @@ export default function FieldSearch({ user }) {
 
           if (missingCoordinatesCount > 0) {
                console.warn(`⚠️ ${missingCoordinatesCount} field(s) have no coordinates.`);
-               console.info('💡 Solution: Add latitude/longitude to Complex table in database.');
-               console.info('   Example: UPDATE Complex SET latitude = 21.0285, longitude = 105.8542 WHERE complexId = 7');
           }
           // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [userLocation, complexes.length, fields.length]);
 
-     // Calculate near group - complexes sorted by distance
+     // Lấy 4 khu sân gần nhất có toạ độ
      const nearGroup = [...complexes]
           .filter(c => {
                const lat = c.lat ?? c.latitude;
@@ -876,7 +942,7 @@ export default function FieldSearch({ user }) {
                return distA - distB;
           })
           .slice(0, 4);
-     
+
      const bestPriceGroup = [...filteredFields].sort((a, b) => (a.priceForSelectedSlot || 0) - (b.priceForSelectedSlot || 0)).slice(0, 4);
      const topRatedGroup = [...filteredFields].sort((a, b) => b.rating - a.rating).slice(0, 4);
 
@@ -889,7 +955,6 @@ export default function FieldSearch({ user }) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
                >
-                    {/* Floating particles for hero */}
                     <div className="absolute inset-0 pointer-events-none">
                          {[...Array(15)].map((_, i) => (
                               <motion.div
@@ -974,18 +1039,22 @@ export default function FieldSearch({ user }) {
                          >
                               <Card className="mb-4 border p-1 bg-white/80 backdrop-blur rounded-[30px] shadow-xl ring-1 ring-teal-100 border-teal-200">
                                    <CardContent>
+                                        {/* Tìm kiếm */}
                                         <SearchHeader
                                              entityTab={entityTab}
                                              setEntityTab={setEntityTab}
                                              resultCount={entityTab === "complexes" ? complexes.length : filteredFields.length}
                                              user={user}
                                         />
+
+                                        {/* thanh bộ lọc */}
                                         <SearchFiltersBar
                                              searchQuery={searchQuery}
                                              setSearchQuery={setSearchQuery}
                                              selectedLocation={selectedLocation}
                                              handleLocationChange={handleLocationChange}
                                              getLocationValue={getLocationValue}
+                                             districtOptions={districtOptions}
                                              selectedPrice={selectedPrice}
                                              handlePriceChange={handlePriceChange}
                                              getPriceValue={getPriceValue}
@@ -1002,12 +1071,13 @@ export default function FieldSearch({ user }) {
                                                   setPage(1);
                                                   setForceList(false);
                                                   setEntityTab("fields");
-                                                  setDate(new Date().toISOString().split('T')[0]);
+                                                  setDate("");
                                                   setSlotId("");
                                                   setMapSearchKey(prev => prev + 1);
-                                                  localStorage.removeItem('searchPreset');
                                              }}
                                         />
+
+                                        {/* Bộ lọc nâng cao và Quick Presets */}
                                         <QuickPresets
                                              quickPresets={quickPresets}
                                              activeTab={activeTab}
@@ -1016,6 +1086,8 @@ export default function FieldSearch({ user }) {
                                              setTypeTab={setTypeTab}
                                              setPage={setPage}
                                         />
+
+                                        {/** Gợi ý bộ lọc */}
                                         <AdvancedFilters
                                              showFilters={showFilters}
                                              setShowFilters={setShowFilters}
@@ -1036,7 +1108,7 @@ export default function FieldSearch({ user }) {
                                              onResetAdvancedFilters={() => {
                                                   setSelectedRating("");
                                                   setSortBy("relevance");
-                                                  setDate(new Date().toISOString().split('T')[0]);
+                                                  setDate("");
                                                   setSlotId("");
                                              }}
                                         />
@@ -1045,7 +1117,7 @@ export default function FieldSearch({ user }) {
                          </motion.div>
                     </motion.div>
 
-                    {/* Results Header với Animation */}
+                    {/* kết quả tiêu đề với hiệu ứng */}
                     <ScrollReveal direction="left" delay={0.1}>
                          <ResultsHeader
                               entityTab={entityTab}
@@ -1057,7 +1129,7 @@ export default function FieldSearch({ user }) {
                          />
                     </ScrollReveal>
 
-                    {/* Loading State với Animation */}
+                    {/* Tải trạng thái */}
                     <AnimatePresence>
                          {isLoading && (
                               <motion.div
@@ -1123,7 +1195,7 @@ export default function FieldSearch({ user }) {
                                    className="space-y-6"
                                    key="grouped"
                               >
-                                   {/* Gần bạn - Scroll trigger animation */}
+                                   {/* Gần bạn */}
                                    <ScrollReveal direction="up" delay={0.1}>
                                         <GroupedViewSection
                                              title="Gần bạn"
@@ -1137,16 +1209,15 @@ export default function FieldSearch({ user }) {
                                              formatPrice={formatPrice}
                                              user={user}
                                              handleLoginRequired={(msg) => showToastMessage(msg, 'warning')}
-                                             onToggleFavoriteComplex={handleToggleFavoriteComplex}
                                              handleViewAll={() => { setActiveTab("near"); setForceList(true); setPage(1); setEntityTab("complexes"); }}
                                              showDistance={true}
                                         />
                                    </ScrollReveal>
 
-                                   {/* Giá tốt - Scroll trigger animation */}
+                                   {/* Giá tốt */}
                                    <ScrollReveal direction="up" delay={0.2}>
                                         <GroupedViewSection
-                                             title="Giá tốt"
+                                             title="Giá tốt nhất"
                                              icon={Star}
                                              iconColor="text-red-700"
                                              bgColor="bg-red-50"
@@ -1165,7 +1236,7 @@ export default function FieldSearch({ user }) {
                                         />
                                    </ScrollReveal>
 
-                                   {/* Đánh giá cao - Scroll trigger animation */}
+                                   {/*Đánh giá cao */}
                                    <ScrollReveal direction="up" delay={0.3}>
                                         <GroupedViewSection
                                              title="Đánh giá cao"
@@ -1244,7 +1315,7 @@ export default function FieldSearch({ user }) {
                          ) : null}
                     </AnimatePresence>
 
-                    {/* Pagination for complexes */}
+                    {/* Phân trang cho khu sân */}
                     {totalComplex > 0 && entityTab === "complexes" && (
                          <ScrollReveal direction="up" delay={0.1}>
                               <Pagination
@@ -1260,7 +1331,7 @@ export default function FieldSearch({ user }) {
                          </ScrollReveal>
                     )}
 
-                    {/* Pagination for fields (only when viewing Sân nhỏ list) */}
+                    {/* phân trang cho sân nhỏ khi ở dạng "list" */}
                     {entityTab === "fields" && filteredFields.length > 0 && !isGroupedView && (
                          <ScrollReveal direction="up" delay={0.1}>
                               <Pagination
@@ -1296,7 +1367,7 @@ export default function FieldSearch({ user }) {
 
                </Container>
 
-               {/* Map Search Modal */}
+               {/* Tìm kiếm trên bản đồ */}
                <MapSearch
                     key={mapSearchKey}
                     isOpen={showMapSearch}
@@ -1304,7 +1375,7 @@ export default function FieldSearch({ user }) {
                     onLocationSelect={handleMapLocationSelect}
                />
 
-               {/* Login Promotion Modal */}
+               {/* Khuyến khích đăng nhập */}
                <LoginPromotionModal user={user} />
           </Section >
      );

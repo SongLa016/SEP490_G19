@@ -3,6 +3,31 @@ import { Card, Table, TableHeader, TableRow, TableHead, TableBody, TableCell } f
 import { Clock, Plus, Wrench } from "lucide-react";
 import Swal from "sweetalert2";
 
+/**
+ * Component hiển thị lưới lịch trình theo ngày
+ * 
+ * Chức năng:
+ * - Hiển thị bảng lịch trình với các time slot theo hàng, sân theo cột
+ * - Hiển thị trạng thái: Available (trống), Booked (đã đặt), Maintenance (bảo trì)
+ * - Phân biệt booking thường và booking gói cố định
+ * - Click vào ô để xem chi tiết hoặc tạo lịch trình mới
+ * - Hỗ trợ lọc theo sân và trạng thái
+ * 
+ * @param {Object} props - Props của component
+ * @param {Array} props.timeSlots - Danh sách time slots
+ * @param {Date} props.selectedDate - Ngày đang xem
+ * @param {Array} props.fieldSchedules - Danh sách lịch trình
+ * @param {Array} props.fields - Danh sách sân
+ * @param {string} props.selectedFieldForSchedule - ID sân đang lọc ('all' = tất cả)
+ * @param {string} props.filterStatus - Trạng thái đang lọc
+ * @param {Function} props.isSlotTimePassed - Kiểm tra slot đã qua chưa
+ * @param {Function} props.getSchedulesForTimeSlot - Lấy schedules cho slot và ngày
+ * @param {Function} props.getFieldColor - Lấy màu cho sân
+ * @param {Function} props.formatTime - Format thời gian
+ * @param {Function} props.getBookingInfo - Lấy thông tin booking
+ * @param {Function} props.isFieldMaintenance - Kiểm tra sân đang bảo trì
+ * @param {Function} props.onRequestAddSchedule - Callback tạo lịch trình mới
+ */
 export default function ScheduleGrid({
      timeSlots,
      selectedDate,
@@ -18,6 +43,11 @@ export default function ScheduleGrid({
      isFieldMaintenance,
      onRequestAddSchedule
 }) {
+     /**
+      * Kiểm tra ngày có phải hôm nay không
+      * @param {Date} date - Ngày cần kiểm tra
+      * @returns {boolean}
+      */
      const isToday = (date) => {
           const today = new Date();
           return date.getDate() === today.getDate() &&
@@ -25,16 +55,31 @@ export default function ScheduleGrid({
                date.getFullYear() === today.getFullYear();
      };
 
+     /**
+      * Lấy tên ngày trong tuần (viết tắt tiếng Việt)
+      * @param {Date} date - Ngày cần lấy tên
+      * @returns {string} Tên ngày (CN, T2, T3...)
+      */
      const getDayName = (date) => {
           const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
           return days[date.getDay()];
      };
 
-     // Determine which fields to display
+     // Xác định danh sách sân cần hiển thị (tất cả hoặc sân được chọn)
      const displayFields = selectedFieldForSchedule === 'all'
           ? fields
           : fields.filter(f => f.fieldId.toString() === selectedFieldForSchedule);
 
+     /**
+      * Render ô lịch trình trong bảng
+      * - Hiển thị trạng thái với màu sắc tương ứng
+      * - Click để xem chi tiết booking hoặc tạo mới
+      * @param {Object} schedule - Thông tin schedule
+      * @param {Object} field - Thông tin sân
+      * @param {Object} slot - Thông tin time slot
+      * @param {boolean} fieldMaintenance - Sân đang bảo trì
+      * @param {number} slotIdForField - ID slot cho sân cụ thể
+      */
      const renderScheduleCell = (schedule, field, slot, fieldMaintenance = false, slotIdForField = null) => {
           const status = schedule.status || schedule.Status || 'Available';
           const normalizedStatus = fieldMaintenance ? 'Maintenance' : status;
@@ -43,20 +88,37 @@ export default function ScheduleGrid({
           const available = statusLower === 'available';
           const maintenance = statusLower === 'maintenance';
           const fieldColor = getFieldColor(field.fieldId);
-          const baseColorClasses = maintenance
-               ? 'bg-gradient-to-br from-orange-100 via-amber-100 to-orange-100 text-orange-900 border border-orange-200'
-               : `${fieldColor} text-white`;
 
           // Use slotIdForField if provided, otherwise fallback to slot.slotId
           const actualSlotId = slotIdForField || slot.slotId || slot.SlotID || schedule.slotId || schedule.SlotID;
 
+          // Get booking info early to determine if it's a package booking
+          const bookingInfo = booked ? getBookingInfo(Number(field.fieldId), selectedDate, Number(actualSlotId)) : null;
+          const isPackageBooking = bookingInfo && (bookingInfo.isPackageSession || bookingInfo.bookingType === 'package');
+
+          // Border color based on status and booking type
+          const getBorderColor = () => {
+               if (maintenance) return 'border-l-4 border-l-orange-500 border border-orange-200';
+               if (booked && isPackageBooking) return 'border-l-4 border-l-blue-500 border border-blue-200';
+               if (booked) return 'border-l-4 border-l-green-500 border border-green-200';
+               if (available) return 'border-l-4 border-l-red-400 border border-red-200';
+               return 'border border-gray-200';
+          };
+
+          const baseColorClasses = maintenance
+               ? 'bg-gradient-to-br from-orange-50 via-amber-50 to-orange-50 text-orange-900'
+               : available
+                    ? 'bg-white text-gray-800'
+                    : isPackageBooking
+                         ? 'bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50 text-blue-900'
+                         : `${fieldColor} text-white`;
+
           return (
                <div
-                    className={`${baseColorClasses} p-3 rounded-xl w-full text-sm font-medium cursor-pointer hover:opacity-90 hover:shadow-lg transition-all shadow-md`}
+                    className={`${baseColorClasses} ${getBorderColor()} p-3 rounded-xl w-full text-sm font-medium cursor-pointer hover:opacity-90 hover:shadow-lg transition-all shadow-md`}
                     onClick={(e) => {
                          e.stopPropagation();
-                         const bookingInfo = getBookingInfo(Number(field.fieldId), selectedDate, Number(actualSlotId));
-                         const isPackageBooking = bookingInfo && (bookingInfo.isPackageSession || bookingInfo.bookingType === 'package');
+                         // bookingInfo and isPackageBooking already calculated above
 
                          let statusIcon = '📋';
                          let statusBadge = '';
@@ -105,7 +167,7 @@ export default function ScheduleGrid({
                               const bgColor = isPackageBooking ? 'bg-purple-50' : 'bg-green-50';
                               const borderColor = isPackageBooking ? 'border-purple-300' : 'border-green-300';
                               const textColor = isPackageBooking ? 'text-purple-900' : 'text-green-900';
-                              
+
                               bookingInfoHTML = `
                                    <div class="${bgColor} px-4 py-3 rounded-2xl border-2 ${borderColor} mt-3">
                                         <p class="text-sm font-bold ${textColor} mb-3 flex items-center gap-2">

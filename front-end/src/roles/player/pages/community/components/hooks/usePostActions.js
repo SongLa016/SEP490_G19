@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createPost, updatePost, deletePost } from "../../../../../../shared/services/posts";
 import { fetchFieldInfoForPost } from "../utils/postTransformers";
-import { uploadImageToCloudinary, deleteImageFromCloudinary } from "../../../../../../shared/services/cloudinary";
+import { deleteImageFromCloudinary } from "../../../../../../shared/services/cloudinary";
 import Swal from 'sweetalert2';
 
 export function usePostActions(user, posts, setPosts) {
@@ -12,6 +12,7 @@ export function usePostActions(user, posts, setPosts) {
      const [editSelectedImage, setEditSelectedImage] = useState(null);
      const [editImagePreview, setEditImagePreview] = useState(null);
 
+     // Đăng bài viết
      const handlePostSubmit = async (title, content, field, imageFile) => {
           if (!user || !content.trim()) return;
 
@@ -23,23 +24,15 @@ export function usePostActions(user, posts, setPosts) {
                          Swal.showLoading();
                     }
                });
-
-               // Prepare image data - send File directly to API (API will handle Cloudinary upload)
                let imageFiles = null;
                let imageUrls = null;
                
                if (imageFile) {
-                    // Send File directly to API (API will upload to Cloudinary)
                     imageFiles = imageFile;
                } else if (editingPost) {
-                    // When editing, handle different cases:
-                    // - imageFile === null: Image was explicitly removed
-                    // - imageFile === undefined: Keep existing image (no change)
                     if (imageFile === null) {
-                         // Image was removed - send empty array
                          imageUrls = [];
                     } else if (imageFile === undefined) {
-                         // Keep existing image URL
                          if (editingPost.MediaURL) {
                               imageUrls = [editingPost.MediaURL];
                          }
@@ -47,21 +40,20 @@ export function usePostActions(user, posts, setPosts) {
                }
 
                if (editingPost) {
-                    // Update existing post (API will handle image upload/delete)
+                    // Cập nhật bài viết hiện tại
                     await updatePost(editingPost.PostID, {
                          title: title || "",
                          content: content,
                          fieldId: field?.fieldId || 0,
-                         imageFiles: imageFiles, // File object if new image
-                         imageUrls: imageUrls // URLs if keeping existing or removed
+                         imageFiles: imageFiles,
+                         imageUrls: imageUrls 
                     });
 
-                    // Fetch field information
+                    // tải thông tin bài viết
                     const fieldInfo = await fetchFieldInfoForPost(field);
 
-                    // Update post in list
-                    const updatedMediaURL = imageFiles 
-                         ? null // Will be updated from API response
+                    // cập nhật bài viết trong danh sách
+                    const updatedMediaURL = imageFiles ? null 
                          : (imageUrls && imageUrls.length > 0 ? imageUrls[0] : null);
                     
                     setPosts(prevPosts => prevPosts.map(p =>
@@ -70,14 +62,14 @@ export function usePostActions(user, posts, setPosts) {
                               Title: title || "",
                               Content: content,
                               MediaURL: updatedMediaURL,
-                              imageFiles: imageUrls || [], // Update imageFiles array
+                              imageFiles: imageUrls || [], 
                               FieldID: field?.fieldId || 0,
                               field: fieldInfo,
                               UpdatedAt: new Date().toISOString()
                          } : p
                     ));
 
-                    // Reset edit state
+                    // reset trạng thái chỉnh sửa
                     setEditingPost(null);
                     setEditPostTitle("");
                     setEditPostContent("");
@@ -95,31 +87,23 @@ export function usePostActions(user, posts, setPosts) {
                          position: 'top-end'
                     });
                } else {
-                    // Create new post - send File directly to API
                     const newPost = await createPost({
                          title: title || "",
                          content: content,
                          fieldId: field?.fieldId || 0,
-                         imageFiles: imageFiles // File object, API will handle upload
+                         imageFiles: imageFiles  
                     });
 
-                    // Fetch field information
+                    // tải thông tin sân
                     const fieldInfo = await fetchFieldInfoForPost(field);
-
-                    // Transform and add to posts
-                    // Extract mediaUrl from imageFiles array (first image) or from mediaUrl field
                     let mediaUrl = null;
-                    
-                    // Check if newPost has imageFiles (from API response)
                     if (newPost.imageFiles && Array.isArray(newPost.imageFiles) && newPost.imageFiles.length > 0) {
                          mediaUrl = newPost.imageFiles[0];
                     } 
-                    // Check if newPost has mediaUrl (backward compatibility)
                     else if (newPost.mediaUrl) {
                          mediaUrl = newPost.mediaUrl;
                     }
-                    // If no URL from API, and we uploaded a file, we can't show it immediately unless we use the local preview
-                    // But for now, let's rely on API response. If API didn't return URL, it might be processing.
+                   
                     const transformedPost = {
                          PostID: newPost.id || newPost.postId,
                          UserID: newPost.userId,
@@ -160,7 +144,6 @@ export function usePostActions(user, posts, setPosts) {
                     });
                }
           } catch (error) {
-               console.error("Error creating/updating post:", error);
                Swal.close();
 
                if (editingPost && error.message && error.message.includes('quyền')) {
@@ -180,7 +163,7 @@ export function usePostActions(user, posts, setPosts) {
                });
           }
      };
-
+     // Xóa bài viết
      const handleDeletePost = async (postId) => {
           const deleteResult = await Swal.fire({
                title: 'Xóa bài viết?',

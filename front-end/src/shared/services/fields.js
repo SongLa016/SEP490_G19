@@ -1,5 +1,151 @@
-// Service layer for Field, FieldComplex, FieldPrice APIs
+
 import axios from "axios";
+
+// validation tên sân
+export const validateFieldName = (name, label = "Tên") => {
+  const trimmedName = name?.trim() || "";
+  if (!trimmedName) {
+    return { isValid: false, message: `Vui lòng nhập ${label.toLowerCase()}` };
+  }
+  if (trimmedName.length < 2) {
+    return { isValid: false, message: `${label} phải có ít nhất 2 ký tự` };
+  }
+  if (trimmedName.length > 100) {
+    return { isValid: false, message: `${label} không được quá 100 ký tự` };
+  }
+  return { isValid: true, message: "" };
+};
+
+// Validate giá sân
+export const validateFieldPrice = (price) => {
+  const numPrice = Number(price);
+  // Kiểm tra giá trị hợp lệ
+  if (isNaN(numPrice) || price === "" || price === null || price === undefined) {
+    return { isValid: false, message: "Vui lòng nhập giá sân" };
+  }
+  // Kiểm tra giá dương
+  if (numPrice <= 0) {
+    return { isValid: false, message: "Giá sân phải lớn hơn 0" };
+  }
+  // Kiểm tra giá tối thiểu
+  if (numPrice < 10000) {
+    return { isValid: false, message: "Giá sân tối thiểu 10,000 VND" };
+  }
+  // Kiểm tra giá tối đa
+  if (numPrice > 10000000) {
+    return { isValid: false, message: "Giá sân tối đa 10,000,000 VND" };
+  }
+  return { isValid: true, message: "" };
+};
+
+// Validate kích thước sân
+export const validateFieldSize = (size) => {
+  if (!size || size.trim() === "") {
+    return { isValid: true, message: "" };
+  }
+  // Regex kiểm tra format: số x số (có thể có đơn vị m)
+  const sizeRegex = /^\d+(\.\d+)?\s*[xX×]\s*\d+(\.\d+)?\s*m?$/;
+  if (!sizeRegex.test(size.trim())) {
+    return { isValid: false, message: "Kích thước không hợp lệ (VD: 20x40m)" };
+  }
+  return { isValid: true, message: "" };
+};
+
+// Validate địa chỉ khu sân
+
+export const validateAddress = (address) => {
+  const trimmedAddress = address?.trim() || "";
+  if (!trimmedAddress) {
+    return { isValid: false, message: "Vui lòng nhập địa chỉ" };
+  }
+  if (trimmedAddress.length < 10) {
+    return { isValid: false, message: "Địa chỉ phải có ít nhất 10 ký tự" };
+  }
+  if (trimmedAddress.length > 200) {
+    return { isValid: false, message: "Địa chỉ không được quá 200 ký tự" };
+  }
+  return { isValid: true, message: "" };
+};
+
+// Validate toàn bộ dữ liệu khu sân (Complex)
+export const validateComplexData = (data, isEdit = false) => {
+  const errors = {};
+
+  // Validate tên khu sân
+  const nameValidation = validateFieldName(data.name, "Tên khu sân");
+  if (!nameValidation.isValid) {
+    errors.name = nameValidation.message;
+  }
+
+  // Validate địa chỉ
+  const addressValidation = validateAddress(data.address);
+  if (!addressValidation.isValid) {
+    errors.address = addressValidation.message;
+  }
+
+  // Validate hình ảnh (chỉ bắt buộc khi tạo mới)
+  if (!isEdit && !data.imageFile && !data.imageUrl && !data.image) {
+    errors.image = "Vui lòng chọn hình ảnh cho khu sân";
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+  };
+};
+
+/**
+ * Validate toàn bộ dữ liệu sân (Field)
+ * @param {Object} data - Dữ liệu sân
+ * @param {boolean} isEdit - Đang chỉnh sửa hay tạo mới
+ * @returns {{ isValid: boolean, errors: Object }}
+ */
+export const validateFieldData = (data, isEdit = false) => {
+  const errors = {};
+
+  // Validate khu sân
+  if (!data.complexId) {
+    errors.complexId = "Vui lòng chọn khu sân";
+  }
+
+  // Validate tên sân
+  const nameValidation = validateFieldName(data.name, "Tên sân");
+  if (!nameValidation.isValid) {
+    errors.name = nameValidation.message;
+  }
+
+  // Validate loại sân
+  if (!data.typeId) {
+    errors.typeId = "Vui lòng chọn loại sân";
+  }
+
+  // Validate giá
+  const priceValidation = validateFieldPrice(data.pricePerHour);
+  if (!priceValidation.isValid) {
+    errors.pricePerHour = priceValidation.message;
+  }
+
+  // Validate kích thước (optional)
+  const sizeValidation = validateFieldSize(data.size);
+  if (!sizeValidation.isValid) {
+    errors.size = sizeValidation.message;
+  }
+
+  // Validate ảnh chính (bắt buộc khi tạo mới)
+  if (!isEdit && !data.mainImage) {
+    errors.mainImage = "Vui lòng chọn ảnh chính cho sân";
+  }
+
+  // Validate tài khoản ngân hàng
+  if (!data.bankAccountId) {
+    errors.bankAccountId = "Vui lòng chọn tài khoản ngân hàng";
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+  };
+};
 
 const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
 // Always use full URL to avoid proxy issues
@@ -41,6 +187,40 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Flag to prevent multiple session expired alerts
+let isShowingSessionExpired = false;
+
+// Add response interceptor to handle 401 errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401 && !isShowingSessionExpired) {
+      isShowingSessionExpired = true;
+      // Clear auth data
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      
+      // Show alert and redirect
+      const Swal = (await import("sweetalert2")).default;
+      await Swal.fire({
+        icon: "warning",
+        title: "Phiên đăng nhập hết hạn",
+        text: "Vui lòng đăng nhập lại để tiếp tục.",
+        confirmButtonText: "Đăng nhập",
+        confirmButtonColor: "#0ea5e9",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      }).then((result) => {
+        isShowingSessionExpired = false;
+        if (result.isConfirmed) {
+          window.location.href = "/login";
+        }
+      });
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Helper function to handle API errors
 const handleApiError = (error) => {
   // Preserve the original error with all its properties
@@ -49,7 +229,7 @@ const handleApiError = (error) => {
     // Keep the original error so components can access error.response
     throw error;
   }
-  
+
   // For non-response errors, create a new error with message
   let errorMessage = "Có lỗi xảy ra khi gọi API";
   let details = "";
@@ -129,7 +309,8 @@ export async function createFieldComplex(complexData) {
         // Only include imageUrl if it's a URL string (existing image)
         // File objects should be sent via FormData
         imageUrl: complexData.imageUrl || "",
-        status: complexData.status || "Active",
+        // Default to Pending - Admin will approve to Active
+        status: complexData.status || "Pending",
       };
 
       for (const endpoint of endpoints) {
@@ -159,7 +340,6 @@ export async function createFieldComplex(complexData) {
 export async function fetchFieldComplexes() {
   try {
     const endpoint = "/api/FieldComplex";
-    const fullUrl = `${API_BASE_URL}${endpoint}`;
     const response = await apiClient.get(endpoint);
 
     let data = response.data;
@@ -216,9 +396,12 @@ export async function fetchFieldComplexes() {
         createdAt: complex.createdAt || complex.CreatedAt,
         ownerName: complex.ownerName || complex.OwnerName || "",
         lat: complex.lat || complex.Lat || complex.latitude || complex.Latitude,
-        lng: complex.lng || complex.Lng || complex.longitude || complex.Longitude,
-        latitude: complex.latitude || complex.Latitude || complex.lat || complex.Lat,
-        longitude: complex.longitude || complex.Longitude || complex.lng || complex.Lng,
+        lng:
+          complex.lng || complex.Lng || complex.longitude || complex.Longitude,
+        latitude:
+          complex.latitude || complex.Latitude || complex.lat || complex.Lat,
+        longitude:
+          complex.longitude || complex.Longitude || complex.lng || complex.Lng,
         ward: complex.ward || complex.Ward || "",
         district: complex.district || complex.District || "",
         province: complex.province || complex.Province || "",
@@ -259,9 +442,12 @@ export async function fetchFieldComplex(id) {
         createdAt: complex.createdAt || complex.CreatedAt,
         ownerName: complex.ownerName || complex.OwnerName || "",
         lat: complex.lat || complex.Lat || complex.latitude || complex.Latitude,
-        lng: complex.lng || complex.Lng || complex.longitude || complex.Longitude,
-        latitude: complex.latitude || complex.Latitude || complex.lat || complex.Lat,
-        longitude: complex.longitude || complex.Longitude || complex.lng || complex.Lng,
+        lng:
+          complex.lng || complex.Lng || complex.longitude || complex.Longitude,
+        latitude:
+          complex.latitude || complex.Latitude || complex.lat || complex.Lat,
+        longitude:
+          complex.longitude || complex.Longitude || complex.lng || complex.Lng,
         ward: complex.ward || complex.Ward || "",
         district: complex.district || complex.District || "",
         province: complex.province || complex.Province || "",
@@ -375,13 +561,15 @@ export async function fetchAllComplexesWithFields() {
 export async function fetchFieldsByComplex(complexId) {
   try {
     const complexIdNum = Number(complexId);
+    const endpoint = `/api/Field/complex/${complexIdNum}`;
 
-    // Use the correct endpoint from Swagger: GET /api/Field/complex/{complexId}
-    const response = await apiClient.get(`/api/Field/complex/${complexIdNum}`);
+    const response = await apiClient.get(endpoint);
 
+    if (!response) {
+      return [];
+    }
     // Handle response - can be array or object
     let data = response.data;
-
     // Handle wrapper object
     if (data && !Array.isArray(data)) {
       if (Array.isArray(data.data)) {
@@ -672,11 +860,15 @@ export async function fetchComplexes(params = {}) {
       })
     );
 
-    const filtered = complexesWithFields.filter(
-      (item) =>
-        item.name.toLowerCase().includes(query.toLowerCase()) ||
-        item.address.toLowerCase().includes(query.toLowerCase())
-    );
+    const filtered = complexesWithFields.filter((item) => {
+      if (!query) return true; // Return all if no query
+      const q = query.toLowerCase();
+      return (
+        item.name.toLowerCase().includes(q) ||
+        item.address.toLowerCase().includes(q) ||
+        (item.district || "").toLowerCase().includes(q)
+      );
+    });
 
     return filtered;
   } catch (error) {
@@ -692,28 +884,39 @@ export async function fetchFields(params = {}) {
     let complexes = [];
 
     if (complexId) {
-      // Fetch fields for a specific complex
-      // Always try to fetch fields, regardless of complex status
-      // The status check will be done later when filtering
-      try {
-        const fields = await fetchFieldsByComplex(complexId);
-        allFields = Array.isArray(fields) ? fields : [];
-      } catch (error) {
-        console.error(`[fetchFields] Error fetching fields for complex ${complexId}:`, error);
+      // Fetch complexes first to check status
+      complexes = await fetchFieldComplexes();
+      
+      // Check if the specific complex is Active
+      const targetComplex = complexes.find(c => 
+        String(c.complexId) === String(complexId)
+      );
+      
+      // Only fetch fields if complex is Active
+      if (targetComplex && (targetComplex.status || targetComplex.Status || "Active") === "Active") {
+        try {
+          const fields = await fetchFieldsByComplex(complexId);
+          allFields = Array.isArray(fields) ? fields : [];
+        } catch (error) {
+          console.error(
+            `[fetchFields] Error fetching fields for complex ${complexId}:`,
+            error
+          );
+          allFields = [];
+        }
+      } else {
+        // Complex is not Active (Pending/Rejected), return empty
         allFields = [];
       }
-      
-      // Fetch complexes for address mapping
-      complexes = await fetchFieldComplexes();
     } else {
       // Fetch all fields from all complexes
       complexes = await fetchFieldComplexes();
-      
+
       // Filter only Active complexes for Player pages
       const activeComplexes = complexes.filter(
         (complex) => (complex.status || complex.Status || "Active") === "Active"
       );
-      
+
       const fieldsPromises = activeComplexes.map(async (complex) => {
         try {
           return await fetchFieldsByComplex(complex.complexId);
@@ -729,18 +932,27 @@ export async function fetchFields(params = {}) {
     const activeComplexes = complexes.filter(
       (complex) => (complex.status || complex.Status || "Active") === "Active"
     );
-    const complexMap = new Map(activeComplexes.map((c) => [String(c.complexId), c]));
+    const complexMap = new Map(
+      activeComplexes.map((c) => [String(c.complexId), c])
+    );
 
     return allFields
       .filter((f) => {
         // Only include fields from Active complexes
         const complex = complexMap.get(String(f.complexId));
-        return complex && (complex.status || complex.Status || "Active") === "Active";
+        return (
+          complex && (complex.status || complex.Status || "Active") === "Active"
+        );
       })
       .filter((f) => !typeId || f.typeId === Number(typeId))
+      // Chỉ hiển thị sân có trạng thái "Available" - không hiển thị sân đang bảo trì
+      .filter((f) => {
+        const fieldStatus = (f.status || f.Status || "Available").toLowerCase();
+        return fieldStatus === "available";
+      })
       .map((f) => {
         const complex = complexMap.get(String(f.complexId));
-        const status = f.status || "Available";
+        const status = f.status || f.Status || "Available";
 
         // Only use URLs from Cloudinary
         const mainImageUrl = f.mainImageUrl || f.MainImageUrl || null;
@@ -757,6 +969,10 @@ export async function fetchFields(params = {}) {
           grassType: f.grassType || "",
           description: f.description || "",
           address: complex?.address || "",
+          complexAddress: complex?.address || "",
+          district: complex?.district || complex?.District || "",
+          ward: complex?.ward || complex?.Ward || "",
+          province: complex?.province || complex?.Province || "",
           // Only use URLs from Cloudinary
           mainImageUrl: mainImageUrl,
           imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
@@ -771,11 +987,16 @@ export async function fetchFields(params = {}) {
           accountHolder: f.accountHolder || "",
         };
       })
-      .filter(
-        (item) =>
-          item.name.toLowerCase().includes(query.toLowerCase()) ||
-          item.address.toLowerCase().includes(query.toLowerCase())
-      );
+      .filter((item) => {
+        if (!query) return true; // Return all if no query
+        const q = query.toLowerCase();
+        return (
+          item.name.toLowerCase().includes(q) ||
+          item.address.toLowerCase().includes(q) ||
+          (item.district || "").toLowerCase().includes(q) ||
+          (item.complexName || "").toLowerCase().includes(q)
+        );
+      });
   } catch (error) {
     throw error;
   }
@@ -819,34 +1040,37 @@ export async function fetchComplexDetail(complexId, { date, slotId } = {}) {
     ]);
 
     // Normalize status check - case insensitive
-    const complexStatus = complex ? (complex.status || complex.Status || "").toString().toLowerCase() : "";
+    const complexStatus = complex
+      ? (complex.status || complex.Status || "").toString().toLowerCase()
+      : "";
     const isActive = complexStatus === "active" || complexStatus === "";
-    
+
     // If complex is not Active, still return fields but mark complex as inactive
     // This allows viewing fields even if complex status is not "Active"
     return {
-      complex: complex && isActive
-        ? {
-            complexId: complex.complexId,
-            name: complex.name,
-            address: complex.address,
-            description: complex.description,
-            // Only use URL from Cloudinary
-            imageUrl: complex.imageUrl,
-            rating: 0, // Should come from API
-            status: complex.status || complex.Status || "Active",
-          }
-        : complex
-        ? {
-            complexId: complex.complexId,
-            name: complex.name,
-            address: complex.address,
-            description: complex.description,
-            imageUrl: complex.imageUrl,
-            rating: 0,
-            status: complex.status || complex.Status || "Active",
-          }
-        : null,
+      complex:
+        complex && isActive
+          ? {
+              complexId: complex.complexId,
+              name: complex.name,
+              address: complex.address,
+              description: complex.description,
+              // Only use URL from Cloudinary
+              imageUrl: complex.imageUrl,
+              rating: 0, // Should come from API
+              status: complex.status || complex.Status || "Active",
+            }
+          : complex
+          ? {
+              complexId: complex.complexId,
+              name: complex.name,
+              address: complex.address,
+              description: complex.description,
+              imageUrl: complex.imageUrl,
+              rating: 0,
+              status: complex.status || complex.Status || "Active",
+            }
+          : null,
       fields: Array.isArray(fields) ? fields : [],
     };
   } catch (error) {
@@ -862,7 +1086,10 @@ export async function fetchFieldMeta(fieldId) {
     const complex = await fetchFieldComplex(field.complexId);
 
     // Check if complex is Active - if not, return null for Player pages
-    if (complex && (complex.status || complex.Status || "Active") !== "Active") {
+    if (
+      complex &&
+      (complex.status || complex.Status || "Active") !== "Active"
+    ) {
       return { field: null, complex: null };
     }
 
@@ -892,9 +1119,12 @@ export async function fetchFieldDetail(fieldId) {
     if (!field) return null;
 
     const complex = await fetchFieldComplex(field.complexId);
-    
+
     // Check if complex is Active - if not, return null for Player pages
-    if (complex && (complex.status || complex.Status || "Active") !== "Active") {
+    if (
+      complex &&
+      (complex.status || complex.Status || "Active") !== "Active"
+    ) {
       return null;
     }
 

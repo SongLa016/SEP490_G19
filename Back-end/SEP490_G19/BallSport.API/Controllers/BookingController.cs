@@ -24,24 +24,35 @@ namespace BallSport.API.Controllers
         public async Task<IActionResult> CreateBooking([FromBody] BookingCreateDto dto)
         {
             if (dto == null)
-                return BadRequest("Invalid booking data");
+                return BadRequest(new { message = "Invalid booking data" });
 
-            var booking = await _bookingService.CreateBookingAsync(dto);
-
-            if (booking == null)
-                return StatusCode(500, "Failed to create booking");
-
-            return Ok(new
+            try
             {
-                Message = "Booking created successfully",
-                BookingId = booking.BookingId,
-                TotalPrice = booking.TotalPrice,
-                DepositAmount = booking.DepositAmount,
-                RemainingAmount = booking.RemainingAmount,
-                QrCodeUrl = booking.Qrcode,
-                QrExpiresAt = booking.QrexpiresAt
-            });
+                var booking = await _bookingService.CreateBookingAsync(dto);
+
+                if (booking == null)
+                    return StatusCode(500, new { message = "Failed to create booking" });
+
+                return Ok(new
+                {
+                    message = "Booking created successfully",
+                    BookingId = booking.BookingId,
+                    TotalPrice = booking.TotalPrice,
+                    DepositAmount = booking.DepositAmount,
+                    RemainingAmount = booking.RemainingAmount,
+                    QrCodeUrl = booking.Qrcode,
+                    QrExpiresAt = booking.QrexpiresAt
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
         }
+
 
         //Sinh mã VietQR để khách hàng thanh toán phần tiền còn lại của booking
         [HttpPut("confirm-payment/{bookingId}")]

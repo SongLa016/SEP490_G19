@@ -1,6 +1,6 @@
 import { Button } from "../../../../../shared/components/ui";
 
-export default function SearchHeader({ entityTab, setEntityTab, resultCount, user }) {
+export default function SearchHeader({ entityTab, setEntityTab, resultCount }) {
      return (
           <>
                <div className="pt-4">
@@ -8,7 +8,7 @@ export default function SearchHeader({ entityTab, setEntityTab, resultCount, use
                          <div>
                               <h1 className="text-2xl font-bold text-teal-800">Danh sách sân</h1>
                               <div className="mt-1 h-1.5 w-24 bg-gradient-to-r from-teal-500 via-emerald-400 to-transparent rounded-full" />
-                              <p className="text-teal-700 font-semibold mt-2">Dành cho {user ? "người dùng đã đăng nhập" : "khách truy cập"}</p>
+                              <p className="text-teal-700 font-semibold mt-2">Dành cho người chơi</p>
                          </div>
                          <div className="hidden md:flex items-center gap-2">
                               <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 shadow-sm">

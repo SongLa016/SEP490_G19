@@ -22,7 +22,10 @@ namespace BallSport.Infrastructure.Repositories
 
         public async Task<Booking> AddAsync(Booking booking)
         {
-            booking.CreatedAt = DateTime.Now;
+            booking.CreatedAt = TimeZoneInfo.ConvertTimeFromUtc(
+     DateTime.UtcNow,
+     TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh")
+ );
             booking.BookingStatus ??= "Pending";
             booking.PaymentStatus ??= "Unpaid";
 
@@ -95,7 +98,7 @@ namespace BallSport.Infrastructure.Repositories
             booking.BookingStatus = "Confirmed";
             booking.ConfirmedAt = DateTime.Now;
 
-            field.Status = "Booked";
+           // field.Status = "Booked";
 
             await _context.SaveChangesAsync();
             return true;
@@ -169,6 +172,15 @@ namespace BallSport.Infrastructure.Repositories
                 .Where(b => b.Schedule.Field.Complex.OwnerId == userId)
                 .OrderByDescending(b => b.CreatedAt)
                 .ToListAsync();
+        }
+
+        //  Check slot đang bị giữ (Pending)
+        public async Task<bool> HasPendingBookingAsync(int scheduleId)
+        {
+            return await _context.Bookings.AnyAsync(b =>
+                b.ScheduleId == scheduleId
+                && b.BookingStatus == "Pending"
+            );
         }
 
 

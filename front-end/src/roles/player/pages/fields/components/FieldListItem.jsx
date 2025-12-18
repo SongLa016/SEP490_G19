@@ -68,7 +68,7 @@ export default function FieldListItem({ field, index, slotId, formatPrice, handl
                                         </div>
                                    </div>
                                    <div className="text-lg md:text-xl font-bold text-orange-600 flex items-center whitespace-nowrap">
-                                        <AttachMoneyIcon className="w-4 h-4 md:w-5 md:h-5 mr-1" />
+                                        <AttachMoneyIcon className="w-4 h-4 md:w-5 md:h-5 " />
                                         {formatPrice(field.priceForSelectedSlot || 0)}/trận
                                    </div>
                               </div>
@@ -86,7 +86,7 @@ export default function FieldListItem({ field, index, slotId, formatPrice, handl
                               <div className="flex flex-col md:flex-row gap-3 justify-between items-start md:items-center">
                                    <div className="text-sm items-center flex text-gray-500">
                                         <Clock className="w-4 h-4 inline mr-1" />
-                                        <p> {slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName} • {field.distanceKm ? `${Number(field.distanceKm).toFixed(1)} km` : ""} </p>
+                                        <p> {slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName} • <span className="text-red-600 font-medium"> {field.distanceKm ? `${Number(field.distanceKm).toFixed(1)} km` : ""}</span> </p>
                                    </div>
                                    <div className="flex space-x-2 w-full md:w-auto">
                                         <Button

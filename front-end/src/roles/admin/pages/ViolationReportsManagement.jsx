@@ -38,6 +38,7 @@ import {
 import { createNotification } from "../../../shared/services/notifications";
 import { fetchPostById } from "../../../shared/services/posts";
 import { fetchCommentById } from "../../../shared/services/comments";
+import { fetchPlayerProfile } from "../../../shared/services/adminStatistics";
 import Swal from "sweetalert2";
 
 const STATUS_OPTIONS = [
@@ -77,6 +78,7 @@ export default function ViolationReportsManagement() {
      const [errorMessage, setErrorMessage] = useState("");
      const [stats, setStats] = useState(null);
      const [isRefreshing, setIsRefreshing] = useState(false);
+     const [avatarCache, setAvatarCache] = useState({});
 
      const getReportId = useCallback((report) => report?.reportId ?? report?.ReportId ?? report?.id, []);
      const getStatusValue = useCallback((report) => report?.status ?? report?.Status ?? "Pending", []);
@@ -86,6 +88,35 @@ export default function ViolationReportsManagement() {
      const getReporterId = useCallback((report) => report?.reporterId ?? report?.ReporterId ?? "", []);
      const getHandledByName = useCallback((report) => report?.handledByName ?? report?.HandledByName ?? null, []);
      const getCreatedAt = useCallback((report) => report?.createdAt ?? report?.CreatedAt ?? null, []);
+
+     // Fetch avatar cho reporter
+     const fetchReporterAvatar = useCallback(async (reporterId) => {
+          if (!reporterId || avatarCache[reporterId]) return;
+          try {
+               const result = await fetchPlayerProfile(reporterId);
+               if (result?.ok && result?.data) {
+                    const avatar = result.data.avatar || result.data.Avatar || null;
+                    setAvatarCache(prev => ({ ...prev, [reporterId]: avatar }));
+               }
+          } catch (error) {
+               console.error("Error fetching avatar for reporter:", reporterId, error);
+          }
+     }, [avatarCache]);
+
+     // Fetch avatars khi reports thay đổi
+     useEffect(() => {
+          const fetchAvatars = async () => {
+               const reporterIds = [...new Set(reports.map(r => getReporterId(r)).filter(Boolean))];
+               for (const id of reporterIds) {
+                    if (!avatarCache[id]) {
+                         await fetchReporterAvatar(id);
+                    }
+               }
+          };
+          if (reports.length > 0) {
+               fetchAvatars();
+          }
+     }, [reports, getReporterId, avatarCache, fetchReporterAvatar]);
 
      const loadReports = useCallback(async (showSkeleton = true) => {
           const params = {
@@ -299,20 +330,6 @@ export default function ViolationReportsManagement() {
                                    comment?.rawData?.author?.UserID ??
                                    null;
 
-                              console.log("[ViolationReportsManagement] Comment keys:", Object.keys(comment || {}));
-                              if (comment?.author) {
-
-                                   console.log("[ViolationReportsManagement] Author keys:", Object.keys(comment.author));
-
-                              }
-                              if (comment?.rawData) {
-
-                                   console.log("[ViolationReportsManagement] Raw data keys:", Object.keys(comment.rawData));
-                                   if (comment.rawData.author) {
-
-                                        console.log("[ViolationReportsManagement] Raw author keys:", Object.keys(comment.rawData.author));
-                                   }
-                              }
                          } catch (error) {
                               console.error("[ViolationReportsManagement] Error fetching comment:", error);
                          }
@@ -543,18 +560,31 @@ export default function ViolationReportsManagement() {
                label: "Người báo cáo",
                render: (report) => {
                     const name = getReporterName(report);
+                    const reporterId = getReporterId(report);
+                    const avatar = avatarCache[reporterId];
                     return (
                          <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
+                              {avatar ? (
+                                   <img
+                                        src={avatar}
+                                        alt={name}
+                                        className="w-10 h-10 rounded-full object-cover"
+                                        onError={(e) => {
+                                             e.target.style.display = 'none';
+                                             e.target.nextSibling.style.display = 'flex';
+                                        }}
+                                   />
+                              ) : null}
+                              <div
+                                   className={`w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full items-center justify-center ${avatar ? 'hidden' : 'flex'}`}
+                              >
                                    <span className="text-sm font-bold text-white">
                                         {name.charAt(0)}
                                    </span>
                               </div>
                               <div>
                                    <p className="font-medium text-slate-900">{name}</p>
-                                   <p className="text-sm text-slate-500">
-                                        ID: {getReporterId(report) || "N/A"}
-                                   </p>
+                                   <p className="text-sm text-slate-500">ID: {reporterId || "N/A"}</p>
                               </div>
                          </div>
                     );
@@ -568,13 +598,13 @@ export default function ViolationReportsManagement() {
                     return (
                          <div className="flex items-center space-x-2">
                               <FileWarning className="w-4 h-4 text-slate-500" />
-                              <div>
-                                   <p className="text-sm font-semibold text-slate-900">{type}</p>
-                                   <p className="text-xs text-slate-500">ID: {report.targetId || report.TargetId}</p>
-                              </div>
+
                               <span className={`px-2 py-1 rounded-full truncate text-xs font-medium border ${getTypeBadgeColor(type)}`}>
                                    {type === "Comment" ? "Bình luận" : "Bài viết"}
                               </span>
+                              <p className="text-[10px] text-slate-500">#ID: {report.targetId || report.TargetId}</p>
+
+
                          </div>
                     );
                }
@@ -593,9 +623,10 @@ export default function ViolationReportsManagement() {
                label: "Trạng thái",
                render: (report) => {
                     const status = getStatusValue(report);
+                    const statusLabel = STATUS_OPTIONS.find(opt => opt.value === status)?.label || status;
                     return (
                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusBadgeColor(status)}`}>
-                              {status}
+                              {statusLabel}
                          </span>
                     );
                }
@@ -929,7 +960,7 @@ export default function ViolationReportsManagement() {
                     <div className="space-y-4">
                          <div>
                               <label className="block text-sm font-medium text-slate-700 mb-2">
-                                   Trạng thái mới *
+                                   Trạng thái mới <span className="text-red-500">* </span>
                               </label>
                               <Select value={actionStatus} onValueChange={setActionStatus}>
                                    <SelectTrigger className="w-full rounded-2xl">
@@ -948,7 +979,7 @@ export default function ViolationReportsManagement() {
                          {actionStatus === "Resolved" && (
                               <div>
                                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                                        Hành động đối với nội dung *
+                                        Hành động đối với nội dung <span className="text-red-500">* </span>
                                    </label>
                                    <Select value={actionDecision} onValueChange={setActionDecision}>
                                         <SelectTrigger className="w-full rounded-2xl">
@@ -967,14 +998,19 @@ export default function ViolationReportsManagement() {
 
                          <div>
                               <label className="block text-sm font-medium text-slate-700 mb-2">
-                                   Ghi chú hành động *
+                                   Ghi chú hành động <span className="text-red-500">* </span>
                               </label>
                               <Textarea
                                    value={actionNote}
                                    onChange={(e) => setActionNote(e.target.value)}
                                    placeholder="Nhập ghi chú về hành động này..."
                                    rows={4}
+                                   maxLength={500}
                               />
+                              <p className={`text-xs mt-1 text-right ${actionNote.length >= 500 ? "text-red-500 font-medium" : actionNote.length >= 450 ? "text-yellow-600" : "text-slate-400"}`}>
+                                   {actionNote.length}/500
+                                   {actionNote.length >= 500 && " (đã đạt giới hạn)"}
+                              </p>
                          </div>
 
                          <div className="flex space-x-3 pt-4 border-t border-slate-200">

@@ -6,10 +6,9 @@ import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, B
 export default function SearchFiltersBar({
      searchQuery,
      setSearchQuery,
-     selectedLocation,
      handleLocationChange,
      getLocationValue,
-     selectedPrice,
+     districtOptions = [],
      handlePriceChange,
      getPriceValue,
      showFilters,
@@ -48,11 +47,12 @@ export default function SearchFiltersBar({
                          </SelectTrigger>
                          <SelectContent>
                               <SelectItem value="all">Tất cả khu vực</SelectItem>
-                              <SelectItem value="Quận Hoàn Kiếm">Quận Hoàn Kiếm</SelectItem>
-                              <SelectItem value="Quận Ba Đình">Quận Ba Đình</SelectItem>
-                              <SelectItem value="Quận Đống Đa">Quận Đống Đa</SelectItem>
-                              <SelectItem value="Quận Cầu Giấy">Quận Cầu Giấy</SelectItem>
-                              <SelectItem value="Quận Hai Bà Trưng">Quận Hai Bà Trưng</SelectItem>
+                              {districtOptions.length === 0 && (
+                                   <SelectItem value="__loading__" disabled>Đang tải khu vực...</SelectItem>
+                              )}
+                              {districtOptions.map((district) => (
+                                   <SelectItem key={district} value={district}>{district}</SelectItem>
+                              ))}
                          </SelectContent>
                     </Select>
                </div>

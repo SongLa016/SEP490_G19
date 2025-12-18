@@ -23,6 +23,11 @@ namespace BallSport.Application.Services
 
         public async Task<Booking> CreateBookingAsync(BookingCreateDto dto)
         {
+            if (await _bookingRepo.HasPendingBookingAsync(dto.ScheduleId))
+            {
+                throw new Exception("Khung giờ này đang được giữ, vui lòng chọn khung giờ khác.");
+            }
+
             // 1. tạo booking
             var booking = new Booking
             {
@@ -34,7 +39,6 @@ namespace BallSport.Application.Services
                 BookingStatus = "Pending",
                 PaymentStatus = "Unpaid",
                 HasOpponent = dto.HasOpponent,
-                CreatedAt = DateTime.Now
             };
 
             booking = await _bookingRepo.AddAsync(booking);

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { Container, Section, LoadingPage, LoadingSpinner } from "../../../../shared/components/ui";
-import { fetchComplexDetail, fetchTimeSlotsByField, fetchFieldDetail, fetchCancellationPolicyByComplex, fetchPromotionsByComplex, fetchPublicFieldSchedulesByField, fetchFieldTypes, fetchDepositPolicyByField, fetchFavoriteFields, toggleFavoriteField as toggleFavoriteFieldApi } from "../../../../shared/index";
+import { fetchComplexDetail, fetchTimeSlotsByField, fetchFieldDetail, fetchPublicFieldSchedulesByField, fetchFieldTypes, fetchDepositPolicyByField, fetchFavoriteFields, toggleFavoriteField as toggleFavoriteFieldApi } from "../../../../shared/index";
 import { fetchRatingsByComplex, fetchRatingsByField } from "../../../../shared/services/ratings";
 import { normalizeFieldType } from "../../../../shared/services/fieldTypes";
 import { useFieldSchedules } from "../../../../shared/hooks";
+import { fetchBookingPackageSessionsByPlayerToken } from "../../../../shared/services/bookings";
 import BookingModal from "../../../../shared/components/BookingModal";
 import { useModal } from "../../../../contexts/ModalContext";
 import Swal from 'sweetalert2';
@@ -18,20 +19,28 @@ import BookingWidget from "./components/componentDetailField/BookingWidget";
 import LightboxModal from "./components/componentDetailField/LightboxModal";
 
 const DEBUG_COMPLEX_DETAIL = false;
+
+// Chuẩn hóa trạng thái sân để xem có hiển thị hay không
 const normalizeFieldStatus = (status) =>
      (typeof status === "string" ? status.trim().toLowerCase() : "");
 const ALLOWED_COMPLEX_FIELD_STATUSES = new Set(["available", "active"]);
+
+// cho phép hiển thị sân nếu trạng thái hợp lệ
 const shouldDisplayField = (field) => {
      const normalizedStatus = normalizeFieldStatus(field?.status ?? field?.Status ?? "");
      if (!normalizedStatus) return true;
      return ALLOWED_COMPLEX_FIELD_STATUSES.has(normalizedStatus);
 };
+
+// Chuẩn hóa định dạng thời gian "HH:MM" thành "HH:MM:SS"
 const normalizeTime = (timeStr = "") => {
      if (!timeStr || typeof timeStr !== "string") return "";
      const trimmed = timeStr.trim();
      if (!trimmed) return "";
      return trimmed.length === 5 ? `${trimmed}:00` : trimmed;
 };
+
+//tính độ dài khung giờ từ startTime và endTime
 const calculateSlotDurationHours = (startTime, endTime) => {
      if (!startTime || !endTime) return null;
      try {
@@ -39,7 +48,7 @@ const calculateSlotDurationHours = (startTime, endTime) => {
           const normalizedEnd = normalizeTime(endTime);
           const start = new Date(`2000-01-01T${normalizedStart}`);
           const end = new Date(`2000-01-01T${normalizedEnd}`);
-          const diff = (end - start) / (1000 * 60 * 60);
+          const diff = (end - start) / (1000 * 60 * 60); // chuyển đổi từ phút sang giờ
           if (!Number.isNaN(diff) && diff > 0) {
                return diff;
           }
@@ -49,51 +58,62 @@ const calculateSlotDurationHours = (startTime, endTime) => {
      return null;
 };
 
+// Chuẩn hóa giá trị ngày thành chuỗi "YYYY-MM-DD"
+const normalizeDateValue = (value) => {
+     if (!value) return "";
+     if (typeof value === "string") return value.split("T")[0];
+     if (value && typeof value === "object" && value.year && value.month && value.day) {
+          return `${value.year}-${String(value.month).padStart(2, "0")}-${String(value.day).padStart(2, "0")}`;
+     }
+     try {
+          const parsed = new Date(value);
+          if (!Number.isNaN(parsed.getTime())) {
+               return parsed.toISOString().split("T")[0];
+          }
+     } catch {
+          // ignore parse error
+     }
+     return String(value);
+};
+
 export default function ComplexDetail({ user }) {
      const navigate = useNavigate();
-     const { id } = useParams();
+     const { id } = useParams(); // lưu id của complex hoặc field
      const [searchParams, setSearchParams] = useSearchParams();
      const location = useLocation();
-     const { isBookingModalOpen, openBookingModal, closeBookingModal } = useModal();
+     const { isBookingModalOpen, openBookingModal, closeBookingModal } = useModal(); // 
 
-     // Unified page: support entering via /complex/:id or /field/:id
-     const isFieldRoute = location.pathname.startsWith("/field/");
-     const [selectedFieldId, setSelectedFieldId] = useState(null); // inline sub-field view within info tab
-
-     const [selectedDate, setSelectedDate] = useState(() => searchParams.get("date") || new Date().toISOString().split("T")[0]);
+     const isFieldRoute = location.pathname.startsWith("/field/");// trang chi tiết sân hay khu sân
+     const [selectedFieldId, setSelectedFieldId] = useState(null); // lấy id sân từ url nếu là trang sân nhỏ
+     const [selectedDate, setSelectedDate] = useState(() => searchParams.get("date") || new Date().toISOString().split("T")[0]); // lấy ngày từ quẻy hoặc ngày hiện tại
      const [selectedSlotId, setSelectedSlotId] = useState(() => searchParams.get("slotId") || "");
-     const [complexData, setComplexData] = useState({ complex: null, fields: [] });
-     const [cancellationPolicy, setCancellationPolicy] = useState(null);
-     const [promotions, setPromotions] = useState([]);
+     const [complexData, setComplexData] = useState({ complex: null, fields: [] }); // dữ liệu khu sân và danh sách sân con
      const [depositPolicy, setDepositPolicy] = useState(null);
-     const [fieldTimeSlots, setFieldTimeSlots] = useState([]); // TimeSlots for selected field with prices
-     const [cheapestSlot, setCheapestSlot] = useState(null); // { slotId, name, price }
-     const [priciestSlot, setPriciestSlot] = useState(null); // { slotId, name, price }
+     const [fieldTimeSlots, setFieldTimeSlots] = useState([]); // Thời gian của sân được chọn
+     const [cheapestSlot, setCheapestSlot] = useState(null); // thông tin slot rẻ nhất
+     const [priciestSlot, setPriciestSlot] = useState(null); // thông tin slot đắt nhất
      const [fieldTypeMap, setFieldTypeMap] = useState({});
      const [activeTab, setActiveTab] = useState(() => {
           const q = new URLSearchParams(location.search);
           const t = q.get("tab");
           return (t === "info" || t === "review" || t === "location" || t === "gallery") ? t : "info";
-     }); // info | review | location | gallery
-     const [isLoading, setIsLoading] = useState(true); // kept for future loading states
-     const [isSwitchingField, setIsSwitchingField] = useState(false); // loading when switching between complex and field
+     }); // lựa chọn tabs
+     const [isLoading, setIsLoading] = useState(true);
+     const [isSwitchingField, setIsSwitchingField] = useState(false); // trạng thái chuyển đổi sân 
      const [error, setError] = useState(null);
-
-     // Recurring booking UI state
+     // trạng thái sân đặt cố định
      const [isRecurring, setIsRecurring] = useState(false);
-     const [repeatDays, setRepeatDays] = useState([]); // [1..7] Mon..Sun
+     const [repeatDays, setRepeatDays] = useState([]); // ngày trong tuần lặp lại
      const [rangeStart, setRangeStart] = useState(() => selectedDate);
      const [rangeEnd, setRangeEnd] = useState(() => selectedDate);
-
-     // Lightbox state for gallery preview
      const [isLightboxOpen, setIsLightboxOpen] = useState(false);
      const [lightboxIndex, setLightboxIndex] = useState(0);
-
-     // Booking modal state
-     const [bookingModalData, setBookingModalData] = useState(null);
-     const [bookingType, setBookingType] = useState("field"); // "field" | "complex" | "quick"
+     const [bookingModalData, setBookingModalData] = useState(null); // dữ liệu truyền vào modal đặt sân
+     const [bookingType, setBookingType] = useState("field"); // loại đặt sân: lẻ hoặc cố định
      const [favoriteFieldIds, setFavoriteFieldIds] = useState(new Set());
      const favoritesLoadedRef = useRef(false);
+     const [playerPackageSessions, setPlayerPackageSessions] = useState([]); // lịch đặt cố định của người chơi
+     const [isLoadingPlayerPackages, setIsLoadingPlayerPackages] = useState(false);
      const showToastMessage = (message, type = 'info') => {
           const config = {
                title: type === 'success' ? 'Thành công!' :
@@ -112,12 +132,92 @@ export default function ComplexDetail({ user }) {
           Swal.fire(config);
      };
 
+     // Lấy lịch trình sân cho sân được chọn và ngày được chọn
      const { data: selectedFieldSchedules = [], isLoading: isLoadingSelectedFieldSchedules } = useFieldSchedules(
           selectedFieldId,
           selectedDate,
           !!selectedFieldId
      );
+     // Chuẩn hóa dữ liệu đặt cố định 
+     const normalizePlayerPackageSession = useCallback((session) => {
+          if (!session) return null;
+          return {
+               bookingPackageId: session.bookingPackageId || session.bookingPackageID || session.packageId || session.packageID,
+               scheduleId: session.scheduleId || session.scheduleID || session.ScheduleID,
+               fieldId: session.fieldId || session.fieldID || session.FieldID,
+               slotId: session.slotId || session.slotID || session.SlotID,
+               date: session.sessionDate || session.date || session.Date || session.startDate,
+               status: session.sessionStatus || session.status || "",
+          };
+     }, []);
+     // Lấy lịch đặt cố định 
+     useEffect(() => {
+          if (!user) {
+               setPlayerPackageSessions([]);
+               return;
+          }
+          let ignore = false;
+          const loadPlayerPackageSessions = async () => { // tải lịch đặt cố định
+               setIsLoadingPlayerPackages(true);
+               try {
+                    const resp = await fetchBookingPackageSessionsByPlayerToken();
+                    if (ignore) return;
+                    if (resp.success && Array.isArray(resp.data)) {
+                         const normalized = resp.data.map(normalizePlayerPackageSession).filter(Boolean);
+                         setPlayerPackageSessions(normalized);
+                    } else {
+                         setPlayerPackageSessions([]);
+                    }
+               } catch (error) {
+                    if (!ignore) {
+                         console.warn("Không thể tải lịch đặt cố định của bạn:", error);
+                         setPlayerPackageSessions([]);
+                    }
+               } finally {
+                    if (!ignore) {
+                         setIsLoadingPlayerPackages(false);
+                    }
+               }
+          };
+          loadPlayerPackageSessions();
+          return () => { ignore = true; };
+     }, [user, normalizePlayerPackageSession]);
+     // chọn lịch trình sân cho gói đặt cố định
+     const selectedFieldSchedulesWithPackages = useMemo(() => {
+          if (!Array.isArray(selectedFieldSchedules)) return [];
+          if (!selectedFieldId || !playerPackageSessions.length) return selectedFieldSchedules;
+          // lọc các buổi trong gói cố định cho sân được chọn
+          const sessionsForField = playerPackageSessions.filter((ps) => {
+               const psFieldId = ps?.fieldId || ps?.fieldID || ps?.FieldID;
+               if (psFieldId === undefined || psFieldId === null) return true;
+               return Number(psFieldId) === Number(selectedFieldId);
+          });
 
+          if (!sessionsForField.length) return selectedFieldSchedules;
+          // đánh dấu các lịch trình sân đã được đặt trong gói cố định
+          return selectedFieldSchedules.map((schedule) => {
+               const scheduleId = schedule.scheduleId || schedule.ScheduleID || schedule.id;
+               const scheduleSlotId = schedule.slotId || schedule.SlotId || schedule.slotID || schedule.SlotID;
+               const scheduleDateStr = normalizeDateValue(schedule.date);
+               // kiểm tra xem lịch trình sân có khớp với bất kỳ buổi nào trong gói cố định không
+               const matched = sessionsForField.some((ps) => {
+                    const statusLower = (ps?.status || "").toLowerCase();
+                    if (statusLower.includes("cancel")) return false; // bỏ qua các buổi đã hủy
+                    // so sánh lịch trình
+                    const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
+                    if (psScheduleId && scheduleId && Number(psScheduleId) === Number(scheduleId)) {
+                         return true;
+                    }
+                    // so sánh ngay và khung giờ
+                    const psSlotId = ps.slotId || ps.slotID || ps.SlotID;
+                    const psDateStr = normalizeDateValue(ps.date);
+                    if (!psSlotId || !psDateStr) return false;
+                    return Number(psSlotId) === Number(scheduleSlotId) && psDateStr === scheduleDateStr;
+               });
+               return matched ? { ...schedule, status: "Booked", bookingType: "package" } : schedule;
+          });
+     }, [selectedFieldSchedules, playerPackageSessions, selectedFieldId]);
+     // Lấy loại sân
      useEffect(() => {
           let ignore = false;
           async function loadFieldTypes() {
@@ -140,7 +240,6 @@ export default function ComplexDetail({ user }) {
                               return acc;
                          }, {});
                          if (DEBUG_COMPLEX_DETAIL) {
-
                          }
                          setFieldTypeMap(map);
                     }
@@ -151,12 +250,12 @@ export default function ComplexDetail({ user }) {
           loadFieldTypes();
           return () => { ignore = true; };
      }, []);
-
+     // Lọc các sân hiển thị
      const rawFields = useMemo(() => {
           const source = Array.isArray(complexData.fields) ? complexData.fields : [];
           return source.filter(shouldDisplayField);
      }, [complexData.fields]);
-
+     // Hàm chuyển đổi trạng thái yêu thích sân
      const toggleFavoriteFieldLocal = (fieldId, nextIsFavorite) => {
           const idNum = Number(fieldId);
           setComplexData(prev => ({
@@ -175,16 +274,7 @@ export default function ComplexDetail({ user }) {
                return updated;
           });
      };
-
-     const toggleFavoriteComplex = (complexId) => {
-          setComplexData(prev => ({
-               ...prev,
-               complex: prev.complex && String(prev.complex.complexId) === String(complexId)
-                    ? { ...prev.complex, isFavorite: !prev.complex.isFavorite }
-                    : prev.complex
-          }));
-     };
-
+     // yeu thích hoặc bỏ yêu thích sân
      const handleToggleFavoriteField = async (fieldId) => {
           if (!user) {
                showToastMessage("Vui lòng đăng nhập để sử dụng danh sách yêu thích.", 'warning');
@@ -193,35 +283,24 @@ export default function ComplexDetail({ user }) {
           const idNum = Number(fieldId);
           const current = favoriteFieldIds.has(idNum);
           const nextIsFavorite = !current;
-
-          // Optimistic update
           toggleFavoriteFieldLocal(fieldId, nextIsFavorite);
-
           try {
                await toggleFavoriteFieldApi(fieldId, current);
           } catch (error) {
-               // Revert on error
                toggleFavoriteFieldLocal(fieldId, current);
                showToastMessage(error.message || "Không thể cập nhật danh sách yêu thích.", 'error');
           }
      };
 
-     const handleToggleFavoriteComplex = (complexId) => {
-          if (!user) {
-               showToastMessage("Vui lòng đăng nhập để sử dụng danh sách yêu thích.", 'warning');
-               return;
-          }
-          toggleFavoriteComplex(complexId);
-     };
-
-     // Reviews state (mirroring FieldDetail behaviors)
+     // Đánh giá và bình luận
      const [newRating, setNewRating] = useState(0);
      const [newComment, setNewComment] = useState("");
      const [reviewPage, setReviewPage] = useState(1);
      const reviewsPerPage = 6;
-     const [fieldRatings, setFieldRatings] = useState([]); // legacy state (không dùng gửi từ tab nữa)
+     const [fieldRatings, setFieldRatings] = useState([]); // đánh giá sân 
      const [isLoadingRatings, setIsLoadingRatings] = useState(false);
 
+     // Lấy đánh giá sân
      useEffect(() => {
           let ignore = false;
           async function loadData() {
@@ -240,44 +319,30 @@ export default function ComplexDetail({ user }) {
                          if (fieldData?.fieldId) setSelectedFieldId(Number(fieldData.fieldId));
                     }
 
-                    // Fetch complex data first to get field list
+                    // Lấy thông tin khu sân
                     const complexData = await fetchComplexDetail(complexIdToUse, {
                          date: selectedDate,
                          slotId: selectedSlotId
                     });
-
-                    // Only fetch cancellation policy and promotions when viewing a specific field
-                    // Do not fetch for complex view
-                    let policyData = null;
-                    let promotionsData = [];
-
                     const fieldIdForPolicy = (fieldData?.fieldId ? Number(fieldData.fieldId) : null) || selectedFieldId;
-
                     if (fieldIdForPolicy) {
-                         // Fetch field-specific policies and promotions
+                         // Lấy chính sách đặt cọc cho sân được chọn
                          try {
-                              const [policyDataResult, promotionsDataResult, depositPolicyResult] = await Promise.all([
-                                   fetchCancellationPolicyByComplex(complexIdToUse).catch(() => null),
-                                   fetchPromotionsByComplex(complexIdToUse).catch(() => []),
-                                   fetchDepositPolicyByField(fieldIdForPolicy).catch(() => null)
-                              ]);
-                              policyData = policyDataResult;
-                              promotionsData = promotionsDataResult;
+                              const depositPolicyResult = await fetchDepositPolicyByField(fieldIdForPolicy).catch(() => null);
                               if (!ignore) {
                                    setDepositPolicy(depositPolicyResult);
                               }
                          } catch (error) {
-                              console.warn("Error fetching policies/promotions/deposit:", error);
+                              console.warn("Error fetching deposit policy:", error);
                          }
                     } else {
-                         // If no fieldId, clear deposit policy
                          if (!ignore) {
                               setDepositPolicy(null);
                          }
                     }
 
                     if (!ignore) {
-                         // If we have fieldData from fetchFieldDetail, merge typeId into fields
+                         // Cập nhật thông tin typeId và typeName cho sân nếu thiếu
                          let updatedComplexData = complexData;
                          if (fieldData && fieldData.fieldId && Array.isArray(complexData.fields)) {
                               updatedComplexData = {
@@ -305,8 +370,6 @@ export default function ComplexDetail({ user }) {
                          };
 
                          setComplexData(complexWithFavorites);
-                         setCancellationPolicy(policyData);
-                         setPromotions(Array.isArray(promotionsData) ? promotionsData : []);
                          setIsLoading(false);
                     }
                } catch (e) {
@@ -326,7 +389,7 @@ export default function ComplexDetail({ user }) {
           }, 300);
 
           return () => { ignore = true; clearTimeout(timer); };
-     }, [id, selectedDate, selectedSlotId, selectedFieldId, isFieldRoute]);
+     }, [id, selectedDate, selectedSlotId, selectedFieldId, isFieldRoute, favoriteFieldIds]);
 
      // Load danh sách sân yêu thích khi người dùng đã đăng nhập
      useEffect(() => {
@@ -359,7 +422,7 @@ export default function ComplexDetail({ user }) {
           }));
      }, [favoriteFieldIds]);
 
-     // Separate effect to handle selectedFieldId changes - fetch TimeSlots, DepositPolicy, and FieldDetail for selected field
+     // Lấy thời gian và chính sách đặt cọc khi selectedFieldId thay đổi
      useEffect(() => {
           let cancelled = false;
           async function loadFieldData() {
@@ -369,7 +432,7 @@ export default function ComplexDetail({ user }) {
                     return;
                }
                try {
-                    // Check if selectedField has typeId, if not, fetch field detail
+                    // Kiểm tra xem sân hiện tại đã có typeId và typeName chưa
                     const currentField = rawFields.find(f => Number(f.fieldId) === Number(selectedFieldId));
                     const needsTypeId = !currentField?.typeId;
                     const needsTypeName = !currentField?.typeName || currentField.typeName.trim() === "";
@@ -379,14 +442,12 @@ export default function ComplexDetail({ user }) {
                          fetchDepositPolicyByField(selectedFieldId)
                     ];
 
-                    // If field doesn't have typeId, fetch field detail to get it
                     if (needsTypeId || needsTypeName) {
                          promises.push(fetchFieldDetail(selectedFieldId).catch(() => null));
                     }
 
                     const results = await Promise.all(promises);
                     if (cancelled) return;
-
                     const [slotsResult, depositPolicyResult, fieldDetailResult] = results;
 
                     if (slotsResult?.success && Array.isArray(slotsResult.data)) {
@@ -401,7 +462,6 @@ export default function ComplexDetail({ user }) {
                          setDepositPolicy(null);
                     }
 
-                    // If we fetched field detail and it has typeId, update the field in complexData
                     if (fieldDetailResult && fieldDetailResult.typeId) {
                          setComplexData(prev => {
                               if (!prev.fields || !Array.isArray(prev.fields)) return prev;
@@ -434,24 +494,21 @@ export default function ComplexDetail({ user }) {
           return () => { cancelled = true; clearTimeout(timer); };
      }, [selectedFieldId, rawFields]);
 
-     // Separate effect to handle selectedFieldId changes without refetching all data
-     // Only refetch if the selected field is not in the current fields array
+     // Kiểm tra selectedFieldId có tồn tại trong rawFields không
      useEffect(() => {
           if (!selectedFieldId || rawFields.length === 0) {
                return;
           }
 
-          // Check if selectedFieldId exists in current fields
+          // Kiểm tra selectedFieldId trong rawFields
           const fieldExists = rawFields.some(f => Number(f.fieldId) === Number(selectedFieldId));
 
           if (!fieldExists) {
-               // Field not found in current data, might need to refetch
-               // But don't refetch immediately - wait a bit to avoid too many requests
                console.warn(`Selected field ${selectedFieldId} not found in current fields. Available fields:`, rawFields.map(f => f.fieldId));
           }
      }, [selectedFieldId, rawFields]);
 
-     // Compute cheapest/priciest slot price from TimeSlots for selected field
+     // Tìm slot rẻ nhất và đắt nhất khi fieldTimeSlots hoặc selectedFieldId thay đổi
      useEffect(() => {
           if (!selectedFieldId || !Array.isArray(fieldTimeSlots) || fieldTimeSlots.length === 0) {
                setCheapestSlot(null);
@@ -469,11 +526,12 @@ export default function ComplexDetail({ user }) {
                return;
           }
 
+          // Tìm slot rẻ nhất
           const cheapest = slotsWithPrices.reduce((best, cur) => {
                if (!best || (cur.price > 0 && cur.price < best.price)) return cur;
                return best;
           }, null);
-
+          // Tìm slot đắt nhất
           const priciest = slotsWithPrices.reduce((best, cur) => {
                if (!best) return cur;
                if (cur.price > best.price) return cur;
@@ -483,7 +541,7 @@ export default function ComplexDetail({ user }) {
           setCheapestSlot(cheapest);
           setPriciestSlot(priciest);
      }, [selectedFieldId, fieldTimeSlots]);
-
+     // Chuẩn hóa lịch trình sân với giá từ fieldTimeSlots
      const slotPriceMap = useMemo(() => {
           const map = new Map();
           if (Array.isArray(fieldTimeSlots)) {
@@ -496,10 +554,10 @@ export default function ComplexDetail({ user }) {
           }
           return map;
      }, [fieldTimeSlots]);
-
+     // Chuẩn hóa các mục lịch trình sân đã chọn
      const normalizedFieldScheduleEntries = useMemo(() => {
           if (!selectedFieldId) return [];
-          return (selectedFieldSchedules || [])
+          return (selectedFieldSchedulesWithPackages || [])
                .map(schedule => {
                     const slotId = schedule.slotId || schedule.SlotId || schedule.slotID || schedule.SlotID;
                     if (!slotId) return null;
@@ -511,28 +569,33 @@ export default function ComplexDetail({ user }) {
                     };
                })
                .filter(Boolean);
-     }, [selectedFieldId, selectedFieldSchedules, slotPriceMap]);
-
+     }, [selectedFieldId, selectedFieldSchedulesWithPackages, slotPriceMap]);
+     // Lọc các mục lịch trình sân hiển thị
      const visibleScheduleEntries = useMemo(
-          () => normalizedFieldScheduleEntries.filter(entry => entry.status === "Available"),
+          () => {
+               return normalizedFieldScheduleEntries.filter(entry => {
+                    const status = (entry.status || "").trim();
+                    return status === "Available" || status === "";
+               });
+          },
           [normalizedFieldScheduleEntries]
      );
-
+     // Lấy các mục lịch trình có giá
      const priceEntries = useMemo(
           () => visibleScheduleEntries.filter(entry => entry.price > 0),
           [visibleScheduleEntries]
      );
-
+     // Tìm mục lịch trình rẻ nhất
      const cheapestScheduleEntry = useMemo(() => {
           if (!priceEntries.length) return null;
           return priceEntries.reduce((best, cur) => (cur.price < best.price ? cur : best), priceEntries[0]);
      }, [priceEntries]);
-
+     // Tìm mục lịch trình đắt nhất
      const priciestScheduleEntry = useMemo(() => {
           if (!priceEntries.length) return null;
           return priceEntries.reduce((best, cur) => (cur.price > best.price ? cur : best), priceEntries[0]);
      }, [priceEntries]);
-
+     // Lấy mục lịch trình đã chọn
      const selectedScheduleEntry = useMemo(() => {
           if (!selectedSlotId) return null;
           const slotIdStr = String(selectedSlotId);
@@ -545,7 +608,7 @@ export default function ComplexDetail({ user }) {
 
      const selectedSlotPriceFromSchedule = selectedScheduleEntry?.price || 0;
      const minPriceFromSchedule = cheapestScheduleEntry?.price || 0;
-
+     // Đồng bộ selectedDate và selectedSlotId vào query
      useEffect(() => {
           const next = new URLSearchParams(searchParams);
           next.set("date", selectedDate);
@@ -553,7 +616,7 @@ export default function ComplexDetail({ user }) {
           setSearchParams(next, { replace: true });
      }, [selectedDate, selectedSlotId, searchParams, setSearchParams]);
 
-     // Sync activeTab into query to preserve state on refresh/navigation
+     // Đồng bộ activeTab vào query
      useEffect(() => {
           const currentTab = searchParams.get("tab");
           if (currentTab !== activeTab) {
@@ -563,14 +626,13 @@ export default function ComplexDetail({ user }) {
           }
      }, [activeTab, searchParams, setSearchParams]);
 
-     // Scroll to top and show loading when switching from complex to field detail
+     // Xử lý chuyển đổi sân
      useEffect(() => {
           if (selectedFieldId) {
                setIsSwitchingField(true);
-               // Scroll to tabs header when field is selected
                const tabsElement = document.getElementById('tabs-header');
                if (tabsElement) {
-                    const offset = 100; // Offset from top
+                    const offset = 100;
                     const elementPosition = tabsElement.getBoundingClientRect().top;
                     const offsetPosition = elementPosition + window.pageYOffset - offset;
 
@@ -579,13 +641,11 @@ export default function ComplexDetail({ user }) {
                          behavior: 'smooth'
                     });
                } else {
-                    // Fallback: scroll to top
                     window.scrollTo({
                          top: 0,
                          behavior: 'smooth'
                     });
                }
-               // Hide loading after a short delay
                setTimeout(() => {
                     setIsSwitchingField(false);
                }, 300);
@@ -594,7 +654,7 @@ export default function ComplexDetail({ user }) {
           }
      }, [selectedFieldId]);
 
-     // Use JS weekday mapping: 0=CN..6=T7 to align with recurring logic
+     // Ngày trong tuần cho đặt cố định
      const daysOfWeek = [
           { id: 1, label: "T2" },
           { id: 2, label: "T3" },
@@ -604,17 +664,16 @@ export default function ComplexDetail({ user }) {
           { id: 6, label: "T7" },
           { id: 0, label: "CN" },
      ];
-
+     // Chuyển đổi chọn ngayf trong tuần
      const toggleDay = (d) => {
           setRepeatDays((prev) => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
      };
-
+     // Xử lý đặt sân nhanh
      const handleQuickBookField = async (fieldId) => {
           if (!user) {
                showToastMessage("Bạn cần đăng nhập để đặt sân.", 'warning');
                return;
           }
-
           // Với đặt lẻ: yêu cầu chọn ngày và slot
           // Với đặt cố định: chỉ cần chọn rangeStart, rangeEnd và repeatDays
           if (!isRecurring) {
@@ -637,7 +696,7 @@ export default function ComplexDetail({ user }) {
                }
           }
 
-          // Find field data
+          // Lấy thông tin sân từ complexData
           const field = fields.find(f => f.fieldId === fieldId);
           const weeksCount = isRecurring ? Math.max(1, Math.ceil((new Date(rangeEnd) - new Date(rangeStart)) / (7 * 24 * 60 * 60 * 1000))) : 0;
           const mappedDays = isRecurring ? repeatDays.slice() : [];
@@ -647,7 +706,7 @@ export default function ComplexDetail({ user }) {
                return;
           }
 
-          // Lấy lịch trình từ API public cho sân nhỏ (đặc biệt là field 32)
+          // Lấy lịch trình từ API public cho sân nhỏ
           let fieldSchedules = [];
           try {
                const schedulesResult = await fetchPublicFieldSchedulesByField(fieldId);
@@ -661,7 +720,7 @@ export default function ComplexDetail({ user }) {
                console.error("Lỗi khi lấy lịch trình sân:", error);
           }
 
-          // Lấy thông tin slot từ fieldTimeSlots (đã được fetch trong effect)
+          // Lấy thông tin slot từ fieldTimeSlots
           let selectedSlot = fieldTimeSlots.find(s => s.slotId === selectedSlotId || s.SlotID === selectedSlotId);
 
           // Nếu không tìm thấy trong fieldTimeSlots, thử lấy từ schedules
@@ -675,15 +734,15 @@ export default function ComplexDetail({ user }) {
                          name: scheduleForSlot.slotName || scheduleForSlot.SlotName || `Slot ${selectedSlotId}`,
                          startTime: scheduleForSlot.startTime || scheduleForSlot.StartTime,
                          endTime: scheduleForSlot.endTime || scheduleForSlot.EndTime,
-                         price: 0 // Default price if not found
+                         price: 0
                     };
                }
           }
 
-          // Get price from TimeSlot, fallback to 0
+          // Lấy giá của slot đã chọn
           const slotPrice = selectedSlot?.price || selectedSlot?.Price || 0;
 
-          // Helper function để so sánh date
+          // Hàm so sánh ngày giữa lịch trình và ngày đã chọn
           const compareDate = (scheduleDate, targetDate) => {
                if (!scheduleDate) return false;
                if (typeof scheduleDate === 'string') {
@@ -696,7 +755,7 @@ export default function ComplexDetail({ user }) {
                return false;
           };
 
-          // Với đặt định kỳ, cho phép mở modal để xử lý xung đột trong modal; đặt lẻ thì chặn khi hết chỗ
+          // Tìm scheduleId và thời gian bắt đầu/kết thúc
           let scheduleId = 0;
           let matchedSchedule = null;
           let slotStartTime = "";
@@ -749,7 +808,6 @@ export default function ComplexDetail({ user }) {
                computedDurationHours = calculateSlotDurationHours(slotStartTime, slotEndTime) ?? 1;
           }
           // Với đặt cố định: không cần slotId và scheduleId ở đây, sẽ chọn trong modal
-
           const bookingData = {
                fieldId: fieldId,
                fieldName: field.name,
@@ -788,77 +846,55 @@ export default function ComplexDetail({ user }) {
           showToastMessage("Đặt sân thành công!", 'success');
      };
 
+     // Xử lý quay lại khu sân - nếu đang ở route /field/:id thì navigate về /complex/:complexId
+     const handleBackToComplex = () => {
+          if (isFieldRoute) {
+               const complexId = complexData.complex?.complexId || complexData.complex?.id;
+               if (complexId) {
+                    navigate(`/complex/${complexId}`);
+               } else {
+                    navigate(-1);
+               }
+          } else {
+               setSelectedFieldId(null);
+          }
+     };
+
+     // Chuẩn hóa danh sách sân với typeName từ fieldTypeMap
      const complex = complexData.complex;
      const fields = useMemo(() => {
           if (!rawFields.length) return rawFields;
-          // Always try to map typeName from fieldTypeMap if available
           return rawFields.map(field => {
                const currentTypeName = field.typeName || field.TypeName || "";
                const typeId = field.typeId ?? field.TypeID ?? field.typeID ?? null;
-
-               // If fieldTypeMap is available and we have typeId, try to get typeName from map
+               // Nếu đã có typeName, giữ nguyên TypeName
                if (fieldTypeMap && Object.keys(fieldTypeMap).length > 0 && typeId != null) {
-                    // Try multiple key formats - fieldTypeMap uses String keys
                     const typeIdKey = String(typeId);
                     const mappedName = fieldTypeMap[typeIdKey];
-
-                    // Debug log for fieldId 32
-                    if (field.fieldId === 32) {
-                         if (DEBUG_COMPLEX_DETAIL) {
-                              console.log("🔍 [ComplexDetail] Mapping field 32:", {
-                                   field: field,
-                                   typeId: typeId,
-                                   typeIdKey: typeIdKey,
-                                   currentTypeName: currentTypeName,
-                                   fieldTypeMap: fieldTypeMap,
-                                   fieldTypeMapKeys: Object.keys(fieldTypeMap),
-                                   mappedName: mappedName,
-                                   hasMappedName: !!mappedName
-                              });
-                         }
-                    }
-
-                    // If we have mappedName, use it (especially if currentTypeName is empty)
                     if (mappedName && mappedName.trim() !== "") {
-                         if (DEBUG_COMPLEX_DETAIL) {
-
-                         }
                          return { ...field, typeName: mappedName, typeId: typeId };
-                    } else if (field.fieldId === 32) {
-                         console.warn("⚠️ [ComplexDetail] Could not map typeName for field 32:", {
-                              typeId: typeId,
-                              typeIdKey: typeIdKey,
-                              fieldTypeMap: fieldTypeMap,
-                              availableKeys: Object.keys(fieldTypeMap)
-                         });
                     }
                }
-
-               // If we have typeId but no typeName, ensure typeId is set
                if (typeId != null && !currentTypeName) {
                     return { ...field, typeId: typeId };
                }
-
                return field;
           });
      }, [rawFields, fieldTypeMap]);
+     // Tìm sân được chọn
      const selectedField = selectedFieldId ? fields.find(f => Number(f.fieldId) === Number(selectedFieldId)) : null;
      const selectedFieldForDisplay = useMemo(() => {
           if (!selectedField) return null;
-
-          // Ensure typeName is resolved from fieldTypeMap if not present
           let resolvedTypeName = selectedField.typeName || "";
           const typeId = selectedField.typeId;
           if ((!resolvedTypeName || resolvedTypeName.trim() === "") && typeId != null && fieldTypeMap && Object.keys(fieldTypeMap).length > 0) {
                const mappedName = fieldTypeMap[String(typeId)];
                if (mappedName && mappedName.trim() !== "") {
                     resolvedTypeName = mappedName;
-                    if (DEBUG_COMPLEX_DETAIL) {
 
-                    }
                }
           }
-
+          // Xác định giá hiển thị
           const resolvedPrice = selectedSlotId
                ? (selectedSlotPriceFromSchedule || minPriceFromSchedule || selectedField.priceForSelectedSlot || 0)
                : (minPriceFromSchedule || selectedField.priceForSelectedSlot || 0);
@@ -869,7 +905,7 @@ export default function ComplexDetail({ user }) {
           };
      }, [selectedField, selectedSlotId, selectedSlotPriceFromSchedule, minPriceFromSchedule, fieldTypeMap]);
 
-     // Log warning if selectedField is not found
+     // Cảnh báo nếu selectedFieldId không tìm thấy trong fields
      useEffect(() => {
           if (selectedFieldId && !selectedField && fields.length > 0) {
                console.warn(`Selected field ${selectedFieldId} not found in fields array. Available fieldIds:`, fields.map(f => f.fieldId));
@@ -882,10 +918,10 @@ export default function ComplexDetail({ user }) {
      const complexIdForRatings = useMemo(() => {
           if (complex?.complexId) return complex.complexId;
           if (complex?.id) return complex.id;
-          // fallback: nếu đang ở route /complex/:id
           return !isFieldRoute && id ? Number(id) : null;
      }, [complex, id, isFieldRoute]);
 
+     // Tải danh sách đánh giá khi selectedFieldId hoặc complexIdForRatings thay đổi
      useEffect(() => {
           const loadRatings = async () => {
                // Nếu đang xem một field cụ thể, lấy ratings theo fieldId
@@ -922,18 +958,7 @@ export default function ComplexDetail({ user }) {
           loadRatings();
      }, [selectedFieldId, complexIdForRatings]);
 
-     // Map ratings từ API sang format dùng cho ReviewTabContent
-     // JSON backend:
-     // {
-     //   "fieldId": 50,
-     //   "fieldName": "Sân A3 - BTN",
-     //   "userId": 2,
-     //   "userName": "DanhThuc",
-     //   "stars": 5,
-     //   "comment": "Khá ổn",
-     //   "createdAt": "2025-12-01T13:28:19.297",
-     //   "replies": [ { replyId, userId, userName, replyText, createdAt } ]
-     // }
+     // Chuẩn hóa danh sách đánh giá từ fieldRatings thành complexReviews
      const complexReviews = useMemo(() => {
           return fieldRatings.map(raw => ({
                id: raw.id || raw.ratingId || undefined,
@@ -957,17 +982,16 @@ export default function ComplexDetail({ user }) {
                     : []
           }));
      }, [fieldRatings]);
-
+     // Tính toán thống kê đánh giá
      const reviewStats = useMemo(() => {
           const total = complexReviews.length || 0;
-          const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-          complexReviews.forEach(r => { const k = Math.max(1, Math.min(5, r.rating || 0)); counts[k] = (counts[k] || 0) + 1; });
+          const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }; // Số lượng đánh giá theo sao
+          complexReviews.forEach(r => { const k = Math.max(1, Math.min(5, r.rating || 0)); counts[k] = (counts[k] || 0) + 1; }); // Giới hạn từ 1-5 sao
           const average = total === 0 ? 0 : (complexReviews.reduce((s, r) => s + (r.rating || 0), 0) / total);
           return { total, counts, average };
      }, [complexReviews]);
      // Thư viện ảnh bao gồm ảnh khu sân (complex) và tất cả ảnh sân nhỏ (fields)
      const galleryImages = [];
-
      // Thêm ảnh của complex (khu sân) - imageUrl từ Cloudinary
      if (complex?.imageUrl) {
           galleryImages.push({
@@ -976,7 +1000,6 @@ export default function ComplexDetail({ user }) {
                label: 'Khu sân'
           });
      }
-
      // Thêm ảnh của các field (sân nhỏ) - mainImageUrl và imageUrls từ Cloudinary
      fields.forEach(field => {
           // Thêm mainImageUrl nếu có
@@ -1001,9 +1024,8 @@ export default function ComplexDetail({ user }) {
           }
      });
 
-     // Extract chỉ URLs để truyền vào component
+     // lấy danh sách URL ảnh để sử dụng trong lightbox
      const galleryImageUrls = galleryImages.map(img => img.url);
-
      const openLightbox = (index) => {
           if (!galleryImageUrls.length) return;
           setLightboxIndex(Math.max(0, Math.min(index, galleryImageUrls.length - 1)));
@@ -1011,7 +1033,7 @@ export default function ComplexDetail({ user }) {
      };
 
      const closeLightbox = () => setIsLightboxOpen(false);
-
+     // Xử lý phím tắt trong lightbox
      useEffect(() => {
           if (!isLightboxOpen) return;
           const onKeyDown = (e) => {
@@ -1027,16 +1049,16 @@ export default function ComplexDetail({ user }) {
      // Nếu đã chọn slot & field cụ thể: dựa trên lịch trình của sân đó trong ngày được chọn
      const availableCount = useMemo(() => {
           // Đã chọn một sân cụ thể
-          if (selectedFieldId && Array.isArray(selectedFieldSchedules)) {
+          if (selectedFieldId && Array.isArray(selectedFieldSchedulesWithPackages)) {
                // Nếu không có bất kỳ lịch trình nào cho ngày đã chọn → coi như hết chỗ
-               if (selectedFieldSchedules.length === 0) {
+               if (selectedFieldSchedulesWithPackages.length === 0) {
                     return 0;
                }
 
                // Nếu đã chọn slot cụ thể: kiểm tra lịch trình của slot đó
                if (selectedSlotId) {
                     const slotIdStr = String(selectedSlotId);
-                    const relatedSchedules = selectedFieldSchedules.filter((s) => {
+                    const relatedSchedules = selectedFieldSchedulesWithPackages.filter((s) => {
                          const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
                          return String(scheduleSlotId) === slotIdStr;
                     });
@@ -1051,7 +1073,7 @@ export default function ComplexDetail({ user }) {
                }
 
                // Chưa chọn slot nhưng đã chọn sân: nếu có ít nhất một lịch trình Available trong ngày → 1, ngược lại 0
-               const hasAnyAvailable = selectedFieldSchedules.some(
+               const hasAnyAvailable = selectedFieldSchedulesWithPackages.some(
                     (s) => (s.status || s.Status || "Available") === "Available"
                );
                return hasAnyAvailable ? 1 : 0;
@@ -1059,7 +1081,7 @@ export default function ComplexDetail({ user }) {
 
           // Chưa chọn sân nhỏ: hiển thị tổng số sân nhỏ trong khu
           return fields.length;
-     }, [selectedFieldId, selectedSlotId, selectedFieldSchedules, fields.length]);
+     }, [selectedFieldId, selectedSlotId, selectedFieldSchedulesWithPackages, fields.length]);
 
      // Dynamic pricing derived from visible schedules
      const selectedSlotPrice = selectedSlotId
@@ -1080,37 +1102,21 @@ export default function ComplexDetail({ user }) {
           return repeatDays.length * weeks;
      };
 
-     // Không còn yêu cầu minRecurringWeeks nữa, người dùng tự chọn startDate/endDate
-
-     // Chính sách giảm giá đặt cố định theo số buổi
-     const getRecurringDiscountPercent = (totalSessions) => {
-          if (!totalSessions || totalSessions <= 0) return 0;
-          if (totalSessions >= 16) return 15; // 16 buổi trở lên: 15%
-          if (totalSessions >= 8) return 10;  // 8-15 buổi: 10%
-          if (totalSessions >= 4) return 5;   // 4-7 buổi: 5%
-          return 0;                            // <4 buổi: không giảm
-     };
-
-     // Tính tóm tắt giá cho đặt cố định (sân nhỏ)
+     // Tính tóm tắt giá cho đặt cố định 
      const recurringSummary = (() => {
           if (!isRecurring || !selectedField) return null;
           const totalSessions = calculateTotalSessions();
-          if (!totalSessions) return { totalSessions: 0, unitPrice: 0, discountPercent: 0, subtotal: 0, discountedTotal: 0, discountAmount: 0 };
-          // Use price from TimeSlot
+          if (!totalSessions) return { totalSessions: 0, unitPrice: 0, subtotal: 0 };
+          // sử dụng selectedSlotPrice nếu có, ngược lại dùng minPrice
           const unitPrice = Number(selectedSlotPrice || minPrice || 0);
           const subtotal = unitPrice * totalSessions;
-          const discountPercent = getRecurringDiscountPercent(totalSessions);
-          const discountAmount = Math.round(subtotal * (discountPercent / 100));
-          const discountedTotal = subtotal - discountAmount;
-          return { totalSessions, unitPrice, subtotal, discountPercent, discountAmount, discountedTotal };
+          return { totalSessions, unitPrice, subtotal };
      })();
 
      return (
           <Section className="min-h-screen bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center">
-               <HeaderSection complex={complex} user={user} onToggleFavoriteComplex={handleToggleFavoriteComplex} />
-
+               <HeaderSection complex={complex} user={user} />
                <TabsHeader activeTab={activeTab} setActiveTab={setActiveTab} />
-
                {isLoading && (
                     <LoadingPage message="Đang tải thông tin khu sân..." />
                )}
@@ -1124,7 +1130,6 @@ export default function ComplexDetail({ user }) {
                     </div>
                )}
 
-               {/* Error Display */}
                {error && (
                     <Container className="py-4">
                          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
@@ -1143,7 +1148,7 @@ export default function ComplexDetail({ user }) {
                     </Container>
                )}
 
-               {/* Two-column layout: Left content, Right sticky booking */}
+               {/* 2 layout: nội dung bên trái, đặt sân bên pahir */}
                <Container className="py-5">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                          {/* Left - Content */}
@@ -1157,14 +1162,12 @@ export default function ComplexDetail({ user }) {
                                         availableCount={availableCount}
                                         cheapestSlot={cheapestSlot}
                                         priciestSlot={priciestSlot}
-                                        cancellationPolicy={cancellationPolicy}
-                                        promotions={promotions}
                                         depositPolicy={depositPolicy}
                                         fieldTypeMap={fieldTypeMap}
                                         selectedFieldCheapestSlot={selectedFieldCheapestSlot}
                                         selectedFieldPriciestSlot={selectedFieldPriciestSlot}
                                         reviewStats={reviewStats}
-                                        onBack={() => setSelectedFieldId(null)}
+                                        onBack={handleBackToComplex}
                                         onFieldSelect={(fieldId) => setSelectedFieldId(fieldId)}
                                         onQuickBookField={handleQuickBookField}
                                         onToggleFavoriteField={handleToggleFavoriteField}
@@ -1211,7 +1214,7 @@ export default function ComplexDetail({ user }) {
                                    fields={fields}
                                    selectedDate={selectedDate}
                                    selectedSlotId={selectedSlotId}
-                                   fieldSchedules={selectedFieldSchedules}
+                                   fieldSchedules={selectedFieldSchedulesWithPackages}
                                    isLoadingSchedules={isLoadingSelectedFieldSchedules}
                                    isRecurring={isRecurring}
                                    repeatDays={repeatDays}

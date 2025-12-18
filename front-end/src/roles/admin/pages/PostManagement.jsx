@@ -44,6 +44,7 @@ const STATUS_OPTIONS = [
      { value: "all", label: "Tất cả" },
      { value: "Pending", label: "Chờ duyệt" },
      { value: "Published", label: "Đã xuất bản" },
+     { value: "Rejected", label: "Đã từ chối" },
 ];
 
 export default function PostManagement() {
@@ -70,25 +71,53 @@ export default function PostManagement() {
                let result;
 
                if (viewMode === "pending") {
-                    // Chế độ xem bài chờ duyệt - không áp dụng statusFilter
+                    // Chế độ xem bài chờ duyệt
                     result = await fetchPendingPosts();
                } else if (viewMode === "trending") {
-                    // Chế độ xem bài nổi bật - không áp dụng statusFilter
+                    // Chế độ xem bài nổi bật
                     result = await fetchTrendingPosts();
                } else {
                     // Chế độ xem tất cả - áp dụng statusFilter
-                    const params = {
-                         pageNumber: 1,
-                         pageSize: 1000 // Lấy nhiều bài viết để hiển thị tất cả
-                    };
-
-                    // Chỉ gửi status nếu không phải "all"
-                    // Khi statusFilter === "all", không gửi tham số status → API trả về tất cả trạng thái
-                    if (statusFilter !== "all") {
+                    if (statusFilter === "all") {
+                         // Khi chọn "Tất cả", gọi API nhiều lần để lấy tất cả các trạng thái
+                         const allStatuses = ["Pending", "Published", "Rejected", "Hidden", "Inactive"];
+                         const allResults = await Promise.all(
+                              allStatuses.map(async (status) => {
+                                   try {
+                                        const params = {
+                                             pageNumber: 1,
+                                             pageSize: 1000,
+                                             status: status
+                                        };
+                                        const statusResult = await fetchPosts(params);
+                                        return Array.isArray(statusResult) ? statusResult : [];
+                                   } catch (error) {
+                                        console.warn(`[PostManagement] Error fetching posts with status ${status}:`, error);
+                                        return [];
+                                   }
+                              })
+                         );
+                         // Merge tất cả kết quả lại
+                         result = allResults.flat();
+                         // Loại bỏ duplicate posts (nếu có)
+                         const uniquePosts = new Map();
+                         result.forEach(post => {
+                              const postId = post?.PostID ?? post?.postId ?? post?.id;
+                              if (postId && !uniquePosts.has(postId)) {
+                                   uniquePosts.set(postId, post);
+                              }
+                         });
+                         result = Array.from(uniquePosts.values());
+                    } else {
+                         // Khi chọn một trạng thái cụ thể, chỉ gọi API với trạng thái đó
+                         const params = {
+                              pageNumber: 1,
+                              pageSize: 1000
+                         };
                          params.status = statusFilter;
+                         result = await fetchPosts(params);
                     }
-                    // Nếu statusFilter === "all", không thêm params.status để API trả về tất cả
-                    result = await fetchPosts(params);
+
                     if (result && result.length > 0) {
                          console.log("[PostManagement] Sample post statuses:", result.slice(0, 5).map(p => ({
                               id: p?.PostID ?? p?.postId ?? p?.id,
@@ -96,6 +125,18 @@ export default function PostManagement() {
                               isPending: p?.isPending ?? p?.is_pending ?? false
                          })));
                     }
+               }
+
+               // Áp dụng filter theo statusFilter cho tất cả các viewMode (nếu cần)
+               // Nếu viewMode là "pending" hoặc "trending", vẫn có thể filter thêm theo statusFilter
+               if ((viewMode === "pending" || viewMode === "trending") && statusFilter !== "all" && Array.isArray(result)) {
+                    result = result.filter(post => {
+                         const status = getPostStatus(post);
+                         if (statusFilter === "Published") {
+                              return status === "Published" || status === "Active";
+                         }
+                         return status === statusFilter;
+                    });
                }
 
                if (Array.isArray(result)) {
@@ -133,8 +174,10 @@ export default function PostManagement() {
                });
           }
 
-          // Khi viewMode là "pending" hoặc "trending", có thể cần filter thêm theo statusFilter
-          if (viewMode !== "all" && statusFilter !== "all") {
+          // Filter theo statusFilter (áp dụng cho tất cả viewMode nếu cần)
+          // Khi viewMode === "all", statusFilter đã được áp dụng ở API level
+          // Nhưng vẫn có thể filter lại ở client-side để đảm bảo chính xác
+          if (statusFilter !== "all") {
                filtered = filtered.filter(post => {
                     const status = getPostStatus(post);
                     if (statusFilter === "Published") {
@@ -143,8 +186,6 @@ export default function PostManagement() {
                     return status === statusFilter;
                });
           }
-          // Khi viewMode === "all", statusFilter đã được áp dụng ở API level
-          // Không cần filter lại ở client-side
 
           setFilteredPosts(filtered);
      }, [posts, searchTerm, statusFilter, viewMode]);
@@ -419,9 +460,6 @@ export default function PostManagement() {
                     return "bg-green-100 text-green-800 border-green-200";
                case "Pending":
                     return "bg-yellow-100 text-yellow-800 border-yellow-200";
-               case "Hidden":
-               case "Inactive":
-                    return "bg-gray-100 text-gray-800 border-gray-200";
                case "Rejected":
                     return "bg-red-100 text-red-800 border-red-200";
                default:
@@ -438,9 +476,6 @@ export default function PostManagement() {
                     return "Hoạt động";
                case "Pending":
                     return "Chờ duyệt";
-
-               case "Inactive":
-                    return "Không hoạt động";
                case "Rejected":
                     return "Đã từ chối";
                default:
@@ -646,21 +681,18 @@ export default function PostManagement() {
                          </div>
                          <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-3 sm:space-y-0">
                               <div className="flex space-x-3">
-
-                                   {viewMode === "all" && (
-                                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                             <SelectTrigger className="w-48 rounded-2xl">
-                                                  <SelectValue placeholder="Tất cả trạng thái" />
-                                             </SelectTrigger>
-                                             <SelectContent>
-                                                  {STATUS_OPTIONS.map(option => (
-                                                       <SelectItem key={option.value} value={option.value}>
-                                                            {option.label}
-                                                       </SelectItem>
-                                                  ))}
-                                             </SelectContent>
-                                        </Select>
-                                   )}
+                                   <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                        <SelectTrigger className="w-48 rounded-2xl">
+                                             <SelectValue placeholder="Tất cả trạng thái" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                             {STATUS_OPTIONS.map(option => (
+                                                  <SelectItem key={option.value} value={option.value}>
+                                                       {option.label}
+                                                  </SelectItem>
+                                             ))}
+                                        </SelectContent>
+                                   </Select>
                               </div>
                               <Button
                                    variant="outline"
@@ -768,7 +800,7 @@ export default function PostManagement() {
                     onClose={() => setShowDetailModal(false)}
                     title="Chi tiết bài viết"
                     size="4xl"
-                    className="max-h-[90vh] rounded-2xl shadow-lg border border-slate-200 max-w-2xl scrollbar-hide"
+                    className="max-h-[90vh] rounded-2xl shadow-lg border overflow-y-auto border-slate-200 max-w-2xl scrollbar-hide"
                >
                     {selectedPost && (
                          <div className="space-y-3 px-3">

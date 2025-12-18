@@ -10,6 +10,7 @@ export default function FavoriteFields() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  // Tải danh sách sân yêu thích
   useEffect(() => {
     const loadFavorites = async () => {
       try {

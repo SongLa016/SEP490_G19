@@ -16,6 +16,7 @@ export default function CommunityHeader({ user, onLoggedOut }) {
      const headerRef = useRef(null);
      const { avatarUrl, initial } = getUserAvatarAndName(user);
 
+     // tên hiển thị vai trò
      const getRoleDisplayName = (role) => {
           switch (role) {
                case "User": return "Người chơi";
@@ -25,6 +26,7 @@ export default function CommunityHeader({ user, onLoggedOut }) {
           }
      };
 
+     // màu badge cho vai trò
      const getRoleColor = (role) => {
           switch (role) {
                case "User": return "bg-blue-100 text-blue-800";
@@ -34,6 +36,7 @@ export default function CommunityHeader({ user, onLoggedOut }) {
           }
      };
 
+     // danh sách menu điều hướng
      const getNavigationItems = () => {
           if (!user) {
                return [
@@ -79,7 +82,7 @@ export default function CommunityHeader({ user, onLoggedOut }) {
 
      const navigationItems = getNavigationItems();
 
-     // Floating particles animation
+     // hiệu ứng với gsap
      useEffect(() => {
           if (!headerRef.current) return;
 
@@ -157,7 +160,7 @@ export default function CommunityHeader({ user, onLoggedOut }) {
                     </motion.div>
                </motion.div>
 
-               {/* Navigation Items với Stagger Animation */}
+               {/* Navigation Items với hiệu ứng */}
                <div className="flex flex-col items-center space-y-4">
                     {navigationItems.map((item, index) => {
                          const Icon = item.icon;
@@ -210,26 +213,38 @@ export default function CommunityHeader({ user, onLoggedOut }) {
                               </motion.div>
                          );
                     })}
+
+                    {/* Notification Bell */}
+                    {user && (
+                         <motion.div
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.3 + navigationItems.length * 0.1, duration: 0.3 }}
+                              className="relative"
+                         >
+                              <motion.div
+                                   whileHover={{ scale: 1.1, y: -2 }}
+                                   whileTap={{ scale: 0.95 }}
+                              >
+                                   <NotificationBell
+                                        userId={user.id}
+                                        onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                                   />
+                              </motion.div>
+                              <NotificationDropdown
+                                   userId={user.id}
+                                   isOpen={isNotificationOpen}
+                                   onClose={() => setIsNotificationOpen(false)}
+                                   className="left-10 right-auto -top-28"
+                              />
+                         </motion.div>
+                    )}
                </div>
 
                {/* User Profile Section */}
                <div className="mt-auto mb-4">
                     {user ? (
                          <>
-                              {/* Notification Bell */}
-                              <div className="relative mb-4 ml-3">
-                                   <NotificationBell
-                                        userId={user.id}
-                                        onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                                   />
-                                   <NotificationDropdown
-                                        userId={user.id}
-                                        isOpen={isNotificationOpen}
-                                        onClose={() => setIsNotificationOpen(false)}
-                                        className="left-16 right-auto -top-[400px]"
-                                   />
-                              </div>
-
                               {/* User Profile */}
                               <div className="relative">
                                    <Button
@@ -259,7 +274,7 @@ export default function CommunityHeader({ user, onLoggedOut }) {
                                                        <p className="text-sm flex truncate items-center gap-2 font-medium text-gray-900">{user.fullName || `@${user.username}`}<span className={`px-2 py-1 rounded-full text-xs ${getRoleColor(user.role)}`}>
                                                             {getRoleDisplayName(user.role)}
                                                        </span></p>
-                                                       {user.name && <p className="text-xs text-gray-500">@{user.username}</p>}
+                                                       {/* {user.name && <p className="text-xs text-gray-500">@{user.username}</p>} */}
                                                   </div>
                                                   <Button
                                                        onClick={() => {

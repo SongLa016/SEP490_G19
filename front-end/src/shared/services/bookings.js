@@ -1,6 +1,7 @@
 // Mocked booking/payment services with pending hold logic
 import axios from "axios";
 import { decodeTokenPayload, isTokenExpired } from "../utils/tokenManager";
+import { validateVietnamPhone } from "./authService";
 
 // In-memory pending holds (front-end only). Each item: { bookingId, fieldId, date, slotId, expiresAt }
 const pendingHolds = [];
@@ -127,15 +128,122 @@ export async function confirmPayment(bookingId, method) {
   return { bookingId, status: "Confirmed", paymentStatus: "Paid", method };
 }
 
-// Check field availability (synchronous vs pending holds + confirmed)
+// Check field availability - gọi API backend để kiểm tra real-time
 export async function checkFieldAvailability(fieldId, date, slotId) {
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  const available = !hasConflict({ fieldId, date, slotId });
-  return {
-    available,
-    message: available ? "Sân còn trống" : "Sân đã được đặt",
-    alternativeSlots: [],
-  };
+  try {
+    // Kiểm tra local hold trước (để tránh double-booking trong cùng session)
+    if (hasConflict({ fieldId, date, slotId })) {
+      return {
+        available: false,
+        message: "Khung giờ này đang được giữ chỗ bởi người khác",
+        alternativeSlots: [],
+      };
+    }
+
+    // Gọi API backend để kiểm tra trạng thái schedule real-time
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/FieldSchedule/public/field/${fieldId}`;
+    const response = await axios.get(endpoint);
+    
+    const schedules = Array.isArray(response.data) 
+      ? response.data 
+      : (response.data?.data || []);
+
+    // Tìm schedule matching với slotId và date
+    const matchingSchedule = schedules.find(s => {
+      const scheduleSlotId = String(s.slotId || s.SlotId || s.slotID || s.SlotID);
+      const scheduleDate = s.date || s.Date;
+      
+      // So sánh date
+      let scheduleDateStr = "";
+      if (typeof scheduleDate === "string") {
+        scheduleDateStr = scheduleDate.split("T")[0];
+      } else if (scheduleDate?.year && scheduleDate?.month && scheduleDate?.day) {
+        scheduleDateStr = `${scheduleDate.year}-${String(scheduleDate.month).padStart(2, "0")}-${String(scheduleDate.day).padStart(2, "0")}`;
+      }
+      
+      return scheduleSlotId === String(slotId) && scheduleDateStr === String(date);
+    });
+
+    if (!matchingSchedule) {
+      // Không tìm thấy schedule - có thể slot không tồn tại hoặc chưa được tạo
+      return {
+        available: true,
+        message: "Sân còn trống",
+        alternativeSlots: [],
+      };
+    }
+
+    // Kiểm tra trạng thái schedule
+    const status = (matchingSchedule.status || matchingSchedule.Status || "").toLowerCase();
+    
+    // Các trạng thái không khả dụng
+    const unavailableStatuses = ["booked", "pending", "maintenance", "locked", "reserved"];
+    const isUnavailable = unavailableStatuses.includes(status);
+
+    if (isUnavailable) {
+      return {
+        available: false,
+        message: status === "booked" 
+          ? "Khung giờ này đã có người đặt" 
+          : status === "pending"
+          ? "Khung giờ này đang chờ xác nhận thanh toán"
+          : status === "maintenance"
+          ? "Sân đang bảo trì"
+          : "Khung giờ này không khả dụng",
+        alternativeSlots: [],
+        scheduleStatus: status,
+      };
+    }
+
+    return {
+      available: true,
+      message: "Sân còn trống",
+      alternativeSlots: [],
+      scheduleStatus: status,
+    };
+  } catch (error) {
+    console.error("Error checking field availability:", error);
+    
+    // Fallback về kiểm tra local nếu API lỗi
+    const localAvailable = !hasConflict({ fieldId, date, slotId });
+    return {
+      available: localAvailable,
+      message: localAvailable ? "Sân còn trống" : "Sân đã được đặt",
+      alternativeSlots: [],
+      warning: "Không thể kiểm tra real-time từ server",
+    };
+  }
+}
+
+// Validate ngày đặt sân (không được trong quá khứ)
+export function validateBookingDate(dateStr) {
+  if (!dateStr) {
+    return { isValid: false, message: "Vui lòng chọn ngày" };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const bookingDate = new Date(dateStr);
+  bookingDate.setHours(0, 0, 0, 0);
+
+  if (isNaN(bookingDate.getTime())) {
+    return { isValid: false, message: "Ngày không hợp lệ" };
+  }
+
+  if (bookingDate < today) {
+    return { isValid: false, message: "Không thể đặt sân cho ngày trong quá khứ" };
+  }
+
+  // Giới hạn đặt trước tối đa 30 ngày
+  const maxDate = new Date(today);
+  maxDate.setDate(maxDate.getDate() + 30);
+
+  if (bookingDate > maxDate) {
+    return { isValid: false, message: "Chỉ có thể đặt sân trước tối đa 30 ngày" };
+  }
+
+  return { isValid: true, message: "" };
 }
 
 // Validate booking data
@@ -146,22 +254,28 @@ export function validateBookingData(bookingData) {
     errors.fieldId = "Vui lòng chọn sân";
   }
 
-  if (!bookingData.date) {
-    errors.date = "Vui lòng chọn ngày";
+  // Validate ngày đặt sân
+  const dateValidation = validateBookingDate(bookingData.date);
+  if (!dateValidation.isValid) {
+    errors.date = dateValidation.message;
   }
 
   if (!bookingData.slotId) {
     errors.slotId = "Vui lòng chọn giờ";
   }
 
-  if (!bookingData.customerName?.trim()) {
+  // Validate họ tên (tối thiểu 2 ký tự)
+  const customerName = bookingData.customerName?.trim() || "";
+  if (!customerName) {
     errors.customerName = "Vui lòng nhập họ và tên";
+  } else if (customerName.length < 2) {
+    errors.customerName = "Họ tên phải có ít nhất 2 ký tự";
   }
 
-  if (!bookingData.customerPhone?.trim()) {
-    errors.customerPhone = "Vui lòng nhập số điện thoại";
-  } else if (!/^[0-9+\-\s()]{10,15}$/.test(bookingData.customerPhone)) {
-    errors.customerPhone = "Số điện thoại không hợp lệ";
+  // Validate số điện thoại Việt Nam
+  const phoneValidation = validateVietnamPhone(bookingData.customerPhone);
+  if (!phoneValidation.isValid) {
+    errors.customerPhone = phoneValidation.message;
   }
 
   // Email is only required if user doesn't have one or if explicitly required
@@ -206,6 +320,40 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Flag to prevent multiple session expired alerts
+let isShowingSessionExpired = false;
+
+// Add response interceptor to handle 401 errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401 && !isShowingSessionExpired) {
+      isShowingSessionExpired = true;
+      // Clear auth data
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      
+      // Show alert and redirect
+      const Swal = (await import("sweetalert2")).default;
+      await Swal.fire({
+        icon: "warning",
+        title: "Phiên đăng nhập hết hạn",
+        text: "Vui lòng đăng nhập lại để tiếp tục.",
+        confirmButtonText: "Đăng nhập",
+        confirmButtonColor: "#0ea5e9",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      }).then((result) => {
+        isShowingSessionExpired = false;
+        if (result.isConfirmed) {
+          window.location.href = "/login";
+        }
+      });
+    }
     return Promise.reject(error);
   }
 );
@@ -460,13 +608,29 @@ export async function createBookingPackage(packageData) {
     const endpoint =
       "https://sep490-g19-zxph.onrender.com/api/BookingPackage/create";
 
+    // Parse date string (YYYY-MM-DD) thành DateTime format cho BE
+    // BE mong đợi DateTime, nhưng chúng ta gửi YYYY-MM-DD và BE sẽ parse
+    // Đảm bảo format đúng: YYYY-MM-DD hoặc ISO string
+    const formatDateForBackend = (dateStr) => {
+      if (!dateStr) return "";
+      // Nếu đã là ISO string, giữ nguyên
+      if (typeof dateStr === "string" && dateStr.includes("T")) {
+        return dateStr;
+      }
+      // Nếu là YYYY-MM-DD, chuyển thành ISO string với time 00:00:00 UTC
+      if (typeof dateStr === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return `${dateStr}T00:00:00.000Z`;
+      }
+      return dateStr;
+    };
+
     // Chuẩn hoá payload theo spec backend
     const payload = {
       userId: Number(packageData.userId) || 0,
       fieldId: Number(packageData.fieldId) || 0,
       packageName: packageData.packageName || "Gói đặt định kỳ",
-      startDate: packageData.startDate, // ISO string
-      endDate: packageData.endDate, // ISO string
+      startDate: formatDateForBackend(packageData.startDate), // DateTime format cho BE
+      endDate: formatDateForBackend(packageData.endDate), // DateTime format cho BE
       totalPrice: Number(packageData.totalPrice) || 0,
       selectedSlots: Array.isArray(packageData.selectedSlots)
         ? packageData.selectedSlots.map((s) => ({
@@ -477,6 +641,15 @@ export async function createBookingPackage(packageData) {
           }))
         : [],
     };
+
+    console.log("📤 [API] Sending package payload:", {
+      startDate: payload.startDate,
+      endDate: payload.endDate,
+      totalPrice: payload.totalPrice,
+      selectedSlotsCount: payload.selectedSlots.length,
+      selectedSlots: payload.selectedSlots
+    });
+    console.log("⚠️ [API] IMPORTANT: Backend should use totalPrice =", payload.totalPrice, "NOT recalculate!");
 
     const response = await apiClient.post(endpoint, payload);
 

@@ -30,7 +30,7 @@ export default function TeamCreationModal({ isOpen, onClose, user, onTeamCreated
           maxMembers: 7,
      });
      const [isSubmitting, setIsSubmitting] = useState(false);
-
+     // thay đổi nội dung
      const handleInputChange = (field, value) => {
           setFormData(prev => ({
                ...prev,
@@ -38,8 +38,8 @@ export default function TeamCreationModal({ isOpen, onClose, user, onTeamCreated
           }));
      };
 
+     // submit đội
      const handleSubmit = async () => {
-          // Validation
           if (!formData.teamName.trim()) {
                Swal.fire({
                     icon: 'warning',
@@ -92,7 +92,6 @@ export default function TeamCreationModal({ isOpen, onClose, user, onTeamCreated
                     title: 'Tạo đội thành công!'
                });
 
-               // Reset form
                setFormData({
                     teamName: "",
                     contactPhone: "",
@@ -115,7 +114,7 @@ export default function TeamCreationModal({ isOpen, onClose, user, onTeamCreated
                setIsSubmitting(false);
           }
      };
-
+     // đóng modal
      const handleClose = () => {
           if (!isSubmitting) {
                onClose();

@@ -103,7 +103,7 @@ export default function ScheduleTable({
                                                                                      html: `
                                                                                           <div class="text-left space-y-2">
                                                                                                <p><strong>Sân:</strong> ${field.name}</p>
-                                                                                               <p><strong>Slot:</strong> ${slot.SlotName} (${slot.StartTime.substring(0, 5)} - ${slot.EndTime.substring(0, 5)})</p>
+                                                                                               <p><strong>Khung giờ:</strong> ${slot.SlotName} (${slot.StartTime.substring(0, 5)} - ${slot.EndTime.substring(0, 5)})</p>
                                                                                                <p><strong>Ngày:</strong> ${date.toLocaleDateString('vi-VN')}</p>
                                                                                                <p><strong>Khách hàng:</strong> ${bookingInfo.customerName}</p>
                                                                                                <p><strong>SĐT:</strong> ${bookingInfo.customerPhone}</p>

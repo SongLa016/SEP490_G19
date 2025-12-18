@@ -15,9 +15,7 @@ import {
 } from "lucide-react";
 import { Badge, Button, LoadingList, StaggerContainer, FadeIn } from "../../../../../shared/components/ui";
 
-/**
- * Presentational component for the "Lịch cố định" tab.
- */
+// hiển thị tab "Lịch cố định" - danh sách các gói đặt sân cố định
 export default function FixedPackagesTab({
   bookingPackages = [],
   packageSessionsMap = {},
@@ -30,12 +28,14 @@ export default function FixedPackagesTab({
   formatSessionTimeRange,
   sessionScheduleDataMap = {},
 }) {
+  // format ngày ngắn gọn (dd/mm/yyyy)
   const formatDateShort = (dateStr) => {
     if (!dateStr) return "N/A";
     const d = new Date(dateStr);
     return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString("vi-VN");
   };
 
+  // format ngày giờ đầy đủ (dd/mm/yyyy hh:mm)
   const formatDateTime = (dateStr) => {
     if (!dateStr) return "N/A";
     const d = new Date(dateStr);
@@ -50,6 +50,7 @@ export default function FixedPackagesTab({
       });
   };
 
+  //hiển thị cho trạng thái booking
   const getBookingStatusConfig = (status) => {
     const statusLower = (status || "").toLowerCase();
     if (statusLower.includes("confirmed") || statusLower.includes("active")) {
@@ -67,13 +68,14 @@ export default function FixedPackagesTab({
     return { label: status || "Chưa xác định", badge: "bg-gray-500 text-white", icon: Info };
   };
 
+  //hiển thị cho trạng thái thanh toán
   const getPaymentStatusConfig = (status) => {
     const statusLower = (status || "").toLowerCase();
     if (statusLower.includes("paid") || statusLower.includes("completed")) {
       return { label: "Đã thanh toán", badge: "bg-emerald-500 text-white", icon: CheckCircle };
     }
     if (statusLower.includes("pending") || statusLower.includes("waiting")) {
-      return { label: "Chờ thanh toán", badge: "bg-orange-500 text-white", icon: AlertTriangle };
+      return { label: "Chờ xác nhận", badge: "bg-orange-500 text-white", icon: AlertTriangle };
     }
     if (statusLower.includes("failed") || statusLower.includes("error")) {
       return { label: "Thanh toán thất bại", badge: "bg-red-500 text-white", icon: XCircle };
@@ -84,6 +86,7 @@ export default function FixedPackagesTab({
     return { label: status || "Chưa xác định", badge: "bg-gray-500 text-white", icon: Info };
   };
 
+  //hiển thị cho trạng thái session (buổi đặt)
   const getSessionStatusConfig = (status) => {
     const statusLower = (status || "").toLowerCase();
     if (statusLower.includes("booking") || statusLower.includes("pending") || statusLower.includes("waiting")) {
@@ -95,12 +98,12 @@ export default function FixedPackagesTab({
     return { label: status || "Chưa xác định", badge: "bg-gray-100 text-gray-700 border-gray-200", icon: Info };
   };
 
+  // format khoảng thời gian của schedule
   const formatScheduleTimeRange = (scheduleData, session) => {
-    // Ưu tiên lấy thời gian từ schedule data
+    // ưu tiên lấy thời gian từ schedule data
     if (scheduleData) {
       if (scheduleData.slotName) return scheduleData.slotName;
       if (scheduleData.startTime && scheduleData.endTime) {
-        // Format time nếu là string
         const startTime = typeof scheduleData.startTime === 'string'
           ? scheduleData.startTime
           : scheduleData.startTime;
@@ -115,7 +118,6 @@ export default function FixedPackagesTab({
           : String(scheduleData.startTime);
       }
     }
-    // Fallback về session time nếu không có schedule data
     return formatSessionTimeRange(session);
   };
 
@@ -134,6 +136,7 @@ export default function FixedPackagesTab({
       )}
       {!isLoadingPackages && bookingPackages.length > 0 && (
         <StaggerContainer staggerDelay={50}>
+          {/* hiển thị danh sách gói đặt sân cố định */}
           {bookingPackages.map((pkg, index) => {
             const packageId = pkg.bookingPackageId;
             const sessions =
@@ -278,82 +281,98 @@ export default function FixedPackagesTab({
                         </Button>
                       </div>
                       <div>
+                        {/* Chỉ hiển thị chi tiết buổi đặt khi booking package đã được confirm */}
                         {isExpanded && (
                           <div className="mt-2 pt-2 border-t border-teal-200">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-medium text-gray-900">Chi tiết các buổi đặt sân: {sessionCount > 0 && `(${sessionCount} buổi)`}</h4>
-                              {sessionCount > 0 && (() => {
-                                const cancelledCount = sessions.filter(s => {
-                                  const status = (s.sessionStatus || s.status || "").toLowerCase();
-                                  return status.includes("cancel");
-                                }).length;
-                                const bookedCount = sessions.filter(s => {
-                                  const status = (s.sessionStatus || s.status || "").toLowerCase();
-                                  return !status.includes("cancel");
-                                }).length;
-                                return (
-                                  <div className="flex items-center gap-2 text-xs">
-                                    <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
-                                      <CheckCircle className="w-3 h-3" />
-                                      <span className="font-semibold">Đã đặt: {bookedCount}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-100 text-red-700 border border-red-200">
-                                      <XCircle className="w-3 h-3" />
-                                      <span className="font-semibold">Đã hủy: {cancelledCount}</span>
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                            <div className="space-y-2">
-                              {sessionCount > 0 ? (
-                                sessions.map((session, sessionIndex) => {
-                                  const scheduleData = session.scheduleId ? sessionScheduleDataMap[session.scheduleId] : null;
-                                  const pricePerSession = session.pricePerSession;
-                                  const sessionStatus = session.sessionStatus || session.status;
-                                  const sessionStatusConfig = getSessionStatusConfig(sessionStatus);
-                                  const SessionStatusIcon = sessionStatusConfig.icon;
-
-                                  const isCancelled = (sessionStatus || "").toLowerCase().includes("cancel");
-
-                                  return (
-                                    <div key={session.id || sessionIndex} className="flex flex-col gap-2 p-3 bg-white/80 backdrop-blur rounded-xl border border-teal-100">
-                                      <div className="flex justify-between items-center">
-                                        <div className="flex items-center gap-3 flex-wrap">
-                                          <span className="inline-flex items-center gap-1 text-sm text-gray-700 bg-gray-50 border border-gray-200 font-semibold px-2 py-1 rounded-full">
-                                            <Calendar className="w-3.5 h-3.5" /> {formatSessionDateLabel(session.date)}
-                                          </span>
-                                          <span className="inline-flex items-center gap-1 text-sm text-gray-700 bg-gray-50 border border-gray-200 font-semibold px-2 py-1 rounded-full">
-                                            <Clock className="w-3.5 h-3.5" /> {formatScheduleTimeRange(scheduleData, session)}
-                                          </span>
-                                          {sessionStatus && (
-                                            <Badge className={`${sessionStatusConfig.badge} hover:${sessionStatusConfig.badge} text-xs flex items-center gap-1`}>
-                                              <SessionStatusIcon className="w-3 h-3" />
-                                              {sessionStatusConfig.label}
-                                            </Badge>
-                                          )}
-                                          {isCancelled && (
-                                            <Badge className="bg-purple-100 text-purple-700 hover:text-purple-700 hover:bg-purple-200 border-purple-200 text-xs flex items-center gap-1">
-                                              <RotateCcw className="w-3 h-3" />
-                                              Đã hoàn tiền
-                                            </Badge>
-                                          )}
+                            {/* Kiểm tra trạng thái booking package - ẩn danh sách buổi nếu chưa confirm */}
+                            {!bookingStatusConfig.label.includes("Đã xác nhận") && !bookingStatusConfig.label.includes("Đã hoàn thành") ? (
+                              <div className="p-4 rounded-xl border border-yellow-200 bg-yellow-50 text-center">
+                                <AlertTriangle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+                                <p className="text-sm text-yellow-700 font-medium">
+                                  Danh sách buổi đặt sẽ hiển thị sau khi gói được xác nhận
+                                </p>
+                                <p className="text-xs text-yellow-600 mt-1">
+                                  Vui lòng chờ chủ sân xác nhận thanh toán
+                                </p>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex items-center justify-between mb-3">
+                                  <h4 className="font-medium text-gray-900">Chi tiết các buổi đặt sân: {sessionCount > 0 && `(${sessionCount} buổi)`}</h4>
+                                  {sessionCount > 0 && (() => {
+                                    const cancelledCount = sessions.filter(s => {
+                                      const status = (s.sessionStatus || s.status || "").toLowerCase();
+                                      return status.includes("cancel");
+                                    }).length;
+                                    const bookedCount = sessions.filter(s => {
+                                      const status = (s.sessionStatus || s.status || "").toLowerCase();
+                                      return !status.includes("cancel");
+                                    }).length;
+                                    return (
+                                      <div className="flex items-center gap-2 text-xs">
+                                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 border border-green-200">
+                                          <CheckCircle className="w-3 h-3" />
+                                          <span className="font-semibold">Đã đặt: {bookedCount}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-100 text-red-700 border border-red-200">
+                                          <XCircle className="w-3 h-3" />
+                                          <span className="font-semibold">Đã hủy: {cancelledCount}</span>
                                         </div>
                                       </div>
-                                      {pricePerSession && (
-                                        <div className="flex items-center gap-2 text-xs">
-                                          <span className="font-semibold text-gray-600">Giá mỗi buổi:</span>
-                                          <span className="font-bold text-orange-600">{formatPrice ? formatPrice(pricePerSession) : `${pricePerSession.toLocaleString('vi-VN')} VNĐ`}</span>
-                                        </div>
-                                      )}
+                                    );
+                                  })()}
+                                </div>
+                                <div className="space-y-2">
+                                  {sessionCount > 0 ? (
+                                    sessions.map((session, sessionIndex) => {
+                                      const scheduleData = session.scheduleId ? sessionScheduleDataMap[session.scheduleId] : null;
+                                      const pricePerSession = session.pricePerSession;
+                                      const sessionStatus = session.sessionStatus || session.status;
+                                      const sessionStatusConfig = getSessionStatusConfig(sessionStatus);
+                                      const SessionStatusIcon = sessionStatusConfig.icon;
 
-                                    </div>
-                                  );
-                                })
-                              ) : (
-                                <div className="text-sm text-gray-500 italic text-center py-4">Chưa có dữ liệu buổi cho gói này.</div>
-                              )}
-                            </div>
+                                      const isCancelled = (sessionStatus || "").toLowerCase().includes("cancel");
+
+                                      return (
+                                        <div key={session.id || sessionIndex} className="flex flex-col gap-2 p-3 bg-white/80 backdrop-blur rounded-xl border border-teal-100">
+                                          <div className="flex justify-between items-center">
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                              <span className="inline-flex items-center gap-1 text-sm text-gray-700 bg-gray-50 border border-gray-200 font-semibold px-2 py-1 rounded-full">
+                                                <Calendar className="w-3.5 h-3.5" /> {formatSessionDateLabel(session.date)}
+                                              </span>
+                                              <span className="inline-flex items-center gap-1 text-sm text-gray-700 bg-gray-50 border border-gray-200 font-semibold px-2 py-1 rounded-full">
+                                                <Clock className="w-3.5 h-3.5" /> {formatScheduleTimeRange(scheduleData, session)}
+                                              </span>
+                                              {sessionStatus && (
+                                                <Badge className={`${sessionStatusConfig.badge} hover:${sessionStatusConfig.badge} text-xs flex items-center gap-1`}>
+                                                  <SessionStatusIcon className="w-3 h-3" />
+                                                  {sessionStatusConfig.label}
+                                                </Badge>
+                                              )}
+                                              {isCancelled && (
+                                                <Badge className="bg-purple-100 text-purple-700 hover:text-purple-700 hover:bg-purple-200 border-purple-200 text-xs flex items-center gap-1">
+                                                  <RotateCcw className="w-3 h-3" />
+                                                  Đã hoàn tiền
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          </div>
+                                          {pricePerSession && (
+                                            <div className="flex items-center gap-2 text-xs">
+                                              <span className="font-semibold text-gray-600">Giá mỗi buổi:</span>
+                                              <span className="font-bold text-orange-600">{formatPrice ? formatPrice(pricePerSession) : `${pricePerSession.toLocaleString('vi-VN')} VNĐ`}</span>
+                                            </div>
+                                          )}
+
+                                        </div>
+                                      );
+                                    })
+                                  ) : (
+                                    <div className="text-sm text-gray-500 italic text-center py-4">Chưa có dữ liệu buổi cho gói này.</div>
+                                  )}
+                                </div>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>

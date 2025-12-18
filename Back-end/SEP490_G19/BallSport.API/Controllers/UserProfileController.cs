@@ -4,6 +4,7 @@ using BallSport.Application.Services;
 using BallSport.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using static BallSport.Infrastructure.Repositories.UserProfileRepository;
 
 namespace BallSport.API.Controllers
@@ -13,10 +14,12 @@ namespace BallSport.API.Controllers
     public class UserProfileController : ControllerBase
     {
         private readonly UserProfileService _profileService;
+        private readonly UserService _userService;
 
-        public UserProfileController(UserProfileService profileService)
+        public UserProfileController(UserProfileService profileService, UserService userService)
         {
             _profileService = profileService;
+            _userService = userService;
         }
 
         [HttpGet("profile")]
@@ -57,5 +60,39 @@ namespace BallSport.API.Controllers
 
             return Ok(updatedProfile);
         }
+
+        [HttpPost("change-password")]
+        [Authorize] // 🔐 BẮT BUỘC đăng nhập
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO request)
+        {
+            if (string.IsNullOrEmpty(request.OldPassword) ||
+                string.IsNullOrEmpty(request.NewPassword) ||
+                string.IsNullOrEmpty(request.ConfirmNewPassword))
+            {
+                return BadRequest("Vui lòng nhập đầy đủ thông tin.");
+            }
+
+            // ✅ THỐNG NHẤT: dùng "UserID" giống các API khác
+            var userIdClaim = User.FindFirst("UserID");
+            if (userIdClaim == null)
+                return Unauthorized("Token không hợp lệ.");
+
+            int userId = int.Parse(userIdClaim.Value);
+
+            await _userService.ChangePasswordAsync(
+                userId,
+                request.OldPassword,
+                request.NewPassword,
+                request.ConfirmNewPassword
+            );
+
+            return Ok(new
+            {
+                Message = "Đổi mật khẩu thành công."
+            });
+        }
+
+
+
     }
 }

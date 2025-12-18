@@ -9,7 +9,7 @@ import FieldSearch from "../fields/FieldSearch";
 import BookingHistory from "../booking/BookingHistory";
 import Invoice from "../booking/Invoice";
 
-import { Button, Section, FadeIn, SlideIn } from "../../../../shared/components/ui";
+import { Button, Section, FadeIn, SlideIn, PhoneInput } from "../../../../shared/components/ui";
 import { NotificationsDisplay } from "../../../../shared";
 
 export default function Dashboard({ currentView, navigateTo }) {
@@ -23,9 +23,8 @@ export default function Dashboard({ currentView, navigateTo }) {
      const [pwdMsg, setPwdMsg] = useState("");
      const [pwdErr, setPwdErr] = useState("");
 
-     // Scroll to top when view changes
+     // Cuộn lên đầu 
      useEffect(() => {
-          // Show loading briefly when switching views
           const loadingTimeout = setTimeout(() => {
                window.scrollTo({
                     top: 0,
@@ -35,7 +34,7 @@ export default function Dashboard({ currentView, navigateTo }) {
           return () => clearTimeout(loadingTimeout);
      }, [currentView]);
 
-     // Render different content based on current view
+     // Render nội dung dựa trên currentView
      const renderContent = () => {
           switch (currentView) {
                case "home":
@@ -112,10 +111,10 @@ export default function Dashboard({ currentView, navigateTo }) {
                                                   <label className="block text-sm font-medium text-gray-700 mb-2">
                                                        Số điện thoại
                                                   </label>
-                                                  <input
-                                                       type="tel"
+                                                  <PhoneInput
                                                        value={phone}
                                                        onChange={(e) => setPhone(e.target.value)}
+                                                       maxLength={10}
                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                                                        placeholder="Nhập số điện thoại"
                                                   />

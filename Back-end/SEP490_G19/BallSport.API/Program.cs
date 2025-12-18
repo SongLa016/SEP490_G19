@@ -109,13 +109,14 @@ public class Program
                     // ===================== CORS =====================
                     services.AddCors(options =>
                     {
-                        options.AddPolicy("AllowVercel", builder =>
+                        options.AddPolicy("AllowFrontend", builder =>
                         {
                             builder
                                 .WithOrigins(
                                     "http://localhost:3000",
                                     "https://localhost:3000",
-                                    "https://sep490-g19-zxph.onrender.com"
+                                    "https://sep490-g19-zxph.onrender.com",
+                                    "https://sep490-g19.vercel.app"
                                 )
 
                                 .AllowAnyHeader()
@@ -327,7 +328,7 @@ public class Program
                     var env = context.HostingEnvironment;   
 
                     app.UseRouting();
-                    app.UseCors("AllowAll");
+                    app.UseCors("AllowFrontend");
 
                     app.UseAuthentication();
                     app.UseAuthorization();

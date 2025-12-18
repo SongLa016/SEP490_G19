@@ -1,10 +1,18 @@
-import React, { useState, useRef } from "react";
+import React, { useRef } from "react";
 import { Image as ImageIcon, Plus, X, Loader2, Star } from "lucide-react";
+import Swal from "sweetalert2";
 
 /**
- * ImageUploadSection - Handle main image and gallery images
- * Supports both URLs (from Cloudinary) and File objects (for new uploads)
- * Sends File objects directly to backend (no base64 conversion)
+ * Component ImageUploadSection - Xử lý upload ảnh chính và thư viện ảnh
+ * Hỗ trợ cả URL (từ Cloudinary) và File objects (upload mới)
+ * Gửi File objects trực tiếp lên backend (không chuyển đổi base64)
+ * 
+ * @param {File|string} mainImage - Ảnh chính (File object hoặc URL string)
+ * @param {Array} imageFiles - Mảng ảnh thư viện (File objects hoặc URL strings)
+ * @param {Function} onMainImageChange - Callback khi thay đổi ảnh chính
+ * @param {Function} onImageFilesChange - Callback khi thay đổi thư viện ảnh
+ * @param {number} maxGalleryImages - Số lượng ảnh tối đa trong thư viện (mặc định: 4)
+ * @param {boolean} disabled - Vô hiệu hóa upload (mặc định: false)
  */
 export default function ImageUploadSection({
      mainImage,
@@ -14,124 +22,219 @@ export default function ImageUploadSection({
      maxGalleryImages = 4,
      disabled = false,
 }) {
-     const [uploadingMain, setUploadingMain] = useState(false);
-     const [uploadingGallery, setUploadingGallery] = useState(false);
+     // Refs để truy cập input file
      const mainImageInputRef = useRef(null);
      const galleryInputRef = useRef(null);
-     const objectUrlsRef = useRef(new Set()); // Track ObjectURLs for cleanup
+     // Ref để theo dõi ObjectURLs cần cleanup khi unmount
+     const objectUrlsRef = useRef(new Set());
 
-     // Helper to check if a value is a URL string (from Cloudinary)
+     // ==================== HÀM TIỆN ÍCH ====================
+
+     /**
+      * Kiểm tra giá trị có phải là URL string không (từ Cloudinary)
+      * @param {any} value - Giá trị cần kiểm tra
+      * @returns {boolean} - true nếu là URL
+      */
      const isUrl = (value) => {
           if (!value || typeof value !== 'string') return false;
           return value.startsWith('http://') || value.startsWith('https://');
      };
 
-     // Helper to check if a value is a File object
+     /**
+      * Kiểm tra giá trị có phải là File object không
+      * @param {any} value - Giá trị cần kiểm tra
+      * @returns {boolean} - true nếu là File
+      */
      const isFile = (value) => {
           return value instanceof File;
      };
 
-     // Get preview URL for an image (File object or URL string)
+     /**
+      * Lấy URL preview cho ảnh (File object hoặc URL string)
+      * Nếu là File, tạo ObjectURL và lưu vào ref để cleanup sau
+      * @param {File|string} image - Ảnh cần lấy preview
+      * @returns {string} - URL để hiển thị preview
+      */
      const getPreviewUrl = (image) => {
           if (isFile(image)) {
                const objectUrl = URL.createObjectURL(image);
                objectUrlsRef.current.add(objectUrl);
                return objectUrl;
           }
-          return image; // It's already a URL string
+          return image; // Đã là URL string rồi
      };
 
-     // Cleanup ObjectURLs on unmount
+     // Cleanup ObjectURLs khi component unmount để tránh memory leak
      React.useEffect(() => {
+          const currentUrls = objectUrlsRef.current;
           return () => {
-               objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
-               objectUrlsRef.current.clear();
+               currentUrls.forEach(url => URL.revokeObjectURL(url));
+               currentUrls.clear();
           };
      }, []);
 
-     // Handle main image upload
+     // ==================== VALIDATE FILE ẢNH ====================
+
+     // Danh sách định dạng file ảnh được phép
+     const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
+
+     /**
+      * Validate file ảnh trước khi upload
+      * Kiểm tra: định dạng file, MIME type, kích thước
+      * @param {File} file - File cần validate
+      * @returns {boolean} - true nếu file hợp lệ
+      */
+     const validateImageFile = (file) => {
+          // Lấy extension từ tên file
+          const fileName = file.name.toLowerCase();
+          const extension = fileName.split('.').pop();
+
+          // Kiểm tra extension có trong danh sách cho phép không
+          if (!allowedExtensions.includes(extension)) {
+               Swal.fire({
+                    icon: 'error',
+                    title: 'File không hợp lệ',
+                    html: `Chỉ chấp nhận file ảnh với định dạng: <strong>JPG, PNG, GIF, WEBP</strong><br/>File của bạn: <strong>.${extension}</strong>`,
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#ef4444'
+               });
+               return false;
+          }
+
+          // Kiểm tra MIME type để đảm bảo file thực sự là ảnh
+          if (!allowedMimeTypes.includes(file.type) && !file.type.startsWith("image/")) {
+               Swal.fire({
+                    icon: 'error',
+                    title: 'File không hợp lệ',
+                    text: 'Vui lòng chọn file ảnh hợp lệ (JPG, PNG, GIF, WEBP)',
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#ef4444'
+               });
+               return false;
+          }
+
+          // Kiểm tra kích thước file (tối đa 5MB)
+          if (file.size > 5 * 1024 * 1024) {
+               Swal.fire({
+                    icon: 'error',
+                    title: 'File quá lớn',
+                    text: 'Kích thước ảnh không được vượt quá 5MB',
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#ef4444'
+               });
+               return false;
+          }
+
+          return true;
+     };
+
+     // ==================== XỬ LÝ UPLOAD ẢNH CHÍNH ====================
+
+     /**
+      * Xử lý khi người dùng chọn ảnh chính
+      * Validate file và gọi callback để cập nhật state
+      * @param {Event} e - Event từ input file
+      */
      const handleMainImageUpload = (e) => {
           const file = e.target.files?.[0];
           if (!file) return;
 
-          // Validate file type
-          if (!file.type.startsWith("image/")) {
-               alert("Vui lòng chọn file ảnh (JPG, PNG)");
+          // Validate file trước khi xử lý
+          if (!validateImageFile(file)) {
+               // Reset input nếu file không hợp lệ
+               if (mainImageInputRef.current) {
+                    mainImageInputRef.current.value = "";
+               }
                return;
           }
 
-          // Validate file size (5MB)
-          if (file.size > 5 * 1024 * 1024) {
-               alert("Kích thước ảnh không được vượt quá 5MB");
-               return;
-          }
-
-          // Revoke old ObjectURL if exists
+          // Xóa ObjectURL cũ nếu có để tránh memory leak
           if (mainImage && isFile(mainImage) && mainImage !== file) {
                const oldUrl = getPreviewUrl(mainImage);
                URL.revokeObjectURL(oldUrl);
                objectUrlsRef.current.delete(oldUrl);
           }
 
-          // Pass File object directly (no base64 conversion)
+          // Gọi callback với File object (không chuyển đổi base64)
           onMainImageChange(file);
 
-          // Reset input to allow selecting the same file again
+          // Reset input để có thể chọn lại cùng file
           if (mainImageInputRef.current) {
                mainImageInputRef.current.value = "";
           }
      };
 
-     // Handle gallery images upload
+     // ==================== XỬ LÝ UPLOAD THƯ VIỆN ẢNH ====================
+
+     /**
+      * Xử lý khi người dùng chọn ảnh cho thư viện
+      * Validate tất cả files và kiểm tra giới hạn số lượng
+      * @param {Event} e - Event từ input file
+      */
      const handleGalleryUpload = (e) => {
           const files = Array.from(e.target.files || []);
           if (files.length === 0) return;
 
-          // Count existing images (both URLs and File objects)
+          // Tính số slot còn trống trong thư viện
           const existingCount = imageFiles.length;
           const remainingSlots = maxGalleryImages - existingCount;
 
+          // Kiểm tra nếu số file chọn vượt quá số slot còn trống
           if (files.length > remainingSlots) {
-               alert(`Chỉ có thể thêm tối đa ${remainingSlots} ảnh nữa`);
+               Swal.fire({
+                    icon: 'warning',
+                    title: 'Vượt quá giới hạn',
+                    text: `Chỉ có thể thêm tối đa ${remainingSlots} ảnh nữa`,
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#f59e0b'
+               });
                return;
           }
 
-          // Validate all files
+          // Validate từng file
           for (const file of files) {
-               if (!file.type.startsWith("image/")) {
-                    alert("Vui lòng chỉ chọn file ảnh (JPG, PNG)");
-                    return;
-               }
-               if (file.size > 5 * 1024 * 1024) {
-                    alert("Mỗi ảnh không được vượt quá 5MB");
+               if (!validateImageFile(file)) {
+                    // Reset input nếu có file không hợp lệ
+                    if (galleryInputRef.current) {
+                         galleryInputRef.current.value = "";
+                    }
                     return;
                }
           }
 
-          // Pass File objects directly (no base64 conversion)
-          // Keep existing images (URLs or File objects) and add new File objects
+          // Gọi callback với mảng ảnh mới (giữ ảnh cũ + thêm ảnh mới)
           onImageFilesChange([...imageFiles, ...files]);
 
-          // Reset input to allow selecting the same files again
+          // Reset input để có thể chọn lại cùng files
           if (galleryInputRef.current) {
                galleryInputRef.current.value = "";
           }
      };
 
-     // Remove gallery image
+     // ==================== XỬ LÝ XÓA ẢNH ====================
+
+     /**
+      * Xóa ảnh khỏi thư viện theo index
+      * @param {number} index - Vị trí ảnh cần xóa
+      */
      const handleRemoveGalleryImage = (index) => {
           const newImages = imageFiles.filter((_, i) => i !== index);
           onImageFilesChange(newImages);
      };
 
-     // Remove main image
+     /**
+      * Xóa ảnh chính
+      */
      const handleRemoveMainImage = () => {
           onMainImageChange(null);
      };
 
+     // ==================== RENDER GIAO DIỆN ====================
+
      return (
           <div className="space-y-4">
-               {/* Main Image Section */}
+               {/* ===== PHẦN ẢNH CHÍNH ===== */}
                <div>
                     <div className="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
                          <div className="flex items-center gap-1">
@@ -141,6 +244,7 @@ export default function ImageUploadSection({
                          </div>
                     </div>
 
+                    {/* Hiển thị ảnh chính nếu có */}
                     {mainImage ? (
                          <div className="relative group h-48 rounded-xl overflow-hidden border-2 border-yellow-200 bg-gray-100">
                               <img
@@ -153,6 +257,7 @@ export default function ImageUploadSection({
                                              'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ddd" width="400" height="300"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="20" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3EKhông thể tải ảnh%3C/text%3E%3C/svg%3E';
                                    }}
                               />
+                              {/* Badge hiển thị trạng thái ảnh */}
                               <div className="absolute top-2 left-2 flex flex-col gap-1">
                                    {isUrl(mainImage) && (
                                         <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
@@ -169,6 +274,7 @@ export default function ImageUploadSection({
                                         Ảnh chính
                                    </div>
                               </div>
+                              {/* Nút xóa ảnh */}
                               <button
                                    type="button"
                                    onClick={handleRemoveMainImage}
@@ -180,6 +286,7 @@ export default function ImageUploadSection({
                               </button>
                          </div>
                     ) : (
+                         /* Vùng click để chọn ảnh chính */
                          <div
                               role="button"
                               tabIndex={0}
@@ -192,23 +299,17 @@ export default function ImageUploadSection({
                               }}
                               className="flex h-48 items-center justify-center border-2 border-dashed border-yellow-300 rounded-xl text-sm text-gray-500 hover:border-yellow-400 hover:bg-yellow-50 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-yellow-400"
                          >
-                              {uploadingMain ? (
-                                   <div className="flex flex-col items-center text-gray-500">
-                                        <Loader2 className="w-8 h-8 animate-spin text-yellow-500 mb-2" />
-                                        <span>Đang xử lý...</span>
-                                   </div>
-                              ) : (
-                                   <div className="flex flex-col items-center">
-                                        <Star className="w-8 h-8 text-yellow-500 fill-yellow-500 mb-2" />
-                                        <span className="font-medium">Thêm ảnh chính</span>
-                                        <span className="text-xs text-gray-400 mt-1">
-                                             Ảnh này sẽ hiển thị làm background
-                                        </span>
-                                   </div>
-                              )}
+                              <div className="flex flex-col items-center">
+                                   <Star className="w-8 h-8 text-yellow-500 fill-yellow-500 mb-2" />
+                                   <span className="font-medium">Thêm ảnh chính</span>
+                                   <span className="text-xs text-gray-400 mt-1">
+                                        Ảnh này sẽ hiển thị làm background
+                                   </span>
+                              </div>
                          </div>
                     )}
 
+                    {/* Input file ẩn cho ảnh chính */}
                     <input
                          ref={mainImageInputRef}
                          type="file"
@@ -222,7 +323,7 @@ export default function ImageUploadSection({
                     </p>
                </div>
 
-               {/* Gallery Images Section */}
+               {/* ===== PHẦN THƯ VIỆN ẢNH ===== */}
                <div>
                     <div className="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
                          <div className="flex items-center gap-1">
@@ -234,6 +335,7 @@ export default function ImageUploadSection({
                          </span>
                     </div>
 
+                    {/* Grid hiển thị ảnh trong thư viện */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                          {imageFiles.map((image, index) => {
                               const isImageUrl = isUrl(image);
@@ -253,9 +355,11 @@ export default function ImageUploadSection({
                                                        'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23ddd" width="400" height="300"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="20" dy="10.5" font-weight="bold" x="50%25" y="50%25" text-anchor="middle"%3EKhông thể tải ảnh%3C/text%3E%3C/svg%3E';
                                              }}
                                         />
+                                        {/* Số thứ tự ảnh */}
                                         <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
                                              #{index + 1}
                                         </div>
+                                        {/* Badge trạng thái ảnh */}
                                         {isImageUrl && (
                                              <div className="absolute bottom-2 right-2 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded">
                                                   ✓
@@ -266,10 +370,11 @@ export default function ImageUploadSection({
                                                   📤
                                              </div>
                                         )}
+                                        {/* Nút xóa ảnh (hiện khi hover) */}
                                         <button
                                              type="button"
                                              onClick={() => {
-                                                  // Cleanup ObjectURL if it's a File
+                                                  // Cleanup ObjectURL nếu là File
                                                   if (isFile(image)) {
                                                        const url = getPreviewUrl(image);
                                                        URL.revokeObjectURL(url);
@@ -287,6 +392,7 @@ export default function ImageUploadSection({
                               );
                          })}
 
+                         {/* Nút thêm ảnh mới (nếu chưa đạt giới hạn) */}
                          {imageFiles.length < maxGalleryImages && (
                               <div
                                    role="button"
@@ -300,21 +406,15 @@ export default function ImageUploadSection({
                                    }}
                                    className="flex h-28 sm:h-32 items-center justify-center border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400"
                               >
-                                   {uploadingGallery ? (
-                                        <div className="flex flex-col items-center text-gray-500">
-                                             <Loader2 className="w-5 h-5 animate-spin text-blue-500 mb-2" />
-                                             <span>Đang xử lý...</span>
-                                        </div>
-                                   ) : (
-                                        <div className="flex flex-col items-center">
-                                             <Plus className="w-5 h-5 text-blue-500 mb-1" />
-                                             <span>Thêm ảnh</span>
-                                        </div>
-                                   )}
+                                   <div className="flex flex-col items-center">
+                                        <Plus className="w-5 h-5 text-blue-500 mb-1" />
+                                        <span>Thêm ảnh</span>
+                                   </div>
                               </div>
                          )}
                     </div>
 
+                    {/* Input file ẩn cho thư viện ảnh (cho phép chọn nhiều file) */}
                     <input
                          ref={galleryInputRef}
                          type="file"

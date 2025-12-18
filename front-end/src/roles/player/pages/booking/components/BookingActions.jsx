@@ -17,7 +17,9 @@ export default function BookingActions({ booking, user, handlers }) {
           hasExistingMatchRequest
      } = handlers;
 
+     // Kiểm tra có thể hiển thị nút tìm đối thủ không
      const canShowFindOpponent = shouldShowFindOpponentButton(booking) && !hasExistingMatchRequest(booking);
+     // Kiểm tra booking đã có đánh giá chưa
      const hasRating = !!(booking.ratingId || booking.ratingStars);
 
      return (

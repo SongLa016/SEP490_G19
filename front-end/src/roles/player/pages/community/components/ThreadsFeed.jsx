@@ -24,17 +24,7 @@ export default function ThreadsFeed({ refreshTrigger }) {
      const [selectedField, setSelectedField] = useState(null);
      const [newPostTitle, setNewPostTitle] = useState("");
      const [newPostContent, setNewPostContent] = useState("");
-
-     // Custom hooks
-     const {
-          posts,
-          loading,
-          setPosts,
-          loadPosts,
-          toggleLike,
-          toggleRepost,
-          toggleBookmark
-     } = usePosts(user, refreshTrigger);
+     const { posts, loading, setPosts, loadPosts, toggleLike, toggleRepost, toggleBookmark } = usePosts(user, refreshTrigger);
 
      const {
           editingPost,
@@ -81,19 +71,20 @@ export default function ThreadsFeed({ refreshTrigger }) {
           loadPosts
      );
 
+     // mở modal reply
      const handleOpenReply = (post) => {
-
           setSelectedPost(post);
           setShowReplyModal(true);
      };
 
+     // mở modal chi tiết
      const handleOpenPostDetail = (post) => {
           setSelectedPost(post);
           setShowPostDetailModal(true);
      };
 
+     // submit reply
      const handleReplySubmit = async (content) => {
-
           if (selectedPost && content) {
                const success = await handleCreateComment(selectedPost.PostID, content);
                if (success) {
@@ -103,6 +94,7 @@ export default function ThreadsFeed({ refreshTrigger }) {
           }
      };
 
+     // submit comment
      const handlePostDetailCommentSubmit = async (postId, content, parentCommentId = null) => {
           const success = await handleCreateComment(postId, content, parentCommentId);
           return success;
@@ -111,7 +103,7 @@ export default function ThreadsFeed({ refreshTrigger }) {
      return (
           <div className="min-h-screen">
                {/* Main Content - Centered */}
-               <div className="flex justify-center">
+               <div className="flex flex-col">
                     {/* Posts Feed với Stagger Animations */}
                     {loading ? (
                          <div className="flex justify-center items-center py-12">
@@ -122,7 +114,7 @@ export default function ThreadsFeed({ refreshTrigger }) {
                               <div className="text-gray-500">Chưa có bài viết nào</div>
                          </div>
                     ) : (
-                         <div className="divide-y divide-gray-200">
+                         <div className="divide-y divide-gray-100">
                               {posts.map((post, index) => (
                                    <PostCard
                                         key={post.PostID}

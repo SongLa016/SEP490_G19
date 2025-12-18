@@ -8,6 +8,7 @@ import { useTranslation } from "../../../../shared/hooks/useTranslation";
 
 export default function ProfileStats({ user }) {
      const { t } = useTranslation();
+     // Trạng thái và dữ liệu
      const [stats, setStats] = useState({
           totalBookings: 0,
           totalHours: 0,
@@ -24,13 +25,12 @@ export default function ProfileStats({ user }) {
      const [error, setError] = useState(null);
      const [profileData, setProfileData] = useState(null);
 
+     // Tải dữ liệu khi component được mount
      useEffect(() => {
           const loadStats = async () => {
                try {
                     setLoading(true);
                     setError(null);
-
-                    // Load profile data first
                     let profile = null;
                     let userData = null;
                     try {
@@ -41,31 +41,27 @@ export default function ProfileStats({ user }) {
                          }
                     } catch (profileError) {
                          console.warn("Could not load profile:", profileError);
-                         // Continue even if profile fails
                     }
 
-                    // Load user data from User table to get createdAt
+                    // tải thông tin user từ API User 
                     try {
-                         // Get userId from token payload
                          const token = getStoredToken();
                          let userId = null;
-                         
+
                          if (token && !isTokenExpired(token)) {
                               try {
-                                   // Decode token to get userId
                                    const payload = JSON.parse(atob(token.split('.')[1]));
                                    userId = payload.UserID || payload.userID || payload.userId || payload.id;
                               } catch (decodeError) {
                                    console.warn("Could not decode token:", decodeError);
                               }
                          }
-                         
-                         // Fallback to user prop or localStorage
+
                          if (!userId) {
                               const currentUser = user || JSON.parse(localStorage.getItem('user') || '{}');
                               userId = currentUser?.userId || currentUser?.id || currentUser?.UserID;
                          }
-                         
+                         // lấy dữ liệu user 
                          if (userId) {
                               const response = await fetch(
                                    `https://sep490-g19-zxph.onrender.com/api/User/${userId}`,
@@ -76,31 +72,26 @@ export default function ProfileStats({ user }) {
                                         }
                                    }
                               );
-                              
+
                               if (response.ok) {
                                    userData = await response.json();
                               }
                          }
                     } catch (userError) {
                          console.warn("Could not load user data:", userError);
-                         // Continue even if user data fails
                     }
 
-                    // Load all stats from API
+                    // tải thống kê người chơi
                     const allStats = await playerStatisticsService.getAllStats();
-
-                    // Transform monthly stats to match component format
                     const transformedMonthlyStats = Array.isArray(allStats.monthlyStats)
                          ? allStats.monthlyStats.map((stat, index) => {
-                              // Handle different possible response formats
                               const monthName = stat.month || stat.monthName || `Tháng ${new Date().getMonth() - index + 1}`;
-                              // Ensure all values are numbers
                               const bookings = Number(stat.bookings || stat.totalBookings || 0) || 0;
                               const hours = Number(stat.hours || stat.totalHours || stat.totalPlaying || stat.totalPlayingHours || 0) || 0;
                               const spent = Number(stat.spent || stat.totalSpent || stat.totalSpending || 0) || 0;
-                              
+
                               return {
-                                   month: String(monthName), // Ensure month is a string
+                                   month: String(monthName),
                                    bookings: bookings,
                                    hours: hours,
                                    spent: spent
@@ -108,11 +99,9 @@ export default function ProfileStats({ user }) {
                          })
                          : [];
 
-                    // Transform recent activity to match component format
+                    // Hoạt động gần đây
                     const transformedRecentActivity = Array.isArray(allStats.recentActivity)
                          ? allStats.recentActivity.map((activity, index) => {
-                              // Handle different possible response formats
-                              // Ensure all values are primitives (string or number)
                               return {
                                    id: Number(activity.id) || index + 1,
                                    type: String(activity.type || activity.activityType || "default"),
@@ -122,33 +111,32 @@ export default function ProfileStats({ user }) {
                          })
                          : [];
 
-                    // Ensure all numeric values are actually numbers
                     const safeTotalBookings = Number(allStats.totalBookings) || 0;
                     const safeTotalHours = Number(allStats.totalHours) || 0;
                     const safeAverageRating = Number(allStats.averageRating) || 0;
                     const safeTotalSpent = Number(allStats.totalSpent) || 0;
 
-                    // Extract profile information
-                    const preferredPositions = profile?.preferredPositions || 
-                                               profile?.PreferredPositions || 
-                                               user?.preferredPositions || 
-                                               "Chưa cập nhật";
-                    const skillLevel = profile?.skillLevel || 
-                                      profile?.SkillLevel || 
-                                      user?.skillLevel || 
-                                      "Chưa cập nhật";
-                    
-                    // Get createdAt from User table (priority: userData > user > profile)
-                    const createdAt = userData?.createdAt || 
-                                     userData?.CreatedAt ||
-                                     userData?.created_at ||
-                                     user?.createdAt || 
-                                     user?.CreatedAt ||
-                                     user?.created_at ||
-                                     user?.joinDate || 
-                                     profile?.createdAt || 
-                                     profile?.CreatedAt || 
-                                     new Date().toISOString();
+                    // Lấy preferredPositions và skillLevel từ profile hoặc userData hoặc user
+                    const preferredPositions = profile?.preferredPositions ||
+                         profile?.PreferredPositions ||
+                         user?.preferredPositions ||
+                         "Chưa cập nhật";
+                    const skillLevel = profile?.skillLevel ||
+                         profile?.SkillLevel ||
+                         user?.skillLevel ||
+                         "Chưa cập nhật";
+
+                    // Lấy ngày tham gia từ nhiều nguồn khác nhau
+                    const createdAt = userData?.createdAt ||
+                         userData?.CreatedAt ||
+                         userData?.created_at ||
+                         user?.createdAt ||
+                         user?.CreatedAt ||
+                         user?.created_at ||
+                         user?.joinDate ||
+                         profile?.createdAt ||
+                         profile?.CreatedAt ||
+                         new Date().toISOString();
 
                     setStats({
                          totalBookings: safeTotalBookings,
@@ -185,6 +173,7 @@ export default function ProfileStats({ user }) {
           }).format(amount);
      };
 
+     // Hàm định dạng ngày tháng
      const formatDate = (dateString) => {
           if (!dateString) return t("profileStats.notUpdated");
           try {
@@ -199,11 +188,12 @@ export default function ProfileStats({ user }) {
           }
      };
 
+     // Hàm chuyển đổi mức kỹ năng
      const translateSkillLevel = (skillLevel) => {
           if (!skillLevel || skillLevel === "Chưa cập nhật" || skillLevel === t("profileStats.notUpdated")) {
                return t("profileStats.notUpdated");
           }
-          
+
           const skillLevelMap = {
                "beginner": "Mới bắt đầu",
                "intermediate": "Trung bình",
@@ -214,7 +204,7 @@ export default function ProfileStats({ user }) {
                "Nâng cao": "Nâng cao",
                "Chuyên nghiệp": "Chuyên nghiệp"
           };
-          
+
           const lowerCaseLevel = String(skillLevel).toLowerCase().trim();
           return skillLevelMap[lowerCaseLevel] || skillLevelMap[skillLevel] || String(skillLevel);
      };

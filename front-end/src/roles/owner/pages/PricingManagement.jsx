@@ -20,7 +20,7 @@ import { fetchPricing, createPricing, updatePricing, deletePricing } from "../..
 import Swal from "sweetalert2";
 
 const PricingManagement = ({ isDemo = false }) => {
-     const { user, logout } = useAuth();
+     const { user } = useAuth();
      const [loading, setLoading] = useState(true);
      const [fields, setFields] = useState([]);
      const [pricingData, setPricingData] = useState([]);
@@ -43,30 +43,30 @@ const PricingManagement = ({ isDemo = false }) => {
           price: ""
      });
 
-     // Use React Query hooks for time slots (after formData is declared)
+     // tải tất cả time slots
      const { data: allTimeSlots = [] } = useTimeSlots();
      const { data: fieldTimeSlots = [], isLoading: loadingFieldSlots } = useTimeSlotsByField(
           formData.fieldId ? parseInt(formData.fieldId) : null,
-          !!formData.fieldId // Only fetch when fieldId is selected
+          !!formData.fieldId
      );
 
-     // Get current user ID
+     // lấy userId 
      const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
 
-     // Load data from API
+     // Load giữ liệu
      const loadData = useCallback(async () => {
           try {
                setLoading(true);
 
-               // Fetch all complexes with fields
+               // tải tất cả complexes với fields
                const allComplexesWithFields = await fetchAllComplexesWithFields();
 
-               // Filter only owner's complexes
+               // tìm complexes của owner hiện tại
                const ownerComplexes = allComplexesWithFields.filter(
                     complex => complex.ownerId === currentUserId || complex.ownerId === Number(currentUserId)
                );
 
-               // Get all fields from owner's complexes
+               // lấy tất cả fieds từ complexes của owner
                const allFields = ownerComplexes.flatMap(complex =>
                     (complex.fields || []).map(field => ({
                          ...field,
@@ -76,9 +76,7 @@ const PricingManagement = ({ isDemo = false }) => {
 
                setFields(allFields);
 
-               // Time slots are now loaded via React Query hooks
-
-               // Fetch pricing data
+               // tải giá
                const pricingResponse = await fetchPricing();
                if (pricingResponse.success) {
                     setPricingData(pricingResponse.data || []);
@@ -100,6 +98,7 @@ const PricingManagement = ({ isDemo = false }) => {
           loadData();
      }, [loadData]);
 
+     // thay đổi input trong form giá
      const handleInputChange = (e) => {
           const { name, value, type, checked } = e.target;
           setFormData(prev => ({
@@ -108,6 +107,7 @@ const PricingManagement = ({ isDemo = false }) => {
           }));
      };
 
+     // submit form thêm/chỉnh sửa giá
      const handleSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {
@@ -166,6 +166,11 @@ const PricingManagement = ({ isDemo = false }) => {
           }
      };
 
+     /**
+      * Mở modal chỉnh sửa giá
+      * - Load dữ liệu giá vào form
+      * @param {Object} price - Thông tin giá cần sửa
+      */
      const handleEdit = (price) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -180,6 +185,12 @@ const PricingManagement = ({ isDemo = false }) => {
           setIsEditModalOpen(true);
      };
 
+     /**
+      * Xử lý xóa giá
+      * - Hiển thị dialog xác nhận
+      * - Gọi API xóa pricing
+      * @param {number} priceId - ID của giá cần xóa
+      */
      const handleDelete = async (priceId) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -243,6 +254,10 @@ const PricingManagement = ({ isDemo = false }) => {
           });
      };
 
+     /**
+      * Toggle chọn/bỏ chọn slot trong form tạo giá hàng loạt
+      * @param {number} slotId - ID của slot cần toggle
+      */
      const handleBulkSlotToggle = (slotId) => {
           setBulkFormData(prev => ({
                ...prev,
@@ -252,6 +267,12 @@ const PricingManagement = ({ isDemo = false }) => {
           }));
      };
 
+     /**
+      * Xử lý submit form tạo giá hàng loạt
+      * - Tạo giá cho nhiều slot cùng lúc
+      * - Hiển thị kết quả thành công/thất bại
+      * @param {Event} e - Event từ form submit
+      */
      const handleBulkSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {
@@ -331,6 +352,9 @@ const PricingManagement = ({ isDemo = false }) => {
           }
      };
 
+     /**
+      * Mở modal thêm giá mới
+      */
      const handleAddPrice = () => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -339,6 +363,9 @@ const PricingManagement = ({ isDemo = false }) => {
           setIsAddModalOpen(true);
      };
 
+     /**
+      * Mở modal thiết lập giá hàng loạt
+      */
      const handleBulkSetup = () => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -396,544 +423,544 @@ const PricingManagement = ({ isDemo = false }) => {
      }
 
      return (
-               <div className="space-y-6">
-                    {/* Header */}
-                    <div className="flex justify-between items-center">
+          <div className="space-y-6">
+               {/* Header */}
+               <div className="flex justify-between items-center">
+                    <div>
+                         <h1 className="text-3xl font-bold text-gray-900">Quản lý giá sân</h1>
+                         <p className="text-gray-600 mt-1">Thiết lập giá theo khung giờ và loại ngày</p>
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                         <Button
+                              variant="outline"
+                              className="rounded-2xl"
+                              onClick={handleBulkSetup}
+                         >
+                              <Settings className="w-4 h-4 mr-2" />
+                              Setup hàng loạt
+                         </Button>
+
+                         <Button
+                              onClick={handleAddPrice}
+                              className="flex items-center space-x-2 rounded-2xl"
+                         >
+                              <Plus className="w-4 h-4" />
+                              <span>Thêm giá mới</span>
+                         </Button>
+                    </div>
+               </div>
+
+               {/* Filters */}
+               <Card className="p-6 rounded-2xl shadow-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                          <div>
-                              <h1 className="text-3xl font-bold text-gray-900">Quản lý giá sân</h1>
-                              <p className="text-gray-600 mt-1">Thiết lập giá theo khung giờ và loại ngày</p>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   Chọn sân
+                              </label>
+                              <Select value={selectedField} onValueChange={setSelectedField} >
+                                   <SelectTrigger className="rounded-2xl">
+                                        <SelectValue placeholder="Tất cả" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                        <SelectItem value="all">Tất cả ({fields.length} sân)</SelectItem>
+                                        {fields.map(field => (
+                                             <SelectItem key={field.fieldId} value={(field.fieldId || "").toString()}>
+                                                  {field.name} ({field.complexName})
+                                             </SelectItem>
+                                        ))}
+                                   </SelectContent>
+                              </Select>
                          </div>
 
-                         <div className="flex items-center space-x-3">
-                              <Button
-                                   variant="outline"
-                                   className="rounded-2xl"
-                                   onClick={handleBulkSetup}
-                              >
-                                   <Settings className="w-4 h-4 mr-2" />
-                                   Setup hàng loạt
-                              </Button>
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   Ngày
+                              </label>
+                              <DatePicker
+                                   value={selectedDate}
+                                   onChange={setSelectedDate}
+                                   placeholder="Chọn ngày"
+                                   minDate={new Date().toISOString().split('T')[0]}
+                              />
+                         </div>
 
-                              <Button
-                                   onClick={handleAddPrice}
-                                   className="flex items-center space-x-2 rounded-2xl"
-                              >
-                                   <Plus className="w-4 h-4" />
-                                   <span>Thêm giá mới</span>
-                              </Button>
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">Từ khóa</label>
+                              <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} className="rounded-2xl" placeholder="Tìm theo sân..." />
                          </div>
                     </div>
 
-                    {/* Filters */}
+                    <div className="flex items-end justify-end gap-3 mt-4">
+                         <Button
+                              variant="outline"
+                              onClick={() => {
+                                   setSelectedField("all");
+                                   setSelectedDate("");
+                                   setKeyword("");
+                              }}
+                              className="rounded-2xl items-center justify-center"
+                         >
+                              <FilterIcon className="w-4 h-4 mr-2" /> Xóa bộ lọc
+                         </Button>
+                    </div>
+               </Card>
+
+               {/* Pricing Table */}
+               <Card className="overflow-hidden rounded-2xl shadow-lg">
+                    <Table>
+                         <TableHeader>
+                              <TableRow className="bg-teal-700">
+                                   <TableHead className="text-white" >Sân</TableHead>
+                                   <TableHead className="text-white" >Khung giờ</TableHead>
+                                   <TableHead className="text-white" >Giá</TableHead>
+                                   <TableHead className="text-white" >Thao tác</TableHead>
+                              </TableRow>
+                         </TableHeader>
+                         <TableBody>
+                              {paginatedPricing.map((price) => (
+                                   <TableRow key={price.priceId} className="hover:bg-slate-50">
+                                        <TableCell className="text-sm font-medium text-gray-900">{getFieldName(price.fieldId)}</TableCell>
+                                        <TableCell className="text-sm text-gray-900">{getSlotName(price.slotId)}</TableCell>
+                                        <TableCell className="text-sm font-bold text-teal-700">{formatCurrency(price.price)}</TableCell>
+                                        <TableCell className="text-sm font-medium">
+                                             <div className="flex items-center space-x-2">
+                                                  <Button variant="ghost" size="sm" onClick={() => handleEdit(price)}>
+                                                       <Edit className="w-4 h-4" />
+                                                  </Button>
+                                                  <Button variant="ghost" size="sm" onClick={() => handleDelete(price.priceId)} className="text-red-600 hover:text-red-700">
+                                                       <Trash2 className="w-4 h-4" />
+                                                  </Button>
+                                             </div>
+                                        </TableCell>
+                                   </TableRow>
+                              ))}
+                         </TableBody>
+                    </Table>
+                    {filteredPricing.length === 0 ? (
+                         <div className="text-center py-12">
+                              <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                              <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có giá nào</h3>
+                              <p className="text-gray-500">Hãy thêm giá cho các khung giờ của sân.</p>
+                         </div>
+                    ) : (
+                         <div className="p-4 border-t">
+                              <Pagination
+                                   currentPage={currentPage}
+                                   totalPages={totalPages}
+                                   onPageChange={handlePageChange}
+                                   itemsPerPage={itemsPerPage}
+                                   totalItems={totalItems}
+                              />
+                         </div>
+                    )}
+               </Card>
+
+               {/* Pricing Summary */}
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Card className="p-6 rounded-2xl shadow-lg">
-                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Chọn sân
-                                   </label>
-                                   <Select value={selectedField} onValueChange={setSelectedField} >
-                                        <SelectTrigger className="rounded-2xl">
-                                             <SelectValue placeholder="Tất cả" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             <SelectItem value="all">Tất cả ({fields.length} sân)</SelectItem>
-                                             {fields.map(field => (
-                                                  <SelectItem key={field.fieldId} value={(field.fieldId || "").toString()}>
-                                                       {field.name} ({field.complexName})
-                                                  </SelectItem>
-                                             ))}
-                                        </SelectContent>
-                                   </Select>
+                         <div className="flex items-center">
+                              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                   <DollarSign className="w-6 h-6 text-purple-600" />
                               </div>
-
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Ngày
-                                   </label>
-                                   <DatePicker
-                                        value={selectedDate}
-                                        onChange={setSelectedDate}
-                                        placeholder="Chọn ngày"
-                                        minDate={new Date().toISOString().split('T')[0]}
-                                   />
-                              </div>
-
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">Từ khóa</label>
-                                   <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} className="rounded-2xl" placeholder="Tìm theo sân..." />
+                              <div className="ml-4">
+                                   <p className="text-sm font-medium text-gray-600">Tổng giá đã thiết lập</p>
+                                   <p className="text-2xl font-bold text-gray-900">
+                                        {filteredPricing.length}
+                                   </p>
                               </div>
                          </div>
+                    </Card>
 
-                         <div className="flex items-end justify-end gap-3 mt-4">
+                    <Card className="p-6 rounded-2xl shadow-lg">
+                         <div className="flex items-center">
+                              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                   <CheckSquare className="w-6 h-6 text-green-600" />
+                              </div>
+                              <div className="ml-4">
+                                   <p className="text-sm font-medium text-gray-600">Đang hoạt động</p>
+                                   <p className="text-2xl font-bold text-gray-900">
+                                        {filteredPricing.filter(p => p.isActive).length}
+                                   </p>
+                              </div>
+                         </div>
+                    </Card>
+
+                    <Card className="p-6 rounded-2xl shadow-lg">
+                         <div className="flex items-center">
+                              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                   <Clock className="w-6 h-6 text-blue-600" />
+                              </div>
+                              <div className="ml-4">
+                                   <p className="text-sm font-medium text-gray-600">Giá trung bình</p>
+                                   <p className="text-2xl font-bold text-gray-900">
+                                        {filteredPricing.length > 0 ? formatCurrency(filteredPricing.reduce((sum, p) => sum + p.price, 0) / filteredPricing.length) : formatCurrency(0)}
+                                   </p>
+                              </div>
+                         </div>
+                    </Card>
+               </div>
+
+               {/* Bulk Pricing Modal */}
+               <Modal
+                    isOpen={isBulkModalOpen}
+                    onClose={() => {
+                         setIsBulkModalOpen(false);
+                         resetBulkForm();
+                    }}
+                    title="Setup giá hàng loạt"
+                    className="max-w-2xl"
+               >
+                    <form onSubmit={handleBulkSubmit} className="space-y-4">
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   Sân *
+                              </label>
+                              <Select value={formData.fieldId} onValueChange={(value) => {
+                                   setFormData(prev => ({ ...prev, fieldId: value }));
+                                   setBulkFormData(prev => ({ ...prev, selectedSlotIds: [] })); // Reset selected slots when field changes
+                              }}>
+                                   <SelectTrigger>
+                                        <SelectValue placeholder="Chọn sân" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                        {fields.map(field => (
+                                             <SelectItem key={field.fieldId} value={(field.fieldId || "").toString()}>
+                                                  {field.name} ({field.complexName})
+                                             </SelectItem>
+                                        ))}
+                                   </SelectContent>
+                              </Select>
+                         </div>
+
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   Chọn khung giờ *
+                              </label>
+                              {!formData.fieldId ? (
+                                   <div className="border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
+                                        Vui lòng chọn sân trước
+                                   </div>
+                              ) : loadingFieldSlots ? (
+                                   <div className="border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
+                                        <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
+                                        Đang tải khung giờ...
+                                   </div>
+                              ) : fieldTimeSlots.length === 0 ? (
+                                   <div className="border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
+                                        Sân này chưa có khung giờ nào
+                                   </div>
+                              ) : (
+                                   <>
+                                        <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                                             {fieldTimeSlots.map(slot => {
+                                                  const slotId = slot.slotId || slot.SlotID;
+                                                  const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
+                                                  const startTime = slot.startTime || slot.StartTime || "00:00";
+                                                  const endTime = slot.endTime || slot.EndTime || "00:00";
+                                                  return (
+                                                       <label key={slotId} className="flex items-center space-x-2 cursor-pointer">
+                                                            <input
+                                                                 type="checkbox"
+                                                                 checked={bulkFormData.selectedSlotIds.includes(slotId)}
+                                                                 onChange={() => handleBulkSlotToggle(slotId)}
+                                                                 className="rounded border-gray-300"
+                                                            />
+                                                            <span className="text-sm text-gray-700">
+                                                                 {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
+                                                            </span>
+                                                       </label>
+                                                  );
+                                             })}
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                             Đã chọn: {bulkFormData.selectedSlotIds.length} khung giờ
+                                        </p>
+                                   </>
+                              )}
+                         </div>
+
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   Giá (VNĐ) *
+                              </label>
+                              <Input
+                                   name="price"
+                                   type="number"
+                                   value={bulkFormData.price}
+                                   onChange={(e) => setBulkFormData(prev => ({ ...prev, price: e.target.value }))}
+                                   placeholder="Nhập giá"
+                                   required
+                              />
+                         </div>
+
+                         <div className="flex justify-end space-x-3 pt-4">
                               <Button
+                                   type="button"
                                    variant="outline"
                                    onClick={() => {
-                                        setSelectedField("all");
-                                        setSelectedDate("");
-                                        setKeyword("");
+                                        setIsBulkModalOpen(false);
+                                        resetBulkForm();
                                    }}
-                                   className="rounded-2xl items-center justify-center"
                               >
-                                   <FilterIcon className="w-4 h-4 mr-2" /> Xóa bộ lọc
+                                   Hủy
                               </Button>
-                         </div>
-                    </Card>
-
-                    {/* Pricing Table */}
-                    <Card className="overflow-hidden rounded-2xl shadow-lg">
-                         <Table>
-                              <TableHeader>
-                                   <TableRow className="bg-teal-700">
-                                        <TableHead className="text-white" >Sân</TableHead>
-                                        <TableHead className="text-white" >Khung giờ</TableHead>
-                                        <TableHead className="text-white" >Giá</TableHead>
-                                        <TableHead className="text-white" >Thao tác</TableHead>
-                                   </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                   {paginatedPricing.map((price) => (
-                                        <TableRow key={price.priceId} className="hover:bg-slate-50">
-                                             <TableCell className="text-sm font-medium text-gray-900">{getFieldName(price.fieldId)}</TableCell>
-                                             <TableCell className="text-sm text-gray-900">{getSlotName(price.slotId)}</TableCell>
-                                             <TableCell className="text-sm font-bold text-teal-700">{formatCurrency(price.price)}</TableCell>
-                                             <TableCell className="text-sm font-medium">
-                                                  <div className="flex items-center space-x-2">
-                                                       <Button variant="ghost" size="sm" onClick={() => handleEdit(price)}>
-                                                            <Edit className="w-4 h-4" />
-                                                       </Button>
-                                                       <Button variant="ghost" size="sm" onClick={() => handleDelete(price.priceId)} className="text-red-600 hover:text-red-700">
-                                                            <Trash2 className="w-4 h-4" />
-                                                       </Button>
-                                                  </div>
-                                             </TableCell>
-                                        </TableRow>
-                                   ))}
-                              </TableBody>
-                         </Table>
-                         {filteredPricing.length === 0 ? (
-                              <div className="text-center py-12">
-                                   <DollarSign className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                   <h3 className="text-lg font-medium text-gray-900 mb-2">Chưa có giá nào</h3>
-                                   <p className="text-gray-500">Hãy thêm giá cho các khung giờ của sân.</p>
-                              </div>
-                         ) : (
-                              <div className="p-4 border-t">
-                                   <Pagination
-                                        currentPage={currentPage}
-                                        totalPages={totalPages}
-                                        onPageChange={handlePageChange}
-                                        itemsPerPage={itemsPerPage}
-                                        totalItems={totalItems}
-                                   />
-                              </div>
-                         )}
-                    </Card>
-
-                    {/* Pricing Summary */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                         <Card className="p-6 rounded-2xl shadow-lg">
-                              <div className="flex items-center">
-                                   <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                                        <DollarSign className="w-6 h-6 text-purple-600" />
-                                   </div>
-                                   <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-600">Tổng giá đã thiết lập</p>
-                                        <p className="text-2xl font-bold text-gray-900">
-                                             {filteredPricing.length}
-                                        </p>
-                                   </div>
-                              </div>
-                         </Card>
-
-                         <Card className="p-6 rounded-2xl shadow-lg">
-                              <div className="flex items-center">
-                                   <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                                        <CheckSquare className="w-6 h-6 text-green-600" />
-                                   </div>
-                                   <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-600">Đang hoạt động</p>
-                                        <p className="text-2xl font-bold text-gray-900">
-                                             {filteredPricing.filter(p => p.isActive).length}
-                                        </p>
-                                   </div>
-                              </div>
-                         </Card>
-
-                         <Card className="p-6 rounded-2xl shadow-lg">
-                              <div className="flex items-center">
-                                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                        <Clock className="w-6 h-6 text-blue-600" />
-                                   </div>
-                                   <div className="ml-4">
-                                        <p className="text-sm font-medium text-gray-600">Giá trung bình</p>
-                                        <p className="text-2xl font-bold text-gray-900">
-                                             {filteredPricing.length > 0 ? formatCurrency(filteredPricing.reduce((sum, p) => sum + p.price, 0) / filteredPricing.length) : formatCurrency(0)}
-                                        </p>
-                                   </div>
-                              </div>
-                         </Card>
-                    </div>
-
-                    {/* Bulk Pricing Modal */}
-                    <Modal
-                         isOpen={isBulkModalOpen}
-                         onClose={() => {
-                              setIsBulkModalOpen(false);
-                              resetBulkForm();
-                         }}
-                         title="Setup giá hàng loạt"
-                         className="max-w-2xl"
-                    >
-                         <form onSubmit={handleBulkSubmit} className="space-y-4">
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Sân *
-                                   </label>
-                                   <Select value={formData.fieldId} onValueChange={(value) => {
-                                        setFormData(prev => ({ ...prev, fieldId: value }));
-                                        setBulkFormData(prev => ({ ...prev, selectedSlotIds: [] })); // Reset selected slots when field changes
-                                   }}>
-                                        <SelectTrigger>
-                                             <SelectValue placeholder="Chọn sân" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             {fields.map(field => (
-                                                  <SelectItem key={field.fieldId} value={(field.fieldId || "").toString()}>
-                                                       {field.name} ({field.complexName})
-                                                  </SelectItem>
-                                             ))}
-                                        </SelectContent>
-                                   </Select>
-                              </div>
-
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Chọn khung giờ *
-                                   </label>
-                                   {!formData.fieldId ? (
-                                        <div className="border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
-                                             Vui lòng chọn sân trước
-                                        </div>
-                                   ) : loadingFieldSlots ? (
-                                        <div className="border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
-                                             <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
-                                             Đang tải khung giờ...
-                                        </div>
-                                   ) : fieldTimeSlots.length === 0 ? (
-                                        <div className="border border-gray-200 rounded-lg p-4 text-center text-gray-500 text-sm">
-                                             Sân này chưa có khung giờ nào
-                                        </div>
+                              <Button type="submit" disabled={bulkFormData.selectedSlotIds.length === 0 || isSubmitting}>
+                                   {isSubmitting ? (
+                                        <>
+                                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                             Đang tạo...
+                                        </>
                                    ) : (
                                         <>
-                                             <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto border border-gray-200 rounded-lg p-3">
-                                                  {fieldTimeSlots.map(slot => {
+                                             <CheckSquare className="w-4 h-4 mr-2" />
+                                             Tạo {bulkFormData.selectedSlotIds.length} giá
+                                        </>
+                                   )}
+                              </Button>
+                         </div>
+                    </form>
+               </Modal>
+
+               {/* Add Price Modal */}
+               <Modal
+                    isOpen={isAddModalOpen}
+                    onClose={() => {
+                         setIsAddModalOpen(false);
+                         resetForm();
+                    }}
+                    title="Thêm giá mới"
+               >
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   Sân *
+                              </label>
+                              <Select value={formData.fieldId} onValueChange={(value) => {
+                                   setFormData(prev => ({ ...prev, fieldId: value, slotId: "" })); // Reset slotId when field changes
+                              }}>
+                                   <SelectTrigger>
+                                        <SelectValue placeholder="Chọn sân" />
+                                   </SelectTrigger>
+                                   <SelectContent>
+                                        {fields.map(field => (
+                                             <SelectItem key={field.fieldId} value={(field.fieldId || "").toString()}>
+                                                  {field.name} ({field.complexName})
+                                             </SelectItem>
+                                        ))}
+                                   </SelectContent>
+                              </Select>
+                         </div>
+
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   Khung giờ *
+                              </label>
+                              {!formData.fieldId ? (
+                                   <div className="border border-gray-200 rounded-lg p-3 text-center text-gray-500 text-sm">
+                                        Vui lòng chọn sân trước
+                                   </div>
+                              ) : loadingFieldSlots ? (
+                                   <div className="border border-gray-200 rounded-lg p-3 text-center text-gray-500 text-sm flex items-center justify-center">
+                                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        Đang tải...
+                                   </div>
+                              ) : (
+                                   <Select value={formData.slotId} onValueChange={(value) => setFormData(prev => ({ ...prev, slotId: value }))}>
+                                        <SelectTrigger>
+                                             <SelectValue placeholder="Chọn khung giờ" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                             {fieldTimeSlots.length === 0 ? (
+                                                  <div className="p-2 text-center text-gray-500 text-sm">
+                                                       Sân này chưa có khung giờ nào
+                                                  </div>
+                                             ) : (
+                                                  fieldTimeSlots.map(slot => {
                                                        const slotId = slot.slotId || slot.SlotID;
                                                        const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
                                                        const startTime = slot.startTime || slot.StartTime || "00:00";
                                                        const endTime = slot.endTime || slot.EndTime || "00:00";
                                                        return (
-                                                            <label key={slotId} className="flex items-center space-x-2 cursor-pointer">
-                                                                 <input
-                                                                      type="checkbox"
-                                                                      checked={bulkFormData.selectedSlotIds.includes(slotId)}
-                                                                      onChange={() => handleBulkSlotToggle(slotId)}
-                                                                      className="rounded border-gray-300"
-                                                                 />
-                                                                 <span className="text-sm text-gray-700">
-                                                                      {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
-                                                                 </span>
-                                                            </label>
+                                                            <SelectItem key={slotId} value={(slotId || "").toString()}>
+                                                                 {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
+                                                            </SelectItem>
                                                        );
-                                                  })}
-                                             </div>
-                                             <p className="text-xs text-gray-500 mt-1">
-                                                  Đã chọn: {bulkFormData.selectedSlotIds.length} khung giờ
-                                             </p>
-                                        </>
-                                   )}
-                              </div>
-
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Giá (VNĐ) *
-                                   </label>
-                                   <Input
-                                        name="price"
-                                        type="number"
-                                        value={bulkFormData.price}
-                                        onChange={(e) => setBulkFormData(prev => ({ ...prev, price: e.target.value }))}
-                                        placeholder="Nhập giá"
-                                        required
-                                   />
-                              </div>
-
-                              <div className="flex justify-end space-x-3 pt-4">
-                                   <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => {
-                                             setIsBulkModalOpen(false);
-                                             resetBulkForm();
-                                        }}
-                                   >
-                                        Hủy
-                                   </Button>
-                                   <Button type="submit" disabled={bulkFormData.selectedSlotIds.length === 0 || isSubmitting}>
-                                        {isSubmitting ? (
-                                             <>
-                                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                  Đang tạo...
-                                             </>
-                                        ) : (
-                                             <>
-                                                  <CheckSquare className="w-4 h-4 mr-2" />
-                                                  Tạo {bulkFormData.selectedSlotIds.length} giá
-                                             </>
-                                        )}
-                                   </Button>
-                              </div>
-                         </form>
-                    </Modal>
-
-                    {/* Add Price Modal */}
-                    <Modal
-                         isOpen={isAddModalOpen}
-                         onClose={() => {
-                              setIsAddModalOpen(false);
-                              resetForm();
-                         }}
-                         title="Thêm giá mới"
-                    >
-
-                         <form onSubmit={handleSubmit} className="space-y-4">
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Sân *
-                                   </label>
-                                   <Select value={formData.fieldId} onValueChange={(value) => {
-                                        setFormData(prev => ({ ...prev, fieldId: value, slotId: "" })); // Reset slotId when field changes
-                                   }}>
-                                        <SelectTrigger>
-                                             <SelectValue placeholder="Chọn sân" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                             {fields.map(field => (
-                                                  <SelectItem key={field.fieldId} value={(field.fieldId || "").toString()}>
-                                                       {field.name} ({field.complexName})
-                                                  </SelectItem>
-                                             ))}
+                                                  })
+                                             )}
                                         </SelectContent>
                                    </Select>
-                              </div>
+                              )}
+                         </div>
 
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Khung giờ *
-                                   </label>
-                                   {!formData.fieldId ? (
-                                        <div className="border border-gray-200 rounded-lg p-3 text-center text-gray-500 text-sm">
-                                             Vui lòng chọn sân trước
-                                        </div>
-                                   ) : loadingFieldSlots ? (
-                                        <div className="border border-gray-200 rounded-lg p-3 text-center text-gray-500 text-sm flex items-center justify-center">
-                                             <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                             Đang tải...
-                                        </div>
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   Giá (VNĐ) *
+                              </label>
+                              <Input
+                                   name="price"
+                                   type="number"
+                                   value={formData.price}
+                                   onChange={handleInputChange}
+                                   placeholder="Nhập giá"
+                                   required
+                              />
+                         </div>
+
+                         <div className="flex items-center">
+                              <input
+                                   type="checkbox"
+                                   name="isActive"
+                                   checked={formData.isActive}
+                                   onChange={handleInputChange}
+                                   className="rounded border-gray-300"
+                              />
+                              <label className="ml-2 text-sm text-gray-700">
+                                   Kích hoạt giá này
+                              </label>
+                         </div>
+
+                         <div className="flex justify-end space-x-3 pt-4">
+                              <Button
+                                   type="button"
+                                   variant="outline"
+                                   onClick={() => {
+                                        setIsAddModalOpen(false);
+                                        resetForm();
+                                   }}
+                              >
+                                   Hủy
+                              </Button>
+                              <Button type="submit" disabled={isSubmitting}>
+                                   {isSubmitting ? (
+                                        <>
+                                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                             Đang lưu...
+                                        </>
                                    ) : (
-                                        <Select value={formData.slotId} onValueChange={(value) => setFormData(prev => ({ ...prev, slotId: value }))}>
-                                             <SelectTrigger>
-                                                  <SelectValue placeholder="Chọn khung giờ" />
-                                             </SelectTrigger>
-                                             <SelectContent>
-                                                  {fieldTimeSlots.length === 0 ? (
-                                                       <div className="p-2 text-center text-gray-500 text-sm">
-                                                            Sân này chưa có khung giờ nào
-                                                       </div>
-                                                  ) : (
-                                                       fieldTimeSlots.map(slot => {
-                                                            const slotId = slot.slotId || slot.SlotID;
-                                                            const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
-                                                            const startTime = slot.startTime || slot.StartTime || "00:00";
-                                                            const endTime = slot.endTime || slot.EndTime || "00:00";
-                                                            return (
-                                                                 <SelectItem key={slotId} value={(slotId || "").toString()}>
-                                                                      {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
-                                                                 </SelectItem>
-                                                            );
-                                                       })
-                                                  )}
-                                             </SelectContent>
-                                        </Select>
+                                        <>
+                                             <Save className="w-4 h-4 mr-2" />
+                                             Lưu giá
+                                        </>
                                    )}
-                              </div>
+                              </Button>
+                         </div>
+                    </form>
+               </Modal>
 
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Giá (VNĐ) *
-                                   </label>
-                                   <Input
-                                        name="price"
-                                        type="number"
-                                        value={formData.price}
-                                        onChange={handleInputChange}
-                                        placeholder="Nhập giá"
-                                        required
-                                   />
-                              </div>
+               {/* Edit Price Modal */}
+               <Modal
+                    isOpen={isEditModalOpen}
+                    onClose={() => {
+                         setIsEditModalOpen(false);
+                         resetForm();
+                    }}
+                    title="Chỉnh sửa giá"
+               >
 
-                              <div className="flex items-center">
-                                   <input
-                                        type="checkbox"
-                                        name="isActive"
-                                        checked={formData.isActive}
-                                        onChange={handleInputChange}
-                                        className="rounded border-gray-300"
-                                   />
-                                   <label className="ml-2 text-sm text-gray-700">
-                                        Kích hoạt giá này
-                                   </label>
-                              </div>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   Sân
+                              </label>
+                              <Input
+                                   value={editingPrice?.field || ""}
+                                   disabled
+                                   className="bg-gray-50"
+                              />
+                         </div>
 
-                              <div className="flex justify-end space-x-3 pt-4">
-                                   <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => {
-                                             setIsAddModalOpen(false);
-                                             resetForm();
-                                        }}
-                                   >
-                                        Hủy
-                                   </Button>
-                                   <Button type="submit" disabled={isSubmitting}>
-                                        {isSubmitting ? (
-                                             <>
-                                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                  Đang lưu...
-                                             </>
-                                        ) : (
-                                             <>
-                                                  <Save className="w-4 h-4 mr-2" />
-                                                  Lưu giá
-                                             </>
-                                        )}
-                                   </Button>
-                              </div>
-                         </form>
-                    </Modal>
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   Khung giờ *
+                              </label>
+                              {loadingFieldSlots ? (
+                                   <div className="border border-gray-200 rounded-lg p-3 text-center text-gray-500 text-sm flex items-center justify-center">
+                                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        Đang tải...
+                                   </div>
+                              ) : (
+                                   <Select value={formData.slotId} onValueChange={(value) => setFormData(prev => ({ ...prev, slotId: value }))}>
+                                        <SelectTrigger>
+                                             <SelectValue placeholder="Chọn khung giờ" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                             {fieldTimeSlots.length === 0 ? (
+                                                  <div className="p-2 text-center text-gray-500 text-sm">
+                                                       Sân này chưa có khung giờ nào
+                                                  </div>
+                                             ) : (
+                                                  fieldTimeSlots.map(slot => {
+                                                       const slotId = slot.slotId || slot.SlotID;
+                                                       const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
+                                                       const startTime = slot.startTime || slot.StartTime || "00:00";
+                                                       const endTime = slot.endTime || slot.EndTime || "00:00";
+                                                       return (
+                                                            <SelectItem key={slotId} value={(slotId || "").toString()}>
+                                                                 {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
+                                                            </SelectItem>
+                                                       );
+                                                  })
+                                             )}
+                                        </SelectContent>
+                                   </Select>
+                              )}
+                         </div>
 
-                    {/* Edit Price Modal */}
-                    <Modal
-                         isOpen={isEditModalOpen}
-                         onClose={() => {
-                              setIsEditModalOpen(false);
-                              resetForm();
-                         }}
-                         title="Chỉnh sửa giá"
-                    >
+                         <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                   Giá (VNĐ) *
+                              </label>
+                              <Input
+                                   name="price"
+                                   type="number"
+                                   value={formData.price}
+                                   onChange={handleInputChange}
+                                   placeholder="Nhập giá"
+                                   required
+                              />
+                         </div>
 
-                         <form onSubmit={handleSubmit} className="space-y-4">
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Sân
-                                   </label>
-                                   <Input
-                                        value={editingPrice?.field || ""}
-                                        disabled
-                                        className="bg-gray-50"
-                                   />
-                              </div>
+                         <div className="flex items-center">
+                              <input
+                                   type="checkbox"
+                                   name="isActive"
+                                   checked={formData.isActive}
+                                   onChange={handleInputChange}
+                                   className="rounded border-gray-300"
+                              />
+                              <label className="ml-2 text-sm text-gray-700">
+                                   Kích hoạt giá này
+                              </label>
+                         </div>
 
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Khung giờ *
-                                   </label>
-                                   {loadingFieldSlots ? (
-                                        <div className="border border-gray-200 rounded-lg p-3 text-center text-gray-500 text-sm flex items-center justify-center">
-                                             <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                             Đang tải...
-                                        </div>
-                                   ) : (
-                                        <Select value={formData.slotId} onValueChange={(value) => setFormData(prev => ({ ...prev, slotId: value }))}>
-                                             <SelectTrigger>
-                                                  <SelectValue placeholder="Chọn khung giờ" />
-                                             </SelectTrigger>
-                                             <SelectContent>
-                                                  {fieldTimeSlots.length === 0 ? (
-                                                       <div className="p-2 text-center text-gray-500 text-sm">
-                                                            Sân này chưa có khung giờ nào
-                                                       </div>
-                                                  ) : (
-                                                       fieldTimeSlots.map(slot => {
-                                                            const slotId = slot.slotId || slot.SlotID;
-                                                            const slotName = slot.name || slot.SlotName || `Slot ${slotId}`;
-                                                            const startTime = slot.startTime || slot.StartTime || "00:00";
-                                                            const endTime = slot.endTime || slot.EndTime || "00:00";
-                                                            return (
-                                                                 <SelectItem key={slotId} value={(slotId || "").toString()}>
-                                                                      {slotName} ({startTime.substring(0, 5)}-{endTime.substring(0, 5)})
-                                                                 </SelectItem>
-                                                            );
-                                                       })
-                                                  )}
-                                             </SelectContent>
-                                        </Select>
-                                   )}
-                              </div>
+                         <div className="flex justify-end space-x-3 pt-4">
+                              <Button
+                                   type="button"
+                                   variant="outline"
+                                   onClick={() => {
+                                        setIsEditModalOpen(false);
+                                        resetForm();
+                                   }}
+                              >
+                                   Hủy
+                              </Button>
+                              <Button type="submit">
+                                   <Save className="w-4 h-4 mr-2" />
+                                   Cập nhật giá
+                              </Button>
+                         </div>
+                    </form>
+               </Modal>
 
-                              <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Giá (VNĐ) *
-                                   </label>
-                                   <Input
-                                        name="price"
-                                        type="number"
-                                        value={formData.price}
-                                        onChange={handleInputChange}
-                                        placeholder="Nhập giá"
-                                        required
-                                   />
-                              </div>
-
-                              <div className="flex items-center">
-                                   <input
-                                        type="checkbox"
-                                        name="isActive"
-                                        checked={formData.isActive}
-                                        onChange={handleInputChange}
-                                        className="rounded border-gray-300"
-                                   />
-                                   <label className="ml-2 text-sm text-gray-700">
-                                        Kích hoạt giá này
-                                   </label>
-                              </div>
-
-                              <div className="flex justify-end space-x-3 pt-4">
-                                   <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => {
-                                             setIsEditModalOpen(false);
-                                             resetForm();
-                                        }}
-                                   >
-                                        Hủy
-                                   </Button>
-                                   <Button type="submit">
-                                        <Save className="w-4 h-4 mr-2" />
-                                        Cập nhật giá
-                                   </Button>
-                              </div>
-                         </form>
-                    </Modal>
-
-                    {/* Demo Restricted Modal */}
-                    <DemoRestrictedModal
-                         isOpen={showDemoRestrictedModal}
-                         onClose={() => setShowDemoRestrictedModal(false)}
-                         featureName="Quản lý giá sân"
-                    />
-               </div>
+               {/* Demo Restricted Modal */}
+               <DemoRestrictedModal
+                    isOpen={showDemoRestrictedModal}
+                    onClose={() => setShowDemoRestrictedModal(false)}
+                    featureName="Quản lý giá sân"
+               />
+          </div>
      );
 };
 

@@ -7,7 +7,12 @@ export default function QuickPresets({ quickPresets, activeTab, setActiveTab, ty
                {quickPresets.map(p => (
                     <Button
                          key={p.key}
-                         onClick={() => setActiveTab(p.key)}
+                         onClick={() => {
+                              // Toggle: nếu đang chọn, trả về "all"; nếu chưa, kích hoạt preset
+                              const nextTab = activeTab === p.key ? "all" : p.key;
+                              setActiveTab(nextTab);
+                              setPage(1);
+                         }}
                          className={`px-2 h-8 rounded-full text-xs border ${activeTab === p.key ? "bg-teal-100 hover:bg-teal-600 text-teal-700 border-teal-200" : "bg-white text-teal-600 transition-all duration-200 border-gray-200 hover:bg-teal-600 hover:text-white hover:border-gray-300"}`}
                     >
                          <Sparkles className="w-3 h-3 inline mr-1" /> {p.label}

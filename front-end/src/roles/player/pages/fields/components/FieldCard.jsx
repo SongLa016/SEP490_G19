@@ -10,7 +10,7 @@ export default function FieldCard({ field, index, activeTab, slotId, formatPrice
           <FadeIn key={field.fieldId} delay={index * 50}>
                <div
                     onClick={(e) => {
-                         // If any child marked to stop navigation is clicked, do nothing
+                         // nếu click vào phần tử có data-stop-propagation thì không điều hướng
                          const blocker = (e.target instanceof Element) ? e.target.closest('[data-stop-propagation="true"]') : null;
                          if (blocker || e.defaultPrevented) {
                               return;
@@ -49,24 +49,31 @@ export default function FieldCard({ field, index, activeTab, slotId, formatPrice
                               </div>
                          </div>
                     </div>
-                    <div className="p-4 flex-1 flex flex-col">
-                         <h3 className="text-xl font-semibold text-teal-800 mb-2 flex items-center">
-                              <StadiumIcon className="w-5 h-5 mr-2 text-teal-500" />
-                              {field.name}
+                    <div className="p-3 flex-1 flex flex-col">
+                         <h3 className="text-lg font-semibold text-teal-800 mb-2 flex items-center">
+                              <StadiumIcon className="w-5 h-5 mr-2 text-teal-500 flex-shrink-0" />
+                              <span className="truncate">{field.name}</span>
                          </h3>
                          <div className="flex bg-teal-50 border border-teal-100 p-1 rounded-full w-fit items-center text-teal-700 mb-2">
                               <MapPin className="w-4 h-4 mr-1" />
                               <span className="text-xs line-clamp-1">{field.address}</span>
                          </div>
-                         <div className="flex items-center justify-between mb-4">
+                         <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center">
                                    {activeTab === "near" ? (
                                         field.distanceKm !== undefined && field.distanceKm !== null ? (
                                              <>
-                                                  <MapPin className="w-4 h-4 text-red-500 mr-1" />
-                                                  <span className="text-sm font-bold text-red-600">
-                                                       {Number(field.distanceKm).toFixed(1)}km
-                                                  </span>
+                                                  <div className="flex items-center justify-between">
+                                                       <div className="flex items-center">
+                                                            <MapPin className="w-4 h-4 text-red-500 mr-1" />
+                                                            <span className="text-sm font-bold text-red-600">
+                                                                 {Number(field.distanceKm).toFixed(1)}km
+                                                            </span>
+                                                       </div>
+                                                       <div className="text-sm ml-20 font-semibold text-orange-600 bg-orange-50 px-2 gap-1 rounded-full w-fit items-center">
+                                                            {formatPrice(field.priceForSelectedSlot || 0)}/trận
+                                                       </div>
+                                                  </div>
                                              </>
                                         ) : (
                                              <>
@@ -77,25 +84,34 @@ export default function FieldCard({ field, index, activeTab, slotId, formatPrice
                                              </>
                                         )
                                    ) : activeTab === "best-price" ? (
-                                        <span className="text-sm font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full">Giá tốt nhất</span>
+                                        <span className="text-sm font-semibold truncate text-red-600 bg-red-50 px-2 py-1 rounded-full">Giá tốt nhất</span>
                                    ) : activeTab === "top-rated" ? (
                                         <>
-                                             <Star className="w-4 h-4 text-red-500 mr-1" />
-                                             <span className="text-sm font-bold text-red-600">{field.rating}</span>
+                                             <Star className="w-4 h-4 text-yellow-500 mr-1" />
+                                             <span className="text-sm font-semibold text-yellow-600">{field.rating}</span>
                                              <span className="text-sm text-red-500 ml-1">({field.reviewCount})</span>
+                                             <div className="text-sm ml-24 font-semibold text-orange-600 bg-orange-50 px-2 gap-1 rounded-full w-fit items-center">
+                                                  {formatPrice(field.priceForSelectedSlot || 0)}/trận
+                                             </div>
                                         </>
                                    ) : (
                                         <>
                                              <Star className="w-4 h-4 text-teal-400 mr-1" />
                                              <span className="text-sm font-semibold">{field.rating}</span>
                                              <span className="text-sm text-gray-500 ml-1">({field.reviewCount})</span>
+                                             <div className="text-sm ml-24 font-semibold text-orange-600 bg-orange-50 px-2 gap-1 rounded-full w-fit items-center">
+                                                  {formatPrice(field.priceForSelectedSlot || 0)}/trận
+                                             </div>
                                         </>
                                    )}
                               </div>
-                              <div className={`text-lg font-bold flex items-center text-orange-600`}>
-                                   <AttachMoneyIcon className="w-4 h-4 mr-1" />
-                                   {formatPrice(field.priceForSelectedSlot || 0)}/trận
-                              </div>
+                              {activeTab === "best-price" && (
+                                   <div className="text-sm font-semibold text-red-600 bg-red-50 px-2 gap-1 rounded-full w-fit items-center">
+                                        <AttachMoneyIcon className="w-2 h-2" />
+                                        {formatPrice(field.priceForSelectedSlot || 0)}/trận
+                                   </div>
+                              )}
+
                          </div>
                          <div className="flex items-center gap-2 mb-4">
                               {Array.isArray(field.amenities) && field.amenities.length > 0 && (
@@ -116,9 +132,12 @@ export default function FieldCard({ field, index, activeTab, slotId, formatPrice
                                         e.stopPropagation();
                                    }}
                                    onClick={(e) => {
+                                        e.preventDefault();
                                         e.stopPropagation();
                                         handleBook(field.fieldId);
+                                        navigate(`/field/${field.fieldId}`)
                                    }}
+
                                    className="w-full bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-xl font-semibold transition-all duration-200 hover:scale-105 flex items-center justify-center gap-2"
                               >
                                    <EventSeatIcon className="w-4 h-4" />

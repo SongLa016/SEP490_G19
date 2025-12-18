@@ -48,7 +48,12 @@ const ComplexFormModal = ({
                               placeholder="Ví dụ: Sân bóng ABC, Khu thể thao XYZ..."
                               required
                               className="w-full"
+                              maxLength={100}
                          />
+                         <p className={`text-xs mt-1 text-right ${formData.name?.length >= 100 ? "text-red-500 font-medium" : formData.name?.length >= 90 ? "text-yellow-600" : "text-gray-400"}`}>
+                              {formData.name?.length || 0}/100
+                              {formData.name?.length >= 100 && " (đã đạt giới hạn)"}
+                         </p>
                     </div>
 
                     <div>
@@ -104,9 +109,11 @@ const ComplexFormModal = ({
                               placeholder="Mô tả về khu sân, tiện ích, quy mô..."
                               rows={2}
                               className="w-full"
+                              maxLength={500}
                          />
-                         <p className="text-xs text-gray-500">
-                              Mô tả chi tiết về khu sân sẽ giúp khách hàng hiểu rõ hơn
+                         <p className={`text-xs mt-1 ${formData.description?.length >= 500 ? "text-red-500 font-medium" : formData.description?.length >= 450 ? "text-yellow-600" : "text-gray-500"}`}>
+                              Mô tả chi tiết về khu sân sẽ giúp khách hàng hiểu rõ hơn ({formData.description?.length || 0}/500)
+                              {formData.description?.length >= 500 && " - đã đạt giới hạn"}
                          </p>
                     </div>
 

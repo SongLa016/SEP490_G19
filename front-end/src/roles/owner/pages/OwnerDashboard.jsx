@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Card, Button } from "../../../shared/components/ui";
 import {
@@ -51,7 +50,7 @@ export default function OwnerDashboard({ isDemo = false }) {
      const [recentBookings, setRecentBookings] = useState([]);
      const [fieldPerformance, setFieldPerformance] = useState([]);
 
-     // Helper function để extract số từ API response
+     // Hàm trích xuất số từ dữ liệu 
      const extractNumber = (data, ...keys) => {
           if (!data) return 0;
 
@@ -88,12 +87,12 @@ export default function OwnerDashboard({ isDemo = false }) {
           return 0;
      };
 
-     // Load statistics from API
+     // Tải dữ liệu thống kê khi timeRange thay đổi
      useEffect(() => {
           if (isDemo) return;
           loadStatistics();
      }, [timeRange, isDemo]);
-
+     // Hàm tải dữ liệu thống kê
      const loadStatistics = async () => {
           try {
                setLoading(true);
@@ -140,10 +139,6 @@ export default function OwnerDashboard({ isDemo = false }) {
                ]);
 
                // Cập nhật stats
-               // Debug: Log API response để kiểm tra format
-               if (totalBookingsResult.ok && totalBookingsResult.data) {
-               }
-
                const newStats = {
                     totalRevenue: extractNumber(totalRevenueResult.ok ? totalRevenueResult.data : null,
                          'totalRevenue', 'revenue', 'amount', 'total', 'sum'),
@@ -152,24 +147,26 @@ export default function OwnerDashboard({ isDemo = false }) {
                     activeFields: fieldPerformanceResult.ok && fieldPerformanceResult.data ?
                          (Array.isArray(fieldPerformanceResult.data) ? fieldPerformanceResult.data.length :
                               extractNumber(fieldPerformanceResult.data, 'activeFields', 'total', 'count')) : 0,
-                    averageRating: 4.7, // Có thể lấy từ API khác
-                    revenueGrowth: 0, // Cần tính toán từ dữ liệu trước đó
-                    bookingGrowth: 0, // Cần tính toán từ dữ liệu trước đó
+                    averageRating: 4.7,
+                    revenueGrowth: 0,
+                    bookingGrowth: 0,
                     occupancyRate: extractNumber(fillRateResult.ok ? fillRateResult.data : null,
                          'fillRate', 'occupancyRate', 'rate', 'percentage') || 0,
-                    customerSatisfaction: 88 // Có thể lấy từ API khác
+                    customerSatisfaction: 88
                };
 
                setStats(newStats);
 
-               // Cập nhật revenue data
+               // Cập nhật doanh thu theo ngày
                if (dailyRevenueResult.ok && dailyRevenueResult.data) {
                     const dailyData = Array.isArray(dailyRevenueResult.data) ? dailyRevenueResult.data : [];
                     const formattedData = dailyData.map((item, index) => ({
                          day: item.day || item.date || `Ngày ${index + 1}`,
                          amount: extractNumber(item, 'revenue', 'amount', 'total')
                     }));
-                    setRevenueData(formattedData.length > 0 ? formattedData : [
+                    // Giới hạn hiển thị 10 ngày gần nhất
+                    const trimmedData = formattedData.slice(-10);
+                    setRevenueData(trimmedData.length > 0 ? trimmedData : [
                          { day: "T2", amount: 0 },
                          { day: "T3", amount: 0 },
                          { day: "T4", amount: 0 },
@@ -214,7 +211,7 @@ export default function OwnerDashboard({ isDemo = false }) {
           }
      };
 
-     // Mock data for demo mode
+     // Demo data
      const demoStats = {
           totalRevenue: 25000000,
           totalBookings: 184,
@@ -227,24 +224,6 @@ export default function OwnerDashboard({ isDemo = false }) {
      };
 
      const displayStats = isDemo ? demoStats : stats;
-
-     const getStatusColor = (status) => {
-          switch (status) {
-               case 'Available': return 'bg-green-100 text-green-800';
-               case 'Pending': return 'bg-yellow-100 text-yellow-800';
-               case 'Maintenance': return 'bg-red-100 text-red-800';
-               default: return 'bg-teal-100 text-teal-800';
-          }
-     };
-
-     const getStatusText = (status) => {
-          switch (status) {
-               case 'Available': return 'Có sẵn';
-               case 'Pending': return 'Đang chờ';
-               case 'Maintenance': return 'Đang bảo trì';
-               default: return 'Không có';
-          }
-     };
 
      const formatCurrency = (amount) => {
           return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -306,7 +285,7 @@ export default function OwnerDashboard({ isDemo = false }) {
           },
      ];
 
-     // Demo data for demo mode
+     // Demo data
      const demoRevenueData = [
           { day: "T2", amount: 1200000 },
           { day: "T3", amount: 1800000 },
@@ -337,8 +316,9 @@ export default function OwnerDashboard({ isDemo = false }) {
      const displayRevenueData = isDemo ? demoRevenueData : (revenueData.length > 0 ? revenueData : demoRevenueData);
      const displayRecentBookings = isDemo ? demoRecentBookings : (recentBookings.length > 0 ? recentBookings : demoRecentBookings);
      const displayFieldPerformance = isDemo ? demoFieldPerformance : (fieldPerformance.length > 0 ? fieldPerformance : demoFieldPerformance);
-
-     console.log("displayRecentBookings", displayRecentBookings);
+     const maxRevenueAmount = displayRevenueData.length > 0
+          ? Math.max(...displayRevenueData.map(d => d.amount || 0), 1)
+          : 1;
      return (
           <div className="space-y-6">
                {/* Header */}
@@ -416,7 +396,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                               <h3 className="text-lg font-semibold text-teal-900">Doanh thu theo ngày</h3>
                               <div className="flex items-center space-x-2">
                                    <BarChart3 className="w-5 h-5 text-teal-500" />
-                                   <span className="text-sm text-teal-600">7 ngày qua</span>
+                                   <span className="text-sm text-teal-600">10 ngày qua</span>
                               </div>
                          </div>
                          <div className="space-y-4">
@@ -437,7 +417,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                                                   <div className="bg-teal-200 rounded-full h-2">
                                                        <div
                                                             className="bg-teal-500 h-2 rounded-full transition-all duration-300"
-                                                            style={{ width: `${(item.amount / Math.max(...revenueData.map(d => d.amount))) * 100}%` }}
+                                                            style={{ width: `${(item.amount / maxRevenueAmount) * 100}%` }}
                                                        ></div>
                                                   </div>
                                              </div>
@@ -564,7 +544,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                                    onClick={() => navigate(isDemo ? "/demo/bookings" : "/owner/bookings")}
                               >
                                    <Calendar className="w-4 h-4 mr-2" />
-                                   Xem booking
+                                   Xem đặt sân
                               </Button>
                               <Button
                                    className="w-full justify-start rounded-2xl"
@@ -580,7 +560,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                                    onClick={() => navigate(isDemo ? "/demo/schedule" : "/owner/schedule")}
                               >
                                    <Calendar className="w-4 h-4 mr-2" />
-                                   Lịch trình & Slots
+                                   Lịch trình & khung giờ
                               </Button>
                          </div>
 

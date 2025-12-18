@@ -17,11 +17,10 @@ const CommentInput = ({
           currentUser?.role === 'Owner' || currentUser?.role === 'owner' ? 'Chủ sân' :
                currentUser?.role;
 
-     const { avatarUrl, initial, displayName } = getUserAvatarAndName(user);
+     const { avatarUrl, initial } = getUserAvatarAndName(user);
 
      return (
           <div className="mt-4">
-               {/* Timeline line from post */}
                <div className="flex">
                     <div className="w-8 flex justify-center">
                          <div className="w-px h-8 bg-gray-300"></div>
@@ -29,10 +28,10 @@ const CommentInput = ({
                     <div className="flex-1">
                          <div className="flex gap-2">
                               <Avatar className="w-8 h-8">
-                                        <AvatarImage src={avatarUrl} />
-                                        <AvatarFallback className="bg-gray-200 text-gray-700">
-                                             {initial}
-                                        </AvatarFallback>
+                                   <AvatarImage src={avatarUrl} />
+                                   <AvatarFallback className="bg-gray-200 text-gray-700">
+                                        {initial}
+                                   </AvatarFallback>
                               </Avatar>
                               <div className="flex-1">
                                    <div className="flex items-center gap-2 flex-wrap">

@@ -12,6 +12,7 @@ import {
      ChevronRight,
      Shield,
      User,
+     Building,
 } from "lucide-react";
 import { Button } from "../../../shared/components/ui";
 import logo from "../../../shared/components/assets/logo.png";
@@ -38,10 +39,10 @@ export default function AdminLayout({ user, onLoggedOut, children }) {
      const navigationItems = [
           { id: "admin", label: "Tổng quan", icon: Home, path: "/admin" },
           { id: "users", label: "Quản lý người dùng", icon: Users, path: "/admin/users" },
+          { id: "fields", label: "Quản lý sân", icon: Building, path: "/admin/fields" },
           { id: "notifications", label: "Thông báo hệ thống", icon: Bell, path: "/admin/notifications" },
           { id: "violations", label: "Báo cáo vi phạm", icon: AlertTriangle, path: "/admin/violations" },
           { id: "posts", label: "Quản lý bài viết", icon: FileText, path: "/admin/posts" },
-          // Tab hồ sơ admin, dùng icon User thay vì Settings
           { id: "profile", label: "Hồ sơ Admin", icon: User, path: "/admin/profile" },
      ];
 

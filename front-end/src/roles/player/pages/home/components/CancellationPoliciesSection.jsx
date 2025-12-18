@@ -4,8 +4,6 @@ import { useNavigate } from "react-router-dom";
 import { ScrollReveal } from "../../../../../shared/components/ScrollReveal";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
-import { fetchFieldComplexes } from "../../../../../shared/services/fields";
-import { fetchCancellationPolicyByComplex } from "../../../../../shared/services/cancellationPolicies";
 import { getCancellationPolicyRanges } from "../../../../../shared/utils/cancellationCalculator";
 
 // Chính sách mặc định
@@ -19,72 +17,17 @@ const defaultPolicy = {
 
 export const CancellationPoliciesSection = () => {
      const navigate = useNavigate();
-     const [policies, setPolicies] = useState([]);
-     const [allPolicies, setAllPolicies] = useState([]);
-     const [loading, setLoading] = useState(true);
+     const [policies, setPolicies] = useState([defaultPolicy]);
+     const [allPolicies, setAllPolicies] = useState([defaultPolicy]);
+     const [loading, setLoading] = useState(false);
 
+     // Không load policies từ API trên HomePage để tránh spam requests
+     // Chỉ hiển thị default policy, policies thực tế sẽ được load khi vào ComplexDetail
      useEffect(() => {
-          const loadPolicies = async () => {
-               try {
-                    setLoading(true);
-                    // Fetch all complexes
-                    let complexes = [];
-                    try {
-                         complexes = await fetchFieldComplexes();
-                         if (!Array.isArray(complexes)) {
-                              complexes = [];
-                         }
-                         // Filter only Active complexes for Player
-                         complexes = complexes.filter(
-                              (complex) => (complex.status || complex.Status || "Active") === "Active"
-                         );
-                    } catch (error) {
-                         console.error("Error fetching complexes:", error);
-                         complexes = [];
-                    }
-
-                    // Fetch policies from all complexes
-                    const policyPromises = complexes.map(complex =>
-                         fetchCancellationPolicyByComplex(complex.complexId).catch(() => null)
-                    );
-                    const allPolicies = await Promise.all(policyPromises);
-
-                    // Filter active policies and get unique ones
-                    const activePolicies = allPolicies
-                         .filter(policy => policy && policy.isActive)
-                         .map(policy => {
-                              return {
-                                   id: policy.policyId,
-                                   name: policy.name || "Chính sách hủy",
-                                   description: policy.description || "Chính sách hủy đặt sân",
-                                   freeCancellationHours: policy.freeCancellationHours || 0,
-                                   cancellationFeePercentage: policy.cancellationFeePercentage || 0,
-                                   complexId: policy.complexId,
-                              };
-                         });
-
-                    // Remove duplicates based on policyId
-                    const uniquePolicies = activePolicies.filter((policy, index, self) =>
-                         index === self.findIndex(p => p.id === policy.id)
-                    );
-
-                    // Always include default policy at the beginning for left column (limit to 2)
-                    const finalPolicies = [defaultPolicy, ...uniquePolicies].slice(0, 2);
-
-                    // Store all policies for right column
-                    setPolicies(finalPolicies);
-                    setAllPolicies([defaultPolicy, ...uniquePolicies]);
-               } catch (error) {
-                    console.error("Error loading cancellation policies:", error);
-                    // Nếu có lỗi, vẫn hiển thị chính sách mặc định
-                    setPolicies([defaultPolicy]);
-                    setAllPolicies([defaultPolicy]);
-               } finally {
-                    setLoading(false);
-               }
-          };
-
-          loadPolicies();
+          // Chỉ set default policy, không gọi API
+          setPolicies([defaultPolicy]);
+          setAllPolicies([defaultPolicy]);
+          setLoading(false);
      }, []);
 
      const formatHours = (hours) => {

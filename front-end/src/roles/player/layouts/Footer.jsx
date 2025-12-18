@@ -3,6 +3,17 @@ import { MapPin, Phone, Mail, Facebook, Instagram, Twitter, Linkedin, MessageCir
 import logo from "../../../shared/components/assets/logo.png";
 import { Link } from "react-router-dom";
 
+/**
+ * Component Footer cho trang Player
+ * Vị trí: Cuối trang, hiển thị trên tất cả các trang của Player
+ * 
+ * Chức năng:
+ * - Hiển thị thông tin công ty (logo, mô tả)
+ * - Liên kết mạng xã hội (Facebook, Instagram, Twitter, LinkedIn)
+ * - Liên kết nhanh (Tìm sân, Đăng ký chủ sân, Giải đấu, Cộng đồng, Blog)
+ * - Thông tin liên hệ (địa chỉ, SĐT, email)
+ * - Điều khoản sử dụng, Chính sách bảo mật
+ */
 export default function Footer() {
      return (
           <footer className="bg-gray-900 text-white">

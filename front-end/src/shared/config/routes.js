@@ -108,6 +108,9 @@ export const ViolationReportsManagement = lazyLoad(() =>
 export const PostManagement = lazyLoad(() =>
   import("../../roles/admin/pages/PostManagement")
 );
+export const AdminFieldManagement = lazyLoad(() =>
+  import("../../roles/admin/pages/FieldManagement")
+);
 export const SystemSettings = lazyLoad(() =>
   import("../../roles/admin/pages/SystemSettings")
 );
@@ -295,6 +298,12 @@ export const routeConfig = [
   {
     path: "/admin/posts",
     element: PostManagement,
+    layout: "AdminLayout",
+    allowedRoles: [ROLES.ADMIN.name],
+  },
+  {
+    path: "/admin/fields",
+    element: AdminFieldManagement,
     layout: "AdminLayout",
     allowedRoles: [ROLES.ADMIN.name],
   },

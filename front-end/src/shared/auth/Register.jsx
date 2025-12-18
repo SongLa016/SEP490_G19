@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { authService, validateRegistrationData, formatRegistrationData } from '../services/authService';
-import { Button, Input, Card, CardContent, CardHeader, CardTitle, CardDescription, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '../components/ui';
+import { authService, validateRegistrationData, formatRegistrationData, validateVietnamPhone, validateStrongPassword } from '../services/authService';
+import { Button, Input, PhoneInput, Card, CardContent, CardHeader, CardTitle, CardDescription, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '../components/ui';
 import { FadeIn, SlideIn, ScaleIn } from '../components/ui/animations';
 import { Eye, EyeOff, Mail, Lock, User, Phone, X, Camera, CheckCircle, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -69,7 +69,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
 
                     // Xử lý các loại lỗi phổ biến
                     if (errorMessage.includes('400') || errorMessage.includes('Bad Request')) {
-                         errorMessage = 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin';
+                         errorMessage = 'Vui lòng nhập đầy đủ các thông tin';
                     } else if (errorMessage.includes('409') || errorMessage.includes('Conflict')) {
                          if (errorMessage.includes('email') || errorMessage.includes('Email')) {
                               errorMessage = 'Email này đã được sử dụng. Vui lòng chọn email khác';
@@ -412,11 +412,12 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                                              <label className="text-sm font-medium text-gray-700">Số điện thoại <span className="text-red-500">*</span></label>
                                              <div className="relative">
                                                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 transition-colors" />
-                                                  <Input
+                                                  <PhoneInput
                                                        value={phone}
                                                        onChange={(e) => setPhone(e.target.value)}
-                                                       onBlur={() => setPhoneError(!phone || !/^[0-9]{10,11}$/.test(phone.replace(/\s/g, '')) ? 'Số điện thoại không hợp lệ' : '')}
+                                                       onBlur={() => { const v = validateVietnamPhone(phone); setPhoneError(v.isValid ? '' : v.message); }}
                                                        required
+                                                       maxLength={10}
                                                        className={`pl-12 h-12 text-sm transition-all duration-200 rounded-2xl border-gray-200 ${phoneError ? 'border-red-500 focus:ring-red-500 animate-shake' : 'focus:ring-teal-500 focus:border-teal-500'}`}
                                                        placeholder="0123456789"
                                                   />
@@ -440,7 +441,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                                                   <Input
                                                        value={password}
                                                        onChange={(e) => setPassword(e.target.value)}
-                                                       onBlur={() => setPasswordError(!password || password.length < 6 ? 'Mật khẩu phải có ít nhất 6 ký tự' : '')}
+                                                       onBlur={() => { const v = validateStrongPassword(password); setPasswordError(v.isValid ? '' : v.message); }}
                                                        required
                                                        type={showPassword ? "text" : "password"}
                                                        className={`pl-12 pr-12 h-12 text-sm transition-all duration-200 rounded-2xl border-gray-200 ${passwordError ? 'border-red-500 focus:ring-red-500 animate-shake' : 'focus:ring-teal-500 focus:border-teal-500'}`}

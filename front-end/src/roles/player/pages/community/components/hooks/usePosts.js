@@ -11,7 +11,7 @@ import { normalizePostData } from "../utils/postTransformers";
 export function usePosts(user, refreshTrigger) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  // danh sach bài viết
   const loadPosts = async () => {
     try {
       setLoading(true);
@@ -53,7 +53,7 @@ export function usePosts(user, refreshTrigger) {
   useEffect(() => {
     loadPosts();
   }, [user, refreshTrigger]);
-
+  // thích bài viết
   const toggleLike = async (postId) => {
     const post = posts.find((p) => p.PostID === postId);
     if (!post) return;
@@ -98,6 +98,7 @@ export function usePosts(user, refreshTrigger) {
     }
   };
 
+  // repost bài viết
   const toggleRepost = (postId) => {
     setPosts((prevPosts) =>
       prevPosts.map((post) =>
@@ -112,6 +113,7 @@ export function usePosts(user, refreshTrigger) {
     );
   };
 
+  // lưu bài viết
   const toggleBookmark = (postId) => {
     setPosts((prevPosts) =>
       prevPosts.map((post) =>

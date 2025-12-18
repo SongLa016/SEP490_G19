@@ -6,7 +6,7 @@ import BookingMatchRequest from "./BookingMatchRequest";
 import BookingParticipants from "./BookingParticipants";
 
 const formatPrice = (price) => new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price);
-
+//qr Hoàn tiền
 const stripRefundQrInfo = (text) => {
      if (!text) return "";
      const markerIndex = text.toLowerCase().indexOf("refundqr");
@@ -14,7 +14,7 @@ const stripRefundQrInfo = (text) => {
      const stripped = text.substring(0, markerIndex);
      return stripped.replace(/\|\s*$/, "").trim();
 };
-
+// hiển thị badge trạng thái đặt sân
 const statusBadge = (status) => {
      const s = (status ?? "").toString().toLowerCase();
      switch (s) {
@@ -27,6 +27,7 @@ const statusBadge = (status) => {
      }
 };
 
+// hiển thị badge trạng thái thanh toán
 const paymentStatusBadge = (paymentStatus) => {
      const status = (paymentStatus ?? "").toString().toLowerCase();
      switch (status) {
@@ -40,7 +41,7 @@ const paymentStatusBadge = (paymentStatus) => {
                return <Badge variant="outline" className="bg-yellow-500 text-white border border-yellow-200 hover:bg-yellow-600 hover:text-white">Chờ Thanh Toán</Badge>;
      }
 };
-
+// hiển thị card đặt sân
 export default function BookingCard({ booking, user, handlers, matchRequestData }) {
      const { b } = { b: booking };
 
@@ -52,11 +53,11 @@ export default function BookingCard({ booking, user, handlers, matchRequestData 
                               {statusBadge(b.status)}
                               {paymentStatusBadge(b.paymentStatus)}
                          </div>
-                         <h3 className="text-lg font-bold text-teal-800 mb-1">{b.fieldName}</h3>
+                         <h3 className="text-lg font-bold text-teal-800 mb-1 truncate">{b.fieldName}</h3>
                          <div className="space-y-1 text-sm text-gray-600">
                               <div className="flex items-center gap-2">
-                                   <MapPin className="w-4 h-4 text-teal-600" />
-                                   <span>{b.address || "Chưa có địa chỉ"}</span>
+                                   <MapPin className="w-4 h-4 text-teal-600 flex-shrink-0" />
+                                   <span className="truncate">{b.address || "Chưa có địa chỉ"}</span>
                               </div>
                               <div className="flex items-center gap-2">
                                    <Calendar className="w-4 h-4 text-teal-600" />
@@ -79,7 +80,7 @@ export default function BookingCard({ booking, user, handlers, matchRequestData 
                </div>
 
                {stripRefundQrInfo(b.cancelReason) && (
-                    <div className="text-xs text-red-600 italic mb-2">
+                    <div className="text-xs text-red-600 italic mb-2 line-clamp-2">
                          Lý do hủy: {stripRefundQrInfo(b.cancelReason)}
                     </div>
                )}

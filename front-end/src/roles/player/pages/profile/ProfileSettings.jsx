@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Settings, Shield, Trash2, AlertTriangle, Phone, Mail, User, Calendar, CheckCircle, AlertCircle, Key } from "lucide-react";
-import { Container, Card, CardContent, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, FadeIn, SlideIn } from "../../../../shared/components/ui";
+import { Settings, Shield, Trash2, AlertTriangle, Phone, Mail, User, Calendar, CheckCircle, AlertCircle, Key, Eye, EyeOff, Check } from "lucide-react";
+import { Container, Card, CardContent, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, FadeIn, SlideIn, LoadingSpinner } from "../../../../shared/components/ui";
 import ErrorDisplay from "../../../../shared/components/ErrorDisplay";
 import { useTranslation } from "../../../../shared/hooks/useTranslation";
 import { useLanguage } from "../../../../contexts/LanguageContext";
 import { profileService } from "../../../../shared/index";
+import Swal from "sweetalert2";
 
 export default function ProfileSettings({ user }) {
      const { t } = useTranslation();
@@ -17,6 +18,11 @@ export default function ProfileSettings({ user }) {
           newPassword: "",
           confirmPassword: ""
      });
+     const [passwordErrors, setPasswordErrors] = useState({});
+     const [isChangingPassword, setIsChangingPassword] = useState(false);
+     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+     const [showNewPassword, setShowNewPassword] = useState(false);
+     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
      const [accountInfo, setAccountInfo] = useState({
           email: user?.email || "",
           phone: user?.phone || "",
@@ -47,11 +53,11 @@ export default function ProfileSettings({ user }) {
           return `${day}-${month}-${year}`;
      };
 
-     // Load account info from API on mount
+     // Tải thông tin tài khoản 
      useEffect(() => {
           const token = localStorage.getItem("token");
           if (!token) return;
-
+          // Nếu đã có thông tin từ user prop, không cần tải lại
           const loadAccountInfo = async () => {
                try {
                     const result = await profileService.getProfile();
@@ -91,22 +97,148 @@ export default function ProfileSettings({ user }) {
 
      ];
 
+     // Xử lý thay đổi dữ liệu mật khẩu 
      const handlePasswordChange = (field, value) => {
           setPasswordData(prev => ({
                ...prev,
                [field]: value
           }));
+          // Clear error when user starts typing
+          if (passwordErrors[field]) {
+               setPasswordErrors(prev => ({
+                    ...prev,
+                    [field]: ""
+               }));
+          }
      };
 
-     const handleChangePassword = () => {
-          if (passwordData.newPassword !== passwordData.confirmPassword) {
-               alert("Mật khẩu mới không khớp!");
+     // Validate password form
+     const validatePasswordForm = () => {
+          const errors = {};
+
+          if (!passwordData.currentPassword.trim()) {
+               errors.currentPassword = "Vui lòng nhập mật khẩu hiện tại";
+          }
+
+          if (!passwordData.newPassword) {
+               errors.newPassword = "Vui lòng nhập mật khẩu mới";
+          } else if (passwordData.newPassword.length < 6) {
+               errors.newPassword = "Mật khẩu mới phải có ít nhất 6 ký tự";
+          } else if (passwordData.newPassword.length > 100) {
+               errors.newPassword = "Mật khẩu không được vượt quá 100 ký tự";
+          } else if (!/[A-Z]/.test(passwordData.newPassword)) {
+               errors.newPassword = "Mật khẩu phải chứa ít nhất 1 chữ hoa";
+          } else if (!/[a-z]/.test(passwordData.newPassword)) {
+               errors.newPassword = "Mật khẩu phải chứa ít nhất 1 chữ thường";
+          } else if (!/[0-9]/.test(passwordData.newPassword)) {
+               errors.newPassword = "Mật khẩu phải chứa ít nhất 1 số";
+          } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword)) {
+               errors.newPassword = "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt";
+          } else if (passwordData.newPassword === passwordData.currentPassword) {
+               errors.newPassword = "Mật khẩu mới không được trùng với mật khẩu hiện tại";
+          }
+
+          if (!passwordData.confirmPassword) {
+               errors.confirmPassword = "Vui lòng xác nhận mật khẩu mới";
+          } else if (passwordData.confirmPassword !== passwordData.newPassword) {
+               errors.confirmPassword = "Mật khẩu xác nhận không khớp";
+          }
+
+          setPasswordErrors(errors);
+          return Object.keys(errors).length === 0;
+     };
+
+     // Password strength indicator
+     const getPasswordStrength = (password) => {
+          if (!password) return { strength: 0, label: "", color: "gray" };
+
+          let strength = 0;
+          if (password.length >= 6) strength++;
+          if (password.length >= 10) strength++;
+          if (/[A-Z]/.test(password)) strength++;
+          if (/[a-z]/.test(password)) strength++;
+          if (/[0-9]/.test(password)) strength++;
+          if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
+
+          if (strength <= 2) return { strength: 1, label: "Yếu", color: "red" };
+          if (strength <= 4) return { strength: 2, label: "Trung bình", color: "yellow" };
+          return { strength: 3, label: "Mạnh", color: "green" };
+     };
+
+     // Constants for character limit
+     const MAX_PASSWORD_LENGTH = 100;
+     const WARNING_THRESHOLD = 90;
+
+     // Helper function to get character count warning class
+     const getCharCountClass = (length) => {
+          if (length >= MAX_PASSWORD_LENGTH) return "text-red-500 font-medium";
+          if (length >= WARNING_THRESHOLD) return "text-yellow-600";
+          return "text-gray-400";
+     };
+
+     // xử lí nút đổi mật khẩu
+     const handleChangePassword = async () => {
+          const token = localStorage.getItem("token");
+          if (!token) {
+               Swal.fire({
+                    icon: "warning",
+                    title: "Phiên đăng nhập hết hạn",
+                    text: "Vui lòng đăng nhập lại để tiếp tục",
+                    confirmButtonText: "Đóng",
+               });
                return;
           }
-          // API call to change password
-          setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+
+          if (!validatePasswordForm()) {
+               return;
+          }
+
+          setIsChangingPassword(true);
+
+          try {
+               const result = await profileService.changePassword(
+                    passwordData.currentPassword,
+                    passwordData.newPassword,
+                    passwordData.confirmPassword
+               );
+
+               if (result.ok) {
+                    Swal.fire({
+                         icon: "success",
+                         title: "Thành công",
+                         text: result.message || "Đổi mật khẩu thành công",
+                         confirmButtonText: "Đóng",
+                         timer: 2000,
+                         timerProgressBar: true,
+                    });
+                    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                    setShowCurrentPassword(false);
+                    setShowNewPassword(false);
+                    setShowConfirmPassword(false);
+               } else {
+                    Swal.fire({
+                         icon: "error",
+                         title: "Lỗi",
+                         text: result.reason || "Đổi mật khẩu thất bại",
+                         confirmButtonText: "Đóng",
+                    });
+               }
+          } catch (err) {
+               Swal.fire({
+                    icon: "error",
+                    title: "Lỗi",
+                    text: err.message || "Có lỗi xảy ra khi đổi mật khẩu",
+                    confirmButtonText: "Đóng",
+               });
+          } finally {
+               setIsChangingPassword(false);
+          }
      };
 
+     /**
+      * Xử lý khi nhấn nút "Xóa tài khoản"
+      * Hiển thị popup xác nhận trước khi xóa
+      */
      const handleDeleteAccount = () => {
           if (window.confirm("Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác!")) {
                // API call to delete account
@@ -265,89 +397,226 @@ export default function ProfileSettings({ user }) {
           </div>
      );
 
-     const renderSecuritySettings = () => (
-          <div className="space-y-4">
-               <FadeIn delay={100}>
-                    <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
-                         <CardHeader className="border-b py-3 border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
-                              <CardTitle className="flex text-2xl items-center gap-2 text-teal-900">
-                                   <Key className="w-5 h-5 text-teal-600" />
-                                   {t("profileSettings.changePassword")}
-                              </CardTitle>
-                              <p className="text-sm text-teal-600">
-                                   {t("profileSettings.changePasswordSubtitle")}
-                              </p>
-                         </CardHeader>
-                         <CardContent className="space-y-2 px-5 pt-2">
-                              <div className="space-y-2">
-                                   <label className="block text-sm font-semibold text-teal-800">
-                                        {t("profileSettings.currentPassword")}
-                                   </label>
-                                   <Input
-                                        type="password"
-                                        value={passwordData.currentPassword}
-                                        onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
-                                        placeholder={t("profileSettings.enterCurrentPassword")}
-                                        className="rounded-2xl border-teal-100 focus:border-teal-500 focus:ring-teal-500"
-                                   />
-                              </div>
-                              <div className="space-y-2">
-                                   <label className="block text-sm font-semibold text-teal-800">
-                                        {t("profileSettings.newPassword")}
-                                   </label>
-                                   <Input
-                                        type="password"
-                                        value={passwordData.newPassword}
-                                        onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-                                        placeholder={t("profileSettings.enterNewPassword")}
-                                        className="rounded-2xl border-teal-100 focus:border-teal-500 focus:ring-teal-500"
-                                   />
-                              </div>
-                              <div className="space-y-2">
-                                   <label className="block text-sm font-semibold text-teal-800">
-                                        {t("profileSettings.confirmPassword")}
-                                   </label>
-                                   <Input
-                                        type="password"
-                                        value={passwordData.confirmPassword}
-                                        onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
-                                        placeholder={t("profileSettings.enterConfirmPassword")}
-                                        className="rounded-2xl border-teal-100 focus:border-teal-500 focus:ring-teal-500"
-                                   />
-                              </div>
-                              <Button
-                                   onClick={handleChangePassword}
-                                   className="rounded-2xl bg-teal-500 hover:bg-teal-600"
-                              >
-                                   <Key className="w-4 h-4 mr-2" />
-                                   {t("profileSettings.changePassword")}
-                              </Button>
-                         </CardContent>
-                    </Card>
-               </FadeIn>
+     const renderSecuritySettings = () => {
+          const passwordStrength = getPasswordStrength(passwordData.newPassword);
 
-               <FadeIn delay={260}>
-                    <Card className="rounded-3xl border border-orange-200/70 bg-white/95 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
-                         <CardHeader className="border-b border-orange-100/70 bg-gradient-to-r from-orange-50 via-white to-white rounded-t-3xl">
-                              <CardTitle className="flex items-center gap-2 text-orange-700">
-                                   <Shield className="w-5 h-5" />
-                                   {t("profileSettings.securityRecommendations")}
-                              </CardTitle>
-                         </CardHeader>
-                         <CardContent className="space-y-3 p-6">
-
-                              <div className="flex items-start gap-3 rounded-2xl border border-orange-100 bg-orange-50/80 px-4 py-3">
-                                   <Key className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                                   <div className="flex-1">
-                                        <p className="text-sm font-semibold text-orange-800">{t("profileSettings.changePasswordRegularly")}</p>
-                                        <p className="mt-1 text-xs text-orange-600">{t("profileSettings.passwordUsedDays")}</p>
+          return (
+               <div className="space-y-4">
+                    <FadeIn delay={100}>
+                         <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
+                              <CardHeader className="border-b py-3 border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
+                                   <CardTitle className="flex text-2xl items-center gap-2 text-teal-900">
+                                        <Key className="w-5 h-5 text-teal-600" />
+                                        {t("profileSettings.changePassword")}
+                                   </CardTitle>
+                                   <p className="text-sm text-teal-600">
+                                        {t("profileSettings.changePasswordSubtitle")}
+                                   </p>
+                              </CardHeader>
+                              <CardContent className="space-y-4 px-5 pt-4 pb-5">
+                                   {/* Current Password */}
+                                   <div className="space-y-2">
+                                        <label className="block text-sm font-semibold text-teal-800">
+                                             {t("profileSettings.currentPassword")} <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="relative">
+                                             <Input
+                                                  type={showCurrentPassword ? "text" : "password"}
+                                                  value={passwordData.currentPassword}
+                                                  onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
+                                                  placeholder={t("profileSettings.enterCurrentPassword")}
+                                                  maxLength={100}
+                                                  className={`rounded-2xl border-teal-100 focus:border-teal-500 focus:ring-teal-500 pr-10 ${passwordErrors.currentPassword ? "border-red-500" : ""}`}
+                                             />
+                                             <button
+                                                  type="button"
+                                                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                             >
+                                                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                             </button>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                             {passwordErrors.currentPassword ? (
+                                                  <p className="text-red-500 text-sm">{passwordErrors.currentPassword}</p>
+                                             ) : <span />}
+                                             <span className={`text-xs ${getCharCountClass(passwordData.currentPassword.length)}`}>
+                                                  {passwordData.currentPassword.length}/{MAX_PASSWORD_LENGTH}
+                                                  {passwordData.currentPassword.length >= MAX_PASSWORD_LENGTH && " (đã đạt giới hạn)"}
+                                             </span>
+                                        </div>
                                    </div>
-                              </div>
-                         </CardContent>
-                    </Card>
-               </FadeIn>
-          </div>
-     );
+
+                                   {/* New Password */}
+                                   <div className="space-y-2">
+                                        <label className="block text-sm font-semibold text-teal-800">
+                                             {t("profileSettings.newPassword")} <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="relative">
+                                             <Input
+                                                  type={showNewPassword ? "text" : "password"}
+                                                  value={passwordData.newPassword}
+                                                  onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
+                                                  placeholder={t("profileSettings.enterNewPassword")}
+                                                  maxLength={100}
+                                                  className={`rounded-2xl border-teal-100 focus:border-teal-500 focus:ring-teal-500 pr-10 ${passwordErrors.newPassword ? "border-red-500" : ""}`}
+                                             />
+                                             <button
+                                                  type="button"
+                                                  onClick={() => setShowNewPassword(!showNewPassword)}
+                                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                             >
+                                                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                             </button>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                             {passwordErrors.newPassword ? (
+                                                  <p className="text-red-500 text-sm">{passwordErrors.newPassword}</p>
+                                             ) : <span />}
+                                             <span className={`text-xs ${getCharCountClass(passwordData.newPassword.length)}`}>
+                                                  {passwordData.newPassword.length}/{MAX_PASSWORD_LENGTH}
+                                                  {passwordData.newPassword.length >= MAX_PASSWORD_LENGTH && " (đã đạt giới hạn)"}
+                                             </span>
+                                        </div>
+
+                                        {/* Password strength indicator */}
+                                        {passwordData.newPassword && (
+                                             <div className="mt-2">
+                                                  <div className="flex gap-1 mb-1">
+                                                       {[1, 2, 3].map((level) => (
+                                                            <div
+                                                                 key={level}
+                                                                 className={`h-1 flex-1 rounded-full transition-colors ${passwordStrength.strength >= level
+                                                                      ? passwordStrength.color === "red"
+                                                                           ? "bg-red-500"
+                                                                           : passwordStrength.color === "yellow"
+                                                                                ? "bg-yellow-500"
+                                                                                : "bg-green-500"
+                                                                      : "bg-gray-200"
+                                                                      }`}
+                                                            />
+                                                       ))}
+                                                  </div>
+                                                  <p className={`text-xs ${passwordStrength.color === "red"
+                                                       ? "text-red-500"
+                                                       : passwordStrength.color === "yellow"
+                                                            ? "text-yellow-600"
+                                                            : "text-green-500"
+                                                       }`}>
+                                                       Độ mạnh: {passwordStrength.label}
+                                                  </p>
+                                             </div>
+                                        )}
+
+                                        {/* Password requirements */}
+                                        <div className="mt-2 text-xs text-gray-500 space-y-1">
+                                             <p className="font-medium">Yêu cầu mật khẩu:</p>
+                                             <ul className="space-y-0.5 ml-2">
+                                                  <li className={`flex items-center gap-1 ${passwordData.newPassword.length >= 6 ? "text-green-600" : ""}`}>
+                                                       {passwordData.newPassword.length >= 6 ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
+                                                       Ít nhất 6 ký tự
+                                                  </li>
+                                                  <li className={`flex items-center gap-1 ${/[A-Z]/.test(passwordData.newPassword) ? "text-green-600" : ""}`}>
+                                                       {/[A-Z]/.test(passwordData.newPassword) ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
+                                                       Ít nhất 1 chữ hoa
+                                                  </li>
+                                                  <li className={`flex items-center gap-1 ${/[a-z]/.test(passwordData.newPassword) ? "text-green-600" : ""}`}>
+                                                       {/[a-z]/.test(passwordData.newPassword) ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
+                                                       Ít nhất 1 chữ thường
+                                                  </li>
+                                                  <li className={`flex items-center gap-1 ${/[0-9]/.test(passwordData.newPassword) ? "text-green-600" : ""}`}>
+                                                       {/[0-9]/.test(passwordData.newPassword) ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
+                                                       Ít nhất 1 số
+                                                  </li>
+                                                  <li className={`flex items-center gap-1 ${/[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword) ? "text-green-600" : ""}`}>
+                                                       {/[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword) ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
+                                                       Ít nhất 1 ký tự đặc biệt
+                                                  </li>
+                                             </ul>
+                                        </div>
+                                   </div>
+
+                                   {/* Confirm Password */}
+                                   <div className="space-y-2">
+                                        <label className="block text-sm font-semibold text-teal-800">
+                                             {t("profileSettings.confirmPassword")} <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="relative">
+                                             <Input
+                                                  type={showConfirmPassword ? "text" : "password"}
+                                                  value={passwordData.confirmPassword}
+                                                  onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
+                                                  placeholder={t("profileSettings.enterConfirmPassword")}
+                                                  maxLength={100}
+                                                  className={`rounded-2xl border-teal-100 focus:border-teal-500 focus:ring-teal-500 pr-10 ${passwordErrors.confirmPassword ? "border-red-500" : ""}`}
+                                             />
+                                             <button
+                                                  type="button"
+                                                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                             >
+                                                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                             </button>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                             {passwordErrors.confirmPassword ? (
+                                                  <p className="text-red-500 text-sm">{passwordErrors.confirmPassword}</p>
+                                             ) : passwordData.confirmPassword && passwordData.confirmPassword === passwordData.newPassword ? (
+                                                  <p className="text-green-600 text-sm flex items-center gap-1">
+                                                       <Check className="w-4 h-4" /> Mật khẩu khớp
+                                                  </p>
+                                             ) : <span />}
+                                             <span className={`text-xs ${getCharCountClass(passwordData.confirmPassword.length)}`}>
+                                                  {passwordData.confirmPassword.length}/{MAX_PASSWORD_LENGTH}
+                                                  {passwordData.confirmPassword.length >= MAX_PASSWORD_LENGTH && " (đã đạt giới hạn)"}
+                                             </span>
+                                        </div>
+                                   </div>
+
+                                   <Button
+                                        onClick={handleChangePassword}
+                                        disabled={isChangingPassword}
+                                        className="rounded-2xl bg-teal-500 hover:bg-teal-600 mt-2"
+                                   >
+                                        {isChangingPassword ? (
+                                             <>
+                                                  <LoadingSpinner className="w-4 h-4 mr-2" />
+                                                  Đang xử lý...
+                                             </>
+                                        ) : (
+                                             <>
+                                                  <Key className="w-4 h-4 mr-2" />
+                                                  {t("profileSettings.changePassword")}
+                                             </>
+                                        )}
+                                   </Button>
+                              </CardContent>
+                         </Card>
+                    </FadeIn>
+
+                    <FadeIn delay={260}>
+                         <Card className="rounded-3xl border border-orange-200/70 bg-white/95 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
+                              <CardHeader className="border-b border-orange-100/70 bg-gradient-to-r from-orange-50 via-white to-white rounded-t-3xl">
+                                   <CardTitle className="flex items-center gap-2 text-orange-700">
+                                        <Shield className="w-5 h-5" />
+                                        {t("profileSettings.securityRecommendations")}
+                                   </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-3 p-6">
+
+                                   <div className="flex items-start gap-3 rounded-2xl border border-orange-100 bg-orange-50/80 px-4 py-3">
+                                        <Key className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                                        <div className="flex-1">
+                                             <p className="text-sm font-semibold text-orange-800">{t("profileSettings.changePasswordRegularly")}</p>
+                                             <p className="mt-1 text-xs text-orange-600">{t("profileSettings.passwordUsedDays")}</p>
+                                        </div>
+                                   </div>
+                              </CardContent>
+                         </Card>
+                    </FadeIn>
+               </div>
+          );
+     };
 
      const renderContent = () => {
           switch (activeTab) {

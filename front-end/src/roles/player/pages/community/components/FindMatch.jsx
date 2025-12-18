@@ -14,6 +14,7 @@ import {
      Phone,
      User,
      FileText,
+     X,
 } from "lucide-react";
 
 import {
@@ -21,6 +22,7 @@ import {
      CardContent,
      Button,
      Input,
+     PhoneInput,
      Badge,
      DatePicker,
      Select,
@@ -34,6 +36,7 @@ import {
 import { useAuth } from "../../../../../contexts/AuthContext";
 import {
      fetchMatchRequests,
+     fetchMatchRequestById,
      joinMatchRequestAPI,
 } from "../../../../../shared/services/matchRequest";
 import { getBookingById } from "../../../../../shared/utils/bookingStore";
@@ -86,15 +89,27 @@ function MatchRequestCard({
           mr.bookingId != null ? getBookingById(mr.bookingId) : null;
      const bookingInfo = localBooking || getBookingInfoFromApi(mr);
      const ownerId =
-          mr.ownerId || mr.userId || mr.createdById || mr.createdByUserId;
+          mr.creatorUserId ||
+          mr.ownerId ||
+          mr.userId ||
+          mr.createdById ||
+          mr.createdByUserId;
      const ownerName =
-          mr.ownerName || mr.createdByName || mr.owner?.name || mr.createdBy;
+          mr.creatorFullName ||
+          mr.ownerName ||
+          mr.createdByName ||
+          mr.owner?.name ||
+          mr.createdBy;
      const creatorTeamName =
-          mr.creatorTeamName || mr.homeTeamName || mr.hostTeamName || "";
+          mr.creatorTeamName ||
+          mr.homeTeamName ||
+          mr.hostTeamName ||
+          "";
      const expireAt = mr.expireAt || mr.expiresAt || mr.expireDate;
      const levelLabel = mr.level || mr.skillLevel || mr.difficulty || "Any";
      const statusLabel = mr.status || mr.state || "Open";
      const locationText =
+          mr.complexName ||
           mr.location ||
           bookingInfo.fieldAddress ||
           bookingInfo.address ||
@@ -105,13 +120,26 @@ function MatchRequestCard({
      const isRejected = statusLabel === "Rejected" || statusLabel === "Đã từ chối" || statusLabel === "rejected";
 
      // Check if this is the current user's request
-     // Priority: use isMyRequest from API if available, otherwise compare ownerId
+     // Priority: use isOwner/isMyRequest from API if available, otherwise compare ownerId/creatorUserId
      const ownerIsCurrentUser =
           user &&
-          (mr.isMyRequest === true ||
+          (mr.isOwner === true ||
+               mr.isMyRequest === true ||
                (ownerId &&
                     String(ownerId) ===
                     String(user.userID || user.UserID || user.id || user.userId)));
+
+     // Check if user has joined this match request
+     // Check from API: hasJoined, myStatus, or participants with isMe: true
+     // Also check by comparing userId in participants array
+     const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
+     const hasJoinedFromAPI =
+          mr.hasJoined === true ||
+          (mr.myStatus && mr.myStatus !== "None" && mr.myStatus !== "Rejected" && mr.myStatus !== "rejected") ||
+          (Array.isArray(mr.participants) && (
+               mr.participants.some(p => p.isMe === true) ||
+               (currentUserId && mr.participants.some(p => String(p.userId) === String(currentUserId)))
+          ));
 
      const handleJoinClickLocal = () => {
           if (!user) {
@@ -261,35 +289,35 @@ function MatchRequestCard({
                                    {ownerIsCurrentUser ? (
                                         <Button
                                              disabled
-                                             className="bg-gray-200 !rounded-full py-2 text-sm text-gray-500 cursor-not-allowed flex items-center gap-2 hover:bg-gray-200"
+                                             className="bg-blue-100 hover:bg-blue-100 !rounded-full py-2 text-sm text-blue-700 cursor-not-allowed flex items-center gap-2 border border-blue-200"
                                         >
                                              <UserCheck className="w-4 h-4" />
                                              Yêu cầu của bạn
                                         </Button>
-                                   ) : isRejected ? (
+                                   ) : isRejected || (mr.myStatus && (mr.myStatus === "Rejected" || mr.myStatus === "rejected")) ? (
                                         <Button
                                              disabled
-                                             className="bg-red-200 !rounded-full py-2 text-sm text-red-700 cursor-not-allowed flex items-center gap-2 hover:bg-red-200"
+                                             className="bg-red-100 hover:bg-red-100 !rounded-full py-2 text-sm text-red-700 cursor-not-allowed flex items-center gap-2 border border-red-200"
                                         >
                                              <AlertCircle className="w-4 h-4" />
-                                             Bị từ chối
+                                             Từ chối
                                         </Button>
-                                   ) : hasSentJoinRequest ? (
+                                   ) : hasJoinedFromAPI || hasSentJoinRequest ? (
                                         <Button
                                              disabled
-                                             className="bg-gray-200 !rounded-full py-2 text-sm text-gray-500 cursor-not-allowed flex items-center gap-2 hover:bg-gray-200"
+                                             className="bg-amber-100 hover:bg-amber-100 !rounded-full py-2 text-sm text-amber-700 cursor-not-allowed flex items-center gap-2 border border-amber-200"
                                         >
                                              <CheckCircle2 className="w-4 h-4" />
-                                             Đã gửi yêu cầu
+                                             Đã Yêu cầu
                                         </Button>
                                    ) : (
                                         <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                                              <Button
                                                   onClick={handleJoinClickLocal}
-                                                  className="bg-teal-500 hover:bg-teal-600 text-white rounded-full flex items-center gap-2"
+                                                  className="bg-teal-500 hover:bg-teal-600 text-white rounded-full flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
                                              >
                                                   <UserPlus className="w-4 h-4" />
-                                                  Tham gia
+                                                  Tham Gia
                                              </Button>
                                         </motion.div>
                                    )}
@@ -312,6 +340,7 @@ export default function FindMatch() {
      const [highlightPostId, setHighlightPostId] = useState(null);
      const [isLoading, setIsLoading] = useState(false);
      const [error, setError] = useState("");
+     const [showOwnerInfo, setShowOwnerInfo] = useState(true);
 
      // Modal state
      const [isModalOpen, setIsModalOpen] = useState(false);
@@ -335,14 +364,73 @@ export default function FindMatch() {
           setIsLoading(true);
           const response = await fetchMatchRequests({ page: 1, size: 100 });
           if (response.success) {
-               setRawRequests(Array.isArray(response.data) ? response.data : []);
+               const requests = Array.isArray(response.data) ? response.data : [];
+
+               // Enrich requests that thiếu hasJoined/myStatus/participants bằng API detail
+               const enrichedRequests = await Promise.all(
+                    requests.map(async (mr) => {
+                         const requestId =
+                              mr.requestId ||
+                              mr.id ||
+                              mr.matchRequestId ||
+                              mr.MatchRequestId ||
+                              mr.matchID;
+
+                         const hasJoinData =
+                              mr.hasJoined !== undefined ||
+                              (mr.myStatus && mr.myStatus !== "None") ||
+                              (Array.isArray(mr.participants) && mr.participants.length > 0);
+
+                         if (!requestId || hasJoinData) return mr;
+
+                         const detailRes = await fetchMatchRequestById(requestId);
+                         if (detailRes.success && detailRes.data?.data) {
+                              return { ...mr, ...detailRes.data.data };
+                         }
+                         return mr;
+                    })
+               );
+
+               setRawRequests(enrichedRequests);
                setError("");
+
+               // Sync sentJoinRequests from API data
+               if (user) {
+                    const currentUserId = user.userID || user.UserID || user.id || user.userId;
+                    const joinedRequestIds = new Set();
+
+                    enrichedRequests.forEach((mr) => {
+                         const requestId =
+                              mr.requestId ||
+                              mr.id ||
+                              mr.matchRequestId ||
+                              mr.MatchRequestId ||
+                              mr.matchID;
+
+                         if (requestId) {
+                              // Check if user has joined this request
+                              const hasJoined =
+                                   mr.hasJoined === true ||
+                                   (mr.myStatus && mr.myStatus !== "None" && mr.myStatus !== "Rejected" && mr.myStatus !== "rejected") ||
+                                   (Array.isArray(mr.participants) && (
+                                        mr.participants.some(p => p.isMe === true) ||
+                                        (currentUserId && mr.participants.some(p => String(p.userId) === String(currentUserId)))
+                                   ));
+
+                              if (hasJoined) {
+                                   joinedRequestIds.add(requestId);
+                              }
+                         }
+                    });
+
+                    setSentJoinRequests(joinedRequestIds);
+               }
           } else {
                setRawRequests([]);
                setError(response.error || "Không thể tải danh sách kèo");
           }
           setIsLoading(false);
-     }, []);
+     }, [user]);
 
      useEffect(() => {
           loadMatchRequests();
@@ -367,13 +455,9 @@ export default function FindMatch() {
      const filteredMatchRequests = useMemo(() => {
           return rawRequests
                .filter((req) => {
-                    if (!user || !req) return true;
-                    const reqOwner =
-                         req.ownerId || req.userId || req.createdById || req.createdByUserId;
-                    if (!reqOwner) return true;
-                    const currentUserId =
-                         user.userID || user.UserID || user.id || user.userId;
-                    return String(reqOwner) !== String(currentUserId);
+                    // Show all requests, including owner's requests
+                    // Owner's requests will show "Yêu cầu của bạn" button
+                    return true;
                })
                .filter((req) => {
                     if (!filterLocation.trim()) return true;
@@ -401,7 +485,7 @@ export default function FindMatch() {
                     const level = (req.level || req.skillLevel || "any").toLowerCase();
                     return level === filterLevel.toLowerCase();
                });
-     }, [rawRequests, filterLocation, filterDate, filterLevel, user]);
+     }, [rawRequests, filterLocation, filterDate, filterLevel]);
 
      useEffect(() => {
           setMatchPage(1);
@@ -467,12 +551,37 @@ export default function FindMatch() {
 
      const validateForm = () => {
           const errors = {};
-          if (!formData.teamName.trim()) {
+
+          // Validate tên đội
+          const trimmedTeamName = formData.teamName?.trim() || "";
+          if (!trimmedTeamName) {
                errors.teamName = "Vui lòng nhập tên đội";
+          } else if (trimmedTeamName.length < 2) {
+               errors.teamName = "Tên đội phải có ít nhất 2 ký tự";
+          } else if (trimmedTeamName.length > 50) {
+               errors.teamName = "Tên đội không được quá 50 ký tự";
           }
-          if (!formData.contactPhone.trim()) {
+
+          // Validate số điện thoại VN
+          const trimmedPhone = formData.contactPhone?.replace(/\s/g, "") || "";
+          if (!trimmedPhone) {
                errors.contactPhone = "Vui lòng nhập số điện thoại liên hệ";
+          } else if (!/^(03|05|07|08|09)[0-9]{8}$/.test(trimmedPhone)) {
+               errors.contactPhone = "SĐT phải 10 số, bắt đầu bằng 03/05/07/08/09";
           }
+
+          // Validate số người chơi
+          const numPlayerCount = Number(formData.playerCount);
+          if (isNaN(numPlayerCount) || numPlayerCount < 1 || numPlayerCount > 22) {
+               errors.playerCount = "Số người phải từ 1 đến 22";
+          }
+
+          // Validate ghi chú (optional nhưng nếu có thì phải hợp lệ)
+          const trimmedNote = formData.note?.trim() || "";
+          if (trimmedNote && trimmedNote.length > 500) {
+               errors.note = "Ghi chú không được quá 500 ký tự";
+          }
+
           setFormErrors(errors);
           return Object.keys(errors).length === 0;
      };
@@ -597,6 +706,25 @@ export default function FindMatch() {
                     </div>
                </motion.div>
 
+               {/* Info: backend ẩn các kèo do chính bạn tạo */}
+               {showOwnerInfo && (
+                    <Card className="mx-4 my-3 border-amber-200 rounded-2xl bg-amber-50">
+                         <CardContent className="py-3 px-4 text-sm text-amber-800 flex items-start gap-2">
+                              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                   Hệ thống không hiển thị các yêu cầu do bạn tạo. Hãy vào lịch/chi tiết booking của bạn để xem và quản lý kèo mình đã tạo.
+                              </div>
+                              <Button
+                                   onClick={() => setShowOwnerInfo(false)}
+                                   className="bg-transparent h-6 text-amber-700 hover:bg-amber-100 hover:text-amber-900 rounded-2xl p-1 text-sm font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                   aria-label="Đóng thông báo"
+                              >
+                                   <X className="w-4 h-4" />
+                              </Button>
+                         </CardContent>
+                    </Card>
+               )}
+
                {error && (
                     <Card className="m-4 border-red-200 bg-red-50">
                          <CardContent className="p-4 text-red-700 flex items-center gap-2">
@@ -663,14 +791,14 @@ export default function FindMatch() {
                     )}
                </div>
 
-               {/* Join Match Modal - Shared for all match requests */}
+               {/* Modal tham gia kèo */}
                <Modal
                     isOpen={isModalOpen}
                     onClose={handleCloseModal}
                     title="Tham gia kèo"
                     className="max-w-lg w-full mx-4"
                >
-                    <div className="space-y-4 pb-2">
+                    <div className="space-y-3 pb-2">
                          {/* Tên đội */}
                          <div className="space-y-1.5">
                               <label className="flex items-center gap-2 text-sm font-semibold text-gray-800">
@@ -734,10 +862,10 @@ export default function FindMatch() {
                                    </span>
                               </label>
                               <div className="relative">
-                                   <Input
-                                        type="tel"
+                                   <PhoneInput
                                         placeholder="0909xxxxxx"
                                         value={formData.contactPhone}
+                                        maxLength={10}
                                         onChange={(e) =>
                                              setFormData({ ...formData, contactPhone: e.target.value })
                                         }

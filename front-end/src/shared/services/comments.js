@@ -251,7 +251,10 @@ export async function createComment(commentData) {
         content: commentData.content || "",
       };
     }
+    
+    console.log("[createComment] Sending payload:", payload);
     const response = await apiClient.post("/api/Comment", payload);
+    console.log("[createComment] Response:", response.data);
     // Unwrap data if it's wrapped in { success: true, data: ... }
     const responseData = response.data;
     const resultData = (responseData && 'data' in responseData) ? responseData.data : responseData;

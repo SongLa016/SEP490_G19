@@ -1,6 +1,6 @@
 import { getRequestOwnerId, getOwnerTeamNames } from "./matchRequestHelpers";
 
-// Check if participant is owner
+// kiểm tra người tham gia, người tạo yêu cầu
 export const isOwnerParticipant = (
   participant,
   ownerId,
@@ -33,13 +33,9 @@ export const isOwnerParticipant = (
     .toString()
     .trim()
     .toLowerCase();
-
-  if (participantTeamName && ownerTeamNames.includes(participantTeamName)) {
+  if (participantTeamName && ownerTeamNames.includes(participantTeamName))
     return true;
-  }
-
   if (ownerId == null) return false;
-
   const ownerValue = String(ownerId);
   const possibleOwnerIds = [
     participant.ownerId,
@@ -79,7 +75,7 @@ export const isOwnerParticipant = (
   return ownerTeamNames.includes(participantTeamName);
 };
 
-// Normalize status value
+// chuẩn hóa trạng thái
 export const normalizeStatusValue = (value) => {
   if (value === undefined || value === null) return "";
   const raw = value.toString().trim().toLowerCase();
@@ -100,7 +96,7 @@ export const normalizeStatusValue = (value) => {
   return raw;
 };
 
-// Get owner decision status
+// lấy trạng thái quyết định người tạo yêu cầu
 export const getOwnerDecisionStatus = (participant) => {
   if (!participant) return "";
   const ownerStatusSources = [
@@ -121,7 +117,7 @@ export const getOwnerDecisionStatus = (participant) => {
   return "";
 };
 
-// Get opponent decision status
+// lấy trạng thái quyết định người tham gia
 export const getOpponentDecisionStatus = (participant) => {
   if (!participant) return "";
   const opponentStatusSources = [
@@ -143,23 +139,23 @@ export const getOpponentDecisionStatus = (participant) => {
   return "";
 };
 
-// Check if participant needs owner action
+// chủ yêu cầu cần xác nhận
 export const participantNeedsOwnerAction = (participant) => {
   const ownerStatus = getOwnerDecisionStatus(participant);
   return !ownerStatus || ownerStatus === "pending";
 };
 
-// Check if participant is accepted by owner
+// chủ yêu cầu xác nhận
 export const isParticipantAcceptedByOwner = (participant) => {
   return getOwnerDecisionStatus(participant) === "accepted";
 };
 
-// Check if participant is rejected by owner
+// kiểm tra người tham gia bị từ chối
 export const isParticipantRejectedByOwner = (participant) => {
   return getOwnerDecisionStatus(participant) === "rejected";
 };
 
-// Normalize participant status for display
+// chuẩn hóa trạng thái người tham gia
 export const normalizeParticipantStatus = (participant) => {
   const ownerStatus = getOwnerDecisionStatus(participant);
   const opponentStatus = getOpponentDecisionStatus(participant);
@@ -205,7 +201,7 @@ export const normalizeParticipantStatus = (participant) => {
   return fallback.charAt(0).toUpperCase() + fallback.slice(1);
 };
 
-// Filter participants for display (exclude owner)
+// lọc người tham gia ( trừ người tạo yêu cầu)
 export const filterParticipantsForDisplay = (participants, request) => {
   if (!Array.isArray(participants)) return [];
   const ownerId = getRequestOwnerId(request);

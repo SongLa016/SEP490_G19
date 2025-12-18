@@ -1,10 +1,10 @@
-// Date and time formatting helpers
+// Chuyển đổi và định dạng ngày giowf
 export const parseDateValue = (value) => {
   if (!value) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 };
-
+// Định dạng nhãn ngày
 export const formatTimeLabel = (dateObj) => {
   if (!dateObj) return "";
   return dateObj.toLocaleTimeString("vi-VN", {
@@ -12,7 +12,7 @@ export const formatTimeLabel = (dateObj) => {
     minute: "2-digit",
   });
 };
-
+// Định dạng ngày với tên ngày trong tuần
 export const formatDateWithDay = (dateStr, startTime) => {
   if (!dateStr) return "Chưa có ngày";
   try {
@@ -39,19 +39,18 @@ export const formatDateWithDay = (dateStr, startTime) => {
       const dayName = dayNames[dateObj.getDay()];
       return `${dayName}, ${dateStr}`;
     }
-  } catch (e) {
-    // Fallback to original date string
-  }
+  } catch (e) {}
   return dateStr;
 };
 
+// định dạng giá
 export const formatPrice = (price) => {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
   }).format(price);
 };
-
+// ddeems ngược thời gian
 export const formatTimeRemaining = (milliseconds) => {
   if (!milliseconds || milliseconds <= 0) return "0:00";
   const totalSeconds = Math.floor(milliseconds / 1000);
@@ -66,7 +65,7 @@ export const formatTimeRemaining = (milliseconds) => {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 };
 
-// String helpers
+// Hiển thị thông tin mã qr
 export const stripRefundQrInfo = (text) => {
   if (!text) return "";
   const markerIndex = text.toLowerCase().indexOf("refundqr");

@@ -23,7 +23,7 @@ export default function FieldCard({ field, fieldSlots, onAddSlot, onEditSlot, on
                     </div>
                     <div className="flex items-center gap-2">
                          <Badge className="bg-teal-100 text-teal-800">
-                              {fieldSlots.length} slots
+                              {fieldSlots.length} giờ
                          </Badge>
                          <Button
                               onClick={() => onAddSlot(field.fieldId)}
@@ -32,7 +32,7 @@ export default function FieldCard({ field, fieldSlots, onAddSlot, onEditSlot, on
                               className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 border-teal-200"
                          >
                               <Plus className="w-4 h-4 mr-1" />
-                              Thêm slot
+                              Thêm khung giờ
                          </Button>
                     </div>
                </div>
@@ -41,7 +41,7 @@ export default function FieldCard({ field, fieldSlots, onAddSlot, onEditSlot, on
                {fieldSlots.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                          <Clock className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                         <p className="text-sm">Sân này chưa có time slot nào</p>
+                         <p className="text-sm">Sân này chưa có khung giờ nào</p>
                          <Button
                               onClick={() => onAddSlot(field.fieldId)}
                               variant="outline"
@@ -49,7 +49,7 @@ export default function FieldCard({ field, fieldSlots, onAddSlot, onEditSlot, on
                               className="mt-3"
                          >
                               <Plus className="w-4 h-4 mr-1" />
-                              Thêm slot đầu tiên
+                              Thêm khung giờ đầu tiên
                          </Button>
                     </div>
                ) : (

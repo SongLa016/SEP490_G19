@@ -129,19 +129,27 @@ export const FieldCard = ({ field, index = 0, hoveredCardId, setHoveredCardId })
 // Helper function to get field images
 const getFieldImages = (field) => {
      const common = [
-          'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=1200&h=800&fit=crop',
-          'https://images.unsplash.com/photo-1509021436665-8f07dbf5bf1d?w=1200&h=800&fit=crop',
-          'https://images.unsplash.com/photo-1471295253337-3ceaaedca402?w=1200&h=800&fit=crop'
+          "https://images.unsplash.com/photo-1502877338535-766e1452684a?w=1200&h=800&fit=crop",
+          "https://images.unsplash.com/photo-1509021436665-8f07dbf5bf1d?w=1200&h=800&fit=crop",
+          "https://images.unsplash.com/photo-1471295253337-3ceaaedca402?w=1200&h=800&fit=crop",
      ];
      const offset = (field.id || 0) % common.length;
      const rotated = [...common.slice(offset), ...common.slice(0, offset)];
 
-     // Nếu field.image không tồn tại hoặc rỗng, chỉ dùng ảnh mặc định
-     if (!field.image || typeof field.image !== "string" || field.image.trim() === "") {
-          return rotated;
-     }
+     const primary = field?.image || field?.mainImageUrl || null;
+     const extraImages = Array.isArray(field?.imageUrls)
+          ? field.imageUrls.filter((url) => typeof url === "string" && url.trim() !== "")
+          : [];
 
-     // Ưu tiên ảnh riêng của sân, sau đó đến ảnh mặc định
-     return [field.image, ...rotated];
+     const merged = [
+          primary,
+          ...extraImages,
+     ].filter(Boolean);
+
+     if (merged.length === 0) return rotated;
+
+     // Loại bỏ trùng lặp, giữ nguyên thứ tự
+     const unique = Array.from(new Set(merged));
+     return [...unique, ...rotated];
 };
 

@@ -3,7 +3,11 @@ import { User, Phone, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Badge, Button } from "../../../../../shared/components/ui";
 
 export default function BookingParticipants({ booking, user, matchRequestData, handlers }) {
-     const { bookingIdToRequest, requestJoins, processingParticipants } = matchRequestData;
+     const {
+          bookingIdToRequest,
+          requestJoins,
+          processingParticipants
+     } = matchRequestData;
      const {
           extractRequestId,
           filterParticipantsForDisplay,
@@ -14,16 +18,14 @@ export default function BookingParticipants({ booking, user, matchRequestData, h
           isRequestLocked,
           normalizeParticipantStatus,
           participantNeedsOwnerAction,
-          isParticipantAcceptedByOwner,
-          isParticipantRejectedByOwner,
           getParticipantId,
-          handleAcceptParticipant,
-          handleRejectParticipant
+          handleAcceptParticipant, // xử lý khi nhấn nút "Chấp nhận" đội tham gia
+          handleRejectParticipant, // xử lý khi nhấn nút "Từ chối" đội tham gia
      } = handlers;
 
      const req = bookingIdToRequest[booking.id];
-     if (!req) return null;
-
+     if (!req) return null;   // 
+     // lấy requestId từ matchRequest object
      const requestId = extractRequestId(req);
      const participants = requestId
           ? (requestJoins[requestId] || extractParticipants(req))
@@ -57,8 +59,6 @@ export default function BookingParticipants({ booking, user, matchRequestData, h
                          const participantTeamName = j.teamName || j.fullName || j.participantName || j.userName || `User: ${j.userId || participantId}`;
                          const participantStatus = normalizeParticipantStatus(j);
                          const needsOwnerAction = participantNeedsOwnerAction(j);
-                         const isAccepted = isParticipantAcceptedByOwner(j);
-                         const isRejected = isParticipantRejectedByOwner(j);
                          const processingKey = `${requestId}-${participantId}`;
                          const isProcessing = processingParticipants[processingKey];
 

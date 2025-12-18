@@ -2,12 +2,18 @@ import React from "react";
 import { RefreshCw, Loader2 } from "lucide-react";
 import { Badge, Button } from "../../../../../shared/components/ui";
 
-export default function BookingMatchRequest({ booking, user, matchRequestData, handlers }) {
-     const { bookingIdToRequest, refreshingRequests, refreshRequestForBooking, extractRequestId } = matchRequestData;
-     const { hasExistingMatchRequest } = handlers;
 
-     const req = bookingIdToRequest[booking.id];
-     const hasRequest = hasExistingMatchRequest(booking);
+export default function BookingMatchRequest({ booking, user, matchRequestData, handlers }) {
+     const {
+          bookingIdToRequest,           // Map bookingId -> matchRequest data
+          refreshingRequests,
+          refreshRequestForBooking,     // Hàm refresh danh sách đội tham gia - Nút "Tải đội tham gia"
+          extractRequestId              // Hàm lấy requestId từ matchRequest object
+     } = matchRequestData;
+     const { hasExistingMatchRequest } = handlers;  // Kiểm tra booking có yêu cầu tìm đối không
+
+     const req = bookingIdToRequest[booking.id];    // Lấy matchRequest của booking hiện tại
+     const hasRequest = hasExistingMatchRequest(booking);  // Kiểm tra có yêu cầu tìm đối không
 
      if (!hasRequest) return null;
 

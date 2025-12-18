@@ -23,10 +23,11 @@ import {
      deleteOwnerBankAccount,
      setDefaultBankAccount
 } from "../../../shared/services/ownerBankAccount";
+import { fetchAllComplexesWithFields, updateField } from "../../../shared/services/fields";
 import { VIETNAM_BANKS, findVietnamBankByCode } from "../../../shared/constants/vietnamBanks";
 
 export default function BankAccountManagement({ isDemo = false }) {
-     const { user, logout } = useAuth();
+     const { user } = useAuth();
      const [bankAccounts, setBankAccounts] = useState([]);
      const [loading, setLoading] = useState(true);
      const [showModal, setShowModal] = useState(false);
@@ -41,17 +42,16 @@ export default function BankAccountManagement({ isDemo = false }) {
      });
      const [errors, setErrors] = useState({});
      const selectedBankMeta = findVietnamBankByCode(formData.bankShortCode);
-
+     // Tải danh sách tài khoản ngân hàng của owner
      const loadData = useCallback(async () => {
           try {
                setLoading(true);
-               // Get UserID from user object (OwnerID references Users(UserID))
+               // lấy OwnerID từ user context
                const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
                if (!isDemo && currentUserId) {
                     const accounts = await fetchOwnerBankAccounts(Number(currentUserId));
                     setBankAccounts(accounts || []);
                } else if (isDemo) {
-                    // Demo data
                     setBankAccounts([
                          {
                               bankAccountId: 1,
@@ -85,19 +85,19 @@ export default function BankAccountManagement({ isDemo = false }) {
           } finally {
                setLoading(false);
           }
-     }, [isDemo, user?.userID || user?.UserID || user?.id || user?.userId]);
+     }, [isDemo, user?.UserID, user?.id, user?.userID, user?.userId]);
 
      useEffect(() => {
           loadData();
      }, [loadData]);
 
+     //thay đổi form data
      const handleInputChange = (e) => {
           const { name, value } = e.target;
           setFormData(prev => ({
                ...prev,
                [name]: value
           }));
-          // Clear error when user starts typing
           if (errors[name]) {
                setErrors(prev => ({
                     ...prev,
@@ -106,6 +106,7 @@ export default function BankAccountManagement({ isDemo = false }) {
           }
      };
 
+     // thay đổi ngân hàng
      const handleBankCodeChange = (code) => {
           const bank = findVietnamBankByCode(code);
           setFormData(prev => ({
@@ -146,6 +147,7 @@ export default function BankAccountManagement({ isDemo = false }) {
           return Object.keys(newErrors).length === 0;
      };
 
+     // tạo tài khoản mới
      const handleCreateAccount = () => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -162,7 +164,7 @@ export default function BankAccountManagement({ isDemo = false }) {
           setErrors({});
           setShowModal(true);
      };
-
+     // chỉnh sửa tài khoản
      const handleEditAccount = (account) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -179,7 +181,7 @@ export default function BankAccountManagement({ isDemo = false }) {
           setErrors({});
           setShowModal(true);
      };
-
+     // submit form
      const handleSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {
@@ -198,14 +200,34 @@ export default function BankAccountManagement({ isDemo = false }) {
                return;
           }
 
+          // Kiểm tra trùng số tài khoản
+          const normalizedAccountNumber = formData.accountNumber.replace(/\s/g, '');
+          const duplicateAccount = bankAccounts.find(acc => {
+               // Bỏ qua tài khoản đang edit
+               if (editingAccount && acc.bankAccountId === editingAccount.bankAccountId) {
+                    return false;
+               }
+               return acc.accountNumber === normalizedAccountNumber;
+          });
+
+          if (duplicateAccount) {
+               Swal.fire({
+                    icon: 'warning',
+                    title: 'Số tài khoản đã tồn tại',
+                    text: `Số tài khoản ${normalizedAccountNumber} đã được đăng ký với ngân hàng ${duplicateAccount.bankName}. Vui lòng sử dụng số tài khoản khác.`,
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#f59e0b'
+               });
+               return;
+          }
+
           try {
-               // OwnerID must reference Users(UserID) from database
                const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
                const accountData = {
-                    ownerId: Number(currentUserId), // Ensure it's a number matching Users(UserID)
+                    ownerId: Number(currentUserId),
                     bankName: formData.bankName,
                     bankShortCode: formData.bankShortCode,
-                    accountNumber: formData.accountNumber.replace(/\s/g, ''),
+                    accountNumber: normalizedAccountNumber,
                     accountHolder: formData.accountHolder,
                     isDefault: formData.isDefault
                };
@@ -244,7 +266,7 @@ export default function BankAccountManagement({ isDemo = false }) {
                });
           }
      };
-
+     // xóa tài khoản
      const handleDeleteAccount = async (account) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -263,7 +285,6 @@ export default function BankAccountManagement({ isDemo = false }) {
           });
 
           if (result.isConfirmed) {
-               // Show loading
                Swal.fire({
                     title: 'Đang xóa...',
                     text: 'Vui lòng đợi trong giây lát',
@@ -285,14 +306,10 @@ export default function BankAccountManagement({ isDemo = false }) {
                     });
                     loadData();
                } catch (error) {
-                    console.error('Error deleting bank account:', error);
-
-                    // Determine error type for better user message
                     let errorTitle = 'Không thể xóa tài khoản';
                     let errorText = error.message || 'Không thể xóa tài khoản ngân hàng. Vui lòng thử lại sau.';
                     let footer = '<small>Nếu vấn đề vẫn tiếp tục, vui lòng liên hệ hỗ trợ</small>';
 
-                    // Check if error is about account being used by fields
                     if (error.message && (
                          error.message.includes('đang được sử dụng') ||
                          error.message.includes('sân') ||
@@ -311,9 +328,7 @@ export default function BankAccountManagement({ isDemo = false }) {
                          errorTitle = 'Không tìm thấy';
                          errorText = 'Tài khoản ngân hàng không tồn tại hoặc đã bị xóa.';
                     } else {
-                         // For other errors (including 500), show the message from service
                          errorTitle = 'Không thể xóa tài khoản';
-                         // errorText already contains the appropriate message from handleApiError
                     }
 
                     await Swal.fire({
@@ -327,7 +342,7 @@ export default function BankAccountManagement({ isDemo = false }) {
                }
           }
      };
-
+     // đặt tài khoản mặc định
      const handleSetDefault = async (account) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -335,13 +350,122 @@ export default function BankAccountManagement({ isDemo = false }) {
           }
 
           try {
-               // OwnerID must reference Users(UserID) from database
                const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
                await setDefaultBankAccount(account.bankAccountId, Number(currentUserId));
+
+               // Cập nhật BankAccountID cho tất cả fields của owner
+               let updatedCount = 0;
+               let failedCount = 0;
+               try {
+                    const allComplexesWithFields = await fetchAllComplexesWithFields();
+
+                    // Lọc các complexes thuộc về owner này
+                    const ownerComplexes = allComplexesWithFields.filter(
+                         complex => {
+                              const complexOwnerId = complex.ownerId || complex.OwnerID || complex.ownerID;
+                              return complexOwnerId === currentUserId || complexOwnerId === Number(currentUserId);
+                         }
+                    );
+
+                    // Lấy tất cả fields từ các complexes của owner
+                    const allFields = [];
+                    ownerComplexes.forEach(complex => {
+                         if (complex.fields && Array.isArray(complex.fields)) {
+                              allFields.push(...complex.fields);
+                         }
+                    });
+
+                    // Cập nhật BankAccountID cho từng field
+                    if (allFields.length > 0) {
+                         const updateResults = await Promise.allSettled(
+                              allFields.map(async (field) => {
+                                   try {
+                                        const fieldId = field.fieldId || field.FieldID || field.id;
+                                        if (!fieldId) {
+                                             console.warn(`⚠️ [UPDATE FIELD] Field missing ID:`, field);
+                                             return { success: false, fieldId: null, error: "Missing fieldId", skipped: true };
+                                        }
+
+                                        // Kiểm tra các trường bắt buộc
+                                        const complexId = field.complexId || field.ComplexID || field.complexID;
+                                        const typeId = field.typeId || field.TypeID || field.typeID;
+                                        const name = field.name || field.Name;
+
+                                        if (!complexId || !typeId || !name) {
+                                             return { success: false, fieldId, error: "Missing required fields", skipped: true };
+                                        }
+
+                                        // Sử dụng FormData thay vì JSON vì API yêu cầu multipart/form-data
+                                        const formDataToSend = new FormData();
+                                        formDataToSend.append("FieldId", String(fieldId));
+                                        formDataToSend.append("ComplexId", String(complexId));
+                                        formDataToSend.append("Name", name);
+                                        formDataToSend.append("TypeId", String(typeId));
+                                        formDataToSend.append("Size", field.size || field.Size || "");
+                                        formDataToSend.append("GrassType", field.grassType || field.GrassType || "");
+                                        formDataToSend.append("Description", field.description || field.Description || "");
+                                        formDataToSend.append("PricePerHour", String(field.pricePerHour || field.PricePerHour || 0));
+                                        formDataToSend.append("Status", field.status || field.Status || "Available");
+                                        formDataToSend.append("BankAccountId", String(account.bankAccountId));
+                                        formDataToSend.append("BankName", account.bankName || "");
+                                        formDataToSend.append("BankShortCode", account.bankShortCode || "");
+                                        formDataToSend.append("AccountNumber", account.accountNumber || "");
+                                        formDataToSend.append("AccountHolder", account.accountHolder || "");
+
+                                        // Giữ lại ảnh hiện có nếu có
+                                        if (field.mainImageUrl || field.MainImageUrl) {
+                                             formDataToSend.append("MainImageUrl", field.mainImageUrl || field.MainImageUrl);
+                                        }
+                                        const imageUrls = field.imageUrls || field.ImageUrls || [];
+                                        if (Array.isArray(imageUrls) && imageUrls.length > 0) {
+                                             imageUrls.forEach(url => {
+                                                  if (url) formDataToSend.append("ImageUrls", url);
+                                             });
+                                        }
+
+                                        const result = await updateField(fieldId, formDataToSend);
+
+                                        return { success: true, fieldId, result };
+                                   } catch (error) {
+                                        return { success: false, fieldId: field.fieldId || field.FieldID, error: error.message || String(error) };
+                                   }
+                              })
+                         );
+
+                         // Đếm số lượng thành công và thất bại
+                         updateResults.forEach((result, index) => {
+                              if (result.status === 'fulfilled' && result.value.success) {
+                                   updatedCount++;
+                              } else {
+                                   failedCount++;
+                                   const field = allFields[index];
+                                   console.error(`❌ [UPDATE FIELD] Failed to update field ${field?.fieldId || field?.FieldID}:`,
+                                        result.status === 'rejected' ? result.reason : result.value.error);
+                              }
+                         });
+
+                    }
+               } catch (error) {
+                    console.error("❌ [UPDATE FIELDS] Error updating fields:", error);
+
+               }
+
+               // Hiển thị thông báo với số lượng fields đã cập nhật
+               let message = `Tài khoản ${account.bankName} đã được đặt làm tài khoản mặc định.`;
+               if (updatedCount > 0) {
+                    message += `\nĐã cập nhật BankAccountID cho ${updatedCount} sân thành công.`;
+               }
+               if (failedCount > 0) {
+                    message += `\nCó ${failedCount} sân cập nhật thất bại.`;
+               }
+               if (updatedCount === 0 && failedCount === 0) {
+                    message += `\nKhông tìm thấy sân nào để cập nhật.`;
+               }
+
                await Swal.fire({
-                    icon: 'success',
+                    icon: updatedCount > 0 ? 'success' : 'warning',
                     title: 'Đã đặt làm mặc định!',
-                    text: `Tài khoản ${account.bankName} đã được đặt làm tài khoản mặc định.`,
+                    text: message,
                     confirmButtonText: 'Đóng',
                     confirmButtonColor: '#10b981'
                });
@@ -593,12 +717,19 @@ export default function BankAccountManagement({ isDemo = false }) {
                                    onChange={handleInputChange}
                                    placeholder="Nhập số tài khoản (8-20 chữ số)"
                                    required
+                                   maxLength={20}
                                    className={errors.accountNumber ? 'border-red-500' : ''}
                               />
-                              {errors.accountNumber && (
-                                   <p className="text-xs text-red-600 mt-1">{errors.accountNumber}</p>
-                              )}
-                              <p className="text-xs text-gray-500 mt-1">Số tài khoản phải từ 8-20 chữ số</p>
+                              <div className="flex justify-between items-center mt-1">
+                                   {errors.accountNumber ? (
+                                        <p className="text-xs text-red-600">{errors.accountNumber}</p>
+                                   ) : (
+                                        <p className="text-xs text-gray-500">Số tài khoản phải từ 8-20 chữ số</p>
+                                   )}
+                                   <span className={`text-xs ${formData.accountNumber?.length >= 20 ? "text-red-500 font-medium" : formData.accountNumber?.length >= 18 ? "text-yellow-600" : "text-gray-400"}`}>
+                                        {formData.accountNumber?.length || 0}/20
+                                   </span>
+                              </div>
                          </div>
 
                          {/* Account Holder */}
@@ -613,11 +744,18 @@ export default function BankAccountManagement({ isDemo = false }) {
                                    onChange={handleInputChange}
                                    placeholder="Nhập tên chủ tài khoản"
                                    required
+                                   maxLength={100}
                                    className={errors.accountHolder ? 'border-red-500' : ''}
                               />
-                              {errors.accountHolder && (
-                                   <p className="text-xs text-red-600 mt-1">{errors.accountHolder}</p>
-                              )}
+                              <div className="flex justify-between items-center mt-1">
+                                   {errors.accountHolder && (
+                                        <p className="text-xs text-red-600">{errors.accountHolder}</p>
+                                   )}
+                                   <span className={`text-xs ml-auto ${formData.accountHolder?.length >= 100 ? "text-red-500 font-medium" : formData.accountHolder?.length >= 90 ? "text-yellow-600" : "text-gray-400"}`}>
+                                        {formData.accountHolder?.length || 0}/100
+                                        {formData.accountHolder?.length >= 100 && " (đã đạt giới hạn)"}
+                                   </span>
+                              </div>
                          </div>
 
                          {/* Is Default */}

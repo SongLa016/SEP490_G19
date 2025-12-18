@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { X, Heart, MessageCircle, Bookmark, MoreHorizontal, Trash2, Edit, MapPin, Building2, Share, List, ExternalLink, Flag } from "lucide-react";
 import { Modal, Button, Avatar, AvatarImage, AvatarFallback, Badge, Textarea } from '../../../../../shared/components/ui';
@@ -8,6 +8,7 @@ import { formatTimeAgo } from './utils/formatTime';
 import { createReport } from '../../../../../shared/services/reports';
 import Swal from 'sweetalert2';
 import { getUserAvatarAndName } from "./utils";
+
 
 const PostDetailModal = ({
      isOpen,
@@ -29,8 +30,17 @@ const PostDetailModal = ({
      const [replyContent, setReplyContent] = useState({});
      const [fieldDetails, setFieldDetails] = useState(null);
      const { avatarUrl: currentUserAvatar, initial: currentUserInitial } = getUserAvatarAndName(user);
+     const commentInputRef = useRef(null);
 
-     // Helper: yêu cầu đăng nhập trước khi thực hiện thao tác
+     // tự động mở rộng textarea
+     const autoResize = useCallback((element, maxHeight = 200) => {
+          if (element) {
+               element.style.height = 'auto';
+               element.style.height = Math.min(element.scrollHeight, maxHeight) + 'px';
+          }
+     }, []);
+
+     // yêu cầu đăng nhập trước
      const requireLogin = (actionLabel = "sử dụng tính năng này") => {
           if (user) return true;
 
@@ -57,17 +67,17 @@ const PostDetailModal = ({
                loadComments();
                loadFieldDetails();
           }
-          // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [isOpen, post]);
 
+     // tải thông tin sân
      const loadFieldDetails = async () => {
           if (!post?.fieldId && !post?.FieldID) return;
 
           const fieldId = post.fieldId || post.FieldID;
           try {
-               // Fetch all fields using the same service as FieldSelectionModal
+               // lấy danh sách sân
                const allFields = await fetchFields();
-               // Find the specific field by ID
+               // tìm sân theo ID
                const field = allFields.find(f =>
                     f.fieldId === fieldId ||
                     f.id === fieldId ||
@@ -85,16 +95,16 @@ const PostDetailModal = ({
           }
      };
 
+     // tải danh sách bình luận
      const loadComments = async () => {
           if (!post?.PostID) return;
 
           setLoading(true);
           try {
                const fetchedComments = await fetchCommentsByPost(post.PostID);
-               // Fetch user info for each comment if author info is missing
+               // lấy thông tin user cho mỗi comment
                const commentsWithUserInfo = await Promise.all(
                     fetchedComments.map(async (comment) => {
-                         // Check if author info is missing or empty (empty string counts as missing)
                          const hasAuthorInfo = comment.author?.name && comment.author.name.trim() !== '' &&
                               comment.author?.username && comment.author.username.trim() !== '';
                          if (!hasAuthorInfo && comment.userId) {
@@ -169,6 +179,7 @@ const PostDetailModal = ({
           }
      };
 
+     // submit bình luận
      const handleCommentSubmit = async () => {
           if (!user) {
                if (!requireLogin("bình luận")) return;
@@ -178,10 +189,11 @@ const PostDetailModal = ({
           const success = await onCommentSubmit?.(post.PostID, commentContent);
           if (success) {
                setCommentContent("");
-               loadComments(); // Reload comments after successful submission
+               loadComments();
           }
      };
 
+     // xóa bình luận
      const handleDeleteComment = async (commentId) => {
           const result = await Swal.fire({
                title: 'Xóa bình luận?',
@@ -218,12 +230,14 @@ const PostDetailModal = ({
           }
      };
 
+     // chỉnh sửa bình luận
      const handleEditComment = (comment) => {
           setEditingCommentId(comment.id || comment.commentId);
           setEditingCommentContent(comment.content);
           setShowCommentMenu({});
      };
 
+     // cập nhật bình luận
      const handleUpdateComment = async (commentId) => {
           if (!editingCommentContent.trim()) return;
 
@@ -251,6 +265,7 @@ const PostDetailModal = ({
           }
      };
 
+     // hiển thị menu comment
      const toggleCommentMenu = (commentId) => {
           setShowCommentMenu(prev => ({
                ...prev,
@@ -258,6 +273,7 @@ const PostDetailModal = ({
           }));
      };
 
+     // kiểm tra comment của user hiện tại
      const isOwnComment = (comment) => {
           const currentUserId = user?.userID || user?.userId || user?.UserID || user?.id;
           const commentUserId = comment?.userId;
@@ -269,6 +285,7 @@ const PostDetailModal = ({
           setShowCommentMenu({});
      };
 
+     // trả lời bình luận
      const handleReplySubmit = async (commentId) => {
           if (!user) {
                if (!requireLogin("trả lời bình luận")) return;
@@ -277,7 +294,7 @@ const PostDetailModal = ({
           if (!content || !content.trim()) return;
 
           try {
-               // Call API to create reply with parentCommentId
+               // gửi bình luận
                const success = await onCommentSubmit?.(post.PostID, content.trim(), commentId);
                if (success) {
                     setReplyContent(prev => ({
@@ -292,6 +309,7 @@ const PostDetailModal = ({
           }
      };
 
+     // thay đổi nội dung trả lời
      const handleReplyChange = (commentId, content) => {
           setReplyContent(prev => ({
                ...prev,
@@ -299,6 +317,7 @@ const PostDetailModal = ({
           }));
      };
 
+     // báo cáo bình luận
      const handleReportComment = async (commentId) => {
           if (!user) {
                if (!requireLogin("báo cáo bình luận")) return;
@@ -532,16 +551,24 @@ const PostDetailModal = ({
                                    </Avatar>
                                    <div className="flex-1">
                                         <Textarea
+                                             ref={commentInputRef}
                                              placeholder="Viết bình luận..."
                                              value={commentContent}
-                                             onChange={(e) => setCommentContent(e.target.value)}
-                                             className="min-h-[70px] resize-none border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500"
+                                             maxLength={2000}
+                                             onChange={(e) => {
+                                                  setCommentContent(e.target.value);
+                                                  autoResize(e.target, 200);
+                                             }}
+                                             className={`min-h-[70px] resize-none border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 overflow-hidden ${commentContent.length > 2000 ? 'border-red-500' : 'border-gray-300'}`}
                                         />
-                                        <div className="flex justify-end mt-2">
+                                        <div className="flex justify-between items-center mt-2">
+                                             <span className={`text-xs ${commentContent.length > 2000 ? 'text-red-500' : 'text-gray-400'}`}>
+                                                  {commentContent.length}/2000
+                                             </span>
                                              <Button
                                                   onClick={handleCommentSubmit}
-                                                  disabled={!commentContent.trim()}
-                                                  className={`px-6 rounded-full ${commentContent.trim()
+                                                  disabled={!commentContent.trim() || commentContent.length > 2000}
+                                                  className={`px-6 rounded-full ${commentContent.trim() && commentContent.length <= 2000
                                                        ? "bg-blue-500 hover:bg-blue-600 text-white"
                                                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
                                                        }`}
@@ -684,35 +711,44 @@ const PostDetailModal = ({
                                                                            <Textarea
                                                                                 placeholder={`Trả lời ${comment.userName || "comment"}...`}
                                                                                 value={replyContent[commentId] || ""}
-                                                                                onChange={(e) => handleReplyChange(commentId, e.target.value)}
-                                                                                className="min-h-[60px] text-sm border border-gray-300 rounded-lg"
+                                                                                maxLength={2000}
+                                                                                onChange={(e) => {
+                                                                                     handleReplyChange(commentId, e.target.value);
+                                                                                     autoResize(e.target, 150);
+                                                                                }}
+                                                                                className={`min-h-[60px] text-sm border rounded-lg resize-none overflow-hidden ${(replyContent[commentId]?.length || 0) > 2000 ? 'border-red-500' : 'border-gray-300'}`}
                                                                            />
-                                                                           <div className="flex gap-2 justify-end mt-2">
-                                                                                <Button
-                                                                                     size="sm"
-                                                                                     onClick={() => handleReplySubmit(commentId)}
-                                                                                     disabled={!replyContent[commentId]?.trim()}
-                                                                                     className={`rounded-full ${replyContent[commentId]?.trim()
-                                                                                          ? "bg-blue-500 hover:bg-blue-600 text-white"
-                                                                                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                                                          }`}
-                                                                                >
-                                                                                     Trả lời
-                                                                                </Button>
-                                                                                <Button
-                                                                                     size="sm"
-                                                                                     variant="ghost"
-                                                                                     onClick={() => {
-                                                                                          setReplyingToCommentId(null);
-                                                                                          setReplyContent(prev => ({
-                                                                                               ...prev,
-                                                                                               [commentId]: ""
-                                                                                          }));
-                                                                                     }}
-                                                                                     className="rounded-full"
-                                                                                >
-                                                                                     Hủy
-                                                                                </Button>
+                                                                           <div className="flex justify-between items-center mt-2">
+                                                                                <span className={`text-xs ${(replyContent[commentId]?.length || 0) > 2000 ? 'text-red-500' : 'text-gray-400'}`}>
+                                                                                     {replyContent[commentId]?.length || 0}/2000
+                                                                                </span>
+                                                                                <div className="flex gap-2">
+                                                                                     <Button
+                                                                                          size="sm"
+                                                                                          onClick={() => handleReplySubmit(commentId)}
+                                                                                          disabled={!replyContent[commentId]?.trim() || (replyContent[commentId]?.length || 0) > 2000}
+                                                                                          className={`rounded-full ${replyContent[commentId]?.trim() && (replyContent[commentId]?.length || 0) <= 2000
+                                                                                               ? "bg-blue-500 hover:bg-blue-600 text-white"
+                                                                                               : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                                                                               }`}
+                                                                                     >
+                                                                                          Trả lời
+                                                                                     </Button>
+                                                                                     <Button
+                                                                                          size="sm"
+                                                                                          variant="ghost"
+                                                                                          onClick={() => {
+                                                                                               setReplyingToCommentId(null);
+                                                                                               setReplyContent(prev => ({
+                                                                                                    ...prev,
+                                                                                                    [commentId]: ""
+                                                                                               }));
+                                                                                          }}
+                                                                                          className="rounded-full"
+                                                                                     >
+                                                                                          Hủy
+                                                                                     </Button>
+                                                                                </div>
                                                                            </div>
                                                                       </div>
                                                                  </div>

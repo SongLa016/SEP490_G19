@@ -23,10 +23,37 @@ export function DatePicker({
   ...props
 }) {
   const [open, setOpen] = React.useState(false)
-  const date = value ? (typeof value === "string" ? new Date(value) : value) : undefined
+
+  // Memoize date để tránh tạo Date object mới mỗi lần render
+  const date = React.useMemo(() => {
+    if (!value) return undefined
+    return typeof value === "string" ? new Date(value) : value
+  }, [value])
+
   // Support both min and minDate props for backward compatibility
   const minDateValue = minDate || min
-  const minDateObj = minDateValue ? (typeof minDateValue === "string" ? new Date(minDateValue) : minDateValue) : undefined
+  const minDateObj = React.useMemo(() => {
+    if (!minDateValue) return undefined
+    return typeof minDateValue === "string" ? new Date(minDateValue) : minDateValue
+  }, [minDateValue])
+
+  // Memoize disabled function to prevent unnecessary re-renders
+  const disabledDates = React.useMemo(() => {
+    if (!minDateObj) return undefined
+    return (date) => date < minDateObj
+  }, [minDateObj])
+
+  // Memoize onSelect callback
+  const handleSelect = React.useCallback((selectedDate) => {
+    if (selectedDate) {
+      // Format as YYYY-MM-DD string for compatibility
+      const formatted = format(selectedDate, "yyyy-MM-dd")
+      onChange && onChange(formatted)
+      setOpen(false)
+    } else {
+      onChange && onChange("")
+    }
+  }, [onChange])
 
   // Format date as d/M/yyyy to match image format (e.g., "2/11/2025")
   const formatDate = (date) => {
@@ -63,17 +90,8 @@ export function DatePicker({
           captionLayout="dropdown"
           fromYear={fromYear}
           toYear={toYear}
-          onSelect={(selectedDate) => {
-            if (selectedDate) {
-              // Format as YYYY-MM-DD string for compatibility
-              const formatted = format(selectedDate, "yyyy-MM-dd")
-              onChange && onChange(formatted)
-              setOpen(false)
-            } else {
-              onChange && onChange("")
-            }
-          }}
-          disabled={minDateObj ? (date) => date < minDateObj : undefined}
+          onSelect={handleSelect}
+          disabled={disabledDates}
           {...props}
         />
       </PopoverContent>

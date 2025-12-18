@@ -1,17 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { fetchFieldTypes, normalizeFieldType } from "../../../../../shared/services/fieldTypes";
 
 export default function FieldInfoSection({
      bookingData,
      isRecurring,
-     recurringWeeks, // Không dùng nữa, để tương thích
+     recurringWeeks,
      startDate,
      endDate,
      selectedDays,
      generateRecurringSessions
 }) {
-     // Tính số tuần từ startDate và endDate
+     const recurringSessions = useMemo(() => {
+          if (!isRecurring || !generateRecurringSessions) return [];
+          return generateRecurringSessions();
+     }, [isRecurring, generateRecurringSessions, startDate, endDate, selectedDays]);
+     // tính số tuần từ startDate và endDate
      const calculateWeeks = () => {
           if (!startDate || !endDate) return 0;
           try {
@@ -30,7 +34,7 @@ export default function FieldInfoSection({
      const dayNames = { 0: "CN", 1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7" };
      const [fieldTypeMap, setFieldTypeMap] = useState({});
 
-     // Load field types để map typeId -> typeName
+     // tải loại sân 
      useEffect(() => {
           let ignore = false;
           async function loadFieldTypes() {
@@ -68,7 +72,7 @@ export default function FieldInfoSection({
           if (bookingData?.fieldType) {
                return bookingData.fieldType;
           }
-          // Nếu có typeId, map từ fieldTypeMap
+          // nếu có typeId, map từ fieldTypeMap
           const typeId = bookingData?.typeId || bookingData?.TypeID || bookingData?.typeID;
           if (typeId && fieldTypeMap[String(typeId)]) {
                return fieldTypeMap[String(typeId)];
@@ -87,18 +91,12 @@ export default function FieldInfoSection({
                     return normalized;
                }
           }
-
           const startTimeStr = bookingData?.startTime || bookingData?.StartTime || '00:00:00';
           const endTimeStr = bookingData?.endTime || bookingData?.EndTime || '00:00:00';
-
           try {
-               // Tạo Date objects với ngày giả định, giống TimeSlotsTab
                const start = new Date(`2000-01-01T${startTimeStr}`);
                const end = new Date(`2000-01-01T${endTimeStr}`);
-
-               // Tính duration bằng giờ (giống TimeSlotsTab: (end - start) / (1000 * 60 * 60))
                const durationHours = (end - start) / (1000 * 60 * 60);
-
                if (!Number.isNaN(durationHours) && durationHours > 0) {
                     return durationHours;
                }
@@ -109,15 +107,13 @@ export default function FieldInfoSection({
           return null;
      };
 
-     // Format duration để hiển thị (ví dụ: 1.5h -> "1h30 phút", 2h -> "2h")
+     // format thời lượng để hiển thị
      const formatDuration = (hours) => {
           if (hours == null || Number.isNaN(hours)) {
                return "—";
           }
-
           const totalHours = Math.floor(hours);
           const minutes = Math.round((hours - totalHours) * 60);
-
           if (totalHours > 0 && minutes > 0) {
                return `${totalHours}h${String(minutes).padStart(2, "0")} phút`;
           }
@@ -161,13 +157,17 @@ export default function FieldInfoSection({
                               </span>
                               <span className="font-medium">{bookingData.date}</span>
                          </div>
-                         {bookingData.slotName && (
+                         {(bookingData.slotName || bookingData.startTime) && (
                               <div className="flex justify-between">
                                    <span className="text-gray-600 flex items-center">
                                         <span className="mr-2">⏰</span>
                                         Thời gian
                                    </span>
-                                   <span className="font-medium">{bookingData.slotName}</span>
+                                   <span className="font-medium">
+                                        {bookingData.startTime && bookingData.endTime
+                                             ? `${bookingData.slotName ? `${bookingData.slotName} (` : ''}${bookingData.startTime} - ${bookingData.endTime}${bookingData.slotName ? ')' : ''}`
+                                             : bookingData.slotName}
+                                   </span>
                               </div>
                          )}
                          {!isRecurring && (
@@ -208,19 +208,19 @@ export default function FieldInfoSection({
                                              <span className="mr-2">🎯</span>
                                              Tổng số buổi
                                         </span>
-                                        <span className="font-medium text-teal-600">{bookingData.totalSessions || (weeksCount * selectedDays.length)} buổi</span>
+                                        <span className="font-medium text-teal-600">{bookingData.totalSessions || 0} buổi</span>
                                    </div>
                                    {/* Preview danh sách buổi */}
                                    <div className="mt-3 bg-white/70 rounded-lg p-2 border border-teal-200">
                                         <div className="text-xs text-gray-600 font-semibold mb-1">Lịch các buổi dự kiến</div>
                                         <div className="overflow-y-auto max-h-24 scrollbar-thin scrollbar-thumb-teal-200 scrollbar-track-white space-y-1 text-xs">
-                                             {generateRecurringSessions().map((s, idx) => (
+                                             {recurringSessions.map((s, idx) => (
                                                   <div key={idx} className="flex justify-between">
-                                                       <span>{s.date.toLocaleDateString('vi-VN')}</span>
-                                                       <span className="text-teal-700">{s.slotName}</span>
+                                                       <span>{s.date?.toLocaleDateString('vi-VN') || 'N/A'}</span>
+                                                       <span className="text-teal-700">{s.slotName || '—'}</span>
                                                   </div>
                                              ))}
-                                             {generateRecurringSessions().length === 0 && (
+                                             {recurringSessions.length === 0 && (
                                                   <div className="text-gray-500">Chọn ngày trong tuần để xem danh sách buổi</div>
                                              )}
                                         </div>

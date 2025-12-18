@@ -17,16 +17,16 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
      const userLocationMarkerRef = useRef(null);
      const accuracyCircleRef = useRef(null);
 
+     const displayLocation = selectedLocation?.field || selectedLocation;
+
      // Goong API Keys
-     // Maptiles Key để hiển thị bản đồ
      const GOONG_API_KEY = process.env.REACT_APP_GOONG_API_KEY || "tnV2EmQTmY2Vqez3KWtC5DHadHJQllNegQXV3lOV";
-     // REST API Key cho các dịch vụ API khác (autocomplete, geocoding, etc.)
      const GOONG_REST_API_KEY = process.env.REACT_APP_GOONG_REST_API_KEY || "89P5FAoUGyO5vDpUIeLtXDZ6Xti5NSlKQBJSR6Yu";
 
      const GOONG_AUTOCOMPLETE_URL = 'https://rsapi.goong.io/Place/AutoComplete';
      const GOONG_PLACE_DETAIL_URL = 'https://rsapi.goong.io/Place/Detail';
 
-     // Format price
+     // định dạng VNĐ
      const formatPrice = (price) => {
           return new Intl.NumberFormat('vi-VN', {
                style: 'currency',
@@ -34,11 +34,12 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           }).format(price).replace('₫', 'đ');
      };
 
-     // Calculate distance between two points
+     // Tính toán khoảng cách giữa hai điểm
      const calculateDistance = (lat1, lon1, lat2, lon2) => {
-          const R = 6371; // Radius of the Earth in kilometers
+          const R = 6371;
           const dLat = (lat2 - lat1) * Math.PI / 180;
           const dLon = (lon2 - lon1) * Math.PI / 180;
+          // hàm tính toán Haversine
           const a =
                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
@@ -48,7 +49,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           return distance;
      };
 
-     // Filter fields by radius
+     // Lọc sân theo bán kính
      const filterFieldsByRadius = (centerLat, centerLng, radius) => {
           return mockFields.filter(field => {
                const distance = calculateDistance(centerLat, centerLng, field.lat, field.lng);
@@ -59,15 +60,13 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                return distanceA - distanceB;
           });
      };
-
-     // Dynamic list based on services
      const [mockFields, setMockFields] = useState([]);
 
-     // Add field markers to map
+     // Thêm marker sân bóng lên bản đồ
      const addFieldMarkers = useCallback((mapInstance) => {
           if (!mapInstance) return;
 
-          // Clear existing markers
+          // Xóa các marker cũ
           markersRef.current.forEach(marker => {
                try {
                     marker.remove();
@@ -79,19 +78,15 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
 
           const fieldsToShow = filteredFields.length > 0 ? filteredFields : mockFields;
           if (fieldsToShow.length === 0) {
-               console.log('No fields to show on map');
                return;
           }
-
-          console.log(`Adding ${fieldsToShow.length} markers to map`);
-
+          // Tạo và thêm marker mới
           const newMarkers = fieldsToShow
                .filter(field => {
-                    // Filter out invalid coordinates
                     return field.lng && field.lat && !isNaN(field.lng) && !isNaN(field.lat);
                })
                .map(field => {
-                    // Create custom marker element with better styling
+                    // Thêm marker
                     const el = document.createElement('div');
                     el.className = 'field-marker';
                     el.innerHTML = `
@@ -103,7 +98,6 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                     </svg>
                `;
                     el.style.cursor = 'pointer';
-                    // Set fixed size to prevent jumping
                     el.style.width = '48px';
                     el.style.height = '48px';
                     el.style.display = 'flex';
@@ -112,35 +106,34 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                     el.style.opacity = '1';
                     el.style.pointerEvents = 'auto';
 
-                    // Disable hover effect completely to prevent opacity flashing/jumping
-                    // The cursor pointer is enough visual feedback
-
                     try {
                          const marker = new GoongMap.Marker({
                               element: el,
                               anchor: 'center',
-                              // Prevent marker from moving when element size changes
                               offset: [0, 0]
                          })
                               .setLngLat([field.lng, field.lat])
                               .addTo(mapInstance);
 
-                         // Add click listener with popup
+                         // Thêm sự kiện click cho marker
                          el.addEventListener('click', () => {
-                              // Fly to location
                               mapInstance.flyTo({
                                    center: [field.lng, field.lat],
                                    zoom: 16,
                                    duration: 1000,
                               });
 
-                              onLocationSelect({
+                              const pickedLocation = {
                                    lat: field.lat,
                                    lng: field.lng,
                                    address: field.address,
                                    name: field.name,
                                    field: field
-                              });
+                              };
+
+                              // Giữ lại vị trí đã chọn và gọi hàm callback
+                              setSelectedLocation(pickedLocation);
+                              onLocationSelect(pickedLocation);
                          });
 
                          return marker;
@@ -149,7 +142,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                          return null;
                     }
                })
-               .filter(marker => marker !== null); // Remove null markers
+               .filter(marker => marker !== null);
 
           if (newMarkers.length > 0) {
                console.log(`Successfully added ${newMarkers.length} markers to map`);
@@ -159,6 +152,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           markersRef.current = newMarkers;
      }, [filteredFields, mockFields, onLocationSelect]);
 
+     // tải dữ liệu sân bóng
      useEffect(() => {
           fetchComplexes({}).then((list) => {
                const mapped = (list || []).map((c, i) => ({
@@ -186,8 +180,6 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                     x.lng !== 0
                );
                setMockFields(mapped);
-
-               // If map is already loaded, update markers
                if (map && map.loaded() && mapped.length > 0) {
                     addFieldMarkers(map);
                }
@@ -196,7 +188,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           });
      }, [map, addFieldMarkers]);
 
-     // Initialize Goong Map
+     // Khởi tạo bản đồ khi mở modal
      useEffect(() => {
           if (isOpen && !map) {
                const initMap = () => {
@@ -204,57 +196,45 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                          console.warn('Map container ref is not available');
                          return;
                     }
-
-                    // Check if Maptiles Key is configured
                     if (!GOONG_API_KEY || GOONG_API_KEY === "YOUR_GOONG_API_KEY_HERE") {
                          console.error('Goong Maptiles Key chưa được cấu hình! Vui lòng thêm REACT_APP_GOONG_API_KEY vào file .env');
                          return;
                     }
 
                     try {
-                         // Set access token globally for Goong GL JS
                          if (GoongMap && typeof GoongMap !== 'undefined') {
                               if (typeof GoongMap.accessToken !== 'undefined') {
                                    GoongMap.accessToken = GOONG_API_KEY;
                               }
                          }
-
                          const mapOptions = {
                               container: mapRef.current,
                               style: 'https://tiles.goong.io/assets/goong_map_web.json',
-                              center: [105.8542, 21.0285], // [lng, lat] for Goong - Hà Nội center
+                              center: [105.8542, 21.0285],
                               zoom: 13,
                          };
-
-                         // Add accessToken to options if not set globally
                          if (!GoongMap.accessToken) {
                               mapOptions.accessToken = GOONG_API_KEY;
                          }
 
                          const mapInstance = new GoongMap.Map(mapOptions);
 
+                         // Khi bản đồ tải xong
                          mapInstance.on('load', () => {
-                              console.log('Goong Map loaded successfully');
-                              // Wait a bit for map to fully render, then add markers
                               setTimeout(() => {
                                    if (mockFields.length > 0) {
                                         addFieldMarkers(mapInstance);
                                    }
 
-                                   // Automatically get and display user's current location
                                    if (navigator.geolocation) {
                                         navigator.geolocation.getCurrentPosition(
                                              (position) => {
                                                   const { latitude, longitude } = position.coords;
-
-                                                  // Center map on user location
                                                   mapInstance.flyTo({
                                                        center: [longitude, latitude],
                                                        zoom: 14,
                                                        duration: 1000,
                                                   });
-
-                                                  // Clear previous user location markers
                                                   if (userLocationMarkerRef.current) {
                                                        try {
                                                             userLocationMarkerRef.current.remove();
@@ -262,8 +242,6 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                                                             console.warn('Error removing user marker:', e);
                                                        }
                                                   }
-
-                                                  // Add user location marker with better design
                                                   const userEl = document.createElement('div');
                                                   userEl.innerHTML = `
                                                        <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
@@ -281,16 +259,12 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                                                   userEl.style.transition = 'transform 0.2s ease';
                                                   userEl.style.width = '40px';
                                                   userEl.style.height = '40px';
-
-                                                  // Add hover effect
                                                   userEl.addEventListener('mouseenter', () => {
                                                        userEl.style.transform = 'scale(1.15)';
                                                   });
                                                   userEl.addEventListener('mouseleave', () => {
                                                        userEl.style.transform = 'scale(1)';
                                                   });
-
-                                                  // Add click handler to fly to and zoom in
                                                   userEl.addEventListener('click', (e) => {
                                                        e.stopPropagation();
                                                        mapInstance.flyTo({
@@ -310,15 +284,12 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                                                             .addTo(mapInstance);
 
                                                        userLocationMarkerRef.current = userMarker;
-
-                                                       console.log('User location displayed on map');
                                                   } catch (error) {
                                                        console.error('Error creating user location marker:', error);
                                                   }
                                              },
                                              (error) => {
-                                                  console.log('Could not get user location automatically:', error);
-                                                  // Continue without user location
+                                                  console.warn('Error getting user location:', error.message);
                                              },
                                              {
                                                   enableHighAccuracy: true,
@@ -339,19 +310,15 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                          console.error('Error initializing Goong Map:', error);
                     }
                };
-
-               // Initialize map after a short delay to ensure container is ready
                const timer = setTimeout(initMap, 100);
                return () => clearTimeout(timer);
           }
-          // eslint-disable-next-line react-hooks/exhaustive-deps
-     }, [isOpen, map, addFieldMarkers, mockFields]);
+     }, [isOpen, map, addFieldMarkers, mockFields, GOONG_API_KEY]);
 
 
-     // Update markers when filtered fields or mockFields change
+     // Cập nhật marker khi lọc sân bóng
      useEffect(() => {
           if (map && map.loaded()) {
-               // Wait a bit to ensure map is fully ready
                const timer = setTimeout(() => {
                     if (mockFields.length > 0 || filteredFields.length > 0) {
                          addFieldMarkers(map);
@@ -361,14 +328,14 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           }
      }, [filteredFields, map, mockFields, addFieldMarkers]);
 
-     // Handle search input with Goong Autocomplete
+     // Xử lý thay đổi tìm kiếm
      const handleSearchChange = async (e) => {
           const query = e.target.value;
           setSearchQuery(query);
 
           if (query.length > 2) {
                try {
-                    // Use Goong Autocomplete API
+
                     const response = await fetch(
                          `${GOONG_AUTOCOMPLETE_URL}?api_key=${GOONG_REST_API_KEY}&input=${encodeURIComponent(query)}&location=21.0285,105.8542&radius=50000&limit=5`
                     );
@@ -382,7 +349,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                               place_id: prediction.place_id
                          }));
 
-                         // Combine with field suggestions
+                         // Kết hợp với gợi ý từ mockFields
                          const fieldSuggestions = mockFields.filter(field =>
                               field.name.toLowerCase().includes(query.toLowerCase()) ||
                               field.location.toLowerCase().includes(query.toLowerCase()) ||
@@ -391,7 +358,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
 
                          setSuggestions([...placesSuggestions, ...fieldSuggestions]);
                     } else {
-                         // Fallback to mock suggestions
+                         // Nếu không có gợi ý từ Goong, sử dụng mockFields
                          const filteredSuggestions = mockFields.filter(field =>
                               field.name.toLowerCase().includes(query.toLowerCase()) ||
                               field.location.toLowerCase().includes(query.toLowerCase()) ||
@@ -401,7 +368,6 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                     }
                } catch (error) {
                     console.error('Error fetching autocomplete:', error);
-                    // Fallback to mock suggestions
                     const filteredSuggestions = mockFields.filter(field =>
                          field.name.toLowerCase().includes(query.toLowerCase()) ||
                          field.location.toLowerCase().includes(query.toLowerCase()) ||
@@ -414,10 +380,9 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           }
      };
 
-     // Handle suggestion selection
+     // Xử lý khi chọn gợi ý
      const handleSuggestionClick = async (suggestion) => {
           if (suggestion.place_id) {
-               // Handle Goong Places suggestion
                try {
                     const response = await fetch(
                          `${GOONG_PLACE_DETAIL_URL}?api_key=${GOONG_REST_API_KEY}&place_id=${suggestion.place_id}`
@@ -442,14 +407,12 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                          setSearchQuery(suggestion.name);
                          setSuggestions([]);
 
-                         // Move map to selected location
+                         // Di chuyển bản đồ đến vị trí đã chọn
                          if (map) {
                               map.flyTo({
                                    center: [location.lng, location.lat],
                                    zoom: 16,
                               });
-
-                              // Clear previous user location markers
                               if (userLocationMarkerRef.current) {
                                    userLocationMarkerRef.current.remove();
                                    userLocationMarkerRef.current = null;
@@ -459,8 +422,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                                    accuracyCircleRef.current = null;
                               }
                          }
-
-                         // Filter fields by radius
+                         // Lọc sân bóng theo bán kính
                          const nearbyFields = filterFieldsByRadius(location.lat, location.lng, searchRadius);
                          setFilteredFields(nearbyFields);
                     }
@@ -468,7 +430,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                     console.error('Error fetching place details:', error);
                }
           } else {
-               // Handle field suggestion
+               // chnj sân bóng từ mockFields
                setSelectedLocation({
                     lat: suggestion.lat,
                     lng: suggestion.lng,
@@ -478,15 +440,11 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                });
                setSearchQuery(suggestion.name);
                setSuggestions([]);
-
-               // Move map to selected location
                if (map) {
                     map.flyTo({
                          center: [suggestion.lng, suggestion.lat],
                          zoom: 16,
                     });
-
-                    // Clear previous user location markers
                     if (userLocationMarkerRef.current) {
                          userLocationMarkerRef.current.remove();
                          userLocationMarkerRef.current = null;
@@ -496,17 +454,14 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                          accuracyCircleRef.current = null;
                     }
                }
-
-               // Filter fields by radius
                const nearbyFields = filterFieldsByRadius(suggestion.lat, suggestion.lng, searchRadius);
                setFilteredFields(nearbyFields);
           }
      };
 
-     // Handle current location
+     // Xử lý lấy vị trí hiện tại
      const handleCurrentLocation = () => {
           if (navigator.geolocation) {
-               // Show loading state
                const loadingToast = document.createElement('div');
                loadingToast.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg z-50';
                loadingToast.textContent = 'Đang lấy vị trí...';
@@ -517,13 +472,11 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                     timeout: 10000,
                     maximumAge: 60000
                };
-
+               // Lấy vị trí hiện tại
                navigator.geolocation.getCurrentPosition(
                     (position) => {
                          document.body.removeChild(loadingToast);
                          const { latitude, longitude, accuracy } = position.coords;
-
-                         // Create a more accurate location object
                          const location = {
                               lat: latitude,
                               lng: longitude,
@@ -534,16 +487,14 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                          setSelectedLocation(location);
 
                          if (map && map.loaded()) {
-                              // Wait a bit to ensure map is ready
                               setTimeout(() => {
-                                   // Center map on user location
                                    map.flyTo({
                                         center: [longitude, latitude],
                                         zoom: 16,
                                         duration: 1000,
                                    });
 
-                                   // Clear previous user location markers
+                                   // Xoá marker và vòng tròn độ chính xác cũ nếu có
                                    if (userLocationMarkerRef.current) {
                                         try {
                                              userLocationMarkerRef.current.remove();
@@ -558,8 +509,6 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                                              console.warn('Error removing accuracy circle:', e);
                                         }
                                    }
-
-                                   // Add user location marker with better design
                                    const userEl = document.createElement('div');
                                    userEl.innerHTML = `
                                         <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
@@ -577,16 +526,12 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                                    userEl.style.transition = 'transform 0.2s ease';
                                    userEl.style.width = '40px';
                                    userEl.style.height = '40px';
-
-                                   // Add hover effect
                                    userEl.addEventListener('mouseenter', () => {
                                         userEl.style.transform = 'scale(1.15)';
                                    });
                                    userEl.addEventListener('mouseleave', () => {
                                         userEl.style.transform = 'scale(1)';
                                    });
-
-                                   // Add click handler to fly to and zoom in
                                    userEl.addEventListener('click', (e) => {
                                         e.stopPropagation();
                                         map.flyTo({
@@ -613,12 +558,8 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                          } else if (!map) {
                               console.warn('Map is not initialized yet');
                          }
-
-                         // Filter fields by radius
                          const nearbyFields = filterFieldsByRadius(latitude, longitude, searchRadius);
                          setFilteredFields(nearbyFields);
-
-                         // Show success message
                          const successToast = document.createElement('div');
                          successToast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg z-50';
                          successToast.textContent = `Đã lấy vị trí! Tìm thấy ${nearbyFields.length} sân gần đây`;
@@ -661,7 +602,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           }
      };
 
-     // Handle confirm selection
+     // Xác nhận vị trí đã chọn
      const handleConfirm = () => {
           if (selectedLocation) {
                onLocationSelect(selectedLocation);
@@ -669,7 +610,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
           }
      };
 
-     // Cleanup on unmount
+     // Xóa khi đóng modal
      useEffect(() => {
           return () => {
                if (map) {
@@ -907,36 +848,71 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                          {/* Selected Location Info */}
                          {selectedLocation && (
                               <div className="absolute bottom-3 left-3 right-3 bg-white rounded-2xl shadow-lg p-3 border border-gray-200 max-w-md">
-                                   <div className="flex items-center justify-between mb-3">
-                                        <div className="flex-1">
-                                             <div className="font-semibold text-gray-900 text-lg">{selectedLocation.name}</div>
-                                             <div className="text-xs text-gray-600">{selectedLocation.address}</div>
+                                   <div className="flex items-center gap-3 mb-3">
+                                        {displayLocation?.imageUrl && (
+                                             <div className="w-20 h-20 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+                                                  <img
+                                                       src={displayLocation.imageUrl}
+                                                       alt={displayLocation.name}
+                                                       className="w-full h-full object-cover"
+                                                  />
+                                             </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                             <div className="font-semibold text-gray-900 text-lg truncate">
+                                                  {selectedLocation.name}
+                                             </div>
+                                             <div className="text-xs text-gray-600 line-clamp-2">
+                                                  {selectedLocation.address || displayLocation?.location}
+                                             </div>
                                              {selectedLocation.accuracy && (
                                                   <div className="text-xs text-blue-600 mt-1 flex items-center">
                                                        <MapPin className="w-3 h-3 mr-1" />
                                                        Độ chính xác: ±{Math.round(selectedLocation.accuracy)}m
                                                   </div>
                                              )}
+                                             {displayLocation && (
+                                                  <div className="flex flex-wrap gap-2 mt-2 text-xs">
+                                                       {displayLocation.rating !== undefined && (
+                                                            <span className="px-2 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-100">
+                                                                 ⭐ {displayLocation.rating}
+                                                            </span>
+                                                       )}
+                                                       {displayLocation.price !== undefined && (
+                                                            <span className="px-2 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-100">
+                                                                 {formatPrice(displayLocation.price)}
+                                                            </span>
+                                                       )}
+                                                       {displayLocation.totalFields !== undefined && (
+                                                            <span className="px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                                                                 {displayLocation.totalFields} sân
+                                                            </span>
+                                                       )}
+
+                                                  </div>
+                                             )}
+
                                         </div>
-                                        <div className="flex gap-2 ml-3">
+                                        <div className="flex items-center justify-end gap-2">
                                              <Button
                                                   onClick={() => {
                                                        setSelectedLocation(null);
                                                        setFilteredFields([]);
                                                   }}
                                                   variant="outline"
-                                                  className="px-3 py-0.5 rounded-2xl text-gray-600 hover:bg-gray-50"
+                                                  className="px-2 py-0.5 h-7 hover:text-teal-600 text-xs rounded-2xl text-gray-600 hover:bg-gray-50"
                                              >
                                                   Hủy
                                              </Button>
                                              <Button
                                                   onClick={handleConfirm}
-                                                  className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-0.5 font-semibold rounded-2xl"
+                                                  className="bg-teal-500 h-7 text-xs hover:bg-teal-600 text-white px-2 py-0.5 font-semibold rounded-2xl"
                                              >
                                                   Chọn
                                              </Button>
                                         </div>
                                    </div>
+
 
                                    {/* Nearby Fields List */}
                                    {filteredFields.length > 0 && (

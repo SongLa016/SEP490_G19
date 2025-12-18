@@ -9,23 +9,24 @@ export function Pagination({
      itemsPerPage,
      totalItems,
 }) {
+     // chuyển trang trước
      const handlePrevious = () => {
           if (currentPage > 1) {
                onPageChange(currentPage - 1);
           }
      };
-
+     // chuyển trang sau
      const handleNext = () => {
           if (currentPage < totalPages) {
                onPageChange(currentPage + 1);
           }
      };
-
+     // chuyển đến trang cụ thể
      const handlePageClick = (page) => {
           onPageChange(page);
      };
 
-     // Generate page numbers to display
+     // số trang
      const getPageNumbers = () => {
           const pages = [];
           const maxVisible = 5;
@@ -126,11 +127,7 @@ export function Pagination({
      );
 }
 
-/**
- * Custom hook for pagination logic
- * @param {Array} items - Array of items to paginate
- * @param {number} itemsPerPage - Number of items per page
- */
+// Hook phân trang
 export function usePagination(items = [], itemsPerPage = 10) {
      const [currentPage, setCurrentPage] = React.useState(1);
 
@@ -147,7 +144,6 @@ export function usePagination(items = [], itemsPerPage = 10) {
           window.scrollTo({ top: 0, behavior: "smooth" });
      };
 
-     // Reset to page 1 when items change
      React.useEffect(() => {
           setCurrentPage(1);
      }, [items.length]);

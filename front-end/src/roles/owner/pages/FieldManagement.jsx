@@ -1,15 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import {
-     Plus,
-     Edit,
-     Trash2,
-     MapPin,
-     DollarSign,
-     Loader2,
-     Building2,
-     Power,
-     PowerOff
-} from "lucide-react";
+import { Plus, Edit, Trash2, MapPin, DollarSign, Loader2, Building2, Power, PowerOff } from "lucide-react";
 import Swal from "sweetalert2";
 import { Button, Card, Pagination, usePagination } from "../../../shared/components/ui";
 import { DemoRestrictedModal } from "../../../shared";
@@ -21,7 +11,9 @@ import {
      fetchAllComplexesWithFields,
      createFieldPrice,
      updateFieldComplex,
-     deleteFieldComplex
+     deleteFieldComplex,
+     validateComplexData,
+     validateFieldData
 } from "../../../shared/services/fields";
 import { fetchTimeSlots } from "../../../shared/services/timeSlots";
 import { fetchOwnerBankAccounts } from "../../../shared/services/ownerBankAccount";
@@ -31,13 +23,13 @@ import ComplexFormModal from "./components/fieldManagement/ComplexFormModal";
 import { useAuth } from "../../../contexts/AuthContext";
 
 const MAX_FIELD_IMAGES = 4;
+const GOONG_REST_API_KEY =
+     process.env.REACT_APP_GOONG_REST_API_KEY || "89P5FAoUGyO5vDpUIeLtXDZ6Xti5NSlKQBJSR6Yu";
+const GOONG_GEOCODE_URL = "https://rsapi.goong.io/Geocode";
 
 const FieldManagement = ({ isDemo = false }) => {
-     const { user, logout } = useAuth();
-
-     // Use React Query hook for field types
-     const { data: apiFieldTypes = [], isLoading: loadingFieldTypes } = useFieldTypes();
-
+     const { user } = useAuth();
+     const { data: apiFieldTypes = [] } = useFieldTypes();       //sử dụng query
      const [isAddModalOpen, setIsAddModalOpen] = useState(false);
      const [isEditModalOpen, setIsEditModalOpen] = useState(false);
      const [isAddComplexModalOpen, setIsAddComplexModalOpen] = useState(false);
@@ -62,10 +54,10 @@ const FieldManagement = ({ isDemo = false }) => {
           district: "",
           province: "",
           description: "",
-          image: "", // Preview URL (ObjectURL for File or URL string from Cloudinary)
-          imageFile: null, // File object (new upload) or null
-          imageUrl: null, // URL string from Cloudinary (existing image)
-          status: "Active", // Status: "Active" or "Deactive"
+          image: "",
+          imageFile: null,
+          imageUrl: null,
+          status: "Pending",
      });
      const [formData, setFormData] = useState({
           complexId: "",
@@ -74,8 +66,8 @@ const FieldManagement = ({ isDemo = false }) => {
           size: "",
           grassType: "",
           description: "",
-          mainImage: null, // File object (new upload) or URL string (from Cloudinary)
-          imageFiles: [], // Array of File objects (new uploads) or URL strings (from Cloudinary)
+          mainImage: null,
+          imageFiles: [],
           pricePerHour: "",
           status: "Available",
           bankAccountId: "",
@@ -85,8 +77,8 @@ const FieldManagement = ({ isDemo = false }) => {
           accountHolder: "",
      });
 
-     // Map field types
-     // Transform API field types to format expected by form
+     // loại sân
+     // sử dụng useMemo để tránh tính toán lại không cần thiết
      const fieldTypes = useMemo(() => {
           return apiFieldTypes.map(type => ({
                value: String(type.typeId || type.TypeID),
@@ -95,7 +87,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      }, [apiFieldTypes]);
 
-     // Create fieldTypeMap for backward compatibility
+     // thêm map để dễ truy xuất typeId
      const fieldTypeMap = useMemo(() => {
           const map = {};
           apiFieldTypes.forEach(type => {
@@ -110,7 +102,7 @@ const FieldManagement = ({ isDemo = false }) => {
           { value: "Maintenance", label: "Bảo trì" },
           { value: "Unavailable", label: "Không khả dụng" },
      ];
-
+     // đếm khu sân
      const complexFieldCounts = useMemo(() => {
           return fields.reduce((acc, field) => {
                acc[field.complexId] = (acc[field.complexId] || 0) + 1;
@@ -118,21 +110,20 @@ const FieldManagement = ({ isDemo = false }) => {
           }, {});
      }, [fields]);
 
-     // Get current user ID - extract to avoid complex expression in dependency array
+     // lấy userId 
      const currentUserId = useMemo(() => {
           return user?.userID || user?.UserID || user?.id || user?.userId || null;
      }, [user?.userID, user?.UserID, user?.id, user?.userId]);
 
+     // tải dữ liệu khu sân và sân nhỏ
      const loadData = useCallback(async () => {
           try {
                setLoading(true);
                if (!isDemo && currentUserId) {
-                    // Sử dụng function mới để lấy tất cả khu sân và sân nhỏ
-                    // Bước 1: Lấy tất cả khu sân từ GET /api/FieldComplex
-                    // Bước 2: Với mỗi khu sân, lấy các sân nhỏ từ GET /api/Field/complex/{complexId}
+                    // lấy tất cả khu sân và sân nhỏ
                     const allComplexesWithFields = await fetchAllComplexesWithFields();
 
-                    // Lọc chỉ lấy các khu sân của owner hiện tại
+                    // Lọc chỉ lấy các khu sân của owner
                     const ownerComplexes = allComplexesWithFields
                          .filter(
                               complex => complex.ownerId === currentUserId || complex.ownerId === Number(currentUserId)
@@ -143,7 +134,6 @@ const FieldManagement = ({ isDemo = false }) => {
                               name: complex.name,
                               address: complex.address,
                               description: complex.description || null,
-                              // Only use imageUrl from Cloudinary
                               image: complex.imageUrl || null,
                               imageUrl: complex.imageUrl || null,
                               status: complex.status,
@@ -164,27 +154,26 @@ const FieldManagement = ({ isDemo = false }) => {
                     // Tạo danh sách tất cả các sân nhỏ từ các khu sân
                     const allFields = [];
                     for (const complex of ownerComplexes) {
-                         // Fields đã được lấy sẵn trong complex.fields
+                         // sân nhỏ thuộc khu sân
                          allFields.push(...(complex.fields || []).map(f => {
-                              // Map TypeID to typeName from apiFieldTypes
+                              // lấy loại sân 
                               const fieldType = apiFieldTypes.find(
                                    type => (type.typeId || type.TypeID) === f.typeId
                               );
 
-                              // Normalize image fields - API may return different field names
+                              // chuẩn hóa dữ liệu sân nhỏ
                               const normalizedField = {
                                    ...f,
                                    complexName: complex.name,
                                    complexAddress: complex.address,
+                                   complexStatus: complex.status,
                                    typeName: fieldType ? (fieldType.typeName || fieldType.TypeName) : null,
                               };
 
-                              // Ensure mainImage is available from URLs (Cloudinary only)
                               if (!normalizedField.mainImage && f.mainImageUrl) {
                                    normalizedField.mainImage = f.mainImageUrl;
                               }
-                              
-                              // Ensure images array is available from URLs (Cloudinary only)
+
                               if (!normalizedField.images || normalizedField.images.length === 0) {
                                    if (Array.isArray(f.imageUrls) && f.imageUrls.length > 0) {
                                         normalizedField.images = f.imageUrls;
@@ -196,13 +185,13 @@ const FieldManagement = ({ isDemo = false }) => {
                     }
                     setFields(allFields);
 
-                    // Fetch time slots
+                    // lấy giờ
                     const slotsResponse = await fetchTimeSlots();
                     if (slotsResponse.success) {
                          setTimeSlots(slotsResponse.data || []);
                     }
 
-                    // Fetch bank accounts for owner
+                    // lấy tài khoản ngân hàng
                     try {
                          const accounts = await fetchOwnerBankAccounts(Number(currentUserId));
                          setBankAccounts(accounts || []);
@@ -221,6 +210,7 @@ const FieldManagement = ({ isDemo = false }) => {
           loadData();
      }, [loadData]);
 
+     // thay đổi dữ liệu form sân nhỏ
      const handleInputChange = (e) => {
           const { name, value } = e.target;
           setFormData(prev => ({
@@ -229,7 +219,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
-     // Handle main image change (File object or URL string)
+     // thay đổi main image 
      const handleMainImageChange = (image) => {
           setFormData(prev => ({
                ...prev,
@@ -237,7 +227,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
-     // Handle gallery images change (array of File objects or URL strings)
+     // thay đổi danh sách ảnh gallery
      const handleImageFilesChange = (imagesArray) => {
           setFormData(prev => ({
                ...prev,
@@ -245,10 +235,11 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
+     // upload ảnh khu sân
      const handleComplexImageUpload = (e) => {
           const file = e.target.files?.[0];
           if (file) {
-               // Validate file type
+               // chỉ chấp nhật file ảnh
                if (!file.type.startsWith('image/')) {
                     Swal.fire({
                          icon: 'error',
@@ -260,7 +251,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     return;
                }
 
-               // Validate file size (max 5MB)
+               // ảnh < 5mb
                if (file.size > 5 * 1024 * 1024) {
                     Swal.fire({
                          icon: 'error',
@@ -271,8 +262,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     });
                     return;
                }
-
-               // Cleanup old ObjectURL if exists
+               // hủy object URL cũ nếu có
                if (complexFormData.image && complexFormData.image.startsWith('blob:')) {
                     URL.revokeObjectURL(complexFormData.image);
                }
@@ -280,17 +270,19 @@ const FieldManagement = ({ isDemo = false }) => {
                setComplexImageUploading(true);
                const objectUrl = URL.createObjectURL(file);
 
-               // Store File object for upload (not base64)
+               // 
                setComplexFormData(prev => ({
                     ...prev,
-                    imageFile: file, // File object to send to backend
-                    imageUrl: null, // Clear existing URL when uploading new file
-                    image: objectUrl // ObjectURL for preview
+                    imageFile: file,
+                    imageUrl: null,
+                    image: objectUrl
                }));
 
                setTimeout(() => setComplexImageUploading(false), 300);
           }
      };
+
+     //thay đổi form khu sân
 
      const handleComplexFieldChange = (field, value) => {
           setComplexFormData((prev) => ({
@@ -299,6 +291,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
+     // thay đổi tài khoản ngân hàng
      const handleBankAccountChange = (bankAccountId) => {
           const selectedAccount = bankAccounts.find(acc => acc.bankAccountId === Number(bankAccountId));
           if (selectedAccount) {
@@ -321,9 +314,8 @@ const FieldManagement = ({ isDemo = false }) => {
                }));
           }
      };
-
+     // xóa ảnh khu sân
      const removeComplexImage = () => {
-          // Cleanup ObjectURL if exists
           if (complexFormData.image && complexFormData.image.startsWith('blob:')) {
                URL.revokeObjectURL(complexFormData.image);
           }
@@ -337,11 +329,11 @@ const FieldManagement = ({ isDemo = false }) => {
                complexImageInputRef.current.value = "";
           }
      };
-
      const triggerComplexImagePicker = () => {
           complexImageInputRef.current?.click();
      };
 
+     // phím tăt cho upload ảnh khu sân
      const handleComplexUploadAreaKeyDown = (event) => {
           if (event.key === 'Enter' || event.key === ' ') {
                event.preventDefault();
@@ -349,6 +341,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     // upload khu sân mới hoặc cập nhật khu sân
      const handleComplexSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {
@@ -356,7 +349,6 @@ const FieldManagement = ({ isDemo = false }) => {
                return;
           }
 
-          // Validate token and owner role before proceeding
           const token = localStorage.getItem("token");
           if (!token) {
                await Swal.fire({
@@ -369,7 +361,6 @@ const FieldManagement = ({ isDemo = false }) => {
                return;
           }
 
-          // Check if user is owner
           const userRole = user?.roleName || user?.role;
           if (userRole !== "Owner" && userRole !== "FieldOwner") {
                await Swal.fire({
@@ -382,8 +373,7 @@ const FieldManagement = ({ isDemo = false }) => {
                return;
           }
 
-          // Validate ownerId - Get UserID from Users table
-          // OwnerID in FieldComplexes references Users(UserID)
+          // lấy ownerId từ user context
           const ownerId = user?.userID || user?.UserID || user?.id || user?.userId;
           if (!ownerId) {
                await Swal.fire({
@@ -399,90 +389,113 @@ const FieldManagement = ({ isDemo = false }) => {
           const isEditingComplex = Boolean(isEditComplexModalOpen && editingComplexId);
           const actionLabel = isEditingComplex ? 'cập nhật khu sân' : 'tạo khu sân';
 
-          // Validate required fields for creating new complex
-          if (!isEditingComplex) {
-               // Validate image is required for new complexes
-               if (!complexFormData.imageFile && !complexFormData.imageUrl) {
-                    await Swal.fire({
-                         icon: 'warning',
-                         title: 'Thiếu hình ảnh!',
-                         text: 'Vui lòng chọn hình ảnh cho khu sân.',
-                         confirmButtonText: 'Đóng',
-                         confirmButtonColor: '#f59e0b'
-                    });
-                    return;
-               }
-
-               // Validate name
-               if (!complexFormData.name || complexFormData.name.trim() === '') {
-                    await Swal.fire({
-                         icon: 'warning',
-                         title: 'Thiếu tên khu sân!',
-                         text: 'Vui lòng nhập tên khu sân.',
-                         confirmButtonText: 'Đóng',
-                         confirmButtonColor: '#f59e0b'
-                    });
-                    return;
-               }
-
-               // Validate address
-               if (!complexFormData.address || complexFormData.address.trim() === '') {
-                    await Swal.fire({
-                         icon: 'warning',
-                         title: 'Thiếu địa chỉ!',
-                         text: 'Vui lòng nhập địa chỉ khu sân.',
-                         confirmButtonText: 'Đóng',
-                         confirmButtonColor: '#f59e0b'
-                    });
-                    return;
-               }
+          // Validate dữ liệu khu sân
+          const complexValidation = validateComplexData(complexFormData, isEditingComplex);
+          if (!complexValidation.isValid) {
+               const firstError = Object.values(complexValidation.errors)[0];
+               await Swal.fire({
+                    icon: 'warning',
+                    title: 'Dữ liệu không hợp lệ!',
+                    text: firstError,
+                    confirmButtonText: 'Đóng',
+                    confirmButtonColor: '#f59e0b'
+               });
+               return;
           }
 
           try {
+               let lat = complexFormData.latitude ?? complexFormData.lat;
+               let lng = complexFormData.longitude ?? complexFormData.lng;
+               let ward = complexFormData.ward;
+               let district = complexFormData.district;
+               let province = complexFormData.province;
+
+               const hasLat = lat !== null && lat !== undefined && lat !== "";
+               const hasLng = lng !== null && lng !== undefined && lng !== "";
+
+               if ((!hasLat || !hasLng) && complexFormData.address) {
+                    const geocodeResult = await geocodeAddress(complexFormData.address);
+                    if (geocodeResult && geocodeResult.success && geocodeResult.data) {
+                         const geocoded = geocodeResult.data;
+                         lat = geocoded.lat;
+                         lng = geocoded.lng;
+                         ward = ward || geocoded.ward;
+                         district = district || geocoded.district;
+                         province = province || geocoded.province;
+
+                         setComplexFormData(prev => ({
+                              ...prev,
+                              address: geocoded.address || prev.address,
+                              lat: geocoded.lat,
+                              lng: geocoded.lng,
+                              latitude: geocoded.lat,
+                              longitude: geocoded.lng,
+                              ward: ward || geocoded.ward,
+                              district: district || geocoded.district,
+                              province: province || geocoded.province,
+                         }));
+                    } else {
+                         const errorMessage = geocodeResult?.error || "Không lấy được tọa độ từ địa chỉ. Vui lòng chọn địa chỉ từ gợi ý hoặc chọn vị trí trên bản đồ.";
+                         await Swal.fire({
+                              icon: "error",
+                              title: "Lỗi lấy tọa độ",
+                              text: errorMessage,
+                              confirmButtonText: "Đóng",
+                              confirmButtonColor: "#ef4444",
+                         });
+                         return;
+                    }
+               }
+               // chuẩn hóa lat/lng
+               const latToUse =
+                    lat !== null && lat !== undefined && lat !== ""
+                         ? Number.isNaN(Number(lat))
+                              ? lat
+                              : Number(lat)
+                         : null;
+               const lngToUse =
+                    lng !== null && lng !== undefined && lng !== ""
+                         ? Number.isNaN(Number(lng))
+                              ? lng
+                              : Number(lng)
+                         : null;
+
                if (isEditingComplex) {
                     let updatePayload;
 
-                    // Always use FormData for update to match API expectations
                     updatePayload = new FormData();
                     updatePayload.append("ComplexId", String(editingComplexId));
                     updatePayload.append("OwnerId", String(Number(ownerId)));
                     updatePayload.append("Name", complexFormData.name);
                     updatePayload.append("Address", complexFormData.address);
                     updatePayload.append("Description", complexFormData.description || "");
-                    updatePayload.append("Status", complexFormData.status || "Active");
-                    
-                    // Add image file if new one is selected, otherwise keep existing
+                    updatePayload.append("Status", complexFormData.status || "Pending");
+
                     if (complexFormData.imageFile) {
                          updatePayload.append("ImageFile", complexFormData.imageFile);
                     } else if (complexFormData.imageUrl) {
-                         // If no new file but has existing URL, we might need to send it
-                         // But FormData doesn't handle URLs well, so we'll let backend handle it
-                         // by not sending ImageFile field
+                         updatePayload.append("ImageUrl", complexFormData.imageUrl);
                     }
-                    
-                    // Add location data - use only one format (Lat/Lng) to avoid confusion
-                    const lat = complexFormData.latitude || complexFormData.lat;
-                    const lng = complexFormData.longitude || complexFormData.lng;
-                    
-                    if (lat !== null && lat !== undefined) {
-                         updatePayload.append("Lat", String(lat));
+
+                    // thêm lat/lng 
+                    if (latToUse !== null && latToUse !== undefined) {
+                         updatePayload.append("Lat", String(latToUse));
                     }
-                    if (lng !== null && lng !== undefined) {
-                         updatePayload.append("Lng", String(lng));
+                    if (lngToUse !== null && lngToUse !== undefined) {
+                         updatePayload.append("Lng", String(lngToUse));
                     }
-                    
-                    // Add address components
-                    if (complexFormData.ward) {
-                         updatePayload.append("Ward", complexFormData.ward);
+
+                    // thêm đại chỉ
+                    if (ward) {
+                         updatePayload.append("Ward", ward);
                     }
-                    if (complexFormData.district) {
-                         updatePayload.append("District", complexFormData.district);
+                    if (district) {
+                         updatePayload.append("District", district);
                     }
-                    if (complexFormData.province) {
-                         updatePayload.append("Province", complexFormData.province);
+                    if (province) {
+                         updatePayload.append("Province", province);
                     }
-                    
-                    // Add CreatedAt if available (for preserving creation date)
+
                     const existingComplex = complexes.find(c => c.complexId === editingComplexId);
                     if (existingComplex?.createdAt) {
                          updatePayload.append("CreatedAt", existingComplex.createdAt);
@@ -508,12 +521,8 @@ const FieldManagement = ({ isDemo = false }) => {
                     await loadData();
                     return;
                }
-
-               // Create FormData if image file exists, otherwise use JSON
                let newComplexResponse;
-               const lat = complexFormData.latitude || complexFormData.lat;
-               const lng = complexFormData.longitude || complexFormData.lng;
-               
+
                if (complexFormData.imageFile) {
                     const formDataToSend = new FormData();
                     formDataToSend.append("ComplexId", "0");
@@ -521,63 +530,62 @@ const FieldManagement = ({ isDemo = false }) => {
                     formDataToSend.append("Name", complexFormData.name);
                     formDataToSend.append("Address", complexFormData.address);
                     formDataToSend.append("Description", complexFormData.description || "");
-                    formDataToSend.append("Status", "Active");
+                    formDataToSend.append("Status", "Pending");
                     formDataToSend.append("ImageFile", complexFormData.imageFile);
-                    
-                    if (lat !== null && lat !== undefined) {
-                         formDataToSend.append("Lat", String(lat));
-                         formDataToSend.append("Latitude", String(lat));
+
+                    if (latToUse !== null && latToUse !== undefined) {
+                         formDataToSend.append("Lat", String(latToUse));
+                         formDataToSend.append("Latitude", String(latToUse));
                     }
-                    if (lng !== null && lng !== undefined) {
-                         formDataToSend.append("Lng", String(lng));
-                         formDataToSend.append("Longitude", String(lng));
+                    if (lngToUse !== null && lngToUse !== undefined) {
+                         formDataToSend.append("Lng", String(lngToUse));
+                         formDataToSend.append("Longitude", String(lngToUse));
                     }
-                    if (complexFormData.ward) {
-                         formDataToSend.append("Ward", complexFormData.ward);
+                    if (ward) {
+                         formDataToSend.append("Ward", ward);
                     }
-                    if (complexFormData.district) {
-                         formDataToSend.append("District", complexFormData.district);
+                    if (district) {
+                         formDataToSend.append("District", district);
                     }
-                    if (complexFormData.province) {
-                         formDataToSend.append("Province", complexFormData.province);
+                    if (province) {
+                         formDataToSend.append("Province", province);
                     }
 
                     newComplexResponse = await createFieldComplex(formDataToSend);
                } else {
-                    // No file, create without image (or with existing imageUrl if editing)
-                    // OwnerID must reference Users(UserID) from database
+                    // Tạo payload JSON nếu không có ảnh mới
                     const payload = {
-                         complexId: 0, // Will be set by backend
-                         ownerId: Number(ownerId), // Ensure it's a number matching Users(UserID)
+                         complexId: 0,
+                         ownerId: Number(ownerId),
                          name: complexFormData.name,
                          address: complexFormData.address,
                          description: complexFormData.description || "",
-                         imageUrl: complexFormData.imageUrl || "", // Send existing URL if any
-                         status: "Active",
+                         imageUrl: complexFormData.imageUrl || "",
+                         status: "Pending",
                     };
 
-                    if (lat !== null && lat !== undefined) {
-                         payload.lat = lat;
-                         payload.latitude = lat;
+                    if (latToUse !== null && latToUse !== undefined) {
+                         payload.lat = latToUse;
+                         payload.latitude = latToUse;
                     }
-                    if (lng !== null && lng !== undefined) {
-                         payload.lng = lng;
-                         payload.longitude = lng;
+                    if (lngToUse !== null && lngToUse !== undefined) {
+                         payload.lng = lngToUse;
+                         payload.longitude = lngToUse;
                     }
-                    if (complexFormData.ward) {
-                         payload.ward = complexFormData.ward;
+                    if (ward) {
+                         payload.ward = ward;
                     }
-                    if (complexFormData.district) {
-                         payload.district = complexFormData.district;
+                    if (district) {
+                         payload.district = district;
                     }
-                    if (complexFormData.province) {
-                         payload.province = complexFormData.province;
+                    if (province) {
+                         payload.province = province;
                     }
 
                     newComplexResponse = await createFieldComplex(payload);
                }
 
-               // Handle response - API may return array or single object
+               // Lấy khu sân mới 
                let newComplex;
                if (Array.isArray(newComplexResponse)) {
                     newComplex = newComplexResponse[0];
@@ -585,7 +593,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     newComplex = newComplexResponse;
                }
 
-               // Extract only fields from API response
+               // chuẩn hóa dữ liệu khu sân mới
                const normalizedComplex = {
                     complexId: newComplex.complexId,
                     ownerId: newComplex.ownerId,
@@ -599,10 +607,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     fields: newComplex.fields || []
                };
 
-               // Add new complex to the list with only API fields
                setComplexes(prev => [...prev, normalizedComplex]);
-
-               // Show success message
                const result = await Swal.fire({
                     icon: 'success',
                     title: 'Tạo khu sân thành công!',
@@ -614,10 +619,9 @@ const FieldManagement = ({ isDemo = false }) => {
                     timer: 5000
                });
 
-               // Close complex modal and reset form
+               // đóng modal và reset form
                setIsAddComplexModalOpen(false);
                setIsEditComplexModalOpen(false);
-               // Revoke object URL before resetting
                if (complexFormData.image && complexFormData.image.startsWith('blob:')) {
                     URL.revokeObjectURL(complexFormData.image);
                }
@@ -632,22 +636,16 @@ const FieldManagement = ({ isDemo = false }) => {
                     await loadData();
                }
           } catch (error) {
-               console.error(isEditingComplex ? 'Error updating complex:' : 'Error creating complex:', error);
-               
-               // Extract detailed error message from API response
                let errorMessage = `Có lỗi xảy ra khi ${actionLabel}`;
                let errorDetails = '';
-               
+
                if (error.response) {
                     const { status, data } = error.response;
-                    
-                    // Handle 400 Bad Request with detailed messages
+
+                    // chi tiết lỗi 400
                     if (status === 400) {
                          if (data) {
-                              // Try to get error message from different possible fields
                               errorMessage = data.message || data.title || data.error || 'Dữ liệu không hợp lệ';
-                              
-                              // Handle validation errors (ModelState errors)
                               if (data.errors && typeof data.errors === 'object') {
                                    const validationErrors = [];
                                    Object.keys(data.errors).forEach(key => {
@@ -657,19 +655,17 @@ const FieldManagement = ({ isDemo = false }) => {
                                              validationErrors.push(data.errors[key]);
                                         }
                                    });
-                                   
+
                                    if (validationErrors.length > 0) {
-                                        errorMessage = validationErrors[0]; // Show first error
+                                        errorMessage = validationErrors[0];
                                         if (validationErrors.length > 1) {
                                              errorDetails = `Các lỗi khác: ${validationErrors.slice(1).join(', ')}`;
                                         }
                                    }
                               }
-                              
-                              // Check for specific image-related errors
-                              if (errorMessage.toLowerCase().includes('image') || 
-                                  errorMessage.toLowerCase().includes('ảnh') ||
-                                  errorMessage.toLowerCase().includes('file')) {
+                              if (errorMessage.toLowerCase().includes('image') ||
+                                   errorMessage.toLowerCase().includes('ảnh') ||
+                                   errorMessage.toLowerCase().includes('file')) {
                                    errorMessage = 'Hình ảnh không hợp lệ. Vui lòng chọn lại hình ảnh.';
                               }
                          } else {
@@ -687,7 +683,6 @@ const FieldManagement = ({ isDemo = false }) => {
                          errorMessage = data.message;
                     }
                } else if (error.request) {
-                    // Network error
                     if (error.message?.includes('CORS')) {
                          errorMessage = 'Lỗi CORS: Backend chưa cấu hình cho phép truy cập từ domain này.';
                          errorDetails = 'Vui lòng kiểm tra cấu hình CORS trên backend hoặc liên hệ admin.';
@@ -711,6 +706,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     // thêm sân nhỏ mới hoặc cập nhật sân nhỏ
      const handleSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {
@@ -741,52 +737,32 @@ const FieldManagement = ({ isDemo = false }) => {
           }
 
           try {
-               if (!formData.complexId) {
-                    await Swal.fire({
-                         icon: 'warning',
-                         title: 'Chưa chọn khu sân!',
-                         text: 'Vui lòng chọn khu sân để thêm sân vào.',
-                         confirmButtonColor: '#f59e0b'
-                    });
-                    return;
-               }
-
                const isEditingField = Boolean(isEditModalOpen && formData.fieldId);
 
-               // Validate main image is required for new fields
-               if (!isEditingField && !formData.mainImage) {
+               // Validate dữ liệu sân nhỏ
+               const fieldValidation = validateFieldData(formData, isEditingField);
+               if (!fieldValidation.isValid) {
+                    const firstError = Object.values(fieldValidation.errors)[0];
                     await Swal.fire({
                          icon: 'warning',
-                         title: 'Thiếu ảnh chính!',
-                         text: 'Vui lòng chọn ảnh chính cho sân.',
+                         title: 'Dữ liệu không hợp lệ!',
+                         text: firstError,
                          confirmButtonColor: '#f59e0b'
                     });
                     return;
                }
 
-               // Helper to check if a value is a File object
+               // kiểm tra File object
                const isFile = (value) => {
                     return value instanceof File;
                };
 
-               // Helper to check if a value is a URL string
                const isUrl = (value) => {
                     if (!value || typeof value !== 'string') return false;
                     return value.startsWith('http://') || value.startsWith('https://');
                };
 
-               // Validate bank account selection
-               if (!formData.bankAccountId) {
-                    await Swal.fire({
-                         icon: 'warning',
-                         title: 'Chưa chọn tài khoản ngân hàng!',
-                         text: 'Vui lòng chọn tài khoản ngân hàng để nhận thanh toán.',
-                         confirmButtonColor: '#f59e0b'
-                    });
-                    return;
-               }
-
-               // Create or update field with FormData for File objects
+               // thêm hoạc cập nhật sân nhỏ
                const formDataToSend = new FormData();
                formDataToSend.append("ComplexId", formData.complexId);
                formDataToSend.append("TypeId", String(fieldTypeMap[formData.typeId] || parseInt(formData.typeId)));
@@ -797,38 +773,31 @@ const FieldManagement = ({ isDemo = false }) => {
                formDataToSend.append("PricePerHour", String(parseFloat(formData.pricePerHour) || 0));
                formDataToSend.append("Status", formData.status || "Available");
                formDataToSend.append("BankAccountId", String(formData.bankAccountId));
-
-               // Add bank account information
                formDataToSend.append("BankName", formData.bankName);
                formDataToSend.append("BankShortCode", formData.bankShortCode || "");
                formDataToSend.append("AccountNumber", formData.accountNumber);
                formDataToSend.append("AccountHolder", formData.accountHolder);
 
-               // Separate new uploads (File objects) from existing images (URLs)
+               // phân biệt ảnh mới (File) và ảnh cũ (URL)
                const newMainImageFile = formData.mainImage && isFile(formData.mainImage) ? formData.mainImage : null;
                const existingMainImageUrl = formData.mainImage && isUrl(formData.mainImage) ? formData.mainImage : null;
-               
                const newGalleryFiles = formData.imageFiles?.filter(img => isFile(img)) || [];
                const existingGalleryUrls = formData.imageFiles?.filter(img => isUrl(img)) || [];
 
-               // Add main image: send File object if it's a new upload
                if (newMainImageFile) {
                     formDataToSend.append("MainImage", newMainImageFile);
                }
-               
-               // If editing and keeping existing main image URL, send it so backend knows to preserve it
+
                if (isEditingField && existingMainImageUrl) {
                     formDataToSend.append("MainImageUrl", existingMainImageUrl);
                }
 
-               // Add new gallery images as File objects
                if (newGalleryFiles.length > 0) {
                     newGalleryFiles.forEach((file) => {
                          formDataToSend.append("ImageFiles", file);
                     });
                }
-               
-               // If editing and keeping existing gallery URLs, send them so backend knows to preserve them
+
                if (isEditingField && existingGalleryUrls.length > 0) {
                     existingGalleryUrls.forEach((url) => {
                          formDataToSend.append("ImageUrls", url);
@@ -843,7 +812,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     createdField = await createField(formDataToSend);
                }
 
-               // Optionally create default field prices for all time slots
+               // tạo giá cho các khung giờ nếu có
                if (timeSlots.length > 0 && formData.pricePerHour) {
                     try {
                          for (const slot of timeSlots) {
@@ -854,12 +823,9 @@ const FieldManagement = ({ isDemo = false }) => {
                               });
                          }
                     } catch (priceError) {
-                         console.warn("Error creating field prices:", priceError);
-                         // Continue even if price creation fails
+
                     }
                }
-
-               // Show success message with SweetAlert2
                await Swal.fire({
                     icon: 'success',
                     title: isEditModalOpen ? 'Cập nhật thành công!' : 'Tạo sân thành công!',
@@ -889,6 +855,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     // chỉnh sửa sân nhỏ
      const handleEdit = (field) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -898,28 +865,34 @@ const FieldManagement = ({ isDemo = false }) => {
                key => fieldTypeMap[key] === field.typeId
           ) || "";
 
-          // Find matching bank account if exists
-          const matchingAccount = bankAccounts.find(acc =>
-               acc.bankName === field.bankName &&
-               acc.accountNumber === field.accountNumber
-          );
+          // Tìm tài khoản ngân hàng khớp với thông tin trong field
+          let matchingAccount = null;
+          if (field.bankAccountId) {
+               matchingAccount = bankAccounts.find(acc =>
+                    acc.bankAccountId === Number(field.bankAccountId) ||
+                    acc.bankAccountId === field.bankAccountId
+               );
+          }
+          if (!matchingAccount && field.bankName && field.accountNumber) {
+               matchingAccount = bankAccounts.find(acc =>
+                    acc.bankName === field.bankName &&
+                    acc.accountNumber === field.accountNumber
+               );
+          }
 
-          // Extract main image and gallery images from field (only URLs from Cloudinary)
           let mainImage = null;
           let galleryImages = [];
 
-          // Only use URLs from Cloudinary
           if (field.mainImageUrl) {
                mainImage = field.mainImageUrl;
           }
 
-          // Only use URLs from Cloudinary
           if (Array.isArray(field.imageUrls) && field.imageUrls.length > 0) {
                galleryImages = field.imageUrls.filter(Boolean).slice(0, MAX_FIELD_IMAGES);
           } else if (Array.isArray(field.images) && field.images.length > 0) {
                galleryImages = field.images.filter(Boolean).slice(0, MAX_FIELD_IMAGES);
           }
-
+          // load dữ liệu sân nhỏ vào form
           setFormData({
                fieldId: field.fieldId,
                complexId: field.complexId,
@@ -932,15 +905,16 @@ const FieldManagement = ({ isDemo = false }) => {
                imageFiles: galleryImages,
                pricePerHour: field.pricePerHour || "",
                status: field.status || "Available",
-               bankAccountId: matchingAccount ? String(matchingAccount.bankAccountId) : "",
-               bankName: field.bankName || "",
-               bankShortCode: field.bankShortCode || "",
-               accountNumber: field.accountNumber || "",
-               accountHolder: field.accountHolder || "",
+               bankAccountId: matchingAccount ? String(matchingAccount.bankAccountId) : (field.bankAccountId ? String(field.bankAccountId) : ""),
+               bankName: matchingAccount?.bankName || field.bankName || "",
+               bankShortCode: matchingAccount?.bankShortCode || field.bankShortCode || "",
+               accountNumber: matchingAccount?.accountNumber || field.accountNumber || "",
+               accountHolder: matchingAccount?.accountHolder || field.accountHolder || "",
           });
           setIsEditModalOpen(true);
      };
 
+     // xóa sân nhỏ
      const handleDelete = async (fieldId) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -980,6 +954,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     // thêm sân nhỏ
      const handleAddField = (defaultComplexId = "") => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1002,7 +977,6 @@ const FieldManagement = ({ isDemo = false }) => {
                return;
           }
           resetForm(defaultComplexId);
-          // Preselect default bank account if available
           const defaultAccount = bankAccounts.find(acc => acc.isDefault) || bankAccounts[0];
           if (defaultAccount) {
                setFormData(prev => ({
@@ -1017,6 +991,7 @@ const FieldManagement = ({ isDemo = false }) => {
           setIsAddModalOpen(true);
      };
 
+     // thêm khu sân
      const handleAddComplex = () => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1028,6 +1003,7 @@ const FieldManagement = ({ isDemo = false }) => {
           setIsAddComplexModalOpen(true);
      };
 
+     // chỉnh sửa khu sân
      const handleEditComplex = (complex) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1038,10 +1014,9 @@ const FieldManagement = ({ isDemo = false }) => {
                URL.revokeObjectURL(complexFormData.image);
           }
 
-          // Load complex data with imageUrl from Cloudinary
           const complexImageUrl = complex.imageUrl || complex.ImageUrl || null;
           const complexStatus = complex.status || complex.Status || "Active";
-          
+
           setComplexFormData({
                name: complex.name || "",
                address: complex.address || "",
@@ -1053,11 +1028,10 @@ const FieldManagement = ({ isDemo = false }) => {
                district: complex.district || complex.District || "",
                province: complex.province || complex.Province || "",
                description: complex.description || complex.Description || "",
-               // Only use imageUrl from Cloudinary
                image: complexImageUrl || "",
-               imageUrl: complexImageUrl, // Store URL for backend
-               imageFile: null, // No new file selected
-               status: complexStatus, // Preserve current status
+               imageUrl: complexImageUrl,
+               imageFile: null,
+               status: complexStatus,
           });
           setEditingComplexId(complex.complexId || complex.ComplexID);
           setComplexImageUploading(false);
@@ -1068,6 +1042,7 @@ const FieldManagement = ({ isDemo = false }) => {
           setIsEditComplexModalOpen(true);
      };
 
+     // xóa khu sân
      const handleDeleteComplex = async (complexId) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1108,6 +1083,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     // thay đổi trạng thái khu sân nhanh
      const handleToggleComplexStatus = async (complex) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1116,10 +1092,7 @@ const FieldManagement = ({ isDemo = false }) => {
 
           const complexId = complex.complexId || complex.ComplexID;
           const currentStatus = complex.status || "Active";
-          // API expects "Deactive" not "Inactive"
           const newStatus = currentStatus === "Active" ? "Deactive" : "Active";
-
-          // Optimistic update
           setComplexes(prevComplexes =>
                prevComplexes.map(c =>
                     (c.complexId || c.ComplexID) === complexId
@@ -1129,9 +1102,7 @@ const FieldManagement = ({ isDemo = false }) => {
           );
 
           try {
-               // API requires FormData format (multipart/form-data) based on API documentation
                const imageUrl = complex.imageUrl || complex.ImageUrl || complex.image || complex.Image || "";
-               
                const updatePayload = new FormData();
                updatePayload.append("ComplexId", String(complexId));
                updatePayload.append("OwnerId", String(complex.ownerId || complex.OwnerID));
@@ -1140,9 +1111,6 @@ const FieldManagement = ({ isDemo = false }) => {
                updatePayload.append("Description", complex.description || complex.Description || "");
                updatePayload.append("Status", newStatus);
                updatePayload.append("CreatedAt", complex.createdAt || complex.CreatedAt || "");
-
-               // Try to fetch and include existing image as File object
-               // This ensures API receives ImageFile field which it might require
                if (imageUrl) {
                     try {
                          const response = await fetch(imageUrl);
@@ -1153,14 +1121,13 @@ const FieldManagement = ({ isDemo = false }) => {
                               updatePayload.append("ImageFile", file);
                          }
                     } catch (fetchError) {
-                         console.warn('Could not fetch image for FormData:', fetchError);
-                         // Continue without ImageFile - backend might preserve existing image
+
                     }
                }
 
                const lat = complex.latitude || complex.Latitude || complex.lat || complex.Lat;
                const lng = complex.longitude || complex.Longitude || complex.lng || complex.Lng;
-               
+
                if (lat !== null && lat !== undefined) {
                     updatePayload.append("Lat", String(lat));
                     updatePayload.append("Latitude", String(lat));
@@ -1180,10 +1147,7 @@ const FieldManagement = ({ isDemo = false }) => {
                }
 
                await updateFieldComplex(complexId, updatePayload);
-
-               // Reload data to ensure UI is in sync
                await loadData();
-
                await Swal.fire({
                     icon: 'success',
                     title: newStatus === "Active" ? 'Đã kích hoạt thành công!' : 'Đã vô hiệu hóa thành công!',
@@ -1204,7 +1168,6 @@ const FieldManagement = ({ isDemo = false }) => {
                     allowOutsideClick: true
                });
           } catch (error) {
-               // Revert optimistic update on error
                setComplexes(prevComplexes =>
                     prevComplexes.map(c =>
                          (c.complexId || c.ComplexID) === complexId
@@ -1220,10 +1183,10 @@ const FieldManagement = ({ isDemo = false }) => {
                     newStatus,
                     complex: complex
                });
-               
+
                const errorMessage = error.message || error.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái khu sân';
                const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : '';
-               
+
                await Swal.fire({
                     icon: 'error',
                     title: 'Lỗi!',
@@ -1233,8 +1196,8 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     // đặt lại form khu sân
      const resetComplexForm = () => {
-          // Revoke object URL if exists to prevent memory leak
           if (complexFormData.image && complexFormData.image.startsWith('blob:')) {
                URL.revokeObjectURL(complexFormData.image);
           }
@@ -1252,33 +1215,33 @@ const FieldManagement = ({ isDemo = false }) => {
                image: "",
                imageFile: null,
                imageUrl: null,
-               status: "Active", // Reset to default
+               status: "Active",
           });
           setComplexImageUploading(false);
           if (complexImageInputRef.current) {
                complexImageInputRef.current.value = "";
           }
      };
-
+     // đóng modal sân nhỏ
      const handleCloseFieldModal = () => {
           setIsAddModalOpen(false);
           setIsEditModalOpen(false);
           resetForm();
      };
-
+     // đóng modal khu sân
      const handleCloseComplexModal = () => {
           setIsAddComplexModalOpen(false);
           setIsEditComplexModalOpen(false);
           setEditingComplexId(null);
           resetComplexForm();
      };
-
+     // yêu cầu tạo khu sân từ modal thêm sân nhỏ
      const handleRequestCreateComplex = () => {
           setIsAddModalOpen(false);
           setIsEditModalOpen(false);
           handleAddComplex();
      };
-
+     // chuyển đến  trang quản lý tài khoản ngân hàng
      const handleNavigateBankAccounts = () => {
           setIsAddModalOpen(false);
           setIsEditModalOpen(false);
@@ -1305,8 +1268,106 @@ const FieldManagement = ({ isDemo = false }) => {
                accountHolder: "",
           });
      };
+     // trích xuất phường, quận, tỉnh 
+     const extractAddressComponents = (addressComponents = []) => {
+          let ward = "";
+          let district = "";
+          let province = "";
 
-     // Handle address selection from AddressPicker for complex
+          addressComponents.forEach((component = {}) => {
+               const types = component.types || [];
+               if (types.includes("ward") || types.includes("sublocality")) {
+                    ward = component.long_name || component.short_name || "";
+               } else if (
+                    types.includes("administrative_area_level_2") ||
+                    types.includes("district")
+               ) {
+                    district = component.long_name || component.short_name || "";
+               } else if (
+                    types.includes("administrative_area_level_1") ||
+                    types.includes("province")
+               ) {
+                    province = component.long_name || component.short_name || "";
+               }
+          });
+
+          return { ward, district, province };
+     };
+     // lấy tọa độ từ địa chỉ
+     const geocodeAddress = useCallback(async (address) => {
+          if (!address || !address.trim()) {
+               return {
+                    success: false,
+                    error: "Địa chỉ không được để trống"
+               };
+          }
+          try {
+               const response = await fetch(
+                    `${GOONG_GEOCODE_URL}?api_key=${GOONG_REST_API_KEY}&address=${encodeURIComponent(
+                         address
+                    )}`
+               );
+
+               if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    return {
+                         success: false,
+                         error: errorData.error_message || errorData.message || `Lỗi API: ${response.status} ${response.statusText}`
+                    };
+               }
+
+               const data = await response.json();
+               if (data.error_message) {
+                    return {
+                         success: false,
+                         error: data.error_message
+                    };
+               }
+
+               const firstResult = data?.results?.[0];
+               if (!firstResult) {
+                    return {
+                         success: false,
+                         error: "Không tìm thấy địa chỉ. Vui lòng thử lại với địa chỉ khác."
+                    };
+               }
+
+               const location = firstResult.geometry?.location || {};
+               const lat = location.lat ?? firstResult.lat;
+               const lng = location.lng ?? firstResult.lng;
+
+               if (lat === undefined || lng === undefined || lat === null || lng === null) {
+                    return {
+                         success: false,
+                         error: "Không thể lấy được tọa độ từ địa chỉ này."
+                    };
+               }
+
+               const { ward, district, province } = extractAddressComponents(
+                    firstResult.address_components || []
+               );
+
+               return {
+                    success: true,
+                    data: {
+                         lat,
+                         lng,
+                         ward,
+                         district,
+                         province,
+                         address: firstResult.formatted_address || address,
+                    }
+               };
+          } catch (error) {
+               console.error("Error geocoding address:", error);
+               return {
+                    success: false,
+                    error: error.message || "Lỗi kết nối khi lấy tọa độ. Vui lòng thử lại sau."
+               };
+          }
+     }, []);
+
+     //chọn địa chỉ từ bản đồ
      const handleComplexAddressSelect = (locationData) => {
           setComplexFormData(prev => ({
                ...prev,
@@ -1321,20 +1382,30 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
+     const normalizeFieldStatus = (status) => {
+          const validStatuses = ['Available', 'Maintenance', 'Unavailable'];
+          if (!status || !validStatuses.includes(status)) {
+               return 'Available';
+          }
+          return status;
+     };
+     // lấy màu theo trạng thái sân
      const getStatusColor = (status) => {
-          switch (status) {
+          const normalizedStatus = normalizeFieldStatus(status);
+          switch (normalizedStatus) {
                case 'Available': return 'bg-green-100 text-green-800';
                case 'Maintenance': return 'bg-yellow-100 text-yellow-800';
                case 'Unavailable': return 'bg-red-100 text-red-800';
                default: return 'bg-gray-100 text-gray-800';
           }
      };
-
+     // lấy chữ theo trạng thái sân
      const getStatusText = (status) => {
-          const statusObj = fieldStatuses.find(s => s.value === status);
-          return statusObj ? statusObj.label : status;
+          const normalizedStatus = normalizeFieldStatus(status);
+          const statusObj = fieldStatuses.find(s => s.value === normalizedStatus);
+          return statusObj ? statusObj.label : normalizedStatus;
      };
-
+     // định dạng tiền VND
      const formatCurrency = (amount) => {
           return new Intl.NumberFormat('vi-VN', {
                style: 'currency',
@@ -1342,7 +1413,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }).format(amount);
      };
 
-     // Pagination for complexes (4 per page)
+     // phân trạng khu sân (4)
      const {
           currentPage: complexesPage,
           totalPages: complexesTotalPages,
@@ -1352,7 +1423,12 @@ const FieldManagement = ({ isDemo = false }) => {
           itemsPerPage: complexesPerPage,
      } = usePagination(complexes, 4);
 
-     // Pagination for fields (3 per page)
+     // Lọc chỉ hiển thị sân nhỏ của khu sân đã được duyệt (Active)
+     const activeFields = useMemo(() => {
+          return fields.filter(field => field.complexStatus === "Active");
+     }, [fields]);
+
+     // phân trang sân nhỏ (6)
      const {
           currentPage: fieldsPage,
           totalPages: fieldsTotalPages,
@@ -1360,7 +1436,7 @@ const FieldManagement = ({ isDemo = false }) => {
           handlePageChange: handleFieldsPageChange,
           totalItems: fieldsTotalItems,
           itemsPerPage: fieldsPerPage,
-     } = usePagination(fields, 3);
+     } = usePagination(activeFields, 6);
 
      if (loading) {
           return (
@@ -1372,91 +1448,109 @@ const FieldManagement = ({ isDemo = false }) => {
      }
 
      return (
-               <div className="space-y-8">
-                    {/* Header */}
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="space-y-8">
+               {/* Header */}
+               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div>
+                         <h1 className="text-3xl font-bold text-gray-900">Quản lý sân</h1>
+                         <p className="text-gray-600 mt-1">Theo dõi khu sân và các sân nhỏ trong hệ thống của bạn</p>
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-sm">
+                         <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200 font-medium">
+                              Khu sân: {complexes.length}
+                         </span>
+                         <span className="px-3 py-1 rounded-full bg-teal-50 text-teal-600 border border-teal-200 font-medium">
+                              Sân nhỏ: {activeFields.length}
+                         </span>
+                         {fields.length > activeFields.length && (
+                              <span className="px-3 py-1 rounded-full bg-yellow-50 text-yellow-600 border border-yellow-200 font-medium">
+                                   Chờ duyệt: {fields.length - activeFields.length} sân
+                              </span>
+                         )}
+                    </div>
+               </div>
+
+               {/* Complexes Section */}
+               <section className="bg-white/90 backdrop-blur-sm border border-slate-200/60 rounded-3xl shadow-sm p-6 space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                          <div>
-                              <h1 className="text-3xl font-bold text-gray-900">Quản lý sân</h1>
-                              <p className="text-gray-600 mt-1">Theo dõi khu sân và các sân nhỏ trong hệ thống của bạn</p>
+                              <h2 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
+                                   <Building2 className="w-6 h-6 text-blue-500" />
+                                   Khu sân
+                              </h2>
+                              <p className="text-sm text-gray-500 mt-1">Quản lý danh sách khu sân và thông tin tổng quan</p>
                          </div>
-                         <div className="flex flex-wrap gap-3 text-sm">
-                              <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200 font-medium">
-                                   Khu sân: {complexes.length}
-                              </span>
-                              <span className="px-3 py-1 rounded-full bg-teal-50 text-teal-600 border border-teal-200 font-medium">
-                                   Sân nhỏ: {fields.length}
-                              </span>
-                         </div>
+                         <Button
+                              onClick={handleAddComplex}
+                              variant="outline"
+                              className="flex items-center space-x-2 rounded-2xl border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-600"
+                         >
+                              <Plus className="w-4 h-4" />
+                              <span>Thêm khu sân</span>
+                         </Button>
                     </div>
 
-                    {/* Complexes Section */}
-                    <section className="bg-white/90 backdrop-blur-sm border border-slate-200/60 rounded-3xl shadow-sm p-6 space-y-6">
-                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                              <div>
-                                   <h2 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
-                                        <Building2 className="w-6 h-6 text-blue-500" />
-                                        Khu sân
-                                   </h2>
-                                   <p className="text-sm text-gray-500 mt-1">Quản lý danh sách khu sân và thông tin tổng quan</p>
-                              </div>
-                              <Button
-                                   onClick={handleAddComplex}
-                                   variant="outline"
-                                   className="flex items-center space-x-2 rounded-2xl border-blue-200 text-blue-600 hover:bg-blue-50"
-                              >
-                                   <Plus className="w-4 h-4" />
-                                   <span>Thêm khu sân</span>
+                    {complexes.length === 0 ? (
+                         <Card className="p-10 text-center border-dashed border-2 border-blue-200 bg-blue-50/50 rounded-2xl">
+                              <Building2 className="w-12 h-12 mx-auto text-blue-400 mb-3" />
+                              <p className="text-gray-500 mb-4">Chưa có khu sân nào. Hãy tạo khu sân đầu tiên để quản lý sân nhỏ.</p>
+                              <Button onClick={handleAddComplex}>
+                                   <Plus className="w-4 h-4 mr-2" />
+                                   Thêm khu sân mới
                               </Button>
-                         </div>
-
-                         {complexes.length === 0 ? (
-                              <Card className="p-10 text-center border-dashed border-2 border-blue-200 bg-blue-50/50 rounded-2xl">
-                                   <Building2 className="w-12 h-12 mx-auto text-blue-400 mb-3" />
-                                   <p className="text-gray-500 mb-4">Chưa có khu sân nào. Hãy tạo khu sân đầu tiên để quản lý sân nhỏ.</p>
-                                   <Button onClick={handleAddComplex}>
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        Thêm khu sân mới
-                                   </Button>
-                              </Card>
-                         ) : (
-                              <>
-                                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                        {paginatedComplexes.map((complex) => {
-                                             const fieldCount = complexFieldCounts[complex.complexId] || 0;
-                                             return (
-                                                  <Card key={complex.complexId} className={`h-full border rounded-2xl hover:shadow-lg transition-all duration-300 ${(complex.status || "Active") === "Active"
-                                                       ? "border-blue-100 bg-white"
-                                                       : "border-gray-200 bg-gray-50/50 opacity-75"
-                                                       }`}>
-                                                       <div className="p-4 space-y-4">
-                                                            <div className="flex items-start justify-between">
-                                                                 <div className="flex-1 min-w-0">
-                                                                      <h3 className={`text-xl font-bold line-clamp-1 ${(complex.status || "Active") === "Active"
-                                                                           ? "text-gray-900"
-                                                                           : "text-gray-500"
-                                                                           }`}>
-                                                                           {complex.name}
-                                                                      </h3>
-                                                                      <p className="text-xs text-gray-500 mt-1">
-                                                                           Tạo ngày: {complex.createdAt ? new Date(complex.createdAt).toLocaleDateString("vi-VN") : "-"}
-                                                                      </p>
-                                                                 </div>
-                                                                 <div className="flex items-center gap-1.5 ml-2">
+                         </Card>
+                    ) : (
+                         <>
+                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                   {paginatedComplexes.map((complex) => {
+                                        const fieldCount = complexFieldCounts[complex.complexId] || 0;
+                                        return (
+                                             <Card key={complex.complexId} className={`h-full border rounded-2xl hover:shadow-lg transition-all duration-300 ${complex.status === "Active"
+                                                  ? "border-blue-100 bg-white"
+                                                  : complex.status === "Pending"
+                                                       ? "border-yellow-200 bg-yellow-50/30"
+                                                       : complex.status === "Rejected"
+                                                            ? "border-red-200 bg-red-50/30 opacity-75"
+                                                            : "border-gray-200 bg-gray-50/50 opacity-75"
+                                                  }`}>
+                                                  <div className="p-4 space-y-4">
+                                                       <div className="flex items-start justify-between">
+                                                            <div className="flex-1 min-w-0">
+                                                                 <h3 className={`text-xl font-bold line-clamp-1 ${complex.status === "Active"
+                                                                      ? "text-gray-900"
+                                                                      : complex.status === "Pending"
+                                                                           ? "text-yellow-800"
+                                                                           : complex.status === "Rejected"
+                                                                                ? "text-red-800"
+                                                                                : "text-gray-500"
+                                                                      }`}>
+                                                                      {complex.name}
+                                                                 </h3>
+                                                                 <p className="text-xs text-gray-500 mt-1">
+                                                                      Tạo ngày: {complex.createdAt ? new Date(complex.createdAt).toLocaleDateString("vi-VN") : "-"}
+                                                                 </p>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5 ml-2">
+                                                                 {/* Chỉ hiển thị nút toggle khi status là Active hoặc Deactive */}
+                                                                 {(complex.status === "Active" || complex.status === "Deactive") && (
                                                                       <button
                                                                            type="button"
                                                                            onClick={() => handleToggleComplexStatus(complex)}
-                                                                           className={`p-1.5 rounded-lg transition-all duration-200 ${(complex.status || "Active") === "Active"
+                                                                           className={`p-1.5 rounded-lg transition-all duration-200 ${complex.status === "Active"
                                                                                 ? "bg-green-100 text-green-600 hover:bg-green-200"
                                                                                 : "bg-gray-200 text-gray-500 hover:bg-gray-300"
                                                                                 }`}
-                                                                           title={(complex.status || "Active") === "Active" ? "Vô hiệu hóa" : "Kích hoạt"}
+                                                                           title={complex.status === "Active" ? "Vô hiệu hóa" : "Kích hoạt"}
                                                                       >
-                                                                           {(complex.status || "Active") === "Active" ? (
+                                                                           {complex.status === "Active" ? (
                                                                                 <Power className="w-4 h-4" />
                                                                            ) : (
                                                                                 <PowerOff className="w-4 h-4" />
                                                                            )}
                                                                       </button>
+                                                                 )}
+                                                                 {/* Chỉ cho phép chỉnh sửa khi không phải Pending */}
+                                                                 {complex.status !== "Pending" && (
                                                                       <button
                                                                            type="button"
                                                                            onClick={() => handleEditComplex(complex)}
@@ -1465,256 +1559,304 @@ const FieldManagement = ({ isDemo = false }) => {
                                                                       >
                                                                            <Edit className="w-4 h-4" />
                                                                       </button>
-                                                                      <button
-                                                                           type="button"
-                                                                           onClick={() => handleDeleteComplex(complex.complexId || complex.ComplexID)}
-                                                                           className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-                                                                           title="Xóa"
-                                                                      >
-                                                                           <Trash2 className="w-4 h-4" />
-                                                                      </button>
-                                                                 </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                 <span className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${(complex.status || "Active") === "Active"
-                                                                      ? "bg-green-50 text-green-700 border-green-200"
-                                                                      : "bg-gray-100 text-gray-600 border-gray-300"
-                                                                      }`}>
-                                                                      {(complex.status || "Active") === "Active" ? "Đang hoạt động" : (complex.status === "Deactive" ? "Đã vô hiệu hóa" : "Đã vô hiệu hóa")}
-                                                                 </span>
-                                                            </div>
-                                                            {complex.address && (
-                                                                 <div className="flex items-start border border-blue-200 rounded-2xl p-1 gap-2 text-xs text-gray-600">
-                                                                      <MapPin className="w-4 h-4 mt-0.5 text-blue-400" />
-                                                                      <span className="line-clamp-2 font-medium">{complex.address}</span>
-                                                                 </div>
-                                                            )}
-                                                            {complex.description && (
-                                                                 <p className="text-sm text-gray-500 line-clamp-2">{complex.description}</p>
-                                                            )}
-                                                            <div className="flex items-center gap-2 text-xs">
-                                                                 <span className="px-2 py-1 rounded-full bg-teal-50 text-teal-600 border border-teal-200">
-                                                                      {fieldCount} sân nhỏ
-                                                                 </span>
-                                                                 {complex.ownerName && (
-                                                                      <span className="px-2 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200">
-                                                                           Chủ sở hữu: {complex.ownerName}
-                                                                      </span>
                                                                  )}
+                                                                 <button
+                                                                      type="button"
+                                                                      onClick={() => handleDeleteComplex(complex.complexId || complex.ComplexID)}
+                                                                      className="p-1.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+                                                                      title="Xóa"
+                                                                 >
+                                                                      <Trash2 className="w-4 h-4" />
+                                                                 </button>
                                                             </div>
-                                                            <div className="flex justify-end">
+                                                       </div>
+                                                       <div className="flex items-center gap-2">
+                                                            <span className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${complex.status === "Active"
+                                                                 ? "bg-green-50 text-green-700 border-green-200"
+                                                                 : complex.status === "Pending"
+                                                                      ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                                                      : complex.status === "Rejected"
+                                                                           ? "bg-red-50 text-red-700 border-red-200"
+                                                                           : "bg-gray-100 text-gray-600 border-gray-300"
+                                                                 }`}>
+                                                                 {complex.status === "Active"
+                                                                      ? "Đang hoạt động"
+                                                                      : complex.status === "Pending"
+                                                                           ? "Chờ duyệt"
+                                                                           : complex.status === "Rejected"
+                                                                                ? "Đã bị từ chối"
+                                                                                : complex.status === "Deactive"
+                                                                                     ? "Đã vô hiệu hóa"
+                                                                                     : "Đã vô hiệu hóa"}
+                                                            </span>
+                                                       </div>
+                                                       {complex.address && (
+                                                            <div className="flex items-start border border-blue-200 rounded-2xl p-1 gap-2 text-xs text-gray-600">
+                                                                 <MapPin className="w-4 h-4 mt-0.5 text-blue-400" />
+                                                                 <span className="line-clamp-2 font-medium">{complex.address}</span>
+                                                            </div>
+                                                       )}
+                                                       {complex.description && (
+                                                            <p className="text-sm text-gray-500 line-clamp-2">{complex.description}</p>
+                                                       )}
+                                                       <div className="flex items-center gap-2 text-xs">
+                                                            <span className="px-2 py-1 rounded-full bg-teal-50 text-teal-600 border border-teal-200">
+                                                                 {fieldCount} sân nhỏ
+                                                            </span>
+                                                            {complex.ownerName && (
+                                                                 <span className="px-2 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200">
+                                                                      Chủ sở hữu: {complex.ownerName}
+                                                                 </span>
+                                                            )}
+                                                       </div>
+                                                       <div className="flex justify-end">
+                                                            {complex.status === "Active" ? (
                                                                  <Button
                                                                       variant="outline"
                                                                       size="sm"
-                                                                      className="text-teal-600 border-teal-200 hover:bg-teal-50 rounded-full"
+                                                                      className="text-teal-600 border-teal-200 hover:text-teal-600 hover:bg-teal-50 rounded-full"
                                                                       onClick={() => handleAddField(complex.complexId)}
                                                                  >
                                                                       <Plus className="w-4 h-4 mr-1" />
                                                                       Thêm sân nhỏ
                                                                  </Button>
-                                                            </div>
+                                                            ) : complex.status === "Pending" ? (
+                                                                 <span className="text-xs text-yellow-600 italic">
+                                                                      Đang chờ Admin duyệt
+                                                                 </span>
+                                                            ) : complex.status === "Rejected" ? (
+                                                                 <span className="text-xs text-red-600 italic">
+                                                                      Khu sân đã bị từ chối
+                                                                 </span>
+                                                            ) : null}
                                                        </div>
-                                                  </Card>
-                                             );
-                                        })}
-                                   </div>
-                                   <Pagination
-                                        currentPage={complexesPage}
-                                        totalPages={complexesTotalPages}
-                                        onPageChange={handleComplexesPageChange}
-                                        itemsPerPage={complexesPerPage}
-                                        totalItems={complexesTotalItems}
-                                   />
-                              </>
-                         )}
-                    </section>
-
-                    {/* Fields Section */}
-                    <section className="bg-white/90 backdrop-blur-sm border border-teal-200/60 rounded-3xl shadow-sm p-6 space-y-6">
-                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                              <div>
-                                   <h2 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
-                                        <MapPin className="w-6 h-6 text-teal-500" />
-                                        Sân nhỏ
-                                   </h2>
-                                   <p className="text-sm text-gray-500 mt-1">Danh sách các sân trong mỗi khu sân</p>
+                                                  </div>
+                                             </Card>
+                                        );
+                                   })}
                               </div>
-                              <Button
-                                   onClick={() => handleAddField()}
-                                   className="flex items-center space-x-2 rounded-2xl"
-                              >
-                                   <Plus className="w-4 h-4" />
-                                   <span>Thêm sân mới</span>
-                              </Button>
-                         </div>
+                              <Pagination
+                                   currentPage={complexesPage}
+                                   totalPages={complexesTotalPages}
+                                   onPageChange={handleComplexesPageChange}
+                                   itemsPerPage={complexesPerPage}
+                                   totalItems={complexesTotalItems}
+                              />
+                         </>
+                    )}
+               </section>
 
-                         {fields.length === 0 ? (
-                              <Card className="p-12 text-center border-dashed border-2 border-teal-200 bg-teal-50/50 rounded-2xl">
-                                   <p className="text-gray-500 mb-4">Chưa có sân nào. Hãy tạo sân đầu tiên!</p>
+               {/* Fields Section */}
+               <section className="bg-white/90 backdrop-blur-sm border border-teal-200/60 rounded-3xl shadow-sm p-6 space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                         <div>
+                              <h2 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
+                                   <MapPin className="w-6 h-6 text-teal-500" />
+                                   Sân nhỏ
+                              </h2>
+                              <p className="text-sm text-gray-500 mt-1">Danh sách các sân trong mỗi khu sân</p>
+                         </div>
+                         <Button
+                              onClick={() => handleAddField()}
+                              className="flex items-center space-x-2 rounded-2xl"
+                         >
+                              <Plus className="w-4 h-4" />
+                              <span>Thêm sân mới</span>
+                         </Button>
+                    </div>
+
+                    {/* Thông báo sân đang chờ duyệt */}
+                    {fields.length > activeFields.length && (
+                         <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex items-center gap-3">
+                              <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                                   <Building2 className="w-5 h-5 text-yellow-600" />
+                              </div>
+                              <div>
+                                   <p className="text-yellow-800 font-medium">
+                                        Có {fields.length - activeFields.length} sân nhỏ đang chờ duyệt
+                                   </p>
+                                   <p className="text-yellow-600 text-sm">
+                                        Các sân thuộc khu sân chưa được Admin duyệt sẽ không hiển thị cho người chơi
+                                   </p>
+                              </div>
+                         </div>
+                    )}
+
+                    {activeFields.length === 0 ? (
+                         <Card className="p-12 text-center border-dashed border-2 border-teal-200 bg-teal-50/50 rounded-2xl">
+                              <p className="text-gray-500 mb-4">
+                                   {fields.length > 0
+                                        ? "Tất cả sân đang chờ Admin duyệt khu sân"
+                                        : "Chưa có sân nào. Hãy tạo sân đầu tiên!"}
+                              </p>
+                              {fields.length === 0 && (
                                    <Button onClick={() => handleAddField()}>
                                         <Plus className="w-4 h-4 mr-2" />
                                         Thêm sân mới
                                    </Button>
-                              </Card>
-                         ) : (
-                              <>
-                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {paginatedFields.map((field) => {
-                                             // Only use mainImageUrl from Cloudinary
-                                             const primaryImage =
-                                                  field.mainImageUrl ||
-                                                  (Array.isArray(field.images) && field.images.length > 0
-                                                       ? field.images[0]
-                                                       : null);
-                                             return (
-                                                  <Card
-                                                       key={field.fieldId}
-                                                       className="group overflow-hidden rounded-3xl border border-teal-100 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
-                                                  >
-                                                       <div className="relative">
-                                                            <div
-                                                                 className="h-48 w-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
-                                                                 style={
-                                                                      primaryImage
-                                                                           ? {
-                                                                                backgroundImage: `url(${primaryImage})`,
-                                                                           }
-                                                                           : undefined
-                                                                 }
-                                                            >
-                                                                 {!primaryImage && (
-                                                                      <div className="w-full h-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-xl font-bold">
-                                                                           {field.name}
+                              )}
+                         </Card>
+                    ) : (
+                         <>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                   {paginatedFields.map((field) => {
+                                        // Only use mainImageUrl from Cloudinary
+                                        const primaryImage =
+                                             field.mainImageUrl ||
+                                             (Array.isArray(field.images) && field.images.length > 0
+                                                  ? field.images[0]
+                                                  : null);
+                                        return (
+                                             <Card
+                                                  key={field.fieldId}
+                                                  className="group overflow-hidden rounded-3xl border border-teal-100 shadow-sm transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
+                                             >
+                                                  <div className="relative">
+                                                       <div
+                                                            className="h-48 w-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
+                                                            style={
+                                                                 primaryImage
+                                                                      ? {
+                                                                           backgroundImage: `url(${primaryImage})`,
+                                                                      }
+                                                                      : undefined
+                                                            }
+                                                       >
+                                                            {!primaryImage && (
+                                                                 <div className="w-full h-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-xl font-bold">
+                                                                      {field.name}
+                                                                 </div>
+                                                            )}
+                                                            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
+                                                            <div className="absolute top-4 left-4">
+                                                                 <span className="text-white/90 text-xs font-medium px-2 py-1 rounded-full bg-white/20 backdrop-blur">
+                                                                      {field.complexName}
+                                                                 </span>
+                                                            </div>
+                                                            <div className="absolute top-4 right-4">
+                                                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(field.status)}`}>
+                                                                      {getStatusText(field.status)}
+                                                                 </span>
+                                                            </div>
+                                                            <div className="absolute bottom-3 left-4 text-white drop-shadow-sm">
+                                                                 <h3 className="text-xl font-semibold">{field.name}</h3>
+                                                                 <p className="text-xs text-white/80 mt-1">
+                                                                      {field.typeName || `Type ID: ${field.typeId}`}
+                                                                 </p>
+                                                            </div>
+                                                       </div>
+                                                  </div>
+
+                                                  <div className="p-6 space-y-3">
+                                                       <div className="flex items-start justify-between">
+                                                            <div className="space-y-1">
+                                                                 {field.size && (
+                                                                      <p className="text-sm text-gray-600">
+                                                                           Kích thước: {field.size}
+                                                                      </p>
+                                                                 )}
+                                                                 {field.complexAddress && (
+                                                                      <div className="flex items-center text-xs text-gray-500">
+                                                                           <MapPin className="w-4 h-4 mr-1 text-teal-500" />
+                                                                           <span className="line-clamp-1">{field.complexAddress}</span>
                                                                       </div>
                                                                  )}
-                                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
-                                                                 <div className="absolute top-4 left-4">
-                                                                      <span className="text-white/90 text-xs font-medium px-2 py-1 rounded-full bg-white/20 backdrop-blur">
-                                                                           {field.complexName}
-                                                                      </span>
-                                                                 </div>
-                                                                 <div className="absolute top-4 right-4">
-                                                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(field.status)}`}>
-                                                                           {getStatusText(field.status)}
-                                                                      </span>
-                                                                 </div>
-                                                                 <div className="absolute bottom-3 left-4 text-white drop-shadow-sm">
-                                                                      <h3 className="text-xl font-semibold">{field.name}</h3>
-                                                                      <p className="text-xs text-white/80 mt-1">
-                                                                           {field.typeName || `Type ID: ${field.typeId}`}
-                                                                      </p>
-                                                                 </div>
+                                                            </div>
+                                                            <div className="flex space-x-2">
+                                                                 <Button
+                                                                      variant="outline"
+                                                                      size="sm"
+                                                                      className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 transition-all duration-300 ease-in-out rounded-full hover:scale-105"
+                                                                      onClick={() => handleEdit(field)}
+                                                                 >
+                                                                      <Edit className="w-4 h-4" />
+                                                                 </Button>
+                                                                 <Button
+                                                                      variant="outline"
+                                                                      size="sm"
+                                                                      onClick={() => handleDelete(field.fieldId)}
+                                                                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 transition-all duration-300 ease-in-out rounded-full hover:scale-105"
+                                                                 >
+                                                                      <Trash2 className="w-4 h-4" />
+                                                                 </Button>
                                                             </div>
                                                        </div>
 
-                                                       <div className="p-6 space-y-3">
-                                                            <div className="flex items-start justify-between">
-                                                                 <div className="space-y-1">
-                                                                      {field.size && (
-                                                                           <p className="text-sm text-gray-600">
-                                                                                Kích thước: {field.size}
-                                                                           </p>
-                                                                      )}
-                                                                      {field.complexAddress && (
-                                                                           <div className="flex items-center text-xs text-gray-500">
-                                                                                <MapPin className="w-4 h-4 mr-1 text-teal-500" />
-                                                                                <span className="line-clamp-1">{field.complexAddress}</span>
-                                                                           </div>
-                                                                      )}
-                                                                 </div>
-                                                                 <div className="flex space-x-2">
-                                                                      <Button
-                                                                           variant="outline"
-                                                                           size="sm"
-                                                                           className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 transition-all duration-300 ease-in-out rounded-full hover:scale-105"
-                                                                           onClick={() => handleEdit(field)}
-                                                                      >
-                                                                           <Edit className="w-4 h-4" />
-                                                                      </Button>
-                                                                      <Button
-                                                                           variant="outline"
-                                                                           size="sm"
-                                                                           onClick={() => handleDelete(field.fieldId)}
-                                                                           className="text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 transition-all duration-300 ease-in-out rounded-full hover:scale-105"
-                                                                      >
-                                                                           <Trash2 className="w-4 h-4" />
-                                                                      </Button>
-                                                                 </div>
-                                                            </div>
-
-                                                            {field.pricePerHour > 0 && (
-                                                                 <div className="flex items-center font-bold text-lg text-red-500">
-                                                                      <DollarSign className="w-4 h-4 mr-1" />
-                                                                      <span>{formatCurrency(field.pricePerHour)}/giờ</span>
-                                                                 </div>
-                                                            )}
-
-                                                            {field.description && (
-                                                                 <p className="text-sm text-gray-600 line-clamp-2">
-                                                                      {field.description}
-                                                                 </p>
-                                                            )}
+                                                       <div className="flex items-center font-bold text-lg text-red-500">
+                                                            <DollarSign className="w-4 h-4 mr-1" />
+                                                            <span>
+                                                                 {field.pricePerHour > 0
+                                                                      ? `${formatCurrency(field.pricePerHour)}/giờ`
+                                                                      : "Chưa cập nhật giá"}
+                                                            </span>
                                                        </div>
-                                                  </Card>
-                                             )
-                                        })}
-                                   </div>
-                                   <Pagination
-                                        currentPage={fieldsPage}
-                                        totalPages={fieldsTotalPages}
-                                        onPageChange={handleFieldsPageChange}
-                                        itemsPerPage={fieldsPerPage}
-                                        totalItems={fieldsTotalItems}
-                                   />
-                              </>
-                         )}
-                    </section>
 
-                    <FieldFormModal
-                         isOpen={isAddModalOpen || isEditModalOpen}
-                         isEdit={isEditModalOpen}
-                         complexes={complexes}
-                         formData={formData}
-                         fieldTypes={fieldTypes}
-                         fieldStatuses={fieldStatuses}
-                         bankAccounts={bankAccounts}
-                         onClose={handleCloseFieldModal}
-                         onSubmit={handleSubmit}
-                         onInputChange={handleInputChange}
-                         onSelectType={(value) => setFormData(prev => ({ ...prev, typeId: value }))}
-                         onSelectStatus={(value) => setFormData(prev => ({ ...prev, status: value }))}
-                         onMainImageChange={handleMainImageChange}
-                         onImageFilesChange={handleImageFilesChange}
-                         onAddComplex={handleRequestCreateComplex}
-                         onBankAccountChange={handleBankAccountChange}
-                         onNavigateBankAccounts={handleNavigateBankAccounts}
-                         maxImages={MAX_FIELD_IMAGES}
-                    />
+                                                       {field.description && (
+                                                            <p className="text-sm text-gray-600 line-clamp-2">
+                                                                 {field.description}
+                                                            </p>
+                                                       )}
+                                                  </div>
+                                             </Card>
+                                        )
+                                   })}
+                              </div>
+                              <Pagination
+                                   currentPage={fieldsPage}
+                                   totalPages={fieldsTotalPages}
+                                   onPageChange={handleFieldsPageChange}
+                                   itemsPerPage={fieldsPerPage}
+                                   totalItems={fieldsTotalItems}
+                              />
+                         </>
+                    )}
+               </section>
 
-                    <ComplexFormModal
-                         isOpen={isAddComplexModalOpen || isEditComplexModalOpen}
-                         isEdit={isEditComplexModalOpen}
-                         formData={complexFormData}
-                         isUploadingImage={complexImageUploading}
-                         imageInputRef={complexImageInputRef}
-                         onClose={handleCloseComplexModal}
-                         onSubmit={handleComplexSubmit}
-                         onFieldChange={handleComplexFieldChange}
-                         onAddressChange={(address) => handleComplexFieldChange("address", address)}
-                         onLocationSelect={handleComplexAddressSelect}
-                         onTriggerImagePicker={triggerComplexImagePicker}
-                         onUploadAreaKeyDown={handleComplexUploadAreaKeyDown}
-                         onImageUpload={handleComplexImageUpload}
-                         onRemoveImage={removeComplexImage}
-                    />
+               <FieldFormModal
+                    isOpen={isAddModalOpen || isEditModalOpen}
+                    isEdit={isEditModalOpen}
+                    complexes={complexes}
+                    formData={formData}
+                    fieldTypes={fieldTypes}
+                    fieldStatuses={fieldStatuses}
+                    bankAccounts={bankAccounts}
+                    onClose={handleCloseFieldModal}
+                    onSubmit={handleSubmit}
+                    onInputChange={handleInputChange}
+                    onSelectType={(value) => setFormData(prev => ({ ...prev, typeId: value }))}
+                    onSelectStatus={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                    onMainImageChange={handleMainImageChange}
+                    onImageFilesChange={handleImageFilesChange}
+                    onAddComplex={handleRequestCreateComplex}
+                    onBankAccountChange={handleBankAccountChange}
+                    onNavigateBankAccounts={handleNavigateBankAccounts}
+                    maxImages={MAX_FIELD_IMAGES}
+               />
 
-                    {/* Demo Restricted Modal */}
-                    <DemoRestrictedModal
-                         isOpen={showDemoRestrictedModal}
-                         onClose={() => setShowDemoRestrictedModal(false)}
-                         featureName="Quản lý sân"
-                    />
-               </div>
+               <ComplexFormModal
+                    isOpen={isAddComplexModalOpen || isEditComplexModalOpen}
+                    isEdit={isEditComplexModalOpen}
+                    formData={complexFormData}
+                    isUploadingImage={complexImageUploading}
+                    imageInputRef={complexImageInputRef}
+                    onClose={handleCloseComplexModal}
+                    onSubmit={handleComplexSubmit}
+                    onFieldChange={handleComplexFieldChange}
+                    onAddressChange={(address) => handleComplexFieldChange("address", address)}
+                    onLocationSelect={handleComplexAddressSelect}
+                    onTriggerImagePicker={triggerComplexImagePicker}
+                    onUploadAreaKeyDown={handleComplexUploadAreaKeyDown}
+                    onImageUpload={handleComplexImageUpload}
+                    onRemoveImage={removeComplexImage}
+               />
+
+               {/* Demo Restricted Modal */}
+               <DemoRestrictedModal
+                    isOpen={showDemoRestrictedModal}
+                    onClose={() => setShowDemoRestrictedModal(false)}
+                    featureName="Quản lý sân"
+               />
+          </div>
      );
 };
 

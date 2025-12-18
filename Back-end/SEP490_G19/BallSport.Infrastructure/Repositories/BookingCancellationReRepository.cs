@@ -18,12 +18,15 @@ namespace BallSport.Infrastructure.Repositories
             _context = context;
         }
 
-        public async Task<List<BookingCancellationRequest>> GetAllAsync()
+
+        public async Task<List<BookingCancellationRequest>> GetByUserIdAsync(int userId)
         {
             return await _context.BookingCancellationRequests
-                .Include(r => r.Booking)
+                .Where(r => r.RequestedByUserId == userId)
+                .OrderByDescending(r => r.RequestedAt)
                 .ToListAsync();
         }
+
 
         public async Task<BookingCancellationRequest?> GetByIdAsync(int id)
         {

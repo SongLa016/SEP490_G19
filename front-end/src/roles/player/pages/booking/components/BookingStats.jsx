@@ -1,6 +1,7 @@
 import React from "react";
 import { Clock } from "lucide-react";
 
+// thống kê tổng quan về đặt sân
 export default function BookingStats({ stats }) {
      return (
           <div className="pt-2">
@@ -11,7 +12,7 @@ export default function BookingStats({ stats }) {
                     </div>
                     <div className="hidden md:flex items-center gap-2">
                          <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200 shadow-sm">
-                              Hoàn tất {stats.completed} • Hủy {stats.cancelled}
+                              Hoàn tất {stats.completed} • <span className="text-red-500">Hủy {stats.cancelled}</span>
                          </span>
                          {stats.pending > 0 && (
                               <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-yellow-50 text-yellow-700 border border-yellow-200 shadow-sm flex items-center gap-1">

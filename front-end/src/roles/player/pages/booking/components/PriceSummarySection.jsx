@@ -1,15 +1,17 @@
+
 export default function PriceSummarySection({
      bookingData,
      isRecurring,
-     recurringWeeks, // Không dùng nữa, để tương thích
+     recurringWeeks,
      selectedDays,
      selectedSlotsByDay,
      fieldSchedules,
      formatPrice
 }) {
-     const totalSessions = bookingData.totalSessions || 0;
+     const totalSessions = bookingData.totalSessions || 0;  // Tổng số buổi đặt
 
      // Lấy giá từ TimeSlots hoặc schedule đã chọn cho từng thứ
+
      const getSlotPrice = (slotId) => {
           if (!slotId) {
                return bookingData.price || 0;
@@ -43,7 +45,7 @@ export default function PriceSummarySection({
           return bookingData.price || 0;
      };
 
-     // Tính thống kê giá từ các slot đã chọn (để hiển thị khoảng giá khi các khung giờ có giá khác nhau)
+     //Tính thống kê giá từ các slot đã chọn
      const getRecurringPriceStats = () => {
           if (!isRecurring || !selectedSlotsByDay || Object.keys(selectedSlotsByDay).length === 0) {
                const base = bookingData.price || 0;
