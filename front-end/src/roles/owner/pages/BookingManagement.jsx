@@ -34,26 +34,11 @@ import {
      fetchCancellationRequestById,
 } from "../../../shared/services/bookings";
 import { fetchFieldScheduleById, updateFieldScheduleStatus } from "../../../shared/services/fieldSchedules";
+
 import Swal from "sweetalert2";
 import axios from "axios";
 
-/**
- * Trang quản lý đặt sân của chủ sân (Owner)
- * URL: /owner/bookings
- * 
- * Chức năng:
- * - Tab "Đặt sân": Danh sách booking, xác nhận thanh toán, xác nhận booking
- * - Tab "Yêu cầu hủy": Danh sách yêu cầu hủy, duyệt/từ chối hủy
- * - Tab "Gói cố định": Danh sách gói đặt sân cố định
- * - Bộ lọc theo ngày, trạng thái, sân, tìm kiếm
- * - Xuất Excel danh sách booking
- */
-
-/**
- * Lấy thông tin profile của người chơi từ API
- * @param {number} playerId - ID của người chơi
- * @returns {Object} Thông tin profile { fullName, phone, email, avatar... }
- */
+// lấy thông tin profile người chơi
 const fetchPlayerProfile = async (playerId) => {
      try {
           const token = localStorage.getItem("token");
@@ -66,7 +51,6 @@ const fetchPlayerProfile = async (playerId) => {
                     },
                }
           );
-          // API returns: {fullName, phone, email, avatar, dateOfBirth, gender, address, preferredPositions, skillLevel}
           const profileData = response.data || {};
           return {
                ok: true,
@@ -84,29 +68,29 @@ const fetchPlayerProfile = async (playerId) => {
 
 const BookingManagement = ({ isDemo = false }) => {
      const { user } = useAuth();
-     const [selectedDate, setSelectedDate] = useState("");           // Ngày đang lọc
-     const [statusFilter, setStatusFilter] = useState("all");        // Trạng thái đang lọc
-     const [fieldFilter, setFieldFilter] = useState("all");          // Sân đang lọc
-     const [searchTerm, setSearchTerm] = useState("");               // Từ khóa tìm kiếm
-     const [selectedBooking, setSelectedBooking] = useState(null);   // Booking đang xem chi tiết
-     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false); // Modal chi tiết booking
+     const [selectedDate, setSelectedDate] = useState("");
+     const [statusFilter, setStatusFilter] = useState("all");
+     const [fieldFilter, setFieldFilter] = useState("all");
+     const [searchTerm, setSearchTerm] = useState("");
+     const [selectedBooking, setSelectedBooking] = useState(null);
+     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
      const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
-     const [activeTab, setActiveTab] = useState("bookings");         // Tab hiện tại: bookings | cancellations | packages
-     const [cancellationRequests, setCancellationRequests] = useState([]); // Danh sách yêu cầu hủy
+     const [activeTab, setActiveTab] = useState("bookings");
+     const [cancellationRequests, setCancellationRequests] = useState([]);
      const [loadingCancellations, setLoadingCancellations] = useState(false);
-     const [bookings, setBookings] = useState([]);                   // Danh sách booking
+     const [bookings, setBookings] = useState([]);
      const [loadingBookings, setLoadingBookings] = useState(false);
      const [bookingError, setBookingError] = useState("");
-     const [selectedCancellation, setSelectedCancellation] = useState(null); // Yêu cầu hủy đang xem
+     const [selectedCancellation, setSelectedCancellation] = useState(null);
      const [isCancellationDetailModalOpen, setIsCancellationDetailModalOpen] = useState(false);
      const [loadingCancellationDetail, setLoadingCancellationDetail] = useState(false);
      const [autoCompletedIds, setAutoCompletedIds] = useState({});   // Các booking đã tự động hoàn tất
      const [exporting, setExporting] = useState(false);              // Đang xuất Excel
 
-     // Get owner ID from user
+     // Lấy ownerId từ user context
      const ownerId = user?.userID || user?.UserID || user?.id || user?.userId;
 
-     // Extract unique fields from bookings
+     // Hàm load bookings 
      const fields = useMemo(() => {
           const fieldSet = new Set();
           fieldSet.add("all");
@@ -130,20 +114,13 @@ const BookingManagement = ({ isDemo = false }) => {
      ];
 
 
-     /**
-      * Xử lý xác nhận thanh toán hoặc hoàn thành booking
-      * - Nếu booking đang pending: Xác nhận thanh toán -> chuyển sang confirmed
-      * - Nếu booking đã confirmed và paid: Hoàn thành booking -> chuyển sang completed
-      * - Hiển thị QR code để thanh toán số tiền còn lại (nếu có)
-      * @param {number} bookingId - ID của booking cần xác nhận
-      */
+     // Xác nhận booking
      const handleConfirmBooking = async (bookingId) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
                return;
           }
 
-          // Ensure bookingId is a valid number
           const numericBookingId = Number(bookingId);
           if (isNaN(numericBookingId) || numericBookingId <= 0) {
                await Swal.fire({
@@ -155,10 +132,9 @@ const BookingManagement = ({ isDemo = false }) => {
                return;
           }
 
-          // Find the booking to check its status
+          // tìm booking để kiểm tra trạng thái hiện tại
           const booking = bookings.find(b => (b.bookingId || b.id) === numericBookingId);
           if (booking) {
-               // Check if booking is already completed
                if (booking.status === 'completed') {
                     await Swal.fire({
                          icon: 'warning',
@@ -166,12 +142,10 @@ const BookingManagement = ({ isDemo = false }) => {
                          text: 'Booking này đã hoàn thành rồi.',
                          confirmButtonColor: '#10b981'
                     });
-                    // Reload to get latest data
                     loadBookings();
                     return;
                }
 
-               // Check if booking is cancelled
                if (booking.status === 'cancelled') {
                     await Swal.fire({
                          icon: 'error',
@@ -183,7 +157,7 @@ const BookingManagement = ({ isDemo = false }) => {
                }
           }
 
-          // Determine action based on current status
+          // lấy trạng thái
           const isConfirmed = booking?.status === 'confirmed';
           const paymentStatusLower = String(booking?.paymentStatus || '').toLowerCase();
           const isPaid = paymentStatusLower === 'paid';
@@ -199,7 +173,7 @@ const BookingManagement = ({ isDemo = false }) => {
                ? '✅ <strong>Hoàn thành booking</strong> - Booking sẽ chuyển sang trạng thái "Hoàn thành"'
                : '💳 <strong>Xác nhận thanh toán</strong> - Booking sẽ chuyển sang trạng thái "Đã xác nhận" và thanh toán "Đã thanh toán"';
 
-          // Tính số tiền còn lại và fetch QR code URL từ API cho dialog hoàn thành
+          // Tính số tiền còn lại và fetch QR code 
           const totalAmount = booking?.amount || booking?.totalAmount || 0;
           const depositAmount = booking?.depositAmount || booking?.deposit || booking?.paidAmount || 0;
           const remainingAmount = Math.max(0, totalAmount - depositAmount);
@@ -219,7 +193,6 @@ const BookingManagement = ({ isDemo = false }) => {
                          }
                     );
                     qrCodeImageUrl = qrResponse.data?.qrCodeUrl || '';
-                    console.log("✅ [QR CODE] Fetched QR code URL:", qrCodeImageUrl);
                } catch (error) {
                     console.error("❌ [QR CODE] Error fetching QR code:", error);
                }
@@ -315,8 +288,6 @@ const BookingManagement = ({ isDemo = false }) => {
                     if (isConfirmedAndPaid) {
                          confirmResult = await confirmByOwner(numericBookingId);
                          if (confirmResult.success) {
-                              // FieldSchedule status đã được cập nhật thành "Booked" khi confirm payment
-                              // Không cần cập nhật lại ở đây vì booking đã hoàn thành
 
                               // Tính số tiền còn lại cần thanh toán
                               const totalAmount = booking?.amount || booking?.totalAmount || 0;
@@ -360,18 +331,14 @@ const BookingManagement = ({ isDemo = false }) => {
                     } else {
                          // Booking pending -> gọi confirm-payment để xác nhận thanh toán
                          const amount = booking?.amount || 0;
-
                          confirmResult = await confirmPaymentAPI(numericBookingId, amount);
-
                          if (confirmResult.success) {
                               // Cập nhật FieldSchedule status thành "Booked" khi owner xác nhận booking
                               if (booking?.scheduleId || booking?.scheduleID) {
                                    const scheduleId = booking.scheduleId || booking.scheduleID;
                                    try {
-                                        console.log(`📝 [UPDATE SCHEDULE] Owner confirmed booking, updating FieldSchedule ${scheduleId} to Booked`);
                                         const updateResult = await updateFieldScheduleStatus(Number(scheduleId), "Booked");
                                         if (updateResult.success) {
-                                             console.log(`✅ [UPDATE SCHEDULE] Successfully updated schedule ${scheduleId} to Booked`);
                                         } else {
                                              console.warn(`⚠️ [UPDATE SCHEDULE] Failed to update schedule ${scheduleId}:`, updateResult.error);
                                         }
@@ -390,10 +357,9 @@ const BookingManagement = ({ isDemo = false }) => {
                     }
 
                     if (confirmResult.success) {
-                         // Reload bookings to get updated status from backend
+                         // làm mới trang khi trạng thái thay đổi
                          await loadBookings();
 
-                         // Log normalized bookings after reload to verify status
                          setTimeout(() => {
                               const updatedBooking = bookings.find(b => (b.bookingId || b.id) === numericBookingId);
                               if (updatedBooking) {
@@ -401,15 +367,13 @@ const BookingManagement = ({ isDemo = false }) => {
                               }
                          }, 500);
                     } else {
-                         // Kiểm tra nếu là lỗi CORS - có thể request đã thành công
+                         // Kiểm tra nếu là lỗi CORS
                          const isCorsError = confirmResult.isCorsError;
                          const errorMsg = confirmResult.error || (isConfirmedAndPaid ? 'Không thể hoàn thành booking' : 'Không thể xác nhận thanh toán');
 
                          // Nếu là lỗi CORS, reload dữ liệu để kiểm tra xem có thay đổi không
                          if (isCorsError) {
                               await loadBookings();
-
-                              // Đợi một chút để dữ liệu được load
                               await new Promise(resolve => setTimeout(resolve, 500));
 
                               // Kiểm tra xem booking có thay đổi không
@@ -434,7 +398,7 @@ const BookingManagement = ({ isDemo = false }) => {
                                         `,
                                         confirmButtonColor: '#10b981'
                                    });
-                                   return; // Thoát sớm vì đã thành công
+                                   return;
                               }
                          }
 
@@ -453,11 +417,9 @@ const BookingManagement = ({ isDemo = false }) => {
                               `,
                               confirmButtonColor: '#ef4444'
                          });
-                         // Reload to get latest status
                          loadBookings();
                     }
                } catch (error) {
-                    console.error(`[BookingManagement] Error ${isConfirmedAndPaid ? 'completing' : 'confirming payment'} booking:`, error);
                     await Swal.fire({
                          icon: 'error',
                          title: 'Lỗi',
@@ -466,27 +428,18 @@ const BookingManagement = ({ isDemo = false }) => {
                               : 'Có lỗi xảy ra khi xác nhận thanh toán. Vui lòng thử lại.',
                          confirmButtonColor: '#ef4444'
                     });
-                    // Reload to get latest status
                     loadBookings();
                }
           }
      };
 
-     /**
-      * Xử lý hủy booking từ phía Owner
-      * - Hiển thị dialog nhập lý do hủy
-      * - Nếu booking đã thanh toán: Hiển thị thông tin hoàn tiền và QR code
-      * - Cập nhật trạng thái FieldSchedule về "Available"
-      * - Tự động xác nhận yêu cầu hủy nếu có
-      * @param {number} bookingId - ID của booking cần hủy
-      */
+     // Hủy booking
      const handleCancelBooking = async (bookingId) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
                return;
           }
 
-          // Ensure bookingId is a valid number
           const numericBookingId = Number(bookingId);
           if (isNaN(numericBookingId) || numericBookingId <= 0) {
                await Swal.fire({
@@ -498,7 +451,7 @@ const BookingManagement = ({ isDemo = false }) => {
                return;
           }
 
-          // Find booking to check status and payment status
+          // tìm booking để kiểm tra trạng thái hiện tại
           const booking = bookings.find(b => (b.bookingId || b.id) === numericBookingId);
           const isPending = booking && (booking.status === 'pending' || booking.status === 'Pending');
           const paymentStatusLower = booking ? String(booking.paymentStatus || '').toLowerCase() : '';
@@ -508,7 +461,6 @@ const BookingManagement = ({ isDemo = false }) => {
                isPaid;
           const isPendingButPaid = isPending && isPaid; // Chưa xác nhận nhưng đã trả cọc
 
-          // Show SweetAlert2 input dialog
           const { value: reason, isConfirmed } = await Swal.fire({
                title: 'Hủy booking',
                html: `
@@ -562,14 +514,7 @@ const BookingManagement = ({ isDemo = false }) => {
                          || booking?.apiSource?.scheduleID
                          || booking?.apiSource?.ScheduleID;
 
-                    console.log("🔍 [OWNER CANCEL] Booking data:", {
-                         bookingId: numericBookingId,
-                         scheduleId,
-                         bookingKeys: Object.keys(booking || {}),
-                         apiSourceKeys: Object.keys(booking?.apiSource || {})
-                    });
-
-                    // Use the same API as player - backend will check token to determine if Owner or Player is cancelling
+                    // api hủy booking
                     const result = await cancelBooking(numericBookingId, reason);
 
                     if (result.success) {
@@ -581,16 +526,9 @@ const BookingManagement = ({ isDemo = false }) => {
 
                          const finalScheduleId = scheduleId || responseScheduleId;
 
-                         console.log("🔍 [OWNER CANCEL] Schedule ID resolution:", {
-                              fromBooking: scheduleId,
-                              fromResponse: responseScheduleId,
-                              final: finalScheduleId
-                         });
-
                          // Cập nhật FieldSchedule status về "Available" khi hủy booking thành công
                          if (finalScheduleId && Number(finalScheduleId) > 0) {
                               try {
-                                   console.log("📝 [UPDATE SCHEDULE] Updating FieldSchedule status to 'Available' for schedule", finalScheduleId);
                                    const updateResult = await updateFieldScheduleStatus(Number(finalScheduleId), "Available");
                                    if (updateResult.success) {
                                         console.log(`✅ [UPDATE SCHEDULE] Updated schedule ${finalScheduleId} to Available after canceling booking`);
@@ -604,25 +542,22 @@ const BookingManagement = ({ isDemo = false }) => {
                               console.warn("⚠️ [OWNER CANCEL] No scheduleId found, cannot update FieldSchedule status. Backend should handle this automatically.");
                          }
 
-                         // Extract cancellation request ID from response (if available)
+                         // Tự động xác nhận yêu cầu hủy nếu có cancellationId trả về
                          const cancellationId = result.data?.cancellationId || result.data?.id || result.data?.cancellationRequestId;
 
-                         // If owner is cancelling, automatically confirm the cancellation request
-                         // This ensures the booking status is updated in the database immediately
+                         // Chỉ tự động xác nhận nếu có cancellationId
                          if (cancellationId) {
                               try {
                                    const confirmResult = await confirmCancellation(cancellationId);
                                    if (!confirmResult.success) {
                                         console.warn("Failed to auto-confirm cancellation request:", confirmResult.error);
-                                        // Continue anyway - backend might have auto-confirmed
                                    }
                               } catch (confirmError) {
                                    console.warn("Error auto-confirming cancellation:", confirmError);
-                                   // Continue anyway - backend might have auto-confirmed
                               }
                          }
 
-                         // Extract refund information from response
+                         // Trả về thông tin hoàn tiền từ response
                          const refundInfo = {
                               message: result.message || result.data?.message,
                               cancelReason: result.cancelReason || result.data?.cancelReason,
@@ -632,7 +567,6 @@ const BookingManagement = ({ isDemo = false }) => {
                               refundQR: result.refundQR || result.data?.refundQR,
                          };
 
-                         // Build success message with refund details
                          let successHtml = `
                               <p class="mb-3">${refundInfo.message || 'Đã hủy booking thành công!'}</p>
                          `;
@@ -645,7 +579,7 @@ const BookingManagement = ({ isDemo = false }) => {
                               `;
                          }
 
-                         // Show refund information if booking was paid (confirmed and paid, or pending but paid)
+                         // Hiển thị thông tin hoàn tiền nếu có
                          if ((isConfirmedAndPaid || isPendingButPaid) && refundInfo.finalRefundAmount > 0) {
                               successHtml += `
                                    <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-3">
@@ -668,7 +602,7 @@ const BookingManagement = ({ isDemo = false }) => {
                                    </div>
                               `;
 
-                              // Add QR code if available
+                              // mã QR hoàn tiền nếu có
                               if (refundInfo.refundQR) {
                                    successHtml += `
                                         <div class="mt-3 text-center">
@@ -690,12 +624,9 @@ const BookingManagement = ({ isDemo = false }) => {
                                    popup: 'text-left'
                               }
                          });
-
-                         // Reload bookings from BE to get updated status
-                         // BE will update: bookingStatus = "Cancelled", paymentStatus = "Refunded" (if refunded)
+                         // reload bookings
                          await loadBookings();
 
-                         // Also reload cancellation requests if on that tab
                          if (activeTab === 'cancellations') {
                               loadCancellationRequests();
                          }
@@ -719,10 +650,7 @@ const BookingManagement = ({ isDemo = false }) => {
           }
      };
 
-     /**
-      * Tải danh sách yêu cầu hủy booking từ API
-      * Được gọi khi chuyển sang tab "Yêu cầu hủy" hoặc sau khi xử lý yêu cầu
-      */
+     // danh sách yêu cầu hủy booking
      const loadCancellationRequests = async () => {
           setLoadingCancellations(true);
           try {
@@ -739,14 +667,7 @@ const BookingManagement = ({ isDemo = false }) => {
           }
      };
 
-     /**
-      * Xử lý xác nhận yêu cầu hủy booking
-      * - Hiển thị dialog xác nhận
-      * - Gọi API xác nhận hủy
-      * - Cập nhật trạng thái FieldSchedule về "Available"
-      * - Reload danh sách yêu cầu hủy và bookings
-      * @param {number} cancellationId - ID của yêu cầu hủy
-      */
+     // xác nhân hủy booking
      const handleConfirmCancellation = async (cancellationId) => {
           const result = await Swal.fire({
                title: 'Xác nhận hủy booking',
@@ -782,12 +703,6 @@ const BookingManagement = ({ isDemo = false }) => {
                               || relatedBooking?.apiSource?.scheduleId;
                     }
 
-                    console.log("🔍 [CONFIRM CANCELLATION] Data:", {
-                         cancellationId,
-                         scheduleId,
-                         cancellationRequest: cancellationRequest ? Object.keys(cancellationRequest) : null
-                    });
-
                     const confirmResult = await confirmCancellation(cancellationId);
                     if (confirmResult.success) {
                          // Cập nhật FieldSchedule status về "Available" khi confirm cancellation thành công
@@ -800,7 +715,6 @@ const BookingManagement = ({ isDemo = false }) => {
 
                          if (finalScheduleId && Number(finalScheduleId) > 0) {
                               try {
-                                   console.log("📝 [UPDATE SCHEDULE] Updating FieldSchedule status to 'Available' for schedule", finalScheduleId);
                                    const updateResult = await updateFieldScheduleStatus(Number(finalScheduleId), "Available");
                                    if (updateResult.success) {
                                         console.log(`✅ [UPDATE SCHEDULE] Updated schedule ${finalScheduleId} to Available after confirming cancellation`);
@@ -821,11 +735,7 @@ const BookingManagement = ({ isDemo = false }) => {
                               confirmButtonColor: '#10b981'
                          });
 
-                         // Reload cancellation requests
                          loadCancellationRequests();
-
-                         // Reload bookings to get updated status from BE
-                         // BE will update: bookingStatus = "Cancelled", paymentStatus = "Refunded" (if refunded)
                          if (activeTab === 'bookings') {
                               await loadBookings();
                          }
@@ -849,13 +759,7 @@ const BookingManagement = ({ isDemo = false }) => {
           }
      };
 
-     /**
-      * Xử lý xóa yêu cầu hủy booking (từ chối yêu cầu hủy)
-      * - Hiển thị dialog xác nhận xóa
-      * - Gọi API xóa yêu cầu hủy
-      * - Reload danh sách yêu cầu hủy
-      * @param {number} cancellationId - ID của yêu cầu hủy cần xóa
-      */
+     // Xóa hủy booking
      const handleDeleteCancellation = async (cancellationId) => {
           const result = await Swal.fire({
                title: 'Xóa yêu cầu hủy',
@@ -899,12 +803,7 @@ const BookingManagement = ({ isDemo = false }) => {
           }
      };
 
-     /**
-      * Xem chi tiết yêu cầu hủy booking
-      * - Mở modal chi tiết
-      * - Gọi API lấy thông tin chi tiết yêu cầu hủy
-      * @param {number} cancellationId - ID của yêu cầu hủy cần xem
-      */
+     // xem chi tiết yêu cầu hủy
      const handleViewCancellationDetails = async (cancellationId) => {
           setLoadingCancellationDetail(true);
           setIsCancellationDetailModalOpen(true);
@@ -935,13 +834,11 @@ const BookingManagement = ({ isDemo = false }) => {
           }
      };
 
-     // Normalize API booking data to match component format
+     // chuẩn hóa dữ liệu booking từ API
      const normalizeBookingData = (apiBookings = []) => {
           return apiBookings.map((item, index) => {
-               // Parse date and time with validation
                let startTime = null;
                let endTime = null;
-
                if (item.startTime) {
                     const startDate = new Date(item.startTime);
                     if (!isNaN(startDate.getTime())) {
@@ -955,15 +852,12 @@ const BookingManagement = ({ isDemo = false }) => {
                          endTime = endDate;
                     }
                }
-
-               // Get booking date - prefer from item.date, then from startTime, then empty string
+               // định dạng ngày đặt sân
                let bookingDate = '';
                if (item.date) {
-                    // If date is already a string in YYYY-MM-DD format, use it directly
                     if (typeof item.date === 'string' && item.date.match(/^\d{4}-\d{2}-\d{2}/)) {
                          bookingDate = item.date.split('T')[0];
                     } else {
-                         // Try to parse as date
                          const dateObj = new Date(item.date);
                          if (!isNaN(dateObj.getTime())) {
                               bookingDate = dateObj.toISOString().split('T')[0];
@@ -972,11 +866,8 @@ const BookingManagement = ({ isDemo = false }) => {
                } else if (startTime && !isNaN(startTime.getTime())) {
                     bookingDate = startTime.toISOString().split('T')[0];
                }
-
-               // Format time slot - prioritize time from schedule, then slot name
+               // định dạng khung giờ
                let timeSlot = '';
-
-               // First try to get time from startTime and endTime (from schedule)
                if (startTime && endTime && !isNaN(startTime.getTime()) && !isNaN(endTime.getTime())) {
                     try {
                          const startTimeStr = startTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -987,10 +878,8 @@ const BookingManagement = ({ isDemo = false }) => {
                     }
                }
 
-               // If timeSlot is still empty, try to parse from string format (HH:MM - HH:MM)
                if (!timeSlot && item.startTime && item.endTime) {
                     try {
-                         // Handle string format like "06:00" or "06:00:00"
                          const startTimeStr = typeof item.startTime === 'string'
                               ? item.startTime.substring(0, 5)
                               : item.startTime;
@@ -1006,27 +895,22 @@ const BookingManagement = ({ isDemo = false }) => {
                     }
                }
 
-               // If still empty, use slot name as fallback
                if (!timeSlot) {
                     timeSlot = item.slotName || item.SlotName || item.timeSlot || '';
                }
 
                const rawStatus = item.bookingStatus || item.BookingStatus || item.status || item.Status || 'pending';
                const status = String(rawStatus).toLowerCase();
-
-               // Log for debugging status mapping
                if (index === 0 || item.bookingStatus || item.BookingStatus) {
 
                }
-
+               // trạng thái booking
                let normalizedStatus;
                if (status.includes('cancel')) {
                     normalizedStatus = 'cancelled';
                } else if (status === 'completed' || status.includes('complete')) {
-                    // Backend says completed
                     normalizedStatus = 'completed';
                } else if (status === 'confirmed' || status.includes('confirm')) {
-                    // Luôn tin theo trạng thái từ BE, không tự chuyển sang completed trên FE
                     normalizedStatus = 'confirmed';
                } else if (status.includes('pending')) {
                     normalizedStatus = 'pending';
@@ -1034,19 +918,11 @@ const BookingManagement = ({ isDemo = false }) => {
                     normalizedStatus = status;
                }
 
-               // Normalize payment status - handle both camelCase (paymentStatus) and PascalCase (PaymentStatus) from backend
-               // Also handle both "Paid"/"Unpaid" (capitalized) and "paid"/"unpaid" (lowercase)
                const rawPaymentStatus = item.paymentStatus || item.PaymentStatus || 'pending';
                const paymentStatus = String(rawPaymentStatus).toLowerCase().trim();
 
-               // Log for debugging payment status mapping
-               if (index === 0 || item.paymentStatus || item.PaymentStatus) {
-
-               }
-
+               // trạng thái thanh toán
                let normalizedPaymentStatus;
-               // IMPORTANT: Check exact matches first, then check includes
-               // Check 'unpaid' BEFORE 'paid' because 'unpaid' contains 'paid' substring
                if (paymentStatus === 'unpaid') {
                     normalizedPaymentStatus = 'unpaid';
                } else if (paymentStatus === 'paid') {
@@ -1062,20 +938,13 @@ const BookingManagement = ({ isDemo = false }) => {
                } else {
                     normalizedPaymentStatus = 'pending';
                }
-
-               // Log final normalized payment status for debugging
-               if (index === 0 || item.paymentStatus || item.PaymentStatus) {
-
-               }
-
-               // Extract and normalize bookingId
                const rawBookingId = item.bookingId || item.bookingID || item.id;
                const numericBookingId = rawBookingId ? Number(rawBookingId) : null;
 
-               // Get field name from schedule data (preferred) or booking data
+               // tên sân
                const fieldName = item.fieldName || item.FieldName || item.field || "Chưa rõ sân";
 
-               // Get slot name from schedule data (preferred) or booking data
+               // tên khung giờ
                const slotName = item.slotName || item.SlotName || item.timeSlot || '';
                const finalTimeSlot = slotName || timeSlot;
 
@@ -1122,7 +991,7 @@ const BookingManagement = ({ isDemo = false }) => {
           });
      };
 
-     // Load bookings from API
+     // tải danh sách booking
      const loadBookings = useCallback(async () => {
           if (!ownerId) {
                setBookings([]);
@@ -1134,19 +1003,17 @@ const BookingManagement = ({ isDemo = false }) => {
           try {
                const result = await fetchBookingsByOwner(ownerId);
                if (result.success) {
-                    // Fetch user info and schedule info for each booking
+                    // lấy thông tin user và schedule cho mỗi booking
                     const bookingsWithUserAndScheduleInfo = await Promise.all(
                          result.data.map(async (booking) => {
                               let enrichedBooking = { ...booking };
-
-                              // Fetch customer info using PlayerProfile API
                               if (booking.userId || booking.userID) {
                                    try {
+                                        // lấy thông tin user
                                         const userId = booking.userId || booking.userID;
                                         const userResult = await fetchPlayerProfile(userId);
                                         if (userResult.ok && userResult.data) {
                                              const userData = userResult.profile || userResult.data;
-                                             // API returns: {fullName, phone, email, ...}
                                              const customerPhone = userData.phone || userData.Phone || userData.phoneNumber || userData.PhoneNumber || '';
                                              enrichedBooking = {
                                                   ...enrichedBooking,
@@ -1154,17 +1021,13 @@ const BookingManagement = ({ isDemo = false }) => {
                                                   customerPhone: customerPhone,
                                                   customerEmail: userData.email || userData.Email || '',
                                              };
-                                             // Debug log to verify phone is being set
-                                             if (!customerPhone) {
-                                                  console.warn(`No phone found for user ${userId}:`, userData);
-                                             }
                                         }
                                    } catch (error) {
                                         console.error(`Failed to fetch customer profile ${booking.userId}:`, error);
                                    }
                               }
 
-                              // Fetch schedule info to get accurate field and slot names
+                              //lấy thông tin lịch đặt sân
                               const scheduleId = booking.scheduleId || booking.scheduleID || booking.ScheduleID;
                               if (scheduleId) {
                                    try {
@@ -1172,27 +1035,26 @@ const BookingManagement = ({ isDemo = false }) => {
                                         if (scheduleResult.success && scheduleResult.data) {
                                              const scheduleData = scheduleResult.data;
 
-                                             // Get date from schedule
+                                             // lấy ngày từ lịch trình đặt sân
                                              const scheduleDate = scheduleData.date || scheduleData.Date || enrichedBooking.date;
 
-                                             // Get time from schedule (format: "HH:MM" or "HH:MM:SS")
+                                             // lấy thời gian bắt đầu và kết thúc từ lịch trình đặt sân
                                              const scheduleStartTime = scheduleData.startTime || scheduleData.StartTime;
                                              const scheduleEndTime = scheduleData.endTime || scheduleData.EndTime;
 
-                                             // Combine date and time to create full datetime strings
                                              let fullStartTime = null;
                                              let fullEndTime = null;
-
+                                             // Kết hợp ngày và thời gian để tạo thành datetime đầy đủ
                                              if (scheduleDate && scheduleStartTime && scheduleEndTime) {
                                                   // Parse date
                                                   let dateStr = '';
                                                   if (typeof scheduleDate === 'string') {
-                                                       dateStr = scheduleDate.split('T')[0]; // Get YYYY-MM-DD part
+                                                       dateStr = scheduleDate.split('T')[0];
                                                   } else if (scheduleDate.year) {
                                                        dateStr = `${scheduleDate.year}-${String(scheduleDate.month).padStart(2, '0')}-${String(scheduleDate.day).padStart(2, '0')}`;
                                                   }
 
-                                                  // Parse time (handle both "HH:MM" and "HH:MM:SS")
+                                                  // định dạng thời gian
                                                   const startTimeStr = typeof scheduleStartTime === 'string'
                                                        ? scheduleStartTime.substring(0, 5) // Get HH:MM part
                                                        : `${String(scheduleStartTime.hour || 0).padStart(2, '0')}:${String(scheduleStartTime.minute || 0).padStart(2, '0')}`;
@@ -1201,21 +1063,17 @@ const BookingManagement = ({ isDemo = false }) => {
                                                        ? scheduleEndTime.substring(0, 5) // Get HH:MM part
                                                        : `${String(scheduleEndTime.hour || 0).padStart(2, '0')}:${String(scheduleEndTime.minute || 0).padStart(2, '0')}`;
 
-                                                  // Create full datetime strings
                                                   if (dateStr && startTimeStr && endTimeStr) {
                                                        fullStartTime = `${dateStr}T${startTimeStr}:00`;
                                                        fullEndTime = `${dateStr}T${endTimeStr}:00`;
                                                   }
                                              }
-
+                                             // Cập nhật thông tin booking với dữ liệu từ lịch trình
                                              enrichedBooking = {
                                                   ...enrichedBooking,
-                                                  // Use schedule data for accurate field and slot info
                                                   fieldName: scheduleData.fieldName || scheduleData.FieldName || enrichedBooking.fieldName || enrichedBooking.field,
                                                   slotName: scheduleData.slotName || scheduleData.SlotName || enrichedBooking.slotName || enrichedBooking.timeSlot,
-                                                  // Also update date and time from schedule if available
                                                   date: scheduleDate || enrichedBooking.date,
-                                                  // Use combined datetime if available, otherwise use original
                                                   startTime: fullStartTime || scheduleData.startTime || scheduleData.StartTime || enrichedBooking.startTime,
                                                   endTime: fullEndTime || scheduleData.endTime || scheduleData.EndTime || enrichedBooking.endTime,
                                              };
@@ -1244,7 +1102,7 @@ const BookingManagement = ({ isDemo = false }) => {
           }
      }, [ownerId]);
 
-     // Load bookings on mount and when ownerId changes
+     // tải danh sách booking khi ownerId hoặc tab thay đổi
      useEffect(() => {
           if (activeTab === 'bookings') {
                loadBookings();
@@ -1252,24 +1110,23 @@ const BookingManagement = ({ isDemo = false }) => {
           // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [ownerId, activeTab]);
 
-     // Load cancellations when tab changes
+     // tải danh sách yêu cầu hủy khi tab thay đổi
      useEffect(() => {
           if (activeTab === 'cancellations') {
                loadCancellationRequests();
           }
      }, [activeTab]);
-
+     // xem chi tiết booking
      const handleViewDetails = (booking) => {
           setSelectedBooking(booking);
           setIsDetailModalOpen(true);
      };
 
-     // Check if booking has passed (endTime is in the past)
+     // kiểm tra booking đã qua thời gian kết thúc chưa
      const isBookingPassed = (booking) => {
           if (!booking.endTime) {
-               // If no endTime, try to check from date and timeSlot
+               // Nếu không có endTime dùng date và timeSlot để xác định
                if (booking.date && booking.timeSlot) {
-                    // Try to parse timeSlot (format: "HH:MM - HH:MM")
                     const timeMatch = booking.timeSlot.match(/(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})/);
                     if (timeMatch) {
                          const [, , , endHour, endMin] = timeMatch;
@@ -1292,10 +1149,9 @@ const BookingManagement = ({ isDemo = false }) => {
                return false;
           }
      };
-
+     // lọc booking theo điều kiện
      const filteredBookings = useMemo(() => {
           return bookings.filter(booking => {
-               // booking.date luôn normalize dạng "yyyy-MM-dd" trong normalizeBookingData
                const matchesDate =
                     !selectedDate ||
                     booking.date === selectedDate ||
@@ -1332,7 +1188,7 @@ const BookingManagement = ({ isDemo = false }) => {
           });
 
           if (bookingsToAutoComplete.length === 0) return;
-
+          // thực hiện tự động hoàn thành
           (async () => {
                let hasChanges = false;
                for (const booking of bookingsToAutoComplete) {
@@ -1356,13 +1212,13 @@ const BookingManagement = ({ isDemo = false }) => {
           })();
      }, [bookings, autoCompletedIds, loadBookings]);
 
-     // Pagination for bookings
+     // phân trang cho bookings   
      const bookingsPagination = usePagination(filteredBookings, 10);
 
-     // Pagination for cancellation requests
+     // phân trang cho cancellations
      const cancellationsPagination = usePagination(cancellationRequests, 10);
 
-     // Reset pagination when switching tabs
+     // khi đổi tab thì đặt lại trang hiện tại về 1
      useEffect(() => {
           if (activeTab === 'bookings' && bookingsPagination.currentPage !== 1) {
                bookingsPagination.handlePageChange(1);
@@ -1371,7 +1227,7 @@ const BookingManagement = ({ isDemo = false }) => {
           }
           // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [activeTab]);
-
+     // Set màu sắc và text cho trạng thái
      const getStatusColor = (status) => {
           switch (status) {
                case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -1381,7 +1237,7 @@ const BookingManagement = ({ isDemo = false }) => {
                default: return 'bg-gray-100 text-gray-800';
           }
      };
-
+     // Set text cho trạng thái
      const getStatusText = (status) => {
           switch (status) {
                case 'pending': return 'Chờ xác nhận';
@@ -1391,7 +1247,7 @@ const BookingManagement = ({ isDemo = false }) => {
                default: return status;
           }
      };
-
+     // Set màu sắc cho trạng thái thanh toán
      const getPaymentStatusColor = (status) => {
           switch (status) {
                case 'paid': return 'bg-green-100 text-green-800';
@@ -1401,7 +1257,7 @@ const BookingManagement = ({ isDemo = false }) => {
                default: return 'bg-gray-100 text-gray-800';
           }
      };
-
+     // Set text cho trạng thái thanh toán
      const getPaymentStatusText = (status) => {
           switch (status) {
                case 'paid': return 'Đã thanh toán';
@@ -1411,18 +1267,18 @@ const BookingManagement = ({ isDemo = false }) => {
                default: return status;
           }
      };
-
+     // định dạng tiền VND
      const formatCurrency = (amount) => {
           return new Intl.NumberFormat('vi-VN', {
                style: 'currency',
                currency: 'VND'
           }).format(amount);
      };
-
+     // định dạng ngày tháng
      const formatDate = (dateString) => {
           return new Date(dateString).toLocaleDateString('vi-VN');
      };
-
+     // chuyển giá trị sang định dạng CSV
      const toCsvValue = (value) => {
           if (value === null || value === undefined) return "";
           const str = String(value);
@@ -1431,7 +1287,7 @@ const BookingManagement = ({ isDemo = false }) => {
           }
           return str;
      };
-
+     // xuất báo cáo booking ra file CSV
      const handleExportReport = async () => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1474,9 +1330,9 @@ const BookingManagement = ({ isDemo = false }) => {
                     b.depositAmount ?? 0,
                     b.amount ?? 0,
                ]);
-
+               // tạo nội dung CSV với hỗ trợ tiếng Việt
                const csv = [
-                    headers.map(toCsvValue).join(","),
+                    "\uFEFF" + headers.map(toCsvValue).join(","),
                     ...rows.map((row) => row.map(toCsvValue).join(",")),
                ].join("\n");
 

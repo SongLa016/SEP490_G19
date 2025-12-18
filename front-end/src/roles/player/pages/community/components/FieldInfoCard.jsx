@@ -17,12 +17,10 @@ const FieldInfoCard = ({ field, fieldId }) => {
           );
      }
 
-     // Extract field data - support both API formats (PascalCase from API, camelCase from FieldSelectionModal)
+     // lấy dữ liệu sân
      const fieldName = field?.name || field?.Name || field?.fieldName || field?.FieldName;
      const complexName = field?.complexName || field?.ComplexName;
      const address = field?.address || field?.Address;
-
-     // No field data
      if (!fieldName && !complexName && !address) {
           return null;
      }

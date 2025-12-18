@@ -108,7 +108,7 @@ export default function RecurringBookingSection({
           };
      }, [startDate, endDate, fieldSchedules]);
 
-     // Chuẩn hoá khoảng ngày bắt đầu/kết thúc để so sánh
+     // Chuẩn hoá khoảng ngày bắt đầu/kết thúc
      const startDateObj = startDate ? new Date(startDate) : null;
      const endDateObj = endDate ? new Date(endDate) : null;
      if (startDateObj) startDateObj.setHours(0, 0, 0, 0);

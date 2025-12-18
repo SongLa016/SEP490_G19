@@ -8,7 +8,6 @@ const apiClient = axios.create({
   },
 });
 
-// Add request interceptor to include auth token
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -22,7 +21,6 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Helper function to handle API errors
 const handleApiError = (error) => {
   let errorMessage = "Có lỗi xảy ra khi cập nhật profile";
 
@@ -68,7 +66,6 @@ const handleApiError = (error) => {
 };
 
 export const profileService = {
-  // Get player/owner profile by userId (for admin to view owner info)
   async getPlayerProfile(userId) {
     try {
       const API_URL = `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`;
@@ -83,7 +80,8 @@ export const profileService = {
       console.error("Error fetching player profile:", error);
       return {
         ok: false,
-        reason: error.response?.data?.message || "Không thể lấy thông tin người dùng",
+        reason:
+          error.response?.data?.message || "Không thể lấy thông tin người dùng",
       };
     }
   },
@@ -136,7 +134,10 @@ export const profileService = {
               : firstError;
           }
         }
-      } else if (error.code === "ERR_NETWORK" || error.message === "Network Error") {
+      } else if (
+        error.code === "ERR_NETWORK" ||
+        error.message === "Network Error"
+      ) {
         errorMessage = "Mật khẩu cũ không đúng. Vui lòng kiểm tra lại.";
       } else if (error.request) {
         errorMessage = "Không thể kết nối đến máy chủ";

@@ -1,31 +1,12 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import { Calendar, MapPin, Receipt, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, Info, RefreshCw, Loader2, User, Phone, Calendar as CalendarIcon } from "lucide-react";
 import { Section, Container, Card, CardContent, Button, Badge, LoadingList, FadeIn, StaggerContainer, Modal } from "../../../../shared/components/ui";
-import { listBookingsByUser, updateBooking, fetchBookingsByPlayer, generateQRCode, confirmPaymentAPI } from "../../../../shared/index";
-import {
-     cancelBooking as cancelBookingAPI,
-     fetchBookingPackagesByPlayer,
-     fetchBookingPackagesByPlayerToken,
-     fetchBookingPackageSessionsByPlayerToken,
-     updateBookingStatus
-} from "../../../../shared/services/bookings";
-import {
-     fetchMatchRequestById,
-     fetchMatchRequests,
-     fetchMatchRequestByBookingId,
-     checkBookingHasMatchRequest,
-     checkMatchRequestByBooking,
-     acceptMatchParticipant,
-     rejectOrWithdrawParticipant,
-     expireOldMatchRequests,
-     fetchMyMatchHistory
-} from "../../../../shared/services/matchRequest";
+
 import FindOpponentModal from "../../../../shared/components/FindOpponentModal";
 import RatingModal from "../../../../shared/components/RatingModal";
 import InvoiceModal from "../../../../shared/components/InvoiceModal";
 import CancelBookingModal from "../../../../shared/components/CancelBookingModal";
-import { fetchFieldScheduleById, updateFieldScheduleStatus } from "../../../../shared/services/fieldSchedules";
-import Swal from 'sweetalert2';
+
 import {
      BookingStats,
      BookingFilters,
@@ -38,1812 +19,180 @@ import {
      extractRequestId,
      extractParticipants,
      getRequestOwnerId,
-     getOwnerTeamNames,
-     getParticipantId,
      normalizeParticipantStatus,
      participantNeedsOwnerAction,
      isParticipantAcceptedByOwner,
      isParticipantRejectedByOwner,
      filterParticipantsForDisplay,
-     getOwnerDecisionStatus,
-     getOpponentDecisionStatus,
      shouldShowCancelButton,
      getRecurringStatus,
-     normalizeApiBookings,
-     buildRecurringGroups
-} from './utils';
+} from './components/utils';
+
+// Import custom hooks
+import {
+     useBookingHistory,
+     useBookingPackages,
+     useMatchRequests,
+     useBookingPayment,
+     useBookingCancel,
+     useBookingFilters,
+     useBookingModals,
+     useBookingUtils,
+} from './components/hooks';
 
 export default function BookingHistory({ user }) {
-     const [query, setQuery] = useState("");
-     const [bookings, setBookings] = useState([]);
-     const [groupedBookings, setGroupedBookings] = useState({});
-     const [showRecurringDetails, setShowRecurringDetails] = useState({});
-     const [expandedParticipants, setExpandedParticipants] = useState({});
-     const [statusFilter, setStatusFilter] = useState("all");
-     const [dateFrom, setDateFrom] = useState("");
-     const [dateTo, setDateTo] = useState("");
-     const [sortBy, setSortBy] = useState("newest");
-     const [currentPage, setCurrentPage] = useState(1);
-
-     const [bookingIdToRequest, setBookingIdToRequest] = useState({});
-     const [requestJoins, setRequestJoins] = useState({});
-     const [playerHistories, setPlayerHistories] = useState([]);
-     const [showFindOpponentModal, setShowFindOpponentModal] = useState(false);
-     const [showRatingModal, setShowRatingModal] = useState(false);
-     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-     const [showCancelModal, setShowCancelModal] = useState(false);
-     const [cancelBooking, setCancelBooking] = useState(null);
-     const [isCancelling, setIsCancelling] = useState(false);
-     const [selectedBooking, setSelectedBooking] = useState(null);
-     const [editingRating, setEditingRating] = useState(null);
-     const [invoiceBooking, setInvoiceBooking] = useState(null);
-     const [isLoadingBookings, setIsLoadingBookings] = useState(false);
-     const [bookingError, setBookingError] = useState("");
-     const [showPaymentModal, setShowPaymentModal] = useState(false);
-     const [paymentBooking, setPaymentBooking] = useState(null);
-     const [paymentQRCode, setPaymentQRCode] = useState(null);
-     const [isLoadingQR, setIsLoadingQR] = useState(false);
-     const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
-     const [timeRemaining, setTimeRemaining] = useState({}); // thời gian còn lại cho mỗi đặt sân
-     const [scheduleDataMap, setScheduleDataMap] = useState({}); // map lịch trình 
-     const [activeTab, setActiveTab] = useState("bookings");
-     const [bookingPackages, setBookingPackages] = useState([]);
-     const [isLoadingPackages, setIsLoadingPackages] = useState(false);
-     const [packageError, setPackageError] = useState("");
-     const [packageSessionsMap, setPackageSessionsMap] = useState({});
-     const [expandedPackageSessions, setExpandedPackageSessions] = useState({});
-     const [sessionScheduleDataMap, setSessionScheduleDataMap] = useState({}); // map lịch trình cho buổi đặt sân
      const playerId = user?.userID || user?.UserID || user?.id || user?.Id || user?.userId;
 
-     // chuẩn hóa dữ liệu gói đặt sân cố định
-     const normalizePackageData = React.useCallback((pkg, fallbackIndex = 0) => {
-          const pkgId = pkg?.bookingPackageId || pkg?.bookingPackageID || pkg?.id || pkg?.packageId;
-          const fallbackId = pkgId || `pkg-${fallbackIndex}`;
-          return {
-               id: fallbackId,
-               bookingPackageId: pkgId || fallbackId,
-               userId: pkg?.userId || pkg?.UserId || pkg?.userID,
-               fieldId: pkg?.fieldId || pkg?.fieldID,
-               fieldName: pkg?.fieldName || pkg?.field?.name || `Sân #${pkg?.fieldId || pkg?.fieldID || "?"}`,
-               packageName: pkg?.packageName || pkg?.name || "Gói đặt sân cố định",
-               startDate: pkg?.startDate || pkg?.startDay || pkg?.start_time,
-               endDate: pkg?.endDate || pkg?.endDay || pkg?.end_time,
-               totalPrice: Number(pkg?.totalPrice ?? pkg?.price ?? 0),
-               bookingStatus: pkg?.bookingStatus || pkg?.status || "",
-               paymentStatus: pkg?.paymentStatus || pkg?.paymentState || "",
-               qrCodeUrl: pkg?.qrcode || pkg?.qrCode || pkg?.QRCode || pkg?.qrCodeUrl || null,
-               qrExpiresAt: pkg?.qrexpiresAt || pkg?.qrExpiresAt || pkg?.QRExpiresAt || null,
-               createdAt: pkg?.createdAt || pkg?.CreatedAt || null
-          };
-     }, []);
+     // ===== CUSTOM HOOKS =====
 
-     // buổi đặt sân cố định
-     const normalizePackageSession = React.useCallback((session) => {
-          if (!session) return null;
-          const packageId = session.bookingPackageId ||
-               session.bookingPackageID ||
-               session.packageId ||
-               session.packageID ||
-               session?.bookingPackage?.bookingPackageId;
-          const startTime = session.startTime || session.slotStartTime || session.sessionStart || session.start || session.startHour;
-          const endTime = session.endTime || session.slotEndTime || session.sessionEnd || session.end || session.endHour;
-          let slotName = session.slotName || session.slot || session.timeRange;
-          if (!slotName && startTime && endTime) {
-               slotName = `${startTime} - ${endTime}`;
-          }
-          return {
-               id: session.packageSessionId || session.bookingPackageSessionId || session.sessionId || session.id || `${packageId || "pkg"}-${session.sessionDate || session.date || Math.random()}`,
-               bookingPackageId: packageId,
-               date: session.sessionDate || session.date || session.sessionDay || session.startDate,
-               startTime,
-               endTime,
-               slotName,
-               status: session.status || session.sessionStatus || session.state || "",
-               fieldName: session.fieldName || session.field?.name || "",
-               scheduleId: session.scheduleId || session.scheduleID || null,
-               pricePerSession: session.pricePerSession || session.price || null,
-               sessionStatus: session.sessionStatus || session.status || ""
-          };
-     }, []);
-     // định dạng ngày buổi đặt sân
-     const formatSessionDateLabel = (dateStr) => {
-          if (!dateStr) return "Chưa có ngày";
-          const parsed = new Date(dateStr);
-          if (!isNaN(parsed.getTime())) {
-               return parsed.toLocaleDateString("vi-VN", {
-                    weekday: "long",
-                    day: "2-digit",
-                    month: "2-digit",
-                    year: "numeric"
-               });
-          }
-          return dateStr;
-     };
+     // Booking History Hook
+     const {
+          bookings,
+          setBookings,
+          groupedBookings,
+          setGroupedBookings,
+          isLoadingBookings,
+          bookingError,
+          scheduleDataMap,
+          timeRemaining,
+          loadBookings,
+     } = useBookingHistory(playerId);
 
-     // định dạng thời gian buổi đặt sân
-     const formatSessionTimeRange = (session) => {
-          if (!session) return "Chưa rõ thời gian";
-          if (session.slotName) return session.slotName;
-          if (session.startTime && session.endTime) return `${session.startTime} - ${session.endTime}`;
-          return session.startTime || session.endTime || "Chưa rõ thời gian";
-     };
-     useEffect(() => {
-          window.scrollTo({
-               top: 0,
-               behavior: 'smooth'
-          });
-     }, [statusFilter, sortBy, dateFrom, dateTo, currentPage]);
+     // Booking Packages Hook
+     const {
+          bookingPackages,
+          isLoadingPackages,
+          packageError,
+          packageSessionsMap,
+          expandedPackageSessions,
+          sessionScheduleDataMap,
+          loadBookingPackages,
+          togglePackageSessions,
+          formatSessionDateLabel,
+          formatSessionTimeRange,
+     } = useBookingPackages(user, playerId);
 
-     // tải đặt sân
-     const loadBookings = React.useCallback(async () => {
-          if (!playerId) {
-               setBookings([]);
-               setGroupedBookings({});
-               return;
-          }
-          setIsLoadingBookings(true);
-          setBookingError("");
-          try {
-               const apiResult = await fetchBookingsByPlayer(playerId);
-               let bookingList = [];
-               if (apiResult.success) {
-                    bookingList = normalizeApiBookings(apiResult.data);
-               } else {
-                    bookingList = listBookingsByUser(String(playerId));
-                    setBookingError(apiResult.error || "Không thể tải dữ liệu đặt sân từ API. Đang hiển thị dữ liệu cục bộ (nếu có).");
-               }
+     // Match Requests Hook
+     const {
+          bookingIdToRequest,
+          setBookingIdToRequest,
+          requestJoins,
+          setRequestJoins,
+          playerHistories,
+          refreshingRequests,
+          processingParticipants,
+          loadMatchRequestsForBookings,
+          refreshRequestForBooking,
+          handleAcceptParticipant,
+          handleRejectParticipant,
+     } = useMatchRequests(bookings, user);
 
-               setBookings(bookingList);
-               setGroupedBookings(buildRecurringGroups(bookingList));
+     // Booking Filters Hook
+     const {
+          query,
+          setQuery,
+          statusFilter,
+          setStatusFilter,
+          dateFrom,
+          setDateFrom,
+          dateTo,
+          setDateTo,
+          sortBy,
+          setSortBy,
+          currentPage,
+          setCurrentPage,
+          activeTab,
+          setActiveTab,
+          showRecurringDetails,
+          expandedParticipants,
+          toggleRecurringDetails,
+          toggleExpandedParticipants,
+          visibleSingles,
+          visibleGroups,
+          paginatedSingles,
+          sortedPlayerHistories,
+          stats,
+          totalSingleBookings,
+          totalPages,
+          startIndex,
+          endIndex,
+          pageSize,
+          resetFilters,
+     } = useBookingFilters(bookings, groupedBookings, playerHistories);
 
-               // tải lịch trình cho mỗi đặt sân
-               const schedulePromises = bookingList
-                    .filter(b => b.scheduleId)
-                    .map(async (booking) => {
-                         try {
-                              const scheduleResult = await fetchFieldScheduleById(booking.scheduleId);
-                              if (scheduleResult.success && scheduleResult.data) {
-                                   return {
-                                        scheduleId: booking.scheduleId,
-                                        data: scheduleResult.data
-                                   };
-                              }
-                         } catch (error) {
-                              console.error(`Error fetching schedule ${booking.scheduleId}:`, error);
-                         }
-                         return null;
-                    });
+     // Booking Payment Hook
+     const {
+          showPaymentModal,
+          paymentBooking,
+          paymentQRCode,
+          isLoadingQR,
+          isConfirmingPayment,
+          handleContinuePayment,
+          handleConfirmPayment,
+          closePaymentModal,
+     } = useBookingPayment(playerId, setBookings, setGroupedBookings);
 
-               const scheduleResults = await Promise.all(schedulePromises);
-               const scheduleMap = {};
-               scheduleResults.forEach(result => {
-                    if (result && result.scheduleId) {
-                         scheduleMap[result.scheduleId] = result.data;
-                    }
-               });
+     // Booking Cancel Hook
+     const {
+          showCancelModal,
+          cancelBooking,
+          isCancelling,
+          handleCancel,
+          handleConfirmCancel,
+          handleCancelRecurring,
+          handleCancelSingleRecurring,
+          closeCancelModal,
+     } = useBookingCancel(playerId, bookings, setBookings, groupedBookings, setGroupedBookings);
 
-               setScheduleDataMap(scheduleMap);
+     // Booking Modals Hook
+     const {
+          showFindOpponentModal,
+          showRatingModal,
+          showInvoiceModal,
+          selectedBooking,
+          editingRating,
+          invoiceBooking,
+          handleFindOpponent,
+          handleFindOpponentSuccess,
+          handleRating,
+          handleRatingSuccess,
+          handleViewInvoice,
+          closeFindOpponentModal,
+          closeRatingModal,
+          closeInvoiceModal,
+     } = useBookingModals(
+          playerId,
+          bookings,
+          setBookings,
+          setGroupedBookings,
+          setBookingIdToRequest,
+          setRequestJoins,
+          loadMatchRequestsForBookings
+     );
 
-          } catch (error) {
-               const fallback = listBookingsByUser(String(playerId));
-               setBookingError(error.message || "Không thể tải lịch sử đặt sân.");
-               setBookings(fallback);
-               setGroupedBookings(buildRecurringGroups(fallback));
-          } finally {
-               setIsLoadingBookings(false);
-          }
-     }, [playerId]);
+     // Booking Utils Hook
+     const {
+          isPendingUnpaidWithin2Hours,
+          hasExistingMatchRequest,
+          shouldShowFindOpponentButton,
+          normalizeRequestStatus,
+          getRequestBadgeConfig,
+          isRequestLocked,
+          getAcceptedParticipants,
+          isBookingOlderThan2Hours,
+          shouldHideCancelButtonByDate,
+          statusBadge,
+          paymentStatusBadge,
+     } = useBookingUtils(bookingIdToRequest, scheduleDataMap);
 
-     // tải gói đặt sân cố định
-     const loadBookingPackages = React.useCallback(async () => {
-          if (!user) {
-               setBookingPackages([]);
-               setPackageSessionsMap({});
-               setSessionScheduleDataMap({});
-               return;
-          }
-
-          setIsLoadingPackages(true);
-          setPackageError("");
-          setPackageSessionsMap({});
-          setSessionScheduleDataMap({});
-          setExpandedPackageSessions({});
-          try {
-               let packageList = [];
-               let apiResult = await fetchBookingPackagesByPlayerToken();
-               if (apiResult.success) {
-                    packageList = apiResult.data || [];
-               } else if (playerId) {
-                    apiResult = await fetchBookingPackagesByPlayer(playerId);
-                    if (apiResult.success) {
-                         packageList = apiResult.data || [];
-                    } else {
-                         setPackageError(apiResult.error || "Không thể tải lịch sử gói đặt sân cố định.");
-                    }
-               } else {
-                    setPackageError(apiResult.error || "Không thể tải lịch sử gói đặt sân cố định.");
-               }
-
-               const normalizedPackages = packageList.map((pkg, index) => normalizePackageData(pkg, index));
-               setBookingPackages(normalizedPackages);
-
-               // buổi đặt sân cố định
-               if (normalizedPackages.length > 0) {
-                    try {
-                         const sessionResp = await fetchBookingPackageSessionsByPlayerToken();
-                         if (sessionResp.success && sessionResp.data) {
-                              const groupedSessions = {};
-                              const sessionsArray = Array.isArray(sessionResp.data) ? sessionResp.data : [];
-
-                              const normalizedSessions = sessionsArray
-                                   .map(normalizePackageSession)
-                                   .filter(Boolean);
-
-                              normalizedSessions.forEach((session) => {
-                                   if (!session.bookingPackageId) return;
-                                   const packageIdKey = String(session.bookingPackageId); // chuản hóa
-                                   if (!groupedSessions[packageIdKey]) {
-                                        groupedSessions[packageIdKey] = [];
-                                   }
-                                   groupedSessions[packageIdKey].push(session);
-                              });
-
-                              // map bằng key 
-                              Object.keys(groupedSessions).forEach((key) => {
-                                   const sessions = groupedSessions[key];
-                                   sessions.sort((a, b) => {
-                                        const dateA = new Date(a.date || 0).getTime();
-                                        const dateB = new Date(b.date || 0).getTime();
-                                        return dateA - dateB;
-                                   });
-
-                                   const numKey = Number(key); // chuản hóa 
-                                   if (!isNaN(numKey) && numKey.toString() === key) {
-                                        groupedSessions[numKey] = sessions;
-                                   }
-                              });
-
-                              setPackageSessionsMap(groupedSessions);
-
-                              // tải lịch trình cho mỗi buổi 
-                              const schedulePromises = normalizedSessions
-                                   .filter(s => s.scheduleId)
-                                   .map(async (session) => {
-                                        try {
-                                             const scheduleResult = await fetchFieldScheduleById(session.scheduleId);
-                                             if (scheduleResult.success && scheduleResult.data) {
-                                                  return {
-                                                       scheduleId: session.scheduleId,
-                                                       data: scheduleResult.data
-                                                  };
-                                             }
-                                        } catch (error) {
-                                             console.error(`Error fetching schedule ${session.scheduleId}:`, error);
-                                        }
-                                        return null;
-                                   });
-
-                              const scheduleResults = await Promise.all(schedulePromises);
-                              const scheduleMap = {};
-                              scheduleResults.forEach(result => {
-                                   if (result && result.scheduleId) {
-                                        scheduleMap[result.scheduleId] = result.data;
-                                   }
-                              });
-
-                              setSessionScheduleDataMap(scheduleMap);
-                         } else if (sessionResp.error) {
-                              console.warn("Không thể tải danh sách buổi của gói:", sessionResp.error);
-                              setPackageSessionsMap({});
-                              setSessionScheduleDataMap({});
-                         }
-                    } catch (error) {
-                         console.error("Error fetching package sessions:", error);
-                         setPackageSessionsMap({});
-                         setSessionScheduleDataMap({});
-                    }
-               }
-          } catch (error) {
-               console.error("Error loading booking packages:", error);
-               setPackageError(error.message || "Không thể tải lịch sử gói đặt sân cố định.");
-               setBookingPackages([]);
-               setPackageSessionsMap({});
-               setSessionScheduleDataMap({});
-          } finally {
-               setIsLoadingPackages(false);
-          }
-     }, [playerId, user, normalizePackageData, normalizePackageSession]);
-
-     useEffect(() => {
-          loadBookings();
-     }, [loadBookings]);
-
+     // Load packages khi chuyển tab
      useEffect(() => {
           if (activeTab === "packages") {
                loadBookingPackages();
           }
      }, [activeTab, loadBookingPackages]);
 
-     // tải yêu cầu tham gia trận đấu
-     const loadMatchRequestsForBookings = React.useCallback(async () => {
-          if (!bookings || bookings.length === 0) {
-
-               setBookingIdToRequest({});
-               setRequestJoins({});
-               return;
-          }
-
-          try {
-               await expireOldMatchRequests();
-          } catch (error) {
-               console.warn("Error expiring old match requests:", error);
-          }
-
-          const map = {};
-          const joinsMap = {};
-
-          // đặt sân có yêu cầu tham gia trận đấu
-          const bookingsWithRequestId = bookings.filter(booking => {
-               const requestId = booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
-               if (requestId && booking.id) {
-
-               }
-               return requestId && booking.id;
-          });
-
-          if (bookingsWithRequestId.length > 0) {
-               await Promise.all(
-                    bookingsWithRequestId.map(async (booking) => {
-                         const requestId = booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
-                         if (!requestId || !booking.id) return;
-
-                         try {
-                              // tải yêu cầu tham gia trận đấu
-                              const detailResp = await fetchMatchRequestById(requestId);
-                              if (detailResp?.success && detailResp.data) {
-                                   map[booking.id] = detailResp.data;
-                                   joinsMap[requestId] = extractParticipants(detailResp.data);
-
-                              }
-                         } catch (error) {
-                              console.warn("Error fetching match request by ID:", requestId, error);
-                         }
-                    })
-               );
-          }
-
-          try {
-               // tải tất cả yêu cầu tham gia trận đấu
-               const matchRequestsResp = await fetchMatchRequests({ page: 1, size: 1000 });
-
-               if (matchRequestsResp.success && Array.isArray(matchRequestsResp.data)) {
-                    const bookingIdToMatchRequestMap = {};
-                    // 
-                    matchRequestsResp.data.forEach((matchRequest) => {
-                         const matchRequestBookingId = matchRequest.bookingId || matchRequest.bookingID || matchRequest.BookingID;
-                         if (matchRequestBookingId) {
-                              const normalizedId = String(matchRequestBookingId);
-                              bookingIdToMatchRequestMap[normalizedId] = matchRequest;
-                         }
-                    });
-
-                    await Promise.all(bookings.map(async (booking) => {
-
-                         // so sánh booking.bookingId (ID cơ sở dữ liệu) với matchRequest.bookingId
-                         const bookingId = booking.bookingId ? String(booking.bookingId) : null;
-
-                         // tìm yêu cầu tham gia trận đấu bằng bookingId
-                         let matchRequest = null;
-                         if (bookingId && bookingIdToMatchRequestMap[bookingId]) {
-                              matchRequest = bookingIdToMatchRequestMap[bookingId];
-
-                         }
-
-                         // nếu không tìm thấy trong danh sách, kiểm tra nếu đặt sân có yêu cầu tham gia trận đấu
-                         if (!matchRequest && bookingId) {
-                              try {
-                                   const hasRequestResp = await checkBookingHasMatchRequest(bookingId);
-                                   if (hasRequestResp?.success && hasRequestResp.hasRequest) {
-                                        const matchRequestId = hasRequestResp.data?.data?.matchRequestId ||
-                                             hasRequestResp.data?.matchRequestId;
-
-                                        if (matchRequestId) {
-                                             try {
-                                                  const detailResp = await fetchMatchRequestById(matchRequestId);
-                                                  if (detailResp?.success && detailResp.data) {
-                                                       matchRequest = detailResp.data;
-
-                                                  } else {
-                                                       matchRequest = {
-                                                            bookingId: bookingId,
-                                                            hasRequest: true,
-                                                            placeholder: true,
-                                                            matchRequestId: matchRequestId,
-                                                            id: matchRequestId
-                                                       };
-                                                  }
-                                             } catch (error) {
-                                                  console.warn("Error fetching match request details:", error);
-                                                  matchRequest = {
-                                                       bookingId: bookingId,
-                                                       hasRequest: true,
-                                                       placeholder: true,
-                                                       matchRequestId: matchRequestId,
-                                                       id: matchRequestId
-                                                  };
-                                             }
-                                        } else {
-                                             matchRequest = {
-                                                  bookingId: bookingId,
-                                                  hasRequest: true,
-                                                  placeholder: true
-                                             };
-
-                                        }
-                                   }
-                              } catch (error) {
-                                   console.warn("Error checking booking has match request:", bookingId, error);
-                              }
-                         }
-                         // nếu có yêu cầu tham gia trận đấu
-                         if (matchRequest) {
-                              const requestId = extractRequestId(matchRequest);
-
-                              if (booking.id) {
-                                   map[booking.id] = matchRequest;
-                                   if (requestId) {
-                                        joinsMap[requestId] = extractParticipants(matchRequest);
-                                   }
-
-                              }
-                         } else if (bookingId) {
-
-                         }
-                    }));
-               }
-          } catch (error) {
-               console.warn("Error loading match requests:", error);
-          }
-
-          // tải yêu cầu tham gia trận đấu
-          const unmappedBookings = bookings.filter(booking => !map[booking.id] && booking.bookingId);
-          if (unmappedBookings.length > 0) {
-               await Promise.all(
-                    unmappedBookings.map(async (booking) => {
-                         const bookingId = booking.bookingId;
-                         if (!bookingId) {
-                              return;
-                         }
-                         try {
-                              const hasRequestResp = await checkMatchRequestByBooking(bookingId);
-                              if (!hasRequestResp?.success) return;
-                              const requestId = extractRequestId(hasRequestResp.data ?? hasRequestResp);
-
-                              if (!requestId) return;
-
-                              const detailResp = await fetchMatchRequestById(requestId);
-                              if (!detailResp?.success) return;
-
-                              if (booking.id) {
-                                   map[booking.id] = detailResp.data;
-                                   joinsMap[requestId] = extractParticipants(detailResp.data);
-
-                              }
-                         } catch (error) {
-                              console.warn("Không thể tải kèo cho booking", bookingId, error);
-                         }
-                    })
-               );
-          }
-
-          // mapping với trạng thái hiện tại 
-          setBookingIdToRequest(prev => {
-               const merged = { ...prev, ...map };
-               return merged;
-          });
-          setRequestJoins(prev => ({ ...prev, ...joinsMap }));
-
-     }, [bookings]);
-
-     useEffect(() => {
-          // tải yêu cầu tham gia trận đấu khi có đặt sân
-          if (bookings && bookings.length > 0) {
-               loadMatchRequestsForBookings();
-          }
-     }, [bookings, loadMatchRequestsForBookings]);
-
-     const [refreshingRequests, setRefreshingRequests] = useState({});
-     const [processingParticipants, setProcessingParticipants] = useState({});
-
-     const refreshRequestForBooking = React.useCallback(async (bookingKey, requestIdOrBookingId) => {
-          if (!bookingKey || !requestIdOrBookingId) return;
-
-          // Set loading state
-          setRefreshingRequests(prev => ({ ...prev, [requestIdOrBookingId]: true }));
-
-          try {
-               // kiểm tra nếu có placeholder
-               const currentReq = bookingIdToRequest[bookingKey];
-               const isPlaceholder = currentReq?.placeholder === true;
-
-               let detailResp;
-               let actualRequestId;
-
-               if (isPlaceholder) {
-                    // lấy bookingId đầu tiên làm requestId
-                    detailResp = await fetchMatchRequestByBookingId(requestIdOrBookingId);
-                    actualRequestId = extractRequestId(detailResp?.data);
-               } else {
-                    // tải yêu cầu tham gia trận đấu bằng requestId
-                    detailResp = await fetchMatchRequestById(requestIdOrBookingId);
-                    actualRequestId = requestIdOrBookingId;
-               }
-               if (!detailResp?.success) {
-                    Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: 'Không thể tải thông tin đội tham gia.',
-                         timer: 2000,
-                         showConfirmButton: false
-                    });
-                    return;
-               }
-               // lấy người tham gia
-               const participants = extractParticipants(detailResp.data);
-               setBookingIdToRequest(prev => ({ ...prev, [bookingKey]: detailResp.data }));
-               if (actualRequestId) {
-                    setRequestJoins(prev => ({ ...prev, [actualRequestId]: participants }));
-               }
-
-               // lọc người tham gia
-               const joiningTeams = filterParticipantsForDisplay(participants, detailResp.data);
-
-               // hiển thị thông báo thành công
-               if (joiningTeams && joiningTeams.length > 0) {
-                    // đếm đội tham gia (statusFromB = "Pending")
-                    const pendingCount = joiningTeams.filter(p => {
-                         const statusFromB = String(p.statusFromB || "").toLowerCase();
-                         return statusFromB === "pending";
-                    }).length;
-
-                    if (pendingCount > 0) {
-                         Swal.fire({
-                              icon: 'success',
-                              title: 'Đã tải đội tham gia',
-                              text: `Có ${joiningTeams.length} đội tham gia (${pendingCount} đang chờ xử lý)`,
-                              timer: 2000,
-                              showConfirmButton: false
-                         });
-                    } else {
-                         Swal.fire({
-                              icon: 'success',
-                              title: 'Đã tải đội tham gia',
-                              text: `Có ${joiningTeams.length} đội tham gia`,
-                              timer: 1500,
-                              showConfirmButton: false
-                         });
-                    }
-               } else {
-                    Swal.fire({
-                         icon: 'info',
-                         title: 'Chưa có đội tham gia',
-                         text: 'Yêu cầu của bạn chưa có đội nào tham gia.',
-                         timer: 2000,
-                         showConfirmButton: false
-                    });
-               }
-          } catch (error) {
-               console.warn("Không thể làm mới kèo:", error);
-               Swal.fire({
-                    icon: 'error',
-                    title: 'Lỗi',
-                    text: error.message || 'Không thể tải thông tin đội tham gia.',
-                    timer: 2000,
-                    showConfirmButton: false
-               });
-          } finally {
-               setRefreshingRequests(prev => {
-                    const updated = { ...prev };
-                    delete updated[requestIdOrBookingId];
-                    return updated;
-               });
-          }
-     }, [bookingIdToRequest]);
-
-     // chấp nhận người tham gia
-     const handleAcceptParticipant = async (bookingKey, requestId, participant) => {
-          const participantId = getParticipantId(participant);
-          if (!requestId || !participantId) {
-               Swal.fire({
-                    icon: 'error',
-                    title: 'Thiếu thông tin',
-                    text: 'Không thể xác định đội tham gia.',
-               });
-               return;
-          }
-          const confirm = await Swal.fire({
-               icon: 'question',
-               title: 'Chấp nhận đội tham gia?',
-               html: `
-                   <div class="text-left space-y-2">
-                        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                             <p class="text-sm mb-2"><strong>Thông tin đội:</strong></p>
-                             <div class="space-y-1 text-sm">
-                                  <p><strong>Tên đội:</strong> ${participant.teamName || 'Chưa có'}</p>
-                                  ${participant.fullName ? `<p><strong>Người liên hệ:</strong> ${participant.fullName}</p>` : ''}
-                                  ${participant.contactPhone ? `<p><strong>Số điện thoại:</strong> ${participant.contactPhone}</p>` : ''}
-                                  <p><strong>Số người:</strong> ${participant.playerCount || 'Chưa rõ'} người</p>
-                                  ${participant.note && participant.note.trim() ? `<p><strong>Ghi chú:</strong> <em>${participant.note}</em></p>` : ''}
-                             </div>
-                        </div>
-                        <p class="text-sm text-gray-600">Bạn có chắc muốn chấp nhận đội này tham gia?</p>
-                   </div>
-              `,
-               showCancelButton: true,
-               confirmButtonText: 'Chấp nhận',
-               cancelButtonText: 'Hủy',
-               confirmButtonColor: '#10b981',
-               width: '500px'
-          });
-
-          if (!confirm.isConfirmed) return;
-          const processingKey = `${requestId}-${participantId}`;
-          setProcessingParticipants(prev => ({ ...prev, [processingKey]: true }));
-
-          try {
-               const response = await acceptMatchParticipant(requestId, participantId);
-               if (!response.success) {
-                    throw new Error(response.error || "Không thể chấp nhận đội này.");
-               }
-               // làm mới yêu cầu tham gia trận đấu
-               await refreshRequestForBooking(bookingKey, requestId);
-
-               Swal.fire({
-                    icon: 'success',
-                    title: 'Đã chấp nhận đội tham gia',
-                    text: `Đội "${participant.teamName || `User: ${participantId}`}" đã được chấp nhận tham gia.`,
-                    timer: 2000,
-                    showConfirmButton: false
-               });
-          } catch (error) {
-               console.error("❌ [AcceptParticipant] Error:", error);
-               Swal.fire({
-                    icon: 'error',
-                    title: 'Lỗi',
-                    text: error.message || 'Không thể chấp nhận đội. Vui lòng thử lại.',
-                    confirmButtonText: 'Đóng'
-               });
-          } finally {
-               setProcessingParticipants(prev => {
-                    const updated = { ...prev };
-                    delete updated[processingKey];
-                    return updated;
-               });
-          }
-     };
-
-     // từ chối người tham gia
-     const handleRejectParticipant = async (bookingKey, requestId, participant) => {
-          const participantId = getParticipantId(participant);
-          if (!requestId || !participantId) {
-               Swal.fire({
-                    icon: 'error',
-                    title: 'Thiếu thông tin',
-                    text: 'Không thể xác định đội tham gia.',
-               });
-               return;
-          }
-
-          const confirm = await Swal.fire({
-               icon: 'warning',
-               title: 'Từ chối đội tham gia?',
-               html: `
-                   <div class="text-left space-y-2">
-                        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
-                             <p class="text-sm mb-2"><strong>Thông tin đội:</strong></p>
-                             <div class="space-y-1 text-sm">
-                                  <p><strong>Tên đội:</strong> ${participant.teamName || 'Chưa có'}</p>
-                                  ${participant.fullName ? `<p><strong>Người liên hệ:</strong> ${participant.fullName}</p>` : ''}
-                                  ${participant.contactPhone ? `<p><strong>Số điện thoại:</strong> ${participant.contactPhone}</p>` : ''}
-                                  <p><strong>Số người:</strong> ${participant.playerCount || 'Chưa rõ'} người</p>
-                             </div>
-                        </div>
-                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                             <p class="text-sm text-red-600"><strong>⚠️ Cảnh báo:</strong></p>
-                             <p class="text-sm text-gray-700">Hành động này không thể hoàn tác. Đội sẽ bị từ chối và không thể tham gia lại.</p>
-                        </div>
-                   </div>
-              `,
-               showCancelButton: true,
-               confirmButtonText: 'Từ chối',
-               cancelButtonText: 'Hủy',
-               confirmButtonColor: '#ef4444',
-               width: '500px'
-          });
-          if (!confirm.isConfirmed) return;
-          const processingKey = `${requestId}-${participantId}`;
-          setProcessingParticipants(prev => ({ ...prev, [processingKey]: true }));
-
-          try {
-               const response = await rejectOrWithdrawParticipant(requestId, participantId);
-               if (!response.success) {
-                    throw new Error(response.error || "Không thể từ chối đội này.");
-               }
-               // làm mới yêu cầu tham gia trận đấu
-               await refreshRequestForBooking(bookingKey, requestId);
-
-               Swal.fire({
-                    icon: 'success',
-                    title: 'Đã từ chối đội tham gia',
-                    text: `Đội "${participant.teamName || `User: ${participantId}`}" đã bị từ chối.`,
-                    timer: 2000,
-                    showConfirmButton: false
-               });
-          } catch (error) {
-               Swal.fire({
-                    icon: 'error',
-                    title: 'Lỗi',
-                    text: error.message || 'Không thể từ chối đội. Vui lòng thử lại.',
-                    confirmButtonText: 'Đóng'
-               });
-          } finally {
-               setProcessingParticipants(prev => {
-                    const updated = { ...prev };
-                    delete updated[processingKey];
-                    return updated;
-               });
-          }
-     };
-
-     useEffect(() => {
-          // tải lịch sử trận đấu
-          const loadPlayerHistory = async () => {
-               if (!user?.id && !user?.userID) {
-                    setPlayerHistories([]);
-                    return;
-               }
-               try {
-                    const response = await fetchMyMatchHistory({ page: 1, size: 50 });
-                    if (response.success) {
-                         setPlayerHistories(response.data || []);
-                    } else {
-                         console.warn("Không thể tải lịch sử trận đấu:", response.error);
-                    }
-               } catch (error) {
-                    console.warn("Error loading player history:", error);
-               }
-          };
-          loadPlayerHistory();
-     }, [user?.id, user?.userID]);
-
-     // sử dụng ref để theo dõi trạng thái reload để tránh vòng lặp vô hạn
-     const isReloadingRef = React.useRef(false);
-     const lastReloadTimeRef = React.useRef(0);
-
-     // kiểm tra và cập nhật trạng thái đặt sân (2 giờ timeout)
-     useEffect(() => {
-          if (!playerId) return;
-          const checkExpiredBookings = () => {
-               const now = Date.now();
-               if (isReloadingRef.current || (now - lastReloadTimeRef.current < 5000)) {
-                    return;
-               }
-
-               const currentTime = new Date().getTime();
-               const TWO_HOURS = 2 * 60 * 60 * 1000; // 2 giờ 
-
-               setBookings(prevBookings => {
-                    let hasExpiredBookings = false;
-                    const updatedTimeRemaining = {};
-
-                    // cập nhật thời gian còn lại mà không thay đổi đặt sân
-                    prevBookings.forEach(booking => {
-                         const isPending = (booking.status === "pending" || booking.bookingStatus === "Pending" || booking.bookingStatus === "pending");
-                         const isUnpaid = (booking.paymentStatus === "Unpaid" || booking.paymentStatus === "unpaid" || booking.paymentStatus === "Pending");
-
-                         if (isPending && isUnpaid && booking.createdAt) {
-                              const createdAt = new Date(booking.createdAt).getTime();
-                              const timeElapsed = currentTime - createdAt;
-
-                              if (timeElapsed <= TWO_HOURS) {
-                                   // tính thời gian còn lại
-                                   const remaining = TWO_HOURS - timeElapsed;
-                                   updatedTimeRemaining[booking.id] = remaining;
-                              } else {
-                                   // kiểm tra nếu hết hạn
-                                   if (booking.status !== "expired" && booking.bookingStatus !== "Expired") {
-                                        hasExpiredBookings = true;
-                                   }
-                              }
-                         }
-                    });
-
-                    // cập nhật thời gian còn lại (không kích hoạt dependency đặt sân)
-                    if (Object.keys(updatedTimeRemaining).length > 0) {
-                         setTimeRemaining(prev => ({
-                              ...prev,
-                              ...updatedTimeRemaining
-                         }));
-                    }
-
-                    // làm mới từ API nếu có đặt sân hết hạn mới
-                    if (hasExpiredBookings && !isReloadingRef.current) {
-                         isReloadingRef.current = true;
-                         lastReloadTimeRef.current = now;
-
-                         // làm mới đặt sân
-                         fetchBookingsByPlayer(playerId).then(apiResult => {
-                              if (apiResult.success) {
-                                   const bookingList = normalizeApiBookings(apiResult.data);
-                                   setBookings(bookingList);
-                                   setGroupedBookings(buildRecurringGroups(bookingList));
-                              }
-                         }).catch(error => {
-                              console.error("Error reloading bookings after expiration:", error);
-                         }).finally(() => {
-                              setTimeout(() => {
-                                   isReloadingRef.current = false;
-                              }, 3000);
-                         });
-                    }
-                    return prevBookings;
-               });
-          };
-          checkExpiredBookings();
-
-          // kiểm tra mỗi 30 giây
-          const interval = setInterval(checkExpiredBookings, 30000);
-
-          return () => clearInterval(interval);
-     }, [playerId]);
-
-     // tìm đối thủ
-     const handleFindOpponent = (booking) => {
-          setSelectedBooking(booking);
-          setShowFindOpponentModal(true);
-     };
-
-     // tìm đối thủ thnah công
-     const handleFindOpponentSuccess = async (result) => {
-          setShowFindOpponentModal(false);
-          if (result.matchRequest) {
-               const matchRequest = result.matchRequest;
-               const requestId = extractRequestId(matchRequest);
-               const booking = selectedBooking || result.booking;
-               const bookingDisplayId = booking?.id;
-               const matchRequestBookingId = matchRequest.bookingId || matchRequest.bookingID || matchRequest.BookingID;
-
-               if (requestId && bookingDisplayId) {
-                    // map bằng booking.id 
-                    setBookingIdToRequest(prev => {
-                         const updated = { ...prev };
-                         updated[bookingDisplayId] = matchRequest;
-
-                         // trường hợp danh sách đặt sân chưa được cập nhật
-                         if (matchRequestBookingId) {
-                              const normalizedMatchRequestBookingId = String(matchRequestBookingId);
-                              bookings.forEach(b => {
-                                   if (String(b.bookingId) === normalizedMatchRequestBookingId && b.id) {
-                                        updated[b.id] = matchRequest;
-                                   }
-                              });
-                         }
-                         return updated;
-                    });
-
-                    // thêm người tham gia vào requestJoins
-                    const participants = extractParticipants(matchRequest);
-                    if (participants && participants.length > 0) {
-                         setRequestJoins(prev => ({
-                              ...prev,
-                              [requestId]: participants
-                         }));
-                    }
-               } else {
-                    console.warn("⚠️ [FindOpponentSuccess] Missing requestId:", {
-                         matchRequest
-                    });
-               }
-          }
-
-          // giữ lại yêu cầu tham gia trận đấu
-          const preservedMatchRequest = result.matchRequest;
-          const preservedRequestId = extractRequestId(preservedMatchRequest);
-          const preservedBooking = selectedBooking || result.booking;
-          const preservedBookingId = preservedBooking?.id || preservedBooking?.bookingId;
-          const preservedBookingDatabaseId = preservedBooking?.bookingId;
-          const maxRetries = 3;    // số lần retry
-          let bookingUpdated = false;
-
-          for (let retryCount = 0; retryCount < maxRetries && !bookingUpdated; retryCount++) {
-               const currentRetry = retryCount;
-               const delay = currentRetry === 0 ? 2000 : 1000;   // thời gian delay
-               await new Promise(resolve => setTimeout(resolve, delay));
-
-               try {
-                    if (playerId) {
-                         const apiResult = await fetchBookingsByPlayer(playerId);
-                         if (apiResult.success) {
-                              const bookingList = normalizeApiBookings(apiResult.data);
-
-                              // tìm đặt sân trong danh sách mới
-                              const updatedBooking = bookingList.find(b =>
-                                   (preservedBookingDatabaseId && b.bookingId && String(b.bookingId) === String(preservedBookingDatabaseId)) ||
-                                   (b.id === preservedBookingId) ||
-                                   (b.bookingId && String(b.bookingId) === String(preservedBookingId)) ||
-                                   (b.id && String(b.id) === String(preservedBookingId))
-                              );
-
-                              if (updatedBooking) {
-                                   const hasMatchRequestId = updatedBooking.matchRequestId || updatedBooking.matchRequestID || updatedBooking.MatchRequestID;
-
-                                   if (hasMatchRequestId || currentRetry === maxRetries - 1) {
-                                        setBookings(bookingList);
-                                        setGroupedBookings(buildRecurringGroups(bookingList));
-                                        if (preservedMatchRequest && preservedRequestId && updatedBooking.id) {
-                                             setBookingIdToRequest(prev => ({
-                                                  ...prev,
-                                                  [updatedBooking.id]: preservedMatchRequest
-                                             }));
-                                        }
-                                        bookingUpdated = true;
-                                   }
-                              }
-                         }
-                    }
-               } catch (error) {
-                    console.error("Error reloading bookings (retry", currentRetry + 1, "):", error);
-               }
-          }
-          // tải yêu cầu tham gia trận đấu 
-          await loadMatchRequestsForBookings();
-          Swal.fire('Đã gửi!', 'Yêu cầu tìm đối đã được tạo.', 'success');
-     };
-
-     // đánh giá
-     const handleRating = (booking) => {
-          setSelectedBooking(booking);
-          setEditingRating(null);
-          setShowRatingModal(true);
-     };
-
-     // đánh giá thành công
-     const handleRatingSuccess = async () => {
-          setShowRatingModal(false);
-          setSelectedBooking(null);
-          setEditingRating(null);
-          Swal.fire('Thành công!', 'Đánh giá của bạn đã được lưu.', 'success');
-          await loadBookings();
-     };
-
-     // chuyển gói
-     const togglePackageSessions = (packageId) => {
-          setExpandedPackageSessions(prev => ({
-               ...prev,
-               [packageId]: !prev[packageId]
-          }));
-     };
-
-     // xem hóa đơn
-     const handleViewInvoice = (bookingPayload) => {
-          if (!bookingPayload) return;
-          setInvoiceBooking(bookingPayload);
-          setShowInvoiceModal(true);
-     };
-
-     const statusBadge = (status, cancelReason) => {
-          switch (status) {
-               case "confirmed":
-                    return <Badge variant="default" className="bg-teal-500 text-white border border-teal-200 hover:bg-teal-600 hover:text-white">Đã xác nhận</Badge>;
-               case "completed":
-                    return <Badge variant="secondary" className="bg-teal-500 text-white border border-teal-200 hover:bg-teal-600 hover:text-white">Hoàn tất</Badge>;
-               case "cancelled":
-                    return <Badge variant="destructive" className="bg-red-500 text-white border border-red-200 hover:bg-red-600 hover:text-white">Đã hủy</Badge>;
-               case "pending":
-                    return <Badge variant="outline" className="bg-yellow-500 text-white border border-yellow-200 hover:bg-yellow-600 hover:text-white">Chờ xác nhận</Badge>;
-               case "expired":
-                    return <Badge variant="outline" className="bg-gray-500 text-white border border-gray-200 hover:bg-gray-600 hover:text-white">Hủy do quá thời gian thanh toán</Badge>;
-               case "reactive":
-                    return <Badge variant="outline" className="bg-blue-500 text-white border border-blue-200 hover:bg-blue-600 hover:text-white">Kích hoạt lại</Badge>;
-               default:
-                    return <Badge variant="outline" className="bg-gray-500 text-white border border-gray-200 hover:bg-gray-600 hover:text-white">Không rõ</Badge>;
-          }
-     };
-
-     // kiểm tra nếu đặt sân chưa thanh toán trong 2 giờ
-     const isPendingUnpaidWithin2Hours = (booking) => {
-          if (!booking) return false;
-          const isPending = (booking.status === "pending" || booking.bookingStatus === "Pending" || booking.bookingStatus === "pending");
-          const isUnpaid = (booking.paymentStatus === "Unpaid" || booking.paymentStatus === "unpaid" || booking.paymentStatus === "Pending");
-
-          if (!isPending || !isUnpaid || !booking.createdAt) return false;
-
-          const now = new Date().getTime();
-          const createdAt = new Date(booking.createdAt).getTime();
-          const TWO_HOURS = 2 * 60 * 60 * 1000;
-          const timeElapsed = now - createdAt;
-
-          return timeElapsed <= TWO_HOURS;
-     };
-
-     // kiểm tra nếu đặt sân có yêu cầu tham gia trận đấu
-     const hasExistingMatchRequest = (booking) => {
-          if (!booking) return false;
-          const hasMatchRequestId = booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
-          if (hasMatchRequestId) {
-               return true;
-          }
-          if (booking.hasOpponent) {
-               return true;
-          }
-          if (!booking.id) return false;
-          const matchRequest = bookingIdToRequest[booking.id];
-          return Boolean(matchRequest);
-     };
-
-     // nút tìm đối thủ
-     const shouldShowFindOpponentButton = (booking) => {
-          if (!booking) return false;
-          const statusLower = String(booking.status || booking.bookingStatus || "").toLowerCase();
-          const paymentLower = String(booking.paymentStatus || "").toLowerCase();
-
-          const isPendingWaitingPayment =
-               statusLower === "pending" &&
-               (paymentLower === "" || paymentLower === "pending" || paymentLower === "unpaid");
-
-          const isPendingPaid =
-               statusLower === "pending" &&
-               (paymentLower === "paid" || paymentLower === "đã thanh toán");
-
-          const isCompleted = statusLower === "completed";
-          const isCancelled = statusLower === "cancelled" || statusLower === "expired";
-
-          if (isPendingWaitingPayment || isPendingPaid || isCompleted || isCancelled) {
-               return false;
-          }
-
-          if (hasExistingMatchRequest(booking)) {
-               return false;
-          }
-
-          return true;
-     };
-
-     // chuẩn hóa trạng thái yêu cầu tham gia trận đấu
-     const normalizeRequestStatus = (request) => {
-          const raw = (request?.status || request?.state || "").toString().toLowerCase();
-          if (raw.includes("match")) return "matched";
-          if (raw.includes("pending") || raw.includes("waiting")) return "pending";
-          if (raw.includes("expire")) return "expired";
-          if (raw.includes("cancel")) return "cancelled";
-          if (raw.includes("reject")) return "cancelled";
-          if (raw.includes("open") || raw.includes("active")) return "open";
-
-          const participants = extractParticipants(request);
-          if (participants.some(p => (p.status || "").toLowerCase() === "accepted")) {
-               return "pending";
-          }
-
-          if (!raw || raw === "0") return "open";
-          return raw;
-     };
-
-     // cấu hình badge yêu cầu tham gia trận đấu
-     const getRequestBadgeConfig = (request) => {
-          const status = normalizeRequestStatus(request);
-          const participants = filterParticipantsForDisplay(extractParticipants(request), request);
-          const pendingCount = participants.filter(participantNeedsOwnerAction).length;
-          const acceptedCount = participants.filter(isParticipantAcceptedByOwner).length;
-
-          const configMap = {
-               open: {
-                    text: "Đang mở ",
-                    className: "border-blue-200 text-blue-600 bg-blue-50"
-               },
-               pending: {
-                    text: acceptedCount > 0
-                         ? `Đang chờ xác nhận • ${acceptedCount} đội đã được duyệt`
-                         : `Đang chờ xác nhận${pendingCount ? ` • ${pendingCount} đội chờ duyệt` : ""}`,
-                    className: "border-amber-200 text-amber-700 bg-amber-50"
-               },
-               matched: {
-                    text: "Đã tìm được đối • Trận đấu đã xác nhận",
-                    className: "border-emerald-300 text-emerald-700 bg-emerald-50"
-               },
-               expired: {
-                    text: "Đã hết hạn",
-                    className: "border-gray-300 text-gray-600 bg-gray-50"
-               },
-               cancelled: {
-                    text: "Đã hủy",
-                    className: "border-red-300 text-red-600 bg-red-50"
-               }
-          };
-
-          return {
-               status,
-               ...(
-                    configMap[status] || {
-                         text: "Đang mở",
-                         className: "border-blue-200 text-blue-600 bg-blue-50"
-                    }
-               )
-          };
-     };
-
-     // kiểm tra nếu yêu cầu tham gia trận đấu đã bị khóa
-     const isRequestLocked = (request) => {
-          const status = normalizeRequestStatus(request);
-          return status === "matched" || status === "expired" || status === "cancelled";
-     };
-
-     // lấy người tham gia đã được duyệt
-     const getAcceptedParticipants = (request) => {
-          const participants = filterParticipantsForDisplay(extractParticipants(request), request);
-          return participants.filter(isParticipantAcceptedByOwner);
-     };
-
-     // kiểm tra nếu đặt sân cũ hơn 2 giờ
-     const isBookingOlderThan2Hours = (booking) => {
-          if (!booking || !booking.createdAt) return false;
-          const now = new Date().getTime();
-          const createdAt = new Date(booking.createdAt).getTime();
-          const TWO_HOURS = 2 * 60 * 60 * 1000;
-          const timeElapsed = now - createdAt;
-          return timeElapsed > TWO_HOURS;
-     };
-
-     // trong 12h không hiện buton hủy
-     const shouldHideCancelButtonByDate = (booking) => {
-          if (!booking) return false;
-          const scheduleData = booking.scheduleId ? scheduleDataMap[booking.scheduleId] : null;
-          let matchDate = null;
-          let matchTime = null;
-
-          if (scheduleData && scheduleData.date) {
-               try {
-                    const [year, month, day] = scheduleData.date.split('-').map(Number);
-                    if (year && month && day) {
-                         matchDate = new Date(year, month - 1, day);
-                    }
-               } catch (e) {
-
-               }
-          }
-
-          // nếu không tìm thấy ngày trong lịch, sử dụng ngày đặt sân
-          if (!matchDate && booking.date) {
-               try {
-                    if (booking.date.includes('/')) {
-                         const [d, m, y] = booking.date.split('/').map(Number);
-                         if (y && m && d) {
-                              matchDate = new Date(y, m - 1, d);
-                         }
-                    } else {
-                         matchDate = new Date(booking.date);
-                         if (isNaN(matchDate.getTime())) {
-                              matchDate = null;
-                         }
-                    }
-               } catch (e) {
-                    matchDate = null;
-               }
-          }
-
-          // lấy thời gian từ lịch hoặc đặt sân
-          if (scheduleData && scheduleData.startTime) {
-               matchTime = scheduleData.startTime;
-          } else if (booking.startTime) {
-               matchTime = booking.startTime;
-          } else if (booking.time) {
-               const timeMatch = booking.time.match(/^(\d{1,2}):(\d{2})/);
-               if (timeMatch) {
-                    matchTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
-               }
-          }
-
-          if (!matchDate) return false;
-
-          // kiểm tra nếu trận đấu đã qua ngày
-          const now = new Date();
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          const matchDateOnly = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate());
-
-          if (matchDateOnly < today) {
-               return true;
-          }
-
-          // nếu trận đấu là hôm nay, kiểm tra nếu ít hơn 12 giờ trước thời gian bắt đầu
-          if (matchDateOnly.getTime() === today.getTime() && matchTime) {
-               try {
-                    const [hours, minutes] = matchTime.split(':').map(Number);
-                    if (!isNaN(hours) && !isNaN(minutes)) {
-                         const matchDateTime = new Date(matchDate);
-                         matchDateTime.setHours(hours, minutes, 0, 0);
-                         const nowTime = new Date().getTime();
-                         const matchTimeMs = matchDateTime.getTime();
-                         const TWELVE_HOURS = 12 * 60 * 60 * 1000;
-                         const timeUntilMatch = matchTimeMs - nowTime;
-                         if (timeUntilMatch < TWELVE_HOURS && timeUntilMatch > 0) {
-                              return true;
-                         }
-                    }
-               } catch (e) {
-
-               }
-          }
-
-          return false;
-     };
-
-     // tiếp tục thanh toán
-     const handleContinuePayment = async (booking) => {
-          if (!booking) return;
-          setPaymentBooking(booking);
-          setShowPaymentModal(true);
-          setIsLoadingQR(true);
-          setPaymentQRCode(null);
-          try {
-               const bookingId = booking.bookingId || booking.id;
-               const result = await generateQRCode(bookingId, {
-                    paymentType: "deposit",
-                    amount: booking.depositAmount || booking.totalPrice || 0
-               });
-
-               if (result.success) {
-                    setPaymentQRCode(result.qrCodeUrl || result.data?.qrCodeUrl || result.data?.qrCode);
-               } else {
-                    await Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: result.error || 'Không thể tạo mã QR thanh toán',
-                         confirmButtonColor: '#ef4444'
-                    });
-                    setShowPaymentModal(false);
-               }
-          } catch (error) {
-               console.error('Error generating QR code:', error);
-               await Swal.fire({
-                    icon: 'error',
-                    title: 'Lỗi',
-                    text: error.message || 'Không thể tạo mã QR thanh toán',
-                    confirmButtonColor: '#ef4444'
-               });
-               setShowPaymentModal(false);
-          } finally {
-               setIsLoadingQR(false);
-          }
-     };
-
-     // xác nhận thanh toán
-     const handleConfirmPayment = async () => {
-          if (!paymentBooking) return;
-          const confirmResult = await Swal.fire({
-               title: 'Xác nhận thanh toán',
-               html: `
-                    <div class="text-left space-y-3">
-                         <p class="text-gray-700">Bạn có chắc chắn đã thanh toán thành công cho booking này?</p>
-                         <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                              <p class="text-sm text-blue-800 font-semibold mb-2">📋 Thông tin booking:</p>
-                              <div class="text-sm text-blue-700 space-y-1">
-                                   <p><strong>Sân:</strong> ${paymentBooking.fieldName}</p>
-                                   <p><strong>Thời gian:</strong> ${paymentBooking.date} • ${paymentBooking.time}</p>
-                                   <p><strong>Số tiền:</strong> <span class="font-bold text-green-600">${formatPrice(paymentBooking.depositAmount || paymentBooking.totalPrice || 0)}</span></p>
-                              </div>
-                         </div>
-                         <p class="text-xs text-gray-600">⚠️ Vui lòng đảm bảo bạn đã quét mã QR và thanh toán thành công trước khi xác nhận.</p>
-                    </div>
-               `,
-               icon: 'question',
-               showCancelButton: true,
-               confirmButtonText: 'Đã thanh toán, xác nhận',
-               cancelButtonText: 'Hủy',
-               confirmButtonColor: '#10b981',
-               cancelButtonColor: '#6b7280',
-               width: '500px',
-               customClass: {
-                    popup: 'text-left'
-               }
-          });
-
-          if (!confirmResult.isConfirmed) {
-               return;
-          }
-
-          setIsConfirmingPayment(true);
-          try {
-               const bookingId = paymentBooking.bookingId || paymentBooking.id;
-               Swal.fire({
-                    title: 'Đang xử lý...',
-                    html: 'Vui lòng đợi trong giây lát',
-                    allowOutsideClick: false,
-                    allowEscapeKey: false,
-                    didOpen: () => {
-                         Swal.showLoading();
-                    }
-               });
-               const result = await confirmPaymentAPI(bookingId);
-               if (result.success) {
-                    Swal.close();
-                    await Swal.fire({
-                         icon: 'success',
-                         title: '✅ Thanh toán thành công!',
-                         html: `
-                              <div class="text-left space-y-3">
-                                   <p class="text-gray-700">Booking của bạn đã được thanh toán thành công!</p>
-                                   <div class="bg-green-50 border border-green-200 rounded-lg p-4">
-                                        <div class="flex items-center gap-2 mb-2">
-                                             <CheckCircle className="w-5 h-5 text-green-600" />
-                                             <p class="text-sm font-semibold text-green-800">Trạng thái thanh toán</p>
-                                        </div>
-                                        <div class="text-sm text-green-700 space-y-1">
-                                             <p><strong>Booking ID:</strong> #${bookingId}</p>
-                                             <p><strong>Sân:</strong> ${paymentBooking.fieldName}</p>
-                                             <p><strong>Số tiền đã thanh toán:</strong> <span class="font-bold">${formatPrice(paymentBooking.depositAmount || paymentBooking.totalPrice || 0)}</span></p>
-                                        </div>
-                                   </div>
-                                   <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                                        <p class="text-sm text-yellow-800">
-                                             <strong>📌 Lưu ý:</strong> Booking của bạn đang chờ chủ sân xác nhận. Bạn sẽ nhận được thông báo khi booking được xác nhận.
-                                        </p>
-                                   </div>
-                              </div>
-                         `,
-                         confirmButtonText: 'Đã hiểu',
-                         confirmButtonColor: '#10b981',
-                         width: '550px',
-                         customClass: {
-                              popup: 'text-left'
-                         }
-                    });
-
-                    setShowPaymentModal(false);
-                    setPaymentBooking(null);
-                    setPaymentQRCode(null);
-
-                    // làm mới đặt sân
-                    if (playerId) {
-                         const apiResult = await fetchBookingsByPlayer(playerId);
-                         if (apiResult.success) {
-                              const bookingList = normalizeApiBookings(apiResult.data);
-                              setBookings(bookingList);
-                              setGroupedBookings(buildRecurringGroups(bookingList));
-                         }
-                    }
-               } else {
-                    Swal.close();
-                    await Swal.fire({
-                         icon: 'error',
-                         title: '❌ Không thể xác nhận thanh toán',
-                         html: `
-                              <div class="text-left space-y-2">
-                                   <p class="text-gray-700">${result.error || 'Có lỗi xảy ra khi xác nhận thanh toán'}</p>
-                                   <div class="bg-red-50 border border-red-200 rounded-lg p-3 mt-3">
-                                        <p class="text-sm text-red-800">
-                                             <strong>💡 Gợi ý:</strong> Vui lòng kiểm tra lại:
-                                        </p>
-                                        <ul class="text-sm text-red-700 list-disc list-inside mt-2 space-y-1">
-                                             <li>Đã quét mã QR và thanh toán thành công</li>
-                                             <li>Kết nối internet ổn định</li>
-                                             <li>Thử lại sau vài giây</li>
-                                        </ul>
-                                   </div>
-                              </div>
-                         `,
-                         confirmButtonText: 'Đã hiểu',
-                         confirmButtonColor: '#ef4444',
-                         width: '500px',
-                         customClass: {
-                              popup: 'text-left'
-                         }
-                    });
-               }
-          } catch (error) {
-               console.error('Error confirming payment:', error);
-               Swal.close();
-               await Swal.fire({
-                    icon: 'error',
-                    title: '❌ Lỗi hệ thống',
-                    html: `
-                         <div class="text-left space-y-2">
-                              <p class="text-gray-700">${error.message || 'Không thể xác nhận thanh toán. Vui lòng thử lại sau.'}</p>
-                              <div class="bg-red-50 border border-red-200 rounded-lg p-3 mt-3">
-                                   <p class="text-sm text-red-800">
-                                        Nếu vấn đề vẫn tiếp tục, vui lòng liên hệ hỗ trợ khách hàng.
-                                   </p>
-                              </div>
-                         </div>
-                    `,
-                    confirmButtonText: 'Đã hiểu',
-                    confirmButtonColor: '#ef4444',
-                    width: '500px',
-                    customClass: {
-                         popup: 'text-left'
-                    }
-               });
-          } finally {
-               setIsConfirmingPayment(false);
-          }
-     };
-
-     const paymentStatusBadge = (paymentStatus) => {
-          const status = (paymentStatus ?? "").toString().toLowerCase();
-          switch (status) {
-               case "paid":
-                    return <Badge variant="default" className="bg-green-500 text-white border border-green-200 hover:bg-green-600 hover:text-white">Đã thanh toán</Badge>;
-               case "refunded":
-                    return <Badge variant="secondary" className="bg-blue-500 text-white border border-blue-200 hover:bg-blue-600 hover:text-white">Đã hoàn tiền</Badge>;
-               case "unpaid":
-               case "pending":
-               default:
-                    return <Badge variant="outline" className="bg-yellow-500 text-white border border-yellow-200 hover:bg-yellow-600 hover:text-white">Chờ Thanh Toán</Badge>;
-          }
-     };
-
-     // thống kê đặt sân
-     const stats = useMemo(() => {
-          const total = bookings.length;
-          const completed = bookings.filter(b => b.status === "completed").length;
-          const cancelled = bookings.filter(b => b.status === "cancelled").length;
-          const upcoming = bookings.filter(b => b.status === "confirmed").length;
-          const pending = bookings.filter(b => b.status === "pending").length;
-          return { total, completed, cancelled, upcoming, pending };
-     }, [bookings]);
-
-     // ưu tiên createdAt khi lọc theo ngày
-     const getFilterDateValue = React.useCallback((booking) => booking?.createdAt || booking?.date, []);
-
-     // chuẩn hóa bookingId thành số sắp xếp (xử lý "#123", "BK-123", etc.)
-     // Trả về bookingId dưới dạng "BK-123"
-     const getBookingIdValue = (booking) => {
-          const raw = booking?.bookingId ?? booking?.id ?? 0;
-          const numeric = Number(String(raw).replace(/[^\d]/g, ""));
-          if (Number.isFinite(numeric) && numeric > 0) {
-               return `BK-${numeric}`;
-          }
-          return "BK-0";
-     };
-
-     const matchHistoryMatchesStatus = React.useCallback((history) => {
-          if (statusFilter === "all") return true;
-          const status = (history?.finalStatus || history?.status || "").toLowerCase();
-          if (statusFilter === "completed") return status === "completed" || status === "matched";
-          if (statusFilter === "confirmed") return status === "confirmed" || status === "matched";
-          if (statusFilter === "cancelled") return status === "cancelled" || status === "expired";
-          return status === statusFilter;
-     }, [statusFilter]);
-
-     // Trả về id yêu cầu tham gia trận đấu dưới dạng "MR-123"
-     const getRequestIdValue = (history) => {
-          const raw = history?.matchRequestId ??
-               history?.matchRequestID ??
-               history?.requestId ??
-               history?.requestID ??
-               history?.id ??
-               history?.historyId ??
-               0;
-          const numeric = Number(String(raw).replace(/[^\d]/g, ""));
-          if (Number.isFinite(numeric) && numeric > 0) {
-               return `MR-${numeric}`;
-          }
-          return "MR-0";
-     };
-
-     const withinDateRange = React.useCallback(function withinDateRange(dateStr) {
-          if (!dateStr) return true;
-          const parseDateSafe = (value) => {
-               if (!value) return null;
-               if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
-
-               if (typeof value === "string") {
-                    const trimmed = value.trim();
-
-                    // Format yyyy-MM-dd hoặc yyyy-MM-ddTHH:mm:ss
-                    if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
-                         const [y, m, d] = trimmed.split("T")[0].split("-").map(Number);
-                         const dt = new Date(y, m - 1, d);
-                         return isNaN(dt.getTime()) ? null : dt;
-                    }
-
-                    // Format dd/MM/yyyy
-                    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
-                         const [d, m, y] = trimmed.split("/").map(Number);
-                         const dt = new Date(y, m - 1, d);
-                         return isNaN(dt.getTime()) ? null : dt;
-                    }
-                    const dt = new Date(trimmed);
-                    return isNaN(dt.getTime()) ? null : dt;
-               }
-
-               return null;
-          };
-
-          const d = parseDateSafe(dateStr);
-          if (!d) return true;
-
-          const from = parseDateSafe(dateFrom);
-          const to = parseDateSafe(dateTo);
-
-          if (from && d < from) return false;
-          if (to && d > to) return false;
-          return true;
-     }, [dateFrom, dateTo]);
-
-     // hiển thị đặt sân đơn
-     const visibleSingles = useMemo(() => {
-          const base = bookings.filter(b => !b.isRecurring);
-          const filtered = base.filter(b => {
-               const q = query.trim().toLowerCase();
-               const matchQuery = !q || b.id.toLowerCase().includes(q) || (b.fieldName || "").toLowerCase().includes(q) || (b.address || "").toLowerCase().includes(q);
-               const normalizedStatus = String(b.status || b.bookingStatus || "").toLowerCase();
-               const matchStatus = statusFilter === "all" || normalizedStatus === statusFilter;
-               const matchDate = withinDateRange(getFilterDateValue(b));
-               return matchQuery && matchStatus && matchDate;
-          });
-          // sắp xếp đặt sân đơn
-          const sorted = filtered.sort((a, b) => {
-               const idA = getBookingIdValue(a);
-               const idB = getBookingIdValue(b);
-               if (sortBy === "newest") return idB - idA;
-               if (sortBy === "oldest") return idA - idB;
-               if (sortBy === "price-asc") return (a.price || 0) - (b.price || 0);
-               if (sortBy === "price-desc") return (b.price || 0) - (a.price || 0);
-               return 0;
-          });
-          return sorted;
-     }, [bookings, query, statusFilter, sortBy, withinDateRange, getFilterDateValue]);
-
-     // phân trang đặt sân đơn
-     const pageSize = 5;
-     const totalSingleBookings = visibleSingles.length;
-     const totalPages = Math.max(1, Math.ceil(totalSingleBookings / pageSize));
-     const startIndex = (currentPage - 1) * pageSize;
-     const endIndex = startIndex + pageSize;
-     const paginatedSingles = visibleSingles.slice(startIndex, endIndex);
-     // cố items hiển thị
-     const visibleGroups = useMemo(() => {
-          const groups = Object.values(groupedBookings || {});
-          const filtered = groups.filter(group => {
-               const q = query.trim().toLowerCase();
-               const matchQuery = !q || (group.fieldName || "").toLowerCase().includes(q) || (group.address || "").toLowerCase().includes(q);
-               const groupStatus = getRecurringStatus(group);
-               const matchStatus = statusFilter === "all" || groupStatus === statusFilter;
-               const anyInRange = (group.bookings || []).some(b => withinDateRange(getFilterDateValue(b)));
-               return matchQuery && matchStatus && anyInRange;
-          });
-          // sắp xếp đặt sân đơn
-          const sorted = filtered.sort((a, b) => {
-               const aId = (a.bookings || []).reduce((acc, cur) => Math.max(acc, getBookingIdValue(cur)), 0);
-               const bId = (b.bookings || []).reduce((acc, cur) => Math.max(acc, getBookingIdValue(cur)), 0);
-               if (sortBy === "newest") return bId - aId;
-               if (sortBy === "oldest") return aId - bId;
-               if (sortBy === "price-asc") return ((a.price || 0) * (a.totalWeeks || 1)) - ((b.price || 0) * (b.totalWeeks || 1));
-               if (sortBy === "price-desc") return ((b.price || 0) * (b.totalWeeks || 1)) - ((a.price || 0) * (a.totalWeeks || 1));
-               return 0;
-          });
-          return sorted;
-     }, [groupedBookings, query, statusFilter, sortBy, withinDateRange, getFilterDateValue]);
-
-     // sắp xếp lịch sử tham gia trận đấu
-     const sortedPlayerHistories = useMemo(() => {
-          const list = (playerHistories || []).filter(matchHistoryMatchesStatus);
-          return list.sort((a, b) => {
-               const aId = getRequestIdValue(a);
-               const bId = getRequestIdValue(b);
-               if (sortBy === "oldest") return aId - bId;
-               return bId - aId;
-          });
-     }, [playerHistories, sortBy, matchHistoryMatchesStatus]);
-
-     // hủy đặt sân
-     const handleCancel = (id) => {
-          const booking = bookings.find(b => b.id === id);
-          if (booking) {
-               setCancelBooking(booking);
-               setShowCancelModal(true);
-          }
-     };
-
-     // xác nhận hủy đặt sân
-     const handleConfirmCancel = async (reason) => {
-          if (!cancelBooking) return;
-
-          setIsCancelling(true);
-          try {
-               const isPending = cancelBooking.status === "pending" ||
-                    cancelBooking.bookingStatus === "Pending" ||
-                    cancelBooking.bookingStatus === "pending";
-
-               const bookingId = cancelBooking.bookingId || cancelBooking.id;
-               if (!isPending && (!reason || !reason.trim())) {
-                    await Swal.fire({
-                         icon: 'warning',
-                         title: 'Thiếu thông tin',
-                         text: 'Vui lòng nhập lý do hủy.',
-                         confirmButtonColor: '#ef4444'
-                    });
-                    setIsCancelling(false);
-                    return;
-               }
-
-               // lấy scheduleId từ đặt sân
-               const scheduleId = cancelBooking?.scheduleId
-                    || cancelBooking?.scheduleID
-                    || cancelBooking?.ScheduleID
-                    || cancelBooking?.ScheduleId
-                    || cancelBooking?.apiSource?.scheduleId
-                    || cancelBooking?.apiSource?.scheduleID
-                    || cancelBooking?.apiSource?.ScheduleID
-                    || cancelBooking?.apiSource?.ScheduleId;
-
-               let result;
-
-               // Thử cập nhật trạng thái trực tiếp trước
-               if (isPending) {
-                    result = await updateBookingStatus(bookingId, "Canceled");
-                    if (!result.success) {
-                         result = await cancelBookingAPI(bookingId, reason || "Hủy booking chưa được xác nhận");
-                    } else {
-                         result.message = "Đã hủy booking thành công!";
-                    }
-               } else {
-                    result = await cancelBookingAPI(bookingId, reason || "Hủy booking");
-               }
-
-               if (result.success) {
-                    // Thử lấy scheduleId từ response của cancel API nếu có
-                    const responseScheduleId = result.data?.scheduleId
-                         || result.data?.scheduleID
-                         || result.data?.ScheduleID
-                         || result.data?.booking?.scheduleId
-                         || result.data?.booking?.scheduleID;
-
-                    const finalScheduleId = scheduleId || responseScheduleId;
-
-                    // cập nhật FieldSchedule status về "Available" khi hủy booking thành công
-                    if (finalScheduleId && Number(finalScheduleId) > 0) {
-                         try {
-                              const updateResult = await updateFieldScheduleStatus(Number(finalScheduleId), "Available");
-                              if (updateResult.success) {
-                              } else {
-                                   console.warn(`⚠️ [UPDATE SCHEDULE] Failed to update schedule ${finalScheduleId}:`, updateResult.error);
-                              }
-                         } catch (error) {
-                              console.error(`❌ [UPDATE SCHEDULE] Error updating schedule ${finalScheduleId}:`, error);
-                         }
-                    } else {
-                         console.warn("⚠️ [CANCEL BOOKING] No scheduleId found in booking data or API response, cannot update FieldSchedule status. Backend should handle this automatically.");
-                    }
-
-                    const bookingKey = String(cancelBooking.id || cancelBooking.bookingId);
-
-                    // lấy thông tin hoàn tiền từ response
-                    const refundInfo = {
-                         message: result.message || result.data?.message,
-                         cancelReason: result.cancelReason || result.data?.cancelReason,
-                         refundAmount: result.refundAmount ?? result.data?.refundAmount ?? 0,
-                         penaltyAmount: result.penaltyAmount ?? result.data?.penaltyAmount ?? 0,
-                         finalRefundAmount: result.finalRefundAmount ?? result.data?.finalRefundAmount ?? 0,
-                         refundQR: result.refundQR || result.data?.refundQR,
-                    };
-
-                    const cleanReason = stripRefundQrInfo(refundInfo.cancelReason || result.data?.cancelReason || "");
-
-                    // cập nhật trạng thái đặt sân
-                    if (bookingKey) {
-                         setBookings(prev => {
-                              const updated = prev.map(b => {
-                                   const key = String(b.id || b.bookingId);
-                                   if (key !== bookingKey) return b;
-                                   return {
-                                        ...b,
-                                        status: "cancelled",
-                                        bookingStatus: "cancelled",
-                                        cancelReason: cleanReason || b.cancelReason,
-                                        cancelledAt: new Date().toISOString(),
-                                        paymentStatus: result.data?.paymentStatus || b.paymentStatus
-                                   };
-                              });
-                              setGroupedBookings(buildRecurringGroups(updated));
-                              return updated;
-                         });
-                    }
-
-                    let successHtml = `
-                         <p class="mb-3">${refundInfo.message || 'Đã hủy booking thành công!'}</p>
-                    `;
-
-                    if (cleanReason) {
-                         successHtml += `
-                              <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 text-left">
-                                   <p class="text-sm text-blue-800">${cleanReason}</p>
-                              </div>
-                         `;
-                    }
-
-                    setShowCancelModal(false);
-                    setCancelBooking(null);
-
-                    await Swal.fire({
-                         icon: 'success',
-                         title: 'Đã hủy thành công!',
-                         html: successHtml,
-                         confirmButtonColor: '#10b981',
-                         width: '500px',
-                         customClass: {
-                              popup: 'text-left'
-                         }
-                    });
-                    const playerId = user?.userID || user?.UserID || user?.id || user?.Id || user?.userId;
-                    if (playerId) {
-                         const apiResult = await fetchBookingsByPlayer(playerId);
-                         if (apiResult.success) {
-                              const bookingList = normalizeApiBookings(apiResult.data);
-                              setBookings(bookingList);
-                              setGroupedBookings(buildRecurringGroups(bookingList));
-                         }
-                    }
-               } else {
-                    throw new Error(result.error || "Không thể hủy booking");
-               }
-          } catch (error) {
-               console.error('Error cancelling booking:', error);
-               await Swal.fire({
-                    icon: 'error',
-                    title: 'Lỗi',
-                    text: error.message || 'Không thể hủy đặt sân. Vui lòng thử lại.',
-                    confirmButtonColor: '#ef4444'
-               });
-          } finally {
-               setIsCancelling(false);
-          }
-     };
-
-     // hủy lịch định kỳ
-     const handleCancelRecurring = (groupId) => {
-          Swal.fire({
-               title: 'Xác nhận hủy lịch định kỳ',
-               text: 'Bạn có chắc muốn hủy toàn bộ lịch định kỳ này?',
-               icon: 'warning',
-               showCancelButton: true,
-               confirmButtonColor: '#d33',
-               cancelButtonColor: '#3085d6',
-               confirmButtonText: 'Xác nhận hủy',
-               cancelButtonText: 'Hủy'
-          }).then((result) => {
-               if (result.isConfirmed) {
-                    const group = groupedBookings[groupId];
-                    group.bookings.forEach(booking => {
-                         updateBooking(booking.id, { status: "cancelled" });
-                    });
-                    setBookings(prev => prev.map(booking =>
-                         group.bookings.some(b => b.id === booking.id)
-                              ? { ...booking, status: "cancelled" }
-                              : booking
-                    ));
-                    Swal.fire('Đã hủy!', 'Toàn bộ lịch định kỳ đã được hủy.', 'success');
-               }
-          });
-     };
-
-
-     const handleCancelSingleRecurring = (id) => {
-          const booking = bookings.find(b => b.id === id);
-          if (booking) {
-               setCancelBooking(booking);
-               setShowCancelModal(true);
-          }
-     };
-
-     const toggleRecurringDetails = (groupId) => {
-          setShowRecurringDetails(prev => ({
-               ...prev,
-               [groupId]: !prev[groupId]
-          }));
-     };
-
-
-
+     // ===== RENDER =====
      return (
           <Section className="min-h-screen bg-[url('https://mixivivu.com/section-background.png')] bg-cover bg-center">
                <div className="py-32 mx-5 md:py-44 bg-[url('https://i.pinimg.com/originals/a3/c7/79/a3c779e5d5b622eeb598ac1d50c05cb8.png')] bg-cover bg-center rounded-b-3xl overflow-hidden">
@@ -2105,14 +454,17 @@ export default function BookingHistory({ user }) {
                                                                                           </div>
                                                                                      )}
 
-                                                                                     {/* Thông báo và button thanh toán cho booking pending + unpaid trong 2 tiếng (recurring) */}
+                                                                                     {/* Thông báo và button thanh toán cho booking chưa thanh toán (recurring) */}
                                                                                      {isPendingUnpaidWithin2Hours(booking) && (
                                                                                           <div className="p-2 bg-orange-50 border border-orange-200 rounded-lg mb-2">
                                                                                                <div className="flex items-start gap-2">
                                                                                                     <Clock className="w-3 h-3 text-orange-600 mt-0.5 flex-shrink-0" />
                                                                                                     <div className="flex-1">
                                                                                                          <p className="text-xs text-orange-800 font-medium mb-1">
-                                                                                                              ⏰ Cần thanh toán trong {formatTimeRemaining(timeRemaining[booking.id] || 0)}
+                                                                                                              {timeRemaining[booking.id] && timeRemaining[booking.id] > 0
+                                                                                                                   ? `⏰ Cần thanh toán trong ${formatTimeRemaining(timeRemaining[booking.id])}`
+                                                                                                                   : "⏰ Vui lòng thanh toán"
+                                                                                                              }
                                                                                                          </p>
                                                                                                          <Button
                                                                                                               onClick={() => handleContinuePayment(booking)}
@@ -2208,16 +560,20 @@ export default function BookingHistory({ user }) {
                                                                       </div>
                                                                  )}
 
-                                                                 {/* Thông báo và button thanh toán cho booking pending + unpaid trong 2 tiếng */}
+                                                                 {/* Thông báo và button thanh toán cho booking chưa thanh toán */}
                                                                  {isPendingUnpaidWithin2Hours(b) && (
                                                                       <div className="mt-2 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                                                                            <div className="flex items-start gap-2">
                                                                                 <Clock className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
                                                                                 <div className="flex-1">
                                                                                      <div className="text-sm text-orange-800">
-                                                                                          <p className="font-medium mb-1">⏰ Cần thanh toán trong {formatTimeRemaining(timeRemaining[b.id] || 0)}</p>
+                                                                                          <p className="font-medium mb-1">
+                                                                                               {timeRemaining[b.id] && timeRemaining[b.id] > 0
+                                                                                                    ? `⏰ Cần thanh toán trong ${formatTimeRemaining(timeRemaining[b.id])}`
+                                                                                                    : "⏰ Vui lòng thanh toán để hoàn tất đặt sân"
+                                                                                               }
+                                                                                          </p>
                                                                                           <p className="text-xs text-orange-700 mb-2">
-                                                                                               Booking của bạn sẽ tự động hủy sau 2 tiếng nếu chưa thanh toán.
                                                                                                Vui lòng thanh toán ngay để giữ chỗ.
                                                                                           </p>
                                                                                      </div>
@@ -2241,7 +597,7 @@ export default function BookingHistory({ user }) {
                                                                                 <div className="text-sm text-gray-800">
                                                                                      <p className="font-medium mb-1">Đã hết hạn thanh toán</p>
                                                                                      <p className="text-xs text-gray-700">
-                                                                                          Booking đã bị hủy do quá thời gian thanh toán (2 tiếng).
+                                                                                          Booking đã bị hủy do quá thời gian thanh toán.
                                                                                      </p>
                                                                                 </div>
                                                                            </div>
@@ -2463,7 +819,7 @@ export default function BookingHistory({ user }) {
                                                             </Button>
                                                             {user && (
                                                                  <>
-                                                                      {/* Button tiếp tục thanh toán cho booking pending + unpaid trong 2 tiếng */}
+                                                                      {/* Button tiếp tục thanh toán cho booking chưa thanh toán */}
                                                                       {isPendingUnpaidWithin2Hours(b) && (
                                                                            <Button
                                                                                 onClick={() => handleContinuePayment(b)}
@@ -2611,10 +967,7 @@ export default function BookingHistory({ user }) {
                                                             const isExpanded = expandedParticipants[participantKey] || false;
 
                                                             const toggleParticipants = () => {
-                                                                 setExpandedParticipants(prev => ({
-                                                                      ...prev,
-                                                                      [participantKey]: !prev[participantKey]
-                                                                 }));
+                                                                 toggleExpandedParticipants(participantKey);
                                                             };
 
                                                             return (
@@ -3037,7 +1390,7 @@ export default function BookingHistory({ user }) {
                {/* tìm đối thủ */}
                <FindOpponentModal
                     isOpen={showFindOpponentModal}
-                    onClose={() => setShowFindOpponentModal(false)}
+                    onClose={closeFindOpponentModal}
                     booking={selectedBooking}
                     user={user}
                     onSuccess={handleFindOpponentSuccess}
@@ -3047,11 +1400,7 @@ export default function BookingHistory({ user }) {
                {/* đánh giá */}
                <RatingModal
                     isOpen={showRatingModal}
-                    onClose={() => {
-                         setShowRatingModal(false);
-                         setSelectedBooking(null);
-                         setEditingRating(null);
-                    }}
+                    onClose={closeRatingModal}
                     booking={selectedBooking}
                     mode={editingRating ? "edit" : "create"}
                     initialRating={editingRating?.stars || 0}
@@ -3064,19 +1413,13 @@ export default function BookingHistory({ user }) {
                <InvoiceModal
                     isOpen={showInvoiceModal}
                     booking={invoiceBooking}
-                    onClose={() => {
-                         setShowInvoiceModal(false);
-                         setInvoiceBooking(null);
-                    }}
+                    onClose={closeInvoiceModal}
                />
 
                {/* hủy đặt sân */}
                <CancelBookingModal
                     isOpen={showCancelModal}
-                    onClose={() => {
-                         setShowCancelModal(false);
-                         setCancelBooking(null);
-                    }}
+                    onClose={closeCancelModal}
                     onConfirm={handleConfirmCancel}
                     booking={cancelBooking}
                     isLoading={isCancelling}
@@ -3087,9 +1430,7 @@ export default function BookingHistory({ user }) {
                     isOpen={showPaymentModal}
                     onClose={() => {
                          if (!isConfirmingPayment) {
-                              setShowPaymentModal(false);
-                              setPaymentBooking(null);
-                              setPaymentQRCode(null);
+                              closePaymentModal();
                          }
                     }}
                     title={
@@ -3201,9 +1542,7 @@ export default function BookingHistory({ user }) {
                                                   variant="outline"
                                                   onClick={() => {
                                                        if (!isConfirmingPayment) {
-                                                            setShowPaymentModal(false);
-                                                            setPaymentBooking(null);
-                                                            setPaymentQRCode(null);
+                                                            closePaymentModal();
                                                        }
                                                   }}
                                                   disabled={isConfirmingPayment}
@@ -3238,11 +1577,7 @@ export default function BookingHistory({ user }) {
                                         <p className="text-gray-700 font-medium">Không thể tạo mã QR thanh toán</p>
                                         <p className="text-xs text-gray-500 mt-2">Vui lòng thử lại sau hoặc liên hệ hỗ trợ</p>
                                         <Button
-                                             onClick={() => {
-                                                  setShowPaymentModal(false);
-                                                  setPaymentBooking(null);
-                                                  setPaymentQRCode(null);
-                                             }}
+                                             onClick={closePaymentModal}
                                              className="mt-4"
                                              variant="outline"
                                         >

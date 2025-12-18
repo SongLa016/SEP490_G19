@@ -6,18 +6,6 @@ import FieldSelectionModal from "../../fields/components/FieldSelectionModal";
 import { getUserAvatarAndName } from "./utils";
 import Swal from "sweetalert2";
 
-/**
- * Modal tạo bài viết mới hoặc chỉnh sửa bài viết
- * Trang: Cộng đồng (Community)
- * Vị trí: Modal popup khi nhấn nút "Đăng" hoặc "Có gì mới?"
- * 
- * Chức năng:
- * - Nhập tiêu đề bài viết (5-200 ký tự)
- * - Nhập nội dung bài viết (10-5000 ký tự)
- * - Chọn ảnh đính kèm (tối đa 5MB)
- * - Gắn thẻ sân bóng (tùy chọn)
- * - Nút "Đăng" / "Cập nhật" để submit
- */
 const NewThreadModal = ({
      isOpen,
      onClose,
@@ -42,7 +30,7 @@ const NewThreadModal = ({
      const titleRef = useRef(null);
      const contentRef = useRef(null);
 
-     // Auto-resize textarea
+     // tự động mở rộng textarea
      const autoResize = useCallback((ref, maxHeight) => {
           if (ref.current) {
                ref.current.style.height = 'auto';
@@ -50,31 +38,22 @@ const NewThreadModal = ({
           }
      }, []);
 
-     // Determine which image preview to show
      const currentImagePreview = editingPost ? editImagePreview : localImagePreview;
 
-     /**
-      * Xử lý khi chọn sân từ modal FieldSelectionModal
-      * @param {Object} field - Thông tin sân đã chọn
-      */
+     // chọn sân
      const handleFieldSelect = (field) => {
           setSelectedField(field);
      };
 
-     /**
-      * Xử lý khi chọn ảnh từ input file
-      * Validate loại file và kích thước (max 5MB)
-      * @param {Event} event - Sự kiện change của input file
-      */
+     // chọn ảnh
      const handleImageSelect = (event) => {
           const file = event.target.files?.[0];
           if (file) {
-               // Validate file type
                if (!file.type.startsWith('image/')) {
                     alert('Vui lòng chọn file ảnh');
                     return;
                }
-               // Validate file size (max 5MB)
+               // kích thước ảnh
                if (file.size > 5 * 1024 * 1024) {
                     alert('Kích thước ảnh không được vượt quá 5MB');
                     return;
@@ -82,7 +61,6 @@ const NewThreadModal = ({
                if (editingPost && setEditSelectedImage) {
                     setEditSelectedImage(file);
                }
-               // Create preview
                const reader = new FileReader();
                reader.onloadend = () => {
                     if (editingPost && setEditImagePreview) {
@@ -95,9 +73,7 @@ const NewThreadModal = ({
           }
      };
 
-     /**
-      * Xử lý khi xóa ảnh đã chọn - Nút X trên preview ảnh
-      */
+     // xóa ảnh
      const handleRemoveImage = () => {
           if (editingPost) {
                if (setEditSelectedImage) setEditSelectedImage(null);
@@ -110,12 +86,8 @@ const NewThreadModal = ({
           }
      };
 
-     /**
-      * Xử lý khi nhấn nút "Đăng" / "Cập nhật"
-      * Validate tiêu đề và nội dung trước khi submit
-      */
+     // submit bài viết
      const handleSubmit = () => {
-          // Validate tiêu đề
           const trimmedTitle = postTitle.trim();
           if (!trimmedTitle) {
                Swal.fire({
@@ -147,7 +119,7 @@ const NewThreadModal = ({
                return;
           }
 
-          // Validate nội dung
+          // kiểm tra nội dung
           const trimmedContent = postContent.trim();
           if (!trimmedContent) {
                Swal.fire({
@@ -179,25 +151,18 @@ const NewThreadModal = ({
                return;
           }
 
-          // For edit mode: 
-          // - If editSelectedImage exists (new image selected), pass it
-          // - If editImagePreview is null (image removed), pass null explicitly
-          // - Otherwise (keeping old image), pass undefined to indicate no change
-          // For new post: pass the image file if selected
+          // ảnh đính kèm
           let imageToSubmit;
           if (editingPost) {
                if (editSelectedImage) {
-                    // New image selected
                     imageToSubmit = editSelectedImage;
                } else if (editImagePreview === null) {
-                    // Image was removed
                     imageToSubmit = null;
                } else {
-                    // Keeping old image - pass undefined to indicate no change
                     imageToSubmit = undefined;
                }
           } else {
-               // New post - pass the file if exists
+               // bài viết mới
                imageToSubmit = localImagePreview ? fileInputRef.current?.files?.[0] : null;
           }
 

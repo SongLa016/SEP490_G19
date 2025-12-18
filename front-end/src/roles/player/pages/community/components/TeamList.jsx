@@ -27,7 +27,6 @@ import { listTeams, listTeamJoinRequestsByUser } from "../../../../../shared/ind
 import Swal from "sweetalert2";
 import TeamJoinModal from "./TeamJoinModal";
 
-// TeamCard Component
 function TeamCard({ team, index, user, userJoinStatus, getStatusBadge, getSkillLevelBadge, handleJoinTeam }) {
      const cardRef = useRef(null);
      const isInView = useInView(cardRef, { once: true, margin: "-50px" });
@@ -39,12 +38,12 @@ function TeamCard({ team, index, user, userJoinStatus, getStatusBadge, getSkillL
                ref={cardRef}
                initial={{ opacity: 0, y: 30, scale: 0.95 }}
                animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
-               transition={{ 
-                    duration: 0.5, 
+               transition={{
+                    duration: 0.5,
                     delay: index * 0.1,
                     ease: "easeOut"
                }}
-               whileHover={{ 
+               whileHover={{
                     scale: 1.02,
                     boxShadow: "0 10px 25px rgba(0,0,0,0.08)"
                }}
@@ -338,13 +337,13 @@ export default function TeamList({ onOpenTeamCreation }) {
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                          >
-                         <Button
-                              onClick={() => onOpenTeamCreation?.()}
-                              className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-xl flex items-center gap-2"
-                         >
-                              <Users className="w-4 h-4" />
-                              Tạo đội
-                         </Button>
+                              <Button
+                                   onClick={() => onOpenTeamCreation?.()}
+                                   className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-xl flex items-center gap-2"
+                              >
+                                   <Users className="w-4 h-4" />
+                                   Tạo đội
+                              </Button>
                          </motion.div>
                     </div>
                </motion.div>

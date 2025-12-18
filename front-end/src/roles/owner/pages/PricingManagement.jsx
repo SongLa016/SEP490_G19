@@ -20,7 +20,7 @@ import { fetchPricing, createPricing, updatePricing, deletePricing } from "../..
 import Swal from "sweetalert2";
 
 const PricingManagement = ({ isDemo = false }) => {
-     const { user, logout } = useAuth();
+     const { user } = useAuth();
      const [loading, setLoading] = useState(true);
      const [fields, setFields] = useState([]);
      const [pricingData, setPricingData] = useState([]);

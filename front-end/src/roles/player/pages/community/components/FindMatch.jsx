@@ -791,7 +791,7 @@ export default function FindMatch() {
                     )}
                </div>
 
-               {/* Join Match Modal - Shared for all match requests */}
+               {/* Modal tham gia kèo */}
                <Modal
                     isOpen={isModalOpen}
                     onClose={handleCloseModal}

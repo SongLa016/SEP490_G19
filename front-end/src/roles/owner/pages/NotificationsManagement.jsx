@@ -39,7 +39,7 @@ export default function NotificationsManagement() {
           { value: 'high', label: 'Cao', color: 'bg-orange-100 text-orange-800' },
           { value: 'urgent', label: 'Khẩn cấp', color: 'bg-red-100 text-red-800' }
      ];
-
+     // Hàm tải dữ liệu thông báo và thống kê
      const loadData = useCallback(async () => {
           try {
                setLoading(true);
@@ -61,12 +61,7 @@ export default function NotificationsManagement() {
           loadData();
      }, [loadData]);
 
-     /**
-      * Đánh dấu một thông báo là đã đọc
-      * - Gọi API cập nhật trạng thái
-      * - Cập nhật state local
-      * @param {number} notificationId - ID của thông báo
-      */
+     // Đánh dấu một thông báo là đã đọc
      const handleMarkAsRead = async (notificationId) => {
           try {
                await markNotificationAsRead(notificationId);
@@ -79,11 +74,7 @@ export default function NotificationsManagement() {
           }
      };
 
-     /**
-      * Đánh dấu tất cả thông báo là đã đọc
-      * - Gọi API cập nhật trạng thái tất cả
-      * - Cập nhật state local
-      */
+     // Đánh dấu tất cả thông báo là đã đọc
      const handleMarkAllAsRead = async () => {
           try {
                await markAllNotificationsAsRead(user?.id || 1);
@@ -96,15 +87,15 @@ export default function NotificationsManagement() {
 
      // Đếm số thông báo chưa đọc
      const unreadCount = notifications.filter(n => !n.isRead).length;
-
+     // Lấy thông tin loại thông báo
      const getTypeInfo = (type) => {
           return notificationTypes.find(t => t.value === type) || notificationTypes[0];
      };
-
+     // Lấy thông tin mức độ ưu tiên
      const getPriorityInfo = (priority) => {
           return priorityLevels.find(p => p.value === priority) || priorityLevels[1];
      };
-
+     // định dạng ngày
      const formatDate = (dateString) => {
           if (!dateString || dateString === 'Invalid Date') return 'Không xác định';
           const date = new Date(dateString);

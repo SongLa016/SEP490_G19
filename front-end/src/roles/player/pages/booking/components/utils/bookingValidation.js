@@ -33,26 +33,41 @@ export const shouldShowCancelButton = (booking) => {
   return true;
 };
 
-// kiểm tra đặt sân chưa thanh toán trong 2 giờ
+// kiểm tra đặt sân chưa thanh toán
 export const isPendingUnpaidWithin2Hours = (booking) => {
+  if (!booking) return false;
+
   const statusLower = String(
     booking.status || booking.bookingStatus || ""
   ).toLowerCase();
   const paymentLower = String(booking.paymentStatus || "").toLowerCase();
-  const isPending = statusLower === "pending";
+
+  // Kiểm tra trạng thái pending hoặc confirmed
+  const isPendingOrConfirmed = statusLower === "pending" || statusLower === "confirmed";
   const isUnpaid =
     paymentLower === "" ||
     paymentLower === "pending" ||
     paymentLower === "unpaid";
 
-  if (!isPending || !isUnpaid) return false;
-  if (!booking.createdAt) return false;
+  // Kiểm tra nếu đã thanh toán thì không hiển thị
+  const isPaid = paymentLower === "paid" || paymentLower === "đã thanh toán";
+  if (isPaid) return false;
 
-  const createdAt = new Date(booking.createdAt).getTime();
-  const currentTime = new Date().getTime();
-  const TWO_HOURS = 2 * 60 * 60 * 1000;
-  const timeElapsed = currentTime - createdAt;
-  return timeElapsed <= TWO_HOURS;
+  // Kiểm tra nếu đã hủy hoặc hết hạn
+  if (statusLower === "cancelled" || statusLower === "expired" || statusLower === "completed") return false;
+
+  // Kiểm tra nếu booking có QR code và chưa hết hạn (đang chờ thanh toán)
+  const hasActiveQR = booking.qrExpiresAt && new Date(booking.qrExpiresAt).getTime() > new Date().getTime();
+
+  // Nếu có QR code đang active và chưa thanh toán, hiển thị nút tiếp tục thanh toán
+  if (hasActiveQR && isUnpaid) return true;
+
+  // Nếu pending/confirmed và chưa thanh toán, hiển thị nút thanh toán
+  if (isPendingOrConfirmed && isUnpaid) {
+    return true;
+  }
+
+  return false;
 };
 
 // kiểm tra nút "Tìm đối thủ"

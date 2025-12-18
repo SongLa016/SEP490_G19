@@ -27,7 +27,7 @@ import { fetchAllComplexesWithFields, updateField } from "../../../shared/servic
 import { VIETNAM_BANKS, findVietnamBankByCode } from "../../../shared/constants/vietnamBanks";
 
 export default function BankAccountManagement({ isDemo = false }) {
-     const { user, logout } = useAuth();
+     const { user } = useAuth();
      const [bankAccounts, setBankAccounts] = useState([]);
      const [loading, setLoading] = useState(true);
      const [showModal, setShowModal] = useState(false);
@@ -42,17 +42,16 @@ export default function BankAccountManagement({ isDemo = false }) {
      });
      const [errors, setErrors] = useState({});
      const selectedBankMeta = findVietnamBankByCode(formData.bankShortCode);
-
+     // Tải danh sách tài khoản ngân hàng của owner
      const loadData = useCallback(async () => {
           try {
                setLoading(true);
-               // Get UserID from user object (OwnerID references Users(UserID))
+               // lấy OwnerID từ user context
                const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
                if (!isDemo && currentUserId) {
                     const accounts = await fetchOwnerBankAccounts(Number(currentUserId));
                     setBankAccounts(accounts || []);
                } else if (isDemo) {
-                    // Demo data
                     setBankAccounts([
                          {
                               bankAccountId: 1,
@@ -92,13 +91,13 @@ export default function BankAccountManagement({ isDemo = false }) {
           loadData();
      }, [loadData]);
 
+     //thay đổi form data
      const handleInputChange = (e) => {
           const { name, value } = e.target;
           setFormData(prev => ({
                ...prev,
                [name]: value
           }));
-          // Clear error when user starts typing
           if (errors[name]) {
                setErrors(prev => ({
                     ...prev,
@@ -107,6 +106,7 @@ export default function BankAccountManagement({ isDemo = false }) {
           }
      };
 
+     // thay đổi ngân hàng
      const handleBankCodeChange = (code) => {
           const bank = findVietnamBankByCode(code);
           setFormData(prev => ({
@@ -147,6 +147,7 @@ export default function BankAccountManagement({ isDemo = false }) {
           return Object.keys(newErrors).length === 0;
      };
 
+     // tạo tài khoản mới
      const handleCreateAccount = () => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -163,7 +164,7 @@ export default function BankAccountManagement({ isDemo = false }) {
           setErrors({});
           setShowModal(true);
      };
-
+     // chỉnh sửa tài khoản
      const handleEditAccount = (account) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -180,7 +181,7 @@ export default function BankAccountManagement({ isDemo = false }) {
           setErrors({});
           setShowModal(true);
      };
-
+     // submit form
      const handleSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {
@@ -221,10 +222,9 @@ export default function BankAccountManagement({ isDemo = false }) {
           }
 
           try {
-               // OwnerID must reference Users(UserID) from database
                const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
                const accountData = {
-                    ownerId: Number(currentUserId), // Ensure it's a number matching Users(UserID)
+                    ownerId: Number(currentUserId),
                     bankName: formData.bankName,
                     bankShortCode: formData.bankShortCode,
                     accountNumber: normalizedAccountNumber,
@@ -266,7 +266,7 @@ export default function BankAccountManagement({ isDemo = false }) {
                });
           }
      };
-
+     // xóa tài khoản
      const handleDeleteAccount = async (account) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -285,7 +285,6 @@ export default function BankAccountManagement({ isDemo = false }) {
           });
 
           if (result.isConfirmed) {
-               // Show loading
                Swal.fire({
                     title: 'Đang xóa...',
                     text: 'Vui lòng đợi trong giây lát',
@@ -307,14 +306,10 @@ export default function BankAccountManagement({ isDemo = false }) {
                     });
                     loadData();
                } catch (error) {
-                    console.error('Error deleting bank account:', error);
-
-                    // Determine error type for better user message
                     let errorTitle = 'Không thể xóa tài khoản';
                     let errorText = error.message || 'Không thể xóa tài khoản ngân hàng. Vui lòng thử lại sau.';
                     let footer = '<small>Nếu vấn đề vẫn tiếp tục, vui lòng liên hệ hỗ trợ</small>';
 
-                    // Check if error is about account being used by fields
                     if (error.message && (
                          error.message.includes('đang được sử dụng') ||
                          error.message.includes('sân') ||
@@ -333,9 +328,7 @@ export default function BankAccountManagement({ isDemo = false }) {
                          errorTitle = 'Không tìm thấy';
                          errorText = 'Tài khoản ngân hàng không tồn tại hoặc đã bị xóa.';
                     } else {
-                         // For other errors (including 500), show the message from service
                          errorTitle = 'Không thể xóa tài khoản';
-                         // errorText already contains the appropriate message from handleApiError
                     }
 
                     await Swal.fire({
@@ -349,7 +342,7 @@ export default function BankAccountManagement({ isDemo = false }) {
                }
           }
      };
-
+     // đặt tài khoản mặc định
      const handleSetDefault = async (account) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -357,19 +350,14 @@ export default function BankAccountManagement({ isDemo = false }) {
           }
 
           try {
-               // OwnerID must reference Users(UserID) from database
                const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
-
-               // Đặt tài khoản mặc định
                await setDefaultBankAccount(account.bankAccountId, Number(currentUserId));
 
                // Cập nhật BankAccountID cho tất cả fields của owner
                let updatedCount = 0;
                let failedCount = 0;
                try {
-                    console.log("📝 [UPDATE FIELDS] Updating BankAccountID for all fields of owner", currentUserId);
                     const allComplexesWithFields = await fetchAllComplexesWithFields();
-                    console.log("📝 [UPDATE FIELDS] Total complexes fetched:", allComplexesWithFields.length);
 
                     // Lọc các complexes thuộc về owner này
                     const ownerComplexes = allComplexesWithFields.filter(
@@ -378,7 +366,6 @@ export default function BankAccountManagement({ isDemo = false }) {
                               return complexOwnerId === currentUserId || complexOwnerId === Number(currentUserId);
                          }
                     );
-                    console.log("📝 [UPDATE FIELDS] Owner complexes found:", ownerComplexes.length);
 
                     // Lấy tất cả fields từ các complexes của owner
                     const allFields = [];
@@ -387,7 +374,6 @@ export default function BankAccountManagement({ isDemo = false }) {
                               allFields.push(...complex.fields);
                          }
                     });
-                    console.log("📝 [UPDATE FIELDS] Total fields to update:", allFields.length);
 
                     // Cập nhật BankAccountID cho từng field
                     if (allFields.length > 0) {
@@ -406,12 +392,8 @@ export default function BankAccountManagement({ isDemo = false }) {
                                         const name = field.name || field.Name;
 
                                         if (!complexId || !typeId || !name) {
-                                             console.warn(`⚠️ [UPDATE FIELD] Field ${fieldId} missing required fields (complexId: ${complexId}, typeId: ${typeId}, name: ${name}). Skipping.`);
                                              return { success: false, fieldId, error: "Missing required fields", skipped: true };
                                         }
-
-                                        const currentBankAccountId = field.bankAccountId || field.BankAccountId || field.BankAccountID;
-                                        console.log(`📝 [UPDATE FIELD] Updating field ${fieldId}: BankAccountID ${currentBankAccountId} -> ${account.bankAccountId}`);
 
                                         // Sử dụng FormData thay vì JSON vì API yêu cầu multipart/form-data
                                         const formDataToSend = new FormData();
@@ -430,16 +412,6 @@ export default function BankAccountManagement({ isDemo = false }) {
                                         formDataToSend.append("AccountNumber", account.accountNumber || "");
                                         formDataToSend.append("AccountHolder", account.accountHolder || "");
 
-                                        // Log FormData để debug
-                                        console.log(`📝 [UPDATE FIELD] FormData for field ${fieldId}:`, {
-                                             FieldId: fieldId,
-                                             ComplexId: complexId,
-                                             Name: name,
-                                             TypeId: typeId,
-                                             BankAccountId: account.bankAccountId,
-                                             BankName: account.bankName
-                                        });
-
                                         // Giữ lại ảnh hiện có nếu có
                                         if (field.mainImageUrl || field.MainImageUrl) {
                                              formDataToSend.append("MainImageUrl", field.mainImageUrl || field.MainImageUrl);
@@ -451,17 +423,10 @@ export default function BankAccountManagement({ isDemo = false }) {
                                              });
                                         }
 
-                                        console.log(`📝 [UPDATE FIELD] Calling updateField PUT API for field ${fieldId} with FormData`);
-
                                         const result = await updateField(fieldId, formDataToSend);
-
-                                        // Coi như thành công nếu API không trả về lỗi
-                                        // (API có thể trả về data cũ trong response nhưng vẫn cập nhật thành công)
-                                        console.log(`✅ [UPDATE FIELD] Successfully called updateField for field ${fieldId}`, result);
 
                                         return { success: true, fieldId, result };
                                    } catch (error) {
-                                        console.error(`❌ [UPDATE FIELD] Error updating field ${field.fieldId || field.FieldID}:`, error);
                                         return { success: false, fieldId: field.fieldId || field.FieldID, error: error.message || String(error) };
                                    }
                               })
@@ -479,13 +444,10 @@ export default function BankAccountManagement({ isDemo = false }) {
                               }
                          });
 
-                         console.log(`✅ [UPDATE FIELDS] Updated ${updatedCount}/${allFields.length} fields successfully. Failed: ${failedCount}`);
-                    } else {
-                         console.log("ℹ️ [UPDATE FIELDS] No fields found for owner");
                     }
                } catch (error) {
                     console.error("❌ [UPDATE FIELDS] Error updating fields:", error);
-                    // Không throw error để không ảnh hưởng đến việc đặt tài khoản mặc định
+
                }
 
                // Hiển thị thông báo với số lượng fields đã cập nhật

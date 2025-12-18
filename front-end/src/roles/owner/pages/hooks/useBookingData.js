@@ -12,7 +12,7 @@ const fetchPlayerProfile = async (playerId) => {
   try {
     const token = localStorage.getItem("token");
     const response = await axios.get(
-      `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${playerId}`,
+      `/api/PlayerProfile/${playerId}`,
       {
         headers: {
           "Content-Type": "application/json",

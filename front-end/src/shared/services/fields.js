@@ -1,18 +1,7 @@
-/**
- * Service layer cho Field, FieldComplex, FieldPrice APIs
- * Chứa các hàm gọi API và validate dữ liệu liên quan đến sân bóng
- */
+
 import axios from "axios";
 
-// ==================== HÀM VALIDATE DỮ LIỆU ====================
-
-/**
- * Validate tên (sân hoặc khu sân)
- * Kiểm tra: không rỗng, độ dài 2-100 ký tự
- * @param {string} name - Tên cần validate
- * @param {string} label - Nhãn hiển thị (vd: "Tên sân", "Tên khu sân")
- * @returns {{ isValid: boolean, message: string }} - Kết quả validate
- */
+// validation tên sân
 export const validateFieldName = (name, label = "Tên") => {
   const trimmedName = name?.trim() || "";
   if (!trimmedName) {
@@ -27,12 +16,7 @@ export const validateFieldName = (name, label = "Tên") => {
   return { isValid: true, message: "" };
 };
 
-/**
- * Validate giá sân
- * Kiểm tra: là số, lớn hơn 0, trong khoảng 10,000 - 10,000,000 VND
- * @param {number|string} price - Giá cần validate
- * @returns {{ isValid: boolean, message: string }} - Kết quả validate
- */
+// Validate giá sân
 export const validateFieldPrice = (price) => {
   const numPrice = Number(price);
   // Kiểm tra giá trị hợp lệ
@@ -54,15 +38,8 @@ export const validateFieldPrice = (price) => {
   return { isValid: true, message: "" };
 };
 
-/**
- * Validate kích thước sân
- * Format hợp lệ: 20x40m, 20X40, 20 x 40m, 20.5x40.5m
- * Trường này không bắt buộc
- * @param {string} size - Kích thước cần validate
- * @returns {{ isValid: boolean, message: string }} - Kết quả validate
- */
+// Validate kích thước sân
 export const validateFieldSize = (size) => {
-  // Trường không bắt buộc - bỏ qua nếu rỗng
   if (!size || size.trim() === "") {
     return { isValid: true, message: "" };
   }
@@ -74,12 +51,8 @@ export const validateFieldSize = (size) => {
   return { isValid: true, message: "" };
 };
 
-/**
- * Validate địa chỉ khu sân
- * Kiểm tra: không rỗng, độ dài 10-200 ký tự
- * @param {string} address - Địa chỉ cần validate
- * @returns {{ isValid: boolean, message: string }} - Kết quả validate
- */
+// Validate địa chỉ khu sân
+
 export const validateAddress = (address) => {
   const trimmedAddress = address?.trim() || "";
   if (!trimmedAddress) {
@@ -94,13 +67,7 @@ export const validateAddress = (address) => {
   return { isValid: true, message: "" };
 };
 
-/**
- * Validate toàn bộ dữ liệu khu sân (Complex)
- * Kiểm tra: tên, địa chỉ, hình ảnh (bắt buộc khi tạo mới)
- * @param {Object} data - Dữ liệu khu sân cần validate
- * @param {boolean} isEdit - true nếu đang chỉnh sửa, false nếu tạo mới
- * @returns {{ isValid: boolean, errors: Object }} - Kết quả validate và danh sách lỗi
- */
+// Validate toàn bộ dữ liệu khu sân (Complex)
 export const validateComplexData = (data, isEdit = false) => {
   const errors = {};
 

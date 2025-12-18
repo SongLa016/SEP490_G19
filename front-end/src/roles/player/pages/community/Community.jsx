@@ -19,20 +19,11 @@ import { createPost } from "../../../../shared/services/posts";
 import FindMatch from "./components/FindMatch";
 import Swal from 'sweetalert2';
 
-/**
- * Trang Cộng đồng của người chơi
- * URL: /community
- * 
- * Chức năng:
- * - Tab "Dành cho bạn": Hiển thị danh sách bài viết (ThreadsFeed)
- * - Tab "Tìm đối thủ": Hiển thị danh sách yêu cầu tìm đối (FindMatch) - chỉ khi đã đăng nhập
- * - Nút "Đăng" để tạo bài viết mới (NewThreadModal)
- * - Card đăng nhập/đăng ký cho khách (góc phải dưới)
- */
+
 export default function Community() {
      const locationRouter = useLocation();
      const { user, logout } = useAuth();
-     const [activeTab, setActiveTab] = useState("danh-cho-ban"); // Tab hiện tại: danh-cho-ban | tim-doi-thu
+     const [activeTab, setActiveTab] = useState("danh-cho-ban");
      const [filterLocation] = useState("");
      const [filterDate] = useState("");
      const [matchRequests, setMatchRequests] = useState([]);
@@ -42,14 +33,14 @@ export default function Community() {
      const [newPostContent, setNewPostContent] = useState("");
      const [newPostTitle, setNewPostTitle] = useState("");
      const [selectedField, setSelectedField] = useState(null);
-     const [showLoginPrompt, setShowLoginPrompt] = useState(true); // Control visibility of login prompt
-     const [refreshTrigger, setRefreshTrigger] = useState(0); // Trigger to refresh ThreadsFeed
+     const [showLoginPrompt, setShowLoginPrompt] = useState(true);
+     const [refreshTrigger, setRefreshTrigger] = useState(0);
      const highlightRef = useRef(null);
      const matchEndRef = useRef(null);
      const pageSize = 10;
      const visibleMatchRequests = matchRequests.slice(0, matchPage * pageSize);
 
-     // Hiển thị avatar và tên cho user hiện tại (ưu tiên avatar từ backend, fallback bằng ui-avatars)
+     // Hiển thị avatar và tên cho user hiện tại
      const displayName = user?.fullName || user?.name || user?.phone || "User";
      const avatarUrl =
           user?.avatar ||
@@ -57,14 +48,7 @@ export default function Community() {
                displayName
           )}&background=0ea5e9&color=fff&size=100`;
 
-     /**
-      * Xử lý khi submit bài viết mới - Nút "Đăng" trong NewThreadModal
-      * Validate nội dung và gọi API tạo bài viết
-      * @param {string} title - Tiêu đề bài viết
-      * @param {string} content - Nội dung bài viết
-      * @param {Object} field - Sân được gắn thẻ (nếu có)
-      * @param {File} imageFile - File ảnh đính kèm (nếu có)
-      */
+     // Submot bài viết 
      const handlePostSubmit = async (title, content, field, imageFile) => {
           if (!user) {
                Swal.fire({
@@ -114,14 +98,13 @@ export default function Community() {
                     fieldId: field?.fieldId || 0,
                     imageFiles: imageFile
                });
-               // Trigger refresh in ThreadsFeed
+               // refresh danh sách bài viết
                setRefreshTrigger(prev => prev + 1);
                setNewPostContent("");
                setNewPostTitle("");
                setSelectedField(null);
                setShowNewThread(false);
 
-               // Show success message
                Swal.fire({
                     icon: 'success',
                     title: 'Đã đăng!',
@@ -140,12 +123,12 @@ export default function Community() {
                     confirmButtonText: 'Đã hiểu'
                });
           }
-     };
-
+     }
+     // Chuyển tab
      useEffect(() => {
           const st = locationRouter?.state || {};
           if (st.tab) {
-               // Only allow "danh-cho-ban" tab if not logged in
+               // chỉ cho phép tab "danh-cho-ban" nếu không đăng nhập
                if (!user && st.tab !== "danh-cho-ban") {
                     setActiveTab("danh-cho-ban");
                } else {
@@ -155,6 +138,7 @@ export default function Community() {
           if (st.highlightPostId) setHighlightPostId(st.highlightPostId);
      }, [locationRouter?.state, user]);
 
+     // Chuyển tab nếu không đăng nhập
      useEffect(() => {
           if (!user && activeTab !== "danh-cho-ban") {
                setActiveTab("danh-cho-ban");
@@ -162,14 +146,13 @@ export default function Community() {
      }, [user, activeTab]);
 
      useEffect(() => {
-          // Brief loading indication when switching tabs
           window.scrollTo({
                top: 0,
                behavior: 'smooth'
           });
      }, [activeTab]);
 
-     // Auto scroll to highlighted post
+     // Auto scroll đến bài viết được highlight
      useEffect(() => {
           if (!highlightPostId) return;
           if (highlightRef.current) {
@@ -179,13 +162,12 @@ export default function Community() {
           }
      }, [highlightPostId]);
 
-     // Note: Posts are now loaded via API in ThreadsFeed component
-
+     // Danh sách yêu cầu tìm đối thủ
      useEffect(() => {
           setMatchRequests(listMatchRequests({ status: "Open" }));
      }, [filterLocation, filterDate]);
 
-     // Observe end for match infinite scroll
+     // tab yêu cầu tìm đối
      useEffect(() => {
           if (activeTab !== "tim-doi-thu") return;
           const el = matchEndRef.current;
@@ -210,7 +192,7 @@ export default function Community() {
                <div className="ml-0 md:ml-8 lg:ml-16 px-3 md:px-4 flex justify-center">
                     <div className="max-w-2xl w-full">
 
-                         {/* Tabs với Underline Slide Animation */}
+                         {/* Tabs với hiệu ứng */}
                          <motion.div
                               className="py-2"
                               initial={{ opacity: 0, y: -20 }}
@@ -236,7 +218,6 @@ export default function Community() {
                                                   transition={{ duration: 0.3, ease: "easeInOut" }}
                                              />
                                              <motion.div
-
                                                   whileTap={{ y: 1 }}
                                              >
                                                   <Button
@@ -259,9 +240,6 @@ export default function Community() {
                               </div>
                          </motion.div>
 
-                         {/* Post Creation Area - Only for logged users */}
-
-                         {/* Content based on active tab với Smooth Transitions */}
                          <AnimatePresence mode="wait">
                               {activeTab === "danh-cho-ban" && (
                                    <motion.div

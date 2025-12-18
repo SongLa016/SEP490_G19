@@ -13,7 +13,7 @@ import Swal from "sweetalert2";
 export function useComments(user, posts, setPosts) {
   const [showCommentInput, setShowCommentInput] = useState({});
   const [commentContent, setCommentContent] = useState({});
-
+  // nhập comment
   const toggleCommentInput = (postId) => {
     const token = getStoredToken();
     if (!token || isTokenExpired(token) || !user) {
@@ -39,14 +39,14 @@ export function useComments(user, posts, setPosts) {
       [postId]: !prev[postId],
     }));
   };
-
+  // suwaar comment
   const handleCommentChange = (postId, content) => {
     setCommentContent((prev) => ({
       ...prev,
       [postId]: content,
     }));
   };
-
+  // them comment
   const handleCreateComment = async (
     postId,
     content,
@@ -58,7 +58,7 @@ export function useComments(user, posts, setPosts) {
         icon: "warning",
         title: "Thiếu nội dung",
         text: "Vui lòng nhập nội dung bình luận",
-        confirmButtonColor: "#0d9488"
+        confirmButtonColor: "#0d9488",
       });
       return false;
     }
@@ -70,7 +70,7 @@ export function useComments(user, posts, setPosts) {
         icon: "warning",
         title: "Nội dung quá ngắn",
         text: "Bình luận phải có ít nhất 2 ký tự",
-        confirmButtonColor: "#0d9488"
+        confirmButtonColor: "#0d9488",
       });
       return false;
     }
@@ -80,7 +80,7 @@ export function useComments(user, posts, setPosts) {
         icon: "warning",
         title: "Nội dung quá dài",
         text: "Bình luận không được vượt quá 2000 ký tự",
-        confirmButtonColor: "#0d9488"
+        confirmButtonColor: "#0d9488",
       });
       return false;
     }
@@ -146,7 +146,6 @@ export function useComments(user, posts, setPosts) {
         throw new Error("Post ID không hợp lệ.");
       }
 
-      // Call API with optional parentCommentId
       await createComment({
         postId: numericPostId,
         content: content.trim(),
@@ -158,7 +157,6 @@ export function useComments(user, posts, setPosts) {
       setPosts((prevPosts) =>
         prevPosts.map((post) => {
           if (post.PostID === postId) {
-            // Ensure updatedCount is a number, fallback to incrementing current count
             const commentCount =
               typeof updatedCount === "number" && updatedCount > 0
                 ? updatedCount
@@ -184,9 +182,8 @@ export function useComments(user, posts, setPosts) {
         position: "top-end",
       });
 
-      return true; // Success
+      return true;
     } catch (error) {
-      console.error("Error creating comment:", error);
       Swal.close();
       Swal.fire({
         icon: "error",
@@ -194,10 +191,10 @@ export function useComments(user, posts, setPosts) {
         text: error.message || "Không thể đăng bình luận. Vui lòng thử lại.",
         confirmButtonText: "Đã hiểu",
       });
-      return false; // Failed
+      return false;
     }
   };
-
+  // tải comment lên
   const handleCommentSubmit = async (postId) => {
     const content = commentContent[postId];
     const success = await handleCreateComment(postId, content);

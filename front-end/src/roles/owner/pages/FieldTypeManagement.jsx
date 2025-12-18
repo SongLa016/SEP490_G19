@@ -1,7 +1,4 @@
-import {
-     Loader2,
-     Tag
-} from "lucide-react";
+import { Loader2, Tag } from "lucide-react";
 import {
      Card,
      Table,
@@ -17,10 +14,8 @@ import { useFieldTypes } from "../../../shared/hooks";
 import { normalizeFieldType } from "../../../shared/services/fieldTypes";
 
 export default function FieldTypeManagement() {
-     // Use React Query hook for field types with caching
      const { data: fieldTypes = [], isLoading: loading } = useFieldTypes();
-
-     // Pagination for field types (8 per page)
+     // Phân trang 
      const {
           currentPage,
           totalPages,
