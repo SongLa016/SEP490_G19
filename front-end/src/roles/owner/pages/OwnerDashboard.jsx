@@ -9,7 +9,6 @@ import {
      TrendingUp,
      TrendingDown,
      MapPin,
-     Eye,
      Plus,
      BarChart3,
      PieChart,
@@ -18,7 +17,6 @@ import {
      CheckCircle,
      Building2,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import {
      fetchOwnerDailyRevenue,
      fetchOwnerFieldPerformance,
@@ -28,10 +26,10 @@ import {
      fetchOwnerTotalBookings
 } from "../../../shared/services/ownerStatistics";
 
-export default function OwnerDashboard({ isDemo = false }) {
+export default function OwnerDashboard() {
      const navigate = useNavigate();
      const [timeRange, setTimeRange] = useState("7d");
-     const [loading, setLoading] = useState(!isDemo);
+     const [loading, setLoading] = useState(true);
      const [error, setError] = useState(null);
 
      // State for statistics
@@ -87,11 +85,6 @@ export default function OwnerDashboard({ isDemo = false }) {
           return 0;
      };
 
-     // Tải dữ liệu thống kê khi timeRange thay đổi
-     useEffect(() => {
-          if (isDemo) return;
-          loadStatistics();
-     }, [timeRange, isDemo]);
      // Hàm tải dữ liệu thống kê
      const loadStatistics = async () => {
           try {
@@ -166,15 +159,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                     }));
                     // Giới hạn hiển thị 10 ngày gần nhất
                     const trimmedData = formattedData.slice(-10);
-                    setRevenueData(trimmedData.length > 0 ? trimmedData : [
-                         { day: "T2", amount: 0 },
-                         { day: "T3", amount: 0 },
-                         { day: "T4", amount: 0 },
-                         { day: "T5", amount: 0 },
-                         { day: "T6", amount: 0 },
-                         { day: "T7", amount: 0 },
-                         { day: "CN", amount: 0 }
-                    ]);
+                    setRevenueData(trimmedData);
                }
 
                // Cập nhật field performance
@@ -211,19 +196,12 @@ export default function OwnerDashboard({ isDemo = false }) {
           }
      };
 
-     // Demo data
-     const demoStats = {
-          totalRevenue: 25000000,
-          totalBookings: 184,
-          activeFields: 5,
-          averageRating: 4.8,
-          revenueGrowth: 12.5,
-          bookingGrowth: 8.3,
-          occupancyRate: 78.5,
-          customerSatisfaction: 92
-     };
+     // Tải dữ liệu thống kê khi timeRange thay đổi
+     useEffect(() => {
+          loadStatistics();
+     }, [timeRange]);
 
-     const displayStats = isDemo ? demoStats : stats;
+     const displayStats = stats;
 
      const formatCurrency = (amount) => {
           return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -285,37 +263,9 @@ export default function OwnerDashboard({ isDemo = false }) {
           },
      ];
 
-     // Demo data
-     const demoRevenueData = [
-          { day: "T2", amount: 1200000 },
-          { day: "T3", amount: 1800000 },
-          { day: "T4", amount: 1500000 },
-          { day: "T5", amount: 2200000 },
-          { day: "T6", amount: 2800000 },
-          { day: "T7", amount: 3200000 },
-          { day: "CN", amount: 2500000 }
-     ];
-
-     const demoRecentBookings = [
-          { id: 1, customer: "Nguyễn Văn A", field: "Sân A1", time: "18:00-19:00", status: "confirmed", amount: 150000 },
-          { id: 2, customer: "Trần Thị B", field: "Sân B2", time: "19:30-20:30", status: "pending", amount: 180000 },
-          { id: 3, customer: "Lê Văn C", field: "Sân A2", time: "20:00-21:00", status: "confirmed", amount: 200000 },
-          { id: 4, customer: "Phạm Thị D", field: "Sân C1", time: "17:00-18:00", status: "cancelled", amount: 120000 },
-          { id: 5, customer: "Hoàng Văn E", field: "Sân B1", time: "21:00-22:00", status: "confirmed", amount: 160000 },
-          { id: 6, customer: "Võ Thị F", field: "Sân A3", time: "19:00-20:00", status: "confirmed", amount: 170000 }
-     ];
-
-     const demoFieldPerformance = [
-          { name: "Sân A1", bookings: 45, revenue: 6750000, rating: 4.8 },
-          { name: "Sân A2", bookings: 38, revenue: 5700000, rating: 4.6 },
-          { name: "Sân B1", bookings: 42, revenue: 6300000, rating: 4.7 },
-          { name: "Sân B2", bookings: 35, revenue: 5250000, rating: 4.5 },
-          { name: "Sân C1", bookings: 24, revenue: 3600000, rating: 4.3 }
-     ];
-
-     const displayRevenueData = isDemo ? demoRevenueData : (revenueData.length > 0 ? revenueData : demoRevenueData);
-     const displayRecentBookings = isDemo ? demoRecentBookings : (recentBookings.length > 0 ? recentBookings : demoRecentBookings);
-     const displayFieldPerformance = isDemo ? demoFieldPerformance : (fieldPerformance.length > 0 ? fieldPerformance : demoFieldPerformance);
+     const displayRevenueData = revenueData;
+     const displayRecentBookings = recentBookings;
+     const displayFieldPerformance = fieldPerformance;
      const maxRevenueAmount = displayRevenueData.length > 0
           ? Math.max(...displayRevenueData.map(d => d.amount || 0), 1)
           : 1;
@@ -324,34 +274,22 @@ export default function OwnerDashboard({ isDemo = false }) {
                {/* Header */}
                <div className="flex items-center justify-between">
                     <div>
-                         <h1 className="text-3xl font-bold text-teal-900">
-                              {isDemo ? "Demo Dashboard" : "Tổng quan"}
-                         </h1>
-                         <p className="text-teal-600 mt-1">
-                              {isDemo ? "Trải nghiệm hệ thống quản lý sân bóng" : "Tổng quan hoạt động kinh doanh"}
-                         </p>
+                         <h1 className="text-3xl font-bold text-teal-900">Tổng quan</h1>
+                         <p className="text-teal-600 mt-1">Tổng quan hoạt động kinh doanh</p>
                     </div>
                     <div className="flex items-center rounded-xl space-x-4">
-                         {!isDemo && (
-                              <Select value={timeRange} onValueChange={setTimeRange}>
-                                   <SelectTrigger className="w-32">
-                                        <SelectValue />
-                                   </SelectTrigger>
-                                   <SelectContent>
-                                        <SelectItem value="7d">7 ngày</SelectItem>
-                                        <SelectItem value="30d">30 ngày</SelectItem>
-                                        <SelectItem value="90d">90 ngày</SelectItem>
-                                        <SelectItem value="1y">1 năm</SelectItem>
-                                   </SelectContent>
-                              </Select>
-                         )}
-                         {isDemo && (
-                              <div className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-medium">
-                                   <Eye className="w-4 h-4 inline mr-1" />
-                                   Chế độ Demo
-                              </div>
-                         )}
-                         {error && !isDemo && (
+                         <Select value={timeRange} onValueChange={setTimeRange}>
+                              <SelectTrigger className="w-32">
+                                   <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                   <SelectItem value="7d">7 ngày</SelectItem>
+                                   <SelectItem value="30d">30 ngày</SelectItem>
+                                   <SelectItem value="90d">90 ngày</SelectItem>
+                                   <SelectItem value="1y">1 năm</SelectItem>
+                              </SelectContent>
+                         </Select>
+                         {error && (
                               <div className="px-4 py-2 bg-red-100 text-red-800 rounded-lg text-sm font-medium">
                                    <AlertCircle className="w-4 h-4 inline mr-1" />
                                    {error}
@@ -400,7 +338,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                               </div>
                          </div>
                          <div className="space-y-4">
-                              {loading && !isDemo ? (
+                              {loading ? (
                                    <div className="text-center py-8 text-teal-500">
                                         <Activity className="w-8 h-8 animate-spin mx-auto mb-2" />
                                         <p>Đang tải dữ liệu...</p>
@@ -440,7 +378,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                               </div>
                          </div>
                          <div className="space-y-4">
-                              {loading && !isDemo ? (
+                              {loading ? (
                                    <div className="text-center py-8 text-teal-500">
                                         <Activity className="w-8 h-8 animate-spin mx-auto mb-2" />
                                         <p>Đang tải dữ liệu...</p>
@@ -486,14 +424,14 @@ export default function OwnerDashboard({ isDemo = false }) {
                               <Button
                                    variant="outline"
                                    size="sm"
-                                   onClick={() => navigate(isDemo ? "/demo/bookings" : "/owner/bookings")}
+                                   onClick={() => navigate("/owner/bookings")}
                               >
                                    <Activity className="w-4 h-4 mr-2" />
                                    Xem tất cả
                               </Button>
                          </div>
                          <div className="space-y-3">
-                              {loading && !isDemo ? (
+                              {loading ? (
                                    <div className="text-center py-8 text-teal-500">
                                         <Activity className="w-8 h-8 animate-spin mx-auto mb-2" />
                                         <p>Đang tải dữ liệu...</p>
@@ -533,7 +471,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                               <Button
                                    className="w-full justify-start rounded-2xl"
                                    variant="outline"
-                                   onClick={() => navigate(isDemo ? "/demo/fields" : "/owner/fields")}
+                                   onClick={() => navigate("/owner/fields")}
                               >
                                    <Plus className="w-4 h-4 mr-2" />
                                    Thêm sân mới
@@ -541,7 +479,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                               <Button
                                    className="w-full justify-start rounded-2xl"
                                    variant="outline"
-                                   onClick={() => navigate(isDemo ? "/demo/bookings" : "/owner/bookings")}
+                                   onClick={() => navigate("/owner/bookings")}
                               >
                                    <Calendar className="w-4 h-4 mr-2" />
                                    Xem đặt sân
@@ -549,7 +487,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                               <Button
                                    className="w-full justify-start rounded-2xl"
                                    variant="outline"
-                                   onClick={() => navigate(isDemo ? "/demo/fields" : "/owner/fields")}
+                                   onClick={() => navigate("/owner/fields")}
                               >
                                    <Building2 className="w-4 h-4 mr-2" />
                                    Quản lý sân
@@ -557,7 +495,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                               <Button
                                    className="w-full justify-start rounded-2xl"
                                    variant="outline"
-                                   onClick={() => navigate(isDemo ? "/demo/schedule" : "/owner/schedule")}
+                                   onClick={() => navigate("/owner/schedule")}
                               >
                                    <Calendar className="w-4 h-4 mr-2" />
                                    Lịch trình & khung giờ
@@ -594,23 +532,7 @@ export default function OwnerDashboard({ isDemo = false }) {
                     </Card>
                </div>
 
-               {/* Demo Banner */}
-               {isDemo && (
-                    <Card className="p-6 rounded-2xl shadow-lg bg-blue-50 border-blue-200">
-                         <div className="flex items-center">
-                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                   <Eye className="w-4 h-4 text-blue-600" />
-                              </div>
-                              <div>
-                                   <h3 className="font-medium text-blue-900">Chế độ Demo</h3>
-                                   <p className="text-sm text-blue-700 mt-1">
-                                        Đây là dữ liệu mẫu để bạn trải nghiệm hệ thống.
-                                        <Link to="/register" className="underline ml-1 font-medium">Đăng ký ngay</Link> để sử dụng đầy đủ tính năng.
-                                   </p>
-                              </div>
-                         </div>
-                    </Card>
-               )}
+
           </div>
      );
 }

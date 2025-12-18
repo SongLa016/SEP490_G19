@@ -629,8 +629,8 @@ export async function createBookingPackage(packageData) {
       userId: Number(packageData.userId) || 0,
       fieldId: Number(packageData.fieldId) || 0,
       packageName: packageData.packageName || "Gói đặt định kỳ",
-      startDate: formatDateForBackend(packageData.startDate), // DateTime format cho BE
-      endDate: formatDateForBackend(packageData.endDate), // DateTime format cho BE
+      startDate: formatDateForBackend(packageData.startDate), 
+      endDate: formatDateForBackend(packageData.endDate), 
       totalPrice: Number(packageData.totalPrice) || 0,
       selectedSlots: Array.isArray(packageData.selectedSlots)
         ? packageData.selectedSlots.map((s) => ({
@@ -641,15 +641,6 @@ export async function createBookingPackage(packageData) {
           }))
         : [],
     };
-
-    console.log("📤 [API] Sending package payload:", {
-      startDate: payload.startDate,
-      endDate: payload.endDate,
-      totalPrice: payload.totalPrice,
-      selectedSlotsCount: payload.selectedSlots.length,
-      selectedSlots: payload.selectedSlots
-    });
-    console.log("⚠️ [API] IMPORTANT: Backend should use totalPrice =", payload.totalPrice, "NOT recalculate!");
 
     const response = await apiClient.post(endpoint, payload);
 
@@ -753,12 +744,26 @@ export async function generateQRCode(bookingId, options = {}) {
       params.toString() ? `?${params.toString()}` : ""
     }`;
 
+    console.log("📱 [generateQRCode] Gọi API:", endpoint);
+    console.log("📱 [generateQRCode] Options:", options);
+
     const response = await apiClient.get(endpoint);
+
+    console.log("📱 [generateQRCode] Response:", response.data);
+
+    // Lấy qrCodeUrl từ response với nhiều trường hợp khác nhau
+    const qrCodeUrl = response.data?.qrCodeUrl 
+      || response.data?.QRCodeUrl 
+      || response.data?.qrCode 
+      || response.data?.QRCode
+      || response.data?.data?.qrCodeUrl
+      || response.data?.data?.QRCodeUrl
+      || null;
 
     return {
       success: true,
       data: response.data,
-      qrCodeUrl: response.data?.qrCodeUrl || response.data?.qrCode || null,
+      qrCodeUrl: qrCodeUrl,
     };
   } catch (error) {
     console.error("Error generating QR code:", error);
@@ -1474,6 +1479,48 @@ export async function updateBookingStatus(bookingId, status) {
       success: false,
       error:
         errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+/**
+ * Fetch cancellation requests by current logged-in user (from token)
+ * Backend tự động lấy userId từ token
+ * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
+ */
+export async function fetchCancellationRequestsByUser() {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Bạn cần đăng nhập để xem yêu cầu hủy booking",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/by-user`;
+
+    const response = await apiClient.get(endpoint);
+
+    return {
+      success: true,
+      data: extractArrayResponse(response.data),
+    };
+  } catch (error) {
+    console.error("Error fetching cancellation requests by user:", error);
+    
+    // Nếu 404, có thể user chưa có yêu cầu hủy nào
+    if (error.response?.status === 404) {
+      return {
+        success: true,
+        data: [],
+      };
+    }
+
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error: errorMessage instanceof Error ? errorMessage.message : errorMessage,
     };
   }
 }

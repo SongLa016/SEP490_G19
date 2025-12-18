@@ -287,6 +287,42 @@ export const profileService = {
     }
   },
 
+  // Update phone number
+  async updatePhone(phone) {
+    try {
+      const API_URL =
+        "https://sep490-g19-zxph.onrender.com/api/UserProfile/update-phone";
+
+      const response = await apiClient.put(API_URL, { phone });
+
+      return {
+        ok: true,
+        data: response.data,
+        message: response.data?.message || "Cập nhật số điện thoại thành công",
+      };
+    } catch (error) {
+      let errorMessage = "Cập nhật số điện thoại thất bại";
+
+      if (error.response) {
+        const { data } = error.response;
+        if (typeof data === "string") {
+          errorMessage = data;
+        } else if (data?.message) {
+          errorMessage = data.message;
+        } else if (data?.Message) {
+          errorMessage = data.Message;
+        }
+      } else if (error.request) {
+        errorMessage = "Không thể kết nối đến máy chủ";
+      }
+
+      return {
+        ok: false,
+        reason: errorMessage,
+      };
+    }
+  },
+
   // Update owner/admin profile (PUT request to /api/UserProfile/profile/admin-owner)
   async updateOwnerAdminProfile(profileData, avatarFile = null) {
     try {
@@ -335,14 +371,10 @@ export const profileService = {
         formData.append("Address", profileData.address || "");
       }
 
-      // Phone và Email thường không cần gửi trong FormData (backend lấy từ token)
-      // Nhưng nếu API yêu cầu, có thể thêm:
-      // if (profileData.phone !== undefined) {
-      //   formData.append("Phone", profileData.phone || "");
-      // }
-      // if (profileData.email !== undefined) {
-      //   formData.append("Email", profileData.email || "");
-      // }
+      // Phone field
+      if (profileData.phone !== undefined) {
+        formData.append("Phone", profileData.phone || "");
+      }
 
       // Use separate client for multipart/form-data
       const requestClient = axios.create({

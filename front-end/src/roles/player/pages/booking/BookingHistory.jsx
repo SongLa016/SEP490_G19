@@ -127,10 +127,11 @@ export default function BookingHistory({ user }) {
           paymentQRCode,
           isLoadingQR,
           isConfirmingPayment,
+          paymentCountdown,
           handleContinuePayment,
           handleConfirmPayment,
           closePaymentModal,
-     } = useBookingPayment(playerId, setBookings, setGroupedBookings);
+     } = useBookingPayment(playerId, setBookings, setGroupedBookings, scheduleDataMap);
 
      // Booking Cancel Hook
      const {
@@ -771,11 +772,7 @@ export default function BookingHistory({ user }) {
                                                                                      Đã có đối
                                                                                 </span>
                                                                            )}
-                                                                           {b.qrCode && (
-                                                                                <span className="inline-flex items-center gap-1 bg-purple-50 border border-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                                                                                     Mã QR: <span className="font-medium">{b.qrCode}</span>
-                                                                                </span>
-                                                                           )}
+
                                                                            {b.cancelledBy && (
                                                                                 <span className="inline-flex items-center gap-1 bg-red-50 border border-red-100 text-red-700 px-2 py-1 rounded-full">
                                                                                      Hủy bởi: <span className="font-medium">{b.cancelledBy}</span>
@@ -1439,7 +1436,7 @@ export default function BookingHistory({ user }) {
                               <span>Thanh toán booking</span>
                          </div>
                     }
-                    className="max-w-lg rounded-2xl border border-teal-200 shadow-xl"
+                    className="max-w-lg rounded-2xl border overflow-y-auto scrollbar-hide border-teal-200 shadow-xl"
                >
                     {paymentBooking && (
                          <div className="space-y-5">
@@ -1459,12 +1456,15 @@ export default function BookingHistory({ user }) {
                                         <div className="grid grid-cols-2 gap-3 pt-2 border-t border-teal-200">
                                              <div>
                                                   <p className="text-xs text-teal-600 font-medium mb-1">📅 Ngày & Giờ</p>
-                                                  <p className="text-sm font-semibold text-teal-900">{paymentBooking.date}</p>
-                                                  <p className="text-sm font-semibold text-teal-900">{paymentBooking.time}</p>
+                                                  <p className="text-sm font-semibold text-teal-900">{paymentBooking.scheduleDate || paymentBooking.date}</p>
+                                                  <p className="text-sm font-semibold text-teal-900">{paymentBooking.scheduleTime || paymentBooking.time}</p>
                                              </div>
                                              <div>
-                                                  <p className="text-xs text-teal-600 font-medium mb-1">💰 Số tiền</p>
-                                                  <p className="text-xl font-bold text-teal-600">{formatPrice(paymentBooking.depositAmount || paymentBooking.totalPrice || 0)}</p>
+                                                  <p className="text-xs text-teal-600 font-medium mb-1">💰 Số tiền cần thanh toán</p>
+                                                  <p className="text-xl font-bold text-teal-600">{formatPrice(paymentBooking.amountToPay || paymentBooking.depositAmount || paymentBooking.totalPrice || 0)}</p>
+                                                  {paymentBooking.isDepositPaid && (
+                                                       <p className="text-xs text-gray-500 mt-1">Đã thanh toán cọc: {formatPrice(paymentBooking.depositAmount || 0)}</p>
+                                                  )}
                                              </div>
                                         </div>
                                    </div>
@@ -1519,14 +1519,14 @@ export default function BookingHistory({ user }) {
                                         </div>
 
                                         {/* Countdown timer */}
-                                        {timeRemaining[paymentBooking.id] && timeRemaining[paymentBooking.id] > 0 && (
+                                        {paymentCountdown > 0 && (
                                              <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-300 rounded-lg p-4 shadow-sm">
                                                   <div className="flex items-center justify-center gap-2">
                                                        <Clock className="w-5 h-5 text-orange-600 animate-pulse" />
                                                        <div>
                                                             <p className="text-xs text-orange-600 font-medium">Thời gian còn lại</p>
                                                             <p className="text-lg font-bold text-orange-800">
-                                                                 {formatTimeRemaining(timeRemaining[paymentBooking.id])}
+                                                                 {formatTimeRemaining(paymentCountdown)}
                                                             </p>
                                                        </div>
                                                   </div>

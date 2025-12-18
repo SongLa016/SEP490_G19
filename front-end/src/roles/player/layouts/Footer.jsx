@@ -86,14 +86,11 @@ export default function Footer() {
                                    © 2025 BallSpot. Tất cả quyền được bảo lưu.
                               </p>
                               <div className="flex space-x-6 mt-4 md:mt-0">
-                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
-                                        Điều khoản sử dụng
+                                   <Link to="/terms-of-service" className="text-gray-400 hover:text-white text-sm transition-colors">
+                                        Điều khoản dịch vụ
                                    </Link>
-                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
+                                   <Link to="/privacy-policy" className="text-gray-400 hover:text-white text-sm transition-colors">
                                         Chính sách bảo mật
-                                   </Link>
-                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
-                                        Chính sách hủy
                                    </Link>
                               </div>
                          </div>

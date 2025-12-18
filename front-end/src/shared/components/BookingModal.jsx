@@ -3,6 +3,7 @@ import { AlertCircle } from "lucide-react";
 import Swal from 'sweetalert2';
 import { Button, Modal } from "./ui";
 import { validateBookingData, checkFieldAvailability } from "../services/bookings";
+import { validateVietnamPhone } from "../services/authService";
 import {
      createBooking,
      createBookingAPI,
@@ -911,18 +912,10 @@ export default function BookingModal({
                errors.customerName = "Vui lòng nhập họ và tên";
           }
 
-          if (!bookingData.customerPhone?.trim()) {
-               errors.customerPhone = "Vui lòng nhập số điện thoại";
-          } else {
-               // Validate số điện thoại Việt Nam: bắt đầu bằng 0, có đúng 10 số
-               const phoneDigits = bookingData.customerPhone.replace(/\D/g, '');
-               if (phoneDigits.length !== 10) {
-                    errors.customerPhone = "Số điện thoại phải có đúng 10 chữ số";
-               } else if (!phoneDigits.startsWith('0')) {
-                    errors.customerPhone = "Số điện thoại phải bắt đầu bằng số 0";
-               } else if (!/^(03|05|07|08|09)\d{8}$/.test(phoneDigits)) {
-                    errors.customerPhone = "Số điện thoại không hợp lệ (VD: 0912345678)";
-               }
+          // Validate số điện thoại Việt Nam
+          const phoneValidation = validateVietnamPhone(bookingData.customerPhone);
+          if (!phoneValidation.isValid) {
+               errors.customerPhone = phoneValidation.message;
           }
 
           // Email validation

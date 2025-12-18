@@ -39,6 +39,7 @@ import {
      fetchMatchRequestById,
      joinMatchRequestAPI,
 } from "../../../../../shared/services/matchRequest";
+import { validateVietnamPhone } from "../../../../../shared/services/authService";
 import { getBookingById } from "../../../../../shared/utils/bookingStore";
 import Swal from "sweetalert2";
 
@@ -563,11 +564,9 @@ export default function FindMatch() {
           }
 
           // Validate số điện thoại VN
-          const trimmedPhone = formData.contactPhone?.replace(/\s/g, "") || "";
-          if (!trimmedPhone) {
-               errors.contactPhone = "Vui lòng nhập số điện thoại liên hệ";
-          } else if (!/^(03|05|07|08|09)[0-9]{8}$/.test(trimmedPhone)) {
-               errors.contactPhone = "SĐT phải 10 số, bắt đầu bằng 03/05/07/08/09";
+          const phoneValidation = validateVietnamPhone(formData.contactPhone);
+          if (!phoneValidation.isValid) {
+               errors.contactPhone = phoneValidation.message;
           }
 
           // Validate số người chơi

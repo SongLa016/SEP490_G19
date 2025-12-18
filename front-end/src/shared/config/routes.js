@@ -18,6 +18,8 @@ const lazyLoad = (importFunc) => lazy(importFunc);
 
 // Public pages
 export const LandingPage = lazyLoad(() => import("../../pages/LandingPage"));
+export const TermsOfService = lazyLoad(() => import("../../pages/TermsOfService"));
+export const PrivacyPolicy = lazyLoad(() => import("../../pages/PrivacyPolicy"));
 
 // Player pages
 export const HomePage = lazyLoad(() =>
@@ -125,6 +127,16 @@ export const routeConfig = [
     path: "/",
     element: LandingPage,
     public: true,
+  },
+  {
+    path: "/terms-of-service",
+    element: TermsOfService,
+    requireAuth: false,
+  },
+  {
+    path: "/privacy-policy",
+    element: PrivacyPolicy,
+    requireAuth: false,
   },
   {
     path: "/notifications",

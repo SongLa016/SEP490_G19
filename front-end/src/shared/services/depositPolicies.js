@@ -23,6 +23,18 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Helper function to check token before API call
+const checkToken = () => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    throw new Error("Bạn chưa đăng nhập. Vui lòng đăng nhập để tiếp tục.");
+  }
+  return token;
+};
+
+const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
+
 // Helper function to handle API errors
 const handleApiError = (error) => {
   let errorMessage = "Có lỗi xảy ra khi gọi API";
@@ -51,8 +63,9 @@ const handleApiError = (error) => {
 // API functions
 export async function fetchDepositPolicies() {
   try {
+    checkToken();
     const response = await apiClient.get(
-      "https://sep490-g19-zxph.onrender.com/api/DepositPolicy"
+      `${API_BASE_URL}/api/owner/deposit-policies`
     );
     // Handle both array and single object responses
     const policies = Array.isArray(response.data)
@@ -78,8 +91,9 @@ export async function fetchDepositPolicies() {
 
 export async function fetchDepositPolicy(policyId) {
   try {
+    checkToken();
     const response = await apiClient.get(
-      `https://sep490-g19-zxph.onrender.com/api/DepositPolicy/${policyId}`
+      `${API_BASE_URL}/api/owner/deposit-policies/${policyId}`
     );
     const policy = response.data;
     return {
@@ -99,16 +113,15 @@ export async function fetchDepositPolicy(policyId) {
 
 export async function fetchDepositPolicyByField(fieldId) {
   try {
+    checkToken();
     const fieldIdNum = Number(fieldId);
     if (!fieldIdNum || isNaN(fieldIdNum)) {
       console.warn(`Invalid fieldId: ${fieldId}`);
       return null;
     }
-    // Use the specific endpoint for field-based query
-    const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
-    const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
-    const endpoint = `${API_BASE_URL}/api/DepositPolicy/field/${fieldIdNum}`;
-    const response = await apiClient.get(endpoint);
+    const response = await apiClient.get(
+      `${API_BASE_URL}/api/public/field/${fieldIdNum}`
+    );
     // Handle both array and single object responses
     const policy = Array.isArray(response.data)
       ? response.data[0]
@@ -143,46 +156,65 @@ export async function fetchDepositPolicyByField(fieldId) {
 
 export async function createDepositPolicy(policyData) {
   try {
-    const payload = {
-      fieldId: policyData.fieldId,
-      depositPercent: policyData.depositPercent,
-      minDeposit: policyData.minDeposit || null,
-      maxDeposit: policyData.maxDeposit || null,
-    };
+    checkToken();
+    const formData = new FormData();
+    formData.append("FieldId", policyData.fieldId);
+    formData.append("DepositPercent", policyData.depositPercent);
+    formData.append("MinDeposit", policyData.minDeposit ?? 0);
+    formData.append("MaxDeposit", policyData.maxDeposit ?? 0);
+
+    console.log("Creating deposit policy with FormData");
     const response = await apiClient.post(
-      "https://sep490-g19-zxph.onrender.com/api/DepositPolicy",
-      payload
+      `${API_BASE_URL}/api/owner/deposit-policies`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
     );
     return response.data;
   } catch (error) {
     console.error("Error creating deposit policy:", error);
+    console.error("Response data:", error.response?.data);
     handleApiError(error);
   }
 }
 
 export async function updateDepositPolicy(policyId, policyData) {
   try {
-    const payload = {
-      fieldId: policyData.fieldId,
-      depositPercent: policyData.depositPercent,
-      minDeposit: policyData.minDeposit || null,
-      maxDeposit: policyData.maxDeposit || null,
-    };
+    checkToken();
+    const formData = new FormData();
+    formData.append("DepositPolicyId", policyId);
+    formData.append("FieldId", policyData.fieldId);
+    formData.append("DepositPercent", policyData.depositPercent);
+    formData.append("MinDeposit", policyData.minDeposit ?? 0);
+    formData.append("MaxDeposit", policyData.maxDeposit ?? 0);
+    formData.append("CreatedAt", policyData.createdAt || "");
+
+    console.log("Updating deposit policy with FormData");
     const response = await apiClient.put(
-      `https://sep490-g19-zxph.onrender.com/api/DepositPolicy/${policyId}`,
-      payload
+      `${API_BASE_URL}/api/owner/deposit-policies/${policyId}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
     );
     return response.data;
   } catch (error) {
     console.error("Error updating deposit policy:", error);
+    console.error("Response data:", error.response?.data);
     handleApiError(error);
   }
 }
 
-export async function deleteDepositPolicy(policyId) {
+export async function deleteDepositPolicy(policyId, fieldId) {
   try {
+    checkToken();
     const response = await apiClient.delete(
-      `https://sep490-g19-zxph.onrender.com/api/DepositPolicy/${policyId}`
+      `${API_BASE_URL}/api/owner/deposit-policies/${policyId}/field/${fieldId}`
     );
     return response.data;
   } catch (error) {
