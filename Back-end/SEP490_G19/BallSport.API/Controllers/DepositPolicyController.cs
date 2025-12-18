@@ -1,11 +1,15 @@
-﻿using BallSport.Application.DTOs;
+﻿using System.Security.Claims;
+using BallSport.Application.DTOs;
 using BallSport.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace BallSport.API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/owner/deposit-policies")]
+    [Authorize(Roles = "Owner")]
     public class DepositPolicyController : ControllerBase
     {
         private readonly DepositPolicyService _service;
@@ -15,46 +19,81 @@ namespace BallSport.API.Controllers
             _service = service;
         }
 
+        // GET OWNER ID
+        private int GetOwnerId()
+        {
+            var userIdClaim = User.FindFirst("UserID");
+
+            if (userIdClaim == null)
+                throw new UnauthorizedAccessException("Token không chứa UserID");
+
+            return int.Parse(userIdClaim.Value);
+        }
+
+
+        // GET ALL (OWNER)
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var result = await _service.GetAllAsync();
+            var ownerId = GetOwnerId();
+            var result = await _service.GetAllAsync(ownerId);
             return Ok(result);
         }
 
-        [HttpGet("field/{fieldId}")]
+        // GET BY FIELD ID
+        [HttpGet("field/{fieldId:int}")]
         public async Task<IActionResult> GetByFieldId(int fieldId)
         {
-            var result = await _service.GetByFieldIdAsync(fieldId);
-            if (result == null) return NotFound();
+            var ownerId = GetOwnerId();
+            var result = await _service.GetByFieldIdAsync(fieldId, ownerId);
+
+            if (result == null)
+                return NotFound("Sân này chưa có chính sách cọc");
+
             return Ok(result);
         }
 
+        // CREATE
         [HttpPost]
-        public async Task<IActionResult> Create(DepositPolicyDTO dto)
+        public async Task<IActionResult> Create([FromForm] DepositPolicyDTO dto)
         {
-            var result = await _service.AddAsync(dto);
-            return CreatedAtAction(nameof(GetByFieldId), new { fieldId = result.FieldId }, result);
+            var ownerId = GetOwnerId();
+            var created = await _service.AddAsync(dto, ownerId);
+
+            return CreatedAtAction(
+                nameof(GetByFieldId),
+                new { fieldId = created.FieldId },
+                created
+            );
         }
 
+        // UPDATE
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(int id, DepositPolicyDTO dto)
+        public async Task<IActionResult> Update(int id,[FromForm] DepositPolicyDTO dto)
         {
-            if (id != dto.DepositPolicyId) return BadRequest("ID mismatch");
+            if (id != dto.DepositPolicyId)
+                return BadRequest("ID mismatch");
 
-            var success = await _service.UpdateAsync(dto);
-            if (!success) return NotFound();
+            int ownerId = GetOwnerId();
 
-            return NoContent();
+            var updated = await _service.UpdateAsync(dto, ownerId);
+            if (updated == null) return NotFound();
+
+            return Ok(updated); 
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var success = await _service.DeleteAsync(id);
-            if (!success) return NotFound();
 
-            return NoContent();
+        // DELETE
+        [HttpDelete("{id:int}/field/{fieldId:int}")]
+        public async Task<IActionResult> Delete(int id, int fieldId)
+        {
+            var ownerId = GetOwnerId();
+            var success = await _service.DeleteAsync(id, fieldId, ownerId);
+
+            if (!success)
+                return NotFound();
+
+            return Ok(success);
         }
     }
 }
