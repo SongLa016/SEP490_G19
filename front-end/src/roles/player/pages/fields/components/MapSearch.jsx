@@ -288,6 +288,9 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                                                        console.error('Error creating user location marker:', error);
                                                   }
                                              },
+                                             (error) => {
+                                                  console.warn('Error getting user location:', error.message);
+                                             },
                                              {
                                                   enableHighAccuracy: true,
                                                   timeout: 5000,
@@ -310,7 +313,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                const timer = setTimeout(initMap, 100);
                return () => clearTimeout(timer);
           }
-     }, [isOpen, map, addFieldMarkers, mockFields]);
+     }, [isOpen, map, addFieldMarkers, mockFields, GOONG_API_KEY]);
 
 
      // Cập nhật marker khi lọc sân bóng
