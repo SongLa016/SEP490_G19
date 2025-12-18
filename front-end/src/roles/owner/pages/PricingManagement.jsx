@@ -20,7 +20,7 @@ import { fetchPricing, createPricing, updatePricing, deletePricing } from "../..
 import Swal from "sweetalert2";
 
 const PricingManagement = ({ isDemo = false }) => {
-     const { user, logout } = useAuth();
+     const { user } = useAuth();
      const [loading, setLoading] = useState(true);
      const [fields, setFields] = useState([]);
      const [pricingData, setPricingData] = useState([]);
@@ -43,30 +43,30 @@ const PricingManagement = ({ isDemo = false }) => {
           price: ""
      });
 
-     // Use React Query hooks for time slots (after formData is declared)
+     // tải tất cả time slots
      const { data: allTimeSlots = [] } = useTimeSlots();
      const { data: fieldTimeSlots = [], isLoading: loadingFieldSlots } = useTimeSlotsByField(
           formData.fieldId ? parseInt(formData.fieldId) : null,
-          !!formData.fieldId // Only fetch when fieldId is selected
+          !!formData.fieldId
      );
 
-     // Get current user ID
+     // lấy userId 
      const currentUserId = user?.userID || user?.UserID || user?.id || user?.userId;
 
-     // Load data from API
+     // Load giữ liệu
      const loadData = useCallback(async () => {
           try {
                setLoading(true);
 
-               // Fetch all complexes with fields
+               // tải tất cả complexes với fields
                const allComplexesWithFields = await fetchAllComplexesWithFields();
 
-               // Filter only owner's complexes
+               // tìm complexes của owner hiện tại
                const ownerComplexes = allComplexesWithFields.filter(
                     complex => complex.ownerId === currentUserId || complex.ownerId === Number(currentUserId)
                );
 
-               // Get all fields from owner's complexes
+               // lấy tất cả fieds từ complexes của owner
                const allFields = ownerComplexes.flatMap(complex =>
                     (complex.fields || []).map(field => ({
                          ...field,
@@ -76,9 +76,7 @@ const PricingManagement = ({ isDemo = false }) => {
 
                setFields(allFields);
 
-               // Time slots are now loaded via React Query hooks
-
-               // Fetch pricing data
+               // tải giá
                const pricingResponse = await fetchPricing();
                if (pricingResponse.success) {
                     setPricingData(pricingResponse.data || []);
@@ -100,10 +98,7 @@ const PricingManagement = ({ isDemo = false }) => {
           loadData();
      }, [loadData]);
 
-     /**
-      * Xử lý thay đổi input trong form giá
-      * @param {Event} e - Event từ input element
-      */
+     // thay đổi input trong form giá
      const handleInputChange = (e) => {
           const { name, value, type, checked } = e.target;
           setFormData(prev => ({
@@ -112,12 +107,7 @@ const PricingManagement = ({ isDemo = false }) => {
           }));
      };
 
-     /**
-      * Xử lý submit form tạo/cập nhật giá
-      * - Validate dữ liệu form
-      * - Gọi API tạo hoặc cập nhật pricing
-      * @param {Event} e - Event từ form submit
-      */
+     // submit form thêm/chỉnh sửa giá
      const handleSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {

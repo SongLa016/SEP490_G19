@@ -19,6 +19,7 @@ export default function ProfileSettings({ isDemo = false }) {
 
      const [formData, setFormData] = useState({ ...profileData });
 
+     // 
      useEffect(() => {
           const token = localStorage.getItem("token");
           if (token && !isDemo) {
@@ -40,7 +41,7 @@ export default function ProfileSettings({ isDemo = false }) {
                });
           }
      }, [isEditing]);
-
+     // Hàm tải dữ liệu profile từ API
      const loadProfileData = async () => {
           const token = localStorage.getItem("token");
           if (!token) {
@@ -68,7 +69,6 @@ export default function ProfileSettings({ isDemo = false }) {
                          ...prev,
                          ...mappedProfile
                     }));
-                    // Update user context with profile data including avatar
                     if (updateUser) {
                          const updatedUser = { ...user, ...mappedProfile };
                          updateUser(updatedUser);
@@ -94,11 +94,7 @@ export default function ProfileSettings({ isDemo = false }) {
           }
      };
 
-     /**
-      * Xử lý thay đổi input trong form profile
-      * @param {string} field - Tên field cần cập nhật
-      * @param {any} value - Giá trị mới
-      */
+     // thay đỏi input
      const handleInputChange = (field, value) => {
           setFormData(prev => ({
                ...prev,
@@ -106,12 +102,7 @@ export default function ProfileSettings({ isDemo = false }) {
           }));
      };
 
-     /**
-      * Xử lý lưu thông tin profile
-      * - Validate token
-      * - Upload avatar mới (nếu có)
-      * - Gọi API cập nhật profile
-      */
+     // lưu thông tin profile
      const handleSave = async () => {
           const token = localStorage.getItem("token");
           if (!token) {
@@ -144,8 +135,6 @@ export default function ProfileSettings({ isDemo = false }) {
                     setIsLoading(false);
                     return;
                }
-
-               // Update avatar URL nếu có trong response
                let updatedFormData = { ...formData };
                if (result.data?.avatarUrl) {
                     updatedFormData.avatar = result.data.avatarUrl;
@@ -157,13 +146,13 @@ export default function ProfileSettings({ isDemo = false }) {
                     updatedFormData.avatar = result.data.data.avatar;
                }
 
-               // Update local state
+               // Cập nhật state và UI
                setProfileData(updatedFormData);
                setFormData(updatedFormData);
                setAvatarFile(null);
                setIsEditing(false);
 
-               // Update user in context and localStorage
+               // Cập nhật thông tin user trong context/localStorage
                const updatedUser = { ...user, ...updatedFormData };
                if (updateUser) {
                     updateUser(updatedUser);
@@ -193,22 +182,14 @@ export default function ProfileSettings({ isDemo = false }) {
           }
      };
 
-     /**
-      * Hủy bỏ thay đổi và reset form về dữ liệu gốc
-      */
+     //hủy chỉnh sửa
      const handleCancel = () => {
           setFormData({ ...profileData });
           setAvatarFile(null);
           setIsEditing(false);
      };
 
-     /**
-      * Xử lý upload avatar mới
-      * - Validate file type (chỉ chấp nhận ảnh)
-      * - Validate file size (tối đa 10MB)
-      * - Tạo preview URL
-      * @param {Event} event - Event từ input file
-      */
+     // upload avatar
      const handleAvatarUpload = (event) => {
           const file = event.target.files[0];
           if (!file) return;
@@ -223,7 +204,7 @@ export default function ProfileSettings({ isDemo = false }) {
                return;
           }
 
-          const maxSize = 10 * 1024 * 1024; // 10MB
+          const maxSize = 10 * 1024 * 1024;
           if (file.size > maxSize) {
                Swal.fire({
                     icon: 'error',
