@@ -9,19 +9,7 @@ import { createReport } from '../../../../../shared/services/reports';
 import Swal from 'sweetalert2';
 import { getUserAvatarAndName } from "./utils";
 
-/**
- * Modal hiển thị chi tiết bài viết và danh sách bình luận
- * Trang: Cộng đồng (Community)
- * Vị trí: Modal popup khi click vào bài viết
- * 
- * Chức năng:
- * - Hiển thị đầy đủ nội dung bài viết
- * - Hiển thị thông tin sân được gắn thẻ
- * - Các nút tương tác (Like, Comment, Share, Bookmark)
- * - Danh sách bình luận với khả năng reply
- * - Sửa/Xóa bình luận của mình
- * - Báo cáo bình luận vi phạm
- */
+
 const PostDetailModal = ({
      isOpen,
      onClose,
@@ -44,7 +32,7 @@ const PostDetailModal = ({
      const { avatarUrl: currentUserAvatar, initial: currentUserInitial } = getUserAvatarAndName(user);
      const commentInputRef = useRef(null);
 
-     // Auto-resize textarea
+     // tự động mở rộng textarea
      const autoResize = useCallback((element, maxHeight = 200) => {
           if (element) {
                element.style.height = 'auto';
@@ -52,12 +40,7 @@ const PostDetailModal = ({
           }
      }, []);
 
-     /**
-      * Helper: Yêu cầu đăng nhập trước khi thực hiện thao tác
-      * Hiển thị popup xác nhận và chuyển đến trang login nếu đồng ý
-      * @param {string} actionLabel - Mô tả hành động (VD: "bình luận", "thích bài viết")
-      * @returns {boolean} true nếu đã đăng nhập, false nếu chưa
-      */
+     // yêu cầu đăng nhập trước
      const requireLogin = (actionLabel = "sử dụng tính năng này") => {
           if (user) return true;
 
@@ -84,20 +67,17 @@ const PostDetailModal = ({
                loadComments();
                loadFieldDetails();
           }
-          // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [isOpen, post]);
 
-     /**
-      * Tải thông tin chi tiết sân được gắn thẻ trong bài viết
-      */
+     // tải thông tin sân
      const loadFieldDetails = async () => {
           if (!post?.fieldId && !post?.FieldID) return;
 
           const fieldId = post.fieldId || post.FieldID;
           try {
-               // Fetch all fields using the same service as FieldSelectionModal
+               // lấy danh sách sân
                const allFields = await fetchFields();
-               // Find the specific field by ID
+               // tìm sân theo ID
                const field = allFields.find(f =>
                     f.fieldId === fieldId ||
                     f.id === fieldId ||
@@ -115,20 +95,16 @@ const PostDetailModal = ({
           }
      };
 
-     /**
-      * Tải danh sách bình luận của bài viết từ API
-      * Bao gồm fetch thông tin user cho mỗi comment nếu thiếu
-      */
+     // tải danh sách bình luận
      const loadComments = async () => {
           if (!post?.PostID) return;
 
           setLoading(true);
           try {
                const fetchedComments = await fetchCommentsByPost(post.PostID);
-               // Fetch user info for each comment if author info is missing
+               // lấy thông tin user cho mỗi comment
                const commentsWithUserInfo = await Promise.all(
                     fetchedComments.map(async (comment) => {
-                         // Check if author info is missing or empty (empty string counts as missing)
                          const hasAuthorInfo = comment.author?.name && comment.author.name.trim() !== '' &&
                               comment.author?.username && comment.author.username.trim() !== '';
                          if (!hasAuthorInfo && comment.userId) {
@@ -203,9 +179,7 @@ const PostDetailModal = ({
           }
      };
 
-     /**
-      * Xử lý khi submit bình luận mới - Nút "Đăng" trong input comment
-      */
+     // submit bình luận
      const handleCommentSubmit = async () => {
           if (!user) {
                if (!requireLogin("bình luận")) return;
@@ -215,15 +189,11 @@ const PostDetailModal = ({
           const success = await onCommentSubmit?.(post.PostID, commentContent);
           if (success) {
                setCommentContent("");
-               loadComments(); // Reload comments after successful submission
+               loadComments();
           }
      };
 
-     /**
-      * Xử lý khi xóa bình luận - Nút "Xóa" trong menu comment
-      * Hiển thị popup xác nhận trước khi xóa
-      * @param {number} commentId - ID của comment cần xóa
-      */
+     // xóa bình luận
      const handleDeleteComment = async (commentId) => {
           const result = await Swal.fire({
                title: 'Xóa bình luận?',
@@ -260,20 +230,14 @@ const PostDetailModal = ({
           }
      };
 
-     /**
-      * Bắt đầu chỉnh sửa bình luận - Nút "Sửa" trong menu comment
-      * @param {Object} comment - Comment cần sửa
-      */
+     // chỉnh sửa bình luận
      const handleEditComment = (comment) => {
           setEditingCommentId(comment.id || comment.commentId);
           setEditingCommentContent(comment.content);
           setShowCommentMenu({});
      };
 
-     /**
-      * Xử lý khi cập nhật bình luận đã sửa - Nút "Lưu" khi đang edit
-      * @param {number} commentId - ID của comment cần cập nhật
-      */
+     // cập nhật bình luận
      const handleUpdateComment = async (commentId) => {
           if (!editingCommentContent.trim()) return;
 
@@ -301,10 +265,7 @@ const PostDetailModal = ({
           }
      };
 
-     /**
-      * Toggle hiển thị menu của comment - Nút 3 chấm bên cạnh comment
-      * @param {number} commentId - ID của comment
-      */
+     // hiển thị menu comment
      const toggleCommentMenu = (commentId) => {
           setShowCommentMenu(prev => ({
                ...prev,
@@ -312,11 +273,7 @@ const PostDetailModal = ({
           }));
      };
 
-     /**
-      * Kiểm tra comment có phải của người dùng hiện tại không
-      * @param {Object} comment - Comment cần kiểm tra
-      * @returns {boolean} true nếu là comment của user hiện tại
-      */
+     // kiểm tra comment của user hiện tại
      const isOwnComment = (comment) => {
           const currentUserId = user?.userID || user?.userId || user?.UserID || user?.id;
           const commentUserId = comment?.userId;
@@ -328,6 +285,7 @@ const PostDetailModal = ({
           setShowCommentMenu({});
      };
 
+     // trả lời bình luận
      const handleReplySubmit = async (commentId) => {
           if (!user) {
                if (!requireLogin("trả lời bình luận")) return;
@@ -336,7 +294,7 @@ const PostDetailModal = ({
           if (!content || !content.trim()) return;
 
           try {
-               // Call API to create reply with parentCommentId
+               // gửi bình luận
                const success = await onCommentSubmit?.(post.PostID, content.trim(), commentId);
                if (success) {
                     setReplyContent(prev => ({
@@ -351,6 +309,7 @@ const PostDetailModal = ({
           }
      };
 
+     // thay đổi nội dung trả lời
      const handleReplyChange = (commentId, content) => {
           setReplyContent(prev => ({
                ...prev,
@@ -358,6 +317,7 @@ const PostDetailModal = ({
           }));
      };
 
+     // báo cáo bình luận
      const handleReportComment = async (commentId) => {
           if (!user) {
                if (!requireLogin("báo cáo bình luận")) return;

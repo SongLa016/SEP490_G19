@@ -1005,7 +1005,12 @@ export default function ViolationReportsManagement() {
                                    onChange={(e) => setActionNote(e.target.value)}
                                    placeholder="Nhập ghi chú về hành động này..."
                                    rows={4}
+                                   maxLength={500}
                               />
+                              <p className={`text-xs mt-1 text-right ${actionNote.length >= 500 ? "text-red-500 font-medium" : actionNote.length >= 450 ? "text-yellow-600" : "text-slate-400"}`}>
+                                   {actionNote.length}/500
+                                   {actionNote.length >= 500 && " (đã đạt giới hạn)"}
+                              </p>
                          </div>
 
                          <div className="flex space-x-3 pt-4 border-t border-slate-200">

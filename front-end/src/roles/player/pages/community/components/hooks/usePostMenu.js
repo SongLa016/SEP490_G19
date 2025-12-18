@@ -23,7 +23,7 @@ export function usePostMenu(
 ) {
   const [showPostMenu, setShowPostMenu] = useState({});
 
-  // Close menu when clicking outside
+  // đóng menu khi click ngoài
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!event.target.closest(".post-menu-container")) {
@@ -37,20 +37,20 @@ export function usePostMenu(
     };
   }, []);
 
+  // mở/đóng menu
   const togglePostMenu = (postId) => {
     setShowPostMenu((prev) => ({
       ...prev,
       [postId]: !prev[postId],
     }));
   };
-
+  // mở menu
   const handleMenuAction = async (postId, action) => {
     const post = posts.find((p) => p.PostID === postId);
     if (!post) return;
 
     switch (action) {
       case "save":
-        // Toggle bookmark is handled in parent component
         Swal.fire({
           icon: "success",
           title: post.isBookmarked ? "Đã bỏ lưu" : "Đã lưu",

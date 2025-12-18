@@ -2,42 +2,30 @@ import React from "react";
 import { User, Phone, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { Badge, Button } from "../../../../../shared/components/ui";
 
-/**
- * Component hiển thị danh sách các đội tham gia yêu cầu tìm đối
- * Trang: Lịch sử đặt sân (BookingHistory)
- * Vị trí: Bên trong BookingCard, hiển thị khi có đội đăng ký tham gia
- * 
- * Chức năng:
- * - Hiển thị danh sách các đội đã đăng ký tham gia
- * - Nút "Chấp nhận" / "Từ chối" cho chủ yêu cầu (owner của match request)
- * - Hiển thị trạng thái của từng đội (đang chờ, đã chấp nhận, đã từ chối)
- */
 export default function BookingParticipants({ booking, user, matchRequestData, handlers }) {
      const {
-          bookingIdToRequest,           // Map bookingId -> matchRequest data
-          requestJoins,                 // Map requestId -> danh sách participants
-          processingParticipants        // Trạng thái đang xử lý của từng participant
+          bookingIdToRequest,
+          requestJoins,
+          processingParticipants
      } = matchRequestData;
      const {
-          extractRequestId,             // Lấy requestId từ matchRequest object
-          filterParticipantsForDisplay, // Lọc danh sách participants để hiển thị
-          extractParticipants,          // Trích xuất danh sách participants từ matchRequest
-          getRequestOwnerId,            // Lấy userId của chủ yêu cầu tìm đối
-          getRequestBadgeConfig,        // Lấy config badge trạng thái yêu cầu
-          getAcceptedParticipants,      // Lấy danh sách đội đã được chấp nhận
-          isRequestLocked,              // Kiểm tra yêu cầu đã khóa (đã ghép đôi) chưa
-          normalizeParticipantStatus,   // Chuẩn hóa trạng thái participant
-          participantNeedsOwnerAction,  // Kiểm tra participant cần owner xử lý không
-          isParticipantAcceptedByOwner, // Kiểm tra participant đã được chấp nhận chưa
-          isParticipantRejectedByOwner, // Kiểm tra participant đã bị từ chối chưa
-          getParticipantId,             // Lấy ID của participant
-          handleAcceptParticipant,      // Xử lý khi nhấn nút "Chấp nhận" đội tham gia
-          handleRejectParticipant       // Xử lý khi nhấn nút "Từ chối" đội tham gia
+          extractRequestId,
+          filterParticipantsForDisplay,
+          extractParticipants,
+          getRequestOwnerId,
+          getRequestBadgeConfig,
+          getAcceptedParticipants,
+          isRequestLocked,
+          normalizeParticipantStatus,
+          participantNeedsOwnerAction,
+          getParticipantId,
+          handleAcceptParticipant, // xử lý khi nhấn nút "Chấp nhận" đội tham gia
+          handleRejectParticipant, // xử lý khi nhấn nút "Từ chối" đội tham gia
      } = handlers;
 
      const req = bookingIdToRequest[booking.id];
-     if (!req) return null;
-
+     if (!req) return null;   // 
+     // lấy requestId từ matchRequest object
      const requestId = extractRequestId(req);
      const participants = requestId
           ? (requestJoins[requestId] || extractParticipants(req))
@@ -71,8 +59,6 @@ export default function BookingParticipants({ booking, user, matchRequestData, h
                          const participantTeamName = j.teamName || j.fullName || j.participantName || j.userName || `User: ${j.userId || participantId}`;
                          const participantStatus = normalizeParticipantStatus(j);
                          const needsOwnerAction = participantNeedsOwnerAction(j);
-                         const isAccepted = isParticipantAcceptedByOwner(j);
-                         const isRejected = isParticipantRejectedByOwner(j);
                          const processingKey = `${requestId}-${participantId}`;
                          const isProcessing = processingParticipants[processingKey];
 

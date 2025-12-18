@@ -15,45 +15,27 @@ import {
 } from "lucide-react";
 import { Badge, Button, LoadingList, StaggerContainer, FadeIn } from "../../../../../shared/components/ui";
 
-/**
- * Component hiển thị tab "Lịch cố định" - danh sách các gói đặt sân cố định
- * Trang: Lịch sử đặt sân (BookingHistory)
- * Vị trí: Tab "Lịch cố định" trong trang lịch sử đặt sân
- * 
- * Chức năng:
- * - Hiển thị danh sách các gói đặt sân cố định của người dùng
- * - Hiển thị trạng thái booking và thanh toán của từng gói
- * - Hiển thị QR code thanh toán (nếu có)
- * - Xem chi tiết các buổi trong gói (nút "Xem chi tiết" / "Ẩn chi tiết")
- */
+// hiển thị tab "Lịch cố định" - danh sách các gói đặt sân cố định
 export default function FixedPackagesTab({
-  bookingPackages = [],           // Danh sách các gói đặt sân cố định
-  packageSessionsMap = {},        // Map packageId -> danh sách sessions
-  expandedPackageSessions = {},   // Trạng thái mở/đóng chi tiết của từng gói
-  togglePackageSessions,          // Hàm toggle mở/đóng chi tiết gói - Nút "Xem chi tiết"/"Ẩn chi tiết"
-  packageError,                   // Lỗi khi load gói
-  isLoadingPackages,              // Đang loading danh sách gói
-  formatPrice,                    // Hàm format giá tiền
-  formatSessionDateLabel,         // Hàm format ngày của session
-  formatSessionTimeRange,         // Hàm format khoảng thời gian của session
-  sessionScheduleDataMap = {},    // Map scheduleId -> schedule data
+  bookingPackages = [],
+  packageSessionsMap = {},
+  expandedPackageSessions = {},
+  togglePackageSessions,
+  packageError,
+  isLoadingPackages,
+  formatPrice,
+  formatSessionDateLabel,
+  formatSessionTimeRange,
+  sessionScheduleDataMap = {},
 }) {
-  /**
-   * Format ngày ngắn gọn (dd/mm/yyyy)
-   * @param {string} dateStr - Chuỗi ngày cần format
-   * @returns {string} Ngày đã format
-   */
+  // format ngày ngắn gọn (dd/mm/yyyy)
   const formatDateShort = (dateStr) => {
     if (!dateStr) return "N/A";
     const d = new Date(dateStr);
     return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString("vi-VN");
   };
 
-  /**
-   * Format ngày giờ đầy đủ (dd/mm/yyyy hh:mm)
-   * @param {string} dateStr - Chuỗi ngày giờ cần format
-   * @returns {string} Ngày giờ đã format
-   */
+  // format ngày giờ đầy đủ (dd/mm/yyyy hh:mm)
   const formatDateTime = (dateStr) => {
     if (!dateStr) return "N/A";
     const d = new Date(dateStr);
@@ -68,11 +50,7 @@ export default function FixedPackagesTab({
       });
   };
 
-  /**
-   * Lấy config hiển thị cho trạng thái booking
-   * @param {string} status - Trạng thái booking
-   * @returns {Object} { label, badge, icon }
-   */
+  //hiển thị cho trạng thái booking
   const getBookingStatusConfig = (status) => {
     const statusLower = (status || "").toLowerCase();
     if (statusLower.includes("confirmed") || statusLower.includes("active")) {
@@ -90,11 +68,7 @@ export default function FixedPackagesTab({
     return { label: status || "Chưa xác định", badge: "bg-gray-500 text-white", icon: Info };
   };
 
-  /**
-   * Lấy config hiển thị cho trạng thái thanh toán
-   * @param {string} status - Trạng thái thanh toán
-   * @returns {Object} { label, badge, icon }
-   */
+  //hiển thị cho trạng thái thanh toán
   const getPaymentStatusConfig = (status) => {
     const statusLower = (status || "").toLowerCase();
     if (statusLower.includes("paid") || statusLower.includes("completed")) {
@@ -112,11 +86,7 @@ export default function FixedPackagesTab({
     return { label: status || "Chưa xác định", badge: "bg-gray-500 text-white", icon: Info };
   };
 
-  /**
-   * Lấy config hiển thị cho trạng thái session (buổi đặt)
-   * @param {string} status - Trạng thái session
-   * @returns {Object} { label, badge, icon }
-   */
+  //hiển thị cho trạng thái session (buổi đặt)
   const getSessionStatusConfig = (status) => {
     const statusLower = (status || "").toLowerCase();
     if (statusLower.includes("booking") || statusLower.includes("pending") || statusLower.includes("waiting")) {
@@ -128,19 +98,12 @@ export default function FixedPackagesTab({
     return { label: status || "Chưa xác định", badge: "bg-gray-100 text-gray-700 border-gray-200", icon: Info };
   };
 
-  /**
-   * Format khoảng thời gian của schedule
-   * Ưu tiên lấy từ scheduleData, fallback về session
-   * @param {Object} scheduleData - Dữ liệu schedule từ API
-   * @param {Object} session - Dữ liệu session
-   * @returns {string} Khoảng thời gian đã format
-   */
+  // format khoảng thời gian của schedule
   const formatScheduleTimeRange = (scheduleData, session) => {
-    // Ưu tiên lấy thời gian từ schedule data
+    // ưu tiên lấy thời gian từ schedule data
     if (scheduleData) {
       if (scheduleData.slotName) return scheduleData.slotName;
       if (scheduleData.startTime && scheduleData.endTime) {
-        // Format time nếu là string
         const startTime = typeof scheduleData.startTime === 'string'
           ? scheduleData.startTime
           : scheduleData.startTime;
@@ -155,7 +118,6 @@ export default function FixedPackagesTab({
           : String(scheduleData.startTime);
       }
     }
-    // Fallback về session time nếu không có schedule data
     return formatSessionTimeRange(session);
   };
 
@@ -174,6 +136,7 @@ export default function FixedPackagesTab({
       )}
       {!isLoadingPackages && bookingPackages.length > 0 && (
         <StaggerContainer staggerDelay={50}>
+          {/* hiển thị danh sách gói đặt sân cố định */}
           {bookingPackages.map((pkg, index) => {
             const packageId = pkg.bookingPackageId;
             const sessions =

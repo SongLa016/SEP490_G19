@@ -1,26 +1,13 @@
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { Plus } from "lucide-react";
-import { Avatar, AvatarImage, AvatarFallback, Badge, Button } from "../../../../../shared/components/ui";
+import { Avatar, AvatarImage, AvatarFallback, Badge } from "../../../../../shared/components/ui";
 import FieldInfoCard from "./FieldInfoCard";
 import InteractionButtons from "./InteractionButtons";
 import CommentInput from "./CommentInput";
 import PostMenu from "./PostMenu";
 import { isCurrentUserPost } from "./utils";
 
-/**
- * Component hiển thị một bài viết trong feed cộng đồng
- * Trang: Cộng đồng (Community)
- * Vị trí: Danh sách bài viết trong tab "Dành cho bạn"
- * 
- * Chức năng:
- * - Hiển thị thông tin tác giả (avatar, tên, thời gian)
- * - Hiển thị tiêu đề và nội dung bài viết
- * - Hiển thị ảnh đính kèm (nếu có)
- * - Hiển thị thông tin sân được gắn thẻ (nếu có)
- * - Các nút tương tác (Like, Comment, Repost, Bookmark)
- * - Menu tùy chọn (Sửa, Xóa, Báo cáo)
- */
+
 const PostCard = ({
      post,
      index,
@@ -43,12 +30,11 @@ const PostCard = ({
      const cardRef = useRef(null);
      const isInView = useInView(cardRef, { once: true, margin: "-50px" });
 
-     // Check if this post belongs to current user
+     // kiểm tra bài viết của user hiện tại
      const isOwnPost = isCurrentUserPost(post, user);
 
-     // Handle click on post content to open detail modal
+     // mở modal chi tiết
      const handleContentClick = (e) => {
-          // Don't open modal if clicking on buttons or interactive elements
           if (e.target.closest('button') || e.target.closest('a')) {
                return;
           }

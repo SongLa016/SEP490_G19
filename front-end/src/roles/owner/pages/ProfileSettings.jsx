@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Edit3, Save, X, Camera } from "lucide-react";
+import { User, Mail, Phone, Edit3, Save, X, Camera, Lock } from "lucide-react";
 import { Input, Button, Card, CardContent, CardHeader, CardTitle, Avatar, AvatarImage, AvatarFallback, LoadingSpinner } from "../../../shared/components/ui";
 import { profileService } from "../../../shared/index";
+import ChangePasswordModal from "../../../shared/components/ChangePasswordModal";
 import Swal from "sweetalert2";
 import { useAuth } from "../../../contexts/AuthContext";
 
@@ -10,6 +11,7 @@ export default function ProfileSettings({ isDemo = false }) {
      const [isEditing, setIsEditing] = useState(false);
      const [isLoading, setIsLoading] = useState(false);
      const [avatarFile, setAvatarFile] = useState(null);
+     const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
      const [profileData, setProfileData] = useState({
           email: user?.email || "",
           fullName: user?.fullName || user?.name || "",
@@ -19,7 +21,6 @@ export default function ProfileSettings({ isDemo = false }) {
 
      const [formData, setFormData] = useState({ ...profileData });
 
-     // 
      useEffect(() => {
           const token = localStorage.getItem("token");
           if (token && !isDemo) {
@@ -41,7 +42,7 @@ export default function ProfileSettings({ isDemo = false }) {
                });
           }
      }, [isEditing]);
-     // Hàm tải dữ liệu profile từ API
+
      const loadProfileData = async () => {
           const token = localStorage.getItem("token");
           if (!token) {
@@ -69,6 +70,7 @@ export default function ProfileSettings({ isDemo = false }) {
                          ...prev,
                          ...mappedProfile
                     }));
+                    // Update user context with profile data including avatar
                     if (updateUser) {
                          const updatedUser = { ...user, ...mappedProfile };
                          updateUser(updatedUser);
@@ -94,7 +96,22 @@ export default function ProfileSettings({ isDemo = false }) {
           }
      };
 
-     // thay đỏi input
+     // Character limits
+     const MAX_FULLNAME_LENGTH = 100;
+     const WARNING_THRESHOLD = 90;
+
+     // Helper function to get character count warning class
+     const getCharCountClass = (length) => {
+          if (length >= MAX_FULLNAME_LENGTH) return "text-red-500 font-medium";
+          if (length >= WARNING_THRESHOLD) return "text-yellow-600";
+          return "text-gray-400";
+     };
+
+     /**
+      * Xử lý thay đổi input trong form profile
+      * @param {string} field - Tên field cần cập nhật
+      * @param {any} value - Giá trị mới
+      */
      const handleInputChange = (field, value) => {
           setFormData(prev => ({
                ...prev,
@@ -102,7 +119,12 @@ export default function ProfileSettings({ isDemo = false }) {
           }));
      };
 
-     // lưu thông tin profile
+     /**
+      * Xử lý lưu thông tin profile
+      * - Validate token
+      * - Upload avatar mới (nếu có)
+      * - Gọi API cập nhật profile
+      */
      const handleSave = async () => {
           const token = localStorage.getItem("token");
           if (!token) {
@@ -135,6 +157,8 @@ export default function ProfileSettings({ isDemo = false }) {
                     setIsLoading(false);
                     return;
                }
+
+               // Update avatar URL nếu có trong response
                let updatedFormData = { ...formData };
                if (result.data?.avatarUrl) {
                     updatedFormData.avatar = result.data.avatarUrl;
@@ -146,13 +170,13 @@ export default function ProfileSettings({ isDemo = false }) {
                     updatedFormData.avatar = result.data.data.avatar;
                }
 
-               // Cập nhật state và UI
+               // Update local state
                setProfileData(updatedFormData);
                setFormData(updatedFormData);
                setAvatarFile(null);
                setIsEditing(false);
 
-               // Cập nhật thông tin user trong context/localStorage
+               // Update user in context and localStorage
                const updatedUser = { ...user, ...updatedFormData };
                if (updateUser) {
                     updateUser(updatedUser);
@@ -182,14 +206,22 @@ export default function ProfileSettings({ isDemo = false }) {
           }
      };
 
-     //hủy chỉnh sửa
+     /**
+      * Hủy bỏ thay đổi và reset form về dữ liệu gốc
+      */
      const handleCancel = () => {
           setFormData({ ...profileData });
           setAvatarFile(null);
           setIsEditing(false);
      };
 
-     // upload avatar
+     /**
+      * Xử lý upload avatar mới
+      * - Validate file type (chỉ chấp nhận ảnh)
+      * - Validate file size (tối đa 10MB)
+      * - Tạo preview URL
+      * @param {Event} event - Event từ input file
+      */
      const handleAvatarUpload = (event) => {
           const file = event.target.files[0];
           if (!file) return;
@@ -204,7 +236,7 @@ export default function ProfileSettings({ isDemo = false }) {
                return;
           }
 
-          const maxSize = 10 * 1024 * 1024;
+          const maxSize = 10 * 1024 * 1024; // 10MB
           if (file.size > maxSize) {
                Swal.fire({
                     icon: 'error',
@@ -329,12 +361,21 @@ export default function ProfileSettings({ isDemo = false }) {
                                         Họ và tên
                                    </label>
                                    {isEditing ? (
-                                        <Input
-                                             value={formData.fullName}
-                                             onChange={(e) => handleInputChange('fullName', e.target.value)}
-                                             placeholder="Nhập họ và tên"
-                                             className="w-full"
-                                        />
+                                        <>
+                                             <Input
+                                                  value={formData.fullName}
+                                                  onChange={(e) => handleInputChange('fullName', e.target.value)}
+                                                  placeholder="Nhập họ và tên"
+                                                  maxLength={MAX_FULLNAME_LENGTH}
+                                                  className="w-full"
+                                             />
+                                             <div className="flex justify-end mt-1">
+                                                  <span className={`text-xs ${getCharCountClass(formData.fullName.length)}`}>
+                                                       {formData.fullName.length}/{MAX_FULLNAME_LENGTH}
+                                                       {formData.fullName.length >= MAX_FULLNAME_LENGTH && " (đã đạt giới hạn)"}
+                                                  </span>
+                                             </div>
+                                        </>
                                    ) : (
                                         <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
                                              {profileData.fullName || "Chưa cập nhật"}
@@ -365,9 +406,28 @@ export default function ProfileSettings({ isDemo = false }) {
                                    </p>
                                    <p className="text-xs text-gray-500 mt-1">Số điện thoại không thể thay đổi</p>
                               </div>
+
+                              {/* Change Password Button */}
+                              <div className="pt-4 border-t">
+                                   <Button
+                                        onClick={() => setIsChangePasswordOpen(true)}
+                                        variant="outline"
+                                        className="w-full sm:w-auto flex items-center justify-center gap-2 border-teal-600 text-teal-600 hover:bg-teal-50"
+                                   >
+                                        <Lock className="w-4 h-4" />
+                                        Đổi mật khẩu
+                                   </Button>
+                              </div>
                          </div>
                     </CardContent>
                </Card>
+
+               {/* Change Password Modal */}
+               <ChangePasswordModal
+                    isOpen={isChangePasswordOpen}
+                    onClose={() => setIsChangePasswordOpen(false)}
+                    accentColor="teal"
+               />
           </div>
      );
 }

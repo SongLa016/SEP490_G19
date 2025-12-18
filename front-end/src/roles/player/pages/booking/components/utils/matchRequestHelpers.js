@@ -1,4 +1,4 @@
-// Extract request ID from various response formats
+// lấy request ID
 export const extractRequestId = (payload) => {
   if (!payload) return null;
   if (typeof payload === "number") return payload;
@@ -12,7 +12,7 @@ export const extractRequestId = (payload) => {
   return null;
 };
 
-// Extract participants from various response formats
+// lấy người tham gia
 export const extractParticipants = (detail) => {
   if (!detail) return [];
   if (Array.isArray(detail)) return detail;
@@ -29,19 +29,20 @@ export const extractParticipants = (detail) => {
     "matchParticipants",
     "pendingParticipants",
   ];
-
+  // kiểm tra các key
   for (const key of candidateKeys) {
     if (Array.isArray(detail[key])) {
       return detail[key];
     }
   }
-
+  // kiểm tra dữ liệu
   if (detail.data) {
     const nested = extractParticipants(detail.data);
     if (Array.isArray(nested) && nested.length > 0) {
       return nested;
     }
   }
+  // kiểm tra kết quả
   if (detail.result) {
     const nested = extractParticipants(detail.result);
     if (Array.isArray(nested) && nested.length > 0) {
@@ -52,7 +53,7 @@ export const extractParticipants = (detail) => {
   return [];
 };
 
-// Get request owner ID
+// lấy ID người tạo yêu cầu
 export const getRequestOwnerId = (request) => {
   if (!request) return null;
   const data = request.data || request;
@@ -80,7 +81,7 @@ export const getRequestOwnerId = (request) => {
   );
 };
 
-// Get owner team names
+// lấy tên đội người tạo yêu cầu
 export const getOwnerTeamNames = (request) => {
   if (!request) return [];
   const data = request.data || request;
@@ -106,7 +107,7 @@ export const getOwnerTeamNames = (request) => {
     .map((name) => name.trim().toLowerCase());
 };
 
-// Get participant ID
+// lấy ID người tham gia
 export const getParticipantId = (participant) => {
   if (!participant) return null;
   return (

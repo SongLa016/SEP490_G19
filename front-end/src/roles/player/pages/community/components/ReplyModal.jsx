@@ -19,17 +19,16 @@ const ReplyModal = ({
           }
      };
 
-     // Check if the original post belongs to current user
-     // Get current user ID from various possible fields
+
      const currentUserId = user?.userID || user?.userId || user?.UserID || user?.id;
-     // Get post author ID from various possible fields
+     // lấy ID tác giả bài viết
      const postAuthorId = originalPost?.userId || originalPost?.authorId || originalPost?.postUserId;
 
-     // Compare as strings to handle type differences (string vs number)
+     // kiểm tra bài viết của user hiện tại
      const isOwnPost = originalPost && user && currentUserId && postAuthorId &&
           String(currentUserId) === String(postAuthorId);
 
-     // Get username - check all possible fields
+     // lấy tên hiển thị
      const displayUsername = user?.userName || user?.username || user?.Username || user?.name || user?.fullName || user?.FullName || "User";
 
      const { avatarUrl, initial } = getUserAvatarAndName(user);

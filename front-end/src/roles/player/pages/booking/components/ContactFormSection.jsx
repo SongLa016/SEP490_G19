@@ -2,23 +2,7 @@ import { useState, useCallback } from "react";
 import { User, Phone, Mail } from "lucide-react";
 import { Input, PhoneInput, Textarea } from "../../../../../shared/components/ui";
 
-/**
- * Component form nhập thông tin liên hệ khi đặt sân
- * Trang: Modal đặt sân (BookingModal)
- * Vị trí: Bước 1 - Nhập thông tin liên hệ
- * 
- * Chức năng:
- * - Nhập họ tên người đặt
- * - Nhập số điện thoại (validate format VN)
- * - Nhập email (tùy chọn hoặc bắt buộc tùy cấu hình)
- * - Nhập ghi chú
- */
-
-/**
- * Validate số điện thoại Việt Nam
- * @param {string} phone - Số điện thoại cần validate
- * @returns {string|null} Thông báo lỗi hoặc null nếu hợp lệ
- */
+// validate số điện thoại Việt Nam
 const validatePhone = (phone) => {
      if (!phone?.trim()) return null;
      const phoneDigits = phone.replace(/\D/g, '');
@@ -35,11 +19,7 @@ const validatePhone = (phone) => {
      return null;
 };
 
-/**
- * Validate định dạng email
- * @param {string} email - Email cần validate
- * @returns {string|null} Thông báo lỗi hoặc null nếu hợp lệ
- */
+// validate định dạng email
 const validateEmail = (email) => {
      if (!email?.trim()) return null;
      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -50,37 +30,27 @@ const validateEmail = (email) => {
 };
 
 export default function ContactFormSection({
-     bookingData,      // Dữ liệu booking hiện tại
-     errors,           // Lỗi validation từ parent component
-     onInputChange     // Hàm callback khi thay đổi input
+     bookingData,
+     errors,
+     onInputChange
 }) {
-     const [localErrors, setLocalErrors] = useState({});  // Lỗi validate realtime
-
-     /**
-      * Xử lý khi thay đổi số điện thoại
-      * Validate realtime và cập nhật lên parent
-      */
+     const [localErrors, setLocalErrors] = useState({});
+     //thay đổi số điện thoại
      const handlePhoneChange = useCallback((e) => {
           const value = e.target.value;
           onInputChange("customerPhone", value);
-          // Validate realtime
           const error = validatePhone(value);
           setLocalErrors(prev => ({ ...prev, customerPhone: error }));
      }, [onInputChange]);
 
-     /**
-      * Xử lý khi thay đổi email
-      * Validate realtime và cập nhật lên parent
-      */
+     //thay đổi email
      const handleEmailChange = useCallback((e) => {
           const value = e.target.value;
           onInputChange("customerEmail", value);
-          // Validate realtime
           const error = validateEmail(value);
           setLocalErrors(prev => ({ ...prev, customerEmail: error }));
      }, [onInputChange]);
 
-     // Combine local errors with parent errors (parent errors take priority)
      const phoneError = errors.customerPhone || localErrors.customerPhone;
      const emailError = errors.customerEmail || localErrors.customerEmail;
 

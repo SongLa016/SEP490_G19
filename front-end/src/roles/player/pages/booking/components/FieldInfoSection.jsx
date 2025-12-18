@@ -2,32 +2,20 @@ import { useEffect, useState, useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { fetchFieldTypes, normalizeFieldType } from "../../../../../shared/services/fieldTypes";
 
-/**
- * Component hiển thị thông tin sân đã chọn trong modal đặt sân
- * Trang: Modal đặt sân (BookingModal)
- * Vị trí: Phần bên trái của modal, hiển thị thông tin sân và lịch đặt
- * 
- * Chức năng:
- * - Hiển thị tên sân, địa chỉ, loại sân
- * - Hiển thị ngày, thời gian, thời lượng đặt
- * - Với đặt cố định: hiển thị số tuần, ngày trong tuần, tổng số buổi
- * - Preview danh sách các buổi dự kiến
- */
 export default function FieldInfoSection({
-     bookingData,              // Dữ liệu booking hiện tại
-     isRecurring,              // Có phải đặt sân cố định không
-     recurringWeeks,           // Số tuần đặt cố định (không dùng nữa)
-     startDate,                // Ngày bắt đầu gói cố định
-     endDate,                  // Ngày kết thúc gói cố định
-     selectedDays,             // Các ngày trong tuần đã chọn [0-6]
-     generateRecurringSessions // Hàm tạo danh sách các buổi dự kiến
+     bookingData,
+     isRecurring,
+     recurringWeeks,
+     startDate,
+     endDate,
+     selectedDays,
+     generateRecurringSessions
 }) {
-     // Memoize sessions để tránh gọi generateRecurringSessions nhiều lần
      const recurringSessions = useMemo(() => {
           if (!isRecurring || !generateRecurringSessions) return [];
           return generateRecurringSessions();
      }, [isRecurring, generateRecurringSessions, startDate, endDate, selectedDays]);
-     // Tính số tuần từ startDate và endDate
+     // tính số tuần từ startDate và endDate
      const calculateWeeks = () => {
           if (!startDate || !endDate) return 0;
           try {
@@ -46,7 +34,7 @@ export default function FieldInfoSection({
      const dayNames = { 0: "CN", 1: "T2", 2: "T3", 3: "T4", 4: "T5", 5: "T6", 6: "T7" };
      const [fieldTypeMap, setFieldTypeMap] = useState({});
 
-     // Load field types để map typeId -> typeName
+     // tải loại sân 
      useEffect(() => {
           let ignore = false;
           async function loadFieldTypes() {
@@ -84,7 +72,7 @@ export default function FieldInfoSection({
           if (bookingData?.fieldType) {
                return bookingData.fieldType;
           }
-          // Nếu có typeId, map từ fieldTypeMap
+          // nếu có typeId, map từ fieldTypeMap
           const typeId = bookingData?.typeId || bookingData?.TypeID || bookingData?.typeID;
           if (typeId && fieldTypeMap[String(typeId)]) {
                return fieldTypeMap[String(typeId)];
@@ -103,18 +91,12 @@ export default function FieldInfoSection({
                     return normalized;
                }
           }
-
           const startTimeStr = bookingData?.startTime || bookingData?.StartTime || '00:00:00';
           const endTimeStr = bookingData?.endTime || bookingData?.EndTime || '00:00:00';
-
           try {
-               // Tạo Date objects với ngày giả định, giống TimeSlotsTab
                const start = new Date(`2000-01-01T${startTimeStr}`);
                const end = new Date(`2000-01-01T${endTimeStr}`);
-
-               // Tính duration bằng giờ (giống TimeSlotsTab: (end - start) / (1000 * 60 * 60))
                const durationHours = (end - start) / (1000 * 60 * 60);
-
                if (!Number.isNaN(durationHours) && durationHours > 0) {
                     return durationHours;
                }
@@ -125,15 +107,13 @@ export default function FieldInfoSection({
           return null;
      };
 
-     // Format duration để hiển thị (ví dụ: 1.5h -> "1h30 phút", 2h -> "2h")
+     // format thời lượng để hiển thị
      const formatDuration = (hours) => {
           if (hours == null || Number.isNaN(hours)) {
                return "—";
           }
-
           const totalHours = Math.floor(hours);
           const minutes = Math.round((hours - totalHours) * 60);
-
           if (totalHours > 0 && minutes > 0) {
                return `${totalHours}h${String(minutes).padStart(2, "0")} phút`;
           }

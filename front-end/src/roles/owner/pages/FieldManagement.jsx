@@ -1,15 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import {
-     Plus,
-     Edit,
-     Trash2,
-     MapPin,
-     DollarSign,
-     Loader2,
-     Building2,
-     Power,
-     PowerOff
-} from "lucide-react";
+import { Plus, Edit, Trash2, MapPin, DollarSign, Loader2, Building2, Power, PowerOff } from "lucide-react";
 import Swal from "sweetalert2";
 import { Button, Card, Pagination, usePagination } from "../../../shared/components/ui";
 import { DemoRestrictedModal } from "../../../shared";
@@ -38,11 +28,8 @@ const GOONG_REST_API_KEY =
 const GOONG_GEOCODE_URL = "https://rsapi.goong.io/Geocode";
 
 const FieldManagement = ({ isDemo = false }) => {
-     const { user, logout } = useAuth();
-
-     // Use React Query hook for field types
-     const { data: apiFieldTypes = [] } = useFieldTypes();
-
+     const { user } = useAuth();
+     const { data: apiFieldTypes = [] } = useFieldTypes();       //sử dụng query
      const [isAddModalOpen, setIsAddModalOpen] = useState(false);
      const [isEditModalOpen, setIsEditModalOpen] = useState(false);
      const [isAddComplexModalOpen, setIsAddComplexModalOpen] = useState(false);
@@ -67,10 +54,10 @@ const FieldManagement = ({ isDemo = false }) => {
           district: "",
           province: "",
           description: "",
-          image: "", // Preview URL (ObjectURL for File or URL string from Cloudinary)
-          imageFile: null, // File object (new upload) or null
-          imageUrl: null, // URL string from Cloudinary (existing image)
-          status: "Pending", // Default to Pending until admin approves
+          image: "",
+          imageFile: null,
+          imageUrl: null,
+          status: "Pending",
      });
      const [formData, setFormData] = useState({
           complexId: "",
@@ -79,8 +66,8 @@ const FieldManagement = ({ isDemo = false }) => {
           size: "",
           grassType: "",
           description: "",
-          mainImage: null, // File object (new upload) or URL string (from Cloudinary)
-          imageFiles: [], // Array of File objects (new uploads) or URL strings (from Cloudinary)
+          mainImage: null,
+          imageFiles: [],
           pricePerHour: "",
           status: "Available",
           bankAccountId: "",
@@ -90,8 +77,8 @@ const FieldManagement = ({ isDemo = false }) => {
           accountHolder: "",
      });
 
-     // Map field types
-     // Transform API field types to format expected by form
+     // loại sân
+     // sử dụng useMemo để tránh tính toán lại không cần thiết
      const fieldTypes = useMemo(() => {
           return apiFieldTypes.map(type => ({
                value: String(type.typeId || type.TypeID),
@@ -100,7 +87,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      }, [apiFieldTypes]);
 
-     // Create fieldTypeMap for backward compatibility
+     // thêm map để dễ truy xuất typeId
      const fieldTypeMap = useMemo(() => {
           const map = {};
           apiFieldTypes.forEach(type => {
@@ -115,7 +102,7 @@ const FieldManagement = ({ isDemo = false }) => {
           { value: "Maintenance", label: "Bảo trì" },
           { value: "Unavailable", label: "Không khả dụng" },
      ];
-
+     // đếm khu sân
      const complexFieldCounts = useMemo(() => {
           return fields.reduce((acc, field) => {
                acc[field.complexId] = (acc[field.complexId] || 0) + 1;
@@ -123,21 +110,20 @@ const FieldManagement = ({ isDemo = false }) => {
           }, {});
      }, [fields]);
 
-     // Get current user ID - extract to avoid complex expression in dependency array
+     // lấy userId 
      const currentUserId = useMemo(() => {
           return user?.userID || user?.UserID || user?.id || user?.userId || null;
      }, [user?.userID, user?.UserID, user?.id, user?.userId]);
 
+     // tải dữ liệu khu sân và sân nhỏ
      const loadData = useCallback(async () => {
           try {
                setLoading(true);
                if (!isDemo && currentUserId) {
-                    // Sử dụng function mới để lấy tất cả khu sân và sân nhỏ
-                    // Bước 1: Lấy tất cả khu sân từ GET /api/FieldComplex
-                    // Bước 2: Với mỗi khu sân, lấy các sân nhỏ từ GET /api/Field/complex/{complexId}
+                    // lấy tất cả khu sân và sân nhỏ
                     const allComplexesWithFields = await fetchAllComplexesWithFields();
 
-                    // Lọc chỉ lấy các khu sân của owner hiện tại
+                    // Lọc chỉ lấy các khu sân của owner
                     const ownerComplexes = allComplexesWithFields
                          .filter(
                               complex => complex.ownerId === currentUserId || complex.ownerId === Number(currentUserId)
@@ -148,7 +134,6 @@ const FieldManagement = ({ isDemo = false }) => {
                               name: complex.name,
                               address: complex.address,
                               description: complex.description || null,
-                              // Only use imageUrl from Cloudinary
                               image: complex.imageUrl || null,
                               imageUrl: complex.imageUrl || null,
                               status: complex.status,
@@ -169,28 +154,26 @@ const FieldManagement = ({ isDemo = false }) => {
                     // Tạo danh sách tất cả các sân nhỏ từ các khu sân
                     const allFields = [];
                     for (const complex of ownerComplexes) {
-                         // Fields đã được lấy sẵn trong complex.fields
+                         // sân nhỏ thuộc khu sân
                          allFields.push(...(complex.fields || []).map(f => {
-                              // Map TypeID to typeName from apiFieldTypes
+                              // lấy loại sân 
                               const fieldType = apiFieldTypes.find(
                                    type => (type.typeId || type.TypeID) === f.typeId
                               );
 
-                              // Normalize image fields - API may return different field names
+                              // chuẩn hóa dữ liệu sân nhỏ
                               const normalizedField = {
                                    ...f,
                                    complexName: complex.name,
                                    complexAddress: complex.address,
-                                   complexStatus: complex.status, // Thêm trạng thái khu sân để lọc
+                                   complexStatus: complex.status,
                                    typeName: fieldType ? (fieldType.typeName || fieldType.TypeName) : null,
                               };
 
-                              // Ensure mainImage is available from URLs (Cloudinary only)
                               if (!normalizedField.mainImage && f.mainImageUrl) {
                                    normalizedField.mainImage = f.mainImageUrl;
                               }
 
-                              // Ensure images array is available from URLs (Cloudinary only)
                               if (!normalizedField.images || normalizedField.images.length === 0) {
                                    if (Array.isArray(f.imageUrls) && f.imageUrls.length > 0) {
                                         normalizedField.images = f.imageUrls;
@@ -202,13 +185,13 @@ const FieldManagement = ({ isDemo = false }) => {
                     }
                     setFields(allFields);
 
-                    // Fetch time slots
+                    // lấy giờ
                     const slotsResponse = await fetchTimeSlots();
                     if (slotsResponse.success) {
                          setTimeSlots(slotsResponse.data || []);
                     }
 
-                    // Fetch bank accounts for owner
+                    // lấy tài khoản ngân hàng
                     try {
                          const accounts = await fetchOwnerBankAccounts(Number(currentUserId));
                          setBankAccounts(accounts || []);
@@ -227,10 +210,7 @@ const FieldManagement = ({ isDemo = false }) => {
           loadData();
      }, [loadData]);
 
-     /**
-      * Xử lý thay đổi input trong form thêm/sửa sân
-      * @param {Event} e - Event từ input element
-      */
+     // thay đổi dữ liệu form sân nhỏ
      const handleInputChange = (e) => {
           const { name, value } = e.target;
           setFormData(prev => ({
@@ -239,10 +219,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
-     /**
-      * Xử lý thay đổi ảnh chính của sân
-      * @param {File|string} image - File object (upload mới) hoặc URL string (ảnh có sẵn từ Cloudinary)
-      */
+     // thay đổi main image 
      const handleMainImageChange = (image) => {
           setFormData(prev => ({
                ...prev,
@@ -250,10 +227,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
-     /**
-      * Xử lý thay đổi danh sách ảnh gallery của sân
-      * @param {Array<File|string>} imagesArray - Mảng File objects hoặc URL strings
-      */
+     // thay đổi danh sách ảnh gallery
      const handleImageFilesChange = (imagesArray) => {
           setFormData(prev => ({
                ...prev,
@@ -261,17 +235,11 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
-     /**
-      * Xử lý upload ảnh cho khu sân (Complex)
-      * - Validate file type (chỉ chấp nhận ảnh)
-      * - Validate file size (tối đa 5MB)
-      * - Tạo ObjectURL để preview
-      * @param {Event} e - Event từ input file
-      */
+     // upload ảnh khu sân
      const handleComplexImageUpload = (e) => {
           const file = e.target.files?.[0];
           if (file) {
-               // Validate file type
+               // chỉ chấp nhật file ảnh
                if (!file.type.startsWith('image/')) {
                     Swal.fire({
                          icon: 'error',
@@ -283,7 +251,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     return;
                }
 
-               // Validate file size (max 5MB)
+               // ảnh < 5mb
                if (file.size > 5 * 1024 * 1024) {
                     Swal.fire({
                          icon: 'error',
@@ -294,8 +262,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     });
                     return;
                }
-
-               // Cleanup old ObjectURL if exists
+               // hủy object URL cũ nếu có
                if (complexFormData.image && complexFormData.image.startsWith('blob:')) {
                     URL.revokeObjectURL(complexFormData.image);
                }
@@ -303,23 +270,20 @@ const FieldManagement = ({ isDemo = false }) => {
                setComplexImageUploading(true);
                const objectUrl = URL.createObjectURL(file);
 
-               // Store File object for upload (not base64)
+               // 
                setComplexFormData(prev => ({
                     ...prev,
-                    imageFile: file, // File object to send to backend
-                    imageUrl: null, // Clear existing URL when uploading new file
-                    image: objectUrl // ObjectURL for preview
+                    imageFile: file,
+                    imageUrl: null,
+                    image: objectUrl
                }));
 
                setTimeout(() => setComplexImageUploading(false), 300);
           }
      };
 
-     /**
-      * Xử lý thay đổi field trong form khu sân
-      * @param {string} field - Tên field cần cập nhật
-      * @param {any} value - Giá trị mới
-      */
+     //thay đổi form khu sân
+
      const handleComplexFieldChange = (field, value) => {
           setComplexFormData((prev) => ({
                ...prev,
@@ -327,11 +291,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
-     /**
-      * Xử lý thay đổi tài khoản ngân hàng cho sân
-      * - Tự động điền thông tin ngân hàng từ tài khoản đã chọn
-      * @param {string} bankAccountId - ID của tài khoản ngân hàng
-      */
+     // thay đổi tài khoản ngân hàng
      const handleBankAccountChange = (bankAccountId) => {
           const selectedAccount = bankAccounts.find(acc => acc.bankAccountId === Number(bankAccountId));
           if (selectedAccount) {
@@ -354,9 +314,8 @@ const FieldManagement = ({ isDemo = false }) => {
                }));
           }
      };
-
+     // xóa ảnh khu sân
      const removeComplexImage = () => {
-          // Cleanup ObjectURL if exists
           if (complexFormData.image && complexFormData.image.startsWith('blob:')) {
                URL.revokeObjectURL(complexFormData.image);
           }
@@ -370,15 +329,11 @@ const FieldManagement = ({ isDemo = false }) => {
                complexImageInputRef.current.value = "";
           }
      };
-
      const triggerComplexImagePicker = () => {
           complexImageInputRef.current?.click();
      };
 
-     /**
-      * Xử lý phím tắt cho vùng upload ảnh khu sân (accessibility)
-      * @param {KeyboardEvent} event - Event từ keyboard
-      */
+     // phím tăt cho upload ảnh khu sân
      const handleComplexUploadAreaKeyDown = (event) => {
           if (event.key === 'Enter' || event.key === ' ') {
                event.preventDefault();
@@ -386,14 +341,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
-     /**
-      * Xử lý submit form tạo/cập nhật khu sân (Complex)
-      * - Validate dữ liệu form
-      * - Geocode địa chỉ để lấy tọa độ (nếu chưa có)
-      * - Gọi API tạo hoặc cập nhật khu sân
-      * - Upload ảnh lên Cloudinary (nếu có)
-      * @param {Event} e - Event từ form submit
-      */
+     // upload khu sân mới hoặc cập nhật khu sân
      const handleComplexSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {
@@ -401,7 +349,6 @@ const FieldManagement = ({ isDemo = false }) => {
                return;
           }
 
-          // Validate token and owner role before proceeding
           const token = localStorage.getItem("token");
           if (!token) {
                await Swal.fire({
@@ -414,7 +361,6 @@ const FieldManagement = ({ isDemo = false }) => {
                return;
           }
 
-          // Check if user is owner
           const userRole = user?.roleName || user?.role;
           if (userRole !== "Owner" && userRole !== "FieldOwner") {
                await Swal.fire({
@@ -427,8 +373,7 @@ const FieldManagement = ({ isDemo = false }) => {
                return;
           }
 
-          // Validate ownerId - Get UserID from Users table
-          // OwnerID in FieldComplexes references Users(UserID)
+          // lấy ownerId từ user context
           const ownerId = user?.userID || user?.UserID || user?.id || user?.userId;
           if (!ownerId) {
                await Swal.fire({
@@ -444,7 +389,7 @@ const FieldManagement = ({ isDemo = false }) => {
           const isEditingComplex = Boolean(isEditComplexModalOpen && editingComplexId);
           const actionLabel = isEditingComplex ? 'cập nhật khu sân' : 'tạo khu sân';
 
-          // Validate dữ liệu khu sân bằng validation function
+          // Validate dữ liệu khu sân
           const complexValidation = validateComplexData(complexFormData, isEditingComplex);
           if (!complexValidation.isValid) {
                const firstError = Object.values(complexValidation.errors)[0];
@@ -501,7 +446,7 @@ const FieldManagement = ({ isDemo = false }) => {
                          return;
                     }
                }
-
+               // chuẩn hóa lat/lng
                const latToUse =
                     lat !== null && lat !== undefined && lat !== ""
                          ? Number.isNaN(Number(lat))
@@ -518,7 +463,6 @@ const FieldManagement = ({ isDemo = false }) => {
                if (isEditingComplex) {
                     let updatePayload;
 
-                    // Always use FormData for update to match API expectations
                     updatePayload = new FormData();
                     updatePayload.append("ComplexId", String(editingComplexId));
                     updatePayload.append("OwnerId", String(Number(ownerId)));
@@ -527,16 +471,13 @@ const FieldManagement = ({ isDemo = false }) => {
                     updatePayload.append("Description", complexFormData.description || "");
                     updatePayload.append("Status", complexFormData.status || "Pending");
 
-                    // Add image file if new one is selected, otherwise keep existing
                     if (complexFormData.imageFile) {
                          updatePayload.append("ImageFile", complexFormData.imageFile);
                     } else if (complexFormData.imageUrl) {
-                         // If no new file but has existing URL, we might need to send it
-                         // But FormData doesn't handle URLs well, so we'll let backend handle it
-                         // by not sending ImageFile field
+                         updatePayload.append("ImageUrl", complexFormData.imageUrl);
                     }
 
-                    // Add location data - use only one format (Lat/Lng) to avoid confusion
+                    // thêm lat/lng 
                     if (latToUse !== null && latToUse !== undefined) {
                          updatePayload.append("Lat", String(latToUse));
                     }
@@ -544,7 +485,7 @@ const FieldManagement = ({ isDemo = false }) => {
                          updatePayload.append("Lng", String(lngToUse));
                     }
 
-                    // Add address components
+                    // thêm đại chỉ
                     if (ward) {
                          updatePayload.append("Ward", ward);
                     }
@@ -555,7 +496,6 @@ const FieldManagement = ({ isDemo = false }) => {
                          updatePayload.append("Province", province);
                     }
 
-                    // Add CreatedAt if available (for preserving creation date)
                     const existingComplex = complexes.find(c => c.complexId === editingComplexId);
                     if (existingComplex?.createdAt) {
                          updatePayload.append("CreatedAt", existingComplex.createdAt);
@@ -581,8 +521,6 @@ const FieldManagement = ({ isDemo = false }) => {
                     await loadData();
                     return;
                }
-
-               // Create FormData if image file exists, otherwise use JSON
                let newComplexResponse;
 
                if (complexFormData.imageFile) {
@@ -615,15 +553,14 @@ const FieldManagement = ({ isDemo = false }) => {
 
                     newComplexResponse = await createFieldComplex(formDataToSend);
                } else {
-                    // No file, create without image (or with existing imageUrl if editing)
-                    // OwnerID must reference Users(UserID) from database
+                    // Tạo payload JSON nếu không có ảnh mới
                     const payload = {
-                         complexId: 0, // Will be set by backend
-                         ownerId: Number(ownerId), // Ensure it's a number matching Users(UserID)
+                         complexId: 0,
+                         ownerId: Number(ownerId),
                          name: complexFormData.name,
                          address: complexFormData.address,
                          description: complexFormData.description || "",
-                         imageUrl: complexFormData.imageUrl || "", // Send existing URL if any
+                         imageUrl: complexFormData.imageUrl || "",
                          status: "Pending",
                     };
 
@@ -648,7 +585,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     newComplexResponse = await createFieldComplex(payload);
                }
 
-               // Handle response - API may return array or single object
+               // Lấy khu sân mới 
                let newComplex;
                if (Array.isArray(newComplexResponse)) {
                     newComplex = newComplexResponse[0];
@@ -656,7 +593,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     newComplex = newComplexResponse;
                }
 
-               // Extract only fields from API response
+               // chuẩn hóa dữ liệu khu sân mới
                const normalizedComplex = {
                     complexId: newComplex.complexId,
                     ownerId: newComplex.ownerId,
@@ -670,10 +607,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     fields: newComplex.fields || []
                };
 
-               // Add new complex to the list with only API fields
                setComplexes(prev => [...prev, normalizedComplex]);
-
-               // Show success message
                const result = await Swal.fire({
                     icon: 'success',
                     title: 'Tạo khu sân thành công!',
@@ -685,10 +619,9 @@ const FieldManagement = ({ isDemo = false }) => {
                     timer: 5000
                });
 
-               // Close complex modal and reset form
+               // đóng modal và reset form
                setIsAddComplexModalOpen(false);
                setIsEditComplexModalOpen(false);
-               // Revoke object URL before resetting
                if (complexFormData.image && complexFormData.image.startsWith('blob:')) {
                     URL.revokeObjectURL(complexFormData.image);
                }
@@ -703,22 +636,16 @@ const FieldManagement = ({ isDemo = false }) => {
                     await loadData();
                }
           } catch (error) {
-               console.error(isEditingComplex ? 'Error updating complex:' : 'Error creating complex:', error);
-
-               // Extract detailed error message from API response
                let errorMessage = `Có lỗi xảy ra khi ${actionLabel}`;
                let errorDetails = '';
 
                if (error.response) {
                     const { status, data } = error.response;
 
-                    // Handle 400 Bad Request with detailed messages
+                    // chi tiết lỗi 400
                     if (status === 400) {
                          if (data) {
-                              // Try to get error message from different possible fields
                               errorMessage = data.message || data.title || data.error || 'Dữ liệu không hợp lệ';
-
-                              // Handle validation errors (ModelState errors)
                               if (data.errors && typeof data.errors === 'object') {
                                    const validationErrors = [];
                                    Object.keys(data.errors).forEach(key => {
@@ -730,14 +657,12 @@ const FieldManagement = ({ isDemo = false }) => {
                                    });
 
                                    if (validationErrors.length > 0) {
-                                        errorMessage = validationErrors[0]; // Show first error
+                                        errorMessage = validationErrors[0];
                                         if (validationErrors.length > 1) {
                                              errorDetails = `Các lỗi khác: ${validationErrors.slice(1).join(', ')}`;
                                         }
                                    }
                               }
-
-                              // Check for specific image-related errors
                               if (errorMessage.toLowerCase().includes('image') ||
                                    errorMessage.toLowerCase().includes('ảnh') ||
                                    errorMessage.toLowerCase().includes('file')) {
@@ -758,7 +683,6 @@ const FieldManagement = ({ isDemo = false }) => {
                          errorMessage = data.message;
                     }
                } else if (error.request) {
-                    // Network error
                     if (error.message?.includes('CORS')) {
                          errorMessage = 'Lỗi CORS: Backend chưa cấu hình cho phép truy cập từ domain này.';
                          errorDetails = 'Vui lòng kiểm tra cấu hình CORS trên backend hoặc liên hệ admin.';
@@ -782,14 +706,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
-     /**
-      * Xử lý submit form tạo/cập nhật sân nhỏ (Field)
-      * - Validate dữ liệu form và quyền Owner
-      * - Upload ảnh chính và ảnh gallery lên Cloudinary
-      * - Gọi API tạo hoặc cập nhật sân
-      * - Tự động tạo giá mặc định cho các time slot (nếu có)
-      * @param {Event} e - Event từ form submit
-      */
+     // thêm sân nhỏ mới hoặc cập nhật sân nhỏ
      const handleSubmit = async (e) => {
           e.preventDefault();
           if (isDemo) {
@@ -822,7 +739,7 @@ const FieldManagement = ({ isDemo = false }) => {
           try {
                const isEditingField = Boolean(isEditModalOpen && formData.fieldId);
 
-               // Validate dữ liệu sân bằng validation function
+               // Validate dữ liệu sân nhỏ
                const fieldValidation = validateFieldData(formData, isEditingField);
                if (!fieldValidation.isValid) {
                     const firstError = Object.values(fieldValidation.errors)[0];
@@ -835,18 +752,17 @@ const FieldManagement = ({ isDemo = false }) => {
                     return;
                }
 
-               // Helper to check if a value is a File object
+               // kiểm tra File object
                const isFile = (value) => {
                     return value instanceof File;
                };
 
-               // Helper to check if a value is a URL string
                const isUrl = (value) => {
                     if (!value || typeof value !== 'string') return false;
                     return value.startsWith('http://') || value.startsWith('https://');
                };
 
-               // Create or update field with FormData for File objects
+               // thêm hoạc cập nhật sân nhỏ
                const formDataToSend = new FormData();
                formDataToSend.append("ComplexId", formData.complexId);
                formDataToSend.append("TypeId", String(fieldTypeMap[formData.typeId] || parseInt(formData.typeId)));
@@ -857,38 +773,31 @@ const FieldManagement = ({ isDemo = false }) => {
                formDataToSend.append("PricePerHour", String(parseFloat(formData.pricePerHour) || 0));
                formDataToSend.append("Status", formData.status || "Available");
                formDataToSend.append("BankAccountId", String(formData.bankAccountId));
-
-               // Add bank account information
                formDataToSend.append("BankName", formData.bankName);
                formDataToSend.append("BankShortCode", formData.bankShortCode || "");
                formDataToSend.append("AccountNumber", formData.accountNumber);
                formDataToSend.append("AccountHolder", formData.accountHolder);
 
-               // Separate new uploads (File objects) from existing images (URLs)
+               // phân biệt ảnh mới (File) và ảnh cũ (URL)
                const newMainImageFile = formData.mainImage && isFile(formData.mainImage) ? formData.mainImage : null;
                const existingMainImageUrl = formData.mainImage && isUrl(formData.mainImage) ? formData.mainImage : null;
-
                const newGalleryFiles = formData.imageFiles?.filter(img => isFile(img)) || [];
                const existingGalleryUrls = formData.imageFiles?.filter(img => isUrl(img)) || [];
 
-               // Add main image: send File object if it's a new upload
                if (newMainImageFile) {
                     formDataToSend.append("MainImage", newMainImageFile);
                }
 
-               // If editing and keeping existing main image URL, send it so backend knows to preserve it
                if (isEditingField && existingMainImageUrl) {
                     formDataToSend.append("MainImageUrl", existingMainImageUrl);
                }
 
-               // Add new gallery images as File objects
                if (newGalleryFiles.length > 0) {
                     newGalleryFiles.forEach((file) => {
                          formDataToSend.append("ImageFiles", file);
                     });
                }
 
-               // If editing and keeping existing gallery URLs, send them so backend knows to preserve them
                if (isEditingField && existingGalleryUrls.length > 0) {
                     existingGalleryUrls.forEach((url) => {
                          formDataToSend.append("ImageUrls", url);
@@ -903,7 +812,7 @@ const FieldManagement = ({ isDemo = false }) => {
                     createdField = await createField(formDataToSend);
                }
 
-               // Optionally create default field prices for all time slots
+               // tạo giá cho các khung giờ nếu có
                if (timeSlots.length > 0 && formData.pricePerHour) {
                     try {
                          for (const slot of timeSlots) {
@@ -914,12 +823,9 @@ const FieldManagement = ({ isDemo = false }) => {
                               });
                          }
                     } catch (priceError) {
-                         console.warn("Error creating field prices:", priceError);
-                         // Continue even if price creation fails
+
                     }
                }
-
-               // Show success message with SweetAlert2
                await Swal.fire({
                     icon: 'success',
                     title: isEditModalOpen ? 'Cập nhật thành công!' : 'Tạo sân thành công!',
@@ -949,13 +855,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
-     /**
-      * Mở modal chỉnh sửa sân với dữ liệu có sẵn
-      * - Load thông tin sân vào form
-      * - Load ảnh từ Cloudinary URL
-      * - Tìm và điền thông tin tài khoản ngân hàng
-      * @param {Object} field - Thông tin sân cần chỉnh sửa
-      */
+     // chỉnh sửa sân nhỏ
      const handleEdit = (field) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -965,7 +865,7 @@ const FieldManagement = ({ isDemo = false }) => {
                key => fieldTypeMap[key] === field.typeId
           ) || "";
 
-          // Find matching bank account - prioritize bankAccountId, fallback to bankName + accountNumber
+          // Tìm tài khoản ngân hàng khớp với thông tin trong field
           let matchingAccount = null;
           if (field.bankAccountId) {
                matchingAccount = bankAccounts.find(acc =>
@@ -973,7 +873,6 @@ const FieldManagement = ({ isDemo = false }) => {
                     acc.bankAccountId === field.bankAccountId
                );
           }
-          // Fallback: find by bankName and accountNumber if bankAccountId not found
           if (!matchingAccount && field.bankName && field.accountNumber) {
                matchingAccount = bankAccounts.find(acc =>
                     acc.bankName === field.bankName &&
@@ -981,22 +880,19 @@ const FieldManagement = ({ isDemo = false }) => {
                );
           }
 
-          // Extract main image and gallery images from field (only URLs from Cloudinary)
           let mainImage = null;
           let galleryImages = [];
 
-          // Only use URLs from Cloudinary
           if (field.mainImageUrl) {
                mainImage = field.mainImageUrl;
           }
 
-          // Only use URLs from Cloudinary
           if (Array.isArray(field.imageUrls) && field.imageUrls.length > 0) {
                galleryImages = field.imageUrls.filter(Boolean).slice(0, MAX_FIELD_IMAGES);
           } else if (Array.isArray(field.images) && field.images.length > 0) {
                galleryImages = field.images.filter(Boolean).slice(0, MAX_FIELD_IMAGES);
           }
-
+          // load dữ liệu sân nhỏ vào form
           setFormData({
                fieldId: field.fieldId,
                complexId: field.complexId,
@@ -1009,7 +905,6 @@ const FieldManagement = ({ isDemo = false }) => {
                imageFiles: galleryImages,
                pricePerHour: field.pricePerHour || "",
                status: field.status || "Available",
-               // Lấy thông tin bank account từ matchingAccount nếu có, fallback về field data
                bankAccountId: matchingAccount ? String(matchingAccount.bankAccountId) : (field.bankAccountId ? String(field.bankAccountId) : ""),
                bankName: matchingAccount?.bankName || field.bankName || "",
                bankShortCode: matchingAccount?.bankShortCode || field.bankShortCode || "",
@@ -1019,13 +914,7 @@ const FieldManagement = ({ isDemo = false }) => {
           setIsEditModalOpen(true);
      };
 
-     /**
-      * Xử lý xóa sân nhỏ
-      * - Hiển thị dialog xác nhận
-      * - Gọi API xóa sân
-      * - Reload danh sách sân
-      * @param {number} fieldId - ID của sân cần xóa
-      */
+     // xóa sân nhỏ
      const handleDelete = async (fieldId) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1065,12 +954,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
-     /**
-      * Mở modal thêm sân mới
-      * - Kiểm tra đã có khu sân chưa (yêu cầu tạo khu sân trước)
-      * - Reset form và chọn tài khoản ngân hàng mặc định
-      * @param {string} defaultComplexId - ID khu sân mặc định (optional)
-      */
+     // thêm sân nhỏ
      const handleAddField = (defaultComplexId = "") => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1093,7 +977,6 @@ const FieldManagement = ({ isDemo = false }) => {
                return;
           }
           resetForm(defaultComplexId);
-          // Preselect default bank account if available
           const defaultAccount = bankAccounts.find(acc => acc.isDefault) || bankAccounts[0];
           if (defaultAccount) {
                setFormData(prev => ({
@@ -1108,11 +991,7 @@ const FieldManagement = ({ isDemo = false }) => {
           setIsAddModalOpen(true);
      };
 
-     /**
-      * Mở modal thêm khu sân mới
-      * - Reset form khu sân
-      * - Mở modal thêm mới
-      */
+     // thêm khu sân
      const handleAddComplex = () => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1124,12 +1003,7 @@ const FieldManagement = ({ isDemo = false }) => {
           setIsAddComplexModalOpen(true);
      };
 
-     /**
-      * Mở modal chỉnh sửa khu sân với dữ liệu có sẵn
-      * - Load thông tin khu sân vào form
-      * - Load ảnh từ Cloudinary URL
-      * @param {Object} complex - Thông tin khu sân cần chỉnh sửa
-      */
+     // chỉnh sửa khu sân
      const handleEditComplex = (complex) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1140,7 +1014,6 @@ const FieldManagement = ({ isDemo = false }) => {
                URL.revokeObjectURL(complexFormData.image);
           }
 
-          // Load complex data with imageUrl from Cloudinary
           const complexImageUrl = complex.imageUrl || complex.ImageUrl || null;
           const complexStatus = complex.status || complex.Status || "Active";
 
@@ -1155,11 +1028,10 @@ const FieldManagement = ({ isDemo = false }) => {
                district: complex.district || complex.District || "",
                province: complex.province || complex.Province || "",
                description: complex.description || complex.Description || "",
-               // Only use imageUrl from Cloudinary
                image: complexImageUrl || "",
-               imageUrl: complexImageUrl, // Store URL for backend
-               imageFile: null, // No new file selected
-               status: complexStatus, // Preserve current status
+               imageUrl: complexImageUrl,
+               imageFile: null,
+               status: complexStatus,
           });
           setEditingComplexId(complex.complexId || complex.ComplexID);
           setComplexImageUploading(false);
@@ -1170,13 +1042,7 @@ const FieldManagement = ({ isDemo = false }) => {
           setIsEditComplexModalOpen(true);
      };
 
-     /**
-      * Xử lý xóa khu sân
-      * - Hiển thị dialog xác nhận (cảnh báo ảnh hưởng đến sân nhỏ)
-      * - Gọi API xóa khu sân
-      * - Reload danh sách khu sân
-      * @param {number} complexId - ID của khu sân cần xóa
-      */
+     // xóa khu sân
      const handleDeleteComplex = async (complexId) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1217,13 +1083,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
-     /**
-      * Bật/tắt trạng thái hoạt động của khu sân
-      * - Toggle giữa "Active" và "Deactive"
-      * - Optimistic update UI trước khi gọi API
-      * - Gọi API cập nhật trạng thái
-      * @param {Object} complex - Thông tin khu sân cần toggle
-      */
+     // thay đổi trạng thái khu sân nhanh
      const handleToggleComplexStatus = async (complex) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
@@ -1232,10 +1092,7 @@ const FieldManagement = ({ isDemo = false }) => {
 
           const complexId = complex.complexId || complex.ComplexID;
           const currentStatus = complex.status || "Active";
-          // API expects "Deactive" not "Inactive"
           const newStatus = currentStatus === "Active" ? "Deactive" : "Active";
-
-          // Optimistic update
           setComplexes(prevComplexes =>
                prevComplexes.map(c =>
                     (c.complexId || c.ComplexID) === complexId
@@ -1245,9 +1102,7 @@ const FieldManagement = ({ isDemo = false }) => {
           );
 
           try {
-               // API requires FormData format (multipart/form-data) based on API documentation
                const imageUrl = complex.imageUrl || complex.ImageUrl || complex.image || complex.Image || "";
-
                const updatePayload = new FormData();
                updatePayload.append("ComplexId", String(complexId));
                updatePayload.append("OwnerId", String(complex.ownerId || complex.OwnerID));
@@ -1256,9 +1111,6 @@ const FieldManagement = ({ isDemo = false }) => {
                updatePayload.append("Description", complex.description || complex.Description || "");
                updatePayload.append("Status", newStatus);
                updatePayload.append("CreatedAt", complex.createdAt || complex.CreatedAt || "");
-
-               // Try to fetch and include existing image as File object
-               // This ensures API receives ImageFile field which it might require
                if (imageUrl) {
                     try {
                          const response = await fetch(imageUrl);
@@ -1269,8 +1121,7 @@ const FieldManagement = ({ isDemo = false }) => {
                               updatePayload.append("ImageFile", file);
                          }
                     } catch (fetchError) {
-                         console.warn('Could not fetch image for FormData:', fetchError);
-                         // Continue without ImageFile - backend might preserve existing image
+
                     }
                }
 
@@ -1296,10 +1147,7 @@ const FieldManagement = ({ isDemo = false }) => {
                }
 
                await updateFieldComplex(complexId, updatePayload);
-
-               // Reload data to ensure UI is in sync
                await loadData();
-
                await Swal.fire({
                     icon: 'success',
                     title: newStatus === "Active" ? 'Đã kích hoạt thành công!' : 'Đã vô hiệu hóa thành công!',
@@ -1320,7 +1168,6 @@ const FieldManagement = ({ isDemo = false }) => {
                     allowOutsideClick: true
                });
           } catch (error) {
-               // Revert optimistic update on error
                setComplexes(prevComplexes =>
                     prevComplexes.map(c =>
                          (c.complexId || c.ComplexID) === complexId
@@ -1349,8 +1196,8 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      };
 
+     // đặt lại form khu sân
      const resetComplexForm = () => {
-          // Revoke object URL if exists to prevent memory leak
           if (complexFormData.image && complexFormData.image.startsWith('blob:')) {
                URL.revokeObjectURL(complexFormData.image);
           }
@@ -1368,33 +1215,33 @@ const FieldManagement = ({ isDemo = false }) => {
                image: "",
                imageFile: null,
                imageUrl: null,
-               status: "Active", // Reset to default
+               status: "Active",
           });
           setComplexImageUploading(false);
           if (complexImageInputRef.current) {
                complexImageInputRef.current.value = "";
           }
      };
-
+     // đóng modal sân nhỏ
      const handleCloseFieldModal = () => {
           setIsAddModalOpen(false);
           setIsEditModalOpen(false);
           resetForm();
      };
-
+     // đóng modal khu sân
      const handleCloseComplexModal = () => {
           setIsAddComplexModalOpen(false);
           setIsEditComplexModalOpen(false);
           setEditingComplexId(null);
           resetComplexForm();
      };
-
+     // yêu cầu tạo khu sân từ modal thêm sân nhỏ
      const handleRequestCreateComplex = () => {
           setIsAddModalOpen(false);
           setIsEditModalOpen(false);
           handleAddComplex();
      };
-
+     // chuyển đến  trang quản lý tài khoản ngân hàng
      const handleNavigateBankAccounts = () => {
           setIsAddModalOpen(false);
           setIsEditModalOpen(false);
@@ -1421,7 +1268,7 @@ const FieldManagement = ({ isDemo = false }) => {
                accountHolder: "",
           });
      };
-
+     // trích xuất phường, quận, tỉnh 
      const extractAddressComponents = (addressComponents = []) => {
           let ward = "";
           let district = "";
@@ -1446,7 +1293,7 @@ const FieldManagement = ({ isDemo = false }) => {
 
           return { ward, district, province };
      };
-
+     // lấy tọa độ từ địa chỉ
      const geocodeAddress = useCallback(async (address) => {
           if (!address || !address.trim()) {
                return {
@@ -1470,8 +1317,6 @@ const FieldManagement = ({ isDemo = false }) => {
                }
 
                const data = await response.json();
-
-               // Check for API error response
                if (data.error_message) {
                     return {
                          success: false,
@@ -1522,7 +1367,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }
      }, []);
 
-     // Handle address selection from AddressPicker for complex
+     //chọn địa chỉ từ bản đồ
      const handleComplexAddressSelect = (locationData) => {
           setComplexFormData(prev => ({
                ...prev,
@@ -1537,17 +1382,14 @@ const FieldManagement = ({ isDemo = false }) => {
           }));
      };
 
-     // Normalize field status - "Booked" is not a valid Field status, it's for FieldSchedule
-     // If backend returns "Booked" for Field, treat it as "Available"
      const normalizeFieldStatus = (status) => {
           const validStatuses = ['Available', 'Maintenance', 'Unavailable'];
           if (!status || !validStatuses.includes(status)) {
-               // "Booked" or any invalid status should be treated as "Available" for Field
                return 'Available';
           }
           return status;
      };
-
+     // lấy màu theo trạng thái sân
      const getStatusColor = (status) => {
           const normalizedStatus = normalizeFieldStatus(status);
           switch (normalizedStatus) {
@@ -1557,13 +1399,13 @@ const FieldManagement = ({ isDemo = false }) => {
                default: return 'bg-gray-100 text-gray-800';
           }
      };
-
+     // lấy chữ theo trạng thái sân
      const getStatusText = (status) => {
           const normalizedStatus = normalizeFieldStatus(status);
           const statusObj = fieldStatuses.find(s => s.value === normalizedStatus);
           return statusObj ? statusObj.label : normalizedStatus;
      };
-
+     // định dạng tiền VND
      const formatCurrency = (amount) => {
           return new Intl.NumberFormat('vi-VN', {
                style: 'currency',
@@ -1571,7 +1413,7 @@ const FieldManagement = ({ isDemo = false }) => {
           }).format(amount);
      };
 
-     // Pagination for complexes (4 per page)
+     // phân trạng khu sân (4)
      const {
           currentPage: complexesPage,
           totalPages: complexesTotalPages,
@@ -1586,7 +1428,7 @@ const FieldManagement = ({ isDemo = false }) => {
           return fields.filter(field => field.complexStatus === "Active");
      }, [fields]);
 
-     // Pagination for fields (6 per page) - chỉ hiển thị sân của khu sân Active
+     // phân trang sân nhỏ (6)
      const {
           currentPage: fieldsPage,
           totalPages: fieldsTotalPages,
@@ -1594,7 +1436,7 @@ const FieldManagement = ({ isDemo = false }) => {
           handlePageChange: handleFieldsPageChange,
           totalItems: fieldsTotalItems,
           itemsPerPage: fieldsPerPage,
-     } = usePagination(activeFields, 3);
+     } = usePagination(activeFields, 6);
 
      if (loading) {
           return (
