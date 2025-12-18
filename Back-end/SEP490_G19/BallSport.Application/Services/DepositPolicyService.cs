@@ -12,6 +12,21 @@ namespace BallSport.Application.Services
         {
             _repo = repo;
         }
+        public async Task<DepositPolicyDTO?> GetPublicByFieldIdAsync(int fieldId)
+        {
+            var dp = await _repo.GetPublicByFieldIdAsync(fieldId);
+            if (dp == null) return null;
+
+            return new DepositPolicyDTO
+            {
+                DepositPolicyId = dp.DepositPolicyId,
+                FieldId = dp.FieldId,
+                DepositPercent = dp.DepositPercent,
+                MinDeposit = dp.MinDeposit,
+                MaxDeposit = dp.MaxDeposit,
+                CreatedAt = dp.CreatedAt
+            };
+        }
 
         public async Task<List<DepositPolicyDTO>> GetAllAsync(int ownerId)
         {

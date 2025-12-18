@@ -13,6 +13,12 @@ namespace BallSport.Infrastructure.Repositories
         {
             _context = context;
         }
+        public async Task<DepositPolicy?> GetPublicByFieldIdAsync(int fieldId)
+        {
+            return await _context.DepositPolicies
+                .Include(dp => dp.Field)
+                .FirstOrDefaultAsync(dp => dp.FieldId == fieldId);
+        }
 
         //  Owner lấy tất cả policy của mình
         public async Task<List<DepositPolicy>> GetAllByOwnerAsync(int ownerId)
