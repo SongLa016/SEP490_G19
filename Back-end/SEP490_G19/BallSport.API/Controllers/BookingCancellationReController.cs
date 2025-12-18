@@ -20,15 +20,16 @@ namespace BallSport.API.Controllers
             _service = service;
         }
 
-        
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
+
+        [HttpGet("by-user/{userId}")]
+        public async Task<IActionResult> GetByUser(int userId)
         {
-            var requests = await _service.GetAllAsync();
+            var requests = await _service.GetByUserIdAsync(userId);
             return Ok(requests);
         }
 
-        
+
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {

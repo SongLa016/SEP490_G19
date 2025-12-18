@@ -22,7 +22,10 @@ namespace BallSport.Infrastructure.Repositories
 
         public async Task<Booking> AddAsync(Booking booking)
         {
-            booking.CreatedAt = DateTime.UtcNow;
+            booking.CreatedAt = TimeZoneInfo.ConvertTimeFromUtc(
+     DateTime.UtcNow,
+     TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh")
+ );
             booking.BookingStatus ??= "Pending";
             booking.PaymentStatus ??= "Unpaid";
 
