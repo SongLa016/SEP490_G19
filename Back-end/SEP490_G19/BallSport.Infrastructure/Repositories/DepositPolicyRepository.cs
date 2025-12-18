@@ -1,7 +1,8 @@
-﻿using BallSport.Infrastructure;
+﻿using System;
 using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
+
 namespace BallSport.Infrastructure.Repositories
 {
     public class DepositPolicyRepository
@@ -13,52 +14,67 @@ namespace BallSport.Infrastructure.Repositories
             _context = context;
         }
 
-        // Lấy tất cả chính sách đặt cọc
-        public async Task<List<DepositPolicy>> GetAllAsync()
+        //  Owner lấy tất cả policy của mình
+        public async Task<List<DepositPolicy>> GetAllByOwnerAsync(int ownerId)
         {
             return await _context.DepositPolicies
                 .Include(dp => dp.Field)
+                    .ThenInclude(f => f.Complex)
+                .Where(dp =>
+                    dp.Field != null &&
+                    dp.Field.Complex != null &&
+                    dp.Field.Complex.OwnerId == ownerId
+                )
                 .ToListAsync();
         }
 
-        // Lấy theo sân
-        public async Task<DepositPolicy?> GetByFieldIdAsync(int fieldId)
+        //  Lấy theo field + owner
+        public async Task<DepositPolicy?> GetByFieldIdAsync(int fieldId, int ownerId)
         {
             return await _context.DepositPolicies
                 .Include(dp => dp.Field)
-                .FirstOrDefaultAsync(dp => dp.FieldId == fieldId);
+                    .ThenInclude(f => f.Complex)
+                .FirstOrDefaultAsync(dp =>
+                    dp.FieldId == fieldId &&
+                    dp.Field != null &&
+                    dp.Field.Complex != null &&
+                    dp.Field.Complex.OwnerId == ownerId
+                );
         }
 
-        // Thêm mới
-        public async Task<DepositPolicy> AddAsync(DepositPolicy policy)
+        //  Check quyền
+        public async Task<bool> IsFieldOwnedByOwnerAsync(int fieldId, int ownerId)
         {
-            _context.DepositPolicies.Add(policy);
-            await _context.SaveChangesAsync();
-            return policy;
+            return await _context.Fields
+                .AnyAsync(f =>
+                    f.FieldId == fieldId &&
+                    f.Complex != null &&
+                    f.Complex.OwnerId == ownerId
+                );
         }
 
-        // Cập nhật
-        public async Task<bool> UpdateAsync(DepositPolicy policy)
+        public async Task<DepositPolicy> AddAsync(DepositPolicy entity)
         {
-            var existing = await _context.DepositPolicies.FindAsync(policy.DepositPolicyId);
-            if (existing == null) return false;
-
-            existing.DepositPercent = policy.DepositPercent;
-            existing.MinDeposit = policy.MinDeposit;
-            existing.MaxDeposit = policy.MaxDeposit;
+            _context.DepositPolicies.Add(entity);
             await _context.SaveChangesAsync();
-            return true;
+            return entity;
         }
 
-        // Xóa
+        public async Task<bool> UpdateAsync(DepositPolicy entity)
+        {
+            _context.DepositPolicies.Update(entity);
+            return await _context.SaveChangesAsync() > 0;
+        }
+
         public async Task<bool> DeleteAsync(int id)
         {
-            var policy = await _context.DepositPolicies.FindAsync(id);
-            if (policy == null) return false;
+            var dp = await _context.DepositPolicies.FindAsync(id);
+            if (dp == null) return false;
 
-            _context.DepositPolicies.Remove(policy);
-            await _context.SaveChangesAsync();
-            return true;
+            _context.DepositPolicies.Remove(dp);
+            return await _context.SaveChangesAsync() > 0;
         }
     }
+
+
 }

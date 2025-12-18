@@ -13,83 +13,72 @@ namespace BallSport.Application.Services
             _repo = repo;
         }
 
-        //  Lấy tất cả chính sách đặt cọc
-        public async Task<List<DepositPolicyDTO>> GetAllAsync()
+        public async Task<List<DepositPolicyDTO>> GetAllAsync(int ownerId)
         {
-            var list = await _repo.GetAllAsync();
-            return list.Select(dp => new DepositPolicyDTO
-            {
-                DepositPolicyId = dp.DepositPolicyId,
-                FieldId = dp.FieldId,
-                FieldName = dp.Field?.Name,
-                DepositPercent = dp.DepositPercent,
-                MinDeposit = dp.MinDeposit,
-                MaxDeposit = dp.MaxDeposit,
-                CreatedAt = dp.CreatedAt
-            }).ToList();
+            var list = await _repo.GetAllByOwnerAsync(ownerId);
+            return list.Select(MapToDto).ToList();
         }
 
-        //  Lấy chính sách theo sân
-        public async Task<DepositPolicyDTO?> GetByFieldIdAsync(int fieldId)
+        public async Task<DepositPolicyDTO?> GetByFieldIdAsync(int fieldId, int ownerId)
         {
-            var dp = await _repo.GetByFieldIdAsync(fieldId);
-            if (dp == null) return null;
-
-            return new DepositPolicyDTO
-            {
-                DepositPolicyId = dp.DepositPolicyId,
-                FieldId = dp.FieldId,
-                FieldName = dp.Field?.Name,
-                DepositPercent = dp.DepositPercent,
-                MinDeposit = dp.MinDeposit,
-                MaxDeposit = dp.MaxDeposit,
-                CreatedAt = dp.CreatedAt
-            };
+            var dp = await _repo.GetByFieldIdAsync(fieldId, ownerId);
+            return dp == null ? null : MapToDto(dp);
         }
 
-        //  Thêm mới
-        public async Task<DepositPolicyDTO> AddAsync(DepositPolicyDTO dto)
+        public async Task<DepositPolicyDTO> AddAsync(DepositPolicyDTO dto, int ownerId)
         {
+            await EnsureOwner(dto.FieldId, ownerId);
+
             var entity = new DepositPolicy
             {
                 FieldId = dto.FieldId,
                 DepositPercent = dto.DepositPercent,
                 MinDeposit = dto.MinDeposit,
                 MaxDeposit = dto.MaxDeposit,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
-            var added = await _repo.AddAsync(entity);
-            return new DepositPolicyDTO
-            {
-                DepositPolicyId = added.DepositPolicyId,
-                FieldId = added.FieldId,
-                DepositPercent = added.DepositPercent,
-                MinDeposit = added.MinDeposit,
-                MaxDeposit = added.MaxDeposit,
-                CreatedAt = added.CreatedAt
-            };
+            return MapToDto(await _repo.AddAsync(entity));
         }
 
-        //  Cập nhật
-        public async Task<bool> UpdateAsync(DepositPolicyDTO dto)
+        public async Task<bool> UpdateAsync(DepositPolicyDTO dto, int ownerId)
         {
-            var entity = new DepositPolicy
+            await EnsureOwner(dto.FieldId, ownerId);
+
+            return await _repo.UpdateAsync(new DepositPolicy
             {
                 DepositPolicyId = dto.DepositPolicyId,
                 FieldId = dto.FieldId,
                 DepositPercent = dto.DepositPercent,
                 MinDeposit = dto.MinDeposit,
                 MaxDeposit = dto.MaxDeposit
-            };
-
-            return await _repo.UpdateAsync(entity);
+            });
         }
 
-        //  Xóa
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<bool> DeleteAsync(int depositPolicyId, int fieldId, int ownerId)
         {
-            return await _repo.DeleteAsync(id);
+            await EnsureOwner(fieldId, ownerId);
+            return await _repo.DeleteAsync(depositPolicyId);
+        }
+
+        private async Task EnsureOwner(int fieldId, int ownerId)
+        {
+            if (!await _repo.IsFieldOwnedByOwnerAsync(fieldId, ownerId))
+                throw new UnauthorizedAccessException("Không có quyền với sân này");
+        }
+
+        private static DepositPolicyDTO MapToDto(DepositPolicy dp)
+        {
+            return new DepositPolicyDTO
+            {
+                DepositPolicyId = dp.DepositPolicyId,
+                FieldId = dp.FieldId,
+                DepositPercent = dp.DepositPercent,
+                MinDeposit = dp.MinDeposit,
+                MaxDeposit = dp.MaxDeposit,
+                CreatedAt = dp.CreatedAt
+            };
         }
     }
+
 }
