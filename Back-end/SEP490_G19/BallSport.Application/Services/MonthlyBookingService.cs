@@ -42,9 +42,7 @@ using BallSport.Infrastructure.Models;
                 TotalPrice = 0,
                 BookingStatus = "Pending",
                 PaymentStatus = "Pending",
-                CreatedAt = TimeZoneInfo.ConvertTimeFromUtc(
-                DateTime.UtcNow,
-                 TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh"))
+                CreatedAt = DateTime.UtcNow
             };
 
             package = await _bookingRepo.CreateBookingPackageAsync(package);

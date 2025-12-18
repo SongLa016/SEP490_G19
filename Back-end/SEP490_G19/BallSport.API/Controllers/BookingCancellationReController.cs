@@ -21,12 +21,20 @@ namespace BallSport.API.Controllers
         }
 
 
-        [HttpGet("by-user/{userId}")]
-        public async Task<IActionResult> GetByUser(int userId)
+        [HttpGet("my-requests")]
+        [Authorize]
+        public async Task<IActionResult> GetMyRequests()
         {
+            var userIdClaim = User.FindFirst("UserID")?.Value;
+            if (userIdClaim == null)
+                return Unauthorized("Không xác định được user.");
+
+            int userId = int.Parse(userIdClaim);
+
             var requests = await _service.GetByUserIdAsync(userId);
             return Ok(requests);
         }
+
 
 
 
