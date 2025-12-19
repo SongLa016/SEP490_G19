@@ -24,7 +24,7 @@ namespace BallSport.Infrastructure.Repositories.StatisticOwner
         {
             return await _context.Bookings
                 .Where(b => b.Schedule.Field.Complex.OwnerId == ownerId)
-                .Where(b => b.BookingStatus == "Completed")
+                .Where(b => b.PaymentStatus == "Paid")
                 .SumAsync(b => b.TotalPrice); 
         }
 

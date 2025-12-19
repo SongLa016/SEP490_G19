@@ -46,9 +46,7 @@ namespace BallSport.Infrastructure.Repositories
         public async Task<decimal> GetTotalSpendingAsync(int userId)
         {
             return await _db.Bookings
-                .Where(b => b.UserId == userId
-                            && b.BookingStatus == "Completed"
-                            && b.PaymentStatus == "Paid")
+                .Where(b => b.UserId == userId && b.PaymentStatus == "Paid")
                 .SumAsync(b => b.TotalPrice);
         }
         // thống kê theo tháng
@@ -67,13 +65,11 @@ namespace BallSport.Infrastructure.Repositories
                     Month = g.Key,
                     TotalBookings = g.Count(),
                     TotalPlayingHours = g
-                        .Where(b => b.BookingStatus == "Completed" &&
-                                    b.PaymentStatus == "Paid")
+                        .Where(b => b.BookingStatus == "Completed")
                         .Sum(b => (b.Schedule.Slot.EndTime - b.Schedule.Slot.StartTime).TotalHours),
 
                     TotalSpending = g
-                        .Where(b => b.BookingStatus == "Completed" &&
-                                    b.PaymentStatus == "Paid")
+                        .Where(b =>b.PaymentStatus == "Paid")
                         .Sum(b => b.TotalPrice)
                 })
                 .OrderBy(r => r.Month)
