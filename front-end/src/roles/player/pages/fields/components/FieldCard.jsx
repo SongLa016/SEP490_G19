@@ -27,7 +27,8 @@ export default function FieldCard({ field, index, activeTab, slotId, formatPrice
                               className="w-full h-40 md:h-44 object-cover transition-transform duration-300 ease-out group-hover:scale-110"
                               draggable={false}
                          />
-                         <div className="absolute top-4 right-4 flex space-x-2">
+                         {/* Button yêu thích - góc trái */}
+                         <div className="absolute top-3 left-3">
                               <Button
                                    type="button"
                                    data-stop-propagation="true"
@@ -40,11 +41,14 @@ export default function FieldCard({ field, index, activeTab, slotId, formatPrice
                                         handleToggleFavorite(field.fieldId);
                                    }}
                                    variant="outline"
-                                   className={`h-8 w-8 p-0 rounded-full shadow-sm transition-all duration-200 border hover:scale-110 hover:text-pink-600 ${field.isFavorite ? "bg-teal-500 text-teal-50 border-teal-500" : "bg-white text-teal-700 border-teal-200 hover:bg-teal-50"}`}
+                                   className={`h-8 w-8 p-0 rounded-full shadow-md transition-all duration-200 border hover:scale-110 ${field.isFavorite ? "bg-pink-500 text-white border-pink-500 hover:bg-pink-600" : "bg-white/90 text-gray-600 border-white hover:bg-pink-50 hover:text-pink-500 hover:border-pink-200"}`}
                               >
-                                   <Heart className="w-4 h-4" />
+                                   <Heart className={`w-4 h-4 ${field.isFavorite ? 'fill-current' : ''}`} />
                               </Button>
-                              <div className="bg-white/95 backdrop-blur px-2 py-1 rounded-full text-sm font-semibold text-teal-600 border border-teal-200 shadow-sm">
+                         </div>
+                         {/* Badge type sân - góc phải */}
+                         <div className="absolute top-3 right-3">
+                              <div className="bg-white/95 backdrop-blur px-2 py-1 rounded-full text-xs font-semibold text-teal-600 border border-teal-200 shadow-sm">
                                    {slotId ? (field.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : field.typeName}
                               </div>
                          </div>

@@ -4,7 +4,8 @@ import { useNavigate } from "react-router-dom";
 import Lenis from "lenis";
 import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, QuickBookingSection, CommunityMatchmakingSection, UserReviewsSection, CancellationPoliciesSection, MobileAppSection, WhyChooseUsSection, NewsletterSection, CTASection } from "./components";
 import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
-import { fetchTopBookingFields, fetchFieldComplex, fetchComplexes, fetchField } from "../../../../shared/services/fields";
+import { fetchTopBookingFields, fetchFieldComplex, fetchField } from "../../../../shared/services/fields";
+import { useComplexes } from "../../../../shared/hooks/usePageData";
 
 // Helpers giống FieldSearch để chuẩn hóa quận/huyện
 const normalizeText = (text) => {
@@ -35,54 +36,46 @@ export default function HomePage({ user }) {
      const [topBookingFields, setTopBookingFields] = useState([]);
      const [loadingTopFields, setLoadingTopFields] = useState(true);
 
-     // Load danh sách khu vực giống FieldSearch (từ complexes)
+     // Sử dụng React Query để cache data - giúp chuyển trang nhanh hơn
+     const { data: complexesData } = useComplexes({ page: 1, size: 200 });
+
+     // Load danh sách khu vực từ cached complexes data
      useEffect(() => {
-          let ignore = false;
-          async function loadDistricts() {
-               try {
-                    const res = await fetchComplexes({ page: 1, size: 200 });
-                    if (ignore) return;
-                    const list = Array.isArray(res?.data?.data)
-                         ? res.data.data
-                         : Array.isArray(res?.data)
-                              ? res.data
-                              : Array.isArray(res)
-                                   ? res
-                                   : [];
-                    const map = new Map();
-                    list.forEach((c) => {
-                         const raw = typeof c?.district === "string" ? c.district.trim() : "";
-                         if (!raw) return;
-                         const baseKey = normalizeDistrictKey(raw);
-                         const hasPrefix = /^(Quận|Huyện|Thị xã)/i.test(raw);
-                         if (!map.has(baseKey)) {
-                              map.set(baseKey, raw);
-                              return;
-                         }
-                         const current = map.get(baseKey);
-                         const currentHasPrefix = /^(Quận|Huyện|Thị xã)/i.test(current);
-                         if (hasPrefix && !currentHasPrefix) {
-                              map.set(baseKey, raw);
-                         }
-                    });
-                    const districts = Array.from(map.values())
-                         .sort((a, b) => a.localeCompare(b, "vi"))
-                         .map((v) => ({ value: v, label: v, query: v }));
-                    if (districts.length > 0) {
-                         setLocationOptions([{ value: "all", label: "Tất cả khu vực", query: "" }, ...districts]);
-                    } else {
-                         setLocationOptions([{ value: "all", label: "Tất cả khu vực", query: "" }]);
-                    }
-               } catch (error) {
-                    console.error("Error loading districts for HomePage:", error);
-                    setLocationOptions([{ value: "all", label: "Tất cả khu vực", query: "" }]);
+          if (!complexesData) return;
+
+          const list = Array.isArray(complexesData?.data?.data)
+               ? complexesData.data.data
+               : Array.isArray(complexesData?.data)
+                    ? complexesData.data
+                    : Array.isArray(complexesData)
+                         ? complexesData
+                         : [];
+
+          const map = new Map();
+          list.forEach((c) => {
+               const raw = typeof c?.district === "string" ? c.district.trim() : "";
+               if (!raw) return;
+               const baseKey = normalizeDistrictKey(raw);
+               const hasPrefix = /^(Quận|Huyện|Thị xã)/i.test(raw);
+               if (!map.has(baseKey)) {
+                    map.set(baseKey, raw);
+                    return;
                }
+               const current = map.get(baseKey);
+               const currentHasPrefix = /^(Quận|Huyện|Thị xã)/i.test(current);
+               if (hasPrefix && !currentHasPrefix) {
+                    map.set(baseKey, raw);
+               }
+          });
+
+          const districts = Array.from(map.values())
+               .sort((a, b) => a.localeCompare(b, "vi"))
+               .map((v) => ({ value: v, label: v, query: v }));
+
+          if (districts.length > 0) {
+               setLocationOptions([{ value: "all", label: "Tất cả khu vực", query: "" }, ...districts]);
           }
-          loadDistricts();
-          return () => {
-               ignore = true;
-          };
-     }, []);
+     }, [complexesData]);
 
      // ============================================
      // KHAI BÁO CÁC THAM SỐ VÀ STATE CHO HORIZONTAL SCROLL
@@ -798,7 +791,7 @@ export default function HomePage({ user }) {
                     onSearch={handleSearch}
                />
 
-               <StatsSection />
+               {/* <StatsSection /> */}
                <QuickCategoriesSection featuredFields={featuredFields} />
                {!loadingTopFields && topBookingFields.length > 0 && (
                     <TopBookingNowSection
@@ -929,7 +922,7 @@ export default function HomePage({ user }) {
                          </div>
                     </div>
                </div>
-               <MobileAppSection />
+               {/* <MobileAppSection /> */}
                {!user && <NewsletterSection />}
                <WhyChooseUsSection />
                {/* <FAQSection /> */}

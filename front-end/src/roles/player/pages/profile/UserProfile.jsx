@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { User, Mail, Phone, MapPin, Calendar, Users, Edit3, Save, X, Camera, Heart, Target, Shield, Clock, Star, CheckCircle, AlertCircle } from "lucide-react";
 import { Input, Button, Card, CardContent, CardHeader, CardTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Avatar, Textarea, LoadingSpinner, FadeIn, SlideIn, Section, Container } from "../../../../shared/components/ui";
 import { profileService } from "../../../../shared/index";
+import { validateVietnamPhone } from "../../../../shared/services/authService";
 import Swal from "sweetalert2";
 import BankingManagement from "./BankingManagement";
 
@@ -164,6 +165,20 @@ export default function UserProfile({ user }) {
                     }
                });
                return;
+          }
+
+          // Validate số điện thoại Việt Nam
+          if (formData.phone) {
+               const phoneValidation = validateVietnamPhone(formData.phone);
+               if (!phoneValidation.isValid) {
+                    Swal.fire({
+                         icon: 'warning',
+                         title: 'Số điện thoại không hợp lệ',
+                         text: phoneValidation.message,
+                         confirmButtonText: 'Đóng'
+                    });
+                    return;
+               }
           }
 
           setIsLoading(true);
@@ -545,9 +560,19 @@ export default function UserProfile({ user }) {
                                                                            <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Số điện thoại
                                                                            </p>
-                                                                           <p className="text-base font-semibold text-teal-900">
-                                                                                {formData.phone || "Chưa cập nhật"}
-                                                                           </p>
+                                                                           {isEditing ? (
+                                                                                <Input
+                                                                                     type="tel"
+                                                                                     value={formData.phone}
+                                                                                     onChange={(e) => handleInputChange('phone', e.target.value)}
+                                                                                     placeholder="Nhập số điện thoại (VD: 0912345678)"
+                                                                                     className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
+                                                                                />
+                                                                           ) : (
+                                                                                <p className="text-base font-semibold text-teal-900">
+                                                                                     {formData.phone || "Chưa cập nhật"}
+                                                                                </p>
+                                                                           )}
                                                                       </div>
                                                                  </div>
                                                             </div>

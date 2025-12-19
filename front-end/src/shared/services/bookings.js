@@ -629,8 +629,8 @@ export async function createBookingPackage(packageData) {
       userId: Number(packageData.userId) || 0,
       fieldId: Number(packageData.fieldId) || 0,
       packageName: packageData.packageName || "Gói đặt định kỳ",
-      startDate: formatDateForBackend(packageData.startDate), // DateTime format cho BE
-      endDate: formatDateForBackend(packageData.endDate), // DateTime format cho BE
+      startDate: formatDateForBackend(packageData.startDate), 
+      endDate: formatDateForBackend(packageData.endDate), 
       totalPrice: Number(packageData.totalPrice) || 0,
       selectedSlots: Array.isArray(packageData.selectedSlots)
         ? packageData.selectedSlots.map((s) => ({
@@ -641,15 +641,6 @@ export async function createBookingPackage(packageData) {
           }))
         : [],
     };
-
-    console.log("📤 [API] Sending package payload:", {
-      startDate: payload.startDate,
-      endDate: payload.endDate,
-      totalPrice: payload.totalPrice,
-      selectedSlotsCount: payload.selectedSlots.length,
-      selectedSlots: payload.selectedSlots
-    });
-    console.log("⚠️ [API] IMPORTANT: Backend should use totalPrice =", payload.totalPrice, "NOT recalculate!");
 
     const response = await apiClient.post(endpoint, payload);
 
@@ -753,12 +744,26 @@ export async function generateQRCode(bookingId, options = {}) {
       params.toString() ? `?${params.toString()}` : ""
     }`;
 
+    console.log("📱 [generateQRCode] Gọi API:", endpoint);
+    console.log("📱 [generateQRCode] Options:", options);
+
     const response = await apiClient.get(endpoint);
+
+    console.log("📱 [generateQRCode] Response:", response.data);
+
+    // Lấy qrCodeUrl từ response với nhiều trường hợp khác nhau
+    const qrCodeUrl = response.data?.qrCodeUrl 
+      || response.data?.QRCodeUrl 
+      || response.data?.qrCode 
+      || response.data?.QRCode
+      || response.data?.data?.qrCodeUrl
+      || response.data?.data?.QRCodeUrl
+      || null;
 
     return {
       success: true,
       data: response.data,
-      qrCodeUrl: response.data?.qrCodeUrl || response.data?.qrCode || null,
+      qrCodeUrl: qrCodeUrl,
     };
   } catch (error) {
     console.error("Error generating QR code:", error);
@@ -1220,16 +1225,24 @@ export async function cancelBooking(bookingId, reason) {
 }
 
 /**
- * Fetch all booking cancellation requests
- * Backend will return cancellation requests based on token (Owner sees requests for their fields, Player sees their own requests)
+ * Fetch all booking cancellation requests for Owner
+ * GET /api/BookingCancellationRe/owner/cancellations
+ * Requires token authentication
  * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
  */
 export async function fetchCancellationRequests() {
   try {
-    const endpoint =
-      "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe";
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Vui lòng đăng nhập để xem yêu cầu hủy",
+      };
+    }
 
-    // Use apiClient instead of axios to ensure token is automatically included
+    const endpoint =
+      "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/owner/cancellations";
+
     const response = await apiClient.get(endpoint);
 
     return {
@@ -1252,11 +1265,21 @@ export async function fetchCancellationRequests() {
 
 /**
  * Fetch a specific cancellation request by ID
+ * GET /api/BookingCancellationRe/{id}
+ * Requires token authentication
  * @param {number|string} cancellationId - The cancellation request ID
  * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
  */
 export async function fetchCancellationRequestById(cancellationId) {
   try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Vui lòng đăng nhập để xem chi tiết yêu cầu hủy",
+      };
+    }
+
     if (!cancellationId) {
       return {
         success: false,
@@ -1266,12 +1289,7 @@ export async function fetchCancellationRequestById(cancellationId) {
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
 
-    const response = await axios.get(endpoint, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
+    const response = await apiClient.get(endpoint);
 
     return {
       success: true,
@@ -1296,24 +1314,32 @@ export async function fetchCancellationRequestById(cancellationId) {
 }
 
 /**
- * Confirm a cancellation request
+ * Confirm a cancellation request (Owner approves player's cancellation request)
+ * PUT /api/BookingCancellationRe/confirm/{id}
+ * Requires token authentication
  * @param {number} cancellationId - The cancellation request ID
  * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
  */
 export async function confirmCancellation(cancellationId) {
   try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Vui lòng đăng nhập để xác nhận yêu cầu hủy",
+      };
+    }
+
+    if (!cancellationId) {
+      return {
+        success: false,
+        error: "Cancellation ID is required",
+      };
+    }
+
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/confirm/${cancellationId}`;
 
-    const response = await axios.put(
-      endpoint,
-      {},
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
-    );
+    const response = await apiClient.put(endpoint, {});
 
     return {
       success: true,
@@ -1321,6 +1347,8 @@ export async function confirmCancellation(cancellationId) {
       message: "Đã xác nhận hủy booking",
     };
   } catch (error) {
+    console.error("Error confirming cancellation:", error);
+
     if (error.response) {
       return {
         success: false,
@@ -1337,18 +1365,31 @@ export async function confirmCancellation(cancellationId) {
 
 /**
  * Delete a cancellation request
+ * DELETE /api/BookingCancellationRe/{id}
+ * Requires token authentication
  * @param {number} cancellationId - The cancellation request ID
  * @returns {Promise<{success: boolean, error?: string}>}
  */
 export async function deleteCancellationRequest(cancellationId) {
   try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Vui lòng đăng nhập để xóa yêu cầu hủy",
+      };
+    }
+
+    if (!cancellationId) {
+      return {
+        success: false,
+        error: "Cancellation ID is required",
+      };
+    }
+
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
 
-    await axios.delete(endpoint, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
+    await apiClient.delete(endpoint);
 
     return {
       success: true,
@@ -1474,6 +1515,48 @@ export async function updateBookingStatus(bookingId, status) {
       success: false,
       error:
         errorMessage instanceof Error ? errorMessage.message : errorMessage,
+    };
+  }
+}
+
+/**
+ * Fetch cancellation requests by current logged-in user (from token)
+ * Backend tự động lấy userId từ token
+ * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
+ */
+export async function fetchCancellationRequestsByUser() {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Bạn cần đăng nhập để xem yêu cầu hủy booking",
+      };
+    }
+
+    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/by-user`;
+
+    const response = await apiClient.get(endpoint);
+
+    return {
+      success: true,
+      data: extractArrayResponse(response.data),
+    };
+  } catch (error) {
+    console.error("Error fetching cancellation requests by user:", error);
+    
+    // Nếu 404, có thể user chưa có yêu cầu hủy nào
+    if (error.response?.status === 404) {
+      return {
+        success: true,
+        data: [],
+      };
+    }
+
+    const errorMessage = handleApiError(error);
+    return {
+      success: false,
+      error: errorMessage instanceof Error ? errorMessage.message : errorMessage,
     };
   }
 }

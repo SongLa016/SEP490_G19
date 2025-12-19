@@ -5,6 +5,7 @@ import ErrorDisplay from "../../../../shared/components/ErrorDisplay";
 import { useTranslation } from "../../../../shared/hooks/useTranslation";
 import { useLanguage } from "../../../../contexts/LanguageContext";
 import { profileService } from "../../../../shared/index";
+import { validateVietnamPhone } from "../../../../shared/services/authService";
 import Swal from "sweetalert2";
 
 export default function ProfileSettings({ user }) {
@@ -31,6 +32,8 @@ export default function ProfileSettings({ user }) {
           emailVerified: user?.emailVerified || true,
           createdAt: user?.createdAt || new Date().toISOString()
      });
+     const [originalPhone, setOriginalPhone] = useState(user?.phone || "");
+     const [isSavingPhone, setIsSavingPhone] = useState(false);
 
      const formatDate = (dateString) => {
           if (!dateString) return "";
@@ -77,6 +80,7 @@ export default function ProfileSettings({ user }) {
                               ...prev,
                               ...mapped,
                          }));
+                         setOriginalPhone(mapped.phone || "");
                     } else if (result.reason) {
                          setError(result.reason);
                     }
@@ -122,18 +126,16 @@ export default function ProfileSettings({ user }) {
 
           if (!passwordData.newPassword) {
                errors.newPassword = "Vui lòng nhập mật khẩu mới";
-          } else if (passwordData.newPassword.length < 6) {
-               errors.newPassword = "Mật khẩu mới phải có ít nhất 6 ký tự";
-          } else if (passwordData.newPassword.length > 100) {
-               errors.newPassword = "Mật khẩu không được vượt quá 100 ký tự";
+          } else if (passwordData.newPassword.length < 8) {
+               errors.newPassword = "Mật khẩu mới phải có ít nhất 8 ký tự";
+          } else if (passwordData.newPassword.length > 64) {
+               errors.newPassword = "Mật khẩu không được vượt quá 64 ký tự";
           } else if (!/[A-Z]/.test(passwordData.newPassword)) {
                errors.newPassword = "Mật khẩu phải chứa ít nhất 1 chữ hoa";
           } else if (!/[a-z]/.test(passwordData.newPassword)) {
                errors.newPassword = "Mật khẩu phải chứa ít nhất 1 chữ thường";
           } else if (!/[0-9]/.test(passwordData.newPassword)) {
                errors.newPassword = "Mật khẩu phải chứa ít nhất 1 số";
-          } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword)) {
-               errors.newPassword = "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt";
           } else if (passwordData.newPassword === passwordData.currentPassword) {
                errors.newPassword = "Mật khẩu mới không được trùng với mật khẩu hiện tại";
           }
@@ -153,12 +155,11 @@ export default function ProfileSettings({ user }) {
           if (!password) return { strength: 0, label: "", color: "gray" };
 
           let strength = 0;
-          if (password.length >= 6) strength++;
-          if (password.length >= 10) strength++;
+          if (password.length >= 8) strength++;
+          if (password.length >= 12) strength++;
           if (/[A-Z]/.test(password)) strength++;
           if (/[a-z]/.test(password)) strength++;
           if (/[0-9]/.test(password)) strength++;
-          if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
 
           if (strength <= 2) return { strength: 1, label: "Yếu", color: "red" };
           if (strength <= 4) return { strength: 2, label: "Trung bình", color: "yellow" };
@@ -166,8 +167,8 @@ export default function ProfileSettings({ user }) {
      };
 
      // Constants for character limit
-     const MAX_PASSWORD_LENGTH = 100;
-     const WARNING_THRESHOLD = 90;
+     const MAX_PASSWORD_LENGTH = 64;
+     const WARNING_THRESHOLD = 55;
 
      // Helper function to get character count warning class
      const getCharCountClass = (length) => {
@@ -236,6 +237,57 @@ export default function ProfileSettings({ user }) {
      };
 
      /**
+      * Xử lý khi nhấn nút lưu số điện thoại
+      */
+     const handleSavePhone = async () => {
+          const phone = accountInfo.phone?.trim() || "";
+
+          // Validate số điện thoại Việt Nam
+          const phoneValidation = validateVietnamPhone(phone);
+          if (!phoneValidation.isValid) {
+               Swal.fire({
+                    icon: "warning",
+                    title: "Số điện thoại không hợp lệ",
+                    text: phoneValidation.message,
+                    confirmButtonText: "Đóng",
+               });
+               return;
+          }
+
+          setIsSavingPhone(true);
+          try {
+               const result = await profileService.updatePhone(phone);
+               if (result.ok) {
+                    Swal.fire({
+                         icon: "success",
+                         title: "Thành công",
+                         text: result.message || "Cập nhật số điện thoại thành công",
+                         confirmButtonText: "Đóng",
+                         timer: 2000,
+                         timerProgressBar: true,
+                    });
+                    setOriginalPhone(phone);
+               } else {
+                    Swal.fire({
+                         icon: "error",
+                         title: "Lỗi",
+                         text: result.reason || "Cập nhật số điện thoại thất bại",
+                         confirmButtonText: "Đóng",
+                    });
+               }
+          } catch (err) {
+               Swal.fire({
+                    icon: "error",
+                    title: "Lỗi",
+                    text: err.message || "Có lỗi xảy ra khi cập nhật số điện thoại",
+                    confirmButtonText: "Đóng",
+               });
+          } finally {
+               setIsSavingPhone(false);
+          }
+     };
+
+     /**
       * Xử lý khi nhấn nút "Xóa tài khoản"
       * Hiển thị popup xác nhận trước khi xóa
       */
@@ -299,11 +351,27 @@ export default function ProfileSettings({ user }) {
                                              <Phone className="w-4 h-4" />
                                              {t("profileSettings.phone")}
                                         </label>
-                                        <Input
-                                             value={accountInfo.phone || t("profileSettings.notUpdated")}
-                                             disabled
-                                             className="rounded-2xl border-teal-100 bg-white text-teal-900 focus:border-teal-500 focus:ring-teal-500"
-                                        />
+                                        <div className="flex gap-2">
+                                             <Input
+                                                  value={accountInfo.phone || ""}
+                                                  onChange={(e) => setAccountInfo(prev => ({ ...prev, phone: e.target.value }))}
+                                                  placeholder={t("profileSettings.notUpdated")}
+                                                  className="rounded-2xl border-teal-100 bg-white text-teal-900 focus:border-teal-500 focus:ring-teal-500"
+                                             />
+                                             {accountInfo.phone !== originalPhone && (
+                                                  <Button
+                                                       onClick={handleSavePhone}
+                                                       disabled={isSavingPhone}
+                                                       className="rounded-2xl bg-teal-600 hover:bg-teal-700 text-white px-4"
+                                                  >
+                                                       {isSavingPhone ? (
+                                                            <LoadingSpinner className="w-4 h-4" />
+                                                       ) : (
+                                                            <Check className="w-4 h-4" />
+                                                       )}
+                                                  </Button>
+                                             )}
+                                        </div>
                                         <p className="pl-1 text-xs text-teal-500">{t("profileSettings.phoneUpdate")}</p>
                                    </div>
                               </div>
@@ -425,7 +493,7 @@ export default function ProfileSettings({ user }) {
                                                   value={passwordData.currentPassword}
                                                   onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
                                                   placeholder={t("profileSettings.enterCurrentPassword")}
-                                                  maxLength={100}
+                                                  maxLength={64}
                                                   className={`rounded-2xl border-teal-100 focus:border-teal-500 focus:ring-teal-500 pr-10 ${passwordErrors.currentPassword ? "border-red-500" : ""}`}
                                              />
                                              <button
@@ -458,7 +526,7 @@ export default function ProfileSettings({ user }) {
                                                   value={passwordData.newPassword}
                                                   onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
                                                   placeholder={t("profileSettings.enterNewPassword")}
-                                                  maxLength={100}
+                                                  maxLength={64}
                                                   className={`rounded-2xl border-teal-100 focus:border-teal-500 focus:ring-teal-500 pr-10 ${passwordErrors.newPassword ? "border-red-500" : ""}`}
                                              />
                                              <button
@@ -512,9 +580,9 @@ export default function ProfileSettings({ user }) {
                                         <div className="mt-2 text-xs text-gray-500 space-y-1">
                                              <p className="font-medium">Yêu cầu mật khẩu:</p>
                                              <ul className="space-y-0.5 ml-2">
-                                                  <li className={`flex items-center gap-1 ${passwordData.newPassword.length >= 6 ? "text-green-600" : ""}`}>
-                                                       {passwordData.newPassword.length >= 6 ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
-                                                       Ít nhất 6 ký tự
+                                                  <li className={`flex items-center gap-1 ${passwordData.newPassword.length >= 8 ? "text-green-600" : ""}`}>
+                                                       {passwordData.newPassword.length >= 8 ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
+                                                       8-64 ký tự
                                                   </li>
                                                   <li className={`flex items-center gap-1 ${/[A-Z]/.test(passwordData.newPassword) ? "text-green-600" : ""}`}>
                                                        {/[A-Z]/.test(passwordData.newPassword) ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
@@ -527,10 +595,6 @@ export default function ProfileSettings({ user }) {
                                                   <li className={`flex items-center gap-1 ${/[0-9]/.test(passwordData.newPassword) ? "text-green-600" : ""}`}>
                                                        {/[0-9]/.test(passwordData.newPassword) ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
                                                        Ít nhất 1 số
-                                                  </li>
-                                                  <li className={`flex items-center gap-1 ${/[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword) ? "text-green-600" : ""}`}>
-                                                       {/[!@#$%^&*(),.?":{}|<>]/.test(passwordData.newPassword) ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
-                                                       Ít nhất 1 ký tự đặc biệt
                                                   </li>
                                              </ul>
                                         </div>
@@ -547,7 +611,7 @@ export default function ProfileSettings({ user }) {
                                                   value={passwordData.confirmPassword}
                                                   onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
                                                   placeholder={t("profileSettings.enterConfirmPassword")}
-                                                  maxLength={100}
+                                                  maxLength={64}
                                                   className={`rounded-2xl border-teal-100 focus:border-teal-500 focus:ring-teal-500 pr-10 ${passwordErrors.confirmPassword ? "border-red-500" : ""}`}
                                              />
                                              <button

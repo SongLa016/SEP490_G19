@@ -327,7 +327,8 @@ export default function DepositPolicies({ isDemo = false }) {
                fieldId: numericFieldId,
                depositPercent: Number(formData.depositPercent) || 0,
                minDeposit: formData.minDeposit ?? 0,
-               maxDeposit: formData.maxDeposit ?? 0
+               maxDeposit: formData.maxDeposit ?? 0,
+               createdAt: editingPolicy?.createdAt || ""
           };
           try {
                if (editingPolicy) {
@@ -344,7 +345,7 @@ export default function DepositPolicies({ isDemo = false }) {
           }
      };
      // xóa chính sách
-     const handleDeletePolicy = async (policyId) => {
+     const handleDeletePolicy = async (policy) => {
           if (isDemo) {
                setShowDemoRestrictedModal(true);
                return;
@@ -363,7 +364,7 @@ export default function DepositPolicies({ isDemo = false }) {
           if (!result.isConfirmed) return;
 
           try {
-               await deleteDepositPolicy(policyId);
+               await deleteDepositPolicy(policy.depositPolicyId, policy.fieldId);
                await Swal.fire({
                     icon: 'success',
                     title: 'Đã xóa',
@@ -497,7 +498,7 @@ export default function DepositPolicies({ isDemo = false }) {
                                              <Button
                                                   variant="outline"
                                                   size="sm"
-                                                  onClick={() => handleDeletePolicy(policy.depositPolicyId)}
+                                                  onClick={() => handleDeletePolicy(policy)}
                                                   className="flex items-center gap-1 text-red-600 hover:text-red-700 rounded-2xl"
                                              >
                                                   <Trash2 className="w-4 h-4 animate-pulse" />
@@ -535,8 +536,13 @@ export default function DepositPolicies({ isDemo = false }) {
                                    <option value="">Chọn sân</option>
                                    {fields.map((field) => {
                                         const isMaintenance = (field.status || "").toLowerCase() === "maintenance".toLowerCase();
-                                        const isOptionDisabled = !editingPolicy && isMaintenance && String(formData.fieldId) !== String(field.fieldId);
-                                        const label = `${field.complexName} - ${field.name} (${field.typeName})${isMaintenance ? " - Bảo trì" : ""}`;
+                                        const hasPolicy = policies.some(p => String(p.fieldId) === String(field.fieldId));
+                                        // Khi thêm mới: disable sân đã có chính sách hoặc đang bảo trì
+                                        // Khi sửa: chỉ disable sân khác đã có chính sách (cho phép giữ sân hiện tại)
+                                        const isOptionDisabled = !editingPolicy
+                                             ? (hasPolicy || isMaintenance)
+                                             : (hasPolicy && String(editingPolicy.fieldId) !== String(field.fieldId));
+                                        const label = `${field.complexName} - ${field.name} (${field.typeName})${isMaintenance ? " - Bảo trì" : ""}${hasPolicy && !editingPolicy ? " - Đã có chính sách" : ""}`;
                                         return (
                                              <option
                                                   key={field.fieldId}

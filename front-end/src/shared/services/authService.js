@@ -444,11 +444,14 @@ export const authService = {
 // Regex số điện thoại Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08, 09)
 export const VIETNAM_PHONE_REGEX = /^(03|05|07|08|09)[0-9]{8}$/;
 
-// Validate mật khẩu mạnh: ít nhất 8 ký tự, 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt
+// Validate mật khẩu mạnh: 8-64 ký tự, 1 chữ hoa, 1 chữ thường, 1 số
 export const validateStrongPassword = (password) => {
   const errors = [];
   if (!password || password.length < 8) {
     errors.push("Tối thiểu 8 ký tự");
+  }
+  if (password && password.length > 64) {
+    errors.push("Tối đa 64 ký tự");
   }
   if (!/[A-Z]/.test(password)) {
     errors.push("Ít nhất 1 chữ hoa");
@@ -458,9 +461,6 @@ export const validateStrongPassword = (password) => {
   }
   if (!/[0-9]/.test(password)) {
     errors.push("Ít nhất 1 số");
-  }
-  if (!/[!@#$%^&*(),.?":{}|<>_\-+=[\]\\/`~]/.test(password)) {
-    errors.push("Ít nhất 1 ký tự đặc biệt (!@#$%...)");
   }
   return {
     isValid: errors.length === 0,

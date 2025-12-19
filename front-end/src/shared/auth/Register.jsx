@@ -520,7 +520,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                                    <FadeIn delay={1100} duration={0.4}>
                                         <div className="flex items-center gap-2 text-xs text-gray-600 lg:col-span-2">
                                              <input type="checkbox" className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 w-4 h-4 transition-all duration-200 hover:scale-110" required />
-                                             <span>Tôi đồng ý với <Button type="button" className="text-teal-600 underline p-0 h-auto bg-transparent border-0 hover:bg-transparent transition-all hover:text-teal-800 duration-200 text-sm">Điều khoản</Button></span>
+                                             <span>Tôi đồng ý với <Button type="button" className="text-teal-600 underline p-0 h-auto bg-transparent border-0 hover:bg-transparent transition-all hover:text-teal-800 duration-200 text-sm"><Link to="/terms-of-service">Điều khoản</Link></Button></span>
                                         </div>
                                    </FadeIn>
 

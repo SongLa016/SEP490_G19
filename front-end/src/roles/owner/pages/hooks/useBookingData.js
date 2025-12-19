@@ -1,39 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import axios from "axios";
 import {
   fetchBookingsByOwner,
   fetchBookingPackageSessionsByOwnerToken,
   fetchBookingPackagesByOwnerToken,
 } from "../../../../shared/services/bookings";
+import { profileService } from "../../../../shared/services/profileService";
 import { normalizeDateString } from "../utils/scheduleUtils";
-
-// Helper: fetch player profile via PlayerProfile API
-const fetchPlayerProfile = async (playerId) => {
-  try {
-    const token = localStorage.getItem("token");
-    const response = await axios.get(
-      `/api/PlayerProfile/${playerId}`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-      }
-    );
-    const profileData = response.data || {};
-    return {
-      ok: true,
-      data: profileData,
-      profile: profileData,
-    };
-  } catch (error) {
-    console.error(`Failed to fetch player profile ${playerId}:`, error);
-    return {
-      ok: false,
-      reason: error.message || "Lấy thông tin khách hàng thất bại",
-    };
-  }
-};
 
 export const useBookingData = (currentUserId) => {
   const [bookings, setBookings] = useState([]);
@@ -78,7 +50,7 @@ export const useBookingData = (currentUserId) => {
     },
     []
   );
-
+  //
   const markSchedulesWithPackageSessions = useCallback(
     (schedules = [], packageSessionsList = []) => {
       if (!schedules.length || !packageSessionsList.length) return schedules;
@@ -238,13 +210,9 @@ export const useBookingData = (currentUserId) => {
             const userId = session.userId || session.userID;
             if (userId) {
               try {
-                const userResult = await fetchPlayerProfile(userId);
+                const userResult = await profileService.getPlayerProfile(userId);
                 if (userResult.ok && userResult.data) {
-                  const userData =
-                    userResult.profile ||
-                    userResult.data ||
-                    userResult.data.profile ||
-                    userResult.data.data;
+                  const userData = userResult.data;
                   return {
                     ...session,
                     customerName:
@@ -264,10 +232,7 @@ export const useBookingData = (currentUserId) => {
                   };
                 }
               } catch (error) {
-                console.error(
-                  `Failed to fetch customer profile ${userId} for package session:`,
-                  error
-                );
+                // Silently handle - profileService already logs errors
               }
             }
             return session;
@@ -302,13 +267,9 @@ export const useBookingData = (currentUserId) => {
             const userId = booking.userId || booking.userID;
             if (userId) {
               try {
-                const userResult = await fetchPlayerProfile(userId);
+                const userResult = await profileService.getPlayerProfile(userId);
                 if (userResult.ok && userResult.data) {
-                  const userData =
-                    userResult.profile ||
-                    userResult.data ||
-                    userResult.data.profile ||
-                    userResult.data.data;
+                  const userData = userResult.data;
                   return {
                     ...booking,
                     customerName:
@@ -328,10 +289,7 @@ export const useBookingData = (currentUserId) => {
                   };
                 }
               } catch (error) {
-                console.error(
-                  `Failed to fetch customer profile ${userId}:`,
-                  error
-                );
+                // Silently handle - profileService already logs errors
               }
             }
             return booking;

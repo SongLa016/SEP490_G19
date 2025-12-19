@@ -1,12 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Calendar, MapPin, Receipt, Repeat, CalendarDays, Trash2, Star, SlidersHorizontal, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, BarChart3, CreditCard, Clock, CheckCircle, AlertTriangle, XCircle, UserSearch, Info, RefreshCw, Loader2, User, Phone, Calendar as CalendarIcon } from "lucide-react";
 import { Section, Container, Card, CardContent, Button, Badge, LoadingList, FadeIn, StaggerContainer, Modal } from "../../../../shared/components/ui";
-
+import { fetchCancellationRequests } from "../../../../shared/services/bookings";
 import FindOpponentModal from "../../../../shared/components/FindOpponentModal";
 import RatingModal from "../../../../shared/components/RatingModal";
 import InvoiceModal from "../../../../shared/components/InvoiceModal";
 import CancelBookingModal from "../../../../shared/components/CancelBookingModal";
-
 import {
      BookingStats,
      BookingFilters,
@@ -26,6 +25,8 @@ import {
      filterParticipantsForDisplay,
      shouldShowCancelButton,
      getRecurringStatus,
+     getPaymentRemainingMs,
+     formatPaymentCountdown,
 } from './components/utils';
 
 // Import custom hooks
@@ -127,10 +128,11 @@ export default function BookingHistory({ user }) {
           paymentQRCode,
           isLoadingQR,
           isConfirmingPayment,
+          paymentCountdown,
           handleContinuePayment,
           handleConfirmPayment,
           closePaymentModal,
-     } = useBookingPayment(playerId, setBookings, setGroupedBookings);
+     } = useBookingPayment(playerId, setBookings, setGroupedBookings, scheduleDataMap);
 
      // Booking Cancel Hook
      const {
@@ -184,6 +186,67 @@ export default function BookingHistory({ user }) {
           statusBadge,
           paymentStatusBadge,
      } = useBookingUtils(bookingIdToRequest, scheduleDataMap);
+
+     // State lưu danh sách yêu cầu hủy đang chờ xử lý
+     const [pendingCancellations, setPendingCancellations] = useState({});
+
+     // State để trigger re-render mỗi giây cho countdown
+     const [, setCountdownTick] = useState(0);
+
+     // Update countdown mỗi giây
+     useEffect(() => {
+          const timer = setInterval(() => {
+               setCountdownTick(tick => tick + 1);
+          }, 1000);
+          return () => clearInterval(timer);
+     }, []);
+
+     // Fetch danh sách yêu cầu hủy của user
+     const loadCancellationRequests = useCallback(async () => {
+          try {
+               const result = await fetchCancellationRequests();
+               console.log("📋 [CANCELLATION REQUESTS] API result:", result);
+               if (result.success && Array.isArray(result.data)) {
+                    // Tạo map bookingId -> cancellation request (chỉ lấy các request chưa được xử lý)
+                    const cancellationMap = {};
+                    result.data.forEach(req => {
+                         const bookingId = req.bookingId || req.BookingId || req.bookingID || req.BookingID;
+                         const status = String(req.status || req.Status || req.requestStatus || req.RequestStatus || "pending").toLowerCase();
+                         console.log("📋 [CANCELLATION REQUEST] bookingId:", bookingId, "status:", status, "raw:", req);
+                         // Lưu các yêu cầu chưa được xử lý (pending, chờ xử lý, hoặc không có status)
+                         // Loại trừ các status đã xử lý: approved, rejected, confirmed, cancelled
+                         const isProcessed = ["approved", "rejected", "confirmed", "cancelled", "completed", "đã duyệt", "đã từ chối", "đã hủy"].includes(status);
+                         if (bookingId && !isProcessed) {
+                              // Lưu cả dạng string và number để đảm bảo match
+                              cancellationMap[String(bookingId)] = req;
+                              cancellationMap[Number(bookingId)] = req;
+                         }
+                    });
+                    console.log("📋 [CANCELLATION MAP] Final map:", cancellationMap);
+                    setPendingCancellations(cancellationMap);
+               }
+          } catch (error) {
+               console.error("Error loading cancellation requests:", error);
+          }
+     }, []);
+
+     // Kiểm tra booking có yêu cầu hủy đang chờ xử lý không
+     const hasPendingCancellation = useCallback((booking) => {
+          const bookingId = booking?.bookingId || booking?.id || booking?.BookingId || booking?.BookingID;
+          // Kiểm tra cả dạng number và string
+          const found = bookingId && (pendingCancellations[bookingId] || pendingCancellations[String(bookingId)] || pendingCancellations[Number(bookingId)]);
+          if (found) {
+               console.log("✅ [HAS PENDING CANCELLATION] Found for bookingId:", bookingId);
+          }
+          return found;
+     }, [pendingCancellations]);
+
+     // Load yêu cầu hủy khi component mount và khi bookings thay đổi
+     useEffect(() => {
+          if (playerId) {
+               loadCancellationRequests();
+          }
+     }, [playerId, bookings, loadCancellationRequests]);
 
      // Load packages khi chuyển tab
      useEffect(() => {
@@ -560,34 +623,36 @@ export default function BookingHistory({ user }) {
                                                                       </div>
                                                                  )}
 
-                                                                 {/* Thông báo và button thanh toán cho booking chưa thanh toán */}
-                                                                 {isPendingUnpaidWithin2Hours(b) && (
-                                                                      <div className="mt-2 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                                                                           <div className="flex items-start gap-2">
-                                                                                <Clock className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
-                                                                                <div className="flex-1">
-                                                                                     <div className="text-sm text-orange-800">
-                                                                                          <p className="font-medium mb-1">
-                                                                                               {timeRemaining[b.id] && timeRemaining[b.id] > 0
-                                                                                                    ? `⏰ Cần thanh toán trong ${formatTimeRemaining(timeRemaining[b.id])}`
-                                                                                                    : "⏰ Vui lòng thanh toán để hoàn tất đặt sân"
-                                                                                               }
-                                                                                          </p>
-                                                                                          <p className="text-xs text-orange-700 mb-2">
-                                                                                               Vui lòng thanh toán ngay để giữ chỗ.
-                                                                                          </p>
+                                                                 {/* Thông báo và button thanh toán cho booking chưa thanh toán (trong 10 phút) */}
+                                                                 {(() => {
+                                                                      const remainingMs = getPaymentRemainingMs(b);
+                                                                      const canContinuePayment = isPendingUnpaidWithin2Hours(b) && !hasPendingCancellation(b) && remainingMs > 0;
+                                                                      if (!canContinuePayment) return null;
+                                                                      return (
+                                                                           <div className="mt-2 mb-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                                                                <div className="flex items-start gap-2">
+                                                                                     <Clock className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                                                                                     <div className="flex-1">
+                                                                                          <div className="text-sm text-orange-800">
+                                                                                               <p className="font-medium mb-1">
+                                                                                                    ⏰ Vui lòng thanh toán để hoàn tất đặt sân
+                                                                                               </p>
+                                                                                               <p className="text-xs text-orange-700 mb-2">
+                                                                                                    Vui lòng thanh toán ngay để giữ chỗ. Còn lại: <span className="font-bold text-orange-800">{formatPaymentCountdown(remainingMs)}</span>
+                                                                                               </p>
+                                                                                          </div>
+                                                                                          <Button
+                                                                                               onClick={() => handleContinuePayment(b)}
+                                                                                               className="mt-2 bg-orange-600 hover:bg-orange-700 text-white text-sm px-4 py-2 rounded-lg"
+                                                                                          >
+                                                                                               <CreditCard className="w-4 h-4 mr-2" />
+                                                                                               Tiếp tục thanh toán ({formatPaymentCountdown(remainingMs)})
+                                                                                          </Button>
                                                                                      </div>
-                                                                                     <Button
-                                                                                          onClick={() => handleContinuePayment(b)}
-                                                                                          className="mt-2 bg-orange-600 hover:bg-orange-700 text-white text-sm px-4 py-2 rounded-lg"
-                                                                                     >
-                                                                                          <CreditCard className="w-4 h-4 mr-2" />
-                                                                                          Tiếp tục thanh toán
-                                                                                     </Button>
                                                                                 </div>
                                                                            </div>
-                                                                      </div>
-                                                                 )}
+                                                                      );
+                                                                 })()}
 
                                                                  {/* Thông báo cho booking đã hết hạn thanh toán */}
                                                                  {b.status === 'expired' && (
@@ -771,11 +836,7 @@ export default function BookingHistory({ user }) {
                                                                                      Đã có đối
                                                                                 </span>
                                                                            )}
-                                                                           {b.qrCode && (
-                                                                                <span className="inline-flex items-center gap-1 bg-purple-50 border border-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                                                                                     Mã QR: <span className="font-medium">{b.qrCode}</span>
-                                                                                </span>
-                                                                           )}
+
                                                                            {b.cancelledBy && (
                                                                                 <span className="inline-flex items-center gap-1 bg-red-50 border border-red-100 text-red-700 px-2 py-1 rounded-full">
                                                                                      Hủy bởi: <span className="font-medium">{b.cancelledBy}</span>
@@ -819,22 +880,34 @@ export default function BookingHistory({ user }) {
                                                             </Button>
                                                             {user && (
                                                                  <>
-                                                                      {/* Button tiếp tục thanh toán cho booking chưa thanh toán */}
-                                                                      {isPendingUnpaidWithin2Hours(b) && (
-                                                                           <Button
-                                                                                onClick={() => handleContinuePayment(b)}
-                                                                                className="px-3 py-2 text-sm bg-orange-600 hover:bg-orange-700 text-white rounded-3xl"
-                                                                           >
-                                                                                <CreditCard className="w-4 h-4 mr-2" />
-                                                                                Tiếp tục thanh toán
-                                                                           </Button>
-                                                                      )}
+                                                                      {/* Button tiếp tục thanh toán cho booking chưa thanh toán (trong 10 phút) */}
+                                                                      {(() => {
+                                                                           const remainingMs = getPaymentRemainingMs(b);
+                                                                           const canContinuePayment = isPendingUnpaidWithin2Hours(b) && !hasPendingCancellation(b) && remainingMs > 0;
+                                                                           if (!canContinuePayment) return null;
+                                                                           return (
+                                                                                <Button
+                                                                                     onClick={() => handleContinuePayment(b)}
+                                                                                     className="px-3 py-2 text-sm bg-orange-600 hover:bg-orange-700 text-white rounded-3xl"
+                                                                                >
 
-                                                                      {shouldShowCancelButton(b) && !shouldHideCancelButtonByDate(b) && (
-                                                                           <Button variant="destructive" onClick={() => handleCancel(b.id)} className="px-3 rounded-3xl py-2 text-sm">
-                                                                                <Trash2 className="w-4 h-4 mr-2" />
-                                                                                Hủy đặt
-                                                                           </Button>
+                                                                                     <CreditCard className="w-4 h-4 mr-2" />
+                                                                                     Tiếp tục thanh toán ({formatPaymentCountdown(remainingMs)})
+                                                                                </Button>
+                                                                           );
+
+                                                                      })()}                                    {shouldShowCancelButton(b) && !shouldHideCancelButtonByDate(b) && (
+                                                                           hasPendingCancellation(b) ? (
+                                                                                <span className="px-3 py-2 text-sm rounded-3xl bg-amber-50 text-amber-700 border border-amber-300 font-medium inline-flex items-center">
+                                                                                     <Clock className="w-4 h-4 mr-2" />
+                                                                                     Đã yêu cầu hủy
+                                                                                </span>
+                                                                           ) : (
+                                                                                <Button variant="destructive" onClick={() => handleCancel(b.id)} className="px-3 rounded-3xl py-2 text-sm">
+                                                                                     <Trash2 className="w-4 h-4 mr-2" />
+                                                                                     Hủy đặt
+                                                                                </Button>
+                                                                           )
                                                                       )}
                                                                       {b.status === "completed" && (
                                                                            (() => {
@@ -1439,7 +1512,7 @@ export default function BookingHistory({ user }) {
                               <span>Thanh toán booking</span>
                          </div>
                     }
-                    className="max-w-lg rounded-2xl border border-teal-200 shadow-xl"
+                    className="max-w-lg rounded-2xl border overflow-y-auto scrollbar-hide border-teal-200 shadow-xl"
                >
                     {paymentBooking && (
                          <div className="space-y-5">
@@ -1459,12 +1532,15 @@ export default function BookingHistory({ user }) {
                                         <div className="grid grid-cols-2 gap-3 pt-2 border-t border-teal-200">
                                              <div>
                                                   <p className="text-xs text-teal-600 font-medium mb-1">📅 Ngày & Giờ</p>
-                                                  <p className="text-sm font-semibold text-teal-900">{paymentBooking.date}</p>
-                                                  <p className="text-sm font-semibold text-teal-900">{paymentBooking.time}</p>
+                                                  <p className="text-sm font-semibold text-teal-900">{paymentBooking.scheduleDate || paymentBooking.date}</p>
+                                                  <p className="text-sm font-semibold text-teal-900">{paymentBooking.scheduleTime || paymentBooking.time}</p>
                                              </div>
                                              <div>
-                                                  <p className="text-xs text-teal-600 font-medium mb-1">💰 Số tiền</p>
-                                                  <p className="text-xl font-bold text-teal-600">{formatPrice(paymentBooking.depositAmount || paymentBooking.totalPrice || 0)}</p>
+                                                  <p className="text-xs text-teal-600 font-medium mb-1">💰 Số tiền cần thanh toán</p>
+                                                  <p className="text-xl font-bold text-teal-600">{formatPrice(paymentBooking.amountToPay || paymentBooking.depositAmount || paymentBooking.totalPrice || 0)}</p>
+                                                  {paymentBooking.isDepositPaid && (
+                                                       <p className="text-xs text-gray-500 mt-1">Đã thanh toán cọc: {formatPrice(paymentBooking.depositAmount || 0)}</p>
+                                                  )}
                                              </div>
                                         </div>
                                    </div>
@@ -1519,14 +1595,14 @@ export default function BookingHistory({ user }) {
                                         </div>
 
                                         {/* Countdown timer */}
-                                        {timeRemaining[paymentBooking.id] && timeRemaining[paymentBooking.id] > 0 && (
+                                        {paymentCountdown > 0 && (
                                              <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-300 rounded-lg p-4 shadow-sm">
                                                   <div className="flex items-center justify-center gap-2">
                                                        <Clock className="w-5 h-5 text-orange-600 animate-pulse" />
                                                        <div>
                                                             <p className="text-xs text-orange-600 font-medium">Thời gian còn lại</p>
                                                             <p className="text-lg font-bold text-orange-800">
-                                                                 {formatTimeRemaining(timeRemaining[paymentBooking.id])}
+                                                                 {formatTimeRemaining(paymentCountdown)}
                                                             </p>
                                                        </div>
                                                   </div>

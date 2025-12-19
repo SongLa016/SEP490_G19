@@ -1,10 +1,7 @@
 import { useState, useCallback } from "react";
 import Swal from "sweetalert2";
 import { updateBooking, fetchBookingsByPlayer } from "../../../../../../shared/index";
-import {
-  cancelBooking as cancelBookingAPI,
-  updateBookingStatus,
-} from "../../../../../../shared/services/bookings";
+import {  cancelBooking as cancelBookingAPI,  updateBookingStatus} from "../../../../../../shared/services/bookings";
 import { updateFieldScheduleStatus } from "../../../../../../shared/services/fieldSchedules";
 import { normalizeApiBookings, buildRecurringGroups, stripRefundQrInfo } from "../utils";
 

@@ -23,7 +23,8 @@ export default function ReviewTabContent({
      onRatingSubmit,
      canWriteReview = true,
      onRatingUpdated,
-     onRatingDeleted
+     onRatingDeleted,
+     hasCompletedBooking = false, // Người dùng có booking completed cho sân này không
 }) {
      const [isSubmitting, setIsSubmitting] = useState(false);
      const [activeReplyRatingId, setActiveReplyRatingId] = useState(null);
@@ -189,8 +190,8 @@ export default function ReviewTabContent({
                                         // Điều kiện hiển thị nút "Trả lời" trong tab Đánh giá:
                                         // - Người dùng đã đăng nhập
                                         // - Token còn hạn
-                                        // Việc kiểm soát "Hoàn Thành" đã được đảm bảo ở luồng BookingHistory khi ghi đánh giá
-                                        const canReply = !!user && hasValidToken;
+                                        // - Người dùng có ít nhất 1 booking đã hoàn thành (completed) cho sân/complex này
+                                        const canReply = !!user && hasValidToken && hasCompletedBooking;
                                         const ratingKey = review.ratingId || review.id || idx;
                                         const isReplying = activeReplyRatingId === ratingKey;
                                         const isOwnRating =
