@@ -78,7 +78,6 @@ export default function SystemNotificationsManagement() {
           targetId: 0, // ID của đối tượng liên quan (booking, post, comment, etc.)
           targetType: "none", // none | booking | post | comment | report | user
      });
-
      const parseApiData = (data) => {
           if (Array.isArray(data)) {
                return data;

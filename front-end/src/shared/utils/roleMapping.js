@@ -1,10 +1,4 @@
-/**
- * Role Mapping - Legacy compatibility layer
- * Sử dụng constants mới từ roles.js nhưng giữ backward compatibility
- * 
- * @deprecated - Nên sử dụng trực tiếp từ src/shared/constants/roles.js
- * File này được giữ lại để tương thích với code cũ
- */
+// hàm ánh xạ vai trò
 import {
   getRoleById,
   getRoleByName,

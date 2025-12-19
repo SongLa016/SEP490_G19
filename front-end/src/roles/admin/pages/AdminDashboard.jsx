@@ -1,28 +1,6 @@
 import React, { useState, useEffect } from "react";
-import {
-     Card,
-     CardContent,
-     CardHeader,
-     CardTitle,
-     Button,
-     Badge
-} from "../../../shared/components/ui";
-import {
-     Users,
-     Building2,
-     ClipboardList,
-     AlertTriangle,
-     FileText,
-     TrendingUp,
-     Calendar,
-     Shield,
-     Activity,
-     Server,
-     Eye,
-     Settings,
-     Clock,
-     Bell,
-} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "../../../shared/components/ui";
+import { Users, Building2, ClipboardList, AlertTriangle, FileText, TrendingUp, Calendar, Shield, Activity, Server, Eye, Settings, Clock, Bell } from "lucide-react";
 import { decodeTokenPayload, getStoredToken } from "../../../shared/utils/tokenManager";
 import {
      fetchOwnerStatistics,
@@ -72,6 +50,7 @@ export default function AdminDashboard() {
           return 0;
      };
 
+     // tải thống kê
      const loadStatistics = async () => {
           try {
                setLoading(true);

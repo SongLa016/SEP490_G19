@@ -1,6 +1,5 @@
 import React from "react";
 import { Card } from "../../../../../shared/components/ui";
-import { Plus } from "lucide-react";
 
 export default function FieldList({
      fields,

@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, Badge } from "../../../../shared/components/ui";
-import { Clock, DollarSign } from "lucide-react";
+import { DollarSign } from "lucide-react";
 import Swal from "sweetalert2";
 
 export default function ScheduleTable({
@@ -14,10 +14,6 @@ export default function ScheduleTable({
      formatDate,
      getDayName
 }) {
-     const formatTime = (timeString) => {
-          const [hours, minutes] = timeString.split(':');
-          return `${hours}:${minutes}`;
-     };
 
      return (
           <Card className="p-6 overflow-x-auto">

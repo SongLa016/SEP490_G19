@@ -79,7 +79,6 @@ export default function PostManagement() {
                } else {
                     // Chế độ xem tất cả - áp dụng statusFilter
                     if (statusFilter === "all") {
-                         // Khi chọn "Tất cả", gọi API nhiều lần để lấy tất cả các trạng thái
                          const allStatuses = ["Pending", "Published", "Rejected", "Hidden", "Inactive"];
                          const allResults = await Promise.all(
                               allStatuses.map(async (status) => {
@@ -92,7 +91,6 @@ export default function PostManagement() {
                                         const statusResult = await fetchPosts(params);
                                         return Array.isArray(statusResult) ? statusResult : [];
                                    } catch (error) {
-                                        console.warn(`[PostManagement] Error fetching posts with status ${status}:`, error);
                                         return [];
                                    }
                               })

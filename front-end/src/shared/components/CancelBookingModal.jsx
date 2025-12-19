@@ -12,13 +12,12 @@ export default function CancelBookingModal({
      isLoading = false
 }) {
      const [cancelReason, setCancelReason] = useState("");
-
      if (!booking) return null;
 
-     // Check if booking is pending (chưa được xác nhận)
+     // kiểm tra booking có phải là pending không
      const isPending = booking.status === "pending" || booking.bookingStatus === "Pending" || booking.bookingStatus === "pending";
 
-     // Calculate refund/penalty (only for confirmed bookings)
+     // tính toán hoàn/phạt 
      const confirmedAt = booking.confirmedAt || booking.createdAt;
      const bookingStartTime = booking.startTime;
      const depositAmount = booking.depositAmount || booking.totalPrice || 0;
@@ -35,16 +34,15 @@ export default function CancelBookingModal({
           bookingStartTime,
           depositAmount
      );
-
      const policyRanges = getCancellationPolicyRanges();
 
+     // xác nhận hủy booking
      const handleConfirm = () => {
           if (!isPending && !cancelReason.trim()) {
-               // For confirmed bookings, reason is required
                return;
           }
           onConfirm(cancelReason.trim() || "Hủy booking chưa được xác nhận");
-          setCancelReason(""); // Reset after confirm
+          setCancelReason("");
      };
 
      return (

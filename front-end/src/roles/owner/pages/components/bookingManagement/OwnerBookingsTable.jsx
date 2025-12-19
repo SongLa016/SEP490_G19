@@ -15,31 +15,7 @@ import {
 } from "lucide-react";
 import { Card, Table, TableHeader, TableHead, TableRow, TableBody, TableCell, Button, Pagination } from "../../../../../shared/components/ui";
 
-/**
- * Component hiển thị bảng danh sách booking của Owner
- * 
- * Chức năng:
- * - Hiển thị danh sách booking với thông tin khách hàng, sân, thời gian
- * - Hiển thị trạng thái booking và thanh toán
- * - Các nút thao tác: Xem chi tiết, Xác nhận thanh toán, Hủy booking
- * - Phân trang danh sách
- * 
- * @param {Object} props - Props của component
- * @param {boolean} props.loading - Trạng thái đang tải dữ liệu
- * @param {string} props.error - Thông báo lỗi (nếu có)
- * @param {number} props.filteredCount - Số lượng booking sau khi lọc
- * @param {Object} props.bookingsPagination - Object chứa thông tin phân trang
- * @param {Function} props.formatDate - Hàm format ngày tháng
- * @param {Function} props.isBookingPassed - Hàm kiểm tra booking đã qua chưa
- * @param {Function} props.handleViewDetails - Xử lý xem chi tiết booking
- * @param {Function} props.handleConfirmBooking - Xử lý xác nhận thanh toán/hoàn thành booking
- * @param {Function} props.handleCancelBooking - Xử lý hủy booking
- * @param {Function} props.formatCurrency - Hàm format tiền tệ
- * @param {Function} props.getStatusColor - Lấy màu theo trạng thái booking
- * @param {Function} props.getStatusText - Lấy text theo trạng thái booking
- * @param {Function} props.getPaymentStatusColor - Lấy màu theo trạng thái thanh toán
- * @param {Function} props.getPaymentStatusText - Lấy text theo trạng thái thanh toán
- */
+// component hiển thị bảng danh sách booking của Owner
 export default function OwnerBookingsTable({
   loading,
   error,
@@ -56,11 +32,7 @@ export default function OwnerBookingsTable({
   getPaymentStatusColor,
   getPaymentStatusText,
 }) {
-  /**
-   * Lấy icon tương ứng với trạng thái booking
-   * @param {string} status - Trạng thái booking (pending, confirmed, completed, cancelled)
-   * @returns {JSX.Element} Icon component
-   */
+  // hàm lấy icon tương ứng với trạng thái booking
   const getStatusIcon = (status) => {
     switch (status) {
       case "pending":
@@ -75,11 +47,7 @@ export default function OwnerBookingsTable({
     }
   };
 
-  /**
-   * Lấy icon tương ứng với trạng thái thanh toán
-   * @param {string} status - Trạng thái thanh toán (paid, unpaid, pending, refunded, failed)
-   * @returns {JSX.Element} Icon component
-   */
+  // hàm lấy icon tương ứng với trạng thái thanh toán
   const getPaymentIcon = (status) => {
     switch (status) {
       case "paid":

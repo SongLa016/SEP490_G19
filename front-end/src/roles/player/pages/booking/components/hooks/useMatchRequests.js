@@ -18,9 +18,7 @@ import {
   filterParticipantsForDisplay,
 } from "../utils";
 
-/**
- * Hook quản lý yêu cầu tìm đối thủ
- */
+// Hook quản lý yêu cầu tìm đối thủ
 export function useMatchRequests(bookings, user) {
   const [bookingIdToRequest, setBookingIdToRequest] = useState({});
   const [requestJoins, setRequestJoins] = useState({});
@@ -28,7 +26,7 @@ export function useMatchRequests(bookings, user) {
   const [refreshingRequests, setRefreshingRequests] = useState({});
   const [processingParticipants, setProcessingParticipants] = useState({});
 
-  // Tải lịch sử trận đấu
+  // Lấy lịch sử trận đấu
   useEffect(() => {
     const loadPlayerHistory = async () => {
       if (!user?.id && !user?.userID) {
@@ -128,16 +126,18 @@ export function useMatchRequests(bookings, user) {
 
             if (!matchRequest && bookingId) {
               try {
-                const hasRequestResp =
-                  await checkBookingHasMatchRequest(bookingId);
+                const hasRequestResp = await checkBookingHasMatchRequest(
+                  bookingId
+                );
                 if (hasRequestResp?.success && hasRequestResp.hasRequest) {
                   const matchRequestId =
                     hasRequestResp.data?.data?.matchRequestId ||
                     hasRequestResp.data?.matchRequestId;
                   if (matchRequestId) {
                     try {
-                      const detailResp =
-                        await fetchMatchRequestById(matchRequestId);
+                      const detailResp = await fetchMatchRequestById(
+                        matchRequestId
+                      );
                       if (detailResp?.success && detailResp.data) {
                         matchRequest = detailResp.data;
                       } else {
@@ -336,10 +336,22 @@ export function useMatchRequests(bookings, user) {
           <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p class="text-sm mb-2"><strong>Thông tin đội:</strong></p>
             <div class="space-y-1 text-sm">
-              <p><strong>Tên đội:</strong> ${participant.teamName || "Chưa có"}</p>
-              ${participant.fullName ? `<p><strong>Người liên hệ:</strong> ${participant.fullName}</p>` : ""}
-              ${participant.contactPhone ? `<p><strong>Số điện thoại:</strong> ${participant.contactPhone}</p>` : ""}
-              <p><strong>Số người:</strong> ${participant.playerCount || "Chưa rõ"} người</p>
+              <p><strong>Tên đội:</strong> ${
+                participant.teamName || "Chưa có"
+              }</p>
+              ${
+                participant.fullName
+                  ? `<p><strong>Người liên hệ:</strong> ${participant.fullName}</p>`
+                  : ""
+              }
+              ${
+                participant.contactPhone
+                  ? `<p><strong>Số điện thoại:</strong> ${participant.contactPhone}</p>`
+                  : ""
+              }
+              <p><strong>Số người:</strong> ${
+                participant.playerCount || "Chưa rõ"
+              } người</p>
             </div>
           </div>
         </div>`,

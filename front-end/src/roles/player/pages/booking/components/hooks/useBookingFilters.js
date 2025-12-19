@@ -23,7 +23,10 @@ export function useBookingFilters(bookings, groupedBookings, playerHistories) {
   }, [statusFilter, sortBy, dateFrom, dateTo, currentPage]);
 
   // Lấy giá trị ngày để filter
-  const getFilterDateValue = useCallback((booking) => booking?.createdAt || booking?.date, []);
+  const getFilterDateValue = useCallback(
+    (booking) => booking?.createdAt || booking?.date,
+    []
+  );
 
   // Lấy bookingId để sắp xếp
   const getBookingIdValue = useCallback((booking) => {
@@ -86,10 +89,17 @@ export function useBookingFilters(bookings, groupedBookings, playerHistories) {
   const matchHistoryMatchesStatus = useCallback(
     (history) => {
       if (statusFilter === "all") return true;
-      const status = (history?.finalStatus || history?.status || "").toLowerCase();
-      if (statusFilter === "completed") return status === "completed" || status === "matched";
-      if (statusFilter === "confirmed") return status === "confirmed" || status === "matched";
-      if (statusFilter === "cancelled") return status === "cancelled" || status === "expired";
+      const status = (
+        history?.finalStatus ||
+        history?.status ||
+        ""
+      ).toLowerCase();
+      if (statusFilter === "completed")
+        return status === "completed" || status === "matched";
+      if (statusFilter === "confirmed")
+        return status === "confirmed" || status === "matched";
+      if (statusFilter === "cancelled")
+        return status === "cancelled" || status === "expired";
       return status === statusFilter;
     },
     [statusFilter]
@@ -105,8 +115,11 @@ export function useBookingFilters(bookings, groupedBookings, playerHistories) {
         b.id.toLowerCase().includes(q) ||
         (b.fieldName || "").toLowerCase().includes(q) ||
         (b.address || "").toLowerCase().includes(q);
-      const normalizedStatus = String(b.status || b.bookingStatus || "").toLowerCase();
-      const matchStatus = statusFilter === "all" || normalizedStatus === statusFilter;
+      const normalizedStatus = String(
+        b.status || b.bookingStatus || ""
+      ).toLowerCase();
+      const matchStatus =
+        statusFilter === "all" || normalizedStatus === statusFilter;
       const matchDate = withinDateRange(getFilterDateValue(b));
       return matchQuery && matchStatus && matchDate;
     });
@@ -120,7 +133,15 @@ export function useBookingFilters(bookings, groupedBookings, playerHistories) {
       if (sortBy === "price-desc") return (b.price || 0) - (a.price || 0);
       return 0;
     });
-  }, [bookings, query, statusFilter, sortBy, withinDateRange, getFilterDateValue, getBookingIdValue]);
+  }, [
+    bookings,
+    query,
+    statusFilter,
+    sortBy,
+    withinDateRange,
+    getFilterDateValue,
+    getBookingIdValue,
+  ]);
 
   // Phân trang booking đơn
   const totalSingleBookings = visibleSingles.length;
@@ -139,23 +160,46 @@ export function useBookingFilters(bookings, groupedBookings, playerHistories) {
         (group.fieldName || "").toLowerCase().includes(q) ||
         (group.address || "").toLowerCase().includes(q);
       const groupStatus = getRecurringStatus(group);
-      const matchStatus = statusFilter === "all" || groupStatus === statusFilter;
-      const anyInRange = (group.bookings || []).some((b) => withinDateRange(getFilterDateValue(b)));
+      const matchStatus =
+        statusFilter === "all" || groupStatus === statusFilter;
+      const anyInRange = (group.bookings || []).some((b) =>
+        withinDateRange(getFilterDateValue(b))
+      );
       return matchQuery && matchStatus && anyInRange;
     });
 
     return filtered.sort((a, b) => {
-      const aId = (a.bookings || []).reduce((acc, cur) => Math.max(acc, getBookingIdValue(cur)), 0);
-      const bId = (b.bookings || []).reduce((acc, cur) => Math.max(acc, getBookingIdValue(cur)), 0);
+      const aId = (a.bookings || []).reduce(
+        (acc, cur) => Math.max(acc, getBookingIdValue(cur)),
+        0
+      );
+      const bId = (b.bookings || []).reduce(
+        (acc, cur) => Math.max(acc, getBookingIdValue(cur)),
+        0
+      );
       if (sortBy === "newest") return bId - aId;
       if (sortBy === "oldest") return aId - bId;
       if (sortBy === "price-asc")
-        return (a.price || 0) * (a.totalWeeks || 1) - (b.price || 0) * (b.totalWeeks || 1);
+        return (
+          (a.price || 0) * (a.totalWeeks || 1) -
+          (b.price || 0) * (b.totalWeeks || 1)
+        );
       if (sortBy === "price-desc")
-        return (b.price || 0) * (b.totalWeeks || 1) - (a.price || 0) * (a.totalWeeks || 1);
+        return (
+          (b.price || 0) * (b.totalWeeks || 1) -
+          (a.price || 0) * (a.totalWeeks || 1)
+        );
       return 0;
     });
-  }, [groupedBookings, query, statusFilter, sortBy, withinDateRange, getFilterDateValue, getBookingIdValue]);
+  }, [
+    groupedBookings,
+    query,
+    statusFilter,
+    sortBy,
+    withinDateRange,
+    getFilterDateValue,
+    getBookingIdValue,
+  ]);
 
   // Danh sách lịch sử match đã filter và sắp xếp
   const sortedPlayerHistories = useMemo(() => {
@@ -185,7 +229,10 @@ export function useBookingFilters(bookings, groupedBookings, playerHistories) {
 
   // Toggle hiển thị participants
   const toggleExpandedParticipants = useCallback((bookingId) => {
-    setExpandedParticipants((prev) => ({ ...prev, [bookingId]: !prev[bookingId] }));
+    setExpandedParticipants((prev) => ({
+      ...prev,
+      [bookingId]: !prev[bookingId],
+    }));
   }, []);
 
   // Reset tất cả filter
@@ -214,14 +261,12 @@ export function useBookingFilters(bookings, groupedBookings, playerHistories) {
     setCurrentPage,
     activeTab,
     setActiveTab,
-
     // UI states
     showRecurringDetails,
     expandedParticipants,
     toggleRecurringDetails,
     toggleExpandedParticipants,
-
-    // Computed values
+    // giá trị tính toán
     visibleSingles,
     visibleGroups,
     paginatedSingles,
@@ -233,7 +278,7 @@ export function useBookingFilters(bookings, groupedBookings, playerHistories) {
     endIndex,
     pageSize,
 
-    // Actions
+    // hàm xử lý
     resetFilters,
   };
 }

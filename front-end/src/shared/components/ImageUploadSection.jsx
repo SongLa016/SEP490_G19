@@ -1,19 +1,8 @@
 import React, { useRef } from "react";
-import { Image as ImageIcon, Plus, X, Loader2, Star } from "lucide-react";
+import { Image as ImageIcon, Plus, X, Star } from "lucide-react";
 import Swal from "sweetalert2";
 
-/**
- * Component ImageUploadSection - Xử lý upload ảnh chính và thư viện ảnh
- * Hỗ trợ cả URL (từ Cloudinary) và File objects (upload mới)
- * Gửi File objects trực tiếp lên backend (không chuyển đổi base64)
- * 
- * @param {File|string} mainImage - Ảnh chính (File object hoặc URL string)
- * @param {Array} imageFiles - Mảng ảnh thư viện (File objects hoặc URL strings)
- * @param {Function} onMainImageChange - Callback khi thay đổi ảnh chính
- * @param {Function} onImageFilesChange - Callback khi thay đổi thư viện ảnh
- * @param {number} maxGalleryImages - Số lượng ảnh tối đa trong thư viện (mặc định: 4)
- * @param {boolean} disabled - Vô hiệu hóa upload (mặc định: false)
- */
+// component xử lý upload ảnh chính và thư viện ảnh
 export default function ImageUploadSection({
      mainImage,
      imageFiles = [],
@@ -22,49 +11,34 @@ export default function ImageUploadSection({
      maxGalleryImages = 4,
      disabled = false,
 }) {
-     // Refs để truy cập input file
+     // refs để truy cập input file
      const mainImageInputRef = useRef(null);
      const galleryInputRef = useRef(null);
-     // Ref để theo dõi ObjectURLs cần cleanup khi unmount
+     // ref để theo dõi ObjectURLs cần cleanup khi unmount
      const objectUrlsRef = useRef(new Set());
 
-     // ==================== HÀM TIỆN ÍCH ====================
-
-     /**
-      * Kiểm tra giá trị có phải là URL string không (từ Cloudinary)
-      * @param {any} value - Giá trị cần kiểm tra
-      * @returns {boolean} - true nếu là URL
-      */
+     // hàm tiện ích
      const isUrl = (value) => {
           if (!value || typeof value !== 'string') return false;
           return value.startsWith('http://') || value.startsWith('https://');
      };
 
-     /**
-      * Kiểm tra giá trị có phải là File object không
-      * @param {any} value - Giá trị cần kiểm tra
-      * @returns {boolean} - true nếu là File
-      */
+     // hàm kiểm tra giá trị có phải là File object không
      const isFile = (value) => {
           return value instanceof File;
      };
 
-     /**
-      * Lấy URL preview cho ảnh (File object hoặc URL string)
-      * Nếu là File, tạo ObjectURL và lưu vào ref để cleanup sau
-      * @param {File|string} image - Ảnh cần lấy preview
-      * @returns {string} - URL để hiển thị preview
-      */
+     // hàm lấy URL preview cho ảnh (File object hoặc URL string)
      const getPreviewUrl = (image) => {
           if (isFile(image)) {
                const objectUrl = URL.createObjectURL(image);
                objectUrlsRef.current.add(objectUrl);
                return objectUrl;
           }
-          return image; // Đã là URL string rồi
+          return image;
      };
 
-     // Cleanup ObjectURLs khi component unmount để tránh memory leak
+     // cleanup ObjectURLs khi component unmount để tránh memory leak
      React.useEffect(() => {
           const currentUrls = objectUrlsRef.current;
           return () => {
@@ -73,20 +47,13 @@ export default function ImageUploadSection({
           };
      }, []);
 
-     // ==================== VALIDATE FILE ẢNH ====================
-
-     // Danh sách định dạng file ảnh được phép
+     // danh sách định dạng file ảnh được phép
      const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
      const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
 
-     /**
-      * Validate file ảnh trước khi upload
-      * Kiểm tra: định dạng file, MIME type, kích thước
-      * @param {File} file - File cần validate
-      * @returns {boolean} - true nếu file hợp lệ
-      */
+     // hàm kiểm tra file ảnh trước khi upload
      const validateImageFile = (file) => {
-          // Lấy extension từ tên file
+          // lấy extension từ tên file
           const fileName = file.name.toLowerCase();
           const extension = fileName.split('.').pop();
 
@@ -129,20 +96,13 @@ export default function ImageUploadSection({
           return true;
      };
 
-     // ==================== XỬ LÝ UPLOAD ẢNH CHÍNH ====================
-
-     /**
-      * Xử lý khi người dùng chọn ảnh chính
-      * Validate file và gọi callback để cập nhật state
-      * @param {Event} e - Event từ input file
-      */
+     // hàm xử lý upload ảnh chính
      const handleMainImageUpload = (e) => {
           const file = e.target.files?.[0];
           if (!file) return;
 
-          // Validate file trước khi xử lý
+          // kiểm tra file trước khi xử lý
           if (!validateImageFile(file)) {
-               // Reset input nếu file không hợp lệ
                if (mainImageInputRef.current) {
                     mainImageInputRef.current.value = "";
                }
@@ -166,12 +126,6 @@ export default function ImageUploadSection({
      };
 
      // ==================== XỬ LÝ UPLOAD THƯ VIỆN ẢNH ====================
-
-     /**
-      * Xử lý khi người dùng chọn ảnh cho thư viện
-      * Validate tất cả files và kiểm tra giới hạn số lượng
-      * @param {Event} e - Event từ input file
-      */
      const handleGalleryUpload = (e) => {
           const files = Array.from(e.target.files || []);
           if (files.length === 0) return;
@@ -212,25 +166,16 @@ export default function ImageUploadSection({
           }
      };
 
-     // ==================== XỬ LÝ XÓA ẢNH ====================
-
-     /**
-      * Xóa ảnh khỏi thư viện theo index
-      * @param {number} index - Vị trí ảnh cần xóa
-      */
+     // hàm xóa ảnh khỏi thư viện
      const handleRemoveGalleryImage = (index) => {
           const newImages = imageFiles.filter((_, i) => i !== index);
           onImageFilesChange(newImages);
      };
 
-     /**
-      * Xóa ảnh chính
-      */
+     // hàm xóa ảnh chính
      const handleRemoveMainImage = () => {
           onMainImageChange(null);
      };
-
-     // ==================== RENDER GIAO DIỆN ====================
 
      return (
           <div className="space-y-4">

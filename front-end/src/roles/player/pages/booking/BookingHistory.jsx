@@ -201,28 +201,21 @@ export default function BookingHistory({ user }) {
           return () => clearInterval(timer);
      }, []);
 
-     // Fetch danh sách yêu cầu hủy của user
+     // lấy danh sách yêu cầu hủy của user
      const loadCancellationRequests = useCallback(async () => {
           try {
                const result = await fetchCancellationRequests();
-               console.log("📋 [CANCELLATION REQUESTS] API result:", result);
                if (result.success && Array.isArray(result.data)) {
-                    // Tạo map bookingId -> cancellation request (chỉ lấy các request chưa được xử lý)
                     const cancellationMap = {};
                     result.data.forEach(req => {
                          const bookingId = req.bookingId || req.BookingId || req.bookingID || req.BookingID;
                          const status = String(req.status || req.Status || req.requestStatus || req.RequestStatus || "pending").toLowerCase();
-                         console.log("📋 [CANCELLATION REQUEST] bookingId:", bookingId, "status:", status, "raw:", req);
-                         // Lưu các yêu cầu chưa được xử lý (pending, chờ xử lý, hoặc không có status)
-                         // Loại trừ các status đã xử lý: approved, rejected, confirmed, cancelled
                          const isProcessed = ["approved", "rejected", "confirmed", "cancelled", "completed", "đã duyệt", "đã từ chối", "đã hủy"].includes(status);
                          if (bookingId && !isProcessed) {
-                              // Lưu cả dạng string và number để đảm bảo match
                               cancellationMap[String(bookingId)] = req;
                               cancellationMap[Number(bookingId)] = req;
                          }
                     });
-                    console.log("📋 [CANCELLATION MAP] Final map:", cancellationMap);
                     setPendingCancellations(cancellationMap);
                }
           } catch (error) {
@@ -233,10 +226,8 @@ export default function BookingHistory({ user }) {
      // Kiểm tra booking có yêu cầu hủy đang chờ xử lý không
      const hasPendingCancellation = useCallback((booking) => {
           const bookingId = booking?.bookingId || booking?.id || booking?.BookingId || booking?.BookingID;
-          // Kiểm tra cả dạng number và string
           const found = bookingId && (pendingCancellations[bookingId] || pendingCancellations[String(bookingId)] || pendingCancellations[Number(bookingId)]);
           if (found) {
-               console.log("✅ [HAS PENDING CANCELLATION] Found for bookingId:", bookingId);
           }
           return found;
      }, [pendingCancellations]);
@@ -1279,13 +1270,10 @@ export default function BookingHistory({ user }) {
                               {sortedPlayerHistories && sortedPlayerHistories.length > 0 ? (
                                    <StaggerContainer staggerDelay={50}>
                                         {sortedPlayerHistories.map((h, index) => {
-                                             // Format date and time
-                                             // Parse matchDate properly to avoid timezone issues
                                              let matchDate = null;
                                              if (h.matchDate) {
                                                   const dateStr = h.matchDate;
                                                   if (dateStr.includes('T')) {
-                                                       // ISO format: extract date part and create date object
                                                        const [datePart] = dateStr.split('T');
                                                        const [year, month, day] = datePart.split('-').map(Number);
                                                        matchDate = new Date(year, month - 1, day);
@@ -1294,12 +1282,10 @@ export default function BookingHistory({ user }) {
                                                   }
                                              }
 
-                                             // Format date with day of week from matchDate (not current date)
                                              let formattedDate = "Chưa có ngày";
                                              if (matchDate && !isNaN(matchDate.getTime())) {
                                                   const dayNames = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
                                                   const dayName = dayNames[matchDate.getDay()];
-                                                  // Format date as dd/mm/yyyy
                                                   const day = String(matchDate.getDate()).padStart(2, '0');
                                                   const month = String(matchDate.getMonth() + 1).padStart(2, '0');
                                                   const year = matchDate.getFullYear();
@@ -1326,7 +1312,7 @@ export default function BookingHistory({ user }) {
                                                   const roleLower = (role || "").toLowerCase();
                                                   if (roleLower === "creator") {
                                                        return <Badge className="bg-blue-500 hover:bg-blue-600 text-white border-blue-200">Người tạo</Badge>;
-                                                  } else if (roleLower === "participant") {
+                                                  } else if (roleLower === "joiner") {
                                                        return <Badge className="bg-purple-500 hover:bg-purple-600 text-white border-purple-200">Người tham gia</Badge>;
                                                   }
                                                   return <Badge className="bg-gray-500 hover:bg-gray-600 text-white border-gray-200">{role || "Không rõ"}</Badge>;

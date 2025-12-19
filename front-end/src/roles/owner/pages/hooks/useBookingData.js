@@ -12,7 +12,7 @@ export const useBookingData = (currentUserId) => {
   const [packageSessions, setPackageSessions] = useState([]);
   const [bookingPackages, setBookingPackages] = useState([]);
   const packageSessionsRef = useRef([]);
-
+  // hàm hydrate package sessions với schedules
   const hydratePackageSessionsWithSchedules = useCallback(
     (packageSessionsList = [], schedules = []) => {
       if (!packageSessionsList.length) return packageSessionsList;
@@ -50,7 +50,7 @@ export const useBookingData = (currentUserId) => {
     },
     []
   );
-  //
+  // hàm mark schedules với package sessions
   const markSchedulesWithPackageSessions = useCallback(
     (schedules = [], packageSessionsList = []) => {
       if (!schedules.length || !packageSessionsList.length) return schedules;
@@ -80,14 +80,14 @@ export const useBookingData = (currentUserId) => {
             ps.status ||
             ""
           ).toLowerCase();
-          
+
           // Skip cancelled sessions
           if (statusLower.includes("cancel")) {
             return false;
           }
 
           const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
-          
+
           // Must match by date first (critical for recurring packages)
           if (psDateStr !== scheduleDateStr) {
             return false;
@@ -119,18 +119,22 @@ export const useBookingData = (currentUserId) => {
             ps.status ||
             ""
           ).toLowerCase();
-          
+
           if (!statusLower.includes("cancel")) return false;
 
           const psDateStr = normalizeDateString(ps.date || ps.sessionDate);
-          
+
           // Must match by date first
           if (psDateStr !== scheduleDateStr) {
             return false;
           }
 
           const psScheduleId = ps.scheduleId || ps.scheduleID || ps.ScheduleID;
-          if (psScheduleId && scheduleId && Number(psScheduleId) === Number(scheduleId)) {
+          if (
+            psScheduleId &&
+            scheduleId &&
+            Number(psScheduleId) === Number(scheduleId)
+          ) {
             return true;
           }
 
@@ -148,8 +152,14 @@ export const useBookingData = (currentUserId) => {
         // Otherwise -> keep original status
         if (matched) {
           return { ...schedule, status: "Booked", bookingType: "package" };
-        } else if (hasCancelledSession && (schedule.status || schedule.Status || "").toLowerCase() === "booked") {
-          console.log("🔄 [MARK SCHEDULES] Resetting cancelled schedule to Available:", scheduleId);
+        } else if (
+          hasCancelledSession &&
+          (schedule.status || schedule.Status || "").toLowerCase() === "booked"
+        ) {
+          console.log(
+            "🔄 [MARK SCHEDULES] Resetting cancelled schedule to Available:",
+            scheduleId
+          );
           return { ...schedule, status: "Available", bookingType: undefined };
         }
         return schedule;
@@ -158,6 +168,7 @@ export const useBookingData = (currentUserId) => {
     [hydratePackageSessionsWithSchedules]
   );
 
+  // hàm load booking packages
   const loadBookingPackages = useCallback(async () => {
     try {
       const result = await fetchBookingPackagesByOwnerToken();
@@ -173,6 +184,7 @@ export const useBookingData = (currentUserId) => {
     }
   }, []);
 
+  // hàm load package sessions
   const loadPackageSessions = useCallback(async () => {
     try {
       const result = await fetchBookingPackageSessionsByOwnerToken();
@@ -191,26 +203,25 @@ export const useBookingData = (currentUserId) => {
           slotId: session.slotId || session.slotID || session.SlotID,
           fieldId: session.fieldId || session.fieldID || session.FieldID,
           userId: session.userId || session.userID,
-          // Normalize sessionStatus - API may return different field names
-          sessionStatus: session.sessionStatus || session.SessionStatus || session.status || session.Status || "",
+          sessionStatus:
+            session.sessionStatus ||
+            session.SessionStatus ||
+            session.status ||
+            session.Status ||
+            "",
           isPackageSession: true,
           bookingType: "package",
         }));
-        
-        // Debug: Log sessions with their status
-        console.log("📦 [PACKAGE SESSIONS] Loaded sessions:", normalizedSessions.map(s => ({
-          sessionId: s.sessionId,
-          scheduleId: s.scheduleId,
-          sessionStatus: s.sessionStatus,
-          date: s.date
-        })));
 
+        // hàm load user info vào package sessions
         const sessionsWithUserInfo = await Promise.all(
           normalizedSessions.map(async (session) => {
             const userId = session.userId || session.userID;
             if (userId) {
               try {
-                const userResult = await profileService.getPlayerProfile(userId);
+                const userResult = await profileService.getPlayerProfile(
+                  userId
+                );
                 if (userResult.ok && userResult.data) {
                   const userData = userResult.data;
                   return {
@@ -232,7 +243,7 @@ export const useBookingData = (currentUserId) => {
                   };
                 }
               } catch (error) {
-                // Silently handle - profileService already logs errors
+                // xử lý lỗi một cách im lặng - profileService đã log lỗi
               }
             }
             return session;
@@ -253,13 +264,13 @@ export const useBookingData = (currentUserId) => {
     }
   }, []);
 
+  // hàm load bookings
   const loadBookings = useCallback(async () => {
     try {
       if (!currentUserId) {
         setBookings([]);
         return;
       }
-
       const result = await fetchBookingsByOwner(currentUserId);
       if (result.success && result.data) {
         const bookingsWithUserInfo = await Promise.all(
@@ -267,7 +278,9 @@ export const useBookingData = (currentUserId) => {
             const userId = booking.userId || booking.userID;
             if (userId) {
               try {
-                const userResult = await profileService.getPlayerProfile(userId);
+                const userResult = await profileService.getPlayerProfile(
+                  userId
+                );
                 if (userResult.ok && userResult.data) {
                   const userData = userResult.data;
                   return {
@@ -288,9 +301,7 @@ export const useBookingData = (currentUserId) => {
                     customerEmail: userData?.email || userData?.Email || "",
                   };
                 }
-              } catch (error) {
-                // Silently handle - profileService already logs errors
-              }
+              } catch (error) {}
             }
             return booking;
           })
