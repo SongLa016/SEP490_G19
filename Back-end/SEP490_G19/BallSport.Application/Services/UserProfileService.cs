@@ -86,28 +86,23 @@ namespace BallSport.Application.Services
         }
         public async Task<UpdateBasicProfileDto> UpdateBasicProfileAsync(int userId, UpdateBasicProfileRequest request)
         {
-            // Lấy user
             var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
 
             if (user == null)
                 throw new Exception("User not found");
 
-            // Upload avatar nếu có
             if (request.Avatar != null && request.Avatar.Length > 0)
             {
                 var avatarUrl = await _cloudinaryService.UploadImageAsync(request.Avatar);
                 user.Avatar = avatarUrl;
             }
 
-            // Cập nhật các trường cơ bản
             if (!string.IsNullOrWhiteSpace(request.FullName))
                 user.FullName = request.FullName;
 
 
-            // Lưu thay đổi
             await _db.SaveChangesAsync();
 
-            // Trả về DTO cơ bản
             return new UpdateBasicProfileDto
             {
                 FullName = user.FullName,

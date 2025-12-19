@@ -46,7 +46,7 @@ namespace BallSport.API.Controllers.RatingBooking
             return Ok(new { message = "Cập nhật đánh giá thành công" });
         }
 
-        // DELETE: api/rating/5
+        // xóa 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRating(int id)
         {

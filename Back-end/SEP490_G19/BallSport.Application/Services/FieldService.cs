@@ -42,7 +42,7 @@ namespace BallSport.Application.Services
             return await _fieldRepository.GetComplexByIdAsync(complexId);
         }
 
-        // ============== ADD FIELD =================
+        //thêm
         public async Task<FieldResponseDTO> AddFieldAsync(FieldDTO dto, int ownerId)
         {
             if (dto.ComplexId == null)
@@ -85,7 +85,7 @@ namespace BallSport.Application.Services
 
             var created = await _fieldRepository.AddFieldAsync(field);
 
-            // Extra images
+            // đọc ảnh
             var extraUrls = new List<string>();
             if (dto.ImageFiles != null)
             {
@@ -115,20 +115,20 @@ namespace BallSport.Application.Services
                 ImageUrls = extraUrls
             };
         }
-        // UPDATE FIELD
+        // sửa
         public async Task<FieldResponseDTO?> UpdateFieldAsync(FieldDTO dto, int ownerId)
         {
             var field = await _fieldRepository.GetFieldByIdAsync(dto.FieldId);
             if (field == null) return null;
 
-            // Kiểm tra quyền owner thông qua Complex
+            // check token 
             if (field.ComplexId == null)
                 throw new UnauthorizedAccessException("Field không thuộc Complex nào.");
 
             var complex = await _fieldRepository.GetComplexByIdAsync(field.ComplexId.Value);
             if (complex == null || complex.OwnerId != ownerId)
                 throw new UnauthorizedAccessException("Bạn không có quyền sửa field này.");
-            // Kiểm tra BankAccount
+            // check bank
             if (dto.BankAccountId != null)
             {
                 var bank = await _bankAccountRepository.GetByIdAsync(dto.BankAccountId.Value);
@@ -137,7 +137,7 @@ namespace BallSport.Application.Services
 
                 field.BankAccountId = dto.BankAccountId;
             }
-            // Cập nhật thông tin cơ bản
+           
             field.Name = dto.Name;
             field.Size = dto.Size;
             field.GrassType = dto.GrassType;
@@ -146,14 +146,14 @@ namespace BallSport.Application.Services
             field.PricePerHour = dto.PricePerHour;
             field.Status = dto.Status ?? field.Status;
             field.BankAccountId = dto.BankAccountId;            
-            // Main image
+            // ảnh chính
             if (dto.MainImage != null)
             {
                 var mainUrl = await UploadToCloudinary(dto.MainImage);
                 if (!string.IsNullOrEmpty(mainUrl)) field.ImageUrl = mainUrl;
             }
 
-            // Extra images - thay thế hoàn toàn
+            // update xóa ảnh cũ
             if (dto.ImageFiles != null && dto.ImageFiles.Any())
             {
                 var extraUrls = new List<string>();
@@ -164,7 +164,7 @@ namespace BallSport.Application.Services
                 }
 
                 if (extraUrls.Any())
-                    await _fieldRepository.ReplaceFieldImagesAsync(field.FieldId, extraUrls); // Thay thế ảnh cũ
+                    await _fieldRepository.ReplaceFieldImagesAsync(field.FieldId, extraUrls); 
             }
 
             var updated = await _fieldRepository.UpdateFieldAsync(field);
@@ -187,7 +187,7 @@ namespace BallSport.Application.Services
             };
         }
 
-        //  GET FIELD BY ID
+        //  lấy ra theo field id
 
         public async Task<FieldResponseDTO?> GetFieldByIdAsync(int id)
         {
@@ -212,9 +212,9 @@ namespace BallSport.Application.Services
             };
         }
 
-        
-        //  GET FIELDS BY COMPLEX
-     
+
+        //  lấy theo khu sân
+
         public async Task<List<FieldResponseDTO>> GetFieldsByComplexIdAsync(int complexId)
         {
             var list = await _fieldRepository.GetFieldsByComplexIdAsync(complexId);
@@ -237,7 +237,7 @@ namespace BallSport.Application.Services
             }).ToList();
         }
 
-        //  GET FIELDS BY OWNER
+        // lấy ra sân của owner
        
         public async Task<List<FieldResponseDTO>> GetFieldsByOwnerIdAsync(int ownerId)
         {
@@ -261,7 +261,7 @@ namespace BallSport.Application.Services
             }).ToList();
         }
 
-        //  DELETE FIELD
+        // xóa
 
         public async Task<bool> DeleteFieldAsync(int fieldId, int ownerId)
         {

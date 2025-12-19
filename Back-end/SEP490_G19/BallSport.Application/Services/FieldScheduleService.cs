@@ -1,5 +1,4 @@
 ﻿using System;
-using BallSport.Application;
 using BallSport.Application.DTOs;
 using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
@@ -8,14 +7,14 @@ using BallSport.Infrastructure.Data;
 
 public interface IFieldScheduleService
 {
-    // OWNER CRUD
+    // owner
     Task<FieldScheduleDTO> AddAsync(FieldScheduleDTO dto, int ownerId);
     Task<FieldScheduleDTO?> UpdateAsync(int id, FieldScheduleDTO dto, int ownerId);
     Task<bool> DeleteAsync(int id, int ownerId);
     Task<List<FieldScheduleDTO>> GetAllAsync(int ownerId);
     Task<FieldScheduleDTO?> GetByIdAsync(int id, int ownerId);
 
-    // PUBLIC
+    // public
     Task<List<FieldSchedulePublicDTO>> GetPublicAllAsync();
     Task<FieldSchedulePublicDTO?> GetPublicByIdAsync(int scheduleId);
     Task<List<FieldScheduleDTO>> GetPublicByFieldAsync(int fieldId);
@@ -31,7 +30,7 @@ public class FieldScheduleService : IFieldScheduleService
         _repo = repo;
     }
 
-    // ------------------------ OWNER CRUD -------------------------------
+    // thêm
 
     public async Task<FieldScheduleDTO> AddAsync(FieldScheduleDTO dto, int ownerId)
     {
@@ -193,10 +192,7 @@ public class FieldScheduleService : IFieldScheduleService
             Status = schedule.Status
         };
     }
-
-    // ==================================================================
-    // ---------------------- PUBLIC CHO NGƯỜI CHƠI ----------------------
-    // ==================================================================
+    // public
 
     public async Task<List<FieldSchedulePublicDTO>> GetPublicAllAsync()
     {

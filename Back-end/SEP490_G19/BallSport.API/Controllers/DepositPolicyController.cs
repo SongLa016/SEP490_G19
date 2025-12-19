@@ -19,7 +19,7 @@ namespace BallSport.API.Controllers
             _service = service;
         }
 
-        // GET OWNER ID
+        // get owner id
         private int GetOwnerId()
         {
             var userIdClaim = User.FindFirst("UserID");
@@ -31,7 +31,7 @@ namespace BallSport.API.Controllers
         }
 
 
-        // GET ALL (OWNER)
+        // get all cho owner
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
@@ -40,7 +40,7 @@ namespace BallSport.API.Controllers
             return Ok(result);
         }
 
-        // GET BY FIELD ID
+        // get theo field id
         [HttpGet("field/{fieldId:int}")]
         public async Task<IActionResult> GetByFieldId(int fieldId)
         {
@@ -53,7 +53,7 @@ namespace BallSport.API.Controllers
             return Ok(result);
         }
 
-        // CREATE
+        // tạo
         [HttpPost]
         public async Task<IActionResult> Create([FromForm] DepositPolicyDTO dto)
         {
@@ -67,7 +67,7 @@ namespace BallSport.API.Controllers
             );
         }
 
-        // UPDATE
+        // sửa
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id,[FromForm] DepositPolicyDTO dto)
         {
@@ -83,7 +83,7 @@ namespace BallSport.API.Controllers
         }
 
 
-        // DELETE
+        // xóa
         [HttpDelete("{id:int}/field/{fieldId:int}")]
         public async Task<IActionResult> Delete(int id, int fieldId)
         {

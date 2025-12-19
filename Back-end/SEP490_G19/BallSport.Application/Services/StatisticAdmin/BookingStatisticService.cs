@@ -30,7 +30,7 @@ namespace BallSport.Application.Services.AdminStatistics
             }
             else if (currentMonth > 0)
             {
-                percentChange = 100; // tăng 100% vì tháng trước không có booking
+                percentChange = 100; 
             }
 
             return new

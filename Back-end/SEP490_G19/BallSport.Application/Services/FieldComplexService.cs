@@ -30,13 +30,12 @@ public class FieldComplexService
     int userId,
     string role)
     {
-        //  AUTHORIZATION
+        //  check token
         if (role != "Owner")
             throw new UnauthorizedAccessException("Chỉ Owner mới được thêm khu sân.");
 
         string? imageUrl = null;
 
-        //  UPLOAD IMAGE
         if (dto.ImageFile != null)
         {
             var uploadParams = new ImageUploadParams
@@ -51,7 +50,7 @@ public class FieldComplexService
             imageUrl = uploadResult.SecureUrl.AbsoluteUri;
         }
 
-        // GEOCODING
+        // tọa độ
         var location = await _goongMapService.GetLocationDetailAsync(dto.Address);
         if (location == null)
             throw new Exception("Không lấy được tọa độ từ địa chỉ.");
@@ -59,7 +58,6 @@ public class FieldComplexService
         var (ward, district, province) =
             ExtractAdministrativeUnits(location.Value.formattedAddress);
 
-        //  CREATE ENTITY 
         var complex = new FieldComplex
         {
             OwnerId = userId,
@@ -78,7 +76,7 @@ public class FieldComplexService
 
         var created = await _complexRepository.AddComplexAsync(complex);
 
-        //  CACHE INVALIDATE
+        //  xóa cache
         _cacheService.ClearNearbyCache();
 
         return MapToResponseDTO(created);
@@ -111,7 +109,6 @@ public class FieldComplexService
         if (existing == null)
             return null;
 
-        //  AUTHORIZATION
         if (role == "Owner")
         {
             if (existing.OwnerId != userId)
@@ -123,12 +120,11 @@ public class FieldComplexService
             throw new UnauthorizedAccessException("Bạn không có quyền cập nhật khu sân.");
         }
 
-        // ❗ KHÔNG BAO GIỜ ĐỔI OWNER ID
         existing.Name = dto.Name;
         existing.Description = dto.Description;
         existing.Status = dto.Status;
 
-        //  ĐỔI ĐỊA CHỈ → CẬP NHẬT TỌA ĐỘ
+        // đổi address -> thay tọa độ
         if (!string.IsNullOrWhiteSpace(dto.Address)
             && dto.Address != existing.Address)
         {
@@ -147,7 +143,7 @@ public class FieldComplexService
             existing.Province = province;
         }
 
-        //  UPDATE ẢNH
+        //  thêm ảnh
         if (dto.ImageFile != null)
         {
             var uploadParams = new ImageUploadParams
@@ -164,13 +160,13 @@ public class FieldComplexService
 
         var updated = await _complexRepository.UpdateComplexAsync(existing);
 
-        //  CLEAR CACHE
+        // xóa cache
         _cacheService.ClearNearbyCache();
 
         return MapToResponseDTO(updated);
     }
 
-    //  XÓA
+    //  xóa
     public async Task<bool> DeleteComplexAsync(
     int complexId,
     int userId,
@@ -198,7 +194,7 @@ public class FieldComplexService
 
 
 
-    // HÀM MAP CHUNG
+    // map
     private static (string? ward, string? district, string? province)
     ExtractAdministrativeUnits(string formattedAddress)
 {
@@ -232,17 +228,16 @@ public class FieldComplexService
         }
     }
 
-    // fall back khi không trả được phường quận
 
-    // Hà Nội, TP.HCM, Đà Nẵng,...
+    // phố
     if (province == null && parts.Count >= 1)
         province = parts.Last();
 
-    // Nam Từ Liêm, Quận 9, Cầu Giấy,...
+    // quận
     if (district == null && parts.Count >= 2)
         district = parts[^2];
 
-    // Mỹ Đình, Hiệp Phú,...
+    // đường
     if (ward == null && parts.Count >= 3)
         ward = parts[^3];
 

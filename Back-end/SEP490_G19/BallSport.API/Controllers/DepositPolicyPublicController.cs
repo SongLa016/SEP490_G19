@@ -14,8 +14,7 @@ namespace BallSport.API.Controllers
             _service = service;
         }
 
-        // 🔓 PUBLIC - GET POLICY BY FIELD ID
-        // GET: api/deposit-policies/field/69
+        // public cọc cho player
         [HttpGet("field/{fieldId:int}")]
         public async Task<IActionResult> GetByFieldId(int fieldId)
         {
