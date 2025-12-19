@@ -116,7 +116,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                          Swal.fire({
                               icon: 'success',
                               title: 'Đăng ký thành công!',
-                              text: 'Yêu cầu đăng ký chủ sân đã được gửi đến admin để duyệt. Vui lòng kiểm tra email để lấy mã OTP.',
+                              text: 'Bạn đã đăng kí thành công với vai trò chủ sân. Vui lòng kiểm tra email để lấy mã OTP.',
                               confirmButtonText: 'Đóng',
                               confirmButtonColor: '#10b981'
                          });

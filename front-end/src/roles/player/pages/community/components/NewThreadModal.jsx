@@ -88,18 +88,9 @@ const NewThreadModal = ({
 
      // submit bài viết
      const handleSubmit = () => {
+          // Tiêu đề là optional - chỉ validate nếu có nhập
           const trimmedTitle = postTitle.trim();
-          if (!trimmedTitle) {
-               Swal.fire({
-                    icon: "warning",
-                    title: "Thiếu tiêu đề",
-                    text: "Vui lòng nhập tiêu đề cho chủ đề",
-                    confirmButtonColor: "#0d9488"
-               });
-               return;
-          }
-
-          if (trimmedTitle.length < 5) {
+          if (trimmedTitle.length > 0 && trimmedTitle.length < 5) {
                Swal.fire({
                     icon: "warning",
                     title: "Tiêu đề quá ngắn",
@@ -119,13 +110,13 @@ const NewThreadModal = ({
                return;
           }
 
-          // kiểm tra nội dung
+          // kiểm tra nội dung - bắt buộc
           const trimmedContent = postContent.trim();
           if (!trimmedContent) {
                Swal.fire({
                     icon: "warning",
                     title: "Thiếu nội dung",
-                    text: "Vui lòng nhập nội dung cho chủ đề",
+                    text: "Vui lòng nhập nội dung cho bài viết",
                     confirmButtonColor: "#0d9488"
                });
                return;
@@ -150,6 +141,8 @@ const NewThreadModal = ({
                });
                return;
           }
+
+          // Ảnh và sân là optional - không cần validate
 
           // ảnh đính kèm
           let imageToSubmit;
@@ -213,7 +206,7 @@ const NewThreadModal = ({
                                         <div className="flex-1">
                                              <Textarea
                                                   ref={titleRef}
-                                                  placeholder="Thêm chủ đề"
+                                                  placeholder="Thêm chủ đề (không bắt buộc)"
                                                   value={postTitle}
                                                   rows={1}
                                                   maxLength={200}
@@ -264,12 +257,12 @@ const NewThreadModal = ({
                                              </div>
                                         </div>
                                    )}
-                                   {/* Field Selection */}
+                                   {/* Field Selection - Optional */}
                                    <div className="mt-3">
                                         <div className="flex gap-2 ">
                                              <div className="flex items-center gap-2">
-                                                  <Pin className="w-4 h-4 text-red-500" />
-                                                  <span className="text-sm text-gray-600 ">Gắn thẻ sân: </span>
+                                                  <Pin className="w-4 h-4 text-gray-400" />
+                                                  <span className="text-sm text-gray-500 ">Gắn thẻ sân (không bắt buộc): </span>
                                              </div>
                                              <Button
                                                   variant="ghost"
@@ -335,12 +328,12 @@ const NewThreadModal = ({
                                         <Button
                                              variant="ghost"
                                              size="sm"
-                                             className="p-2 text-sm "
+                                             className="p-2 text-sm text-gray-500"
                                              onClick={() => fileInputRef.current?.click()}
                                              type="button"
                                         >
-                                             <ImageIcon className="w-5 h-5 mr-2 text-gray-500" />
-                                             Thêm ảnh
+                                             <ImageIcon className="w-5 h-5 mr-2 text-gray-400" />
+                                             Thêm ảnh (không bắt buộc)
                                         </Button>
 
                                    </div>

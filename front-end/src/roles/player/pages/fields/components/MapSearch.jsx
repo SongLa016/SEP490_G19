@@ -144,9 +144,7 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
                })
                .filter(marker => marker !== null);
 
-          if (newMarkers.length > 0) {
-               console.log(`Successfully added ${newMarkers.length} markers to map`);
-          } else {
+          if (newMarkers.length === 0) {
                console.warn('No valid markers were created. Check field coordinates.');
           }
           markersRef.current = newMarkers;
@@ -316,9 +314,18 @@ const MapSearch = ({ onLocationSelect, onClose, isOpen }) => {
      }, [isOpen, map, addFieldMarkers, mockFields, GOONG_API_KEY]);
 
 
-     // Cập nhật marker khi lọc sân bóng
+     // Cập nhật marker khi lọc sân bóng - chỉ khi filteredFields thay đổi thực sự
+     const prevFilteredFieldsRef = useRef([]);
      useEffect(() => {
           if (map && map.loaded()) {
+               // So sánh để tránh re-render không cần thiết
+               const prevIds = prevFilteredFieldsRef.current.map(f => f.id).join(',');
+               const currentIds = filteredFields.map(f => f.id).join(',');
+               if (prevIds === currentIds && filteredFields.length > 0) {
+                    return;
+               }
+               prevFilteredFieldsRef.current = filteredFields;
+
                const timer = setTimeout(() => {
                     if (mockFields.length > 0 || filteredFields.length > 0) {
                          addFieldMarkers(map);
