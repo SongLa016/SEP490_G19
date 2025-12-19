@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { AlertCircle } from "lucide-react";
 import Swal from 'sweetalert2';
 import { Button, Modal } from "./ui";
-import { validateBookingData, checkFieldAvailability } from "../services/bookings";
+import { validateBookingData, checkFieldAvailability, cancelBooking } from "../services/bookings";
 import { validateVietnamPhone } from "../services/authService";
 import {
      createBooking,
@@ -802,11 +802,24 @@ export default function BookingModal({
                return;
           }
 
-          const updateRemaining = () => {
+          const updateRemaining = async () => {
                const remaining = paymentLockExpiresAt - Date.now();
                if (remaining <= 0) {
                     setPaymentLockExpiresAt(null);
                     setLockRemainingMs(0);
+                    // QR đã hết hạn - hiển thị thông báo và đóng modal
+                    setBookingInfo(null);
+                    setStep("details");
+                    onClose?.();
+
+                    const Swal = (await import('sweetalert2')).default;
+                    Swal.fire({
+                         icon: 'warning',
+                         title: 'Mã QR đã hết hạn',
+                         text: 'Thời gian thanh toán đã hết. Vui lòng đặt sân lại nếu bạn muốn tiếp tục.',
+                         confirmButtonColor: '#f59e0b',
+                         confirmButtonText: 'Đã hiểu'
+                    });
                } else {
                     setLockRemainingMs(remaining);
                }
@@ -815,7 +828,7 @@ export default function BookingModal({
           updateRemaining();
           const timer = setInterval(updateRemaining, 1000);
           return () => clearInterval(timer);
-     }, [paymentLockExpiresAt, step]);
+     }, [paymentLockExpiresAt, step, onClose]);
 
      useEffect(() => {
           if (typeof window === "undefined") return;
@@ -2133,35 +2146,64 @@ export default function BookingModal({
      const handleCancelBookingDuringPayment = async () => {
           if (isProcessing) return;
 
-          const confirmResult = await Swal.fire({
+          // Hiển thị dialog nhập lý do hủy
+          const { value: reason, isConfirmed } = await Swal.fire({
                title: 'Xác nhận hủy đặt sân',
-               text: 'Bạn có chắc muốn hủy đặt sân và đóng QR thanh toán không?',
-               icon: 'question',
+               input: 'textarea',
+               inputLabel: 'Lý do hủy đặt sân',
+               inputPlaceholder: 'Nhập lý do hủy đặt sân...',
+               inputAttributes: {
+                    'aria-label': 'Lý do hủy đặt sân'
+               },
                showCancelButton: true,
-               confirmButtonText: 'Hủy đặt sân',
+               confirmButtonText: 'Gửi yêu cầu hủy',
                cancelButtonText: 'Không',
                confirmButtonColor: '#ef4444',
-               cancelButtonColor: '#6b7280'
+               cancelButtonColor: '#6b7280',
+               inputValidator: (value) => {
+                    if (!value || !value.trim()) {
+                         return 'Vui lòng nhập lý do hủy đặt sân';
+                    }
+               }
           });
 
-          if (!confirmResult.isConfirmed) return;
+          if (!isConfirmed || !reason) return;
 
-          setPaymentLockExpiresAt(null);
-          setLockRemainingMs(0);
-          setBookingInfo(null);
-          setStep("details");
-          onClose?.();
+          setIsProcessing(true);
+          try {
+               // Gọi API tạo yêu cầu hủy booking
+               const bookingId = bookingInfo?.bookingId;
+               if (bookingId) {
+                    const result = await cancelBooking(bookingId, reason.trim());
+                    if (!result.success) {
+                         throw new Error(result.error || "Không thể gửi yêu cầu hủy");
+                    }
+               }
 
-          // Hiển thị thông báo hủy thành công
-          Swal.fire({
-               toast: true,
-               position: 'top-end',
-               icon: 'success',
-               title: 'Hủy thành công',
-               showConfirmButton: false,
-               timer: 2000,
-               timerProgressBar: true
-          });
+               setPaymentLockExpiresAt(null);
+               setLockRemainingMs(0);
+               setBookingInfo(null);
+               setStep("details");
+               onClose?.();
+
+               // Hiển thị thông báo gửi yêu cầu hủy thành công
+               Swal.fire({
+                    icon: 'success',
+                    title: 'Đã gửi yêu cầu hủy',
+                    text: 'Yêu cầu hủy đặt sân của bạn đã được gửi. Vui lòng chờ xác nhận từ chủ sân.',
+                    confirmButtonColor: '#10b981'
+               });
+          } catch (error) {
+               console.error("Lỗi khi gửi yêu cầu hủy đặt sân:", error);
+               await Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi',
+                    text: error.message || 'Có lỗi xảy ra khi gửi yêu cầu hủy. Vui lòng thử lại.',
+                    confirmButtonColor: '#ef4444'
+               });
+          } finally {
+               setIsProcessing(false);
+          }
      };
 
      const handleModalClose = useCallback(() => {

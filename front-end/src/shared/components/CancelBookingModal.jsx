@@ -126,7 +126,7 @@ export default function CancelBookingModal({
                                         <table className="w-full">
                                              <thead>
                                                   <tr className="bg-gradient-to-r from-teal-500 to-teal-600 text-white">
-                                                       <th className="px-4 py-3 text-center text-sm font-bold">Mốc thời gian sau Confirm</th>
+                                                       <th className="px-4 py-3 text-center text-sm font-bold">Mốc thời gian sau xác nhận</th>
                                                        <th className="px-4 py-3 text-center text-sm font-bold">Mức hoàn cọc</th>
                                                        <th className="px-4 py-3 text-center text-sm font-bold">Mức phạt</th>
                                                   </tr>

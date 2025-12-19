@@ -103,7 +103,7 @@ export default function CancellationPolicies({ isDemo = false }) {
                                    <table className="w-full">
                                         <thead>
                                              <tr className="bg-gradient-to-r from-orange-500 to-amber-500 text-white">
-                                                  <th className="px-4 py-3 text-left text-xs font-bold">Mốc thời gian sau Confirm</th>
+                                                  <th className="px-4 py-3 text-left text-xs font-bold">Mốc thời gian sau xác nhận</th>
                                                   <th className="px-4 py-3 text-center text-xs font-bold">Mức hoàn cọc</th>
                                                   <th className="px-4 py-3 text-center text-xs font-bold">Mức phạt</th>
                                              </tr>
@@ -153,7 +153,7 @@ export default function CancellationPolicies({ isDemo = false }) {
                                    <ul className="text-xs space-y-1.5">
                                         <li className="flex items-start gap-2">
                                              <span className="text-amber-600 font-bold">•</span>
-                                             <span>Thời gian tính từ lúc Confirm đến giờ bắt đầu sử dụng</span>
+                                             <span>Thời gian tính từ lúc xác nhận đến giờ bắt đầu sử dụng</span>
                                         </li>
                                         <li className="flex items-start gap-2">
                                              <span className="text-amber-600 font-bold">•</span>

@@ -68,12 +68,12 @@ export default function BookingWidget({
                };
           }
 
-          // Chỉ tính là còn chỗ nếu status = Available và CHƯA qua giờ
+          // Chỉ tính là còn chỗ nếu status = Available (không phải pending/hold/booked) và CHƯA qua giờ
           let anyAvailable = fieldSchedules.some((s) => {
                const startTime = s.startTime || s.StartTime || "";
-               const status = s.status || s.Status || "Available";
+               const status = (s.status || s.Status || "Available").toLowerCase();
                const past = isSlotInPast(startTime);
-               return status === "Available" && !past;
+               return status === "available" && !past;
           });
 
           if (!selectedSlotId) {
@@ -88,10 +88,10 @@ export default function BookingWidget({
           const relatedSchedules = fieldSchedules.filter((s) => {
                const scheduleSlotId = s.slotId || s.SlotId || s.slotID || s.SlotID;
                const startTime = s.startTime || s.StartTime || "";
-               const status = s.status || s.Status || "Available";
+               const status = (s.status || s.Status || "Available").toLowerCase();
                const past = isSlotInPast(startTime);
-               // Chỉ coi là hợp lệ nếu chưa qua giờ
-               return String(scheduleSlotId) === slotIdStr && !past && status === "Available";
+               // Chỉ coi là hợp lệ nếu chưa qua giờ và status = available
+               return String(scheduleSlotId) === slotIdStr && !past && status === "available";
           });
           if (!relatedSchedules.length) {
                return {
@@ -188,26 +188,55 @@ export default function BookingWidget({
                                                             : "";
 
                                                        const isPastSlot = isSlotInPast(startTime);
-                                                       const normalizedStatus = schedule.status || schedule.Status || "Available";
-                                                       const isDisabled = normalizedStatus !== "Available" || isPastSlot;
+                                                       const normalizedStatus = (schedule.status || schedule.Status || "Available").toLowerCase();
+                                                       const isHold = normalizedStatus === "pending" || normalizedStatus === "hold" || normalizedStatus === "reserved";
+                                                       const isBooked = normalizedStatus === "booked" || normalizedStatus === "confirmed";
+                                                       const isAvailable = normalizedStatus === "available";
+                                                       const isDisabled = (!isAvailable && !isHold) || isPastSlot || isBooked;
+
+                                                       // Xác định style dựa trên trạng thái
+                                                       const getSlotStyle = () => {
+                                                            if (isSelected) {
+                                                                 return "bg-gradient-to-r from-teal-600 to-emerald-600 text-white border-teal-600 shadow-md";
+                                                            }
+                                                            if (isPastSlot) {
+                                                                 return "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed";
+                                                            }
+                                                            if (isHold) {
+                                                                 return "bg-yellow-50 text-yellow-700 border-yellow-300 cursor-not-allowed";
+                                                            }
+                                                            if (isBooked || !isAvailable) {
+                                                                 return "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed";
+                                                            }
+                                                            return "bg-white text-teal-800 border-teal-200/50 hover:text-teal-900 hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 hover:border-teal-300 hover:shadow-sm";
+                                                       };
+
+                                                       // Xác định label trạng thái
+                                                       const getStatusLabel = () => {
+                                                            if (isPastSlot) return "(Đã qua giờ)";
+                                                            if (isHold) return "(Đang giữ chỗ)";
+                                                            if (isBooked) return "(Đã đặt)";
+                                                            if (!isAvailable) return "(Hết chỗ)";
+                                                            return null;
+                                                       };
+
+                                                       const statusLabel = getStatusLabel();
 
                                                        return (
                                                             <Button
                                                                  key={`${scheduleId || scheduleSlotId}-${scheduleFieldId || 'unknown'}`}
                                                                  type="button"
-                                                                 onClick={() => !isDisabled && onSlotChange(isSelected ? "" : scheduleSlotId)}
-                                                                 disabled={isDisabled}
-                                                                 className={`p-2 text-xs rounded-lg border transition-all relative ${isSelected
-                                                                      ? "bg-gradient-to-r from-teal-600 to-emerald-600 text-white border-teal-600 shadow-md"
-                                                                      : isDisabled
-                                                                           ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                                                                           : "bg-white text-teal-800 border-teal-200/50 hover:text-teal-900 hover:bg-gradient-to-r hover:from-teal-50 hover:to-emerald-50 hover:border-teal-300 hover:shadow-sm"
-                                                                      }`}
+                                                                 onClick={() => !isDisabled && !isHold && onSlotChange(isSelected ? "" : scheduleSlotId)}
+                                                                 disabled={isDisabled || isHold}
+                                                                 className={`p-2 text-xs rounded-lg border transition-all relative ${getSlotStyle()}`}
                                                             >
 
                                                                  <div className="flex flex-col items-start w-full">
-                                                                      {isPastSlot && <span className="text-xs absolute -top-1.5 right-0 text-red-400 ">(Đã qua giờ)</span>}
-                                                                      {isDisabled && <span className="text-xs absolute -top-1.5 right-0 text-red-400 ">(Hết chỗ)</span>}
+                                                                      {statusLabel && (
+                                                                           <span className={`text-xs absolute -top-1.5 right-0 ${isHold ? 'text-yellow-600' : 'text-red-400'}`}>
+                                                                                {statusLabel}
+                                                                           </span>
+                                                                      )}
                                                                       {fieldName && (
                                                                            <span className="text-xs  font-semibold text-teal-700">{fieldName}</span>
                                                                       )}

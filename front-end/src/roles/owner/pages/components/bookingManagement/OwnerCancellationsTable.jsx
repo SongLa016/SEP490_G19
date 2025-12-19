@@ -35,7 +35,7 @@ export default function OwnerCancellationsTable({
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-bold text-gray-900 flex items-center">
           <XCircle className="w-6 h-6 mr-2 text-red-600" />
-          Yêu cầu hủy booking
+          Yêu cầu hủy đặt sân
         </h3>
         <Button onClick={onRefresh} variant="outline" className="rounded-xl">
           <RefreshCw className="w-4 h-4 mr-2" />

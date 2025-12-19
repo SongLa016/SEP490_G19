@@ -50,9 +50,9 @@ export default function FieldListItem({ field, index, slotId, formatPrice, handl
                                              e.stopPropagation();
                                              handleToggleFavorite(field.fieldId);
                                         }}
-                                        className={`px-3 rounded-full transition-all duration-200 hover:scale-110 ${field.isFavorite ? "bg-teal-500 text-white hover:bg-teal-600" : "bg-teal-100 text-teal-700 hover:border-pink-100 hover:border hover:text-pink-600 hover:bg-pink-50"}`}
+                                        className={`h-9 w-9 p-0 rounded-full transition-all duration-200 hover:scale-110 ${field.isFavorite ? "bg-pink-500 text-white border-pink-500 hover:bg-pink-600" : "bg-white text-gray-500 border border-gray-200 hover:text-pink-500 hover:bg-pink-50 hover:border-pink-200"}`}
                                    >
-                                        <Heart className="w-4 h-4" />
+                                        <Heart className={`w-4 h-4 ${field.isFavorite ? 'fill-current' : ''}`} />
                                    </Button>
                               </div>
                               <div className="flex items-center justify-between mb-4">

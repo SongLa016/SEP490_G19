@@ -1225,16 +1225,24 @@ export async function cancelBooking(bookingId, reason) {
 }
 
 /**
- * Fetch all booking cancellation requests
- * Backend will return cancellation requests based on token (Owner sees requests for their fields, Player sees their own requests)
+ * Fetch all booking cancellation requests for Owner
+ * GET /api/BookingCancellationRe/owner/cancellations
+ * Requires token authentication
  * @returns {Promise<{success: boolean, data?: Array, error?: string}>}
  */
 export async function fetchCancellationRequests() {
   try {
-    const endpoint =
-      "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe";
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Vui lòng đăng nhập để xem yêu cầu hủy",
+      };
+    }
 
-    // Use apiClient instead of axios to ensure token is automatically included
+    const endpoint =
+      "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/owner/cancellations";
+
     const response = await apiClient.get(endpoint);
 
     return {
@@ -1257,11 +1265,21 @@ export async function fetchCancellationRequests() {
 
 /**
  * Fetch a specific cancellation request by ID
+ * GET /api/BookingCancellationRe/{id}
+ * Requires token authentication
  * @param {number|string} cancellationId - The cancellation request ID
  * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
  */
 export async function fetchCancellationRequestById(cancellationId) {
   try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Vui lòng đăng nhập để xem chi tiết yêu cầu hủy",
+      };
+    }
+
     if (!cancellationId) {
       return {
         success: false,
@@ -1271,12 +1289,7 @@ export async function fetchCancellationRequestById(cancellationId) {
 
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
 
-    const response = await axios.get(endpoint, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
+    const response = await apiClient.get(endpoint);
 
     return {
       success: true,
@@ -1301,24 +1314,32 @@ export async function fetchCancellationRequestById(cancellationId) {
 }
 
 /**
- * Confirm a cancellation request
+ * Confirm a cancellation request (Owner approves player's cancellation request)
+ * PUT /api/BookingCancellationRe/confirm/{id}
+ * Requires token authentication
  * @param {number} cancellationId - The cancellation request ID
  * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
  */
 export async function confirmCancellation(cancellationId) {
   try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Vui lòng đăng nhập để xác nhận yêu cầu hủy",
+      };
+    }
+
+    if (!cancellationId) {
+      return {
+        success: false,
+        error: "Cancellation ID is required",
+      };
+    }
+
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/confirm/${cancellationId}`;
 
-    const response = await axios.put(
-      endpoint,
-      {},
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
-    );
+    const response = await apiClient.put(endpoint, {});
 
     return {
       success: true,
@@ -1326,6 +1347,8 @@ export async function confirmCancellation(cancellationId) {
       message: "Đã xác nhận hủy booking",
     };
   } catch (error) {
+    console.error("Error confirming cancellation:", error);
+
     if (error.response) {
       return {
         success: false,
@@ -1342,18 +1365,31 @@ export async function confirmCancellation(cancellationId) {
 
 /**
  * Delete a cancellation request
+ * DELETE /api/BookingCancellationRe/{id}
+ * Requires token authentication
  * @param {number} cancellationId - The cancellation request ID
  * @returns {Promise<{success: boolean, error?: string}>}
  */
 export async function deleteCancellationRequest(cancellationId) {
   try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return {
+        success: false,
+        error: "Vui lòng đăng nhập để xóa yêu cầu hủy",
+      };
+    }
+
+    if (!cancellationId) {
+      return {
+        success: false,
+        error: "Cancellation ID is required",
+      };
+    }
+
     const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
 
-    await axios.delete(endpoint, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
+    await apiClient.delete(endpoint);
 
     return {
       success: true,

@@ -502,33 +502,7 @@ export default function OwnerDashboard() {
                               </Button>
                          </div>
 
-                         {/* System Status */}
-                         <div className="mt-6 pt-6 border-t border-teal-200">
-                              <h4 className="font-medium text-teal-900 mb-3">Trạng thái hệ thống</h4>
-                              <div className="space-y-2">
-                                   <div className="flex items-center justify-between">
-                                        <span className="text-sm text-teal-600">Sân hoạt động</span>
-                                        <div className="flex items-center">
-                                             <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                                             <span className="text-sm text-green-600">Bình thường</span>
-                                        </div>
-                                   </div>
-                                   <div className="flex items-center justify-between">
-                                        <span className="text-sm text-teal-600">Hệ thống thanh toán</span>
-                                        <div className="flex items-center">
-                                             <CheckCircle className="w-4 h-4 text-green-500 mr-1" />
-                                             <span className="text-sm text-green-600">Hoạt động</span>
-                                        </div>
-                                   </div>
-                                   <div className="flex items-center justify-between">
-                                        <span className="text-sm text-teal-600">Thông báo</span>
-                                        <div className="flex items-center">
-                                             <AlertCircle className="w-4 h-4 text-yellow-500 mr-1" />
-                                             <span className="text-sm text-yellow-600">2 chưa đọc</span>
-                                        </div>
-                                   </div>
-                              </div>
-                         </div>
+
                     </Card>
                </div>
 

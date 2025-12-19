@@ -1366,9 +1366,9 @@ const BookingManagement = ({ isDemo = false }) => {
                          <div>
                               <h1 className="text-3xl font-bold text-gray-900 flex items-center">
                                    <Calendar className="w-8 h-8 mr-3 text-teal-600" />
-                                   Quản lý booking
+                                   Quản lý đặt sân
                               </h1>
-                              <p className="text-gray-600 mt-1">Xác nhận, hủy và theo dõi các booking</p>
+                              <p className="text-gray-600 mt-1">Xác nhận, hủy và theo dõi các đặt sân</p>
                          </div>
 
                          <div className="flex items-center space-x-3">
@@ -1403,7 +1403,7 @@ const BookingManagement = ({ isDemo = false }) => {
                                         }`}
                               >
                                    <Calendar className="w-4 h-4" />
-                                   <span>Danh sách Booking</span>
+                                   <span>Danh sách đặt sân</span>
                               </button>
                               <button
                                    onClick={() => setActiveTab('cancellations')}
@@ -1739,7 +1739,7 @@ const BookingManagement = ({ isDemo = false }) => {
                     <DemoRestrictedModal
                          isOpen={showDemoRestrictedModal}
                          onClose={() => setShowDemoRestrictedModal(false)}
-                         featureName="Quản lý booking"
+                         featureName="Quản lý đặt sân"
                     />
                </div >
 
@@ -1750,7 +1750,7 @@ const BookingManagement = ({ isDemo = false }) => {
                          setIsCancellationDetailModalOpen(false);
                          setSelectedCancellation(null);
                     }}
-                    title="Chi tiết yêu cầu hủy booking"
+                    title="Chi tiết yêu cầu hủy đặt sân"
                     className="max-w-2xl rounded-2xl border border-red-200 shadow-lg h-[90vh] overflow-y-auto scrollbar-hide bg-gray-300"
                >
                     {

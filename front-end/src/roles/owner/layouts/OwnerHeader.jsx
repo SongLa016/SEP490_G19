@@ -30,7 +30,7 @@ export default function OwnerHeader({ user, onLoggedOut }) {
      const ownerMenuItems = [
           { id: "dashboard", label: "Dashboard", icon: BarChart3, path: "/owner/dashboard" },
           { id: "fields", label: "Quản lý sân", icon: MapPin, path: "/owner/fields" },
-          { id: "bookings", label: "Quản lý booking", icon: Calendar, path: "/owner/bookings" },
+          { id: "bookings", label: "Quản lý đặt sân", icon: Calendar, path: "/owner/bookings" },
           { id: "pricing", label: "Quản lý giá", icon: DollarSign, path: "/owner/pricing" },
           { id: "schedule", label: "Quản lý lịch", icon: Clock, path: "/owner/schedule" },
           { id: "reports", label: "Báo cáo doanh thu", icon: TrendingUp, path: "/owner/reports" },

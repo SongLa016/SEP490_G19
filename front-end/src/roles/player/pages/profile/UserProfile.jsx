@@ -560,9 +560,19 @@ export default function UserProfile({ user }) {
                                                                            <p className="text-sm font-semibold tracking-wide text-teal-600">
                                                                                 Số điện thoại
                                                                            </p>
-                                                                           <p className="text-base font-semibold text-teal-900">
-                                                                                {formData.phone || "Chưa cập nhật"}
-                                                                           </p>
+                                                                           {isEditing ? (
+                                                                                <Input
+                                                                                     type="tel"
+                                                                                     value={formData.phone}
+                                                                                     onChange={(e) => handleInputChange('phone', e.target.value)}
+                                                                                     placeholder="Nhập số điện thoại (VD: 0912345678)"
+                                                                                     className="rounded-xl border-teal-200 focus:border-teal-600 focus:ring-teal-600"
+                                                                                />
+                                                                           ) : (
+                                                                                <p className="text-base font-semibold text-teal-900">
+                                                                                     {formData.phone || "Chưa cập nhật"}
+                                                                                </p>
+                                                                           )}
                                                                       </div>
                                                                  </div>
                                                             </div>

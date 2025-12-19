@@ -33,8 +33,36 @@ export const shouldShowCancelButton = (booking) => {
   return true;
 };
 
-// kiểm tra đặt sân chưa thanh toán
-export const isPendingUnpaidWithin2Hours = (booking) => {
+// Thời gian cho phép tiếp tục thanh toán (10 phút)
+const PAYMENT_WINDOW_MS = 10 * 60 * 1000;
+
+// Tính thời gian còn lại để thanh toán (tính từ createdAt)
+export const getPaymentRemainingMs = (booking) => {
+  if (!booking) return 0;
+  
+  const createdAt = booking.createdAt || booking.CreatedAt || booking.createAt || booking.CreateAt;
+  if (!createdAt) return 0;
+  
+  const createdTime = new Date(createdAt).getTime();
+  if (isNaN(createdTime)) return 0;
+  
+  const expiresAt = createdTime + PAYMENT_WINDOW_MS;
+  const remaining = expiresAt - Date.now();
+  
+  return remaining > 0 ? remaining : 0;
+};
+
+// Format thời gian còn lại thành mm:ss
+export const formatPaymentCountdown = (remainingMs) => {
+  if (remainingMs <= 0) return "00:00";
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
+
+// kiểm tra đặt sân chưa thanh toán và còn trong thời gian cho phép (10 phút từ createdAt)
+export const isPendingUnpaidWithin10Minutes = (booking) => {
   if (!booking) return false;
 
   const statusLower = String(
@@ -56,19 +84,20 @@ export const isPendingUnpaidWithin2Hours = (booking) => {
   // Kiểm tra nếu đã hủy hoặc hết hạn
   if (statusLower === "cancelled" || statusLower === "expired" || statusLower === "completed") return false;
 
-  // Kiểm tra nếu booking có QR code và chưa hết hạn (đang chờ thanh toán)
-  const hasActiveQR = booking.qrExpiresAt && new Date(booking.qrExpiresAt).getTime() > new Date().getTime();
+  // Kiểm tra còn trong thời gian 10 phút từ createdAt
+  const remainingMs = getPaymentRemainingMs(booking);
+  if (remainingMs <= 0) return false;
 
-  // Nếu có QR code đang active và chưa thanh toán, hiển thị nút tiếp tục thanh toán
-  if (hasActiveQR && isUnpaid) return true;
-
-  // Nếu pending/confirmed và chưa thanh toán, hiển thị nút thanh toán
+  // Nếu pending/confirmed, chưa thanh toán và còn trong 10 phút
   if (isPendingOrConfirmed && isUnpaid) {
     return true;
   }
 
   return false;
 };
+
+// Giữ lại hàm cũ để tương thích ngược (alias)
+export const isPendingUnpaidWithin2Hours = isPendingUnpaidWithin10Minutes;
 
 // kiểm tra nút "Tìm đối thủ"
 export const shouldShowFindOpponentButton = (booking) => {

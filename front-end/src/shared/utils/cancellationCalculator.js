@@ -1,11 +1,5 @@
 /**
  * Tính toán mức hoàn cọc và phạt dựa trên thời gian hủy sau khi confirm
- * Logic: Tính từ thời điểm confirm đến thời điểm bắt đầu booking
- *
- * @param {Date|string} confirmedAt - Thời điểm confirm booking
- * @param {Date|string} bookingStartTime - Thời điểm bắt đầu booking
- * @param {number} depositAmount - Số tiền cọc
- * @returns {Object} - { hoursUntilBooking, refundRate, penaltyRate, refundAmount, penaltyAmount, timeRange }
  */
 export function calculateCancellationRefund(
   confirmedAt,

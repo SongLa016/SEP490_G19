@@ -101,21 +101,21 @@ export default function OwnerBookingsTable({
       <div className="bg-gradient-to-r from-teal-500 to-emerald-700 p-4">
         <h3 className="text-lg font-semibold text-white flex items-center">
           <Calendar className="w-5 h-5 mr-2" />
-          Danh sách booking ({filteredCount})
+          Danh sách đặt sân ({filteredCount})
         </h3>
       </div>
       {loading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
-          <p className="text-gray-600 mt-4">Đang tải danh sách booking...</p>
+          <p className="text-gray-600 mt-4">Đang tải danh sách đặt sân...</p>
         </div>
       ) : error ? (
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-200">{error}</div>
       ) : bookingsPagination.currentItems.length === 0 ? (
         <div className="text-center py-12">
           <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Không có booking nào</h3>
-          <p className="text-gray-500">Không tìm thấy booking nào phù hợp với bộ lọc hiện tại.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Không có đặt sân nào</h3>
+          <p className="text-gray-500">Không tìm thấy đặt sân nào phù hợp với bộ lọc hiện tại.</p>
         </div>
       ) : (
         <>
