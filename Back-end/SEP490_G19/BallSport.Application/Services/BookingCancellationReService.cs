@@ -27,22 +27,25 @@ namespace BallSport.Application.Services
             _userRepository = userRepository;
         }
 
-        public async Task<List<BookingCancellationforGETDTO>> GetByUserIdAsync(int userId)
+        public async Task<List<BookingCancellationforGETDTO>> GetByOwnerAsync(int ownerId)
         {
-            var requests = await _requestRepository.GetByUserIdAsync(userId);
+            var requests = await _requestRepository.GetByOwnerIdAsync(ownerId);
+
             return requests.Select(r => new BookingCancellationforGETDTO
             {
                 RequestId = r.RequestId,
                 BookingId = r.BookingId,
                 RequestedByRole = r.RequestedByRole,
                 RequestStatus = r.RequestStatus,
+                RequestReason = r.RequestReason,
+                RequestedAt = r.RequestedAt,
                 RefundAmount = r.RefundAmount ?? 0,
                 PenaltyAmount = r.PenaltyAmount ?? 0,
-                FinalRefundAmount = r.FinalRefundAmount ?? 0,
-                RequestedAt = r.RequestedAt,
-                RequestReason = r.RequestReason
+                FinalRefundAmount = r.FinalRefundAmount ?? 0
             }).ToList();
         }
+
+
 
         public async Task<BookingCancellationforGETDTO?> GetByIdAsync(int id)
         {

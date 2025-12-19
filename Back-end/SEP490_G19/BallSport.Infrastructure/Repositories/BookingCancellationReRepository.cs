@@ -19,13 +19,22 @@ namespace BallSport.Infrastructure.Repositories
         }
 
 
-        public async Task<List<BookingCancellationRequest>> GetByUserIdAsync(int userId)
+        public async Task<List<BookingCancellationRequest>> GetByOwnerIdAsync(int ownerId)
         {
             return await _context.BookingCancellationRequests
-                .Where(r => r.RequestedByUserId == userId)
+                .Include(r => r.Booking)
+                    .ThenInclude(b => b.Schedule)
+                        .ThenInclude(s => s.Field)
+                            .ThenInclude(f => f.Complex)
+                .Where(r =>
+                    r.Booking.Schedule.Field.Complex != null &&
+                    r.Booking.Schedule.Field.Complex.OwnerId == ownerId
+                )
                 .OrderByDescending(r => r.RequestedAt)
                 .ToListAsync();
         }
+
+
 
 
         public async Task<BookingCancellationRequest?> GetByIdAsync(int id)
