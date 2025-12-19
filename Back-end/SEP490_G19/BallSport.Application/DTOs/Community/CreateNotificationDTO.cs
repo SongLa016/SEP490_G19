@@ -23,5 +23,6 @@ namespace BallSport.Application.DTOs.Community
         public string Type { get; set; } = string.Empty;
 
         public int? TargetId { get; set; } = 0;
+        public int? CurrentUserId { get; set; }
     }
 }
