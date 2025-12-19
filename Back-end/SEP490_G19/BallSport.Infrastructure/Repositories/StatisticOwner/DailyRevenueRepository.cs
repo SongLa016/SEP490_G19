@@ -27,6 +27,7 @@ namespace BallSport.Infrastructure.Repositories.StatisticOwner
                     .ThenInclude(s => s.Field)
                         .ThenInclude(f => f.Complex)
                 .Where(b => b.Schedule.Field.Complex.OwnerId == ownerId)
+                .Where(b => b.BookingStatus == "Completed")
                 .GroupBy(b => b.CreatedAt.HasValue ? b.CreatedAt.Value.Date : DateTime.MinValue)
                 .Select(g => new DailyRevenue
                 {
