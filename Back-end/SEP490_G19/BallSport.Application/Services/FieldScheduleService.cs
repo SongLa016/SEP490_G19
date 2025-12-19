@@ -4,6 +4,7 @@ using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 using BallSport.Application.Services;
 using BallSport.Infrastructure.Data;
+using BallSport.Application;
 
 public interface IFieldScheduleService
 {
