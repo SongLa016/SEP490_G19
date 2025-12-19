@@ -11,6 +11,7 @@ namespace BallSport.Application.DTOs
         public string FullName { get; set; }
         public string Email { get; set; }
         public string Phone { get; set; }
+        //hash
         public string Password { get; set; }
         public string RoleName { get; set; }
         public string AvatarUrl { get; set; }
