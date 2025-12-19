@@ -12,7 +12,6 @@ using Banking.Application.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 
 
 
@@ -26,13 +25,8 @@ namespace BallSport.Application.Services
         private readonly OTPService _otpService;
         private readonly IMemoryCache _cache;
         private readonly ICloudinaryService _cloudinaryService;
-        private readonly PasswordHasher<User> _passwordHasher;
-        public UserService(UserRepositories userRepository, 
-            JwtService jwtService, 
-            EmailService emailService, 
-            OTPService otpService, 
-            IMemoryCache cache, 
-            ICloudinaryService cloudinaryService)
+
+        public UserService(UserRepositories userRepository, JwtService jwtService, EmailService emailService, OTPService otpService, IMemoryCache cache, ICloudinaryService cloudinaryService)
         {
             _userRepository = userRepository;
             _jwtService = jwtService;
@@ -40,7 +34,7 @@ namespace BallSport.Application.Services
             _otpService = otpService;
             _cache = cache;
             _cloudinaryService = cloudinaryService;
-            _passwordHasher = new PasswordHasher<User>();
+
         }
 
 
@@ -52,16 +46,8 @@ namespace BallSport.Application.Services
         {
             var user = _userRepository.GetUserByPhone(phone);
             if (user == null) return false;
-
-            var result = _passwordHasher.VerifyHashedPassword(
-                user,
-                user.PasswordHash,
-                inputPassword
-            );
-
-            return result == PasswordVerificationResult.Success;
+            return inputPassword == user.PasswordHash;
         }
-
 
         public string? Login(string phone, string inputPassword)
         {
@@ -85,60 +71,46 @@ namespace BallSport.Application.Services
 
         public string HandleGoogleLogin(string email, string fullName)
         {
+
             var existingUser = _userRepository.GetUserByEmail(email);
             User user = existingUser;
+            var randompass = _userRepository.GenerateRandomPassword();
 
             if (existingUser == null)
             {
-                // 🔐 Tạo mật khẩu tạm
-                var randomPass = _userRepository.GenerateRandomPassword();
-
-                // 🔐 HASH mật khẩu tạm
-                var passwordHash = _passwordHasher.HashPassword(
-                    new User { Email = email },
-                    randomPass
-                );
 
                 var newUser = new User
                 {
                     Email = email,
                     FullName = fullName,
-                    PasswordHash = passwordHash, // ✅ LƯU HASH
+                    PasswordHash = randompass,
                     CreatedAt = DateTime.Now,
                     Status = "Active"
                 };
-
                 _userRepository.AddUser(newUser);
+
 
                 var playerRole = _userRepository.GetPlayerRole();
                 if (playerRole != null)
                 {
                     _userRepository.AddUserRole(newUser.UserId, playerRole.RoleId);
                 }
-
-                // 📧 Gửi mật khẩu gốc cho user (chỉ gửi email, KHÔNG lưu)
                 _emailService.SendEmailAsync(
-                    email,
-                    "Xác nhận tạo tài khoản BallSport",
-                    $"<p>Xin chào <b>{fullName}</b>,</p>" +
-                    $"<p>Quý khách vừa tạo tài khoản bằng Google trên hệ thống BallSport.</p>" +
-                    $"<p>Mật khẩu tạm thời của bạn là: <b>{randomPass}</b></p>" +
-                    $"<p>Vui lòng đăng nhập và đổi mật khẩu ngay sau khi sử dụng.</p>" +
-                    $"<p>Trân trọng,<br/>Đội ngũ BallSport</p>"
-                );
+           email,
+           "Xác nhận tạo tài khoản BallSport",
+           $"<p>Xin chào <b>{fullName}</b>,</p>" +
+           $"<p>Quý khách vừa tạo tài khoản bằng Google trên hệ thống BallSport.</p>" +
+           $"<p>Mật khẩu tạm thời của bạn là: <b>{randompass}</b></p>" +
+           $"<p>Vui lòng đăng nhập và đổi mật khẩu ngay sau khi sử dụng.</p>" +
+           $"<p>Trân trọng,<br/>Đội ngũ BallSport</p>"
+       );
 
                 user = newUser;
             }
 
             var roles = _userRepository.GetRolesByUserId(user.UserId);
+            var token = _jwtService.GenerateToken(user.UserId, user.Email, user.FullName, user.Phone, roles);
 
-            var token = _jwtService.GenerateToken(
-                user.UserId,
-                user.Email,
-                user.FullName,
-                user.Phone,
-                roles
-            );
 
             return token;
         }
@@ -161,25 +133,25 @@ namespace BallSport.Application.Services
 
             await _emailService.SendOtpEmailAsync(email, otp);
 
-            return user; 
+            return user;
         }
 
 
         public async Task<bool> VerifyOtpAndResetPasswordAsync(string otp)
         {
-            
+
             var email = _otpService.VerifyAndGetEmailByOtp(otp);
-            if (email == null) return false; 
+            if (email == null) return false;
 
             var user = _userRepository.GetUserByEmail(email);
             if (user == null) return false;
 
-         
+
             var newPassword = _userRepository.GenerateRandomPassword();
-            var passwordHash = _passwordHasher.HashPassword(user, newPassword);
-            user.PasswordHash = passwordHash;
+            user.PasswordHash = newPassword;
             _userRepository.UpdateUser(user);
-           
+
+
             await _emailService.SendEmailAsync(email, "Mật khẩu mới", $"Mật khẩu mới của bạn là: {newPassword}");
 
             return true;
@@ -188,7 +160,7 @@ namespace BallSport.Application.Services
 
         ////////////////////////////////////////////  Register //////////////////////////////////////////////////////////
 
-        
+
 
         public async Task<bool> SendOtpForRegisterAsync(
             string fullName,
@@ -211,9 +183,6 @@ namespace BallSport.Application.Services
             // Generate OTP
             var otp = _userRepository.GenerateOtp();
             _otpService.SaveOtp(email, otp, expireMinutes: 5);
-            // hash pass
-            var tempUser = new User { Email = email };
-            var passwordHash = _passwordHasher.HashPassword(tempUser, password);
 
             // Upload avatar -> Cloudinary
             string avatarUrl = null;
@@ -228,7 +197,7 @@ namespace BallSport.Application.Services
                 FullName = fullName,
                 Email = email,
                 Phone = phone,
-                Password = passwordHash,
+                Password = password,
                 RoleName = roleName,
                 AvatarUrl = avatarUrl
             };
@@ -260,7 +229,7 @@ namespace BallSport.Application.Services
                 FullName = pending.FullName,
                 Email = pending.Email,
                 Phone = pending.Phone,
-                PasswordHash = pending.Password, 
+                PasswordHash = pending.Password,
                 Avatar = pending.AvatarUrl,
                 CreatedAt = DateTime.Now,
                 Status = "Active"
@@ -269,10 +238,10 @@ namespace BallSport.Application.Services
             _userRepository.AddUser(newUser);
             _userRepository.AddUserRole(newUser.UserId, role.RoleId);
 
-            
+
             _cache.Remove(verifiedEmail);
 
-            
+
             string subject = "Đăng ký BallSport thành công";
             string message = $"<p>Xin chào <b>{pending.FullName}</b>,</p>" +
                              $"<p>Tài khoản của bạn đã được tạo thành công với vai trò <b>{pending.RoleName}</b>.</p>" +
@@ -288,7 +257,7 @@ namespace BallSport.Application.Services
 
 
 
-        public async Task<bool> ChangePasswordAsync(  int userId,string oldPassword,string newPassword, string confirmNewPassword)
+        public async Task<bool> ChangePasswordAsync(int userId, string oldPassword, string newPassword, string confirmNewPassword)
         {
             // 1. Check user tồn tại
             var user = await _userRepository.GetByIdAsync(userId);
