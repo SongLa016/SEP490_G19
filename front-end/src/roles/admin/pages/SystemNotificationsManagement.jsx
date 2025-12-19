@@ -148,36 +148,6 @@ export default function SystemNotificationsManagement() {
                     // Nếu không có data, thử dùng mock data để test UI
                     if (notificationsData.length === 0) {
                          console.warn("⚠️ [SystemNotificationsManagement] No notifications from API, using mock data for testing");
-                         const mockNotifications = [
-                              {
-                                   notificationID: 1,
-                                   userId: 0,
-                                   type: "System",
-                                   targetId: 0,
-                                   message: "Hệ thống sẽ bảo trì từ 2:00-4:00 sáng ngày mai",
-                                   isRead: false,
-                                   createdAt: new Date().toISOString()
-                              },
-                              {
-                                   notificationID: 2,
-                                   userId: 2,
-                                   type: "NewComment",
-                                   targetId: 5,
-                                   message: "Bạn có bình luận mới trên bài viết",
-                                   isRead: true,
-                                   createdAt: new Date(Date.now() - 86400000).toISOString()
-                              },
-                              {
-                                   notificationID: 3,
-                                   userId: 0,
-                                   type: "System",
-                                   targetId: 0,
-                                   message: "Chào mừng bạn đến với hệ thống đặt sân!",
-                                   isRead: false,
-                                   createdAt: new Date(Date.now() - 172800000).toISOString()
-                              }
-                         ];
-                         setNotifications(mockNotifications);
                     } else {
                          setNotifications(notificationsData);
                     }
@@ -1209,33 +1179,6 @@ export default function SystemNotificationsManagement() {
                               </div>
                          )}
 
-                         {/* Preview */}
-                         {newNotification.message && (
-                              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-2">
-                                   <p className="text-xs font-medium text-slate-600 mb-2">Preview:</p>
-                                   <div className="bg-white rounded-xl p-3 border border-slate-200">
-                                        <div className="flex items-start gap-2">
-                                             <span className="text-lg">
-                                                  {newNotification.type === "System" ? "📢" :
-                                                       newNotification.type === "Comment" ? "💬" :
-                                                            newNotification.type === "Like" ? "👍" :
-                                                                 newNotification.type === "ReportResult" ? "📋" :
-                                                                      newNotification.type === "Mention" ? "@" : "📢"}
-                                             </span>
-                                             <div className="flex-1">
-                                                  <p className="text-sm text-slate-900 whitespace-pre-wrap">
-                                                       {newNotification.message}
-                                                  </p>
-                                                  <p className="text-xs text-slate-500 mt-2">
-                                                       Type: {newNotification.type} |
-                                                       UserID: {newNotification.userId || 0} |
-                                                       TargetID: {newNotification.targetId || 0}
-                                                  </p>
-                                             </div>
-                                        </div>
-                                   </div>
-                              </div>
-                         )}
 
                          {/* Action Buttons */}
                          <div className="flex space-x-3 pt-4 border-t border-slate-200">
