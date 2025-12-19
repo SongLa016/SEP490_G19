@@ -17,7 +17,7 @@ namespace BallSport.API.Controllers
             _fieldService = fieldService;
         }
 
-        // CREATE FIELD
+        // tạo
         [Authorize(Roles = "Owner")]
         [HttpPost]
         public async Task<IActionResult> AddField([FromForm] FieldDTO dto)
@@ -43,7 +43,7 @@ namespace BallSport.API.Controllers
             }
         }
 
-        //GET FIELDS BY COMPLEX
+        // lấy theo khu sân
         [HttpGet("complex/{complexId}")]
         public async Task<IActionResult> GetFieldsByComplex(int complexId)
         {
@@ -54,7 +54,7 @@ namespace BallSport.API.Controllers
             return Ok(fields);
         }
 
-        //  GET FIELD BY ID
+        //  lấy ra sân theo id
         [HttpGet("{fieldId}")]
         public async Task<IActionResult> GetFieldById(int fieldId)
         {
@@ -65,7 +65,7 @@ namespace BallSport.API.Controllers
             return Ok(field);
         }
 
-        // UPDATE FIELD
+        // sửa - owner
         [Authorize(Roles = "Owner")]
         [HttpPut("{fieldId}")]
         public async Task<IActionResult> UpdateField(int fieldId, [FromForm] FieldDTO dto)
@@ -90,7 +90,7 @@ namespace BallSport.API.Controllers
             }
         }
 
-        // DELETE FIELD
+        // xóa - owner
         [Authorize(Roles = "Owner")]
         [HttpDelete("{fieldId}")]
         public async Task<IActionResult> DeleteField(int fieldId)
@@ -112,7 +112,7 @@ namespace BallSport.API.Controllers
             }
         }
 
-        // GET FIELDS BY OWNER 
+        // lấy ra sân của owner 
         [Authorize(Roles = "Owner")]
         [HttpGet("owner")]
         public async Task<IActionResult> GetFieldsForOwner()

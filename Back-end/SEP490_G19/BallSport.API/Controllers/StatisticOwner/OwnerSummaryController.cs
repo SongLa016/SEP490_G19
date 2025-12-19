@@ -16,7 +16,7 @@ namespace BallSport.API.Controllers.StatisticOwner
             _service = service;
         }
 
-        // GET: /api/owner/statistics/revenue/total
+        // tổng doanh thu
         [HttpGet("revenue/total")]
         public async Task<IActionResult> GetTotalRevenue()
         {
@@ -30,7 +30,7 @@ namespace BallSport.API.Controllers.StatisticOwner
             return Ok(new { totalRevenue = revenue });
         }
 
-        // GET: /api/owner/statistics/booking/total
+        // tổng số lượt đặt sân
         [HttpGet("booking/total")]
         public async Task<IActionResult> GetTotalBooking()
         {

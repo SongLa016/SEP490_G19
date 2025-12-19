@@ -85,7 +85,7 @@ namespace BallSport.API.Controllers.StatisticAdmin
             var users = await _userListService.GetUsersAsync();
             return Ok(users);
         }
-
+        // hoạt đông gần đây
         [HttpGet("recent-activities")]
         public async Task<IActionResult> GetRecentActivities()
         {

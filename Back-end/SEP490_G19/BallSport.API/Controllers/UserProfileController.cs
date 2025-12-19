@@ -23,7 +23,7 @@ namespace BallSport.API.Controllers
         }
 
         [HttpGet("profile")]
-        [Authorize] // yêu cầu đăng nhập
+        [Authorize] 
         public async Task<IActionResult> GetProfile()
         {
             var userId = int.Parse(User.FindFirst("UserID")!.Value);
@@ -62,7 +62,7 @@ namespace BallSport.API.Controllers
         }
 
         [HttpPost("change-password")]
-        [Authorize] // 🔐 BẮT BUỘC đăng nhập
+        [Authorize] 
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO request)
         {
             if (string.IsNullOrEmpty(request.OldPassword) ||
@@ -72,7 +72,6 @@ namespace BallSport.API.Controllers
                 return BadRequest("Vui lòng nhập đầy đủ thông tin.");
             }
 
-            // ✅ THỐNG NHẤT: dùng "UserID" giống các API khác
             var userIdClaim = User.FindFirst("UserID");
             if (userIdClaim == null)
                 return Unauthorized("Token không hợp lệ.");

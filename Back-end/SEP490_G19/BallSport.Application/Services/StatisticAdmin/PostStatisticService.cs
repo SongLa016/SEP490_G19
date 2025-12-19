@@ -32,7 +32,7 @@ namespace BallSport.Application.Services.AdminStatistics
             }
             else if (totalThisMonth > 0)
             {
-                percentChange = 100; // tháng trước = 0 mà tháng này > 0 → tăng 100%
+                percentChange = 100; 
             }
 
             return new

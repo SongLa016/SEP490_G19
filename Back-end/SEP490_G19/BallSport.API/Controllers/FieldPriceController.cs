@@ -44,10 +44,8 @@ public class FieldPriceController : ControllerBase
         int ownerId = GetOwnerId();
         try
         {
-            // Service trả về entity vừa thêm
             var added = await _service.AddAsync(ownerId, dto);
 
-            // Trả về 201 Created + object vừa tạo
             return CreatedAtAction(nameof(GetById), new { id = added.PriceId }, added);
         }
         catch (UnauthorizedAccessException ex)

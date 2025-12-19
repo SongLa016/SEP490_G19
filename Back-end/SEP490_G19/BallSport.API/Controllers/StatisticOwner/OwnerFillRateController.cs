@@ -16,7 +16,6 @@ namespace BallSport.API.Controllers.StatisticOwner
             _service = service;
         }
 
-        // GET: /api/owner/statistics/fillrate
         [HttpGet]
         public async Task<IActionResult> GetFillRate()
         {

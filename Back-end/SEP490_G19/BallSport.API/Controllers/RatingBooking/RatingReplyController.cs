@@ -12,7 +12,7 @@ public class RatingReplyController : ControllerBase
         _service = service;
     }
 
-    // POST: thêm phản hồi
+    // thêm reply
     [HttpPost("{userId}/add")]
     public async Task<IActionResult> AddReply(int userId, [FromBody] CreateReplyRequest request)
     {
@@ -20,7 +20,7 @@ public class RatingReplyController : ControllerBase
         return result ? Ok("Reply added successfully") : BadRequest("Failed to add reply");
     }
 
-    // GET: lấy reply theo ratingId
+    // lấy ra danh sách reply theo ratingId
     [HttpGet("{ratingId}/list")]
     public async Task<IActionResult> GetReplies(int ratingId)
     {
@@ -28,7 +28,7 @@ public class RatingReplyController : ControllerBase
         return Ok(replies);
     }
 
-    // PUT: cập nhật reply
+    // sửa comment
     [HttpPut("{replyId}/update")]
     public async Task<IActionResult> UpdateReply(int replyId, [FromBody] UpdateReplyRequest request)
     {
@@ -36,7 +36,7 @@ public class RatingReplyController : ControllerBase
         return result ? Ok("Reply updated") : NotFound("Reply not found");
     }
 
-    // DELETE: xóa reply
+    // xóa comment
     [HttpDelete("{replyId}/delete")]
     public async Task<IActionResult> DeleteReply(int replyId)
     {

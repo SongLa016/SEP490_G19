@@ -23,7 +23,7 @@ public class TimeSlotController : ControllerBase
         return int.Parse(ownerIdClaim.Value);
     }
 
-    // ------------------------- PUBLIC ----------------------------
+    // public
     [HttpGet("public/{fieldId}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetPublicByField(int fieldId)
@@ -32,7 +32,7 @@ public class TimeSlotController : ControllerBase
         return Ok(slots);
     }
 
-    // ------------------------- OWNER CRUD ------------------------
+    // lấy ra hết sân 
     [HttpGet]
     [Authorize(Roles = "Owner")]
     public async Task<IActionResult> GetAll()
@@ -41,7 +41,7 @@ public class TimeSlotController : ControllerBase
         var slots = await _service.GetAllAsync(ownerId);
         return Ok(slots);
     }
-
+    // lấy chi tiết 1 sân
     [HttpGet("{id}")]
     [Authorize(Roles = "Owner")]
     public async Task<IActionResult> GetById(int id)
@@ -60,7 +60,7 @@ public class TimeSlotController : ControllerBase
         var slots = await _service.GetByFieldIdAsync(fieldId, ownerId);
         return Ok(slots);
     }
-
+    // tạo
     [HttpPost]
     [Authorize(Roles = "Owner")]
     public async Task<IActionResult> Create([FromBody] TimeSlotDTO dto)
@@ -69,7 +69,7 @@ public class TimeSlotController : ControllerBase
         var slot = await _service.CreateAsync(dto, ownerId);
         return CreatedAtAction(nameof(GetById), new { id = slot.SlotId }, slot);
     }
-
+    // sửa
     [HttpPut("{id}")]
     [Authorize(Roles = "Owner")]
     public async Task<IActionResult> Update(int id, [FromBody] TimeSlotDTO dto)
@@ -82,7 +82,7 @@ public class TimeSlotController : ControllerBase
 
         return Ok(slot);
     }
-
+    // xóa
     [HttpDelete("{id}")]
     [Authorize(Roles = "Owner")]
     public async Task<IActionResult> Delete(int id)

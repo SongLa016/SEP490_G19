@@ -16,7 +16,7 @@ namespace BallSport.API.Controllers
             _service = service;
         }
 
-        // PUBLIC
+        // public
         [AllowAnonymous]
         [HttpGet]
         public async Task<IActionResult> GetAll()
@@ -37,7 +37,7 @@ namespace BallSport.API.Controllers
         }
 
 
-        // OWNER - CREATE
+        // tạo-owner
         [Authorize(Roles = "Owner")]
         [HttpPost]
         public async Task<IActionResult> AddComplex([FromForm] FieldComplexDTO dto)
@@ -71,7 +71,7 @@ namespace BallSport.API.Controllers
             }
         }
 
-        // OWNER, ADMIN 
+        // sửa - owner, admin
         [Authorize(Roles = "Owner,Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateComplex(int id,[FromForm] FieldComplexDTO dto)
@@ -97,7 +97,7 @@ namespace BallSport.API.Controllers
             }
         }
 
-        // OWNER - DELETE
+        // xóa - owner
         [Authorize(Roles = "Owner")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteComplex(int id)
@@ -115,7 +115,6 @@ namespace BallSport.API.Controllers
                         message = $"Không tìm thấy khu sân có ID = {id}"
                     });
 
-                // XÓA THÀNH CÔNG
                 return Ok(new
                 {
                     message = "Xóa khu sân thành công."

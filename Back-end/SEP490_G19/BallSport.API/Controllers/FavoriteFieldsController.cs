@@ -20,7 +20,7 @@ public class FavoriteFieldsController : ControllerBase
         return int.Parse(User.FindFirst("UserID")!.Value);
     }
 
-    // ADD Favorite
+    // thêm 
     [HttpPost]
     [Authorize(Roles = "Player")]
     public async Task<IActionResult> AddFavorite([FromBody] AddFavoriteFieldDto request)
@@ -34,7 +34,7 @@ public class FavoriteFieldsController : ControllerBase
         return Ok(result);
     }
 
-    // GET List Favorites
+    // lấy ra sân yêu thích
     [HttpGet]
     [Authorize(Roles = "Player")]
     public async Task<IActionResult> GetFavorites()
@@ -44,7 +44,7 @@ public class FavoriteFieldsController : ControllerBase
         return Ok(favorites);
     }
 
-    // DELETE Favorite
+    // xóa
     [HttpDelete("{fieldId}")]
     [Authorize(Roles = "Player")]
     public async Task<IActionResult> DeleteFavorite(int fieldId)
@@ -58,7 +58,7 @@ public class FavoriteFieldsController : ControllerBase
         return Ok(new { message = "Removed from favorites" });
     }
 
-    // CHECK IsFavorite
+    // kiểm tra sân có phải yêu thích không
     [HttpGet("is-favorite/{fieldId}")]
     [Authorize(Roles = "Player")]
     public async Task<IActionResult> IsFavorite(int fieldId)
