@@ -21,19 +21,20 @@ namespace BallSport.API.Controllers
         }
 
 
-        [HttpGet("my-requests")]
-        [Authorize]
-        public async Task<IActionResult> GetMyRequests()
+        [HttpGet("owner/cancellations")]
+        [Authorize(Roles = "Owner")]
+        public async Task<IActionResult> GetOwnerCancellations()
         {
-            var userIdClaim = User.FindFirst("UserID")?.Value;
-            if (userIdClaim == null)
-                return Unauthorized("Không xác định được user.");
+            var ownerIdClaim = User.FindFirst("UserID")?.Value;
+            if (ownerIdClaim == null)
+                return Unauthorized("Không xác định được chủ sân.");
 
-            int userId = int.Parse(userIdClaim);
+            int ownerId = int.Parse(ownerIdClaim);
 
-            var requests = await _service.GetByUserIdAsync(userId);
-            return Ok(requests);
+            var result = await _service.GetByOwnerAsync(ownerId);
+            return Ok(result);
         }
+
 
 
 
