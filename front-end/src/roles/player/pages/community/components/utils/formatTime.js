@@ -1,5 +1,5 @@
 /**
- * Format time ago from date string
+ * Format time
  */
 export function formatTimeAgo(dateString) {
   const now = new Date();

@@ -1,12 +1,23 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Swal from "sweetalert2";
-import { generateQRCode, confirmPaymentAPI, fetchBookingsByPlayer } from "../../../../../../shared/index";
-import { normalizeApiBookings, buildRecurringGroups, formatPrice } from "../utils";
+import {
+  generateQRCode,
+  confirmPaymentAPI,
+  fetchBookingsByPlayer,
+} from "../../../../../../shared/index";
+import {
+  normalizeApiBookings,
+  buildRecurringGroups,
+  formatPrice,
+} from "../utils";
 
-/**
- * Hook quản lý thanh toán đặt sân
- */
-export function useBookingPayment(playerId, setBookings, setGroupedBookings, scheduleDataMap = {}) {
+//Hook quản lý thanh toán đặt sân
+export function useBookingPayment(
+  playerId,
+  setBookings,
+  setGroupedBookings,
+  scheduleDataMap = {}
+) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentBooking, setPaymentBooking] = useState(null);
   const [paymentQRCode, setPaymentQRCode] = useState(null);
@@ -20,30 +31,25 @@ export function useBookingPayment(playerId, setBookings, setGroupedBookings, sch
     if (!qrExpiresAt) return false;
     const expiryTime = new Date(qrExpiresAt).getTime();
     const now = Date.now();
-    // QR còn hạn nếu chưa hết hạn (có thể thêm buffer 1 phút)
     return expiryTime > now + 60000; // còn ít nhất 1 phút
   };
 
   // Bắt đầu countdown timer
   const startCountdown = useCallback((qrExpiresAt) => {
-    // Clear interval cũ nếu có
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
     }
-
     if (!qrExpiresAt) {
       setPaymentCountdown(0);
       return;
     }
-
     const expiryTime = new Date(qrExpiresAt).getTime();
-    
-    // Cập nhật countdown ngay lập tức
+
+    // đêm nguọc
     const updateCountdown = () => {
       const now = Date.now();
       const remaining = Math.max(0, expiryTime - now);
       setPaymentCountdown(remaining);
-      
       // Nếu hết thời gian, dừng interval
       if (remaining <= 0) {
         if (countdownIntervalRef.current) {
@@ -54,7 +60,6 @@ export function useBookingPayment(playerId, setBookings, setGroupedBookings, sch
     };
 
     updateCountdown();
-    // Cập nhật mỗi giây
     countdownIntervalRef.current = setInterval(updateCountdown, 1000);
   }, []);
 
@@ -76,208 +81,238 @@ export function useBookingPayment(playerId, setBookings, setGroupedBookings, sch
     };
   }, []);
 
-  // Helper: Lấy thông tin ngày giờ từ scheduleDataMap
-  const getScheduleDateTime = useCallback((booking) => {
-    if (!booking?.scheduleId || !scheduleDataMap) return { scheduleDate: null, scheduleTime: null };
-    
-    const scheduleData = scheduleDataMap[booking.scheduleId];
-    if (!scheduleData) return { scheduleDate: null, scheduleTime: null };
+  // Lấy thông tin ngày giờ từ scheduleDataMap
+  const getScheduleDateTime = useCallback(
+    (booking) => {
+      if (!booking?.scheduleId || !scheduleDataMap)
+        return { scheduleDate: null, scheduleTime: null };
 
-    // Lấy date từ schedule
-    let scheduleDate = null;
-    if (scheduleData.date) {
-      if (typeof scheduleData.date === 'string') {
-        // Format: "2025-12-01" -> "01/12/2025"
-        const dateParts = scheduleData.date.split('T')[0].split('-');
-        if (dateParts.length === 3) {
-          scheduleDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
-        } else {
-          scheduleDate = scheduleData.date;
+      const scheduleData = scheduleDataMap[booking.scheduleId];
+      if (!scheduleData) return { scheduleDate: null, scheduleTime: null };
+
+      // Lấy date từ schedule
+      let scheduleDate = null;
+      if (scheduleData.date) {
+        if (typeof scheduleData.date === "string") {
+          // Format: "2025-12-01" -> "01/12/2025"
+          const dateParts = scheduleData.date.split("T")[0].split("-");
+          if (dateParts.length === 3) {
+            scheduleDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+          } else {
+            scheduleDate = scheduleData.date;
+          }
+        } else if (
+          scheduleData.date.year &&
+          scheduleData.date.month &&
+          scheduleData.date.day
+        ) {
+          scheduleDate = `${String(scheduleData.date.day).padStart(
+            2,
+            "0"
+          )}/${String(scheduleData.date.month).padStart(2, "0")}/${
+            scheduleData.date.year
+          }`;
         }
-      } else if (scheduleData.date.year && scheduleData.date.month && scheduleData.date.day) {
-        scheduleDate = `${String(scheduleData.date.day).padStart(2, '0')}/${String(scheduleData.date.month).padStart(2, '0')}/${scheduleData.date.year}`;
       }
-    }
 
-    // Lấy time từ schedule (startTime - endTime)
-    let scheduleTime = null;
-    const startTime = scheduleData.startTime;
-    const endTime = scheduleData.endTime;
-    
-    if (startTime && endTime) {
-      // Format time string (có thể là "07:15:00" hoặc "07:15")
-      const formatTime = (timeStr) => {
-        if (!timeStr) return '';
-        const parts = String(timeStr).split(':');
-        return `${parts[0]}:${parts[1]}`;
-      };
-      scheduleTime = `${formatTime(startTime)} - ${formatTime(endTime)}`;
-    } else if (scheduleData.slotName) {
-      scheduleTime = scheduleData.slotName;
-    }
+      // Lấy time từ schedule (startTime - endTime)
+      let scheduleTime = null;
+      const startTime = scheduleData.startTime;
+      const endTime = scheduleData.endTime;
 
-    return { scheduleDate, scheduleTime };
-  }, [scheduleDataMap]);
+      if (startTime && endTime) {
+        // Format time string (có thể là "07:15:00" hoặc "07:15")
+        const formatTime = (timeStr) => {
+          if (!timeStr) return "";
+          const parts = String(timeStr).split(":");
+          return `${parts[0]}:${parts[1]}`;
+        };
+        scheduleTime = `${formatTime(startTime)} - ${formatTime(endTime)}`;
+      } else if (scheduleData.slotName) {
+        scheduleTime = scheduleData.slotName;
+      }
+
+      return { scheduleDate, scheduleTime };
+    },
+    [scheduleDataMap]
+  );
 
   // Tiếp tục thanh toán
-  const handleContinuePayment = useCallback(async (booking) => {
-    if (!booking) return;
-    
-    // Lấy thông tin ngày giờ từ scheduleDataMap
-    const { scheduleDate, scheduleTime } = getScheduleDateTime(booking);
-    
-    // Kiểm tra paymentStatus để tính số tiền cần thanh toán
-    const paymentStatus = (booking.paymentStatus || "").toLowerCase();
-    const isDepositPaid = paymentStatus === "partiallypaid" || paymentStatus === "deposit" || paymentStatus === "deposited";
-    
-    const depositAmount = booking.depositAmount || 0;
-    const totalPrice = booking.totalPrice || booking.price || 0;
-    const remainingAmount = Math.max(0, totalPrice - depositAmount);
-    
-    // Số tiền cần thanh toán: nếu đã cọc thì thanh toán số còn lại, nếu chưa thì thanh toán tiền cọc
-    const amountToPay = isDepositPaid ? remainingAmount : depositAmount;
-    
-    // Tạo booking với thông tin ngày giờ từ schedule và số tiền cần thanh toán
-    const enrichedBooking = {
-      ...booking,
-      scheduleDate: scheduleDate || booking.date,
-      scheduleTime: scheduleTime || booking.time,
-      amountToPay: amountToPay, // Số tiền cần thanh toán
-      isDepositPaid: isDepositPaid, // Đã thanh toán cọc chưa
-    };
-    
-    console.log("📱 [QR] enrichedBooking:", {
-      bookingId: booking.bookingId || booking.id,
-      paymentStatus,
-      isDepositPaid,
-      depositAmount,
-      totalPrice,
-      remainingAmount,
-      amountToPay
-    });
-    
-    setPaymentBooking(enrichedBooking);
-    setShowPaymentModal(true);
-    setIsLoadingQR(true);
-    setPaymentQRCode(null);
+  const handleContinuePayment = useCallback(
+    async (booking) => {
+      if (!booking) return;
 
-    try {
-      const bookingId = booking.bookingId || booking.id;
-      
-      // Lấy qrCodeUrl từ API response gốc (apiSource) nếu có
-      // API createBooking trả về qrCodeUrl trong response.data
-      const apiSource = booking.apiSource || {};
-      const existingQrCodeUrl = apiSource.qrCodeUrl || apiSource.QRCodeUrl || apiSource.qrCode || apiSource.QRCode 
-        || booking.qrCodeUrl || booking.qrCode;
-      const existingQrExpiresAt = apiSource.qrExpiresAt || apiSource.QRExpiresAt || apiSource.qrExpiry || apiSource.QRExpiry
-        || booking.qrExpiresAt || booking.QRExpiresAt;
-      
-      // Helper: Kiểm tra QR code có đúng số tiền không (parse từ URL)
-      const isQRAmountCorrect = (qrUrl, expectedAmount) => {
-        if (!qrUrl || !expectedAmount) return false;
-        try {
-          // Parse amount từ URL: ?amount=105000
-          const url = new URL(qrUrl);
-          const qrAmount = url.searchParams.get('amount');
-          if (qrAmount) {
-            const parsedAmount = parseInt(qrAmount, 10);
-            console.log("📱 [QR] Kiểm tra amount trong QR:", parsedAmount, "expected:", expectedAmount);
-            return parsedAmount === expectedAmount;
-          }
-        } catch (e) {
-          console.warn("📱 [QR] Không thể parse URL:", e);
-        }
-        return false;
+      // Lấy thông tin ngày giờ từ scheduleDataMap
+      const { scheduleDate, scheduleTime } = getScheduleDateTime(booking);
+
+      // Kiểm tra paymentStatus để tính số tiền cần thanh toán
+      const paymentStatus = (booking.paymentStatus || "").toLowerCase();
+      const isDepositPaid =
+        paymentStatus === "partiallypaid" ||
+        paymentStatus === "deposit" ||
+        paymentStatus === "deposited";
+
+      const depositAmount = booking.depositAmount || 0;
+      const totalPrice = booking.totalPrice || booking.price || 0;
+      const remainingAmount = Math.max(0, totalPrice - depositAmount);
+
+      // Số tiền cần thanh toán: nếu đã cọc thì thanh toán số còn lại, nếu chưa thì thanh toán tiền cọc
+      const amountToPay = isDepositPaid ? remainingAmount : depositAmount;
+
+      // Tạo booking với thông tin ngày giờ từ schedule và số tiền cần thanh toán
+      const enrichedBooking = {
+        ...booking,
+        scheduleDate: scheduleDate || booking.date,
+        scheduleTime: scheduleTime || booking.time,
+        amountToPay: amountToPay, // Số tiền cần thanh toán
+        isDepositPaid: isDepositPaid, // Đã thanh toán cọc chưa
       };
-      
-      // Kiểm tra nếu booking đã có qrCodeUrl, còn hạn VÀ đúng số tiền thì sử dụng luôn
-      const qrAmountMatches = isQRAmountCorrect(existingQrCodeUrl, amountToPay);
-      
-      if (existingQrCodeUrl && isQRCodeValid(existingQrExpiresAt) && qrAmountMatches) {
-        // Sử dụng QR code đã có từ khi tạo booking (đúng số tiền)
-        console.log("📱 [QR] Sử dụng QR code có sẵn từ API (đúng số tiền):", existingQrCodeUrl);
-        setPaymentQRCode(existingQrCodeUrl);
-        setPaymentBooking((prev) => (prev ? { ...prev, qrExpiresAt: existingQrExpiresAt, qrCode: existingQrCodeUrl } : prev));
-        startCountdown(existingQrExpiresAt);
-        setIsLoadingQR(false);
-        return;
-      }
-      
-      // Log lý do không sử dụng QR có sẵn
-      if (existingQrCodeUrl) {
-        if (!isQRCodeValid(existingQrExpiresAt)) {
-          console.log("📱 [QR] QR có sẵn đã hết hạn, cần tạo mới");
-        } else if (!qrAmountMatches) {
-          console.log("📱 [QR] QR có sẵn không đúng số tiền cần thanh toán, cần tạo mới");
-        }
-      }
 
-      // Nếu không có QR, QR đã hết hạn, hoặc QR không đúng số tiền -> gọi API tạo mới
-      const paymentType = isDepositPaid ? "remaining" : "deposit";
-      
-      console.log("📱 [QR] Gọi API tạo QR mới với bookingId:", bookingId);
-      console.log("📱 [QR] paymentStatus:", paymentStatus, "isDepositPaid:", isDepositPaid);
-      console.log("📱 [QR] paymentType:", paymentType, "amount:", amountToPay);
-      console.log("📱 [QR] depositAmount:", depositAmount, "totalPrice:", totalPrice, "remainingAmount:", remainingAmount);
-      
-      const result = await generateQRCode(bookingId, {
-        paymentType: paymentType,
-        amount: amountToPay,
-      });
+      setPaymentBooking(enrichedBooking);
+      setShowPaymentModal(true);
+      setIsLoadingQR(true);
+      setPaymentQRCode(null);
 
-      if (result.success) {
-        // Ưu tiên lấy qrCodeUrl từ response
-        const qrCodeUrl = result.qrCodeUrl || result.data?.qrCodeUrl || result.data?.QRCodeUrl 
-          || result.data?.qrCode || result.data?.QRCode;
-        let qrExpiresAt = result.data?.qrExpiresAt || result.data?.QRExpiresAt 
-          || result.data?.qrExpiry || result.qrExpiresAt;
-        
-        if (!qrExpiresAt) {
-          const defaultExpiry = new Date();
-          defaultExpiry.setMinutes(defaultExpiry.getMinutes() + 10);
-          qrExpiresAt = defaultExpiry.toISOString();
-        }
+      try {
+        const bookingId = booking.bookingId || booking.id;
+        const apiSource = booking.apiSource || {};
+        const existingQrCodeUrl =
+          apiSource.qrCodeUrl ||
+          apiSource.QRCodeUrl ||
+          apiSource.qrCode ||
+          apiSource.QRCode ||
+          booking.qrCodeUrl ||
+          booking.qrCode;
+        const existingQrExpiresAt =
+          apiSource.qrExpiresAt ||
+          apiSource.QRExpiresAt ||
+          apiSource.qrExpiry ||
+          apiSource.QRExpiry ||
+          booking.qrExpiresAt ||
+          booking.QRExpiresAt;
 
-        console.log("📱 [QR] Nhận được QR code mới:", qrCodeUrl);
-        setPaymentQRCode(qrCodeUrl);
-        setBookings((prevBookings) =>
-          prevBookings.map((b) =>
-            b.id === booking.id || b.bookingId === bookingId
-              ? { ...b, qrExpiresAt, qrCode: qrCodeUrl, qrCodeUrl: qrCodeUrl }
-              : b
-          )
+        // Kiểm tra QR code có đúng số tiền không (parse từ URL)
+        const isQRAmountCorrect = (qrUrl, expectedAmount) => {
+          if (!qrUrl || !expectedAmount) return false;
+          try {
+            const url = new URL(qrUrl);
+            const qrAmount = url.searchParams.get("amount");
+            if (qrAmount) {
+              const parsedAmount = parseInt(qrAmount, 10);
+              return parsedAmount === expectedAmount;
+            }
+          } catch (e) {}
+          return false;
+        };
+
+        // Kiểm tra nếu booking đã có qrCodeUrl, còn hạn VÀ đúng số tiền thì sử dụng luôn
+        const qrAmountMatches = isQRAmountCorrect(
+          existingQrCodeUrl,
+          amountToPay
         );
-        setPaymentBooking((prev) => (prev ? { ...prev, qrExpiresAt, qrCode: qrCodeUrl, qrCodeUrl: qrCodeUrl } : prev));
-        startCountdown(qrExpiresAt);
-      } else {
-        console.error("❌ [QR] Lỗi tạo QR:", result.error);
+
+        if (
+          existingQrCodeUrl &&
+          isQRCodeValid(existingQrExpiresAt) &&
+          qrAmountMatches
+        ) {
+          setPaymentQRCode(existingQrCodeUrl);
+          setPaymentBooking((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  qrExpiresAt: existingQrExpiresAt,
+                  qrCode: existingQrCodeUrl,
+                }
+              : prev
+          );
+          startCountdown(existingQrExpiresAt);
+          setIsLoadingQR(false);
+          return;
+        }
+
+        // Nếu không có QR, QR đã hết hạn, hoặc QR không đúng số tiền -> gọi API tạo mới
+        const paymentType = isDepositPaid ? "remaining" : "deposit";
+
+        const result = await generateQRCode(bookingId, {
+          paymentType: paymentType,
+          amount: amountToPay,
+        });
+
+        if (result.success) {
+          // Ưu tiên lấy qrCodeUrl từ response
+          const qrCodeUrl =
+            result.qrCodeUrl ||
+            result.data?.qrCodeUrl ||
+            result.data?.QRCodeUrl ||
+            result.data?.qrCode ||
+            result.data?.QRCode;
+          let qrExpiresAt =
+            result.data?.qrExpiresAt ||
+            result.data?.QRExpiresAt ||
+            result.data?.qrExpiry ||
+            result.qrExpiresAt;
+
+          if (!qrExpiresAt) {
+            const defaultExpiry = new Date();
+            defaultExpiry.setMinutes(defaultExpiry.getMinutes() + 10);
+            qrExpiresAt = defaultExpiry.toISOString();
+          }
+
+          setPaymentQRCode(qrCodeUrl);
+          setBookings((prevBookings) =>
+            prevBookings.map((b) =>
+              b.id === booking.id || b.bookingId === bookingId
+                ? { ...b, qrExpiresAt, qrCode: qrCodeUrl, qrCodeUrl: qrCodeUrl }
+                : b
+            )
+          );
+          setPaymentBooking((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  qrExpiresAt,
+                  qrCode: qrCodeUrl,
+                  qrCodeUrl: qrCodeUrl,
+                }
+              : prev
+          );
+          startCountdown(qrExpiresAt);
+        } else {
+          console.error("❌ [QR] Lỗi tạo QR:", result.error);
+          await Swal.fire({
+            icon: "error",
+            title: "Lỗi",
+            text: result.error || "Không thể tạo mã QR thanh toán",
+            confirmButtonColor: "#ef4444",
+          });
+          setShowPaymentModal(false);
+        }
+      } catch (error) {
+        console.error("Error generating QR code:", error);
         await Swal.fire({
           icon: "error",
           title: "Lỗi",
-          text: result.error || "Không thể tạo mã QR thanh toán",
+          text: error.message || "Không thể tạo mã QR thanh toán",
           confirmButtonColor: "#ef4444",
         });
         setShowPaymentModal(false);
+      } finally {
+        setIsLoadingQR(false);
       }
-    } catch (error) {
-      console.error("Error generating QR code:", error);
-      await Swal.fire({
-        icon: "error",
-        title: "Lỗi",
-        text: error.message || "Không thể tạo mã QR thanh toán",
-        confirmButtonColor: "#ef4444",
-      });
-      setShowPaymentModal(false);
-    } finally {
-      setIsLoadingQR(false);
-    }
-  }, [setBookings, startCountdown, getScheduleDateTime]);
+    },
+    [setBookings, startCountdown, getScheduleDateTime]
+  );
 
   // Xác nhận thanh toán
   const handleConfirmPayment = useCallback(async () => {
     if (!paymentBooking) return;
 
-    const amountToPay = paymentBooking.amountToPay || paymentBooking.depositAmount || paymentBooking.totalPrice || 0;
+    const amountToPay =
+      paymentBooking.amountToPay ||
+      paymentBooking.depositAmount ||
+      paymentBooking.totalPrice ||
+      0;
     const confirmResult = await Swal.fire({
       title: "Xác nhận thanh toán",
       html: `
@@ -287,8 +322,12 @@ export function useBookingPayment(playerId, setBookings, setGroupedBookings, sch
             <p class="text-sm text-blue-800 font-semibold mb-2">📋 Thông tin booking:</p>
             <div class="text-sm text-blue-700 space-y-1">
               <p><strong>Sân:</strong> ${paymentBooking.fieldName}</p>
-              <p><strong>Thời gian:</strong> ${paymentBooking.scheduleDate || paymentBooking.date} • ${paymentBooking.scheduleTime || paymentBooking.time}</p>
-              <p><strong>Số tiền:</strong> <span class="font-bold text-green-600">${formatPrice(amountToPay)}</span></p>
+              <p><strong>Thời gian:</strong> ${
+                paymentBooking.scheduleDate || paymentBooking.date
+              } • ${paymentBooking.scheduleTime || paymentBooking.time}</p>
+              <p><strong>Số tiền:</strong> <span class="font-bold text-green-600">${formatPrice(
+                amountToPay
+              )}</span></p>
             </div>
           </div>
         </div>
@@ -328,7 +367,9 @@ export function useBookingPayment(playerId, setBookings, setGroupedBookings, sch
                 <div class="text-sm text-green-700 space-y-1">
                   <p><strong>Booking ID:</strong> #${bookingId}</p>
                   <p><strong>Sân:</strong> ${paymentBooking.fieldName}</p>
-                  <p><strong>Số tiền đã thanh toán:</strong> <span class="font-bold">${formatPrice(amountToPay)}</span></p>
+                  <p><strong>Số tiền đã thanh toán:</strong> <span class="font-bold">${formatPrice(
+                    amountToPay
+                  )}</span></p>
                 </div>
               </div>
             </div>
@@ -366,7 +407,9 @@ export function useBookingPayment(playerId, setBookings, setGroupedBookings, sch
       await Swal.fire({
         icon: "error",
         title: "❌ Lỗi hệ thống",
-        text: error.message || "Không thể xác nhận thanh toán. Vui lòng thử lại sau.",
+        text:
+          error.message ||
+          "Không thể xác nhận thanh toán. Vui lòng thử lại sau.",
         confirmButtonColor: "#ef4444",
       });
     } finally {

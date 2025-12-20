@@ -184,7 +184,7 @@ export default function AdminLayout({ user, onLoggedOut, children }) {
                               <div className="flex items-center space-x-4">
                                    <div className="flex items-center space-x-2 text-sm text-slate-600 bg-gradient-to-r from-red-50 to-pink-50 px-3 py-1.5 rounded-full border border-red-200/50">
                                         <Shield className="w-4 h-4 text-red-600" />
-                                        <span className="font-medium">Admin Mode</span>
+                                        <span className="font-medium">Chế độ quản trị</span>
                                    </div>
                               </div>
                          </div>

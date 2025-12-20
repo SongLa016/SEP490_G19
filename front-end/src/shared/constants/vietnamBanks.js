@@ -445,6 +445,7 @@ export const VIETNAM_BANKS = [
   },
 ];
 
+// tim ngân hàng theo mã
 export const findVietnamBankByCode = (code) => {
   const normalizedCode = (code || "").trim().toLowerCase();
   if (!normalizedCode) {

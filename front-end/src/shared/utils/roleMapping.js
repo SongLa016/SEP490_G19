@@ -1,10 +1,4 @@
-/**
- * Role Mapping - Legacy compatibility layer
- * Sử dụng constants mới từ roles.js nhưng giữ backward compatibility
- * 
- * @deprecated - Nên sử dụng trực tiếp từ src/shared/constants/roles.js
- * File này được giữ lại để tương thích với code cũ
- */
+// hàm ánh xạ vai trò
 import {
   getRoleById,
   getRoleByName,
@@ -15,47 +9,45 @@ import {
   getAllRoles,
 } from "../constants/roles";
 
-// Export với cùng interface như cũ để backward compatibility
+// ánh xạ vai trò
 export const roleMapping = {
-  // RoleID to RoleName mapping
+  // ánh xạ ID vai trò thành tên vai trò
   getRoleName: (roleID) => {
     return getRoleById(roleID).name;
   },
 
-  // RoleName to RoleID mapping
+  // ánh xạ tên vai trò thành ID vai trò
   getRoleID: (roleName) => {
     return getRoleByName(roleName).id;
   },
 
-  // Get role display name in Vietnamese
+  // lấy tên hiển thị vai trò
   getRoleDisplayName: (roleID) => {
     return getRoleDisplayName(roleID);
   },
 
-  // Get role color for UI
+  // lấy màu sắc vai trò
   getRoleColor: (roleID) => {
     return getRoleColor(roleID);
   },
 
-  // Validate if roleID is valid
+  // kiểm tra nếu ID vai trò hợp lệ
   isValidRoleID: (roleID) => {
     return isValidRoleId(roleID);
   },
 
-  // Validate if roleName is valid
+  // kiểm tra nếu tên vai trò hợp lệ
   isValidRoleName: (roleName) => {
     return isValidRoleName(roleName);
   },
 
-  // Get all roles
+  // lấy tất cả vai trò
   getAllRoles: () => {
     return getAllRoles();
   },
 };
 
-// Re-export new utilities for convenience
-// Note: hasRole and hasAnyRole are NOT re-exported here to avoid conflict with authStore
-// If you need the role-based hasRole/hasAnyRole, import directly from "../constants/roles"
+// ánh xạ vai trò
 export {
   getRoleById,
   getRoleByName,

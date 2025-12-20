@@ -47,51 +47,57 @@ const ensureAuthenticated = () => {
     throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
   }
 };
-
+//
 export const playerStatisticsService = {
-  /**
-   * Helper function to extract numeric value from API response
-   */
   extractNumericValue(data, possibleKeys = []) {
-    if (typeof data === 'number') {
+    if (typeof data === "number") {
       return data;
     }
-    if (typeof data === 'object' && data !== null) {
-      // Try provided keys first
+    if (typeof data === "object" && data !== null) {
+      // thử các key được cung cấp trước
       for (const key of possibleKeys) {
-        if (data[key] !== undefined && typeof data[key] === 'number') {
+        if (data[key] !== undefined && typeof data[key] === "number") {
           return data[key];
         }
       }
-      // Try common keys
-      const commonKeys = ['totalBookings', 'totalHours', 'totalSpent', 'totalSpending', 'averageRating', 'data', 'value', 'count'];
+      // thử các key chung
+      const commonKeys = [
+        "totalBookings",
+        "totalHours",
+        "totalSpent",
+        "totalSpending",
+        "averageRating",
+        "data",
+        "value",
+        "count",
+      ];
       for (const key of commonKeys) {
         if (data[key] !== undefined) {
           const value = data[key];
-          if (typeof value === 'number') {
+          if (typeof value === "number") {
             return value;
           }
-          if (typeof value === 'object' && value !== null) {
-            // Recursively try to extract
+          if (typeof value === "object" && value !== null) {
+            // thử đệ quy để lấy giá trị số
             const nested = this.extractNumericValue(value, possibleKeys);
             if (nested !== null) return nested;
           }
         }
       }
-      // If object has only one key, try that value
+      // nếu object chỉ có một key, thử giá trị đó
       const keys = Object.keys(data);
       if (keys.length === 1) {
         const value = data[keys[0]];
-        if (typeof value === 'number') {
+        if (typeof value === "number") {
           return value;
         }
-        if (typeof value === 'object' && value !== null) {
+        if (typeof value === "object" && value !== null) {
           return this.extractNumericValue(value, possibleKeys);
         }
       }
       // Try first numeric value found
       for (const value of Object.values(data)) {
-        if (typeof value === 'number') {
+        if (typeof value === "number") {
           return value;
         }
       }
@@ -109,11 +115,14 @@ export const playerStatisticsService = {
       const response = await apiClient.get(
         "/api/player/statistic/total-bookings"
       );
-      
+
       const totalBookings = this.extractNumericValue(response.data, [
-        'totalBookings', 'bookings', 'count', 'total'
+        "totalBookings",
+        "bookings",
+        "count",
+        "total",
       ]);
-      
+
       return {
         ok: true,
         data: response.data,
@@ -122,8 +131,7 @@ export const playerStatisticsService = {
     } catch (error) {
       console.error("Error fetching total bookings:", error);
       throw new Error(
-        error.response?.data?.message ||
-        "Không thể lấy tổng số lượt đặt sân"
+        error.response?.data?.message || "Không thể lấy tổng số lượt đặt sân"
       );
     }
   },
@@ -138,11 +146,15 @@ export const playerStatisticsService = {
       const response = await apiClient.get(
         "/api/player/statistic/total-playing"
       );
-      
+
       const totalHours = this.extractNumericValue(response.data, [
-        'totalHours', 'totalPlaying', 'totalPlayingHours', 'hours', 'playingHours'
+        "totalHours",
+        "totalPlaying",
+        "totalPlayingHours",
+        "hours",
+        "playingHours",
       ]);
-      
+
       return {
         ok: true,
         data: response.data,
@@ -151,8 +163,7 @@ export const playerStatisticsService = {
     } catch (error) {
       console.error("Error fetching total playing:", error);
       throw new Error(
-        error.response?.data?.message ||
-        "Không thể lấy tổng giờ chơi"
+        error.response?.data?.message || "Không thể lấy tổng giờ chơi"
       );
     }
   },
@@ -167,11 +178,15 @@ export const playerStatisticsService = {
       const response = await apiClient.get(
         "/api/player/statistic/total-spending"
       );
-      
+
       const totalSpent = this.extractNumericValue(response.data, [
-        'totalSpent', 'totalSpending', 'spending', 'amount', 'total'
+        "totalSpent",
+        "totalSpending",
+        "spending",
+        "amount",
+        "total",
       ]);
-      
+
       return {
         ok: true,
         data: response.data,
@@ -180,8 +195,7 @@ export const playerStatisticsService = {
     } catch (error) {
       console.error("Error fetching total spending:", error);
       throw new Error(
-        error.response?.data?.message ||
-        "Không thể lấy tổng chi tiêu"
+        error.response?.data?.message || "Không thể lấy tổng chi tiêu"
       );
     }
   },
@@ -199,13 +213,16 @@ export const playerStatisticsService = {
       return {
         ok: true,
         data: response.data,
-        monthlyStats: response.data?.monthlyStats || response.data?.data || response.data || [],
+        monthlyStats:
+          response.data?.monthlyStats ||
+          response.data?.data ||
+          response.data ||
+          [],
       };
     } catch (error) {
       console.error("Error fetching monthly stats:", error);
       throw new Error(
-        error.response?.data?.message ||
-        "Không thể lấy thống kê theo tháng"
+        error.response?.data?.message || "Không thể lấy thống kê theo tháng"
       );
     }
   },
@@ -220,11 +237,14 @@ export const playerStatisticsService = {
       const response = await apiClient.get(
         "/api/player/statistic/average-rating"
       );
-      
+
       const averageRating = this.extractNumericValue(response.data, [
-        'averageRating', 'rating', 'avgRating', 'average'
+        "averageRating",
+        "rating",
+        "avgRating",
+        "average",
       ]);
-      
+
       return {
         ok: true,
         data: response.data,
@@ -233,8 +253,7 @@ export const playerStatisticsService = {
     } catch (error) {
       console.error("Error fetching average rating:", error);
       throw new Error(
-        error.response?.data?.message ||
-        "Không thể lấy đánh giá trung bình"
+        error.response?.data?.message || "Không thể lấy đánh giá trung bình"
       );
     }
   },
@@ -252,13 +271,16 @@ export const playerStatisticsService = {
       return {
         ok: true,
         data: response.data,
-        recentActivity: response.data?.recentActivity || response.data?.data || response.data || [],
+        recentActivity:
+          response.data?.recentActivity ||
+          response.data?.data ||
+          response.data ||
+          [],
       };
     } catch (error) {
       console.error("Error fetching recent activity:", error);
       throw new Error(
-        error.response?.data?.message ||
-        "Không thể lấy hoạt động gần đây"
+        error.response?.data?.message || "Không thể lấy hoạt động gần đây"
       );
     }
   },
@@ -269,7 +291,14 @@ export const playerStatisticsService = {
   async getAllStats() {
     try {
       ensureAuthenticated();
-      const [totalBookings, totalPlaying, totalSpending, monthlyStats, averageRating, recentActivity] = await Promise.all([
+      const [
+        totalBookings,
+        totalPlaying,
+        totalSpending,
+        monthlyStats,
+        averageRating,
+        recentActivity,
+      ] = await Promise.all([
         this.getTotalBookings(),
         this.getTotalPlaying(),
         this.getTotalSpending(),
@@ -293,4 +322,3 @@ export const playerStatisticsService = {
     }
   },
 };
-

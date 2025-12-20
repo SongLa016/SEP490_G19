@@ -14,11 +14,6 @@ export default function ScheduleTable({
      formatDate,
      getDayName
 }) {
-     const formatTime = (timeString) => {
-          const [hours, minutes] = timeString.split(':');
-          return `${hours}:${minutes}`;
-     };
-
      return (
           <Card className="p-6 overflow-x-auto">
                <table className="w-full border-collapse">

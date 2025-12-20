@@ -491,7 +491,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
 
                                    <FadeIn delay={1000} duration={0.4}>
                                         <div className="space-y-1.5 lg:col-span-2">
-                                             <label className="text-sm font-medium text-gray-700">Ảnh đại diện (tùy chọn)</label>
+                                             <label className="text-sm font-medium text-gray-700">Ảnh đại diện</label>
                                              <div className="flex items-center gap-3">
                                                   <div className="w-12 h-12 rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center">
                                                        {avatarPreview ? (

@@ -1,27 +1,7 @@
 import { Modal, DatePicker, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button, Alert, AlertDescription } from "../../../../../shared/components/ui";
 import { Info, Save, Loader2 } from "lucide-react";
 
-/**
- * Modal thêm lịch trình mới cho sân
- * 
- * Chức năng:
- * - Chọn sân và time slot
- * - Hỗ trợ 3 loại tạo: Đơn lẻ (single), Theo tháng (month), Theo quý (quarter)
- * - Validate form và hiển thị lỗi
- * - Hiển thị số lượng lịch trình sẽ được tạo
- * 
- * @param {Object} props - Props của component
- * @param {boolean} props.isOpen - Modal đang mở
- * @param {Function} props.onClose - Callback đóng modal
- * @param {Object} props.scheduleFormData - Dữ liệu form
- * @param {Function} props.onFormDataChange - Callback thay đổi form data
- * @param {Object} props.scheduleFormErrors - Lỗi validate form
- * @param {Array} props.fields - Danh sách sân
- * @param {Array} props.timeSlots - Danh sách time slots
- * @param {Function} props.formatTime - Hàm format thời gian
- * @param {boolean} props.isSubmitting - Đang submit form
- * @param {Function} props.onSubmit - Callback submit form
- */
+// hàm thêm lịch trình mới cho sân
 export default function ScheduleModal({
      isOpen,
      onClose,
@@ -34,12 +14,10 @@ export default function ScheduleModal({
      isSubmitting,
      onSubmit
 }) {
-     /**
-      * Kiểm tra sân có đang bảo trì không (không cho phép tạo lịch)
-      */
+     // kiểm tra sân có đang bảo trì không (không cho phép tạo lịch)
      const isFieldLocked = (field) => (field.status || field.Status || '').toLowerCase() === 'maintenance';
 
-     // Lọc ra các sân có thể chọn (không đang bảo trì)
+     // lọc ra các sân có thể chọn (không đang bảo trì)
      const selectableFields = fields.filter(field => !isFieldLocked(field));
      const creationLocked = selectableFields.length === 0;
 
@@ -67,22 +45,12 @@ export default function ScheduleModal({
           { value: 4, label: 'Quý 4 (Tháng 10-12)' }
      ];
 
-     /**
-      * Lấy số ngày trong tháng
-      * @param {number} year - Năm
-      * @param {number} month - Tháng (1-12)
-      * @returns {number} Số ngày trong tháng
-      */
+     // lấy số ngày trong tháng
      const getDaysInMonth = (year, month) => {
           return new Date(year, month, 0).getDate();
      };
 
-     /**
-      * Lấy số ngày trong quý
-      * @param {number} year - Năm
-      * @param {number} quarter - Quý (1-4)
-      * @returns {number} Tổng số ngày trong quý
-      */
+     // lấy số ngày trong quý
      const getDaysInQuarter = (year, quarter) => {
           const startMonth = (quarter - 1) * 3 + 1;
           let totalDays = 0;
@@ -92,10 +60,7 @@ export default function ScheduleModal({
           return totalDays;
      };
 
-     /**
-      * Tính số lượng lịch trình sẽ được tạo dựa trên loại tạo
-      * @returns {number} Số lượng schedules
-      */
+     // tính số lượng lịch trình sẽ được tạo dựa trên loại tạo
      const getScheduleCount = () => {
           if (scheduleType === 'single') return 1;
           if (scheduleType === 'month' && scheduleFormData.month && scheduleFormData.year) {

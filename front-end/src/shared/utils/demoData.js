@@ -1,5 +1,4 @@
 // Demo data for testing booking flow
-
 export const demoUsers = [
   {
     id: "user-1",

@@ -57,26 +57,20 @@ const handleApiError = (error) => {
 };
 
 const extractDataList = (responseData) => {
-  // Handle common shapes:
-  // - [ ... ]
-  // - { data: [ ... ] }
-  // - { items: [ ... ] }
-  // - { data: { items: [ ... ] } }
-  // - { data: { data: [ ... ] } }
-  // - { data: { results: [ ... ] } }
-  // - { results: [ ... ] }
-  // - { data: { list: [ ... ] } }
+  // xử lý các shape khác nhau
   if (Array.isArray(responseData)) return responseData;
   if (Array.isArray(responseData?.data)) return responseData.data;
   if (Array.isArray(responseData?.items)) return responseData.items;
   if (Array.isArray(responseData?.data?.items)) return responseData.data.items;
   if (Array.isArray(responseData?.data?.data)) return responseData.data.data;
-  if (Array.isArray(responseData?.data?.results)) return responseData.data.results;
+  if (Array.isArray(responseData?.data?.results))
+    return responseData.data.results;
   if (Array.isArray(responseData?.results)) return responseData.results;
   if (Array.isArray(responseData?.data?.list)) return responseData.data.list;
   return [];
 };
 
+// hàm lấy tất cả các yêu cầu đối đầu
 export async function fetchMatchRequests(params = {}) {
   try {
     const { page = 1, size = 20 } = params;
@@ -96,6 +90,7 @@ export async function fetchMatchRequests(params = {}) {
   }
 }
 
+// hàm lấy yêu cầu đối đầu theo id
 export async function fetchMatchRequestById(requestId) {
   if (!requestId) {
     return { success: false, error: "Thiếu requestId" };
@@ -114,6 +109,7 @@ export async function fetchMatchRequestById(requestId) {
   }
 }
 
+// hàm lấy yêu cầu đối đầu theo id đặt sân
 export async function fetchMatchRequestByBookingId(bookingId) {
   if (!bookingId) {
     return { success: false, error: "Thiếu bookingId" };
@@ -132,6 +128,7 @@ export async function fetchMatchRequestByBookingId(bookingId) {
   }
 }
 
+// hàm kiểm tra đặt sân có yêu cầu đối đầu không
 export async function checkBookingHasMatchRequest(bookingId) {
   if (!bookingId) {
     return { success: false, error: "Thiếu bookingId", hasRequest: false };
@@ -145,7 +142,7 @@ export async function checkBookingHasMatchRequest(bookingId) {
       data: response.data,
     };
   } catch (error) {
-    // If 404, booking doesn't have match request
+    // nếu 404, đặt sân không có yêu cầu đối đầu
     if (error.response?.status === 404) {
       return {
         success: true,
@@ -160,6 +157,7 @@ export async function checkBookingHasMatchRequest(bookingId) {
   }
 }
 
+// hàm tạo yêu cầu đối đầu
 export async function createMatchRequestAPI(payload) {
   try {
     const response = await apiClient.post("", payload);
@@ -175,6 +173,7 @@ export async function createMatchRequestAPI(payload) {
   }
 }
 
+// hàm tham gia yêu cầu đối đầu
 export async function joinMatchRequestAPI(requestId, payload) {
   if (!requestId) {
     return { success: false, error: "Thiếu requestId" };
@@ -193,6 +192,7 @@ export async function joinMatchRequestAPI(requestId, payload) {
   }
 }
 
+// hàm chấp nhận tham gia yêu cầu đối đầu
 export async function acceptMatchParticipant(requestId, participantId) {
   if (!requestId || !participantId) {
     return { success: false, error: "Thiếu requestId hoặc participantId" };
@@ -213,6 +213,7 @@ export async function acceptMatchParticipant(requestId, participantId) {
   }
 }
 
+// hàm từ chối hoặc rút tham gia yêu cầu đối đầu
 export async function rejectOrWithdrawParticipant(requestId, participantId) {
   if (!requestId || !participantId) {
     return { success: false, error: "Thiếu requestId hoặc participantId" };
@@ -233,6 +234,7 @@ export async function rejectOrWithdrawParticipant(requestId, participantId) {
   }
 }
 
+// hàm xóa yêu cầu đối đầu
 export async function deleteMatchRequest(requestId) {
   if (!requestId) {
     return { success: false, error: "Thiếu requestId" };
@@ -251,6 +253,7 @@ export async function deleteMatchRequest(requestId) {
   }
 }
 
+// hàm lấy lịch sử yêu cầu đối đầu của tôi
 export async function fetchMyMatchHistory(params = {}) {
   try {
     const { page = 1, size = 20 } = params;
@@ -270,6 +273,7 @@ export async function fetchMyMatchHistory(params = {}) {
   }
 }
 
+// hàm kiểm tra yêu cầu đối đầu theo id đặt sân
 export async function checkMatchRequestByBooking(bookingId) {
   if (!bookingId) {
     return { success: false, error: "Thiếu bookingId" };
@@ -288,6 +292,7 @@ export async function checkMatchRequestByBooking(bookingId) {
   }
 }
 
+// hàm hết hạn yêu cầu đối đầu
 export async function expireOldMatchRequests() {
   try {
     const response = await apiClient.post("expire-old");

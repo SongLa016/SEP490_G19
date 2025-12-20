@@ -214,7 +214,7 @@ const BookingManagement = ({ isDemo = false }) => {
                     <div class="bg-white rounded-lg p-3 text-center border border-orange-200">
                          <p class="text-xs font-semibold text-gray-700 mb-2">📱 Mã QR thanh toán số tiền còn lại:</p>
                          ${qrImageHtml}
-                         <p class="text-xs text-gray-500 mt-2">${qrCodeImageUrl ? 'Click vào mã QR để xem to hơn' : ''}</p>
+                         <p class="text-xs text-gray-500 mt-2">${qrCodeImageUrl ? 'Click vào mã QR để xem rõ hơn' : ''}</p>
                     </div>
                </div>
           ` : '';
@@ -1495,12 +1495,13 @@ const BookingManagement = ({ isDemo = false }) => {
                                                             </label>
                                                             <p className="text-sm font-semibold text-gray-900">{selectedBooking.customer}</p>
                                                        </div>
+
                                                        <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
                                                             <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">
                                                                  <Phone className="w-4 h-4 mr-1" />
                                                                  Số điện thoại
                                                             </label>
-                                                            <p className="text-sm font-semibold text-gray-900">{selectedBooking.phone}</p>
+                                                            <p className="text-sm font-semibold text-gray-900">{selectedBooking.phone || "Chưa cập nhật"}</p>
                                                        </div>
                                                        <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
                                                             <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">

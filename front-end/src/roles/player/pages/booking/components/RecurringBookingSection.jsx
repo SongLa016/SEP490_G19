@@ -2,33 +2,21 @@ import { useMemo } from "react";
 import { Repeat, CalendarDays, Clock, DollarSign, AlertTriangle } from "lucide-react";
 import { Button, DatePicker } from "../../../../../shared/components/ui";
 
-/**
- * Component cấu hình đặt sân cố định hàng tuần
- * Trang: Modal đặt sân (BookingModal)
- * Vị trí: Phần cấu hình đặt cố định trong modal
- * 
- * Chức năng:
- * - Toggle bật/tắt chế độ đặt cố định
- * - Chọn khoảng thời gian (ngày bắt đầu - ngày kết thúc)
- * - Chọn các ngày trong tuần muốn đặt
- * - Chọn khung giờ cho từng ngày đã chọn
- * - Hiển thị tổng số buổi và chi phí dự kiến
- */
+// component cấu hình đặt sân cố định hàng tuần
 export default function RecurringBookingSection({
-     isRecurring,              // Có bật chế độ đặt cố định không
-     setIsRecurring,           // Hàm toggle chế độ đặt cố định - Toggle switch "Đặt lịch cố định hàng tuần"
-     startDate,                // Ngày bắt đầu gói
-     setStartDate,             // Hàm cập nhật ngày bắt đầu - DatePicker "Ngày bắt đầu"
-     endDate,                  // Ngày kết thúc gói
-     setEndDate,               // Hàm cập nhật ngày kết thúc - DatePicker "Ngày kết thúc"
-     selectedDays,             // Các ngày trong tuần đã chọn [0-6]
-     handleDayToggle,          // Hàm toggle chọn ngày trong tuần - Các nút T2, T3, T4...
-     selectedSlotsByDay,       // Map { dayOfWeek: slotId } - slot đã chọn cho mỗi thứ
-     onSlotSelect,             // Hàm chọn slot cho ngày - Các nút khung giờ trong từng ngày
-     fieldSchedules = [],      // Danh sách schedule để filter theo dayOfWeek
-     onBookingDataChange,      // Callback khi thay đổi dữ liệu booking
-     generateRecurringSessions,// Hàm tạo danh sách các buổi dự kiến
-     fieldTimeSlots = []       // TimeSlots chứa giá theo slotId
+     isRecurring,
+     setIsRecurring,           // Toggle switch "Đặt lịch cố định hàng tuần"
+     startDate,
+     setStartDate,             // DatePicker "Ngày bắt đầu"
+     endDate,
+     setEndDate,               // DatePicker "Ngày kết thúc"
+     selectedDays,
+     handleDayToggle,
+     selectedSlotsByDay,
+     onSlotSelect,
+     fieldSchedules = [],
+     onBookingDataChange,
+     fieldTimeSlots = []
 }) {
      const dayOptions = [
           { value: 1, label: "T2", name: "Thứ 2" },
@@ -40,7 +28,6 @@ export default function RecurringBookingSection({
           { value: 0, label: "CN", name: "Chủ nhật" }
      ];
 
-     // Memoize minDate để tránh re-render không cần thiết
      const todayString = useMemo(() => new Date().toISOString().split('T')[0], []);
 
      // Phân tích schedule coverage trong khoảng thời gian đã chọn
@@ -53,7 +40,6 @@ export default function RecurringBookingSection({
           const end = new Date(endDate);
           start.setHours(0, 0, 0, 0);
           end.setHours(23, 59, 59, 999);
-
           if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
                return { hasSchedules: false, coveredDates: [], uncoveredDates: [], availableDaysOfWeek: new Set() };
           }
@@ -61,7 +47,6 @@ export default function RecurringBookingSection({
           // Lấy tất cả các ngày có schedule trong khoảng thời gian
           const scheduleDatesSet = new Set();
           const availableDaysOfWeek = new Set();
-
           fieldSchedules.forEach(s => {
                const scheduleDate = s.date ?? s.Date ?? s.scheduleDate ?? s.ScheduleDate;
                if (scheduleDate) {
@@ -161,7 +146,7 @@ export default function RecurringBookingSection({
                                         scheduleDateObj = date;
                                    }
                               } catch (e) {
-                                   // ignore parse error, coi như out of range
+                                   // coi như ngoài khoảng
                               }
                          }
                     }
@@ -176,8 +161,7 @@ export default function RecurringBookingSection({
                return inRange && Number(scheduleDayOfWeek) === Number(dayOfWeek);
           });
 
-          // Deduplicate theo slotId để chỉ lấy unique slot cho mỗi thứ
-          // (vì có thể có nhiều schedule cho cùng slot nhưng khác ngày)
+          // Deduplicate theo slotId để chỉ lấy unique slot cho mỗi thứ (vì có thể có nhiều schedule cho cùng slot nhưng khác ngày)
           const seenSlotIds = new Set();
           const uniqueSchedules = filtered.filter(s => {
                const slotId = s.slotId ?? s.SlotId ?? s.slotID ?? s.SlotID;

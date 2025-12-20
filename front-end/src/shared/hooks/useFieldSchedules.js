@@ -4,10 +4,7 @@ import {
   fetchPublicFieldSchedulesByField,
 } from "../services/fieldSchedules";
 
-/**
- * Fetch public field schedules by date (cached)
- * @param {string} date - YYYY-MM-DD
- */
+// lấy lịch sân theo ngày
 export function usePublicFieldSchedulesByDate(date) {
   return useQuery({
     queryKey: ["publicFieldSchedules", date || "all"],
@@ -27,12 +24,7 @@ export function usePublicFieldSchedulesByDate(date) {
   });
 }
 
-/**
- * Custom hook to fetch and cache field schedules
- * @param {number|string} fieldId - The field ID
- * @param {string} selectedDate - The selected date in YYYY-MM-DD format
- * @param {boolean} enabled - Whether to enable the query
- */
+// lấy lịch sân theo sân
 export function useFieldSchedules(fieldId, selectedDate, enabled = true) {
   return useQuery({
     queryKey: ["fieldSchedules", fieldId, selectedDate],
@@ -44,13 +36,9 @@ export function useFieldSchedules(fieldId, selectedDate, enabled = true) {
       const result = await fetchPublicFieldSchedulesByField(fieldId);
 
       if (!result.success || !Array.isArray(result.data)) {
-        console.warn(
-          "⚠️ [useFieldSchedules] No schedules data or invalid response:",
-          result
-        );
         return [];
       }
-      // Helper function to normalize date for comparison
+      // hàm tiện ích để chuẩn hóa ngày
       const normalizeDate = (dateValue) => {
         if (!dateValue) return "";
         if (typeof dateValue === "string") {
@@ -65,7 +53,7 @@ export function useFieldSchedules(fieldId, selectedDate, enabled = true) {
         return String(dateValue);
       };
 
-      // Filter schedules by selectedDate
+      // lọc lịch sân theo ngày chọn
       const normalizedSelectedDate = normalizeDate(selectedDate);
       const filteredSchedules = result.data.filter((schedule) => {
         const scheduleDate = schedule.date || schedule.Date;
@@ -75,8 +63,8 @@ export function useFieldSchedules(fieldId, selectedDate, enabled = true) {
       return filteredSchedules;
     },
     enabled: enabled && !!fieldId,
-    staleTime: 2 * 60 * 1000, // Cache for 2 minutes
-    cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
+    staleTime: 2 * 60 * 1000,
+    cacheTime: 5 * 60 * 1000,
     retry: 1,
     refetchOnWindowFocus: false,
   });

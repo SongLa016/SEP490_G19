@@ -9,12 +9,7 @@ import {
 import { profileService } from "../services/profileService";
 import Swal from "sweetalert2";
 
-/**
- * Modal đổi mật khẩu dùng chung cho Owner và Admin
- * @param {boolean} isOpen - Trạng thái mở/đóng modal
- * @param {function} onClose - Callback khi đóng modal
- * @param {string} accentColor - Màu chủ đạo (teal cho owner, red cho admin)
- */
+// modal đổi mật khẩu dùng chung cho Owner và Admin
 export default function ChangePasswordModal({ isOpen, onClose, accentColor = "teal" }) {
      const [isLoading, setIsLoading] = useState(false);
      const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -27,16 +22,11 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
      });
      const [errors, setErrors] = useState({});
 
-     // Validation rules
      const validateForm = () => {
           const newErrors = {};
-
-          // Current password validation
           if (!formData.currentPassword.trim()) {
                newErrors.currentPassword = "Vui lòng nhập mật khẩu hiện tại";
           }
-
-          // New password validation
           if (!formData.newPassword) {
                newErrors.newPassword = "Vui lòng nhập mật khẩu mới";
           } else if (formData.newPassword.length < 8) {
@@ -52,8 +42,6 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
           } else if (formData.newPassword === formData.currentPassword) {
                newErrors.newPassword = "Mật khẩu mới không được trùng với mật khẩu hiện tại";
           }
-
-          // Confirm password validation
           if (!formData.confirmPassword) {
                newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu mới";
           } else if (formData.confirmPassword !== formData.newPassword) {
@@ -63,13 +51,11 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
           setErrors(newErrors);
           return Object.keys(newErrors).length === 0;
      };
-
      const handleInputChange = (field, value) => {
           setFormData((prev) => ({
                ...prev,
                [field]: value,
           }));
-          // Clear error when user starts typing
           if (errors[field]) {
                setErrors((prev) => ({
                     ...prev,
@@ -80,8 +66,6 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
 
      const handleSubmit = async (e) => {
           e.preventDefault();
-
-          // Check token before calling API
           const token = localStorage.getItem("token");
           if (!token) {
                Swal.fire({
@@ -92,20 +76,16 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
                });
                return;
           }
-
           if (!validateForm()) {
                return;
           }
-
           setIsLoading(true);
-
           try {
                const result = await profileService.changePassword(
                     formData.currentPassword,
                     formData.newPassword,
                     formData.confirmPassword
                );
-
                if (result.ok) {
                     Swal.fire({
                          icon: "success",
@@ -149,17 +129,15 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
           onClose();
      };
 
-     // Password strength indicator
+     // Password strength 
      const getPasswordStrength = (password) => {
           if (!password) return { strength: 0, label: "", color: "gray" };
-
           let strength = 0;
           if (password.length >= 8) strength++;
           if (password.length >= 12) strength++;
           if (/[A-Z]/.test(password)) strength++;
           if (/[a-z]/.test(password)) strength++;
           if (/[0-9]/.test(password)) strength++;
-
           if (strength <= 2) return { strength: 1, label: "Yếu", color: "red" };
           if (strength <= 4) return { strength: 2, label: "Trung bình", color: "yellow" };
           return { strength: 3, label: "Mạnh", color: "green" };
@@ -168,9 +146,9 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
      const passwordStrength = getPasswordStrength(formData.newPassword);
 
      const MAX_LENGTH = 64;
-     const WARNING_THRESHOLD = 55;
+     const WARNING_THRESHOLD = 40; // 
 
-     // Helper function to get character count warning
+     // hàm trả về class cho độ dài ký tự
      const getCharCountClass = (length) => {
           if (length >= MAX_LENGTH) return "text-red-500 font-medium";
           if (length >= WARNING_THRESHOLD) return "text-yellow-600";
@@ -191,7 +169,6 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
      };
 
      const colors = colorClasses[accentColor] || colorClasses.teal;
-
      if (!isOpen) return null;
 
      return (

@@ -1,24 +1,19 @@
-// Service layer for Cloudinary image upload
+//tải ảnh lên Cloudinary
 import axios from "axios";
 import { getStoredToken } from "../utils/tokenManager";
 
 const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
-/**
- * Upload image to Cloudinary via backend API
- * @param {File} imageFile - Image file to upload
- * @param {string} folder - Cloudinary folder (optional, default: 'posts')
- * @returns {Promise<string>} Cloudinary image URL
- */
-export async function uploadImageToCloudinary(imageFile, folder = 'posts') {
+// tải ảnh lên Cloudinary
+export async function uploadImageToCloudinary(imageFile, folder = "posts") {
   try {
     if (!imageFile) {
       throw new Error("Không có file ảnh để upload.");
     }
 
     // Validate file type
-    if (!imageFile.type.startsWith('image/')) {
+    if (!imageFile.type.startsWith("image/")) {
       throw new Error("File phải là ảnh.");
     }
 
@@ -33,28 +28,27 @@ export async function uploadImageToCloudinary(imageFile, folder = 'posts') {
       throw new Error("Token không tồn tại. Vui lòng đăng nhập lại.");
     }
 
-    // Create FormData
+    // tạo FormData
     const formData = new FormData();
-    formData.append('file', imageFile);
-    formData.append('folder', folder);
-    // Upload to backend API endpoint that handles Cloudinary upload
+    formData.append("file", imageFile);
+    formData.append("folder", folder);
+    // tải ảnh lên backend API endpoint xử lý upload Cloudinary
     const response = await axios.post(
       `${API_BASE_URL}/api/Upload/image`,
       formData,
       {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
         },
         timeout: 60000, // 60 seconds timeout for large files
       }
     );
 
-    // Extract image URL from response
+    // lấy URL ảnh từ response
     let imageUrl = null;
     if (response.data) {
-      // Handle different response formats
-      if (typeof response.data === 'string') {
+      if (typeof response.data === "string") {
         imageUrl = response.data;
       } else if (response.data.url) {
         imageUrl = response.data.url;
@@ -74,10 +68,8 @@ export async function uploadImageToCloudinary(imageFile, folder = 'posts') {
     }
     return imageUrl;
   } catch (error) {
-    console.error("[uploadImageToCloudinary] Upload error:", error);
-    
     let errorMessage = "Không thể upload ảnh. Vui lòng thử lại.";
-    
+
     if (error.response) {
       const { status, data } = error.response;
       if (status === 401) {
@@ -86,14 +78,15 @@ export async function uploadImageToCloudinary(imageFile, folder = 'posts') {
         errorMessage = "File ảnh quá lớn. Vui lòng chọn ảnh nhỏ hơn.";
       } else if (data && data.message) {
         errorMessage = data.message;
-      } else if (data && typeof data === 'string') {
+      } else if (data && typeof data === "string") {
         errorMessage = data;
       }
     } else if (error.request) {
       if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
         errorMessage = "Upload timeout. Vui lòng thử lại với ảnh nhỏ hơn.";
       } else {
-        errorMessage = "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
+        errorMessage =
+          "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
       }
     } else if (error.message) {
       errorMessage = error.message;
@@ -102,75 +95,64 @@ export async function uploadImageToCloudinary(imageFile, folder = 'posts') {
     throw new Error(errorMessage);
   }
 }
-
-/**
- * Delete image from Cloudinary via backend API
- * @param {string} imageUrl - Cloudinary image URL to delete
- * @returns {Promise<void>}
- */
+// xóa ảnh từ Cloudinary
 export async function deleteImageFromCloudinary(imageUrl) {
   try {
     if (!imageUrl) {
-      return; // No image to delete
+      return;
     }
-
-    // Only delete if it's a Cloudinary URL
-    if (!imageUrl.includes('cloudinary.com') && !imageUrl.includes('res.cloudinary.com')) {
+    if (
+      !imageUrl.includes("cloudinary.com") &&
+      !imageUrl.includes("res.cloudinary.com")
+    ) {
       return;
     }
 
     const token = getStoredToken();
     if (!token) {
-      console.warn("[deleteImageFromCloudinary] No token, skipping delete");
       return;
     }
 
-    // Extract public_id from Cloudinary URL if needed
-    // Format: https://res.cloudinary.com/{cloud_name}/image/upload/{public_id}.{format}
-    const publicIdMatch = imageUrl.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/);
+    // lấy public_id từ URL ảnh
+    const publicIdMatch = imageUrl.match(
+      /\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/
+    );
     const publicId = publicIdMatch ? publicIdMatch[1] : null;
 
     if (!publicId) {
-      console.warn("[deleteImageFromCloudinary] Could not extract public_id from URL:", imageUrl);
       return;
     }
-    // Call backend API to delete from Cloudinary
-    await axios.delete(
-      `${API_BASE_URL}/api/Upload/image`,
-      {
-        data: { publicId: publicId },
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    // gọi backend API để xóa ảnh từ Cloudinary
+    await axios.delete(`${API_BASE_URL}/api/Upload/image`, {
+      data: { publicId: publicId },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
   } catch (error) {
     console.error("[deleteImageFromCloudinary] Delete error:", error);
-    // Don't throw error for delete operations - just log it
-    // The image might already be deleted or the operation might not be critical
   }
 }
 
-/**
- * Upload multiple images to Cloudinary
- * @param {File[]} imageFiles - Array of image files to upload
- * @param {string} folder - Cloudinary folder (optional, default: 'posts')
- * @returns {Promise<string[]>} Array of Cloudinary image URLs
- */
-export async function uploadMultipleImagesToCloudinary(imageFiles, folder = 'posts') {
+// tải nhiều ảnh lên Cloudinary
+export async function uploadMultipleImagesToCloudinary(
+  imageFiles,
+  folder = "posts"
+) {
   try {
     if (!imageFiles || imageFiles.length === 0) {
       return [];
     }
 
-    const uploadPromises = imageFiles.map(file => uploadImageToCloudinary(file, folder));
+    const uploadPromises = imageFiles.map((file) =>
+      uploadImageToCloudinary(file, folder)
+    );
     const urls = await Promise.all(uploadPromises);
-    
-    return urls.filter(url => url !== null);
+
+    return urls.filter((url) => url !== null);
   } catch (error) {
     console.error("[uploadMultipleImagesToCloudinary] Error:", error);
     throw error;
   }
 }
-

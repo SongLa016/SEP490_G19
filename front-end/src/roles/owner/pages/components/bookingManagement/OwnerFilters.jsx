@@ -12,29 +12,7 @@ import {
   Button,
 } from "../../../../../shared/components/ui";
 
-/**
- * Component bộ lọc tìm kiếm booking cho Owner
- * 
- * Chức năng:
- * - Tìm kiếm theo tên, SĐT, email khách hàng
- * - Lọc theo ngày đặt sân
- * - Lọc theo trạng thái booking (pending, confirmed, cancelled, completed)
- * - Lọc theo sân
- * - Nút xóa tất cả bộ lọc
- * 
- * @param {Object} props - Props của component
- * @param {string} props.selectedDate - Ngày đang lọc
- * @param {string} props.statusFilter - Trạng thái đang lọc
- * @param {string} props.fieldFilter - Sân đang lọc
- * @param {string} props.searchTerm - Từ khóa tìm kiếm
- * @param {Array} props.statusOptions - Danh sách options trạng thái
- * @param {Array} props.fields - Danh sách sân
- * @param {Function} props.onDateChange - Callback thay đổi ngày
- * @param {Function} props.onStatusChange - Callback thay đổi trạng thái
- * @param {Function} props.onFieldChange - Callback thay đổi sân
- * @param {Function} props.onSearchChange - Callback thay đổi từ khóa
- * @param {Function} props.onClearFilters - Callback xóa tất cả bộ lọc
- */
+// component bộ lọc tìm kiếm booking cho Owner
 export default function OwnerFilters({
   selectedDate,
   statusFilter,

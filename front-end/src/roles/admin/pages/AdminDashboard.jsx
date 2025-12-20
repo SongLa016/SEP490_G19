@@ -1,28 +1,7 @@
 import React, { useState, useEffect } from "react";
-import {
-     Card,
-     CardContent,
-     CardHeader,
-     CardTitle,
-     Button,
-     Badge
-} from "../../../shared/components/ui";
-import {
-     Users,
-     Building2,
-     ClipboardList,
-     AlertTriangle,
-     FileText,
-     TrendingUp,
-     Calendar,
-     Shield,
-     Activity,
-     Server,
-     Eye,
-     Settings,
-     Clock,
-     Bell,
-} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "../../../shared/components/ui";
+import { Users, Building2, ClipboardList, AlertTriangle, FileText, TrendingUp, Calendar, Shield, Activity, Server, Eye, Settings, Clock, Bell } from "lucide-react";
 import { decodeTokenPayload, getStoredToken } from "../../../shared/utils/tokenManager";
 import {
      fetchOwnerStatistics,
@@ -38,6 +17,7 @@ import {
 } from "../../../shared/services/adminStatistics";
 
 export default function AdminDashboard() {
+     const navigate = useNavigate();
      const [stats, setStats] = useState({
           totalUsers: 0,
           totalOwners: 0,
@@ -57,7 +37,7 @@ export default function AdminDashboard() {
           loadStatistics();
      }, []);
 
-     // Helper function để extract số từ API response
+     // hàm lấy số từ API response
      const extractNumber = (data, ...keys) => {
           if (!data) return 0;
           for (const key of keys) {
@@ -72,6 +52,7 @@ export default function AdminDashboard() {
           return 0;
      };
 
+     // tải thống kê
      const loadStatistics = async () => {
           try {
                setLoading(true);
@@ -211,64 +192,56 @@ export default function AdminDashboard() {
                value: stats.totalUsers.toLocaleString(),
                icon: Users,
                color: "blue",
-               change: "+12%",
-               changeType: "positive"
+
           },
           {
                title: "Chủ sân",
                value: stats.totalOwners.toLocaleString(),
                icon: Building2,
                color: "green",
-               change: "+5%",
-               changeType: "positive"
+
           },
           {
                title: "Tổng booking",
                value: stats.totalBookings.toLocaleString(),
                icon: ClipboardList,
                color: "purple",
-               change: "+18%",
-               changeType: "positive"
+
           },
           {
                title: "Doanh thu",
                value: formatCurrency(stats.totalRevenue),
                icon: TrendingUp,
                color: "emerald",
-               change: "+25%",
-               changeType: "positive"
+
           },
           {
                title: "Sân hoạt động",
                value: stats.activeFields.toLocaleString(),
                icon: Calendar,
                color: "orange",
-               change: "+3%",
-               changeType: "positive"
+
           },
           {
                title: "Báo cáo vi phạm",
                value: stats.totalViolations.toLocaleString(),
                icon: AlertTriangle,
                color: "red",
-               change: "-8%",
-               changeType: "negative"
+
           },
           {
                title: "Số lượng bài post",
                value: stats.totalPosts.toLocaleString(),
                icon: FileText,
                color: "indigo",
-               change: "+5%",
-               changeType: "positive"
+
           },
           {
                title: "Báo cáo chờ xử lý",
                value: stats.pendingReports.toLocaleString(),
                icon: Shield,
                color: "yellow",
-               change: "-1",
-               changeType: "positive"
+
           }
      ];
 
@@ -363,9 +336,7 @@ export default function AdminDashboard() {
                                                   ) : (
                                                        <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
                                                   )}
-                                                  <p className={`text-sm font-medium mt-1 ${getChangeColor(stat.changeType)}`}>
-                                                       {stat.change} so với tháng trước
-                                                  </p>
+
                                              </div>
                                              <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center shadow-lg">
                                                   <Icon className={`w-6 h-6 ${getIconColor(stat.color)} ${loading ? 'opacity-50' : ''}`} />
@@ -386,10 +357,7 @@ export default function AdminDashboard() {
                                         <Activity className="w-5 h-5 text-blue-600" />
                                         <span>Hoạt động gần đây</span>
                                    </CardTitle>
-                                   <Badge variant="secondary" className="rounded-2xl">
-                                        <Clock className="w-3 h-3 mr-1" />
-                                        Real-time
-                                   </Badge>
+
                               </div>
                          </CardHeader>
                          <CardContent className="scrollbar-hide overflow-auto max-h-96">
@@ -420,15 +388,12 @@ export default function AdminDashboard() {
                                         <Settings className="w-5 h-5 text-green-600" />
                                         <span>Thao tác nhanh</span>
                                    </CardTitle>
-                                   <Badge variant="outline" className="rounded-2xl">
-                                        <Eye className="w-3 h-3 mr-1" />
-                                        Quick Access
-                                   </Badge>
+
                               </div>
                          </CardHeader>
                          <CardContent className="scrollbar-hide overflow-auto max-h-96">
                               <div className="space-y-3">
-                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-red-50 hover:border-red-200 rounded-2xl shadow-sm">
+                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-red-50 hover:border-red-200 rounded-2xl shadow-sm" onClick={() => navigate('/admin/users')}>
                                         <div className="flex items-center space-x-3">
                                              <Users className="w-5 h-5 text-red-600" />
                                              <div className="text-left">
@@ -437,7 +402,7 @@ export default function AdminDashboard() {
                                              </div>
                                         </div>
                                    </Button>
-                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-orange-50 hover:border-orange-200 rounded-2xl shadow-sm">
+                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-orange-50 hover:border-orange-200 rounded-2xl shadow-sm" onClick={() => navigate('/admin/violations')}>
                                         <div className="flex items-center space-x-3">
                                              <AlertTriangle className="w-5 h-5 text-orange-600" />
                                              <div className="text-left">
@@ -446,7 +411,7 @@ export default function AdminDashboard() {
                                              </div>
                                         </div>
                                    </Button>
-                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-blue-50 hover:border-blue-200 rounded-2xl shadow-sm">
+                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-blue-50 hover:border-blue-200 rounded-2xl shadow-sm" onClick={() => navigate('/admin/notifications')}>
                                         <div className="flex items-center space-x-3">
                                              <Bell className="w-5 h-5 text-blue-600" />
                                              <div className="text-left">
@@ -455,7 +420,7 @@ export default function AdminDashboard() {
                                              </div>
                                         </div>
                                    </Button>
-                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-purple-50 hover:border-purple-200 rounded-2xl shadow-sm">
+                                   <Button variant="outline" className="w-full justify-start p-3 h-auto hover:bg-purple-50 hover:border-purple-200 rounded-2xl shadow-sm" onClick={() => navigate('/admin/fields')}>
                                         <div className="flex items-center space-x-3">
                                              <Building2 className="w-5 h-5 text-purple-600" />
                                              <div className="text-left">

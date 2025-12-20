@@ -1,4 +1,4 @@
-import React from "react";
+import { useState, useEffect } from "react";
 import {
      MapPin,
      Calendar,
@@ -8,10 +8,10 @@ import {
      QrCode,
      AlertTriangle,
      CheckCircle,
-     Printer,
      ShieldCheck
 } from "lucide-react";
-import { Modal, Button, Badge } from "./ui";
+import { Modal, Badge } from "./ui";
+import { fetchFieldScheduleById } from "../services/fieldSchedules";
 
 const formatPrice = (price = 0) =>
      new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price);
@@ -21,6 +21,18 @@ const formatDateTime = (value) => {
      const parsed = new Date(value);
      if (Number.isNaN(parsed.getTime())) return value;
      return parsed.toLocaleString("vi-VN");
+};
+
+const formatDateToDDMMYYYY = (dateStr) => {
+     if (!dateStr) return "—";
+     // Nếu đã là dd-mm-yyyy thì return luôn
+     if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) return dateStr;
+     // Chuyển từ yyyy-mm-dd sang dd-mm-yyyy
+     const parts = dateStr.split("-");
+     if (parts.length === 3 && parts[0].length === 4) {
+          return `${parts[2]}-${parts[1]}-${parts[0]}`;
+     }
+     return dateStr;
 };
 
 const statusDisplay = (status) => {
@@ -54,6 +66,23 @@ const paymentStatusDisplay = (status) => {
 };
 
 export default function InvoiceModal({ isOpen, booking, onClose }) {
+     const [scheduleDate, setScheduleDate] = useState(null);
+
+     useEffect(() => {
+          if (isOpen && booking?.scheduleId) {
+               fetchFieldScheduleById(booking.scheduleId).then((result) => {
+                    if (result.success && result.data) {
+                         const date = result.data.date || result.data.Date;
+                         if (typeof date === "string") {
+                              setScheduleDate(date.split("T")[0]);
+                         } else if (date?.year && date?.month && date?.day) {
+                              setScheduleDate(`${date.year}-${String(date.month).padStart(2, "0")}-${String(date.day).padStart(2, "0")}`);
+                         }
+                    }
+               });
+          }
+     }, [isOpen, booking?.scheduleId]);
+
      if (!isOpen || !booking) return null;
 
      const paymentStatus = paymentStatusDisplay(booking.paymentStatus);
@@ -124,7 +153,7 @@ export default function InvoiceModal({ isOpen, booking, onClose }) {
                                    <div className="flex flex-wrap gap-3">
                                         <div className="flex items-center gap-1 bg-teal-50 px-2 py-1 rounded-full border border-teal-100 text-teal-700 text-xs">
                                              <Calendar className="w-3.5 h-3.5" />
-                                             {booking.date}
+                                             {formatDateToDDMMYYYY(scheduleDate || booking.date)}
                                         </div>
                                         <div className="flex items-center gap-1 bg-purple-50 px-2 py-1 rounded-full border border-purple-100 text-purple-700 text-xs">
                                              <Clock className="w-3.5 h-3.5" />
@@ -145,7 +174,6 @@ export default function InvoiceModal({ isOpen, booking, onClose }) {
                                    Thông tin thanh toán
                               </div>
                               <div className="text-sm text-gray-700 space-y-1">
-                                   <div>Phương thức: <span className="font-semibold">{booking.paymentMethod || "Chưa chọn"}</span></div>
                                    <div>Số tiền cọc: <span className="font-semibold text-blue-600">{formatPrice(depositAmount)}</span></div>
                                    <div>Tổng tiền: <span className="font-semibold text-teal-600">{formatPrice(totalPrice)}</span></div>
                                    {remainingAmount > 0 && (

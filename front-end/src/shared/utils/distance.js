@@ -1,11 +1,4 @@
-/**
- * Calculate distance between two coordinates using Haversine formula
- * @param {number} lat1 - Latitude of point 1
- * @param {number} lon1 - Longitude of point 1
- * @param {number} lat2 - Latitude of point 2
- * @param {number} lon2 - Longitude of point 2
- * @returns {number} Distance in kilometers
- */
+// hàm tính khoảng cách giữa 2 điểm
 export function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371; // Radius of the Earth in kilometers
   const dLat = toRad(lat2 - lat1);
@@ -24,20 +17,12 @@ export function calculateDistance(lat1, lon1, lat2, lon2) {
   return distance;
 }
 
-/**
- * Convert degrees to radians
- * @param {number} degrees
- * @returns {number} Radians
- */
+// hàm chuyển đổi độ sang radian
 function toRad(degrees) {
   return degrees * (Math.PI / 180);
 }
 
-/**
- * Format distance for display
- * @param {number} distance - Distance in kilometers
- * @returns {string} Formatted distance string
- */
+// hàm định dạng khoảng cách
 export function formatDistance(distance) {
   if (distance < 1) {
     return `${Math.round(distance * 1000)}m`;
@@ -45,10 +30,7 @@ export function formatDistance(distance) {
   return `${distance.toFixed(1)}km`;
 }
 
-/**
- * Get user's current location
- * @returns {Promise<{latitude: number, longitude: number}>}
- */
+// hàm lấy vị trí hiện tại của người dùng
 export function getUserLocation() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -75,17 +57,13 @@ export function getUserLocation() {
   });
 }
 
-/**
- * Parse coordinates from address string or object
- * @param {string|object} location - Location data
- * @returns {{latitude: number|null, longitude: number|null}}
- */
+// hàm phân tích tọa độ từ chuỗi hoặc đối tượng
 export function parseCoordinates(location) {
   if (!location) {
     return { latitude: null, longitude: null };
   }
 
-  // If location is an object with lat/lng
+  // nếu vị trí là đối tượng với lat/lng
   if (typeof location === "object") {
     return {
       latitude: location.latitude || location.lat || null,
@@ -93,8 +71,8 @@ export function parseCoordinates(location) {
     };
   }
 
-  // If location is a string, try to extract coordinates
-  // Format: "lat,lng" or "lat, lng"
+  // nếu vị trí là chuỗi, thử trích xuất tọa độ
+  // định dạng: "lat,lng" hoặc "lat, lng"
   if (typeof location === "string") {
     const parts = location.split(",").map((s) => s.trim());
     if (parts.length === 2) {

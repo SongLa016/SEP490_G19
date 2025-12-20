@@ -6,15 +6,15 @@ export function calculateCancellationRefund(
   bookingStartTime,
   depositAmount = 0
 ) {
-  // Convert to Date objects if strings
+  // định dạng date string thành Date object
   const confirmed = new Date(confirmedAt);
   const startTime = new Date(bookingStartTime);
   const now = new Date();
 
-  // Calculate hours from now until booking start
+  // tính toán số giờ từ bây giờ đến lúc booking
   const hoursUntilBooking = (startTime - now) / (1000 * 60 * 60);
 
-  // Determine refund and penalty rates based on time range
+  // xác định mức hoàn/phạt dựa trên khoảng thời gian
   let refundRate = 0;
   let penaltyRate = 0;
   let timeRange = "";
@@ -66,10 +66,7 @@ export function calculateCancellationRefund(
   };
 }
 
-/**
- * Lấy danh sách các mốc thời gian và mức hoàn/phạt
- * @returns {Array} - Array of time ranges with refund and penalty rates
- */
+// lấy danh sách các mốc thời gian và mức hoàn/phạt
 export function getCancellationPolicyRanges() {
   return [
     { range: "0-2h", refundRate: 100, penaltyRate: 0, label: "0-2 giờ" },
@@ -80,9 +77,7 @@ export function getCancellationPolicyRanges() {
   ];
 }
 
-/**
- * Format số tiền VNĐ
- */
+// định dạng số tiền VNĐ
 export function formatCurrency(amount) {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",

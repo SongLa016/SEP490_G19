@@ -41,7 +41,7 @@ export default function OwnerDashboard() {
           revenueGrowth: 0,
           bookingGrowth: 0,
           occupancyRate: 0,
-          customerSatisfaction: 88
+          customerSatisfaction: 0
      });
 
      const [revenueData, setRevenueData] = useState([]);
@@ -232,7 +232,6 @@ export default function OwnerDashboard() {
           {
                title: "Tổng doanh thu",
                value: formatCurrency(displayStats.totalRevenue),
-               change: displayStats.revenueGrowth,
                icon: DollarSign,
                color: "bg-green-50 border-green-200",
                textColor: "text-green-700"
@@ -240,7 +239,6 @@ export default function OwnerDashboard() {
           {
                title: "Tổng booking",
                value: displayStats.totalBookings.toString(),
-               change: displayStats.bookingGrowth,
                icon: Calendar,
                color: "bg-blue-50 border-blue-200",
                textColor: "text-blue-700"
@@ -248,7 +246,6 @@ export default function OwnerDashboard() {
           {
                title: "Tỷ lệ lấp đầy",
                value: `${displayStats.occupancyRate.toFixed(1)}%`,
-               change: 2.1,
                icon: Users,
                color: "bg-purple-50 border-purple-200",
                textColor: "text-purple-700"
@@ -256,7 +253,6 @@ export default function OwnerDashboard() {
           {
                title: "Hài lòng KH",
                value: `${displayStats.customerSatisfaction}%`,
-               change: -1.2,
                icon: Star,
                color: "bg-yellow-50 border-yellow-200",
                textColor: "text-yellow-700"
@@ -308,16 +304,7 @@ export default function OwnerDashboard() {
                                         <div>
                                              <div className="text-teal-600 text-sm mb-2">{card.title}</div>
                                              <div className={`text-2xl font-semibold ${card.textColor}`}>{card.value}</div>
-                                             <div className="flex items-center mt-2">
-                                                  {card.change > 0 ? (
-                                                       <TrendingUp className="w-4 h-4 text-green-600 mr-1" />
-                                                  ) : (
-                                                       <TrendingDown className="w-4 h-4 text-red-600 mr-1" />
-                                                  )}
-                                                  <span className={`text-sm ${card.change > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                       {Math.abs(card.change)}%
-                                                  </span>
-                                             </div>
+
                                         </div>
                                         <Icon className={`w-8 h-8 ${card.textColor} opacity-60`} />
                                    </div>

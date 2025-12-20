@@ -16,14 +16,13 @@ export default function PriceSummarySection({
           if (!slotId) {
                return bookingData.price || 0;
           }
-          // Ưu tiên lấy từ TimeSlots (có giá chính xác)
+          // Ưu tiên lấy từ TimeSlots (có giá)
           if (Array.isArray(bookingData?.fieldTimeSlots) && bookingData.fieldTimeSlots.length > 0) {
                const timeSlot = bookingData.fieldTimeSlots.find(s =>
                     String(s.slotId || s.SlotId || s.slotID || s.SlotID) === String(slotId)
                );
                if (timeSlot) {
                     const price = timeSlot.price || timeSlot.Price || timeSlot.unitPrice || timeSlot.UnitPrice || 0;
-
                     return price;
                } else {
                }
@@ -71,7 +70,6 @@ export default function PriceSummarySection({
 
           const minPrice = Math.min(...prices);
           const maxPrice = Math.max(...prices);
-
           return {
                minPrice,
                maxPrice,
@@ -85,9 +83,9 @@ export default function PriceSummarySection({
           hasMultiplePrices
      } = getRecurringPriceStats();
 
-     // Giá đại diện để tính subtotal khi cần (đặt lẻ vẫn dùng bookingData.price)
+     // Giá đại diện để tính subtotal khi cần đặt lẻ
      const slotPrice = isRecurring ? (minPrice || bookingData.price || 0) : (bookingData.price || 0);
-     // Với đặt sân cố định, không áp dụng giảm giá/cọc ở bước này – subtotal chính là tổng giá
+     // Với đặt sân cố định, không áp dụng giảm giá/cọc
      const subtotal = isRecurring
           ? (bookingData.totalPrice || bookingData.subtotal || (slotPrice * (totalSessions || 1)))
           : (bookingData.subtotal || (slotPrice * (totalSessions || 1)));

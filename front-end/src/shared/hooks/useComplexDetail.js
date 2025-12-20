@@ -1,12 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchComplexDetail } from "../services/fields";
 
-/**
- * Custom hook to fetch and cache complex detail
- * @param {number|string} complexId - The complex ID
- * @param {object} options - Query options (date, slotId)
- * @param {boolean} enabled - Whether to enable the query
- */
+// lấy thông tin chi tiết sân
 export function useComplexDetail(complexId, options = {}, enabled = true) {
   const { date, slotId } = options;
 
@@ -14,13 +9,10 @@ export function useComplexDetail(complexId, options = {}, enabled = true) {
     queryKey: ["complexDetail", complexId, date, slotId],
     queryFn: () => fetchComplexDetail(complexId, { date, slotId }),
     enabled: enabled && !!complexId,
-    staleTime: 2 * 60 * 1000, // Cache for 2 minutes
-    cacheTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
-    retry: 2, // Retry 2 times on failure
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000), // Exponential backoff
+    staleTime: 2 * 60 * 1000, // lưu trữ trong 2 phút
+    cacheTime: 5 * 60 * 1000, // lưu trữ trong 5 phút
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000),
     refetchOnWindowFocus: false,
-    onError: (error) => {
-      console.error("Error in useComplexDetail:", error);
-    },
   });
 }

@@ -7,23 +7,33 @@ import {
   isParticipantAcceptedByOwner,
 } from "../utils";
 
-/**
- * Hook chứa các utility functions cho BookingHistory
- */
+//Hook chứa các utility functions cho BookingHistory
 export function useBookingUtils(bookingIdToRequest, scheduleDataMap) {
   // Kiểm tra nếu đặt sân chưa thanh toán
   const isPendingUnpaidWithin2Hours = useCallback((booking) => {
     if (!booking) return false;
-    const statusLower = String(booking.status || booking.bookingStatus || "").toLowerCase();
+    const statusLower = String(
+      booking.status || booking.bookingStatus || ""
+    ).toLowerCase();
     const paymentLower = String(booking.paymentStatus || "").toLowerCase();
-    const isPendingOrConfirmed = statusLower === "pending" || statusLower === "confirmed";
-    const isUnpaid = paymentLower === "unpaid" || paymentLower === "pending" || paymentLower === "";
+    const isPendingOrConfirmed =
+      statusLower === "pending" || statusLower === "confirmed";
+    const isUnpaid =
+      paymentLower === "unpaid" ||
+      paymentLower === "pending" ||
+      paymentLower === "";
     const isPaid = paymentLower === "paid" || paymentLower === "đã thanh toán";
 
     if (isPaid) return false;
-    if (statusLower === "cancelled" || statusLower === "expired" || statusLower === "completed") return false;
-
-    const hasActiveQR = booking.qrExpiresAt && new Date(booking.qrExpiresAt).getTime() > new Date().getTime();
+    if (
+      statusLower === "cancelled" ||
+      statusLower === "expired" ||
+      statusLower === "completed"
+    )
+      return false;
+    const hasActiveQR =
+      booking.qrExpiresAt &&
+      new Date(booking.qrExpiresAt).getTime() > new Date().getTime();
     if (hasActiveQR && isUnpaid) return true;
     if (isPendingOrConfirmed && isUnpaid) return true;
     return false;
@@ -33,7 +43,10 @@ export function useBookingUtils(bookingIdToRequest, scheduleDataMap) {
   const hasExistingMatchRequest = useCallback(
     (booking) => {
       if (!booking) return false;
-      const hasMatchRequestId = booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
+      const hasMatchRequestId =
+        booking.matchRequestId ||
+        booking.matchRequestID ||
+        booking.MatchRequestID;
       if (hasMatchRequestId) return true;
       if (booking.hasOpponent) return true;
       if (!booking.id) return false;
@@ -47,16 +60,30 @@ export function useBookingUtils(bookingIdToRequest, scheduleDataMap) {
   const shouldShowFindOpponentButton = useCallback(
     (booking) => {
       if (!booking) return false;
-      const statusLower = String(booking.status || booking.bookingStatus || "").toLowerCase();
+      const statusLower = String(
+        booking.status || booking.bookingStatus || ""
+      ).toLowerCase();
       const paymentLower = String(booking.paymentStatus || "").toLowerCase();
 
       const isPendingWaitingPayment =
-        statusLower === "pending" && (paymentLower === "" || paymentLower === "pending" || paymentLower === "unpaid");
-      const isPendingPaid = statusLower === "pending" && (paymentLower === "paid" || paymentLower === "đã thanh toán");
+        statusLower === "pending" &&
+        (paymentLower === "" ||
+          paymentLower === "pending" ||
+          paymentLower === "unpaid");
+      const isPendingPaid =
+        statusLower === "pending" &&
+        (paymentLower === "paid" || paymentLower === "đã thanh toán");
       const isCompleted = statusLower === "completed";
-      const isCancelled = statusLower === "cancelled" || statusLower === "expired";
+      const isCancelled =
+        statusLower === "cancelled" || statusLower === "expired";
 
-      if (isPendingWaitingPayment || isPendingPaid || isCompleted || isCancelled) return false;
+      if (
+        isPendingWaitingPayment ||
+        isPendingPaid ||
+        isCompleted ||
+        isCancelled
+      )
+        return false;
       if (hasExistingMatchRequest(booking)) return false;
       return true;
     },
@@ -65,7 +92,9 @@ export function useBookingUtils(bookingIdToRequest, scheduleDataMap) {
 
   // Chuẩn hóa trạng thái yêu cầu tham gia trận đấu
   const normalizeRequestStatus = useCallback((request) => {
-    const raw = (request?.status || request?.state || "").toString().toLowerCase();
+    const raw = (request?.status || request?.state || "")
+      .toString()
+      .toLowerCase();
     if (raw.includes("match")) return "matched";
     if (raw.includes("pending") || raw.includes("waiting")) return "pending";
     if (raw.includes("expire")) return "expired";
@@ -74,7 +103,9 @@ export function useBookingUtils(bookingIdToRequest, scheduleDataMap) {
     if (raw.includes("open") || raw.includes("active")) return "open";
 
     const participants = extractParticipants(request);
-    if (participants.some((p) => (p.status || "").toLowerCase() === "accepted")) {
+    if (
+      participants.some((p) => (p.status || "").toLowerCase() === "accepted")
+    ) {
       return "pending";
     }
     if (!raw || raw === "0") return "open";
@@ -85,24 +116,52 @@ export function useBookingUtils(bookingIdToRequest, scheduleDataMap) {
   const getRequestBadgeConfig = useCallback(
     (request) => {
       const status = normalizeRequestStatus(request);
-      const participants = filterParticipantsForDisplay(extractParticipants(request), request);
-      const pendingCount = participants.filter(participantNeedsOwnerAction).length;
-      const acceptedCount = participants.filter(isParticipantAcceptedByOwner).length;
+      const participants = filterParticipantsForDisplay(
+        extractParticipants(request),
+        request
+      );
+      const pendingCount = participants.filter(
+        participantNeedsOwnerAction
+      ).length;
+      const acceptedCount = participants.filter(
+        isParticipantAcceptedByOwner
+      ).length;
 
       const configMap = {
-        open: { text: "Đang mở ", className: "border-blue-200 text-blue-600 bg-blue-50" },
+        open: {
+          text: "Đang mở ",
+          className: "border-blue-200 text-blue-600 bg-blue-50",
+        },
         pending: {
-          text: acceptedCount > 0
-            ? `Đang chờ xác nhận • ${acceptedCount} đội đã được duyệt`
-            : `Đang chờ xác nhận${pendingCount ? ` • ${pendingCount} đội chờ duyệt` : ""}`,
+          text:
+            acceptedCount > 0
+              ? `Đang chờ xác nhận • ${acceptedCount} đội đã được duyệt`
+              : `Đang chờ xác nhận${
+                  pendingCount ? ` • ${pendingCount} đội chờ duyệt` : ""
+                }`,
           className: "border-amber-200 text-amber-700 bg-amber-50",
         },
-        matched: { text: "Đã tìm được đối • Trận đấu đã xác nhận", className: "border-emerald-300 text-emerald-700 bg-emerald-50" },
-        expired: { text: "Đã hết hạn", className: "border-gray-300 text-gray-600 bg-gray-50" },
-        cancelled: { text: "Đã hủy", className: "border-red-300 text-red-600 bg-red-50" },
+        matched: {
+          text: "Đã tìm được đối • Trận đấu đã xác nhận",
+          className: "border-emerald-300 text-emerald-700 bg-emerald-50",
+        },
+        expired: {
+          text: "Đã hết hạn",
+          className: "border-gray-300 text-gray-600 bg-gray-50",
+        },
+        cancelled: {
+          text: "Đã hủy",
+          className: "border-red-300 text-red-600 bg-red-50",
+        },
       };
 
-      return { status, ...(configMap[status] || { text: "Đang mở", className: "border-blue-200 text-blue-600 bg-blue-50" }) };
+      return {
+        status,
+        ...(configMap[status] || {
+          text: "Đang mở",
+          className: "border-blue-200 text-blue-600 bg-blue-50",
+        }),
+      };
     },
     [normalizeRequestStatus]
   );
@@ -111,14 +170,19 @@ export function useBookingUtils(bookingIdToRequest, scheduleDataMap) {
   const isRequestLocked = useCallback(
     (request) => {
       const status = normalizeRequestStatus(request);
-      return status === "matched" || status === "expired" || status === "cancelled";
+      return (
+        status === "matched" || status === "expired" || status === "cancelled"
+      );
     },
     [normalizeRequestStatus]
   );
 
   // Lấy người tham gia đã được duyệt
   const getAcceptedParticipants = useCallback((request) => {
-    const participants = filterParticipantsForDisplay(extractParticipants(request), request);
+    const participants = filterParticipantsForDisplay(
+      extractParticipants(request),
+      request
+    );
     return participants.filter(isParticipantAcceptedByOwner);
   }, []);
 
@@ -135,7 +199,9 @@ export function useBookingUtils(bookingIdToRequest, scheduleDataMap) {
   const shouldHideCancelButtonByDate = useCallback(
     (booking) => {
       if (!booking) return false;
-      const scheduleData = booking.scheduleId ? scheduleDataMap[booking.scheduleId] : null;
+      const scheduleData = booking.scheduleId
+        ? scheduleDataMap[booking.scheduleId]
+        : null;
       let matchDate = null;
       let matchTime = null;
 
@@ -183,7 +249,11 @@ export function useBookingUtils(bookingIdToRequest, scheduleDataMap) {
 
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const matchDateOnly = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate());
+      const matchDateOnly = new Date(
+        matchDate.getFullYear(),
+        matchDate.getMonth(),
+        matchDate.getDate()
+      );
 
       if (matchDateOnly < today) return true;
 
@@ -214,26 +284,84 @@ export function useBookingUtils(bookingIdToRequest, scheduleDataMap) {
   // Status badge
   const statusBadge = useCallback((status) => {
     const badgeMap = {
-      confirmed: { variant: "default", className: "bg-teal-500 text-white border border-teal-200 hover:bg-teal-600", text: "Đã xác nhận" },
-      completed: { variant: "secondary", className: "bg-teal-500 text-white border border-teal-200 hover:bg-teal-600", text: "Hoàn tất" },
-      cancelled: { variant: "destructive", className: "bg-red-500 text-white border border-red-200 hover:bg-red-600", text: "Đã hủy" },
-      pending: { variant: "outline", className: "bg-yellow-500 text-white border border-yellow-200 hover:bg-yellow-600", text: "Chờ xác nhận" },
-      expired: { variant: "outline", className: "bg-gray-500 text-white border border-gray-200 hover:bg-gray-600", text: "Hủy do quá thời gian thanh toán" },
-      reactive: { variant: "outline", className: "bg-blue-500 text-white border border-blue-200 hover:bg-blue-600", text: "Kích hoạt lại" },
+      confirmed: {
+        variant: "default",
+        className:
+          "bg-teal-500 text-white border border-teal-200 hover:bg-teal-600",
+        text: "Đã xác nhận",
+      },
+      completed: {
+        variant: "secondary",
+        className:
+          "bg-teal-500 text-white border border-teal-200 hover:bg-teal-600",
+        text: "Hoàn tất",
+      },
+      cancelled: {
+        variant: "destructive",
+        className:
+          "bg-red-500 text-white border border-red-200 hover:bg-red-600",
+        text: "Đã hủy",
+      },
+      pending: {
+        variant: "outline",
+        className:
+          "bg-yellow-500 text-white border border-yellow-200 hover:bg-yellow-600",
+        text: "Chờ xác nhận",
+      },
+      expired: {
+        variant: "outline",
+        className:
+          "bg-gray-500 text-white border border-gray-200 hover:bg-gray-600",
+        text: "Hủy do quá thời gian thanh toán",
+      },
+      reactive: {
+        variant: "outline",
+        className:
+          "bg-blue-500 text-white border border-blue-200 hover:bg-blue-600",
+        text: "Kích hoạt lại",
+      },
     };
-    const config = badgeMap[status] || { variant: "outline", className: "bg-gray-500 text-white border border-gray-200 hover:bg-gray-600", text: "Không rõ" };
-    return <Badge variant={config.variant} className={config.className}>{config.text}</Badge>;
+    const config = badgeMap[status] || {
+      variant: "outline",
+      className:
+        "bg-gray-500 text-white border border-gray-200 hover:bg-gray-600",
+      text: "Không rõ",
+    };
+    return (
+      <Badge variant={config.variant} className={config.className}>
+        {config.text}
+      </Badge>
+    );
   }, []);
 
   // Payment status badge
   const paymentStatusBadge = useCallback((paymentStatus) => {
     const status = (paymentStatus ?? "").toString().toLowerCase();
     const badgeMap = {
-      paid: { variant: "default", className: "bg-green-500 text-white border border-green-200 hover:bg-green-600", text: "Đã thanh toán" },
-      refunded: { variant: "secondary", className: "bg-blue-500 text-white border border-blue-200 hover:bg-blue-600", text: "Đã hoàn tiền" },
+      paid: {
+        variant: "default",
+        className:
+          "bg-green-500 text-white border border-green-200 hover:bg-green-600",
+        text: "Đã thanh toán",
+      },
+      refunded: {
+        variant: "secondary",
+        className:
+          "bg-blue-500 text-white border border-blue-200 hover:bg-blue-600",
+        text: "Đã hoàn tiền",
+      },
     };
-    const config = badgeMap[status] || { variant: "outline", className: "bg-yellow-500 text-white border border-yellow-200 hover:bg-yellow-600", text: "Chờ Thanh Toán" };
-    return <Badge variant={config.variant} className={config.className}>{config.text}</Badge>;
+    const config = badgeMap[status] || {
+      variant: "outline",
+      className:
+        "bg-yellow-500 text-white border border-yellow-200 hover:bg-yellow-600",
+      text: "Chờ Thanh Toán",
+    };
+    return (
+      <Badge variant={config.variant} className={config.className}>
+        {config.text}
+      </Badge>
+    );
   }, []);
 
   return {

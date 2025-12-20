@@ -6,10 +6,7 @@ import { useFieldTypes } from "../hooks";
 import { createFieldType } from "../services/fieldTypes";
 import Swal from "sweetalert2";
 
-/**
- * FieldTypeCombobox - Specialized combobox for field types
- * Allows selecting existing types or creating new ones inline
- */
+// combobox để chọn loại sân
 export default function FieldTypeCombobox({
      value,
      onValueChange,
@@ -22,23 +19,23 @@ export default function FieldTypeCombobox({
      const [searchValue, setSearchValue] = useState("");
      const [isCreating, setIsCreating] = useState(false);
 
-     // Load field types with React Query
+     // lấy danh sách loại sân
      const { data: fieldTypes = [], refetch } = useFieldTypes();
 
-     // Find selected field type
+     // lấy loại sân đã chọn
      const selectedType = fieldTypes.find((type) =>
           String(type.typeId) === String(value) || type.typeName === value
      );
 
-     // Display value
+     // hiển thị tên loại sân
      const displayValue = selectedType?.typeName || "";
 
-     // Filter field types based on search
+     // lọc loại sân dựa trên tên
      const filteredTypes = fieldTypes.filter((type) =>
           type.typeName.toLowerCase().includes(searchValue.toLowerCase())
      );
 
-     // Check if search value is a new type (not in existing list)
+     // kiểm tra xem tên tìm kiếm có phải là loại sân mới không
      const isNewType = searchValue &&
           !fieldTypes.some(type =>
                type.typeName.toLowerCase() === searchValue.toLowerCase()

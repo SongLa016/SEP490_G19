@@ -1,27 +1,24 @@
 import { lazy } from "react";
 import { ROLES } from "../constants/roles";
-
-/**
- * Route Configuration - Tập trung quản lý tất cả routes
- * Giúp code dễ maintain và mở rộng
- */
-
-// Loading fallback component
 export const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center">
     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500"></div>
   </div>
 );
 
-// Lazy load pages - Tối ưu code splitting
+// tối ưu code động
 const lazyLoad = (importFunc) => lazy(importFunc);
 
-// Public pages
+// trang chủ
 export const LandingPage = lazyLoad(() => import("../../pages/LandingPage"));
-export const TermsOfService = lazyLoad(() => import("../../pages/TermsOfService"));
-export const PrivacyPolicy = lazyLoad(() => import("../../pages/PrivacyPolicy"));
+export const TermsOfService = lazyLoad(() =>
+  import("../../pages/TermsOfService")
+);
+export const PrivacyPolicy = lazyLoad(() =>
+  import("../../pages/PrivacyPolicy")
+);
 
-// Player pages
+// trang người dùng
 export const HomePage = lazyLoad(() =>
   import("../../roles/player/pages/home/HomePage")
 );
@@ -47,7 +44,7 @@ export const ProfileIndex = lazyLoad(() =>
   import("../../roles/player/pages/profile")
 );
 
-// Owner pages
+// trang chủ chủ sân
 export const OwnerDashboard = lazyLoad(() =>
   import("../../roles/owner/pages/OwnerDashboard")
 );
@@ -94,7 +91,7 @@ export const OwnerProfileSettings = lazyLoad(() =>
   import("../../roles/owner/pages/ProfileSettings")
 );
 
-// Admin pages
+// trang chủ quản trị viên
 export const AdminDashboard = lazyLoad(() =>
   import("../../roles/admin/pages/AdminDashboard")
 );
@@ -120,9 +117,8 @@ export const AdminProfileSettings = lazyLoad(() =>
   import("../../roles/admin/pages/ProfileSettings")
 );
 
-// Route definitions với metadata
+// định nghĩa các route với metadata
 export const routeConfig = [
-  // Public routes
   {
     path: "/",
     element: LandingPage,
@@ -144,10 +140,8 @@ export const routeConfig = [
     layout: "MainLayout",
     allowedRoles: [ROLES.PLAYER.name],
   },
-  // Note: Auth routes use AuthLayout directly, not lazy loaded
-  // They are handled separately in App.js
 
-  // Player routes
+  // trang người dùng
   {
     path: "/home",
     element: HomePage,
@@ -196,7 +190,7 @@ export const routeConfig = [
     requireAuth: true,
   },
 
-  // Owner routes
+  // trang chủ chủ sân
   {
     path: "/owner",
     element: OwnerDashboard,
@@ -282,7 +276,7 @@ export const routeConfig = [
     allowedRoles: [ROLES.OWNER.name],
   },
 
-  // Admin routes
+  // trang chủ quản trị viên
   {
     path: "/admin",
     element: AdminDashboard,
@@ -333,7 +327,7 @@ export const routeConfig = [
   },
 ];
 
-// Demo routes (optional - có thể xóa nếu không cần)
+// Demo routes
 export const demoRoutes = [
   {
     path: "/demo",
