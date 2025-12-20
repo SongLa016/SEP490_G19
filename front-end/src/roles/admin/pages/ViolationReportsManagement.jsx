@@ -89,7 +89,7 @@ export default function ViolationReportsManagement() {
      const getHandledByName = useCallback((report) => report?.handledByName ?? report?.HandledByName ?? null, []);
      const getCreatedAt = useCallback((report) => report?.createdAt ?? report?.CreatedAt ?? null, []);
 
-     // Fetch avatar cho reporter
+     // lấy avatar cho reporter
      const fetchReporterAvatar = useCallback(async (reporterId) => {
           if (!reporterId || avatarCache[reporterId]) return;
           try {
@@ -103,7 +103,7 @@ export default function ViolationReportsManagement() {
           }
      }, [avatarCache]);
 
-     // Fetch avatars khi reports thay đổi
+     // lấy avatars khi reports thay đổi
      useEffect(() => {
           const fetchAvatars = async () => {
                const reporterIds = [...new Set(reports.map(r => getReporterId(r)).filter(Boolean))];
@@ -118,6 +118,7 @@ export default function ViolationReportsManagement() {
           }
      }, [reports, getReporterId, avatarCache, fetchReporterAvatar]);
 
+     // lấy danh sách reports
      const loadReports = useCallback(async (showSkeleton = true) => {
           const params = {
                pageNumber: 1,
@@ -151,6 +152,7 @@ export default function ViolationReportsManagement() {
           setIsRefreshing(false);
      }, [statusFilter, typeFilter]);
 
+     // lấy thống kê reports
      const loadStatistics = useCallback(async () => {
           const result = await fetchReportStatistics();
           if (result?.ok) {
@@ -158,10 +160,12 @@ export default function ViolationReportsManagement() {
           }
      }, []);
 
+     // lấy số lượng reports theo trạng thái
      const statusCount = useCallback((status) => {
           return reports.filter(report => getStatusValue(report) === status).length;
      }, [reports, getStatusValue]);
 
+     // tổng hợp thống kê reports
      const statsSummary = {
           total: stats?.totalReports ?? stats?.TotalReports ?? reports.length,
           pending: stats?.pendingReports ?? stats?.PendingReports ?? statusCount("Pending"),
@@ -169,18 +173,22 @@ export default function ViolationReportsManagement() {
           resolved: stats?.resolvedReports ?? stats?.ResolvedReports ?? statusCount("Resolved")
      };
 
+     // hàm làm mới danh sách reports
      const handleRefresh = () => {
           loadReports(false);
      };
 
+     // load reports khi component mount
      useEffect(() => {
           loadReports();
      }, [loadReports]);
 
+     // load statistics khi component mount
      useEffect(() => {
           loadStatistics();
      }, [loadStatistics]);
 
+     // lọc reports theo từ khóa tìm kiếm
      useEffect(() => {
           let filtered = reports;
           if (searchTerm) {
@@ -194,11 +202,13 @@ export default function ViolationReportsManagement() {
           setFilteredReports(filtered);
      }, [reports, searchTerm, getReporterName, getReasonText]);
 
+     // hàm xem chi tiết report
      const handleViewReport = (report) => {
           setSelectedReport(report);
           setShowDetailModal(true);
      };
 
+     // hàm xử lý hành động
      const handleTakeAction = (report) => {
           setSelectedReport(report);
           const currentStatus = getStatusValue(report);

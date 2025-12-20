@@ -8,8 +8,6 @@ import TypewriterText from '../shared/components/TypewriterText';
 import {
      ArrowRight,
      CheckCircle,
-     Star,
-     Users,
      Calendar,
      MapPin,
      Clock,
@@ -30,7 +28,7 @@ const LandingPage = () => {
      const containerRef = useRef(null);
      const gradientRef = useRef(null);
 
-     // Animated particles for background
+     // hiệu ứng particles cho background
      useEffect(() => {
           if (!containerRef.current) return;
 
@@ -69,10 +67,9 @@ const LandingPage = () => {
           };
      }, []);
 
-     // Continuous rotation for background gradient
+     // hiệu ứng continuous rotation cho background gradient
      useEffect(() => {
           if (!gradientRef.current) return;
-
           gsap.to(gradientRef.current, {
                rotation: 360,
                duration: 20,
@@ -83,7 +80,7 @@ const LandingPage = () => {
 
      return (
           <div ref={containerRef} className="min-h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900 text-white relative overflow-hidden">
-               {/* Animated Background with parallax effect */}
+               {/* hiệu ứng parallax cho background */}
                <motion.div
                     className="absolute inset-0 opacity-80"
                     style={{

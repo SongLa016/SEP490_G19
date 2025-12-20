@@ -3,7 +3,6 @@ import axios from "axios";
 const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL || "https://sep490-g19-zxph.onrender.com";
 
-// Create axios instance with base config
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -11,7 +10,6 @@ const api = axios.create({
   },
 });
 
-// Add request interceptor for auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -25,10 +23,7 @@ api.interceptors.request.use(
   }
 );
 
-/**
- * Fetch all field types
- * GET /api/FieldType
- */
+// hàm lấy tất cả các loại sân
 export const fetchFieldTypes = async () => {
   try {
     const response = await api.get(`${API_BASE_URL}/api/FieldType`);
@@ -49,10 +44,7 @@ export const fetchFieldTypes = async () => {
   }
 };
 
-/**
- * Fetch field type by ID
- * GET /api/FieldType/{id}
- */
+// hàm lấy loại sân theo id
 export const fetchFieldTypeById = async (typeId) => {
   try {
     const response = await api.get(`/api/FieldType/${typeId}`);
@@ -73,11 +65,7 @@ export const fetchFieldTypeById = async (typeId) => {
   }
 };
 
-/**
- * Create new field type
- * POST /api/FieldType
- * @param {Object} fieldTypeData - { typeName: string }
- */
+// hàm tạo loại sân
 export const createFieldType = async (fieldTypeData) => {
   try {
     const response = await api.post("/api/FieldType", fieldTypeData);
@@ -98,6 +86,7 @@ export const createFieldType = async (fieldTypeData) => {
   }
 };
 
+// hàm cập nhật loại sân
 export const updateFieldType = async (typeId, fieldTypeData) => {
   try {
     const response = await api.put(`/api/FieldType/${typeId}`, fieldTypeData);
@@ -119,6 +108,7 @@ export const updateFieldType = async (typeId, fieldTypeData) => {
   }
 };
 
+// hàm xóa loại sân
 export const deleteFieldType = async (typeId) => {
   try {
     const response = await api.delete(`/api/FieldType/${typeId}`);

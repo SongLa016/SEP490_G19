@@ -1,7 +1,6 @@
-// Service for managing owner bank accounts
+// API tài khoản ngân hàng
 import axios from "axios";
 
-// Create axios instance with base configuration
 const apiClient = axios.create({
   timeout: 30000,
   headers: {
@@ -9,7 +8,6 @@ const apiClient = axios.create({
   },
 });
 
-// Add request interceptor to include auth token if available
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -23,7 +21,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Helper function to handle API errors
+// hàm xử lý lỗi API
 const handleApiError = (error) => {
   let errorMessage = "Có lỗi xảy ra khi gọi API";
 
@@ -49,11 +47,11 @@ const handleApiError = (error) => {
   throw new Error(errorMessage);
 };
 
-// API functions
+// hàm lấy danh sách tài khoản ngân hàng
 export async function fetchOwnerBankAccounts(ownerId) {
   try {
     const ownerIdNum = Number(ownerId);
-    // Try different endpoint variations
+    // thử các endpoint khác nhau
     const endpoints = [
       `https://sep490-g19-zxph.onrender.com/api/OwnerBankAccount/${ownerIdNum}`,
       `https://sep490-g19-zxph.onrender.com/api/OwnerBankAccount/owner/${ownerIdNum}`,
@@ -69,7 +67,6 @@ export async function fetchOwnerBankAccounts(ownerId) {
         break;
       } catch (err) {
         lastError = err;
-        // If it's not a 404, stop trying other endpoints
         if (err.response?.status !== 404) {
           break;
         }
@@ -80,7 +77,7 @@ export async function fetchOwnerBankAccounts(ownerId) {
       throw lastError || new Error("Tất cả endpoint đều thất bại");
     }
 
-    // Handle both array and single object responses
+    // xử lý cả array và single object responses
     const accounts = Array.isArray(response.data)
       ? response.data
       : response.data
@@ -103,6 +100,7 @@ export async function fetchOwnerBankAccounts(ownerId) {
   }
 }
 
+// hàm lấy tài khoản ngân hàng theo id
 export async function fetchBankAccount(bankAccountId) {
   try {
     const response = await apiClient.get(
@@ -124,6 +122,7 @@ export async function fetchBankAccount(bankAccountId) {
   }
 }
 
+// hàm tạo tài khoản ngân hàng
 export async function createOwnerBankAccount(accountData) {
   try {
     const payload = {
@@ -145,24 +144,27 @@ export async function createOwnerBankAccount(accountData) {
   }
 }
 
+// hàm cập nhật tài khoản ngân hàng
 export async function updateOwnerBankAccount(bankAccountId, accountData) {
   try {
     const response = await apiClient.put(
       `https://sep490-g19-zxph.onrender.com/api/OwnerBankAccount/${bankAccountId}`,
       {
-      ownerId: accountData.ownerId,
-      bankName: accountData.bankName,
-      bankShortCode: accountData.bankShortCode || "",
-      accountNumber: accountData.accountNumber,
-      accountHolder: accountData.accountHolder,
-      isDefault: accountData.isDefault || false,
-    });
+        ownerId: accountData.ownerId,
+        bankName: accountData.bankName,
+        bankShortCode: accountData.bankShortCode || "",
+        accountNumber: accountData.accountNumber,
+        accountHolder: accountData.accountHolder,
+        isDefault: accountData.isDefault || false,
+      }
+    );
     return response.data;
   } catch (error) {
     handleApiError(error);
   }
 }
 
+// hàm xóa tài khoản ngân hàng
 export async function deleteOwnerBankAccount(bankAccountId) {
   try {
     const response = await apiClient.delete(
@@ -174,9 +176,9 @@ export async function deleteOwnerBankAccount(bankAccountId) {
   }
 }
 
+// hàm set default tài khoản ngân hàng
 export async function setDefaultBankAccount(bankAccountId, ownerId) {
   try {
-    // First, set all accounts to non-default
     const accounts = await fetchOwnerBankAccounts(ownerId);
     for (const account of accounts) {
       if (account.bankAccountId !== bankAccountId && account.isDefault) {
@@ -187,7 +189,7 @@ export async function setDefaultBankAccount(bankAccountId, ownerId) {
       }
     }
 
-    // Then set the selected account as default
+    // đặt tài khoản được chọn làm default
     const account = accounts.find((a) => a.bankAccountId === bankAccountId);
     if (account) {
       return await updateOwnerBankAccount(bankAccountId, {

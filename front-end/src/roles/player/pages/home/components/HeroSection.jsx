@@ -19,7 +19,6 @@ export const HeroSection = ({
      const heroRef = useRef(null);
      const particlesRef = useRef(null);
 
-     // Helper functions to convert between "all" and empty string
      const handleLocationChange = (value) => {
           setSelectedLocation(value === "all" ? "" : value);
      };
@@ -36,7 +35,7 @@ export const HeroSection = ({
           return selectedPrice === "" ? "all" : selectedPrice;
      };
 
-     // Floating particles for hero background
+     // hiệu ứng particles cho background
      useEffect(() => {
           if (!particlesRef.current) return;
 
@@ -74,7 +73,7 @@ export const HeroSection = ({
           };
      }, []);
 
-     // Parallax scroll effect for Hero Section only
+     // hiệu ứng parallax scroll cho Hero Section
      useEffect(() => {
           const handleScroll = () => {
                const scrollY = window.pageYOffset;

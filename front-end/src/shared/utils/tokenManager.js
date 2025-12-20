@@ -1,6 +1,6 @@
 const TOKEN_KEY = "token";
 const USER_KEY = "user";
-
+// hàm an toàn decode token
 const safeAtob = (value) => {
   if (!value) {
     return null;
@@ -15,7 +15,6 @@ const safeAtob = (value) => {
     }
 
     if (typeof Buffer !== "undefined") {
-      // Fallback for non-browser environments (tests, storybook, etc.)
       return Buffer.from(padded, "base64").toString("binary");
     }
 
@@ -26,6 +25,7 @@ const safeAtob = (value) => {
   }
 };
 
+// hàm decode payload token
 export const decodeTokenPayload = (token) => {
   if (!token) return null;
 
@@ -43,6 +43,7 @@ export const decodeTokenPayload = (token) => {
   }
 };
 
+// hàm lấy token đã lưu
 export const getStoredToken = () => {
   try {
     return localStorage.getItem(TOKEN_KEY);
@@ -51,6 +52,7 @@ export const getStoredToken = () => {
   }
 };
 
+// hàm lưu token
 export const storeToken = (token) => {
   try {
     if (token) {
@@ -61,6 +63,7 @@ export const storeToken = (token) => {
   }
 };
 
+// hàm xóa token
 export const removeStoredToken = () => {
   try {
     localStorage.removeItem(TOKEN_KEY);
@@ -69,6 +72,7 @@ export const removeStoredToken = () => {
   }
 };
 
+// hàm kiểm tra token hết hạn
 export const isTokenExpired = (token) => {
   if (!token) return true;
 
@@ -81,6 +85,7 @@ export const isTokenExpired = (token) => {
   return payload.exp <= nowInSeconds;
 };
 
+// hàm xóa auth đã lưu
 export const clearPersistedAuth = () => {
   removeStoredToken();
   try {
@@ -90,6 +95,7 @@ export const clearPersistedAuth = () => {
   }
 };
 
+// hàm lấy token hợp lệ
 export const getValidToken = () => {
   const token = getStoredToken();
   if (!token) {
@@ -105,13 +111,7 @@ export const getValidToken = () => {
 };
 
 /**
- * Hiển thị thông báo phiên đăng nhập hết hạn và redirect về trang login
- * @param {Object} options - Tùy chọn
- * @param {string} options.title - Tiêu đề thông báo (mặc định: "Phiên đăng nhập hết hạn")
- * @param {string} options.text - Nội dung thông báo (mặc định: "Vui lòng đăng nhập lại để tiếp tục.")
- * @param {string} options.confirmButtonText - Text của button (mặc định: "Đăng nhập")
- * @param {boolean} options.clearAuth - Có xóa auth data không (mặc định: true)
- * @returns {Promise} Promise từ Swal
+ * hiển thị thông báo phiên đăng nhập hết hạn và redirect về trang login
  */
 export const showSessionExpiredAlert = async (options = {}) => {
   const {
@@ -121,12 +121,12 @@ export const showSessionExpiredAlert = async (options = {}) => {
     clearAuth = true,
   } = options;
 
-  // Clear auth data if needed
+  // xóa auth data nếu cần
   if (clearAuth) {
     clearPersistedAuth();
   }
 
-  // Dynamic import Swal to avoid circular dependencies
+  // dynamic import Swal để tránh vòng lặp
   const Swal = (await import("sweetalert2")).default;
 
   return Swal.fire({
@@ -146,16 +146,15 @@ export const showSessionExpiredAlert = async (options = {}) => {
 };
 
 /**
- * Kiểm tra token và hiển thị thông báo nếu hết hạn
- * @returns {boolean} true nếu token hợp lệ, false nếu không
+ * kiểm tra token và hiển thị thông báo nếu hết hạn
  */
 export const checkTokenAndAlert = async () => {
   const token = getStoredToken();
-  
+
   if (!token || isTokenExpired(token)) {
     await showSessionExpiredAlert();
     return false;
   }
-  
+
   return true;
 };

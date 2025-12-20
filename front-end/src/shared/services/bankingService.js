@@ -1,7 +1,7 @@
 import axios from "axios";
 import { clearPersistedAuth, getValidToken } from "../utils/tokenManager";
 
-// Create axios instance for banking API calls
+// tạo instance axios cho banking API
 const apiClient = axios.create({
   timeout: 10000,
   headers: {
@@ -9,17 +9,15 @@ const apiClient = axios.create({
   },
 });
 
-// Add request interceptor to include auth token if available
+// thêm interceptor request để bao gồm token auth nếu có
 apiClient.interceptors.request.use(
   (config) => {
     const token = getValidToken();
-
     if (!token) {
       return Promise.reject(
         new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.")
       );
     }
-
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
     return config;
@@ -28,7 +26,7 @@ apiClient.interceptors.request.use(
     return Promise.reject(error);
   }
 );
-
+// thêm interceptor response để xử lý lỗi
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -42,7 +40,7 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Helper function to get bank short code from bank name
+// hàm lấy mã ngân hàng từ tên ngân hàng
 const getBankShortCode = (bankName) => {
   const bankCodes = {
     Vietcombank: "VCB",
@@ -69,8 +67,9 @@ const getBankShortCode = (bankName) => {
   return bankCodes[bankName] || bankName.substring(0, 3).toUpperCase();
 };
 
+// dịch vụ banking
 export const bankingService = {
-  // Get all bank accounts for a user
+  // lấy tất cả tài khoản ngân hàng cho một người dùng
   getBankAccounts: async (userID) => {
     try {
       const response = await apiClient.get(
@@ -81,7 +80,7 @@ export const bankingService = {
         : response.data
         ? [response.data]
         : [];
-      // Normalize account IDs to ensure consistency
+      // chuẩn hóa account IDs để đảm bảo tính nhất quán
       const normalizedAccounts = accounts.map((account) => ({
         ...account,
         bankAccountId: account.bankAccountId || account.accountID || account.id,
@@ -92,7 +91,6 @@ export const bankingService = {
         accounts: normalizedAccounts,
       };
     } catch (error) {
-      console.error("Error fetching bank accounts:", error);
       return {
         ok: false,
         reason:
@@ -102,7 +100,7 @@ export const bankingService = {
     }
   },
 
-  // Get a specific bank account
+  // lấy một tài khoản ngân hàng cụ thể
   getBankAccount: async (accountID) => {
     try {
       const response = await apiClient.get(
@@ -113,7 +111,6 @@ export const bankingService = {
         account: response.data,
       };
     } catch (error) {
-      console.error("Error fetching bank account:", error);
       return {
         ok: false,
         reason:
@@ -123,10 +120,9 @@ export const bankingService = {
     }
   },
 
-  // Create a new bank account
+  // tạo một tài khoản ngân hàng mới
   createBankAccount: async (accountData) => {
     try {
-      // Prepare data according to API schema
       const requestData = {
         userID: accountData.userID,
         bankName: accountData.bankName,
@@ -150,7 +146,6 @@ export const bankingService = {
         message: "Thêm tài khoản ngân hàng thành công",
       };
     } catch (error) {
-      console.error("Error creating bank account:", error);
       return {
         ok: false,
         reason:
@@ -159,10 +154,9 @@ export const bankingService = {
     }
   },
 
-  // Update a bank account
+  // cập nhật một tài khoản ngân hàng
   updateBankAccount: async (accountID, accountData) => {
     try {
-      // Prepare data according to API schema
       const requestData = {
         userID: accountData.userID,
         bankName: accountData.bankName,
@@ -186,7 +180,6 @@ export const bankingService = {
         message: "Cập nhật tài khoản ngân hàng thành công",
       };
     } catch (error) {
-      console.error("Error updating bank account:", error);
       return {
         ok: false,
         reason:
@@ -196,7 +189,7 @@ export const bankingService = {
     }
   },
 
-  // Delete a bank account
+  // Delete a b
   deleteBankAccount: async (accountID) => {
     try {
       await apiClient.delete(
@@ -216,7 +209,7 @@ export const bankingService = {
     }
   },
 
-  // Set default bank account
+  // Set default
   setDefaultBankAccount: async (accountID, userID) => {
     try {
       // First get all accounts to unset other defaults

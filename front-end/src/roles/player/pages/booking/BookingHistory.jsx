@@ -115,10 +115,8 @@ export default function BookingHistory({ user }) {
           stats,
           totalSingleBookings,
           totalPages,
-          startIndex,
           endIndex,
           pageSize,
-          resetFilters,
      } = useBookingFilters(bookings, groupedBookings, playerHistories);
 
      // Booking Payment Hook

@@ -5,7 +5,11 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ModalProvider } from "./contexts/ModalContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
-import { routeConfig, demoRoutes, LoadingFallback } from "./shared/config/routes";
+import {
+  routeConfig,
+  demoRoutes,
+  LoadingFallback,
+} from "./shared/config/routes";
 import RouteGuard from "./shared/components/RouteGuard";
 import MainLayout from "./shared/layouts/MainLayout";
 import OwnerLayout from "./roles/owner/layouts/OwnerLayout";
@@ -13,7 +17,7 @@ import AdminLayout from "./roles/admin/layouts/AdminLayout";
 import AuthLayout from "./shared/layouts/AuthLayout";
 import { getDefaultPathForRole } from "./shared/constants/roles";
 
-// Create a QueryClient instance
+// tạo một instance QueryClient
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -23,11 +27,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-/**
- * App Component - Refactored với route configuration
- * Code sạch hơn, dễ maintain và mở rộng
- */
 
 function AppContent() {
   const { user, isLoading, logout } = useAuth();
@@ -40,19 +39,26 @@ function AppContent() {
     );
   }
 
-  // Helper function to render route element
+  // hàm render route element
   const renderRouteElement = (route) => {
-    const { element: Element, layout, allowedRoles, requireAuth = true, public: isPublic = false, isDemo = false } = route;
+    const {
+      element: Element,
+      layout,
+      allowedRoles,
+      requireAuth = true,
+      public: isPublic = false,
+      isDemo = false,
+    } = route;
     const elementProps = isDemo ? { isDemo: true } : { user };
 
-    // Get layout component
+    // lấy component layout
     let LayoutComponent = null;
     if (layout === "MainLayout") LayoutComponent = MainLayout;
     else if (layout === "OwnerLayout") LayoutComponent = OwnerLayout;
     else if (layout === "AdminLayout") LayoutComponent = AdminLayout;
     else if (layout === "AuthLayout") LayoutComponent = AuthLayout;
 
-    // Render element with layout
+    // render element với layout
     const renderElement = () => {
       if (LayoutComponent) {
         if (layout === "AuthLayout") {
@@ -79,7 +85,7 @@ function AppContent() {
       );
     };
 
-    // Public routes
+    // routes public
     if (isPublic) {
       return user ? (
         <Navigate to={getDefaultPathForRole(user)} replace />
@@ -88,7 +94,7 @@ function AppContent() {
       );
     }
 
-    // Protected routes with RouteGuard
+    // Routes bảo vệ với RouteGuard
     return (
       <RouteGuard allowedRoles={allowedRoles} requireAuth={requireAuth}>
         {renderElement()}
@@ -99,7 +105,7 @@ function AppContent() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Auth Routes - Public, redirect if logged in */}
+        {/* routes auth */}
         <Route
           path="/auth"
           element={
@@ -131,7 +137,7 @@ function AppContent() {
           }
         />
 
-        {/* Main Routes from config */}
+        {/* routes chính từ config */}
         {routeConfig.map((route) => (
           <Route
             key={route.path}
@@ -140,7 +146,7 @@ function AppContent() {
           />
         ))}
 
-        {/* Demo Routes */}
+        {/* routes demo */}
         {demoRoutes.map((route) => (
           <Route
             key={route.path}
@@ -155,7 +161,7 @@ function AppContent() {
           />
         ))}
 
-        {/* Dashboard redirect based on role */}
+        {/* redirect dashboard dựa trên vai trò */}
         <Route
           path="/dashboard"
           element={
@@ -167,7 +173,7 @@ function AppContent() {
           }
         />
 
-        {/* Catch all route */}
+        {/* route catch all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
@@ -176,7 +182,7 @@ function AppContent() {
 
 function App() {
   const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-  
+
   return (
     <QueryClientProvider client={queryClient}>
       <GoogleOAuthProvider clientId={googleClientId}>

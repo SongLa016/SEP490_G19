@@ -1,7 +1,7 @@
 // Service for managing deposit policies
 import axios from "axios";
 
-// Create axios instance with base configuration
+// tạo instance axios với cấu hình base
 const apiClient = axios.create({
   timeout: 30000,
   headers: {
@@ -9,7 +9,7 @@ const apiClient = axios.create({
   },
 });
 
-// Add request interceptor to include auth token if available
+// thêm interceptor request để include token auth nếu có
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -23,7 +23,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Helper function to check token before API call
+// hàm kiểm tra token trước khi gọi API
 const checkToken = () => {
   const token = localStorage.getItem("token");
   if (!token) {
@@ -35,7 +35,7 @@ const checkToken = () => {
 const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
-// Helper function to handle API errors
+// hàm helper để xử lý lỗi API
 const handleApiError = (error) => {
   let errorMessage = "Có lỗi xảy ra khi gọi API";
 
@@ -51,7 +51,8 @@ const handleApiError = (error) => {
       errorMessage = `Lỗi ${status}: ${statusText}`;
     }
   } else if (error.request) {
-    errorMessage = "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
+    errorMessage =
+      "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
   } else {
     errorMessage = error.message || "Đã xảy ra lỗi không xác định.";
   }
@@ -60,14 +61,13 @@ const handleApiError = (error) => {
   throw new Error(errorMessage);
 };
 
-// API functions
+// hàm lấy tất cả các deposit policies
 export async function fetchDepositPolicies() {
   try {
     checkToken();
     const response = await apiClient.get(
       `${API_BASE_URL}/api/owner/deposit-policies`
     );
-    // Handle both array and single object responses
     const policies = Array.isArray(response.data)
       ? response.data
       : response.data
@@ -84,11 +84,11 @@ export async function fetchDepositPolicies() {
       createdAt: policy.createdAt,
     }));
   } catch (error) {
-    console.error("Error fetching deposit policies:", error);
     handleApiError(error);
   }
 }
 
+// hàm lấy deposit policy theo id
 export async function fetchDepositPolicy(policyId) {
   try {
     checkToken();
@@ -106,23 +106,21 @@ export async function fetchDepositPolicy(policyId) {
       createdAt: policy.createdAt,
     };
   } catch (error) {
-    console.error("Error fetching deposit policy:", error);
     handleApiError(error);
   }
 }
 
+// hàm lấy deposit policy theo fieldId
 export async function fetchDepositPolicyByField(fieldId) {
   try {
     checkToken();
     const fieldIdNum = Number(fieldId);
     if (!fieldIdNum || isNaN(fieldIdNum)) {
-      console.warn(`Invalid fieldId: ${fieldId}`);
       return null;
     }
     const response = await apiClient.get(
       `${API_BASE_URL}/api/public/field/${fieldIdNum}`
     );
-    // Handle both array and single object responses
     const policy = Array.isArray(response.data)
       ? response.data[0]
       : response.data;
@@ -142,18 +140,14 @@ export async function fetchDepositPolicyByField(fieldId) {
     };
     return normalizedPolicy;
   } catch (error) {
-    console.error("Error fetching deposit policy by field:", error);
-    // Return null if not found (404), otherwise log and return null
     if (error.response?.status === 404) {
-      console.log(`Deposit policy not found for fieldId: ${fieldId} (404)`);
       return null;
     }
-    // For other errors, log but don't throw - return null to allow page to continue
-    console.warn(`Failed to fetch deposit policy for fieldId ${fieldId}:`, error.message);
     return null;
   }
 }
 
+// hàm tạo deposit policy
 export async function createDepositPolicy(policyData) {
   try {
     checkToken();
@@ -163,7 +157,6 @@ export async function createDepositPolicy(policyData) {
     formData.append("MinDeposit", policyData.minDeposit ?? 0);
     formData.append("MaxDeposit", policyData.maxDeposit ?? 0);
 
-    console.log("Creating deposit policy with FormData");
     const response = await apiClient.post(
       `${API_BASE_URL}/api/owner/deposit-policies`,
       formData,
@@ -175,12 +168,11 @@ export async function createDepositPolicy(policyData) {
     );
     return response.data;
   } catch (error) {
-    console.error("Error creating deposit policy:", error);
-    console.error("Response data:", error.response?.data);
     handleApiError(error);
   }
 }
 
+// hàm cập nhật deposit policy
 export async function updateDepositPolicy(policyId, policyData) {
   try {
     checkToken();
@@ -192,7 +184,6 @@ export async function updateDepositPolicy(policyId, policyData) {
     formData.append("MaxDeposit", policyData.maxDeposit ?? 0);
     formData.append("CreatedAt", policyData.createdAt || "");
 
-    console.log("Updating deposit policy with FormData");
     const response = await apiClient.put(
       `${API_BASE_URL}/api/owner/deposit-policies/${policyId}`,
       formData,
@@ -204,12 +195,11 @@ export async function updateDepositPolicy(policyId, policyData) {
     );
     return response.data;
   } catch (error) {
-    console.error("Error updating deposit policy:", error);
-    console.error("Response data:", error.response?.data);
     handleApiError(error);
   }
 }
 
+// hàm xóa deposit policy
 export async function deleteDepositPolicy(policyId, fieldId) {
   try {
     checkToken();
@@ -218,8 +208,6 @@ export async function deleteDepositPolicy(policyId, fieldId) {
     );
     return response.data;
   } catch (error) {
-    console.error("Error deleting deposit policy:", error);
     handleApiError(error);
   }
 }
-

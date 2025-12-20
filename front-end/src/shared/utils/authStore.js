@@ -345,7 +345,7 @@ export function hasAnyRole(user, roles) {
 export function isActiveUser(user) {
   return user && user.status === "active";
 }
-
+// hàm kiểm tra quyền truy cập
 export function canAccessFeature(user, feature) {
   if (!user) return false;
 

@@ -1,8 +1,4 @@
-/**
- * Role Constants - Single source of truth for role management
- * Tập trung tất cả logic về roles tại đây để dễ quản lý và bảo trì
- */
-
+// danh sach vai tro
 export const ROLES = {
   PLAYER: {
     id: 1,
@@ -30,13 +26,17 @@ export const ROLES = {
   },
 };
 
-// Role mapping utilities
+// mapping vai tro
 export const getRoleById = (roleId) => {
-  return Object.values(ROLES).find((role) => role.id === roleId) || ROLES.PLAYER;
+  return (
+    Object.values(ROLES).find((role) => role.id === roleId) || ROLES.PLAYER
+  );
 };
 
 export const getRoleByName = (roleName) => {
-  return Object.values(ROLES).find((role) => role.name === roleName) || ROLES.PLAYER;
+  return (
+    Object.values(ROLES).find((role) => role.name === roleName) || ROLES.PLAYER
+  );
 };
 
 export const getRoleDisplayName = (roleId) => {
@@ -61,7 +61,9 @@ export const getAllRoles = () => {
 
 // Role checking helpers
 export const isPlayer = (user) => {
-  return user?.roleName === ROLES.PLAYER.name || user?.roleID === ROLES.PLAYER.id;
+  return (
+    user?.roleName === ROLES.PLAYER.name || user?.roleID === ROLES.PLAYER.id
+  );
 };
 
 export const isOwner = (user) => {
@@ -74,7 +76,9 @@ export const isAdmin = (user) => {
 
 export const hasRole = (user, roleName) => {
   if (!user) return false;
-  return user.roleName === roleName || getRoleByName(roleName)?.id === user.roleID;
+  return (
+    user.roleName === roleName || getRoleByName(roleName)?.id === user.roleID
+  );
 };
 
 export const hasAnyRole = (user, roleNames) => {
@@ -82,10 +86,9 @@ export const hasAnyRole = (user, roleNames) => {
   return roleNames.some((roleName) => hasRole(user, roleName));
 };
 
-// Get user's default redirect path based on role
+// lay duong dan mac dinh de chuyen huong
 export const getDefaultPathForRole = (user) => {
   if (!user) return "/auth";
   const role = getRoleByName(user.roleName);
   return role?.path || "/dashboard";
 };
-

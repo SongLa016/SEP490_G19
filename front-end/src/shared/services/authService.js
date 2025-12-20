@@ -1,22 +1,20 @@
-// Authentication service for API integration
+//xác thực API
 import axios from "axios";
 import { roleMapping } from "../utils/roleMapping";
 
-// Helper function to safely decode UTF-8 strings
-// Handles cases where backend might URL-encode or double-encode UTF-8 characters
+// hàm lấy dữ liệu từ API
 function safeDecodeUTF8(str) {
   if (!str || typeof str !== "string") return str;
   try {
-    // Check if string contains URL-encoded characters
+    // kiểm tra xem string có chứa URL-encoded characters không
     if (str.includes("%")) {
       try {
-        // Try to decode URL-encoded string
+        // thử giải mã URL-encoded string
         const decoded = decodeURIComponent(str);
-        // Check if decoded string contains valid UTF-8 characters
+        // kiểm tra xem decoded string có chứa valid UTF-8 characters không
         return decoded;
       } catch (e) {
-        // If decodeURIComponent fails, might be double-encoded
-        // Try decoding twice
+        // nếu decodeURIComponent không thành công, có thể là double-encoded => thử giải mã twice
         try {
           return decodeURIComponent(decodeURIComponent(str));
         } catch (e2) {
@@ -25,14 +23,12 @@ function safeDecodeUTF8(str) {
         }
       }
     }
-    // If string contains mojibake patterns (common encoding errors), try to fix
-    // Example: "Nguyá»…n" should be "Nguyễn"
+    // kiểm tra xem string có chứa mojibake patterns (common encoding errors), thử fix
     if (str.includes("á»") || str.includes("Æ")) {
-      // This might be a backend encoding issue, return as is for now
-      // Backend should fix encoding, but we log it
+      // có thể là vấn đề encoding backend, trả về như là
       console.warn("Potential encoding issue detected in string:", str);
     }
-    // If it's already a valid UTF-8 string, return as is
+    // nếu là valid UTF-8 string, trả về như là
     return str;
   } catch (e) {
     // If decoding fails, return original string
@@ -41,23 +37,20 @@ function safeDecodeUTF8(str) {
   }
 }
 
-// Create axios instance with base configuration
+// tạo instance axios với cấu hình cơ bản
 const apiClient = axios.create({
-  timeout: 15000, // 15 seconds timeout
+  timeout: 15000, // 15 giây timeout
   headers: {
     "Content-Type": "application/json; charset=utf-8",
   },
 });
 
-// Helper function to handle API errors
+// hàm xử lý lỗi API
 const handleApiError = (error) => {
   let errorMessage = "Có lỗi xảy ra khi gọi API";
 
   if (error.response) {
-    // Server responded with error status
     const { status, statusText, data } = error.response;
-
-    // Handle specific status codes
     if (status === 404) {
       errorMessage =
         "API endpoint không tồn tại. Vui lòng kiểm tra đường dẫn API.";
@@ -72,8 +65,6 @@ const handleApiError = (error) => {
     } else if (status === 409) {
       errorMessage = "Thông tin đã tồn tại trong hệ thống.";
     }
-
-    // Try to get error message from response data
     if (data && (data.message || data.error || data.detail)) {
       errorMessage = data.message || data.error || data.detail || errorMessage;
     } else {
@@ -88,36 +79,27 @@ const handleApiError = (error) => {
       responseData: data,
     });
   } else if (error.request) {
-    // Request was made but no response received
     errorMessage =
       "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet.";
-    console.error("Network Error:", {
-      url: error.config?.url,
-      errorMessage: errorMessage,
-    });
   } else {
-    // Something else happened
     errorMessage = error.message || errorMessage;
-    console.error("Request Error:", error);
   }
 
   throw new Error(errorMessage);
 };
 
 export const authService = {
-  // Register user and send OTP
+  // đăng ký người dùng và gửi OTP
   async registerUser(userData) {
     try {
       const formData = new FormData();
-
-      // Add all required fields
       formData.append("Email", userData.email || "");
       formData.append("FullName", userData.fullName || "");
       formData.append("RoleName", userData.roleName || "Player");
       formData.append("Password", userData.password || "");
       formData.append("Phone", userData.phone || "");
 
-      // Add avatar if provided
+      // thêm avatar
       if (userData.avatar) {
         formData.append("Avatar", userData.avatar);
       }
@@ -147,7 +129,7 @@ export const authService = {
     }
   },
 
-  // Verify OTP
+  // xác thực OTP
   async verifyOtp(email, otp) {
     try {
       const response = await apiClient.post(
@@ -172,21 +154,19 @@ export const authService = {
     }
   },
 
-  // Get user role from database when JWT doesn't contain role info
+  // lấy vai trò người dùng từ database khi JWT không chứa thông tin vai trò
   async getUserRoleFromDatabase(userID) {
     try {
-      // Call API to get user role information
       const response = await apiClient.get(
         `https://sep490-g19-zxph.onrender.com/api/Users/get-role/${userID}`
       );
       return response.data;
     } catch (error) {
-      console.error("❌ Error fetching role from database:", error);
       return null;
     }
   },
 
-  // Login user
+  // đăng nhập người dùng
   async loginUser(credentials) {
     try {
       const response = await apiClient.post(
@@ -196,12 +176,9 @@ export const authService = {
           password: credentials.password,
         }
       );
-      // Decode JWT token to get user info
+      // giải mã JWT token để lấy thông tin người dùng
       const token = response.data.token || response.data.accessToken;
-
-      // If API trả về 200 nhưng không có token (ví dụ sai mật khẩu), coi như thất bại
       if (!token) {
-        // Backend đôi khi trả message thành công nhưng thiếu token => xem như sai thông tin đăng nhập
         return {
           ok: false,
           reason: "Số điện thoại hoặc mật khẩu không đúng",
@@ -212,34 +189,20 @@ export const authService = {
 
       if (token) {
         try {
-          // Decode JWT payload (without verification for now)
+          // giải mã JWT payload (không xác thực cho bây giờ)
           const payload = JSON.parse(atob(token.split(".")[1]));
-          // Extract role information from JWT token (backend format)
           let roleID, roleName;
 
           // Backend uses "Role" field instead of "RoleID" and "RoleName"
           if (payload.Role) {
-            // Map role name to role ID
+            // ánh xạ tên  vai trò thành ID
             roleID = roleMapping.getRoleID(payload.Role);
             roleName = payload.Role;
-            console.log(
-              "🔍 Role from token (backend format):",
-              payload.Role,
-              "→ RoleID:",
-              roleID
-            );
           } else if (payload.RoleID && payload.RoleName) {
-            // Fallback for old format
+            // fallback cho format cũ
             roleID = payload.RoleID;
             roleName = payload.RoleName;
-            console.log(
-              "🔍 Role from token (old format):",
-              payload.RoleID,
-              "→",
-              payload.RoleName
-            );
           } else {
-            console.warn("⚠️ No role information found in token");
             roleID = 1;
             roleName = "Player";
           }
@@ -439,12 +402,9 @@ export const authService = {
   },
 };
 
-// Validation helpers
-
-// Regex số điện thoại Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08, 09)
 export const VIETNAM_PHONE_REGEX = /^(03|05|07|08|09)[0-9]{8}$/;
 
-// Validate mật khẩu mạnh: 8-64 ký tự, 1 chữ hoa, 1 chữ thường, 1 số
+// kiểm tra mật khẩu mạnh: 8-64 ký tự, 1 chữ hoa, 1 chữ thường, 1 số
 export const validateStrongPassword = (password) => {
   const errors = [];
   if (!password || password.length < 8) {
@@ -476,7 +436,10 @@ export const validateVietnamPhone = (phone) => {
     return { isValid: false, message: "Vui lòng nhập số điện thoại" };
   }
   if (!VIETNAM_PHONE_REGEX.test(cleanPhone)) {
-    return { isValid: false, message: "SĐT phải 10 số, bắt đầu bằng 03/05/07/08/09" };
+    return {
+      isValid: false,
+      message: "SĐT phải 10 số, bắt đầu bằng 03/05/07/08/09",
+    };
   }
   return { isValid: true, message: "" };
 };
@@ -514,7 +477,7 @@ export const validateRegistrationData = (data) => {
   };
 };
 
-// Format registration data for API
+// định dạng dữ liệu đăng ký cho API
 export const formatRegistrationData = (formData) => {
   return {
     email: formData.email?.trim(),

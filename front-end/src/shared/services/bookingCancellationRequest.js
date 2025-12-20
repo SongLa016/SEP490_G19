@@ -1,4 +1,4 @@
-// Service for managing booking cancellation requests
+// dịch vụ quản lý yêu cầu hủy booking
 import axios from "axios";
 
 const apiClient = axios.create({
@@ -8,7 +8,7 @@ const apiClient = axios.create({
   },
 });
 
-// Add request interceptor to include auth token
+// thêm interceptor request để bao gồm token auth
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -20,9 +20,9 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// hàm xử lý lỗi API
 const handleApiError = (error) => {
   let errorMessage = "Có lỗi xảy ra khi gọi API";
-
   if (error.response) {
     const { status, statusText, data } = error.response;
     if (status === 401) {
@@ -48,9 +48,10 @@ const handleApiError = (error) => {
   throw new Error(errorMessage);
 };
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "https://sep490-g19-zxph.onrender.com";
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL || "https://sep490-g19-zxph.onrender.com";
 
-// Normalize response data
+// chuẩn hóa dữ liệu response
 const normalizeRequest = (data) => ({
   id: data.id || data.Id || data.ID,
   bookingId: data.bookingId || data.BookingId || data.bookingID,
@@ -63,7 +64,7 @@ const normalizeRequest = (data) => ({
   ...data,
 });
 
-// GET /api/BookingCancellationRe/owner/cancellations - Lấy danh sách yêu cầu hủy của owner
+// lấy danh sách yêu cầu hủy của owner
 export async function fetchOwnerCancellationRequests() {
   try {
     const response = await apiClient.get(
@@ -76,7 +77,7 @@ export async function fetchOwnerCancellationRequests() {
   }
 }
 
-// GET /api/BookingCancellationRe/{id} - Lấy chi tiết yêu cầu hủy theo ID
+// lấy chi tiết yêu cầu hủy theo ID
 export async function fetchCancellationRequestById(id) {
   try {
     const response = await apiClient.get(
@@ -91,7 +92,7 @@ export async function fetchCancellationRequestById(id) {
   }
 }
 
-// POST /api/BookingCancellationRe - Tạo yêu cầu hủy booking mới
+// tạo yêu cầu hủy booking mới
 export async function createCancellationRequest(requestData) {
   try {
     const response = await apiClient.post(
@@ -104,7 +105,7 @@ export async function createCancellationRequest(requestData) {
   }
 }
 
-// PUT /api/BookingCancellationRe/confirm/{id} - Xác nhận yêu cầu hủy
+// xác nhận yêu cầu hủy
 export async function confirmCancellationRequest(id) {
   try {
     const response = await apiClient.put(
@@ -116,7 +117,7 @@ export async function confirmCancellationRequest(id) {
   }
 }
 
-// DELETE /api/BookingCancellationRe/{id} - Xóa/từ chối yêu cầu hủy
+// xóa/từ chối yêu cầu hủy
 export async function deleteCancellationRequest(id) {
   try {
     const response = await apiClient.delete(

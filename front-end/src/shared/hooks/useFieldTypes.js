@@ -1,10 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchFieldTypes, fetchFieldTypeById } from "../services/fieldTypes";
 
-/**
- * Custom hook to fetch and cache all field types
- * @param {boolean} enabled - Whether to enable the query
- */
+// lấy danh sách loại sân
 export function useFieldTypes(enabled = true) {
   return useQuery({
     queryKey: ["fieldTypes"],
@@ -16,18 +13,14 @@ export function useFieldTypes(enabled = true) {
       return result.data || [];
     },
     enabled,
-    staleTime: 10 * 60 * 1000, // Cache for 10 minutes (field types rarely change)
-    cacheTime: 30 * 60 * 1000, // Keep in cache for 30 minutes
+    staleTime: 10 * 60 * 1000,
+    cacheTime: 30 * 60 * 1000,
     retry: 1,
     refetchOnWindowFocus: false,
   });
 }
 
-/**
- * Custom hook to fetch and cache field type by ID
- * @param {number|string} typeId - The field type ID
- * @param {boolean} enabled - Whether to enable the query
- */
+// lấy loại sân theo ID
 export function useFieldTypeById(typeId, enabled = true) {
   return useQuery({
     queryKey: ["fieldType", typeId],

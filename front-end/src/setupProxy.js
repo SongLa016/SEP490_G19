@@ -1,15 +1,15 @@
 const { createProxyMiddleware } = require("http-proxy-middleware");
-
+// hàm setup proxy
 module.exports = function (app) {
   app.use(
     "/api",
+    // proxy đến API backend
     createProxyMiddleware({
       target: "https://sep490-g19-zxph.onrender.com",
       changeOrigin: true,
       secure: true,
       logLevel: "debug",
-      onProxyReq: (proxyReq, req, res) => {
-      },
+      onProxyReq: (proxyReq, req, res) => {},
       onError: (err, req, res) => {
         console.error("Proxy error:", err);
       },

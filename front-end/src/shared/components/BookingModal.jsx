@@ -1885,7 +1885,18 @@ export default function BookingModal({
      // hủy đặt sân trong quá trình thanh toán
      const handleCancelBookingDuringPayment = async () => {
           if (isProcessing) return;
-          // Hiển thị dialog nhập lý do hủy
+
+          // Nếu là đặt cố định, chỉ đóng modal mà không hiện dialog lý do
+          if (isRecurring) {
+               setPaymentLockExpiresAt(null);
+               setLockRemainingMs(0);
+               setBookingInfo(null);
+               setStep("details");
+               onClose?.();
+               return;
+          }
+
+          // Hiển thị dialog nhập lý do hủy (chỉ cho đặt lẻ)
           const { value: reason, isConfirmed } = await Swal.fire({
                title: 'Xác nhận hủy đặt sân',
                input: 'textarea',

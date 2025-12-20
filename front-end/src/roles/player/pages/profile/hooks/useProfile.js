@@ -11,7 +11,7 @@ export const useProfile = (userId) => {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
-
+  // lay thong tin profile
   const loadProfile = async () => {
     if (!userId) return;
 
@@ -27,23 +27,18 @@ export const useProfile = (userId) => {
     }
   };
 
- 
+  // luu thong tin profile
   const saveProfile = async (profileData) => {
     if (!userId) return;
-
     try {
       setSaving(true);
       setError(null);
-
-     
       const validation = validateProfileData(profileData);
       if (!validation.isValid) {
         throw new Error(JSON.stringify(validation.errors));
       }
 
       const formattedData = formatProfileForAPI(profileData);
-
-  
       const savedProfile = await profileService.updateProfile(
         userId,
         formattedData
@@ -59,7 +54,7 @@ export const useProfile = (userId) => {
     }
   };
 
-
+  // upload avatar
   const uploadAvatar = async (file) => {
     if (!userId || !file) return;
 
@@ -69,7 +64,6 @@ export const useProfile = (userId) => {
 
       const result = await profileService.uploadAvatar(userId, file);
 
-   
       setProfile((prev) => ({
         ...prev,
         avatar: result.avatarUrl,
@@ -83,7 +77,6 @@ export const useProfile = (userId) => {
       setSaving(false);
     }
   };
-
 
   useEffect(() => {
     loadProfile();
@@ -100,6 +93,7 @@ export const useProfile = (userId) => {
   };
 };
 
+// lay thong tin thong ke profile
 export const useProfileStats = (userId) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -132,6 +126,7 @@ export const useProfileStats = (userId) => {
   };
 };
 
+// lay thong tin cai dat profile
 export const useProfileSettings = (userId) => {
   const [settings, setSettings] = useState({
     notifications: {
@@ -151,13 +146,14 @@ export const useProfileSettings = (userId) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  // lay thong tin cai dat profile
   const loadSettings = async () => {
     if (!userId) return;
 
     try {
       setLoading(true);
       setError(null);
-   
+
       const settingsData = await profileService.getSettings(userId);
       setSettings(settingsData);
     } catch (err) {
@@ -167,6 +163,7 @@ export const useProfileSettings = (userId) => {
     }
   };
 
+  // luu thong tin cai dat profile
   const saveSettings = async (newSettings) => {
     if (!userId) return;
 

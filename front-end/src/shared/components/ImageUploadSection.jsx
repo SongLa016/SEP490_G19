@@ -264,7 +264,7 @@ export default function ImageUploadSection({
                          disabled={disabled}
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                         Ảnh chính sẽ được hiển thị làm thumbnail và background. Tối đa 5MB (JPG/PNG).
+                         Ảnh chính sẽ được hiển thị làm ảnh đại diện và hình nền. Tối đa 5MB (JPG/PNG).
                     </p>
                </div>
 

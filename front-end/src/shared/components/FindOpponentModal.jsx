@@ -119,8 +119,8 @@ export default function FindOpponentModal({
                newErrors.note = "Vui lòng nhập ghi chú";
           } else if (trimmedNote.length < 10) {
                newErrors.note = "Ghi chú phải có ít nhất 10 ký tự";
-          } else if (trimmedNote.length > 500) {
-               newErrors.note = "Ghi chú không được quá 500 ký tự";
+          } else if (trimmedNote.length > 100) {
+               newErrors.note = "Ghi chú không được quá 100 ký tự";
           }
           const numPlayerCount = Number(playerCount);
           if (!playerCount || isNaN(numPlayerCount)) {

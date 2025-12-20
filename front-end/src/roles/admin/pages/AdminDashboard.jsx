@@ -35,7 +35,7 @@ export default function AdminDashboard() {
           loadStatistics();
      }, []);
 
-     // Helper function để extract số từ API response
+     // hàm lấy số từ API response
      const extractNumber = (data, ...keys) => {
           if (!data) return 0;
           for (const key of keys) {

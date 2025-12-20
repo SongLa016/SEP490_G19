@@ -1,35 +1,25 @@
 import { MapPin, AlertTriangle, ShieldCheck } from "lucide-react";
 import { Button } from "../../../../../shared/components/ui";
 
-/**
- * Component hiển thị bước thanh toán trong modal đặt sân
- * Trang: Modal đặt sân (BookingModal)
- * Vị trí: Bước 2 - Thanh toán (sau khi nhập thông tin liên hệ)
- * 
- * Chức năng:
- * - Hiển thị mã QR thanh toán
- * - Hiển thị thông tin tài khoản ngân hàng chủ sân
- * - Hiển thị tóm tắt đặt sân và chi phí
- * - Nút "Hoàn tất đặt sân" và "Hủy đặt sân"
- */
+// component hiển thị bước thanh toán trong modal đặt sân
 export default function PaymentStepSection({
-     bookingInfo,              // Thông tin booking đã tạo (bookingId, qrCodeUrl, qrExpiresAt)
-     ownerBankAccount,         // Thông tin tài khoản ngân hàng chủ sân
-     bookingData,              // Dữ liệu booking hiện tại
-     isRecurring,              // Có phải đặt sân cố định không
-     recurringWeeks,           // Số tuần đặt cố định
-     selectedDays,             // Các ngày trong tuần đã chọn
-     selectedSlotsByDay,       // Map dayOfWeek -> slotId đã chọn
-     isProcessing,             // Đang xử lý thanh toán
-     formatPrice,              // Hàm format giá tiền
-     errors = {},              // Lỗi validation
-     onConfirmPayment,         // Xử lý khi nhấn nút "Hoàn tất đặt sân"
-     onCancelBooking = () => { },  // Xử lý khi nhấn nút "Hủy đặt sân"
-     isPaymentLocked = false,  // QR đang hoạt động, không cho thoát
-     lockCountdownSeconds = 0, // Thời gian còn lại của QR
-     startDate,                // Ngày bắt đầu gói cố định
-     endDate,                  // Ngày kết thúc gói cố định
-     fieldSchedules = []       // Danh sách schedule của sân
+     bookingInfo,
+     ownerBankAccount,
+     bookingData,
+     isRecurring,
+     recurringWeeks,
+     selectedDays,
+     selectedSlotsByDay,
+     isProcessing,
+     formatPrice,
+     errors = {},
+     onConfirmPayment,
+     onCancelBooking = () => { },
+     isPaymentLocked = false,
+     lockCountdownSeconds = 0,
+     startDate,
+     endDate,
+     fieldSchedules = []
 }) {
      const fallbackAccount = ownerBankAccount || {
           bankName: bookingData.bankName,
@@ -38,17 +28,11 @@ export default function PaymentStepSection({
           accountHolder: bookingData.accountHolder || bookingData.ownerName
      };
      const hasBankInfo = !!(fallbackAccount?.bankName || fallbackAccount?.accountNumber || fallbackAccount?.accountHolder);
-
-     // Với đặt sân cố định (isRecurring = true), không dùng logic cọc/giảm giá – chỉ thanh toán toàn bộ tổng giá
      const isRecurringPackage = !!isRecurring;
      const rawDepositAmount = bookingData.depositAmount || bookingInfo?.depositAmount || 0;
      const depositAmount = isRecurringPackage ? 0 : rawDepositAmount;
      const depositAvailable = !isRecurringPackage && depositAmount > 0;
-     /**
-      * Format thời gian đếm ngược QR (mm:ss)
-      * @param {number} seconds - Số giây còn lại
-      * @returns {string} Chuỗi thời gian format "mm:ss"
-      */
+     // dem nguoc
      const formatCountdown = (seconds) => {
           const safeSeconds = Math.max(0, seconds || 0);
           const minutes = Math.floor(safeSeconds / 60);
@@ -56,11 +40,7 @@ export default function PaymentStepSection({
           return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
      };
 
-     /**
-      * Format thời lượng đặt sân (VD: 1h30 phút)
-      * @param {number} hours - Số giờ
-      * @returns {string} Chuỗi thời lượng đã format
-      */
+     // format thoi luong dat san
      const formatDurationLabel = (hours) => {
           if (hours == null) return "—";
           const numericHours = Number(hours);
@@ -75,11 +55,7 @@ export default function PaymentStepSection({
           if (minutes > 0) return `${minutes} phút`;
           return "—";
      };
-     /**
-      * Tạo danh sách buổi định kỳ (local) từ startDate + endDate + selectedDays + selectedSlotsByDay
-      * CHỈ đếm những ngày thực sự có schedule trong fieldSchedules
-      * @returns {Array} Danh sách các buổi { date, dayOfWeek, slotId }
-      */
+     // tao danh sach buoi dinh ky
      const generateRecurringSessionsLocal = () => {
           if (!isRecurringPackage || !startDate || !endDate || !Array.isArray(selectedDays) || selectedDays.length === 0) {
                return [];
@@ -117,7 +93,7 @@ export default function PaymentStepSection({
                          }
                     });
                }
-
+               // them buoi dinh ky
                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                     const weekday = d.getDay(); // 0=CN..6=T7
                     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -126,6 +102,7 @@ export default function PaymentStepSection({
                     if (selectedDays.includes(weekday) && scheduleDatesSet.has(dateStr)) {
                          const selectedSlotId = selectedSlotsByDay?.[weekday];
                          if (selectedSlotId) {
+                              // them buoi dinh ky
                               sessions.push({
                                    date: new Date(d),
                                    dayOfWeek: weekday,
@@ -142,21 +119,14 @@ export default function PaymentStepSection({
 
      const recurringSessions = generateRecurringSessionsLocal();
 
-     console.log("📊 [PAYMENT SECTION] recurringSessions count:", recurringSessions.length, "bookingData.totalSessions:", bookingData.totalSessions);
-
-     // Số buổi thực tế: với gói cố định ưu tiên theo sessions local, fallback bookingData
+     // Số buổi thực tế: với gói cố định ưu tiên theo
      const totalSessions = isRecurringPackage
           ? (recurringSessions.length || bookingData.totalSessions || 0)
           : (bookingData.totalSessions || 1);
 
-     /**
-      * Lấy giá theo slotId từ TimeSlots (ưu tiên) hoặc schedule
-      * @param {string|number} slotId - ID của slot cần lấy giá
-      * @returns {number} Giá của slot
-      */
+     // lay gia theo slotId tu TimeSlots (uu tien) hoac schedule
      const getSlotPrice = (slotId) => {
           if (!slotId) return bookingData.price || 0;
-
           if (Array.isArray(bookingData?.fieldTimeSlots) && bookingData.fieldTimeSlots.length > 0) {
                const timeSlot = bookingData.fieldTimeSlots.find((s) =>
                     String(s.slotId || s.SlotId || s.slotID || s.SlotID) === String(slotId)
@@ -190,10 +160,7 @@ export default function PaymentStepSection({
           return bookingData.price || 0;
      };
 
-     /**
-      * Tính min/max giá từ các slot đã chọn để hiển thị khoảng giá (VD: 250k - 300k)
-      * @returns {Object} { minPrice, maxPrice, hasMultiplePrices }
-      */
+     // tinh min/max gia tu cac slot da chon de hien thi khoang gia
      const getRecurringPriceStats = () => {
           if (!isRecurringPackage || !selectedSlotsByDay || Object.keys(selectedSlotsByDay).length === 0) {
                const base = bookingData.price || 0;
@@ -233,11 +200,10 @@ export default function PaymentStepSection({
           hasMultiplePrices
      } = getRecurringPriceStats();
 
-     // Giá đại diện để hiển thị khi không phải gói cố định hoặc tất cả slot cùng giá
+     // gia dien dai dien de hien thi khi khong phai goi co dinh hoac tat ca slot cung gia
      const slotPrice = isRecurringPackage ? (minPrice || bookingData.price || 0) : (bookingData.price || 0);
 
-     // Tổng tiền gói cố định: ưu tiên dùng totalPrice từ backend (đã tính từ pattern 1 tuần x4)
-     // Nếu không có, tính từ tất cả sessions (fallback)
+     // tong tien goi co dinh
      const recurringTotal = isRecurringPackage
           ? (bookingData.totalPrice || bookingInfo?.totalPrice || (() => {
                if (recurringSessions.length === 0) return 0;
@@ -262,7 +228,9 @@ export default function PaymentStepSection({
                     {isPaymentLocked && (
                          <div className="p-3 border border-amber-200 bg-amber-50 rounded-2xl text-xs text-amber-800">
                               <p className="font-semibold">QR thanh toán đang hoạt động</p>
-                              <p>Vui lòng giữ cửa sổ mở trong <span className="font-semibold text-blue-600">{formatCountdown(lockCountdownSeconds)}</span> hoặc sử dụng nút <span className="font-semibold text-red-600 underline">Hủy đặt sân</span> nếu muốn thoát.</p>
+                              <p>Vui lòng giữ cửa sổ mở trong <span className="font-semibold text-blue-600">{formatCountdown(lockCountdownSeconds)}</span>
+                                   {/* hoặc sử dụng nút <span className="font-semibold text-red-600 underline">Hủy đặt sân</span> nếu muốn thoát. */}
+                              </p>
                          </div>
                     )}
                     <div className="p-4 border border-teal-400 rounded-2xl bg-white shadow-sm space-y-2">
@@ -503,7 +471,7 @@ export default function PaymentStepSection({
                          >
                               {isProcessing ? "Đang xử lý..." : "Hoàn tất đặt sân"}
                          </Button>
-                         <Button
+                         {/* <Button
                               type="button"
                               variant="destructive"
                               disabled={isProcessing}
@@ -511,7 +479,7 @@ export default function PaymentStepSection({
                               className="w-full py-3 rounded-2xl font-semibold"
                          >
                               Hủy đặt sân
-                         </Button>
+                         </Button> */}
                     </div>
                </div>
           </div>

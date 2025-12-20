@@ -5,7 +5,7 @@ import { getStoredToken, isTokenExpired } from "../utils/tokenManager";
 const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
-// Create axios instance with base configuration
+// tạo instance axios với cấu hình base
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 60000,
@@ -14,7 +14,7 @@ const apiClient = axios.create({
   },
 });
 
-// Add request interceptor to include auth token if available
+// thêm interceptor request để include token auth nếu có
 apiClient.interceptors.request.use(
   (config) => {
     const token = getStoredToken();
@@ -32,44 +32,31 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle 401/403 errors
+// thêm interceptor response để xử lý lỗi 401/403
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
       const { status } = error.response;
       if (status === 401) {
-        // Token expired or invalid
-        console.warn("Token expired or invalid, clearing auth");
+        // token hết hạn hoặc không hợp lệ
         localStorage.removeItem("token");
         localStorage.removeItem("user");
-        // Optionally redirect to login
-        if (window.location.pathname !== "/login") {
-          // window.location.href = "/login";
-        }
       } else if (status === 403) {
         // Forbidden - user doesn't have permission
-        console.warn("Access forbidden - insufficient permissions");
       }
     }
     return Promise.reject(error);
   }
 );
 
-// Helper function to handle API errors
+// hàm helper để xử lý lỗi API
 const handleApiError = (error) => {
   let errorMessage = "Có lỗi xảy ra khi gọi API";
   let details = "";
 
   if (error.response) {
     const { status, statusText, data } = error.response;
-    console.error("[handleApiError] API Error Response:", {
-      status,
-      statusText,
-      data,
-      headers: error.response.headers,
-    });
-
     if (status === 401) {
       errorMessage = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
     } else if (status === 403) {
@@ -77,7 +64,6 @@ const handleApiError = (error) => {
     } else if (status === 404) {
       errorMessage = "API endpoint không tồn tại.";
     } else if (status === 400) {
-      // Bad request - show validation errors
       if (data && data.errors) {
         const errorMessages = Object.values(data.errors).flat().join(", ");
         errorMessage = `Dữ liệu không hợp lệ: ${errorMessages}`;
@@ -87,7 +73,6 @@ const handleApiError = (error) => {
         errorMessage = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.";
       }
     } else if (status === 500) {
-      // Server error - show more details if available
       if (data && data.message) {
         errorMessage = `Lỗi máy chủ: ${data.message}`;
       } else if (data && data.error) {
@@ -133,10 +118,9 @@ const handleApiError = (error) => {
   throw fullError;
 };
 
+// hàm chuẩn hóa comment
 function normalizeComment(comment) {
   if (!comment) return null;
-
-  // Normalize author information
   let author = null;
   if (comment.author) {
     author = {
@@ -188,7 +172,11 @@ function normalizeComment(comment) {
     commentId: comment.id || comment.commentId || comment.CommentID,
     postId: comment.postId || comment.postID || comment.PostID,
     userId: comment.userId || comment.userID || comment.UserID || author?.id,
-    userName: comment.userName || comment.UserName || comment.username || comment.Username,
+    userName:
+      comment.userName ||
+      comment.UserName ||
+      comment.username ||
+      comment.Username,
     fullName: comment.fullName || comment.FullName,
     parentCommentId:
       comment.parentCommentId ||
@@ -208,14 +196,7 @@ function normalizeComment(comment) {
 
 // ========== COMMENT API FUNCTIONS ==========
 
-/**
- * POST /api/Comment - Create a new comment
- * @param {Object} commentData - Comment data
- * @param {number} commentData.postId - Post ID
- * @param {number} commentData.parentCommentId - Parent comment ID (optional, only for replies)
- * @param {string} commentData.content - Comment content
- * @returns {Promise<Object>} Created comment
- */
+// tạo comment mới
 export async function createComment(commentData) {
   try {
     const token = getStoredToken();
@@ -225,63 +206,46 @@ export async function createComment(commentData) {
       );
     }
 
-    // Ensure postId is a number
+    // đảm bảo postId là số
     const postId = Number(commentData.postId);
     if (isNaN(postId) || postId <= 0) {
       throw new Error("Post ID không hợp lệ.");
     }
 
-    // Build payload based on whether it's a parent comment or reply
     const parentCommentId = commentData.parentCommentId
       ? Number(commentData.parentCommentId)
       : null;
 
     let payload;
     if (parentCommentId && parentCommentId > 0) {
-      // Reply comment - include parentCommentId
       payload = {
         postId: postId,
         parentCommentId: parentCommentId,
         content: commentData.content || "",
       };
     } else {
-      // Parent comment - only postId and content
       payload = {
         postId: postId,
         content: commentData.content || "",
       };
     }
-    
-    console.log("[createComment] Sending payload:", payload);
+
     const response = await apiClient.post("/api/Comment", payload);
-    console.log("[createComment] Response:", response.data);
-    // Unwrap data if it's wrapped in { success: true, data: ... }
     const responseData = response.data;
-    const resultData = (responseData && 'data' in responseData) ? responseData.data : responseData;
-    
+    const resultData =
+      responseData && "data" in responseData ? responseData.data : responseData;
+
     return normalizeComment(resultData);
   } catch (error) {
-    console.error("[createComment] Error details:", {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      error: error,
-    });
     handleApiError(error);
   }
 }
 
-/**
- * GET /api/Comment/post/{postId} - Get comments by post ID
- * @param {number|string} postId - Post ID
- * @returns {Promise<Array>} Array of comments
- */
+// lấy comments theo postId
 export async function fetchCommentsByPost(postId) {
   try {
     const response = await apiClient.get(`/api/Comment/post/${postId}`);
     let data = response.data;
-    // Handle different response formats
     if (!data) {
       return [];
     }
@@ -310,16 +274,11 @@ export async function fetchCommentsByPost(postId) {
   }
 }
 
-/**
- * GET /api/Comment/{id} - Get comment by ID
- * @param {number|string} id - Comment ID
- * @returns {Promise<Object>} Comment object
- */
+// lấy comment theo id
 export async function fetchCommentById(id) {
   try {
     const response = await apiClient.get(`/api/Comment/${id}`);
     let rawData = response.data;
-    // Xử lý response có thể có cấu trúc {success: true, data: {...}} hoặc trực tiếp là comment object
     let commentData = rawData;
     if (rawData && rawData.data) {
       commentData = rawData.data;
@@ -327,10 +286,9 @@ export async function fetchCommentById(id) {
       commentData = rawData.data;
     }
     const normalized = normalizeComment(commentData);
-    // Lưu raw data vào normalized để có thể truy cập sau
     if (normalized) {
       normalized.rawData = rawData;
-      normalized.rawCommentData = commentData; // Lưu cả comment data gốc
+      normalized.rawCommentData = commentData;
     }
     return normalized;
   } catch (error) {
@@ -338,13 +296,7 @@ export async function fetchCommentById(id) {
   }
 }
 
-/**
- * PUT /api/Comment/{id} - Update comment
- * @param {number|string} id - Comment ID
- * @param {Object} commentData - Updated comment data
- * @param {string} commentData.content - Comment content
- * @returns {Promise<Object>} Updated comment
- */
+// cập nhật comment
 export async function updateComment(id, commentData) {
   try {
     const token = getStoredToken();
@@ -365,11 +317,7 @@ export async function updateComment(id, commentData) {
   }
 }
 
-/**
- * DELETE /api/Comment/{id} - Delete comment
- * @param {number|string} id - Comment ID
- * @returns {Promise<void>}
- */
+// xóa comment
 export async function deleteComment(id) {
   try {
     const token = getStoredToken();
@@ -385,11 +333,7 @@ export async function deleteComment(id) {
   }
 }
 
-/**
- * GET /api/Comment/{commentId}/replies - Get replies to a comment
- * @param {number|string} commentId - Comment ID
- * @returns {Promise<Array>} Array of reply comments
- */
+// lấy replies theo commentId
 export async function fetchCommentReplies(commentId) {
   try {
     const response = await apiClient.get(`/api/Comment/${commentId}/replies`);
@@ -421,27 +365,20 @@ export async function fetchCommentReplies(commentId) {
   }
 }
 
-/**
- * GET /api/Comment/post/{postId}/count - Get comment count for a post
- * @param {number|string} postId - Post ID
- * @returns {Promise<number>} Comment count
- */
+// lấy số lượng comment theo postId
 export async function getCommentCount(postId) {
   try {
     const response = await apiClient.get(`/api/Comment/post/${postId}/count`);
     const responseData = response.data;
-    
-    // Handle different response formats
-    if (typeof responseData === 'number') {
+
+    if (typeof responseData === "number") {
       return responseData;
     }
-    if (responseData && typeof responseData === 'object') {
-      // Handle {success: true, data: count} format
-      if ('data' in responseData) {
+    if (responseData && typeof responseData === "object") {
+      if ("data" in responseData) {
         return Number(responseData.data) || 0;
       }
-      // Handle {count: X} format
-      if ('count' in responseData) {
+      if ("count" in responseData) {
         return Number(responseData.count) || 0;
       }
     }
