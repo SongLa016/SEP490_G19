@@ -107,10 +107,14 @@ export default function OwnerBookingsTable({
                       <div className="text-sm font-semibold flex items-center text-gray-900">
                         <User className="w-3 h-3 mr-1" />
                         {booking.customer}</div>
-                      <div className="text-xs text-teal-600 font-medium flex items-center">
-                        <Phone className="w-3 h-3 mr-1" />
-                        {booking.phone}
-                      </div>
+
+                      {booking.phone && (
+                        <div className="text-xs text-teal-600 font-medium flex items-center">
+                          <Phone className="w-3 h-3 mr-1" />
+                          {booking.phone}
+                        </div>
+                      )}
+
                       <div className="text-xs text-gray-500 font-medium flex items-center">
                         <Mail className="w-3 h-3 mr-1" />
                         {booking.email}

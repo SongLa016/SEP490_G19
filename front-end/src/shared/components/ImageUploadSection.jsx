@@ -184,7 +184,7 @@ export default function ImageUploadSection({
                     <div className="flex items-center justify-between text-sm font-medium text-gray-700 mb-2">
                          <div className="flex items-center gap-1">
                               <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                              <span>Ảnh chính (Background)</span>
+                              <span>Ảnh chính</span>
                               <span className="text-red-500">*</span>
                          </div>
                     </div>

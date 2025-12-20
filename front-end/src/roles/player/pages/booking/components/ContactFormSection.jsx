@@ -97,7 +97,7 @@ export default function ContactFormSection({
                               value={bookingData.customerEmail}
                               onChange={handleEmailChange}
                               className={emailError ? "border-red-500" : "border border-teal-200 rounded-lg"}
-                              placeholder={bookingData.requiresEmail ? "Nhập email (VD: example@gmail.com)" : "Nhập email (tùy chọn)"}
+                              placeholder={bookingData.requiresEmail ? "Nhập email (VD: example@gmail.com)" : "Nhập email "}
                          />
                          {emailError && (
                               <p className="text-red-500 text-sm mt-1">{emailError}</p>

@@ -9,7 +9,6 @@ import {
      updateField,
      deleteField,
      fetchAllComplexesWithFields,
-     createFieldPrice,
      updateFieldComplex,
      deleteFieldComplex,
      validateComplexData,
@@ -812,20 +811,6 @@ const FieldManagement = ({ isDemo = false }) => {
                     createdField = await createField(formDataToSend);
                }
 
-               // tạo giá cho các khung giờ nếu có
-               if (timeSlots.length > 0 && formData.pricePerHour) {
-                    try {
-                         for (const slot of timeSlots) {
-                              await createFieldPrice({
-                                   fieldId: createdField.fieldId,
-                                   slotId: slot.SlotID,
-                                   price: parseFloat(formData.pricePerHour),
-                              });
-                         }
-                    } catch (priceError) {
-
-                    }
-               }
                await Swal.fire({
                     icon: 'success',
                     title: isEditModalOpen ? 'Cập nhật thành công!' : 'Tạo sân thành công!',

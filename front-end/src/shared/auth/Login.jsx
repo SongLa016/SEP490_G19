@@ -300,7 +300,7 @@ export default function Login({ onLoggedIn, onGoRegister, compact = false }) {
                                              <Input
                                                   value={password}
                                                   onChange={(e) => setPassword(e.target.value)}
-                                                  onBlur={() => setPasswordError(!password || password.length < 6 ? 'Mật khẩu tối thiểu 6 ký tự' : '')}
+                                                  onBlur={() => setPasswordError(!password || password.length < 8 ? 'Mật khẩu tối thiểu  ký tự' : '')}
                                                   required
                                                   type={showPassword ? "text" : "password"}
                                                   className={`pl-12 pr-12 h-12  text-sm transition-all duration-200 rounded-2xl ${passwordError ? 'border-red-500 focus:ring-red-500 animate-shake' : 'focus:ring-teal-500 focus:border-teal-500 border-gray-200'}`}
