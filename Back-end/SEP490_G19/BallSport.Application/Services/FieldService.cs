@@ -62,7 +62,10 @@ namespace BallSport.Application.Services
             var bank = await _bankAccountRepository.GetByIdAsync(dto.BankAccountId.Value);
             if (bank == null || bank.OwnerId != ownerId)
                 throw new UnauthorizedAccessException("BankAccount không hợp lệ hoặc không thuộc Owner này.");
-
+            if(dto.PricePerHour < 0)
+            {
+                throw new ArgumentException("Giá sân phải lớn hơn 0 ");
+            }
             // Upload main image
             string? mainImageUrl = null;
             if (dto.MainImage != null)
