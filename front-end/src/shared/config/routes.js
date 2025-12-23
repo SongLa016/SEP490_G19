@@ -51,9 +51,6 @@ export const OwnerDashboard = lazyLoad(() =>
 export const FieldManagement = lazyLoad(() =>
   import("../../roles/owner/pages/FieldManagement")
 );
-export const PricingManagement = lazyLoad(() =>
-  import("../../roles/owner/pages/PricingManagement")
-);
 export const BookingManagement = lazyLoad(() =>
   import("../../roles/owner/pages/BookingManagement")
 );
@@ -69,12 +66,7 @@ export const CancellationPolicies = lazyLoad(() =>
 export const DepositPolicies = lazyLoad(() =>
   import("../../roles/owner/pages/DepositPolicies")
 );
-export const PromotionsManagement = lazyLoad(() =>
-  import("../../roles/owner/pages/PromotionsManagement")
-);
-export const PaymentTracking = lazyLoad(() =>
-  import("../../roles/owner/pages/PaymentTracking")
-);
+
 export const NotificationsManagement = lazyLoad(() =>
   import("../../roles/owner/pages/NotificationsManagement")
 );
@@ -109,9 +101,6 @@ export const PostManagement = lazyLoad(() =>
 );
 export const AdminFieldManagement = lazyLoad(() =>
   import("../../roles/admin/pages/FieldManagement")
-);
-export const SystemSettings = lazyLoad(() =>
-  import("../../roles/admin/pages/SystemSettings")
 );
 export const AdminProfileSettings = lazyLoad(() =>
   import("../../roles/admin/pages/ProfileSettings")
@@ -222,12 +211,6 @@ export const routeConfig = [
     allowedRoles: [ROLES.OWNER.name],
   },
   {
-    path: "/owner/pricing",
-    element: PricingManagement,
-    layout: "OwnerLayout",
-    allowedRoles: [ROLES.OWNER.name],
-  },
-  {
     path: "/owner/bookings",
     element: BookingManagement,
     layout: "OwnerLayout",
@@ -248,12 +231,6 @@ export const routeConfig = [
   {
     path: "/owner/deposit-policies",
     element: DepositPolicies,
-    layout: "OwnerLayout",
-    allowedRoles: [ROLES.OWNER.name],
-  },
-  {
-    path: "/owner/promotions",
-    element: PromotionsManagement,
     layout: "OwnerLayout",
     allowedRoles: [ROLES.OWNER.name],
   },
@@ -314,12 +291,6 @@ export const routeConfig = [
     allowedRoles: [ROLES.ADMIN.name],
   },
   {
-    path: "/admin/system-settings",
-    element: SystemSettings,
-    layout: "AdminLayout",
-    allowedRoles: [ROLES.ADMIN.name],
-  },
-  {
     path: "/admin/profile",
     element: AdminProfileSettings,
     layout: "AdminLayout",
@@ -342,11 +313,6 @@ export const demoRoutes = [
   {
     path: "/demo/timeslots",
     element: TimeSlotManagement,
-    isDemo: true,
-  },
-  {
-    path: "/demo/pricing",
-    element: PricingManagement,
     isDemo: true,
   },
   {
@@ -374,16 +340,7 @@ export const demoRoutes = [
     element: DepositPolicies,
     isDemo: true,
   },
-  {
-    path: "/demo/promotions",
-    element: PromotionsManagement,
-    isDemo: true,
-  },
-  {
-    path: "/demo/payments",
-    element: PaymentTracking,
-    isDemo: true,
-  },
+
   {
     path: "/demo/notifications",
     element: NotificationsManagement,

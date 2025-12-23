@@ -1,7 +1,9 @@
 import axios from "axios";
+import { API_BASE_URL } from "../config/api";
 
 // Create axios instance for profile API calls
 const apiClient = axios.create({
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -68,9 +70,7 @@ const handleApiError = (error) => {
 export const profileService = {
   async getPlayerProfile(userId) {
     try {
-      const API_URL = `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`;
-
-      const response = await apiClient.get(API_URL);
+      const response = await apiClient.get(`/api/PlayerProfile/${userId}`);
 
       return {
         ok: true,
@@ -89,10 +89,7 @@ export const profileService = {
   // Change password API
   async changePassword(oldPassword, newPassword, confirmNewPassword) {
     try {
-      const API_URL =
-        "https://sep490-g19-zxph.onrender.com/api/UserProfile/change-password";
-
-      const response = await apiClient.post(API_URL, {
+      const response = await apiClient.post(`/api/UserProfile/change-password`, {
         oldPassword,
         newPassword,
         confirmNewPassword,
@@ -155,8 +152,7 @@ export const profileService = {
   // Update user profile (lấy user từ token)
   async updateProfile(userId, profileData, avatarFile = null) {
     try {
-      const API_URL =
-        "https://sep490-g19-zxph.onrender.com/api/UserProfile/profile/player";
+      const API_URL = `${API_BASE_URL}/api/UserProfile/profile/player`;
 
       // Format dateOfBirth to YYYY-MM-DD format
       let formattedDateOfBirth = "";
@@ -248,9 +244,7 @@ export const profileService = {
   async getProfile(userId) {
     try {
       // Lấy profile theo token, không cần userId trong URL
-      const response = await apiClient.get(
-        "https://sep490-g19-zxph.onrender.com/api/UserProfile/profile"
-      );
+      const response = await apiClient.get(`/api/UserProfile/profile`);
 
       // Xử lý response data - có thể có nhiều format khác nhau
       let profileData = null;
@@ -290,10 +284,7 @@ export const profileService = {
   // Update phone number
   async updatePhone(phone) {
     try {
-      const API_URL =
-        "https://sep490-g19-zxph.onrender.com/api/UserProfile/update-phone";
-
-      const response = await apiClient.put(API_URL, { phone });
+      const response = await apiClient.put(`/api/UserProfile/update-phone`, { phone });
 
       return {
         ok: true,
@@ -326,8 +317,7 @@ export const profileService = {
   // Update owner/admin profile (PUT request to /api/UserProfile/profile/admin-owner)
   async updateOwnerAdminProfile(profileData, avatarFile = null) {
     try {
-      const API_URL =
-        "https://sep490-g19-zxph.onrender.com/api/UserProfile/profile/admin-owner";
+      const API_URL = `${API_BASE_URL}/api/UserProfile/profile/admin-owner`;
 
       // Format dateOfBirth to YYYY-MM-DD format if provided
       let formattedDateOfBirth = "";

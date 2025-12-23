@@ -1,8 +1,10 @@
 // Service for managing deposit policies
 import axios from "axios";
+import { API_BASE_URL } from "../config/api";
 
 // tạo instance axios với cấu hình base
 const apiClient = axios.create({
+  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
     "Content-Type": "application/json",
@@ -31,9 +33,6 @@ const checkToken = () => {
   }
   return token;
 };
-
-const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
 // hàm helper để xử lý lỗi API
 const handleApiError = (error) => {

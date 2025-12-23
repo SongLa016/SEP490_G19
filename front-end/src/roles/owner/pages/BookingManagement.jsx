@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
      Calendar,
-     CheckCircle,
      XCircle,
      Download,
      RefreshCw,
@@ -15,7 +14,6 @@ import {
      AlertCircle,
      CreditCard,
      CheckSquare,
-     QrCode,
      Repeat
 } from "lucide-react";
 
@@ -23,48 +21,7 @@ import { Modal, Button, usePagination } from "../../../shared/components/ui";
 import { useAuth } from "../../../contexts/AuthContext";
 import { DemoRestrictedModal } from "../../../shared";
 import { OwnerFilters, OwnerBookingsTable, OwnerPackagesTable, OwnerCancellationsTable } from "./components/bookingManagement";
-import {
-     cancelBooking,
-     fetchCancellationRequests,
-     confirmCancellation,
-     deleteCancellationRequest,
-     fetchBookingsByOwner,
-     confirmPaymentAPI,
-     confirmByOwner,
-     fetchCancellationRequestById,
-} from "../../../shared/services/bookings";
-import { fetchFieldScheduleById, updateFieldScheduleStatus } from "../../../shared/services/fieldSchedules";
-
-import Swal from "sweetalert2";
-import axios from "axios";
-
-// lấy thông tin profile người chơi
-const fetchPlayerProfile = async (playerId) => {
-     try {
-          const token = localStorage.getItem("token");
-          const response = await axios.get(
-               `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${playerId}`,
-               {
-                    headers: {
-                         "Content-Type": "application/json",
-                         ...(token && { Authorization: `Bearer ${token}` }),
-                    },
-               }
-          );
-          const profileData = response.data || {};
-          return {
-               ok: true,
-               data: profileData,
-               profile: profileData,
-          };
-     } catch (error) {
-          console.error(`Failed to fetch player profile ${playerId}:`, error);
-          return {
-               ok: false,
-               reason: error.message || "Lấy thông tin khách hàng thất bại",
-          };
-     }
-};
+import { useBookingActions } from "./hooks";
 
 const BookingManagement = ({ isDemo = false }) => {
      const { user } = useAuth();
@@ -76,21 +33,107 @@ const BookingManagement = ({ isDemo = false }) => {
      const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
      const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
      const [activeTab, setActiveTab] = useState("bookings");
-     const [cancellationRequests, setCancellationRequests] = useState([]);
-     const [loadingCancellations, setLoadingCancellations] = useState(false);
      const [bookings, setBookings] = useState([]);
-     const [loadingBookings, setLoadingBookings] = useState(false);
-     const [bookingError, setBookingError] = useState("");
      const [selectedCancellation, setSelectedCancellation] = useState(null);
      const [isCancellationDetailModalOpen, setIsCancellationDetailModalOpen] = useState(false);
      const [loadingCancellationDetail, setLoadingCancellationDetail] = useState(false);
-     const [autoCompletedIds, setAutoCompletedIds] = useState({});   // Các booking đã tự động hoàn tất
-     const [exporting, setExporting] = useState(false);              // Đang xuất Excel
 
-     // Lấy ownerId từ user context
      const ownerId = user?.userID || user?.UserID || user?.id || user?.userId;
 
-     // Hàm load bookings 
+     // Utility functions
+     const formatCurrency = (amount) => {
+          return new Intl.NumberFormat('vi-VN', {
+               style: 'currency',
+               currency: 'VND'
+          }).format(amount);
+     };
+
+     const formatDate = (dateString) => {
+          return new Date(dateString).toLocaleDateString('vi-VN');
+     };
+
+     const getStatusColor = (status) => {
+          switch (status) {
+               case 'pending': return 'bg-yellow-100 text-yellow-800';
+               case 'confirmed': return 'bg-green-100 text-green-800';
+               case 'cancelled': return 'bg-red-100 text-red-800';
+               case 'completed': return 'bg-blue-100 text-blue-800';
+               default: return 'bg-gray-100 text-gray-800';
+          }
+     };
+
+     const getStatusText = (status) => {
+          switch (status) {
+               case 'pending': return 'Chờ xác nhận';
+               case 'confirmed': return 'Đã xác nhận';
+               case 'cancelled': return 'Đã hủy';
+               case 'completed': return 'Hoàn thành';
+               default: return status;
+          }
+     };
+
+     const getPaymentStatusColor = (status) => {
+          switch (status) {
+               case 'paid': return 'bg-green-100 text-green-800';
+               case 'unpaid': return 'bg-yellow-100 text-yellow-800';
+               case 'refunded': return 'bg-blue-100 text-blue-800';
+               case 'failed': return 'bg-red-100 text-red-800';
+               default: return 'bg-gray-100 text-gray-800';
+          }
+     };
+
+     const getPaymentStatusText = (status) => {
+          switch (status) {
+               case 'paid': return 'Đã thanh toán';
+               case 'unpaid': return 'Chờ Thanh Toán';
+               case 'refunded': return 'Đã hoàn tiền';
+               case 'failed': return 'Thanh toán thất bại';
+               default: return status;
+          }
+     };
+
+     const isBookingPassed = (booking) => {
+          if (!booking.endTime) return false;
+          const endTime = new Date(booking.endTime);
+          return endTime < new Date();
+     };
+
+     // Hook quản lý booking actions
+     const {
+          loadingBookings,
+          bookingError,
+          cancellationRequests,
+          loadingCancellations,
+          exporting,
+          loadBookings,
+          loadCancellationRequests,
+          handleConfirmBooking,
+          handleCancelBooking,
+          handleConfirmCancellation,
+          handleDeleteCancellation,
+          handleViewCancellationDetails,
+          handleExportReport,
+     } = useBookingActions({
+          ownerId,
+          isDemo,
+          bookings,
+          setBookings,
+          setShowDemoRestrictedModal,
+          formatCurrency,
+          formatDate,
+          getStatusText,
+          getPaymentStatusText,
+     });
+
+     // Load data on mount
+     useEffect(() => {
+          if (ownerId) {
+               loadBookings();
+               loadCancellationRequests();
+          }
+     }, [ownerId, loadBookings, loadCancellationRequests]);
+
+     // Fields filter options
      const fields = useMemo(() => {
           const fieldSet = new Set();
           fieldSet.add("all");
@@ -113,1112 +156,30 @@ const BookingManagement = ({ isDemo = false }) => {
           { value: "completed", label: "Hoàn thành" }
      ];
 
-
-     // Xác nhận booking
-     const handleConfirmBooking = async (bookingId) => {
-          if (isDemo) {
-               setShowDemoRestrictedModal(true);
-               return;
-          }
-
-          const numericBookingId = Number(bookingId);
-          if (isNaN(numericBookingId) || numericBookingId <= 0) {
-               await Swal.fire({
-                    icon: 'error',
-                    title: 'Lỗi',
-                    text: 'Booking ID không hợp lệ',
-                    confirmButtonColor: '#ef4444'
-               });
-               return;
-          }
-
-          // tìm booking để kiểm tra trạng thái hiện tại
-          const booking = bookings.find(b => (b.bookingId || b.id) === numericBookingId);
-          if (booking) {
-               if (booking.status === 'completed') {
-                    await Swal.fire({
-                         icon: 'warning',
-                         title: 'Đã hoàn thành',
-                         text: 'Booking này đã hoàn thành rồi.',
-                         confirmButtonColor: '#10b981'
-                    });
-                    loadBookings();
-                    return;
-               }
-
-               if (booking.status === 'cancelled') {
-                    await Swal.fire({
-                         icon: 'error',
-                         title: 'Không thể xác nhận',
-                         text: 'Không thể xác nhận booking đã bị hủy.',
-                         confirmButtonColor: '#ef4444'
-                    });
-                    return;
-               }
-          }
-
-          // lấy trạng thái
-          const isConfirmed = booking?.status === 'confirmed';
-          const paymentStatusLower = String(booking?.paymentStatus || '').toLowerCase();
-          const isPaid = paymentStatusLower === 'paid';
-          const isConfirmedAndPaid = isConfirmed && isPaid;
-
-          // Determine dialog content based on booking status
-          const dialogTitle = isConfirmedAndPaid ? 'Hoàn thành booking' : 'Xác nhận thanh toán';
-          const dialogMessage = isConfirmedAndPaid
-               ? 'Bạn có chắc muốn hoàn thành booking này? Booking sẽ chuyển sang trạng thái "Hoàn thành".'
-               : 'Bạn có chắc muốn xác nhận thanh toán cho booking này?';
-          const confirmButtonText = isConfirmedAndPaid ? 'Hoàn thành' : 'Xác nhận thanh toán';
-          const infoMessage = isConfirmedAndPaid
-               ? '✅ <strong>Hoàn thành booking</strong> - Booking sẽ chuyển sang trạng thái "Hoàn thành"'
-               : '💳 <strong>Xác nhận thanh toán</strong> - Booking sẽ chuyển sang trạng thái "Đã xác nhận" và thanh toán "Đã thanh toán"';
-
-          // Tính số tiền còn lại và fetch QR code 
-          const totalAmount = booking?.amount || booking?.totalAmount || 0;
-          const depositAmount = booking?.depositAmount || booking?.deposit || booking?.paidAmount || 0;
-          const remainingAmount = Math.max(0, totalAmount - depositAmount);
-
-          // Fetch QR code URL từ API nếu là hoàn thành booking
-          let qrCodeImageUrl = '';
-          if (isConfirmedAndPaid) {
-               try {
-                    const token = localStorage.getItem("token");
-                    const qrResponse = await axios.get(
-                         `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${numericBookingId}`,
-                         {
-                              headers: {
-                                   "Content-Type": "application/json",
-                                   ...(token && { Authorization: `Bearer ${token}` }),
-                              },
-                         }
-                    );
-                    qrCodeImageUrl = qrResponse.data?.qrCodeUrl || '';
-               } catch (error) {
-                    console.error("❌ [QR CODE] Error fetching QR code:", error);
-               }
-          }
-
-          // Luôn hiển thị QR code khi hoàn thành booking để player thanh toán số tiền còn lại
-          const qrImageHtml = qrCodeImageUrl
-               ? '<img src="' + qrCodeImageUrl + '" alt="Payment QR Code" id="qr-code-img" class="mx-auto border-2 border-orange-300 rounded-lg shadow-sm cursor-pointer hover:opacity-80 transition-opacity" style="max-width: 180px; max-height: 180px;" title="Click để xem to hơn" />'
-               : '<p class="text-xs text-red-500 py-4">Không thể tải mã QR</p>';
-
-          const qrCodeSection = isConfirmedAndPaid ? `
-               <div class="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-2">
-                    <p class="text-sm text-orange-800 font-semibold mb-2">💰 Thông tin thanh toán:</p>
-                    <div class="text-xs text-orange-700 space-y-1 mb-3">
-                         <p><strong>Tổng tiền:</strong> <span class="font-bold">${formatCurrency(totalAmount)}</span></p>
-                         <p><strong>Đã cọc:</strong> <span class="font-bold text-green-600">${formatCurrency(depositAmount)}</span></p>
-                         <p><strong>Còn lại:</strong> <span class="font-bold text-orange-600 text-base">${formatCurrency(remainingAmount)}</span></p>
-                    </div>
-                    <div class="bg-white rounded-lg p-3 text-center border border-orange-200">
-                         <p class="text-xs font-semibold text-gray-700 mb-2">📱 Mã QR thanh toán số tiền còn lại:</p>
-                         ${qrImageHtml}
-                         <p class="text-xs text-gray-500 mt-2">${qrCodeImageUrl ? 'Click vào mã QR để xem rõ hơn' : ''}</p>
-                    </div>
-               </div>
-          ` : '';
-
-          // Lưu URL để dùng cho việc hiển thị QR to hơn
-          const savedQrCodeUrl = qrCodeImageUrl;
-
-          const result = await Swal.fire({
-               title: dialogTitle,
-               html: `
-                    <div class="text-left">
-                         <p class="mb-3">${dialogMessage}</p>
-                         ${booking ? `
-                              ${isConfirmedAndPaid ? `
-                                   ${qrCodeSection}
-                              ` : `
-                                   <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
-                                        <p class="text-sm text-blue-800 font-semibold mb-1">📋 Thông tin booking:</p>
-                                        <div class="text-xs text-blue-700 space-y-1">
-                                             <p><strong>Khách hàng:</strong> ${booking.customer}</p>
-                                             <p><strong>Sân:</strong> ${booking.field}</p>
-                                             <p><strong>Ngày:</strong> ${formatDate(booking.date)}</p>
-                                             <p><strong>Giờ:</strong> ${booking.timeSlot}</p>
-                                             <p><strong>Số tiền:</strong> <span class="font-bold text-green-600">${formatCurrency(booking.amount)}</span></p>
-                                             <p><strong>Trạng thái:</strong> ${getStatusText(booking.status)}</p>
-                                             <p><strong>Thanh toán:</strong> ${getPaymentStatusText(booking.paymentStatus)}</p>
-                                        </div>
-                                   </div>
-                              `}
-                              <div class="bg-green-50 border border-green-200 rounded-lg p-2">
-                                   <p class="text-xs text-green-800">
-                                        ${infoMessage}
-                                   </p>
-                              </div>
-                         ` : ''}
-                    </div>
-               `,
-               icon: 'question',
-               showCancelButton: true,
-               confirmButtonText: confirmButtonText,
-               cancelButtonText: 'Hủy',
-               confirmButtonColor: '#10b981',
-               cancelButtonColor: '#6b7280',
-               width: isConfirmedAndPaid ? '600px' : '550px',
-               didOpen: () => {
-                    // Thêm click handler cho QR code để hiển thị to hơn
-                    const qrImg = document.getElementById('qr-code-img');
-                    if (qrImg && savedQrCodeUrl) {
-                         qrImg.addEventListener('click', () => {
-                              Swal.fire({
-                                   title: 'Mã QR thanh toán',
-                                   html: `
-                                        <div class="text-center">
-                                             <img src="${savedQrCodeUrl}" alt="Payment QR Code" class="mx-auto border-2 border-orange-300 rounded-lg shadow-lg" style="max-width: 350px; max-height: 350px;" />
-                                             <p class="text-sm text-gray-600 mt-3">Số tiền: <strong class="text-orange-600">${formatCurrency(remainingAmount)}</strong></p>
-                                        </div>
-                                   `,
-                                   showConfirmButton: true,
-                                   confirmButtonText: 'Đóng',
-                                   confirmButtonColor: '#6b7280',
-                                   width: '450px'
-                              });
-                         });
-                    }
-               }
-          });
-
-          if (result.isConfirmed) {
-               try {
-                    let confirmResult;
-                    if (isConfirmedAndPaid) {
-                         confirmResult = await confirmByOwner(numericBookingId);
-                         if (confirmResult.success) {
-
-                              // Tính số tiền còn lại cần thanh toán
-                              const totalAmount = booking?.amount || booking?.totalAmount || 0;
-                              const depositAmount = booking?.depositAmount || booking?.deposit || 0;
-                              const remainingAmount = Math.max(0, totalAmount - depositAmount);
-
-                              // Tạo URL QR code để player thanh toán số tiền còn lại
-                              const qrCodeUrl = `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${numericBookingId}`;
-
-                              // Hiển thị thông báo với QR code nếu còn số tiền cần thanh toán
-                              if (remainingAmount > 0) {
-                                   await Swal.fire({
-                                        icon: 'success',
-                                        title: 'Đã hoàn thành!',
-                                        html: `
-                                             <div class="text-left">
-                                                  <p class="mb-3">${confirmResult.message || 'Booking đã được hoàn thành thành công.'}</p>
-                                                  <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                                                       <p class="text-sm text-blue-800 font-semibold mb-2">💰 Thông tin thanh toán:</p>
-                                                       <div class="text-xs text-blue-700 space-y-1">
-                                                            <p><strong>Tổng tiền:</strong> <span class="font-bold">${formatCurrency(totalAmount)}</span></p>
-                                                            <p><strong>Đã cọc:</strong> <span class="font-bold text-green-600">${formatCurrency(depositAmount)}</span></p>
-                                                            <p><strong>Đã thanh toán còn lại:</strong> <span class="font-bold text-orange-600">${formatCurrency(remainingAmount)}</span></p>
-                                                       </div>
-                                                  </div>
-                                                 
-                                             </div>
-                                        `,
-                                        confirmButtonColor: '#10b981',
-                                        width: '500px'
-                                   });
-                              } else {
-                                   await Swal.fire({
-                                        icon: 'success',
-                                        title: 'Đã hoàn thành!',
-                                        text: confirmResult.message || 'Booking đã được hoàn thành thành công. Trạng thái đã chuyển sang "Hoàn thành".',
-                                        confirmButtonColor: '#10b981'
-                                   });
-                              }
-                         }
-                    } else {
-                         // Booking pending -> gọi confirm-payment để xác nhận thanh toán
-                         const amount = booking?.amount || 0;
-                         confirmResult = await confirmPaymentAPI(numericBookingId, amount);
-                         if (confirmResult.success) {
-                              // Cập nhật FieldSchedule status thành "Booked" khi owner xác nhận booking
-                              if (booking?.scheduleId || booking?.scheduleID) {
-                                   const scheduleId = booking.scheduleId || booking.scheduleID;
-                                   try {
-                                        const updateResult = await updateFieldScheduleStatus(Number(scheduleId), "Booked");
-                                        if (updateResult.success) {
-                                        } else {
-                                             console.warn(`⚠️ [UPDATE SCHEDULE] Failed to update schedule ${scheduleId}:`, updateResult.error);
-                                        }
-                                   } catch (error) {
-                                        console.error(`❌ [UPDATE SCHEDULE] Error updating schedule:`, error);
-                                   }
-                              }
-
-                              await Swal.fire({
-                                   icon: 'success',
-                                   title: 'Đã xác nhận thanh toán!',
-                                   text: confirmResult.message || 'Booking đã được xác nhận thanh toán thành công. Trạng thái đã chuyển sang "Đã xác nhận".',
-                                   confirmButtonColor: '#10b981'
-                              });
-                         }
-                    }
-
-                    if (confirmResult.success) {
-                         // làm mới trang khi trạng thái thay đổi
-                         await loadBookings();
-
-                         setTimeout(() => {
-                              const updatedBooking = bookings.find(b => (b.bookingId || b.id) === numericBookingId);
-                              if (updatedBooking) {
-
-                              }
-                         }, 500);
-                    } else {
-                         // Kiểm tra nếu là lỗi CORS
-                         const isCorsError = confirmResult.isCorsError;
-                         const errorMsg = confirmResult.error || (isConfirmedAndPaid ? 'Không thể hoàn thành booking' : 'Không thể xác nhận thanh toán');
-
-                         // Nếu là lỗi CORS, reload dữ liệu để kiểm tra xem có thay đổi không
-                         if (isCorsError) {
-                              await loadBookings();
-                              await new Promise(resolve => setTimeout(resolve, 500));
-
-                              // Kiểm tra xem booking có thay đổi không
-                              const updatedBooking = bookings.find(b => (b.bookingId || b.id) === numericBookingId);
-                              const hasStatusChanged = updatedBooking && (
-                                   (isConfirmedAndPaid && updatedBooking.status === 'completed') ||
-                                   (!isConfirmedAndPaid && updatedBooking.status === 'confirmed' && updatedBooking.paymentStatus === 'paid')
-                              );
-
-                              if (hasStatusChanged) {
-                                   // Request đã thành công dù có lỗi CORS
-                                   await Swal.fire({
-                                        icon: 'success',
-                                        title: isConfirmedAndPaid ? 'Đã hoàn thành!' : 'Đã xác nhận thanh toán!',
-                                        html: `
-                                             <div class="text-left">
-                                                  <p class="mb-2">${isConfirmedAndPaid ? 'Booking đã được hoàn thành thành công.' : 'Booking đã được xác nhận thanh toán thành công.'}</p>
-                                                  <p class="text-sm text-yellow-600 mt-2">
-                                                       ⚠️ Lưu ý: Có lỗi CORS trong response nhưng request đã được xử lý thành công.
-                                                  </p>
-                                             </div>
-                                        `,
-                                        confirmButtonColor: '#10b981'
-                                   });
-                                   return;
-                              }
-                         }
-
-                         // Nếu không phải CORS error hoặc không có thay đổi, hiển thị lỗi
-                         await Swal.fire({
-                              icon: 'error',
-                              title: isConfirmedAndPaid ? 'Lỗi hoàn thành booking' : 'Lỗi xác nhận thanh toán',
-                              html: `
-                                   <div class="text-left">
-                                        <p class="mb-2">${errorMsg}</p>
-                                        <p class="text-sm text-gray-600 mt-2">
-                                             Có thể booking đã được xử lý hoặc có vấn đề với dữ liệu.
-                                        </p>
-                                        ${isCorsError ? '<p class="text-sm text-yellow-600 mt-2">⚠️ Lỗi CORS: Vui lòng kiểm tra lại sau hoặc thử refresh trang.</p>' : ''}
-                                   </div>
-                              `,
-                              confirmButtonColor: '#ef4444'
-                         });
-                         loadBookings();
-                    }
-               } catch (error) {
-                    await Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: isConfirmedAndPaid
-                              ? 'Có lỗi xảy ra khi hoàn thành booking. Vui lòng thử lại.'
-                              : 'Có lỗi xảy ra khi xác nhận thanh toán. Vui lòng thử lại.',
-                         confirmButtonColor: '#ef4444'
-                    });
-                    loadBookings();
-               }
-          }
-     };
-
-     // Hủy booking
-     const handleCancelBooking = async (bookingId) => {
-          if (isDemo) {
-               setShowDemoRestrictedModal(true);
-               return;
-          }
-
-          const numericBookingId = Number(bookingId);
-          if (isNaN(numericBookingId) || numericBookingId <= 0) {
-               await Swal.fire({
-                    icon: 'error',
-                    title: 'Lỗi',
-                    text: 'Booking ID không hợp lệ',
-                    confirmButtonColor: '#ef4444'
-               });
-               return;
-          }
-
-          // tìm booking để kiểm tra trạng thái hiện tại
-          const booking = bookings.find(b => (b.bookingId || b.id) === numericBookingId);
-          const isPending = booking && (booking.status === 'pending' || booking.status === 'Pending');
-          const paymentStatusLower = booking ? String(booking.paymentStatus || '').toLowerCase() : '';
-          const isPaid = paymentStatusLower === 'paid';
-          const isConfirmedAndPaid = booking &&
-               (booking.status === 'confirmed' || booking.status === 'Confirmed') &&
-               isPaid;
-          const isPendingButPaid = isPending && isPaid; // Chưa xác nhận nhưng đã trả cọc
-
-          const { value: reason, isConfirmed } = await Swal.fire({
-               title: 'Hủy booking',
-               html: `
-                    <div class="text-left">
-                         <p class="text-sm text-gray-700 mb-1">Vui lòng nhập lý do hủy booking:</p>
-                         ${isPendingButPaid ? `
-                              <div class="bg-blue-50 border border-blue-200 rounded-xl p-2 mb-2">
-                                   <p class="text-sm text-blue-800 font-semibold mb-1">ℹ️ Lưu ý:</p>
-                                   <p class="text-xs text-blue-700 pr-3">Booking này chưa được xác nhận nhưng khách hàng đã trả cọc. Bạn sẽ cần hoàn lại 100% số tiền cọc (${formatCurrency(booking?.depositAmount || booking?.amount || 0)}) cho khách hàng.</p>
-                              </div>
-                         ` : ''}
-                         ${isConfirmedAndPaid ? `
-                              <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-2 mb-2">
-                                   <p class="text-sm text-yellow-800 font-semibold mb-1">⚠️ Lưu ý:</p>
-                                   <p class="text-xs text-yellow-700 pr-3">Booking này đã được xác nhận và đã thanh toán. Bạn sẽ cần hoàn tiền cho khách hàng theo chính sách hủy đặt sân.</p>
-                              </div>
-                         ` : ''}
-                         <textarea 
-                              id="cancel-reason" 
-                              class="w-full p-3 border text-gray-700 text-sm border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" 
-                              rows="3" 
-                              placeholder="Ví dụ: Sân bị hỏng, thời tiết xấu, khách hàng yêu cầu..."
-                         ></textarea>
-                    </div>
-               `,
-               icon: 'warning',
-               showCancelButton: true,
-               confirmButtonText: 'Xác nhận hủy',
-               cancelButtonText: 'Đóng',
-               confirmButtonColor: '#dc2626',
-               cancelButtonColor: '#6b7280',
-               width: (isConfirmedAndPaid || isPendingButPaid) ? '600px' : '500px',
-               preConfirm: () => {
-                    const reason = document.getElementById('cancel-reason').value;
-                    if (!reason || !reason.trim()) {
-                         Swal.showValidationMessage('Vui lòng nhập lý do hủy');
-                         return false;
-                    }
-                    return reason;
-               }
-          });
-
-          if (isConfirmed && reason) {
-               try {
-                    // Lấy scheduleId từ booking trước khi hủy để cập nhật FieldSchedule
-                    const scheduleId = booking?.scheduleId
-                         || booking?.scheduleID
-                         || booking?.ScheduleID
-                         || booking?.ScheduleId
-                         || booking?.apiSource?.scheduleId
-                         || booking?.apiSource?.scheduleID
-                         || booking?.apiSource?.ScheduleID;
-
-                    // api hủy booking
-                    const result = await cancelBooking(numericBookingId, reason);
-
-                    if (result.success) {
-                         // Thử lấy scheduleId từ response của cancel API nếu có
-                         const responseScheduleId = result.data?.scheduleId
-                              || result.data?.scheduleID
-                              || result.data?.ScheduleID
-                              || result.data?.booking?.scheduleId;
-
-                         const finalScheduleId = scheduleId || responseScheduleId;
-
-                         // Cập nhật FieldSchedule status về "Available" khi hủy booking thành công
-                         if (finalScheduleId && Number(finalScheduleId) > 0) {
-                              try {
-                                   const updateResult = await updateFieldScheduleStatus(Number(finalScheduleId), "Available");
-                                   if (updateResult.success) {
-                                        console.log(`✅ [UPDATE SCHEDULE] Updated schedule ${finalScheduleId} to Available after canceling booking`);
-                                   } else {
-                                        console.warn(`⚠️ [UPDATE SCHEDULE] Failed to update schedule ${finalScheduleId}:`, updateResult.error);
-                                   }
-                              } catch (error) {
-                                   console.error(`❌ [UPDATE SCHEDULE] Error updating schedule ${finalScheduleId}:`, error);
-                              }
-                         } else {
-                              console.warn("⚠️ [OWNER CANCEL] No scheduleId found, cannot update FieldSchedule status. Backend should handle this automatically.");
-                         }
-
-                         // Tự động xác nhận yêu cầu hủy nếu có cancellationId trả về
-                         const cancellationId = result.data?.cancellationId || result.data?.id || result.data?.cancellationRequestId;
-
-                         // Chỉ tự động xác nhận nếu có cancellationId
-                         if (cancellationId) {
-                              try {
-                                   const confirmResult = await confirmCancellation(cancellationId);
-                                   if (!confirmResult.success) {
-                                        console.warn("Failed to auto-confirm cancellation request:", confirmResult.error);
-                                   }
-                              } catch (confirmError) {
-                                   console.warn("Error auto-confirming cancellation:", confirmError);
-                              }
-                         }
-
-                         // Trả về thông tin hoàn tiền từ response
-                         const refundInfo = {
-                              message: result.message || result.data?.message,
-                              cancelReason: result.cancelReason || result.data?.cancelReason,
-                              refundAmount: result.refundAmount ?? result.data?.refundAmount ?? 0,
-                              penaltyAmount: result.penaltyAmount ?? result.data?.penaltyAmount ?? 0,
-                              finalRefundAmount: result.finalRefundAmount ?? result.data?.finalRefundAmount ?? 0,
-                              refundQR: result.refundQR || result.data?.refundQR,
-                         };
-
-                         let successHtml = `
-                              <p class="mb-3">${refundInfo.message || 'Đã hủy booking thành công!'}</p>
-                         `;
-
-                         if (refundInfo.cancelReason) {
-                              successHtml += `
-                                   <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3 text-left">
-                                        <p class="text-sm text-blue-800">${refundInfo.cancelReason}</p>
-                                   </div>
-                              `;
-                         }
-
-                         // Hiển thị thông tin hoàn tiền nếu có
-                         if ((isConfirmedAndPaid || isPendingButPaid) && refundInfo.finalRefundAmount > 0) {
-                              successHtml += `
-                                   <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-3">
-                                        <p class="text-sm font-semibold text-gray-700 mb-2">Thông tin hoàn tiền:</p>
-                                        <div class="space-y-2">
-                                             <div class="flex justify-between items-center">
-                                                  <span class="text-sm text-gray-600">Số tiền phải hoàn:</span>
-                                                  <span class="text-lg font-bold text-green-600">${formatCurrency(refundInfo.finalRefundAmount)}</span>
-                                             </div>
-                                             ${isPendingButPaid ? `
-                                                  <p class="text-xs text-green-700 mt-1">(100% số tiền cọc sẽ được hoàn lại vì booking chưa được xác nhận)</p>
-                                             ` : ''}
-                                             ${refundInfo.penaltyAmount > 0 ? `
-                                                  <div class="flex justify-between items-center">
-                                                       <span class="text-sm text-gray-600">Số tiền bị phạt:</span>
-                                                       <span class="text-sm font-semibold text-red-600">${formatCurrency(refundInfo.penaltyAmount)}</span>
-                                                  </div>
-                                             ` : ''}
-                                        </div>
-                                   </div>
-                              `;
-
-                              // mã QR hoàn tiền nếu có
-                              if (refundInfo.refundQR) {
-                                   successHtml += `
-                                        <div class="mt-3 text-center">
-                                             <p class="text-sm font-semibold text-gray-700 mb-2">Mã QR để chuyển tiền hoàn lại cho khách hàng:</p>
-                                             <img src="${refundInfo.refundQR}" alt="Refund QR Code" class="mx-auto border-2 border-gray-300 rounded-lg shadow-md" style="max-width: 250px;" />
-                                             <p class="text-xs text-gray-500 mt-2">Vui lòng quét mã QR để chuyển tiền hoàn lại cho khách hàng</p>
-                                        </div>
-                                   `;
-                              }
-                         }
-
-                         await Swal.fire({
-                              icon: 'success',
-                              title: 'Đã hủy booking thành công!',
-                              html: successHtml,
-                              confirmButtonColor: '#10b981',
-                              width: (isConfirmedAndPaid || isPendingButPaid) && refundInfo.refundQR ? '600px' : '500px',
-                              customClass: {
-                                   popup: 'text-left'
-                              }
-                         });
-                         // reload bookings
-                         await loadBookings();
-
-                         if (activeTab === 'cancellations') {
-                              loadCancellationRequests();
-                         }
-                    } else {
-                         await Swal.fire({
-                              icon: 'error',
-                              title: 'Không thể hủy booking',
-                              text: result.error || 'Có lỗi xảy ra',
-                              confirmButtonColor: '#ef4444'
-                         });
-                    }
-               } catch (error) {
-                    console.error('Error cancelling booking:', error);
-                    await Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: error.message || 'Có lỗi xảy ra khi hủy booking',
-                         confirmButtonColor: '#ef4444'
-                    });
-               }
-          }
-     };
-
-     // danh sách yêu cầu hủy booking
-     const loadCancellationRequests = async () => {
-          setLoadingCancellations(true);
-          try {
-               const result = await fetchCancellationRequests();
-               if (result.success) {
-                    setCancellationRequests(result.data || []);
-               } else {
-                    console.error('Error loading cancellations:', result.error);
-               }
-          } catch (error) {
-               console.error('Error loading cancellations:', error);
-          } finally {
-               setLoadingCancellations(false);
-          }
-     };
-
-     // xác nhân hủy booking
-     const handleConfirmCancellation = async (cancellationId) => {
-          const result = await Swal.fire({
-               title: 'Xác nhận hủy booking',
-               text: 'Bạn có chắc muốn xác nhận yêu cầu hủy này?',
-               icon: 'warning',
-               showCancelButton: true,
-               confirmButtonText: 'Xác nhận',
-               cancelButtonText: 'Hủy',
-               confirmButtonColor: '#10b981',
-               cancelButtonColor: '#6b7280',
-          });
-
-          if (result.isConfirmed) {
-               try {
-                    // Tìm cancellation request để lấy scheduleId
-                    const cancellationRequest = cancellationRequests.find(
-                         c => (c.requestId || c.id || c.cancellationId) === cancellationId
-                    );
-
-                    // Lấy scheduleId từ cancellation request hoặc booking liên quan
-                    let scheduleId = cancellationRequest?.scheduleId
-                         || cancellationRequest?.scheduleID
-                         || cancellationRequest?.ScheduleID;
-
-                    // Nếu không có trong cancellation, tìm trong bookings
-                    if (!scheduleId && cancellationRequest?.bookingId) {
-                         const relatedBooking = bookings.find(
-                              b => (b.bookingId || b.id) === cancellationRequest.bookingId
-                         );
-                         scheduleId = relatedBooking?.scheduleId
-                              || relatedBooking?.scheduleID
-                              || relatedBooking?.ScheduleID
-                              || relatedBooking?.apiSource?.scheduleId;
-                    }
-
-                    const confirmResult = await confirmCancellation(cancellationId);
-                    if (confirmResult.success) {
-                         // Cập nhật FieldSchedule status về "Available" khi confirm cancellation thành công
-                         // Thử lấy scheduleId từ response nếu có
-                         const responseScheduleId = confirmResult.data?.scheduleId
-                              || confirmResult.data?.scheduleID
-                              || confirmResult.data?.booking?.scheduleId;
-
-                         const finalScheduleId = scheduleId || responseScheduleId;
-
-                         if (finalScheduleId && Number(finalScheduleId) > 0) {
-                              try {
-                                   const updateResult = await updateFieldScheduleStatus(Number(finalScheduleId), "Available");
-                                   if (updateResult.success) {
-                                        console.log(`✅ [UPDATE SCHEDULE] Updated schedule ${finalScheduleId} to Available after confirming cancellation`);
-                                   } else {
-                                        console.warn(`⚠️ [UPDATE SCHEDULE] Failed to update schedule ${finalScheduleId}:`, updateResult.error);
-                                   }
-                              } catch (error) {
-                                   console.error(`❌ [UPDATE SCHEDULE] Error updating schedule ${finalScheduleId}:`, error);
-                              }
-                         } else {
-                              console.warn("⚠️ [CONFIRM CANCELLATION] No scheduleId found, cannot update FieldSchedule status");
-                         }
-
-                         await Swal.fire({
-                              icon: 'success',
-                              title: 'Đã xác nhận!',
-                              text: 'Yêu cầu hủy đã được xác nhận',
-                              confirmButtonColor: '#10b981'
-                         });
-
-                         loadCancellationRequests();
-                         if (activeTab === 'bookings') {
-                              await loadBookings();
-                         }
-                    } else {
-                         await Swal.fire({
-                              icon: 'error',
-                              title: 'Lỗi',
-                              text: confirmResult.error || 'Không thể xác nhận',
-                              confirmButtonColor: '#ef4444'
-                         });
-                    }
-               } catch (error) {
-                    console.error('Error confirming cancellation:', error);
-                    await Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: 'Có lỗi xảy ra',
-                         confirmButtonColor: '#ef4444'
-                    });
-               }
-          }
-     };
-
-     // Xóa hủy booking
-     const handleDeleteCancellation = async (cancellationId) => {
-          const result = await Swal.fire({
-               title: 'Xóa yêu cầu hủy',
-               text: 'Bạn có chắc muốn xóa yêu cầu này?',
-               icon: 'warning',
-               showCancelButton: true,
-               confirmButtonText: 'Xóa',
-               cancelButtonText: 'Hủy',
-               confirmButtonColor: '#ef4444',
-               cancelButtonColor: '#6b7280',
-          });
-
-          if (result.isConfirmed) {
-               try {
-                    const deleteResult = await deleteCancellationRequest(cancellationId);
-                    if (deleteResult.success) {
-                         await Swal.fire({
-                              icon: 'success',
-                              title: 'Đã xóa!',
-                              text: 'Yêu cầu hủy đã được xóa',
-                              confirmButtonColor: '#10b981'
-                         });
-                         loadCancellationRequests();
-                    } else {
-                         await Swal.fire({
-                              icon: 'error',
-                              title: 'Lỗi',
-                              text: deleteResult.error || 'Không thể xóa',
-                              confirmButtonColor: '#ef4444'
-                         });
-                    }
-               } catch (error) {
-                    console.error('Error deleting cancellation:', error);
-                    await Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: 'Có lỗi xảy ra',
-                         confirmButtonColor: '#ef4444'
-                    });
-               }
-          }
-     };
-
-     // xem chi tiết yêu cầu hủy
-     const handleViewCancellationDetails = async (cancellationId) => {
-          setLoadingCancellationDetail(true);
-          setIsCancellationDetailModalOpen(true);
-          try {
-               const result = await fetchCancellationRequestById(cancellationId);
-               if (result.success) {
-                    setSelectedCancellation(result.data);
-               } else {
-                    await Swal.fire({
-                         icon: 'error',
-                         title: 'Lỗi',
-                         text: result.error || 'Không thể tải chi tiết yêu cầu hủy',
-                         confirmButtonColor: '#ef4444'
-                    });
-                    setIsCancellationDetailModalOpen(false);
-               }
-          } catch (error) {
-               console.error('Error loading cancellation details:', error);
-               await Swal.fire({
-                    icon: 'error',
-                    title: 'Lỗi',
-                    text: 'Có lỗi xảy ra khi tải chi tiết',
-                    confirmButtonColor: '#ef4444'
-               });
-               setIsCancellationDetailModalOpen(false);
-          } finally {
-               setLoadingCancellationDetail(false);
-          }
-     };
-
-     // chuẩn hóa dữ liệu booking từ API
-     const normalizeBookingData = (apiBookings = []) => {
-          return apiBookings.map((item, index) => {
-               let startTime = null;
-               let endTime = null;
-               if (item.startTime) {
-                    const startDate = new Date(item.startTime);
-                    if (!isNaN(startDate.getTime())) {
-                         startTime = startDate;
-                    }
-               }
-
-               if (item.endTime) {
-                    const endDate = new Date(item.endTime);
-                    if (!isNaN(endDate.getTime())) {
-                         endTime = endDate;
-                    }
-               }
-               // định dạng ngày đặt sân
-               let bookingDate = '';
-               if (item.date) {
-                    if (typeof item.date === 'string' && item.date.match(/^\d{4}-\d{2}-\d{2}/)) {
-                         bookingDate = item.date.split('T')[0];
-                    } else {
-                         const dateObj = new Date(item.date);
-                         if (!isNaN(dateObj.getTime())) {
-                              bookingDate = dateObj.toISOString().split('T')[0];
-                         }
-                    }
-               } else if (startTime && !isNaN(startTime.getTime())) {
-                    bookingDate = startTime.toISOString().split('T')[0];
-               }
-               // định dạng khung giờ
-               let timeSlot = '';
-               if (startTime && endTime && !isNaN(startTime.getTime()) && !isNaN(endTime.getTime())) {
-                    try {
-                         const startTimeStr = startTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                         const endTimeStr = endTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                         timeSlot = `${startTimeStr} - ${endTimeStr}`;
-                    } catch (error) {
-                         console.error('Error formatting time slot from Date objects:', error);
-                    }
-               }
-
-               if (!timeSlot && item.startTime && item.endTime) {
-                    try {
-                         const startTimeStr = typeof item.startTime === 'string'
-                              ? item.startTime.substring(0, 5)
-                              : item.startTime;
-                         const endTimeStr = typeof item.endTime === 'string'
-                              ? item.endTime.substring(0, 5)
-                              : item.endTime;
-
-                         if (startTimeStr && endTimeStr) {
-                              timeSlot = `${startTimeStr} - ${endTimeStr}`;
-                         }
-                    } catch (error) {
-                         console.error('Error formatting time slot from strings:', error);
-                    }
-               }
-
-               if (!timeSlot) {
-                    timeSlot = item.slotName || item.SlotName || item.timeSlot || '';
-               }
-
-               const rawStatus = item.bookingStatus || item.BookingStatus || item.status || item.Status || 'pending';
-               const status = String(rawStatus).toLowerCase();
-               if (index === 0 || item.bookingStatus || item.BookingStatus) {
-
-               }
-               // trạng thái booking
-               let normalizedStatus;
-               if (status.includes('cancel')) {
-                    normalizedStatus = 'cancelled';
-               } else if (status === 'completed' || status.includes('complete')) {
-                    normalizedStatus = 'completed';
-               } else if (status === 'confirmed' || status.includes('confirm')) {
-                    normalizedStatus = 'confirmed';
-               } else if (status.includes('pending')) {
-                    normalizedStatus = 'pending';
-               } else {
-                    normalizedStatus = status;
-               }
-
-               const rawPaymentStatus = item.paymentStatus || item.PaymentStatus || 'pending';
-               const paymentStatus = String(rawPaymentStatus).toLowerCase().trim();
-
-               // trạng thái thanh toán
-               let normalizedPaymentStatus;
-               if (paymentStatus === 'unpaid') {
-                    normalizedPaymentStatus = 'unpaid';
-               } else if (paymentStatus === 'paid') {
-                    normalizedPaymentStatus = 'paid';
-               } else if (paymentStatus.includes('unpaid')) {
-                    normalizedPaymentStatus = 'unpaid';
-               } else if (paymentStatus.includes('paid')) {
-                    normalizedPaymentStatus = 'paid';
-               } else if (paymentStatus.includes('refund')) {
-                    normalizedPaymentStatus = 'refunded';
-               } else if (paymentStatus.includes('fail')) {
-                    normalizedPaymentStatus = 'failed';
-               } else {
-                    normalizedPaymentStatus = 'pending';
-               }
-               const rawBookingId = item.bookingId || item.bookingID || item.id;
-               const numericBookingId = rawBookingId ? Number(rawBookingId) : null;
-
-               // tên sân
-               const fieldName = item.fieldName || item.FieldName || item.field || "Chưa rõ sân";
-
-               // tên khung giờ
-               const slotName = item.slotName || item.SlotName || item.timeSlot || '';
-               const finalTimeSlot = slotName || timeSlot;
-
-               return {
-                    id: numericBookingId ? String(numericBookingId) : `booking-${index}`,
-                    bookingId: numericBookingId,
-                    field: fieldName,
-                    customer: item.customerName || item.customer || item.userName || "Khách hàng",
-                    phone: item.customerPhone || item.phone || item.Phone || "",
-                    email: item.customerEmail || item.email || item.Email || "",
-                    date: bookingDate,
-                    timeSlot: finalTimeSlot,
-                    status: normalizedStatus,
-                    amount: Number(item.totalPrice || item.price || 0),
-                    paymentStatus: normalizedPaymentStatus,
-                    createdAt: (() => {
-                         if (item.createdAt) {
-                              const createdDate = new Date(item.createdAt);
-                              if (!isNaN(createdDate.getTime())) {
-                                   return createdDate.toISOString();
-                              }
-                         }
-                         if (item.createdDate) {
-                              const createdDate = new Date(item.createdDate);
-                              if (!isNaN(createdDate.getTime())) {
-                                   return createdDate.toISOString();
-                              }
-                         }
-                         return new Date().toISOString();
-                    })(),
-                    notes: item.notes || item.note || "",
-                    // Additional fields for detail modal
-                    userId: item.userId || item.userID,
-                    scheduleId: item.scheduleId || item.scheduleID,
-                    depositAmount: Number(item.depositAmount || 0),
-                    hasOpponent: Boolean(item.hasOpponent),
-                    address: item.complexName || item.address || "",
-                    // Store startTime and endTime for checking if booking has passed
-                    startTime: startTime && !isNaN(startTime.getTime()) ? startTime.toISOString() : null,
-                    endTime: endTime && !isNaN(endTime.getTime()) ? endTime.toISOString() : null,
-                    // Store original status from backend for debugging
-                    originalStatus: rawStatus
-               };
-          });
-     };
-
-     // tải danh sách booking
-     const loadBookings = useCallback(async () => {
-          if (!ownerId) {
-               setBookings([]);
-               return;
-          }
-
-          setLoadingBookings(true);
-          setBookingError("");
-          try {
-               const result = await fetchBookingsByOwner(ownerId);
-               if (result.success) {
-                    // lấy thông tin user và schedule cho mỗi booking
-                    const bookingsWithUserAndScheduleInfo = await Promise.all(
-                         result.data.map(async (booking) => {
-                              let enrichedBooking = { ...booking };
-                              if (booking.userId || booking.userID) {
-                                   try {
-                                        // lấy thông tin user
-                                        const userId = booking.userId || booking.userID;
-                                        const userResult = await fetchPlayerProfile(userId);
-                                        if (userResult.ok && userResult.data) {
-                                             const userData = userResult.profile || userResult.data;
-                                             const customerPhone = userData.phone || userData.Phone || userData.phoneNumber || userData.PhoneNumber || '';
-                                             enrichedBooking = {
-                                                  ...enrichedBooking,
-                                                  customerName: userData.fullName || userData.name || userData.userName || userData.FullName || 'Khách hàng',
-                                                  customerPhone: customerPhone,
-                                                  customerEmail: userData.email || userData.Email || '',
-                                             };
-                                        }
-                                   } catch (error) {
-                                        console.error(`Failed to fetch customer profile ${booking.userId}:`, error);
-                                   }
-                              }
-
-                              //lấy thông tin lịch đặt sân
-                              const scheduleId = booking.scheduleId || booking.scheduleID || booking.ScheduleID;
-                              if (scheduleId) {
-                                   try {
-                                        const scheduleResult = await fetchFieldScheduleById(scheduleId);
-                                        if (scheduleResult.success && scheduleResult.data) {
-                                             const scheduleData = scheduleResult.data;
-
-                                             // lấy ngày từ lịch trình đặt sân
-                                             const scheduleDate = scheduleData.date || scheduleData.Date || enrichedBooking.date;
-
-                                             // lấy thời gian bắt đầu và kết thúc từ lịch trình đặt sân
-                                             const scheduleStartTime = scheduleData.startTime || scheduleData.StartTime;
-                                             const scheduleEndTime = scheduleData.endTime || scheduleData.EndTime;
-
-                                             let fullStartTime = null;
-                                             let fullEndTime = null;
-                                             // Kết hợp ngày và thời gian để tạo thành datetime đầy đủ
-                                             if (scheduleDate && scheduleStartTime && scheduleEndTime) {
-                                                  // Parse date
-                                                  let dateStr = '';
-                                                  if (typeof scheduleDate === 'string') {
-                                                       dateStr = scheduleDate.split('T')[0];
-                                                  } else if (scheduleDate.year) {
-                                                       dateStr = `${scheduleDate.year}-${String(scheduleDate.month).padStart(2, '0')}-${String(scheduleDate.day).padStart(2, '0')}`;
-                                                  }
-
-                                                  // định dạng thời gian
-                                                  const startTimeStr = typeof scheduleStartTime === 'string'
-                                                       ? scheduleStartTime.substring(0, 5) // Get HH:MM part
-                                                       : `${String(scheduleStartTime.hour || 0).padStart(2, '0')}:${String(scheduleStartTime.minute || 0).padStart(2, '0')}`;
-
-                                                  const endTimeStr = typeof scheduleEndTime === 'string'
-                                                       ? scheduleEndTime.substring(0, 5) // Get HH:MM part
-                                                       : `${String(scheduleEndTime.hour || 0).padStart(2, '0')}:${String(scheduleEndTime.minute || 0).padStart(2, '0')}`;
-
-                                                  if (dateStr && startTimeStr && endTimeStr) {
-                                                       fullStartTime = `${dateStr}T${startTimeStr}:00`;
-                                                       fullEndTime = `${dateStr}T${endTimeStr}:00`;
-                                                  }
-                                             }
-                                             // Cập nhật thông tin booking với dữ liệu từ lịch trình
-                                             enrichedBooking = {
-                                                  ...enrichedBooking,
-                                                  fieldName: scheduleData.fieldName || scheduleData.FieldName || enrichedBooking.fieldName || enrichedBooking.field,
-                                                  slotName: scheduleData.slotName || scheduleData.SlotName || enrichedBooking.slotName || enrichedBooking.timeSlot,
-                                                  date: scheduleDate || enrichedBooking.date,
-                                                  startTime: fullStartTime || scheduleData.startTime || scheduleData.StartTime || enrichedBooking.startTime,
-                                                  endTime: fullEndTime || scheduleData.endTime || scheduleData.EndTime || enrichedBooking.endTime,
-                                             };
-                                        }
-                                   } catch (error) {
-                                        console.error(`Failed to fetch schedule ${scheduleId}:`, error);
-                                   }
-                              }
-
-                              return enrichedBooking;
-                         })
-                    );
-
-                    const normalizedBookings = normalizeBookingData(bookingsWithUserAndScheduleInfo);
-                    setBookings(normalizedBookings);
-               } else {
-                    setBookingError(result.error || "Không thể tải danh sách booking.");
-                    setBookings([]);
-               }
-          } catch (error) {
-               console.error("Error loading bookings:", error);
-               setBookingError(error.message || "Có lỗi xảy ra khi tải danh sách booking.");
-               setBookings([]);
-          } finally {
-               setLoadingBookings(false);
-          }
-     }, [ownerId]);
-
-     // tải danh sách booking khi ownerId hoặc tab thay đổi
-     useEffect(() => {
-          if (activeTab === 'bookings') {
-               loadBookings();
-          }
-          // eslint-disable-next-line react-hooks/exhaustive-deps
-     }, [ownerId, activeTab]);
-
-     // tải danh sách yêu cầu hủy khi tab thay đổi
-     useEffect(() => {
-          if (activeTab === 'cancellations') {
-               loadCancellationRequests();
-          }
-     }, [activeTab]);
-     // xem chi tiết booking
-     const handleViewDetails = (booking) => {
-          setSelectedBooking(booking);
-          setIsDetailModalOpen(true);
-     };
-
-     // kiểm tra booking đã qua thời gian kết thúc chưa
-     const isBookingPassed = (booking) => {
-          if (!booking.endTime) {
-               // Nếu không có endTime dùng date và timeSlot để xác định
-               if (booking.date && booking.timeSlot) {
-                    const timeMatch = booking.timeSlot.match(/(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})/);
-                    if (timeMatch) {
-                         const [, , , endHour, endMin] = timeMatch;
-                         const bookingDate = new Date(booking.date);
-                         bookingDate.setHours(parseInt(endHour), parseInt(endMin), 0, 0);
-                         return bookingDate < new Date();
-                    }
-               }
-               return false;
-          }
-
-          try {
-               const endTime = new Date(booking.endTime);
-               if (isNaN(endTime.getTime())) {
-                    return false;
-               }
-               return endTime < new Date();
-          } catch (error) {
-               console.error('Error checking if booking passed:', error);
-               return false;
-          }
-     };
-     // lọc booking theo điều kiện
+     // Filter bookings
      const filteredBookings = useMemo(() => {
           return bookings.filter(booking => {
-               const matchesDate =
-                    !selectedDate ||
-                    booking.date === selectedDate ||
-                    (typeof booking.date === "string" &&
-                         typeof selectedDate === "string" &&
-                         booking.date.startsWith(selectedDate));
-
-               const normalizedStatus = String(booking.status || "").toLowerCase();
-               const matchesStatus = statusFilter === "all" || normalizedStatus === statusFilter;
-
-               const matchesField = fieldFilter === "all" || booking.field === fieldFilter;
-               const matchesSearch = !searchTerm ||
-                    booking.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    booking.phone.includes(searchTerm) ||
-                    booking.email.toLowerCase().includes(searchTerm.toLowerCase());
-
-               return matchesDate && matchesStatus && matchesField && matchesSearch;
+               if (selectedDate && booking.date !== selectedDate) return false;
+               if (statusFilter !== "all" && booking.status !== statusFilter) return false;
+               if (fieldFilter !== "all" && booking.field !== fieldFilter) return false;
+               if (searchTerm) {
+                    const search = searchTerm.toLowerCase();
+                    return (
+                         booking.customer?.toLowerCase().includes(search) ||
+                         booking.phone?.toLowerCase().includes(search) ||
+                         booking.field?.toLowerCase().includes(search) ||
+                         String(booking.bookingId).includes(search)
+                    );
+               }
+               return true;
           });
      }, [bookings, selectedDate, statusFilter, fieldFilter, searchTerm]);
 
-     // Auto gọi API confirmByOwner cho các booking đã xác nhận, đã thanh toán và đã qua thời gian
-     useEffect(() => {
-          if (!bookings || bookings.length === 0) return;
-
-          const bookingsToAutoComplete = bookings.filter((b) => {
-               const id = b.bookingId || b.id;
-               if (!id) return false;
-               if (autoCompletedIds[id]) return false;
-
-               const isConfirmed = b.status === "confirmed";
-               const isPaid = String(b.paymentStatus || "").toLowerCase() === "paid";
-
-               return isConfirmed && isPaid && isBookingPassed(b);
-          });
-
-          if (bookingsToAutoComplete.length === 0) return;
-          // thực hiện tự động hoàn thành
-          (async () => {
-               let hasChanges = false;
-               for (const booking of bookingsToAutoComplete) {
-                    const id = booking.bookingId || booking.id;
-                    try {
-                         const result = await confirmByOwner(id);
-                         if (result?.success) {
-                              hasChanges = true;
-                              setAutoCompletedIds((prev) => ({ ...prev, [id]: true }));
-                         } else {
-                              console.error("Không thể tự động hoàn thành booking", id, result?.error);
-                         }
-                    } catch (error) {
-                         console.error("Lỗi khi tự động hoàn thành booking", id, error);
-                    }
-               }
-
-               if (hasChanges) {
-                    await loadBookings();
-               }
-          })();
-     }, [bookings, autoCompletedIds, loadBookings]);
-
-     // phân trang cho bookings   
+     // Pagination
      const bookingsPagination = usePagination(filteredBookings, 10);
-
-     // phân trang cho cancellations
      const cancellationsPagination = usePagination(cancellationRequests, 10);
 
-     // khi đổi tab thì đặt lại trang hiện tại về 1
+     // Reset pagination when tab changes
      useEffect(() => {
           if (activeTab === 'bookings' && bookingsPagination.currentPage !== 1) {
                bookingsPagination.handlePageChange(1);
@@ -1227,135 +188,11 @@ const BookingManagement = ({ isDemo = false }) => {
           }
           // eslint-disable-next-line react-hooks/exhaustive-deps
      }, [activeTab]);
-     // Set màu sắc và text cho trạng thái
-     const getStatusColor = (status) => {
-          switch (status) {
-               case 'pending': return 'bg-yellow-100 text-yellow-800';
-               case 'confirmed': return 'bg-green-100 text-green-800';
-               case 'cancelled': return 'bg-red-100 text-red-800';
-               case 'completed': return 'bg-blue-100 text-blue-800';
-               default: return 'bg-gray-100 text-gray-800';
-          }
-     };
-     // Set text cho trạng thái
-     const getStatusText = (status) => {
-          switch (status) {
-               case 'pending': return 'Chờ xác nhận';
-               case 'confirmed': return 'Đã xác nhận';
-               case 'cancelled': return 'Đã hủy';
-               case 'completed': return 'Hoàn thành';
-               default: return status;
-          }
-     };
-     // Set màu sắc cho trạng thái thanh toán
-     const getPaymentStatusColor = (status) => {
-          switch (status) {
-               case 'paid': return 'bg-green-100 text-green-800';
-               case 'unpaid': return 'bg-yellow-100 text-yellow-800';
-               case 'refunded': return 'bg-blue-100 text-blue-800';
-               case 'failed': return 'bg-red-100 text-red-800';
-               default: return 'bg-gray-100 text-gray-800';
-          }
-     };
-     // Set text cho trạng thái thanh toán
-     const getPaymentStatusText = (status) => {
-          switch (status) {
-               case 'paid': return 'Đã thanh toán';
-               case 'unpaid': return 'Chờ Thanh Toán';
-               case 'refunded': return 'Đã hoàn tiền';
-               case 'failed': return 'Thanh toán thất bại';
-               default: return status;
-          }
-     };
-     // định dạng tiền VND
-     const formatCurrency = (amount) => {
-          return new Intl.NumberFormat('vi-VN', {
-               style: 'currency',
-               currency: 'VND'
-          }).format(amount);
-     };
-     // định dạng ngày tháng
-     const formatDate = (dateString) => {
-          return new Date(dateString).toLocaleDateString('vi-VN');
-     };
-     // chuyển giá trị sang định dạng CSV
-     const toCsvValue = (value) => {
-          if (value === null || value === undefined) return "";
-          const str = String(value);
-          if (str.includes('"') || str.includes(",") || str.includes("\n")) {
-               return `"${str.replace(/"/g, '""')}"`;
-          }
-          return str;
-     };
-     // xuất báo cáo booking ra file CSV
-     const handleExportReport = async () => {
-          if (isDemo) {
-               setShowDemoRestrictedModal(true);
-               return;
-          }
-          if (!filteredBookings.length) {
-               await Swal.fire({
-                    icon: "info",
-                    title: "Không có dữ liệu",
-                    text: "Không có booking nào để xuất theo bộ lọc hiện tại.",
-                    confirmButtonColor: "#0ea5e9",
-               });
-               return;
-          }
-          try {
-               setExporting(true);
-               const headers = [
-                    "Mã booking",
-                    "Khách hàng",
-                    "Số điện thoại",
-                    "Email",
-                    "Sân",
-                    "Ngày",
-                    "Khung giờ",
-                    "Trạng thái",
-                    "Thanh toán",
-                    "Tiền cọc",
-                    "Tổng tiền",
-               ];
-               const rows = filteredBookings.map((b) => [
-                    b.bookingId || b.id || "",
-                    b.customer || "",
-                    b.phone || "",
-                    b.email || "",
-                    b.field || "",
-                    formatDate(b.date),
-                    b.timeSlot || "",
-                    getStatusText(String(b.status || "").toLowerCase()),
-                    getPaymentStatusText(String(b.paymentStatus || "").toLowerCase()),
-                    b.depositAmount ?? 0,
-                    b.amount ?? 0,
-               ]);
-               // tạo nội dung CSV với hỗ trợ tiếng Việt
-               const csv = [
-                    "\uFEFF" + headers.map(toCsvValue).join(","),
-                    ...rows.map((row) => row.map(toCsvValue).join(",")),
-               ].join("\n");
 
-               const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-               const url = URL.createObjectURL(blob);
-               const link = document.createElement("a");
-               link.href = url;
-               link.download = `booking-report-${new Date().toISOString().slice(0, 10)}.csv`;
-               document.body.appendChild(link);
-               link.click();
-               document.body.removeChild(link);
-               URL.revokeObjectURL(url);
-          } catch (error) {
-               console.error("Export report error:", error);
-               await Swal.fire({
-                    icon: "error",
-                    title: "Xuất báo cáo thất bại",
-                    text: "Vui lòng thử lại sau.",
-                    confirmButtonColor: "#ef4444",
-               });
-          } finally {
-               setExporting(false);
-          }
+     // View booking details
+     const handleViewDetails = (booking) => {
+          setSelectedBooking(booking);
+          setIsDetailModalOpen(true);
      };
 
      return (
@@ -1375,7 +212,7 @@ const BookingManagement = ({ isDemo = false }) => {
                               <Button
                                    variant="outline"
                                    className="rounded-2xl border-teal-300 text-teal-700 hover:bg-teal-50"
-                                   onClick={handleExportReport}
+                                   onClick={() => handleExportReport(filteredBookings)}
                                    disabled={exporting}
                               >
                                    <Download className="w-4 h-4 mr-2" />
@@ -1471,439 +308,179 @@ const BookingManagement = ({ isDemo = false }) => {
                                    getPaymentStatusColor={getPaymentStatusColor}
                                    getPaymentStatusText={getPaymentStatusText}
                               />
-
-                              {/* Booking Detail Modal */}
-                              <Modal
-                                   isOpen={isDetailModalOpen}
-                                   onClose={() => setIsDetailModalOpen(false)}
-                                   title="Chi tiết đặt sân"
-                                   className="max-w-2xl rounded-2xl border border-teal-200 shadow-lg h-[90vh] overflow-y-auto scrollbar-hide bg-gray-300"
-                              >
-                                   {selectedBooking && (
-                                        <div className="space-y-3">
-                                             {/* Customer Info */}
-                                             <div className="bg-gradient-to-r from-teal-50 to-emerald-50 p-3 rounded-2xl border border-teal-200">
-                                                  <h3 className="text-lg font-semibold text-teal-800 mb-2 flex items-center">
-                                                       <User className="w-5 h-5 mr-2" />
-                                                       Thông tin khách hàng
-                                                  </h3>
-                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
-                                                            <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">
-                                                                 <User className="w-4 h-4 mr-1" />
-                                                                 Tên khách hàng
-                                                            </label>
-                                                            <p className="text-sm font-semibold text-gray-900">{selectedBooking.customer}</p>
-                                                       </div>
-
-                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
-                                                            <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">
-                                                                 <Phone className="w-4 h-4 mr-1" />
-                                                                 Số điện thoại
-                                                            </label>
-                                                            <p className="text-sm font-semibold text-gray-900">{selectedBooking.phone || "Chưa cập nhật"}</p>
-                                                       </div>
-                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
-                                                            <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">
-                                                                 <Mail className="w-4 h-4 mr-1" />
-                                                                 Email
-                                                            </label>
-                                                            <p className="text-sm font-semibold text-gray-900">{selectedBooking.email}</p>
-                                                       </div>
-                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
-                                                            <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">
-                                                                 <Calendar className="w-4 h-4 mr-1" />
-                                                                 Ngày đặt
-                                                            </label>
-                                                            <p className="text-sm font-semibold text-gray-900">{formatDate(selectedBooking.createdAt)}</p>
-                                                       </div>
-                                                  </div>
-                                             </div>
-
-                                             {/* Booking Info */}
-                                             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-200">
-                                                  <h3 className="text-lg font-semibold text-blue-800 mb-2 flex items-center">
-                                                       <Calendar className="w-5 h-5 mr-2" />
-                                                       Thông tin booking
-                                                  </h3>
-                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-blue-100">
-                                                            <label className="text-sm font-semibold text-blue-700 flex items-center mb-1">
-                                                                 <MapPin className="w-4 h-4 mr-1" />
-                                                                 Sân
-                                                            </label>
-                                                            <p className="text-sm font-semibold text-gray-900">{selectedBooking.field}</p>
-                                                       </div>
-                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-blue-100">
-                                                            <label className="text-sm font-semibold text-blue-700 flex items-center mb-1">
-                                                                 <Calendar className="w-4 h-4 mr-1" />
-                                                                 Ngày
-                                                            </label>
-                                                            <p className="text-sm font-semibold text-gray-900">{formatDate(selectedBooking.date)}</p>
-                                                       </div>
-                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-blue-100">
-                                                            <label className="text-sm font-semibold text-blue-700 flex items-center mb-1">
-                                                                 <Clock className="w-4 h-4 mr-1" />
-                                                                 Khung giờ
-                                                            </label>
-                                                            <p className="text-sm font-semibold text-gray-900">{selectedBooking.timeSlot}</p>
-                                                       </div>
-                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-blue-100">
-                                                            <label className="text-sm font-semibold text-blue-700 flex items-center mb-1">
-                                                                 <DollarSign className="w-4 h-4 mr-1" />
-                                                                 Số tiền
-                                                            </label>
-                                                            <p className="text-lg font-bold text-emerald-600">{formatCurrency(selectedBooking.amount)}</p>
-                                                       </div>
-                                                  </div>
-                                             </div>
-
-                                             {/* Status */}
-                                             <div className="bg-gradient-to-r from-amber-50 to-yellow-50 p-3 rounded-2xl border border-amber-200">
-                                                  <h3 className="text-lg font-semibold text-amber-800 mb-2 flex items-center">
-                                                       <AlertCircle className="w-5 h-5 mr-2" />
-                                                       Trạng thái
-                                                  </h3>
-                                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-amber-100">
-                                                            <label className="text-sm font-semibold text-amber-700 flex items-center mb-1">
-                                                                 <CheckSquare className="w-4 h-4 mr-1" />
-                                                                 Trạng thái booking
-                                                            </label>
-                                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(selectedBooking.status)}`}>
-                                                                 {getStatusText(selectedBooking.status)}
-                                                            </span>
-                                                       </div>
-                                                       <div className="bg-white py-2 px-3 rounded-2xl border border-amber-100">
-                                                            <label className="text-sm font-semibold text-amber-700 flex items-center mb-1">
-                                                                 <CreditCard className="w-4 h-4 mr-1" />
-                                                                 Trạng thái thanh toán
-                                                            </label>
-                                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(selectedBooking.paymentStatus)}`}>
-                                                                 {getPaymentStatusText(selectedBooking.paymentStatus)}
-                                                            </span>
-                                                       </div>
-                                                  </div>
-                                             </div>
-
-                                             {/* Cancellation Info for Cancelled Bookings */}
-                                             {selectedBooking.status === 'cancelled' && selectedBooking.notes && (
-                                                  <>
-                                                       <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-2xl border border-red-200">
-                                                            <h3 className="text-lg font-semibold text-red-800 mb-3 flex items-center">
-                                                                 <AlertCircle className="w-5 h-5 mr-2" />
-                                                                 Lý do hủy booking
-                                                            </h3>
-                                                            <div className="bg-white p-4 rounded-lg border border-red-100">
-                                                                 <p className="text-sm font-medium text-gray-900 leading-relaxed whitespace-pre-wrap">
-                                                                      {(() => {
-                                                                           let displayNotes = selectedBooking.notes;
-                                                                           if (displayNotes.includes('RefundQR:')) {
-                                                                                displayNotes = displayNotes.split('|')[0].trim();
-                                                                           }
-                                                                           displayNotes = displayNotes.replace(/^Lý do hủy:\s*/i, '');
-                                                                           return displayNotes;
-                                                                      })()}
-                                                                 </p>
-                                                            </div>
-                                                       </div>
-                                                       {selectedBooking.amount > 0 && (
-                                                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-2xl border border-green-200">
-                                                                 <h3 className="text-lg font-semibold text-green-800 mb-3 flex items-center">
-                                                                      <DollarSign className="w-5 h-5 mr-2" />
-                                                                      Thông tin hoàn tiền
-                                                                 </h3>
-                                                                 <div className="bg-white p-4 rounded-lg border border-green-100">
-                                                                      <div className="space-y-2 text-sm">
-                                                                           <div className="flex justify-between items-center">
-                                                                                <span className="text-gray-600">Số tiền đã hoàn:</span>
-                                                                                <span className="text-lg font-bold text-green-600">
-                                                                                     {formatCurrency(selectedBooking.amount)}
-                                                                                </span>
-                                                                           </div>
-                                                                           <p className="text-xs text-gray-500 mt-2">
-                                                                                ✓ Đã hoàn tiền cho khách hàng
-                                                                           </p>
-                                                                      </div>
-                                                                 </div>
-                                                            </div>
-                                                       )}
-                                                  </>
-                                             )}
-
-                                             {/* Notes for non-cancelled bookings */}
-                                             {selectedBooking.status !== 'cancelled' && selectedBooking.notes && (
-                                                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-2xl border border-purple-200">
-                                                       <h3 className="text-lg font-semibold text-purple-800 mb-3 flex items-center">
-                                                            <FileText className="w-5 h-5 mr-2" />
-                                                            Ghi chú
-                                                       </h3>
-                                                       <div className="bg-white p-4 rounded-lg border border-purple-100">
-                                                            <p className="text-sm font-medium text-gray-900 leading-relaxed whitespace-pre-wrap">
-                                                                 {selectedBooking.notes}
-                                                            </p>
-                                                       </div>
-                                                  </div>
-                                             )}
-
-                                             {/* Actions */}
-                                             <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-                                                  {isBookingPassed(selectedBooking) ? (
-                                                       // Booking đã qua - chỉ hiển thị nút đóng
-                                                       <Button
-                                                            variant="outline"
-                                                            onClick={() => {
-                                                                 setIsDetailModalOpen(false);
-                                                            }}
-                                                            className="rounded-2xl"
-                                                       >
-                                                            Đóng
-                                                       </Button>
-                                                  ) : (selectedBooking.status === 'pending' || (selectedBooking.status === 'confirmed' && selectedBooking.paymentStatus === 'paid')) ? (
-                                                       // Booking chưa qua và có thể thao tác - hiển thị đầy đủ các nút
-                                                       <>
-                                                            <Button
-                                                                 variant="outline"
-                                                                 onClick={() => {
-                                                                      setIsDetailModalOpen(false);
-                                                                 }}
-                                                                 className="rounded-2xl"
-                                                            >
-                                                                 Đóng
-                                                            </Button>
-                                                            <Button
-                                                                 onClick={() => {
-                                                                      handleConfirmBooking(selectedBooking.bookingId || selectedBooking.id);
-                                                                      setIsDetailModalOpen(false);
-                                                                 }}
-                                                                 className="rounded-2xl bg-green-600 hover:bg-green-700 text-white font-semibold"
-                                                            >
-                                                                 <CheckCircle className="w-4 h-4 mr-2" />
-                                                                 {selectedBooking.status === 'pending' ? 'Xác nhận thanh toán' : 'Hoàn thành'}
-                                                            </Button>
-                                                            <Button
-                                                                 variant="outline"
-                                                                 onClick={() => {
-                                                                      handleCancelBooking(selectedBooking.bookingId || selectedBooking.id);
-                                                                      setIsDetailModalOpen(false);
-                                                                 }}
-                                                                 className="rounded-2xl border-red-300 text-red-600 hover:bg-red-50 font-semibold"
-                                                            >
-                                                                 <XCircle className="w-4 h-4 mr-2" />
-                                                                 Hủy booking
-                                                            </Button>
-                                                       </>
-                                                  ) : (
-                                                       // Booking đã hủy hoặc hoàn thành - chỉ hiển thị nút đóng
-                                                       <Button
-                                                            variant="outline"
-                                                            onClick={() => {
-                                                                 setIsDetailModalOpen(false);
-                                                            }}
-                                                            className="rounded-2xl"
-                                                       >
-                                                            Đóng
-                                                       </Button>
-                                                  )}
-                                             </div>
-                                        </div>
-                                   )}
-                              </Modal>
                          </>
-                    )}
-
-                    {/* Fixed Booking Packages Tab */}
-                    {activeTab === 'packages' && (
-                         <OwnerPackagesTable
-                              ownerId={ownerId}
-                              getStatusColor={getStatusColor}
-                              getStatusText={getStatusText}
-                              getPaymentStatusColor={getPaymentStatusColor}
-                              getPaymentStatusText={getPaymentStatusText}
-                         />
                     )}
 
                     {/* Cancellations Tab */}
                     {activeTab === 'cancellations' && (
                          <OwnerCancellationsTable
-                              cancellationRequests={cancellationRequests}
                               loading={loadingCancellations}
-                              pagination={cancellationsPagination}
-                              onRefresh={loadCancellationRequests}
-                              onViewDetails={handleViewCancellationDetails}
-                              onConfirm={handleConfirmCancellation}
-                              onDelete={handleDeleteCancellation}
+                              cancellationRequests={cancellationRequests}
+                              cancellationsPagination={cancellationsPagination}
+                              formatDate={formatDate}
+                              handleConfirmCancellation={handleConfirmCancellation}
+                              handleDeleteCancellation={handleDeleteCancellation}
+                              handleViewCancellationDetails={(id) => handleViewCancellationDetails(
+                                   id,
+                                   setSelectedCancellation,
+                                   setIsCancellationDetailModalOpen,
+                                   setLoadingCancellationDetail
+                              )}
                          />
                     )}
 
-                    {/* Demo Restricted Modal */}
-                    <DemoRestrictedModal
-                         isOpen={showDemoRestrictedModal}
-                         onClose={() => setShowDemoRestrictedModal(false)}
-                         featureName="Quản lý đặt sân"
-                    />
-               </div >
+                    {/* Packages Tab */}
+                    {activeTab === 'packages' && (
+                         <OwnerPackagesTable />
+                    )}
+               </div>
 
-               {/* Cancellation Detail Modal - Outside conditional blocks */}
-               < Modal
-                    isOpen={isCancellationDetailModalOpen}
-                    onClose={() => {
-                         setIsCancellationDetailModalOpen(false);
-                         setSelectedCancellation(null);
-                    }}
-                    title="Chi tiết yêu cầu hủy đặt sân"
-                    className="max-w-2xl rounded-2xl border border-red-200 shadow-lg h-[90vh] overflow-y-auto scrollbar-hide bg-gray-300"
+               {/* Booking Detail Modal */}
+               <Modal
+                    isOpen={isDetailModalOpen}
+                    onClose={() => setIsDetailModalOpen(false)}
+                    title="Chi tiết đặt sân"
+                    className="max-w-2xl rounded-2xl border border-teal-200 shadow-lg h-[90vh] overflow-y-auto scrollbar-hide bg-gray-300"
                >
-                    {
-                         loadingCancellationDetail ? (
-                              <div className="text-center py-12" >
-                                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-                                   <p className="text-gray-600 mt-4">Đang tải chi tiết...</p>
-                              </div>
-                         ) : selectedCancellation ? (
-                              <div className="space-y-6">
-                                   {/* Cancellation Info */}
-                                   <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-xl border border-red-200">
-                                        <h3 className="text-lg font-semibold text-red-800 mb-3 flex items-center">
-                                             <XCircle className="w-5 h-5 mr-2" />
-                                             Thông tin yêu cầu hủy
-                                        </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                             <div className="bg-white p-3 rounded-lg border border-red-100">
-                                                  <label className="text-sm font-semibold text-red-700 flex items-center mb-2">
-                                                       <FileText className="w-4 h-4 mr-1" />
-                                                       ID yêu cầu
-                                                  </label>
-                                                  <p className="text-sm font-semibold text-gray-900">
-                                                       #{selectedCancellation.requestId || selectedCancellation.id || selectedCancellation.cancellationId || 'N/A'}
-                                                  </p>
-                                             </div>
-                                             <div className="bg-white p-3 rounded-lg border border-red-100">
-                                                  <label className="text-sm font-semibold text-red-700 flex items-center mb-2">
-                                                       <Calendar className="w-4 h-4 mr-1" />
-                                                       Booking ID
-                                                  </label>
-                                                  <p className="text-sm font-semibold text-teal-600">
-                                                       #{selectedCancellation.bookingId || selectedCancellation.bookingID || 'N/A'}
-                                                  </p>
-                                             </div>
-                                             <div className="bg-white p-3 rounded-lg border border-red-100">
-                                                  <label className="text-sm font-semibold text-red-700 flex items-center mb-2">
-                                                       <Calendar className="w-4 h-4 mr-1" />
-                                                       Ngày tạo
-                                                  </label>
-                                                  <p className="text-sm font-semibold text-gray-900">
-                                                       {selectedCancellation.requestedAt || selectedCancellation.createdAt
-                                                            ? new Date(selectedCancellation.requestedAt || selectedCancellation.createdAt).toLocaleString('vi-VN')
-                                                            : 'N/A'}
-                                                  </p>
-                                             </div>
-                                             <div className="bg-white p-3 rounded-lg border border-red-100">
-                                                  <label className="text-sm font-semibold text-red-700 flex items-center mb-2">
-                                                       <AlertCircle className="w-4 h-4 mr-1" />
-                                                       Trạng thái
-                                                  </label>
-                                                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                                                       {selectedCancellation.requestStatus || selectedCancellation.status || 'Pending'}
-                                                  </span>
-                                             </div>
+                    {selectedBooking && (
+                         <div className="space-y-3">
+                              {/* Customer Info */}
+                              <div className="bg-gradient-to-r from-teal-50 to-emerald-50 p-3 rounded-2xl border border-teal-200">
+                                   <h3 className="text-lg font-semibold text-teal-800 mb-2 flex items-center">
+                                        <User className="w-5 h-5 mr-2" />
+                                        Thông tin khách hàng
+                                   </h3>
+                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
+                                             <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">
+                                                  <User className="w-4 h-4 mr-1" />
+                                                  Tên khách hàng
+                                             </label>
+                                             <p className="text-sm font-semibold text-gray-900">{selectedBooking.customer}</p>
+                                        </div>
+                                        <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
+                                             <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">
+                                                  <Phone className="w-4 h-4 mr-1" />
+                                                  Số điện thoại
+                                             </label>
+                                             <p className="text-sm font-semibold text-gray-900">{selectedBooking.phone || "Chưa cập nhật"}</p>
+                                        </div>
+                                        <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
+                                             <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">
+                                                  <Mail className="w-4 h-4 mr-1" />
+                                                  Email
+                                             </label>
+                                             <p className="text-sm font-semibold text-gray-900">{selectedBooking.email}</p>
+                                        </div>
+                                        <div className="bg-white py-2 px-3 rounded-2xl border border-teal-100">
+                                             <label className="text-sm font-semibold text-teal-700 flex items-center mb-1">
+                                                  <Calendar className="w-4 h-4 mr-1" />
+                                                  Ngày đặt
+                                             </label>
+                                             <p className="text-sm font-semibold text-gray-900">{formatDate(selectedBooking.createdAt)}</p>
                                         </div>
                                    </div>
+                              </div>
 
-                                   {/* Reason */}
-                                   <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-200">
-                                        <h3 className="text-lg font-semibold text-orange-800 mb-3 flex items-center">
+                              {/* Booking Info */}
+                              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-2xl border border-blue-200">
+                                   <h3 className="text-lg font-semibold text-blue-800 mb-2 flex items-center">
+                                        <Calendar className="w-5 h-5 mr-2" />
+                                        Thông tin booking
+                                   </h3>
+                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        <div className="bg-white py-2 px-3 rounded-2xl border border-blue-100">
+                                             <label className="text-sm font-semibold text-blue-700 flex items-center mb-1">
+                                                  <MapPin className="w-4 h-4 mr-1" />
+                                                  Sân
+                                             </label>
+                                             <p className="text-sm font-semibold text-gray-900">{selectedBooking.field}</p>
+                                        </div>
+                                        <div className="bg-white py-2 px-3 rounded-2xl border border-blue-100">
+                                             <label className="text-sm font-semibold text-blue-700 flex items-center mb-1">
+                                                  <Calendar className="w-4 h-4 mr-1" />
+                                                  Ngày
+                                             </label>
+                                             <p className="text-sm font-semibold text-gray-900">{formatDate(selectedBooking.date)}</p>
+                                        </div>
+                                        <div className="bg-white py-2 px-3 rounded-2xl border border-blue-100">
+                                             <label className="text-sm font-semibold text-blue-700 flex items-center mb-1">
+                                                  <Clock className="w-4 h-4 mr-1" />
+                                                  Khung giờ
+                                             </label>
+                                             <p className="text-sm font-semibold text-gray-900">{selectedBooking.timeSlot}</p>
+                                        </div>
+                                        <div className="bg-white py-2 px-3 rounded-2xl border border-blue-100">
+                                             <label className="text-sm font-semibold text-blue-700 flex items-center mb-1">
+                                                  <DollarSign className="w-4 h-4 mr-1" />
+                                                  Số tiền
+                                             </label>
+                                             <p className="text-lg font-bold text-emerald-600">{formatCurrency(selectedBooking.amount)}</p>
+                                        </div>
+                                   </div>
+                              </div>
+
+                              {/* Status */}
+                              <div className="bg-gradient-to-r from-amber-50 to-yellow-50 p-3 rounded-2xl border border-amber-200">
+                                   <h3 className="text-lg font-semibold text-amber-800 mb-2 flex items-center">
+                                        <AlertCircle className="w-5 h-5 mr-2" />
+                                        Trạng thái
+                                   </h3>
+                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        <div className="bg-white py-2 px-3 rounded-2xl border border-amber-100">
+                                             <label className="text-sm font-semibold text-amber-700 flex items-center mb-1">
+                                                  <CheckSquare className="w-4 h-4 mr-1" />
+                                                  Trạng thái booking
+                                             </label>
+                                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(selectedBooking.status)}`}>
+                                                  {getStatusText(selectedBooking.status)}
+                                             </span>
+                                        </div>
+                                        <div className="bg-white py-2 px-3 rounded-2xl border border-amber-100">
+                                             <label className="text-sm font-semibold text-amber-700 flex items-center mb-1">
+                                                  <CreditCard className="w-4 h-4 mr-1" />
+                                                  Trạng thái thanh toán
+                                             </label>
+                                             <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(selectedBooking.paymentStatus)}`}>
+                                                  {getPaymentStatusText(selectedBooking.paymentStatus)}
+                                             </span>
+                                        </div>
+                                   </div>
+                              </div>
+
+                              {/* Notes */}
+                              {selectedBooking.notes && (
+                                   <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-2xl border border-purple-200">
+                                        <h3 className="text-lg font-semibold text-purple-800 mb-3 flex items-center">
                                              <FileText className="w-5 h-5 mr-2" />
-                                             Lý do hủy
+                                             Ghi chú
                                         </h3>
-                                        <div className="bg-white p-4 rounded-lg border border-orange-100">
+                                        <div className="bg-white p-4 rounded-lg border border-purple-100">
                                              <p className="text-sm font-medium text-gray-900 leading-relaxed whitespace-pre-wrap">
-                                                  {selectedCancellation.requestReason?.split('|')[0]?.trim() || selectedCancellation.reason || selectedCancellation.Reason || 'Không có lý do'}
+                                                  {selectedBooking.notes}
                                              </p>
                                         </div>
                                    </div>
+                              )}
 
-                                   {/* QR Code */}
-                                   {(() => {
-                                        const qrMatch = selectedCancellation.requestReason?.match(/RefundQR:\s*(https?:\/\/[^\s]+)/);
-                                        const qrUrl = qrMatch ? qrMatch[1] : null;
-                                        return qrUrl ? (
-                                             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
-                                                  <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
-                                                       <QrCode className="w-5 h-5 mr-2" />
-                                                       QR Code Hoàn tiền
-                                                  </h3>
-                                                  <div className="bg-white p-4 rounded-lg border border-blue-100 flex flex-col items-center">
-                                                       <img
-                                                            src={qrUrl}
-                                                            alt="QR Code Hoàn tiền"
-                                                            className="max-w-full h-auto rounded-lg shadow-md"
-                                                            style={{ maxHeight: '300px' }}
-                                                       />
-                                                       <p className="text-sm text-gray-600 mt-3">Quét mã QR để hoàn tiền cho khách hàng</p>
-                                                  </div>
-                                             </div>
-                                        ) : null;
-                                   })()}
+                              {/* Actions */}
+                              <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                                   <Button
+                                        variant="outline"
+                                        onClick={() => setIsDetailModalOpen(false)}
+                                   >
+                                        Đóng
+                                   </Button>
+                              </div>
+                         </div>
+                    )}
+               </Modal>
 
-                                   {/* Actions */}
-                                   <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-                                        {(selectedCancellation.requestStatus || selectedCancellation.status) === "Confirmed" && (
-                                             <div className="px-4 py-2 rounded-xl bg-green-50 border border-green-200 flex items-center gap-2">
-                                                  <CheckCircle className="w-5 h-5 text-green-600" />
-                                                  <span className="text-sm font-semibold text-green-700">
-                                                       Yêu cầu đã được xác nhận
-                                                  </span>
-                                             </div>
-                                        )}
-                                        <div className="flex space-x-3 ml-auto">
-                                             <Button
-                                                  variant="outline"
-                                                  onClick={() => {
-                                                       setIsCancellationDetailModalOpen(false);
-                                                       setSelectedCancellation(null);
-                                                  }}
-                                                  className="rounded-xl border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold"
-                                             >
-                                                  Đóng
-                                             </Button>
-                                             {(selectedCancellation.requestStatus || selectedCancellation.status) === "Pending" && (
-                                                  <>
-                                                       <Button
-                                                            onClick={async () => {
-                                                                 setIsCancellationDetailModalOpen(false);
-                                                                 await handleConfirmCancellation(selectedCancellation.requestId || selectedCancellation.id || selectedCancellation.cancellationId);
-                                                                 setSelectedCancellation(null);
-                                                            }}
-                                                            className="rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold"
-                                                       >
-                                                            <CheckCircle className="w-4 h-4 mr-2" />
-                                                            Xác nhận hủy
-                                                       </Button>
-                                                       <Button
-                                                            variant="outline"
-                                                            onClick={async () => {
-                                                                 setIsCancellationDetailModalOpen(false);
-                                                                 await handleDeleteCancellation(selectedCancellation.requestId || selectedCancellation.id || selectedCancellation.cancellationId);
-                                                                 setSelectedCancellation(null);
-                                                            }}
-                                                            className="rounded-xl border-red-300 text-red-600 hover:bg-red-50 font-semibold"
-                                                       >
-                                                            <XCircle className="w-4 h-4 mr-2" />
-                                                            Xóa yêu cầu
-                                                       </Button>
-                                                  </>
-                                             )}
-                                        </div>
-                                   </div>
-                              </div>
-                         ) : (
-                              <div className="text-center py-12">
-                                   <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                   <p className="text-gray-600">Không tìm thấy thông tin yêu cầu hủy</p>
-                              </div>
-                         )}
-               </Modal >
+               {/* Demo Restricted Modal */}
+               <DemoRestrictedModal
+                    isOpen={showDemoRestrictedModal}
+                    onClose={() => setShowDemoRestrictedModal(false)}
+               />
           </>
      );
 };

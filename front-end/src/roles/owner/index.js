@@ -2,12 +2,9 @@
 export { default as OwnerDashboard } from "./pages/OwnerDashboard";
 export { default as FieldManagement } from "./pages/FieldManagement";
 export { default as BookingManagement } from "./pages/BookingManagement";
-export { default as PricingManagement } from "./pages/PricingManagement";
 export { default as RevenueReports } from "./pages/RevenueReports";
 export { default as ScheduleManagement } from "./pages/ScheduleManagement";
 export { default as CancellationPolicies } from "./pages/CancellationPolicies";
-export { default as PromotionsManagement } from "./pages/PromotionsManagement";
-export { default as PaymentTracking } from "./pages/PaymentTracking";
 export { default as NotificationsManagement } from "./pages/NotificationsManagement";
 export { default as TimeSlotManagement } from "./pages/TimeSlotManagement";
 export { default as BankAccountManagement } from "./pages/BankAccountManagement";

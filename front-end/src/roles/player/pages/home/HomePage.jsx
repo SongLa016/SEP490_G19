@@ -3,7 +3,6 @@ import { Section } from "../../../../shared/components/ui";
 import { useNavigate } from "react-router-dom";
 import Lenis from "lenis";
 import { HeroSection, StatsSection, QuickCategoriesSection, TopBookingNowSection, QuickBookingSection, CommunityMatchmakingSection, UserReviewsSection, CancellationPoliciesSection, MobileAppSection, WhyChooseUsSection, NewsletterSection, CTASection } from "./components";
-import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
 import { fetchTopBookingFields, fetchFieldComplex, fetchField } from "../../../../shared/services/fields";
 import { useComplexes } from "../../../../shared/hooks/usePageData";
 
@@ -927,7 +926,6 @@ export default function HomePage({ user }) {
                <WhyChooseUsSection />
                {/* <FAQSection /> */}
                <CTASection user={user} />
-               <LoginPromotionModal user={user} />
           </Section>
      );
 }

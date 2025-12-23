@@ -4,15 +4,14 @@ export { default as AddressPicker } from "./components/AddressPicker";
 export { default as BookingModal } from "./components/BookingModal";
 export { default as CancellationPolicyDisplay } from "./components/CancellationPolicyDisplay";
 export { default as CancelBookingModal } from "./components/CancelBookingModal";
-export { default as DemoAccountPromotionManager } from "./components/DemoAccountPromotionManager";
+
 export { default as DemoRestrictedModal } from "./components/DemoRestrictedModal";
 export { default as EmailVerificationModal } from "./components/EmailVerificationModal";
 export { default as ErrorDisplay } from "./components/ErrorDisplay";
 export { default as FindOpponentModal } from "./components/FindOpponentModal";
 export { default as ForgotPasswordModal } from "./components/ForgotPasswordModal";
 export { default as NotificationsDisplay } from "./components/NotificationsDisplay";
-export { default as PromotionCodeSection } from "./components/PromotionCodeSection";
-export { default as PromotionsDisplay } from "./components/PromotionsDisplay";
+
 export { default as QuickAddFieldType } from "./components/QuickAddFieldType";
 export { default as FieldTypeCombobox } from "./components/FieldTypeCombobox";
 export { default as RatingModal } from "./components/RatingModal";
@@ -51,7 +50,7 @@ export * from "./services/ownerBankAccount";
 export * from "./services/fieldSchedules";
 export * from "./services/passwordResetService";
 export * from "./services/profileService";
-export * from "./services/promotions";
+
 export * from "./services/favorites";
 export * from "./services/timeSlots";
 export * from "./services/fieldTypes";

@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Star } from "lucide-react";
 import { Section, Container, Card, CardContent, StaggerContainer } from "../../../../shared/components/ui";
 import { ScrollReveal } from "../../../../shared/components/ScrollReveal";
-import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
 import { useNavigate, useLocation } from "react-router-dom";
 import { fetchComplexes, fetchFields, fetchTimeSlots, fetchFavoriteFields, toggleFavoriteField } from "../../../../shared/index";
 import { usePublicFieldSchedulesByDate } from "../../../../shared/hooks/useFieldSchedules";
@@ -1445,9 +1444,6 @@ export default function FieldSearch({ user }) {
                     onClose={() => setShowMapSearch(false)}
                     onLocationSelect={handleMapLocationSelect}
                />
-
-               {/* Khuyến khích đăng nhập */}
-               <LoginPromotionModal user={user} />
           </Section >
      );
 }

@@ -10,6 +10,7 @@ import {
   cancelBookingPackageSession
 } from "../../../../../shared/services/bookings";
 import { fetchFieldScheduleById, updateFieldScheduleStatus, fetchFieldSchedulesByField } from "../../../../../shared/services/fieldSchedules";
+import { API_BASE_URL } from "../../../../../shared/config/api";
 import Swal from "sweetalert2";
 
 // component hiển thị bảng danh sách gói đặt sân cố định của Owner
@@ -148,7 +149,7 @@ export default function OwnerPackagesTable({
             uniqueUserIds.map(async (userId) => {
               try {
                 const token = localStorage.getItem("token");
-                const response = await fetch(`https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`, {
+                const response = await fetch(`${API_BASE_URL}/api/PlayerProfile/${userId}`, {
                   headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
@@ -343,7 +344,7 @@ export default function OwnerPackagesTable({
               const userPromises = userIds.map(async (userId) => {
                 try {
                   const token = localStorage.getItem("token");
-                  const response = await fetch(`https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`, {
+                  const response = await fetch(`${API_BASE_URL}/api/PlayerProfile/${userId}`, {
                     headers: {
                       Authorization: `Bearer ${token}`,
                       "Content-Type": "application/json",
