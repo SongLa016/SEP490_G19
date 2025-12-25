@@ -128,6 +128,7 @@ export default function FieldSearch({ user }) {
      const [fields, setFields] = useState([]);                   // Danh sách sân nhỏ tải về
      const [complexes, setComplexes] = useState([]);                  // Danh sách khu sân tải về
      const [filteredFields, setFilteredFields] = useState([]);      // Danh sách sân nhỏ đã lọc     
+     const [selectedComplexId, setSelectedComplexId] = useState(null); // ComplexId được chọn từ bản đồ
      const [favoriteFieldIds, setFavoriteFieldIds] = useState(new Set()); // Set fieldIds yêu thích của user
      const [isLoading, setIsLoading] = useState(false);               // Trạng thái tải dữ liệu
      const [userLocation, setUserLocation] = useState(null);        //  Vị trí người dùng (nếu có)
@@ -432,7 +433,7 @@ export default function FieldSearch({ user }) {
           if (slotId) {
                setSlotId("");
           }
-     }, [date]);
+     }, [date, slotId]);
 
      // Load dữ liệu sân và khu sân khi bộ lọc thay đổi
      useEffect(() => {
@@ -528,6 +529,14 @@ export default function FieldSearch({ user }) {
                ...f,
                isFavorite: favoriteFieldIds.has(Number(f.fieldId)),
           })) : [];
+
+          // Lọc theo complexId được chọn từ bản đồ
+          if (selectedComplexId) {
+               filtered = filtered.filter(field => {
+                    const fieldComplexId = field.complexId ?? field.ComplexId ?? field.complexID;
+                    return fieldComplexId && Number(fieldComplexId) === Number(selectedComplexId);
+               });
+          }
 
           // Tìm kiếm theo tên và địa chỉ
           if (searchQuery) {
@@ -658,7 +667,7 @@ export default function FieldSearch({ user }) {
           });
           setFilteredFields(fieldsWithTypeName);
           // Reset trang chỉ khi thực sự là thay đổi filter, không reset khi chỉ chuyển trang
-     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields, fieldTypeMap, date, availableFieldIds, favoriteFieldIds]);
+     }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields, fieldTypeMap, date, availableFieldIds, favoriteFieldIds, selectedComplexId]);
 
      // Lưu tùy chọn người dùng vào localStorage khi thay đổi
      useEffect(() => {
@@ -744,15 +753,46 @@ export default function FieldSearch({ user }) {
      const handleMapLocationSelect = (location) => {
           // Cập nhật bộ lọc dựa trên vị trí được chọn từ bản đồ
           if (location.field) {
-               setSearchQuery(location.field.name);
-               setSelectedLocation("");
+               // location.field là complex, lọc các sân thuộc complex này
+               const complexId = location.field.complexId || location.field.id;
+               if (complexId) {
+                    setSelectedComplexId(Number(complexId));
+                    // Reset các bộ lọc khác để hiển thị tất cả sân của complex
+                    setSearchQuery("");
+                    setSelectedLocation("");
+                    setSelectedPrice("");
+                    setSelectedRating("");
+                    setActiveTab("all");
+                    setTypeTab("all");
+                    setPage(1);
+                    setForceList(true);
+                    return;
+               }
+               // Fallback: tìm theo địa chỉ hoặc quận/huyện
+               const address = location.field.address || location.address || "";
+               const district = location.field.district || "";
+               if (district) {
+                    setSelectedLocation(district.trim());
+               } else if (address) {
+                    const locationParts = address.split(',');
+                    const districtPart = locationParts.find(part =>
+                         part.includes('Quận') || part.includes('Huyện') || part.includes('Thị xã')
+                    );
+                    if (districtPart) {
+                         setSelectedLocation(districtPart.trim());
+                    }
+               }
+               setSearchQuery("");
           } else {
-               const locationParts = location.address.split(',');
-               const district = locationParts.find(part => part.includes('Quận'));
+               const locationParts = (location.address || "").split(',');
+               const district = locationParts.find(part =>
+                    part.includes('Quận') || part.includes('Huyện') || part.includes('Thị xã')
+               );
                if (district) {
                     setSelectedLocation(district.trim());
                }
           }
+          setSelectedComplexId(null);
           setPage(1);
           setForceList(true);
      };
@@ -792,8 +832,15 @@ export default function FieldSearch({ user }) {
           { key: "top-rated", label: "Đánh giá cao" },
      ];
 
-     const isNoFilter = !searchQuery && !selectedLocation && !selectedPrice && !selectedRating;  //không lọc
+     const isNoFilter = !searchQuery && !selectedLocation && !selectedPrice && !selectedRating && !selectedComplexId;  //không lọc
      const isGroupedView = activeTab === "all" && isNoFilter && !forceList && entityTab === "fields";
+
+     // Lấy tên complex đang được lọc
+     const selectedComplexName = useMemo(() => {
+          if (!selectedComplexId) return null;
+          const complex = complexes.find(c => Number(c.complexId) === selectedComplexId);
+          return complex?.name || `Khu sân #${selectedComplexId}`;
+     }, [selectedComplexId, complexes]);
 
      // Điều khiển chế độ hiển thị danh sách hoặc lưới dựa trên bộ lọc
      useEffect(() => {
@@ -1073,6 +1120,7 @@ export default function FieldSearch({ user }) {
                                                   setEntityTab("fields");
                                                   setDate("");
                                                   setSlotId("");
+                                                  setSelectedComplexId(null);
                                                   setMapSearchKey(prev => prev + 1);
                                              }}
                                         />
@@ -1128,6 +1176,29 @@ export default function FieldSearch({ user }) {
                               updateViewMode={updateViewMode}
                          />
                     </ScrollReveal>
+
+                    {/* Hiển thị khi đang lọc theo khu sân từ bản đồ */}
+                    {selectedComplexId && selectedComplexName && (
+                         <motion.div
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="mb-4 flex items-center gap-2 bg-teal-50 border border-teal-200 rounded-xl px-4 py-2"
+                         >
+                              <MapPin className="w-4 h-4 text-teal-600" />
+                              <span className="text-teal-800 font-medium">
+                                   Đang hiển thị sân của: <span className="font-bold">{selectedComplexName}</span>
+                              </span>
+                              <button
+                                   onClick={() => setSelectedComplexId(null)}
+                                   className="ml-auto text-teal-600 hover:text-teal-800 hover:bg-teal-100 rounded-full p-1 transition-colors"
+                                   title="Xóa bộ lọc"
+                              >
+                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                   </svg>
+                              </button>
+                         </motion.div>
+                    )}
 
                     {/* Tải trạng thái */}
                     <AnimatePresence>

@@ -1,11 +1,10 @@
-// Service layer for Notification APIs
+// API thông báo
 import axios from "axios";
 import { getStoredToken, isTokenExpired } from "../utils/tokenManager";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
-// Create axios instance with base configuration
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
@@ -14,7 +13,6 @@ const apiClient = axios.create({
   },
 });
 
-// Add request interceptor to include auth token if available
 apiClient.interceptors.request.use(
   (config) => {
     const token = getStoredToken();
@@ -29,7 +27,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle errors
+// xử lý lỗi response
 apiClient.interceptors.response.use(
   (response) => {
     return response;
@@ -47,13 +45,12 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Helper function to handle API errors
+// hàm xử lý lỗi API
 const handleApiError = (error) => {
   let errorMessage = "Có lỗi xảy ra khi gọi API";
 
   if (error.response) {
     const { status, statusText, data: responseData } = error.response;
-
     if (status === 404) {
       errorMessage = "Không tìm thấy thông báo";
     } else if (status === 500) {
@@ -88,10 +85,7 @@ const handleApiError = (error) => {
   throw new Error(errorMessage);
 };
 
-/**
- * GET /api/Notification
- * Lấy danh sách thông báo (phân trang + lọc theo trạng thái)
- */
+// hàm lấy danh sách thông báo
 export async function getNotifications(params = {}) {
   try {
     const { page = 1, pageSize = 10, isRead } = params;
@@ -121,11 +115,7 @@ export async function getNotifications(params = {}) {
   }
 }
 
-/**
- * GET /api/Notification/admin
- * Lấy danh sách thông báo cho Admin (phân trang)
- * CHỈ ADMIN mới gọi được endpoint này
- */
+// hàm lấy danh sách thông báo cho Admin
 export async function getAdminNotifications(params = {}) {
   try {
     const { pageNumber = 1, pageSize = 20 } = params;
@@ -142,16 +132,11 @@ export async function getAdminNotifications(params = {}) {
       data: response.data,
     };
   } catch (error) {
-    // Nếu bị 403 (không phải admin) hoặc lỗi khác, vẫn dùng chung handler
     handleApiError(error);
   }
 }
 
-/**
- * GET /api/Notification/admin/{id}
- * Xem chi tiết 1 thông báo của Admin
- * CHỈ ADMIN mới gọi được endpoint này
- */
+// hàm lấy thông báo của Admin theo id
 export async function getAdminNotificationById(id) {
   try {
     const response = await apiClient.get(`/api/Notification/admin/${id}`);
@@ -164,16 +149,12 @@ export async function getAdminNotificationById(id) {
   }
 }
 
-/**
- * GET /api/Notification/latest
- * Lấy X thông báo mới nhất
- */
+// hàm lấy X thông báo mới nhất
 export async function getLatestNotifications(count = 10) {
   try {
     const url = `/api/Notification/latest?count=${count}`;
 
     const response = await apiClient.get(url);
-
     return {
       ok: true,
       data: response.data,
@@ -187,13 +168,9 @@ export async function getLatestNotifications(count = 10) {
   }
 }
 
-/**
- * GET /api/Notification/unread-count
- * Đếm số thông báo chưa đọc
- */
+// hàm đếm số thông báo chưa đọc
 export async function getUnreadCount() {
   try {
-    // Check token before making request
     const token = getStoredToken();
     if (!token) {
       return {
@@ -214,21 +191,13 @@ export async function getUnreadCount() {
     const url = `/api/Notification/unread-count`;
 
     const response = await apiClient.get(url);
-
-    // Handle different response formats
-    // Format 1: { success: true, data: { unreadCount: 4 } }
-    // Format 2: { count: 4 } or { unreadCount: 4 }
-    // Format 3: number directly
     let count = 0;
     if (typeof response.data === "number") {
-      // API trả về số trực tiếp
       count = response.data;
     } else if (response.data && typeof response.data === "object") {
-      // Check for nested data structure: { success: true, data: { unreadCount: 4 } }
       if (response.data.data && typeof response.data.data === "object") {
         count = response.data.data.unreadCount || response.data.data.count || 0;
       } else {
-        // Direct object: { count: 4 } or { unreadCount: 4 }
         count =
           response.data.count ||
           response.data.unreadCount ||
@@ -245,7 +214,6 @@ export async function getUnreadCount() {
       count: Number(count) || 0,
     };
   } catch (error) {
-    // Handle 401 Unauthorized
     if (error.response?.status === 401) {
       return {
         ok: false,
@@ -263,10 +231,7 @@ export async function getUnreadCount() {
   }
 }
 
-/**
- * GET /api/Notification/type/{type}
- * Lấy thông báo theo loại (Comment, Like, ReportResult, System, ...)
- */
+// hàm lấy thông báo theo loại
 export async function getNotificationsByType(type, params = {}) {
   try {
     const { page = 1, pageSize = 10 } = params;
@@ -308,14 +273,9 @@ export async function getNotificationsByType(type, params = {}) {
   }
 }
 
-/**
- * POST /api/Notification
- * Admin tạo thông báo thủ công (endpoint cũ không có `/admin`)
- * CHỈ ADMIN MỚI CÓ THỂ GỌI API NÀY
- */
+// hàm tạo thông báo
 export async function createNotification(notificationData) {
   try {
-    // Kiểm tra token trước khi gọi API
     const token = getStoredToken();
     if (!token || isTokenExpired(token)) {
       return {
@@ -339,7 +299,6 @@ export async function createNotification(notificationData) {
       message: response.data.message || "Tạo thông báo thành công",
     };
   } catch (error) {
-    // Kiểm tra lỗi 403 (Forbidden) - không phải Admin
     if (error.response?.status === 403) {
       return {
         ok: false,
@@ -355,14 +314,9 @@ export async function createNotification(notificationData) {
   }
 }
 
-/**
- * POST /api/Notification/bulk
- * Admin tạo thông báo hàng loạt (endpoint cũ không có `/admin`)
- * CHỈ ADMIN MỚI CÓ THỂ GỌI API NÀY
- */
+// hàm tạo thông báo hàng loạt
 export async function createBulkNotifications(notifications) {
   try {
-    // Kiểm tra token trước khi gọi API
     const token = getStoredToken();
     if (!token || isTokenExpired(token)) {
       return {
@@ -386,7 +340,6 @@ export async function createBulkNotifications(notifications) {
       message: response.data.message || "Tạo thông báo hàng loạt thành công",
     };
   } catch (error) {
-    // Kiểm tra lỗi 403 (Forbidden) - không phải Admin
     if (error.response?.status === 403) {
       return {
         ok: false,
@@ -402,13 +355,7 @@ export async function createBulkNotifications(notifications) {
   }
 }
 
-/**
- * POST /api/Notification/admin
- * Admin tạo thông báo thủ công (endpoint mới có `/admin`)
- * Quy ước backend hiện tại:
- * - userId = null  => gửi cho toàn hệ thống
- * - userId > 0     => gửi cho user cụ thể
- */
+// hàm tạo thông báo cho Admin
 export async function createAdminNotification(notificationData) {
   try {
     const token = getStoredToken();
@@ -420,7 +367,6 @@ export async function createAdminNotification(notificationData) {
     }
 
     const payload = {
-      // null = gửi cho toàn hệ thống, >0 = gửi user cụ thể
       userId:
         notificationData.userId === 0 || notificationData.userId == null
           ? null
@@ -454,13 +400,7 @@ export async function createAdminNotification(notificationData) {
   }
 }
 
-/**
- * POST /api/Notification/admin/bulk
- * Admin tạo nhiều thông báo 1 lúc
- * Quy ước backend hiện tại:
- * - userId = null  => gửi cho toàn hệ thống
- * - userId > 0     => gửi cho user cụ thể
- */
+// hàm tạo thông báo hàng loạt cho Admin
 export async function createAdminBulkNotifications(notifications = []) {
   try {
     const token = getStoredToken();
@@ -472,8 +412,7 @@ export async function createAdminBulkNotifications(notifications = []) {
     }
 
     const payload = notifications.map((notif) => ({
-      userId:
-        notif.userId === 0 || notif.userId == null ? null : notif.userId,
+      userId: notif.userId === 0 || notif.userId == null ? null : notif.userId,
       title: notif.title || "",
       message: notif.message || "",
       type: notif.type || "System",
@@ -507,10 +446,7 @@ export async function createAdminBulkNotifications(notifications = []) {
   }
 }
 
-/**
- * PUT /api/Notification/{id}/read
- * Đánh dấu đã đọc 1 thông báo
- */
+// hàm đánh dấu đã đọc thông báo
 export async function markNotificationAsRead(id) {
   try {
     const url = `/api/Notification/${id}/read`;
@@ -531,10 +467,7 @@ export async function markNotificationAsRead(id) {
   }
 }
 
-/**
- * PUT /api/Notification/mark-all-read
- * Đánh dấu đã đọc toàn bộ thông báo
- */
+// hàm đánh dấu đã đọc toàn bộ thông báo
 export async function markAllNotificationsAsRead() {
   try {
     const url = `/api/Notification/mark-all-read`;
@@ -555,10 +488,7 @@ export async function markAllNotificationsAsRead() {
   }
 }
 
-/**
- * DELETE /api/Notification/{id}
- * Xóa 1 thông báo
- */
+// hàm xóa thông báo
 export async function deleteNotification(id) {
   try {
     const url = `/api/Notification/${id}`;
@@ -579,11 +509,7 @@ export async function deleteNotification(id) {
   }
 }
 
-/**
- * DELETE /api/Notification/admin/{id}
- * Xóa 1 thông báo ở phía Admin
- * CHỈ ADMIN mới có thể gọi
- */
+// hàm xóa thông báo cho Admin
 export async function deleteAdminNotification(id) {
   try {
     const response = await apiClient.delete(`/api/Notification/admin/${id}`);
@@ -601,11 +527,7 @@ export async function deleteAdminNotification(id) {
   }
 }
 
-/**
- * DELETE /api/Notification/admin/bulk
- * Xóa hàng loạt thông báo ở phía Admin
- * ids: mảng notificationId cần xóa; nếu bỏ trống, backend có thể xóa theo logic mặc định
- */
+// hàm xóa hàng loạt thông báo cho Admin
 export async function bulkDeleteAdminNotifications(ids = []) {
   try {
     const response = await apiClient.delete("/api/Notification/admin/bulk", {
@@ -625,10 +547,7 @@ export async function bulkDeleteAdminNotifications(ids = []) {
   }
 }
 
-/**
- * DELETE /api/Notification/delete-all
- * Xóa toàn bộ thông báo của user
- */
+// hàm xóa toàn bộ thông báo của user
 export async function deleteAllNotifications() {
   try {
     const response = await apiClient.delete(`/api/Notification/delete-all`);
@@ -646,7 +565,7 @@ export async function deleteAllNotifications() {
   }
 }
 
-// Compatibility functions for backward compatibility with old code
+// hàm lấy danh sách thông báo
 export async function fetchNotifications(ownerId) {
   try {
     const result = await getNotifications({ page: 1, pageSize: 100 });
@@ -654,7 +573,6 @@ export async function fetchNotifications(ownerId) {
       const notifications = Array.isArray(result.data)
         ? result.data
         : result.data?.notifications || result.data?.data || [];
-      // Filter by owner if needed (API might handle this)
       return notifications;
     }
     return [];
@@ -664,7 +582,7 @@ export async function fetchNotifications(ownerId) {
 }
 
 export async function updateNotification(notificationId, notificationData) {
-  // Since update is not available, we'll delete and create new
+  // vì update không khả dụng, chúng tôi sẽ xóa và tạo mới
   try {
     await deleteNotification(notificationId);
     return await createNotification(notificationData);
@@ -802,7 +720,6 @@ const notificationService = {
   deleteAdminNotification,
   bulkDeleteAdminNotifications,
   deleteAllNotifications,
-  // Compatibility exports
   fetchNotifications,
   updateNotification,
   getNotificationStats,

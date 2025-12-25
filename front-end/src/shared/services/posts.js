@@ -274,9 +274,10 @@ export async function createPost(postData) {
     formData.append("Title", postData.title || "");
     formData.append("Content", postData.content || "");
 
-    // FieldId should be a number
-    const fieldId = Number(postData.fieldId) || 0;
-    formData.append("FieldId", fieldId.toString());
+    // FieldId - chỉ gửi nếu có giá trị hợp lệ (> 0), không gửi nếu null/undefined/0
+    if (postData.fieldId && Number(postData.fieldId) > 0) {
+      formData.append("FieldId", Number(postData.fieldId).toString());
+    }
 
     // Handle ImageFiles (New Files)
     if (postData.imageFiles) {
@@ -352,9 +353,10 @@ export async function updatePost(id, postData) {
     formData.append("Title", postData.title || "");
     formData.append("Content", postData.content || "");
 
-    // FieldId should be a number
-    const fieldId = Number(postData.fieldId) || 0;
-    formData.append("FieldId", fieldId.toString());
+    // FieldId - chỉ gửi nếu có giá trị hợp lệ (> 0), không gửi nếu null/undefined/0
+    if (postData.fieldId && Number(postData.fieldId) > 0) {
+      formData.append("FieldId", Number(postData.fieldId).toString());
+    }
 
     // Handle ImageFiles (New Files)
     if (postData.imageFiles) {

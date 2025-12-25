@@ -43,6 +43,7 @@ export function listCommunityPosts({ location = "", date = "" } = {}) {
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 
+// hàm tạo bài viết cộng đồng
 export function seedCommunityPostsOnce() {
   const posts = load(KEYS.posts);
   if (posts.length > 0) return;
@@ -70,6 +71,7 @@ export function seedCommunityPostsOnce() {
   save(KEYS.posts, demo);
 }
 
+// hàm tạo bài viết cộng đồng
 export function createCommunityPost({
   userId,
   content,
@@ -101,7 +103,7 @@ export function createCommunityPost({
   return post;
 }
 
-// CommunityJoins(JoinId, PostId, UserId, Status)
+// hàm tham gia bài viết cộng đồng
 export function joinCommunityPost({ postId, userId }) {
   const joins = load(KEYS.joins);
   const exists = joins.find((j) => j.postId === postId && j.userId === userId);
@@ -118,10 +120,12 @@ export function joinCommunityPost({ postId, userId }) {
   return join;
 }
 
+// hàm lấy danh sách tham gia bài viết cộng đồng theo bài viết
 export function listJoinsByPost(postId) {
   return load(KEYS.joins).filter((j) => j.postId === postId);
 }
 
+// hàm cập nhật trạng thái tham gia bài viết cộng đồng
 export function updateJoinStatus(joinId, status) {
   const joins = load(KEYS.joins);
   const idx = joins.findIndex((j) => j.joinId === joinId);
@@ -131,7 +135,7 @@ export function updateJoinStatus(joinId, status) {
   return joins[idx];
 }
 
-// Notifications(NotificationId, UserId, Type, RefId, Message, IsRead)
+// hàm tạo thông báo cộng đồng
 export function createCommunityNotification({ userId, type, refId, message }) {
   const notifs = load(KEYS.notifications);
   const n = {
@@ -148,8 +152,7 @@ export function createCommunityNotification({ userId, type, refId, message }) {
   return n;
 }
 
-// ===================== Community Core: Posts, Comments, Likes, Reports =====================
-// Likes
+// hàm thích bài viết cộng đồng
 export function togglePostLike({ postId, userId }) {
   const likes = load(KEYS.postLikes);
   const idx = likes.findIndex(
@@ -169,11 +172,12 @@ export function togglePostLike({ postId, userId }) {
   return likes.filter((l) => l.postId === postId).length;
 }
 
+// hàm đếm số lượng thích bài viết cộng đồng
 export function countPostLikes(postId) {
   return load(KEYS.postLikes).filter((l) => l.postId === postId).length;
 }
 
-// Comments
+// hàm thêm bình luận bài viết cộng đồng
 export function addComment({
   postId,
   userId,
@@ -195,13 +199,14 @@ export function addComment({
   return c;
 }
 
+// hàm lấy danh sách bình luận bài viết cộng đồng
 export function listComments(postId) {
   return load(KEYS.comments).filter(
     (c) => c.postId === postId && c.status === "Active"
   );
 }
 
-// Reports
+// hàm báo cáo bài viết cộng đồng
 export function reportTarget({ reporterId, targetType, targetId, reason }) {
   const reports = load(KEYS.reports);
   const r = {
@@ -218,8 +223,7 @@ export function reportTarget({ reporterId, targetType, targetId, reason }) {
   return r;
 }
 
-// ChatRooms(RoomId, Type=Match, CreatedBy, RefId=PostId)
-// ChatRoomMembers(RoomId, UserId)
+// hàm tạo phòng chat cộng đồng
 export function createMatchRoom({ createdBy, postId, memberUserIds }) {
   const rooms = load(KEYS.rooms);
   const room = {
@@ -239,11 +243,11 @@ export function createMatchRoom({ createdBy, postId, memberUserIds }) {
   return room;
 }
 
-// Accept flow: update join, create room, notify
+// hàm chấp nhận tham gia bài viết cộng đồng
 export function acceptJoin({ joinId }) {
   const join = updateJoinStatus(joinId, "accepted");
   if (!join) return null;
-  // find all joins for post
+  // lấy tất cả tham gia bài viết cộng đồng
   const joins = load(KEYS.joins).filter(
     (j) => j.postId === join.postId && j.status === "accepted"
   );
@@ -275,7 +279,7 @@ export function rejectJoin({ joinId }) {
 }
 
 // ===================== Match Requests (Find Opponent for Booking) =====================
-// MatchRequests(RequestId, BookingId, OwnerId, Level, Note, Status: Open|Pending|Matched|Rejected|Expired, CreatedAt)
+// hàm tạo yêu cầu tìm đối
 export function createMatchRequest({
   bookingId,
   ownerId,
@@ -287,14 +291,11 @@ export function createMatchRequest({
   slotName,
   price,
   createdByName,
-  // New fields for recurring bookings
   isRecurring = false,
   recurringSessions = [],
-  recurringType = "single", // "single" | "all" | "individual" | "first"
+  recurringType = "single",
 }) {
   const items = load(KEYS.matchRequests);
-
-  // For single bookings, prevent duplicate open request
   if (
     !isRecurring &&
     bookingId &&
@@ -327,7 +328,7 @@ export function createMatchRequest({
   };
 
   if (isRecurring && recurringType === "individual") {
-    // Create individual requests for each session
+    // tạo yêu cầu tìm đối cho từng buổi
     const requests = [];
     recurringSessions.forEach((session, index) => {
       const req = {
@@ -348,13 +349,13 @@ export function createMatchRequest({
     save(KEYS.matchRequests, items);
     return requests;
   } else {
-    // Single request (for all sessions or first session)
     items.unshift(baseRequest);
     save(KEYS.matchRequests, items);
     return baseRequest;
   }
 }
 
+// hàm lấy danh sách yêu cầu tìm đối
 export function listMatchRequests({
   status = "Open",
   level = "",
@@ -379,12 +380,14 @@ export function listMatchRequests({
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 
+// hàm lấy yêu cầu tìm đối theo ID
 export function getMatchRequestById(requestId) {
   return (
     load(KEYS.matchRequests).find((r) => r.requestId === requestId) || null
   );
 }
 
+// hàm cập nhật yêu cầu tìm đối
 export function updateMatchRequest(requestId, updates) {
   const list = load(KEYS.matchRequests);
   const idx = list.findIndex((r) => r.requestId === requestId);
@@ -394,6 +397,7 @@ export function updateMatchRequest(requestId, updates) {
   return list[idx];
 }
 
+// hàm hết hạn yêu cầu tìm đối
 export function expireMatchRequestsNow() {
   const now = Date.now();
   const list = load(KEYS.matchRequests).map((r) =>
@@ -405,7 +409,7 @@ export function expireMatchRequestsNow() {
   return list;
 }
 
-// MatchJoins(JoinId, RequestId, UserId, Level, Status: Pending|Accepted|Rejected)
+// hàm tham gia yêu cầu tìm đối
 export function joinMatchRequest({ requestId, userId, level }) {
   const joins = load(KEYS.matchJoins);
   const req = getMatchRequestById(requestId);
@@ -434,24 +438,24 @@ export function joinMatchRequest({ requestId, userId, level }) {
   return j;
 }
 
+// hàm lấy danh sách tham gia yêu cầu tìm đối theo yêu cầu
 export function listMatchJoinsByRequest(requestId) {
   return load(KEYS.matchJoins).filter((j) => j.requestId === requestId);
 }
 
+// hàm chấp nhận tham gia yêu cầu tìm đối
 export function acceptMatchJoin({ joinId }) {
   const joins = load(KEYS.matchJoins);
   const idx = joins.findIndex((j) => j.joinId === joinId);
   if (idx < 0) return null;
   const target = joins[idx];
   target.status = "Accepted";
-  // auto reject others for same request
   joins.forEach((j, i) => {
     if (j.requestId === target.requestId && j.joinId !== joinId)
       joins[i] = { ...j, status: "Rejected" };
   });
   save(KEYS.matchJoins, joins);
   const req = updateMatchRequest(target.requestId, { status: "Matched" });
-  // notify both sides
   createCommunityNotification({
     userId: req.ownerId,
     type: "Match",
@@ -465,7 +469,7 @@ export function acceptMatchJoin({ joinId }) {
     message: "Yêu cầu tham gia của bạn đã được chấp nhận",
   });
 
-  // histories for both players
+  // lưu lịch sử tham gia yêu cầu tìm đối
   const histories = load(KEYS.playerHistories);
   const now = Date.now();
   const base = {
@@ -496,7 +500,7 @@ export function acceptMatchJoin({ joinId }) {
   return { join: target, request: req };
 }
 
-// Player histories helpers
+// hàm lấy danh sách lịch sử tham gia yêu cầu tìm đối theo người dùng
 export function listPlayerHistoriesByUser(userId) {
   const histories = load(KEYS.playerHistories);
   return histories
@@ -504,6 +508,7 @@ export function listPlayerHistoriesByUser(userId) {
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 
+// hàm từ chối tham gia yêu cầu tìm đối
 export function rejectMatchJoin({ joinId }) {
   const joins = load(KEYS.matchJoins);
   const idx = joins.findIndex((j) => j.joinId === joinId);
@@ -521,7 +526,7 @@ export function rejectMatchJoin({ joinId }) {
 }
 
 // ===================== Team Management =====================
-// Teams(TeamID, TeamName, CreatedBy, ContactPhone, Description, PreferredSkillLevel, PreferredPositions, CurrentMembers, MaxMembers, Status, CreatedAt)
+// hàm tạo đội
 export function createTeam({
   teamName,
   createdBy,
@@ -552,6 +557,7 @@ export function createTeam({
   return team;
 }
 
+// hàm lấy danh sách đội
 export function listTeams({
   status = "Open",
   skillLevel = "",
@@ -571,10 +577,12 @@ export function listTeams({
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 }
 
+// hàm lấy đội theo ID
 export function getTeamById(teamId) {
   return load(KEYS.teams).find((t) => t.teamId === teamId) || null;
 }
 
+// hàm cập nhật đội
 export function updateTeam(teamId, updates) {
   const teams = load(KEYS.teams);
   const idx = teams.findIndex((t) => t.teamId === teamId);
@@ -584,7 +592,7 @@ export function updateTeam(teamId, updates) {
   return teams[idx];
 }
 
-// TeamJoinRequests(RequestID, TeamID, UserID, Message, Status, RequestedAt, RespondedAt, RespondedBy)
+// hàm tạo yêu cầu tham gia đội
 export function createTeamJoinRequest({ teamId, userId, message, userName }) {
   const requests = load(KEYS.teamJoinRequests);
   const team = getTeamById(teamId);
@@ -593,7 +601,7 @@ export function createTeamJoinRequest({ teamId, userId, message, userName }) {
   if (team.createdBy === userId)
     throw new Error("Bạn không thể tham gia đội của chính mình");
 
-  // Check if user already has a pending request
+  // kiểm tra xem người dùng đã gửi yêu cầu tham gia đội này chưa
   const existingRequest = requests.find(
     (r) => r.teamId === teamId && r.userId === userId && r.status === "Pending"
   );
@@ -613,7 +621,7 @@ export function createTeamJoinRequest({ teamId, userId, message, userName }) {
   requests.push(request);
   save(KEYS.teamJoinRequests, requests);
 
-  // Notify team creator
+  // thông báo cho người tạo đội
   createCommunityNotification({
     userId: team.createdBy,
     type: "TeamJoinRequest",
@@ -624,14 +632,17 @@ export function createTeamJoinRequest({ teamId, userId, message, userName }) {
   return request;
 }
 
+// hàm lấy danh sách yêu cầu tham gia đội theo đội
 export function listTeamJoinRequestsByTeam(teamId) {
   return load(KEYS.teamJoinRequests).filter((r) => r.teamId === teamId);
 }
 
+// hàm lấy danh sách yêu cầu tham gia đội theo người dùng
 export function listTeamJoinRequestsByUser(userId) {
   return load(KEYS.teamJoinRequests).filter((r) => r.userId === userId);
 }
 
+// hàm chấp nhận yêu cầu tham gia đội
 export function approveTeamJoinRequest({ requestId, respondedBy }) {
   const requests = load(KEYS.teamJoinRequests);
   const idx = requests.findIndex((r) => r.requestId === requestId);
@@ -641,12 +652,12 @@ export function approveTeamJoinRequest({ requestId, respondedBy }) {
   const team = getTeamById(request.teamId);
   if (!team) return null;
 
-  // Check if team is still open and has space
+  // kiểm tra xem đội còn mở để tham gia và có chỗ trống không
   if (team.status !== "Open" || team.currentMembers >= team.maxMembers) {
     throw new Error("Đội đã đầy hoặc không còn mở");
   }
 
-  // Update request status
+  // cập nhật trạng thái yêu cầu tham gia đội
   requests[idx] = {
     ...request,
     status: "Approved",
@@ -655,7 +666,7 @@ export function approveTeamJoinRequest({ requestId, respondedBy }) {
   };
   save(KEYS.teamJoinRequests, requests);
 
-  // Update team member count
+  // cập nhật số lượng thành viên đội
   const newMemberCount = team.currentMembers + 1;
   const newStatus = newMemberCount >= team.maxMembers ? "Full" : "Open";
   updateTeam(request.teamId, {
@@ -663,7 +674,7 @@ export function approveTeamJoinRequest({ requestId, respondedBy }) {
     status: newStatus,
   });
 
-  // Notify the user
+  // thông báo cho người dùng
   createCommunityNotification({
     userId: request.userId,
     type: "TeamJoinApproved",
@@ -673,7 +684,7 @@ export function approveTeamJoinRequest({ requestId, respondedBy }) {
 
   return requests[idx];
 }
-
+// hàm từ chối yêu cầu tham gia đội
 export function rejectTeamJoinRequest({ requestId, respondedBy }) {
   const requests = load(KEYS.teamJoinRequests);
   const idx = requests.findIndex((r) => r.requestId === requestId);
@@ -688,7 +699,7 @@ export function rejectTeamJoinRequest({ requestId, respondedBy }) {
   };
   save(KEYS.teamJoinRequests, requests);
 
-  // Notify the user
+  // thông báo cho người dùng
   const team = getTeamById(request.teamId);
   createCommunityNotification({
     userId: request.userId,

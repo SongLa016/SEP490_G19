@@ -1,26 +1,19 @@
-/**
- * Axios interceptor để xử lý 401 Unauthorized error
- * Tự động hiển thị thông báo và redirect về trang login
- */
-import { clearPersistedAuth, isTokenExpired, getStoredToken } from "./tokenManager";
+// hàm xử lý 401 Unauthorized error
+import {
+  clearPersistedAuth,
+  isTokenExpired,
+  getStoredToken,
+} from "./tokenManager";
 
 let isShowingSessionExpiredAlert = false;
 
-/**
- * Hiển thị thông báo phiên đăng nhập hết hạn và redirect về login
- */
+// hàm hiển thị thông báo phiên đăng nhập hết hạn và redirect về login
 const showSessionExpiredAndRedirect = async () => {
-  // Tránh hiển thị nhiều alert cùng lúc
   if (isShowingSessionExpiredAlert) return;
-  
   isShowingSessionExpiredAlert = true;
-  
-  // Clear auth data
   clearPersistedAuth();
-  
-  // Dynamic import Swal
   const Swal = (await import("sweetalert2")).default;
-  
+
   await Swal.fire({
     icon: "warning",
     title: "Phiên đăng nhập hết hạn",
@@ -37,12 +30,8 @@ const showSessionExpiredAndRedirect = async () => {
   });
 };
 
-/**
- * Setup axios interceptor cho một axios instance
- * @param {AxiosInstance} axiosInstance - Axios instance cần setup
- */
+// hàm setup axios interceptor cho một axios instance
 export const setupAuthInterceptor = (axiosInstance) => {
-  // Request interceptor - thêm token vào header
   axiosInstance.interceptors.request.use(
     (config) => {
       const token = getStoredToken();
@@ -56,12 +45,11 @@ export const setupAuthInterceptor = (axiosInstance) => {
     }
   );
 
-  // Response interceptor - xử lý 401 error
+  // hàm xử lý response
   axiosInstance.interceptors.response.use(
     (response) => response,
     async (error) => {
       if (error.response?.status === 401) {
-        // Token expired hoặc invalid
         await showSessionExpiredAndRedirect();
       }
       return Promise.reject(error);

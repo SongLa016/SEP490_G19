@@ -39,6 +39,7 @@ import {
      fetchMatchRequestById,
      joinMatchRequestAPI,
 } from "../../../../../shared/services/matchRequest";
+import { validateVietnamPhone } from "../../../../../shared/services/authService";
 import { getBookingById } from "../../../../../shared/utils/bookingStore";
 import Swal from "sweetalert2";
 
@@ -563,11 +564,9 @@ export default function FindMatch() {
           }
 
           // Validate số điện thoại VN
-          const trimmedPhone = formData.contactPhone?.replace(/\s/g, "") || "";
-          if (!trimmedPhone) {
-               errors.contactPhone = "Vui lòng nhập số điện thoại liên hệ";
-          } else if (!/^(03|05|07|08|09)[0-9]{8}$/.test(trimmedPhone)) {
-               errors.contactPhone = "SĐT phải 10 số, bắt đầu bằng 03/05/07/08/09";
+          const phoneValidation = validateVietnamPhone(formData.contactPhone);
+          if (!phoneValidation.isValid) {
+               errors.contactPhone = phoneValidation.message;
           }
 
           // Validate số người chơi
@@ -840,17 +839,31 @@ export default function FindMatch() {
                                    <Input
                                         type="number"
                                         min="1"
+                                        max="22"
                                         value={formData.playerCount}
-                                        onChange={(e) =>
+                                        onChange={(e) => {
                                              setFormData({
                                                   ...formData,
                                                   playerCount: e.target.value,
-                                             })
-                                        }
-                                        className="w-full rounded-xl pl-10 pr-4 py-2.5 text-sm border-gray-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200"
+                                             });
+                                             if (formErrors.playerCount) {
+                                                  setFormErrors((prev) => ({ ...prev, playerCount: "" }));
+                                             }
+                                        }}
+                                        className={`w-full rounded-xl pl-10 pr-4 py-2.5 text-sm ${formErrors.playerCount
+                                             ? "border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200"
+                                             : "border-gray-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200"
+                                             }`}
                                    />
                                    <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                               </div>
+                              {formErrors.playerCount && (
+                                   <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                                        <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                                        {formErrors.playerCount}
+                                   </p>
+                              )}
+                              <p className="text-xs text-gray-500">Số người tham gia (1-22 người)</p>
                          </div>
 
                          {/* Số điện thoại */}

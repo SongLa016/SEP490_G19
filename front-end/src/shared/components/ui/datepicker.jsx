@@ -34,13 +34,21 @@ export function DatePicker({
   const minDateValue = minDate || min
   const minDateObj = React.useMemo(() => {
     if (!minDateValue) return undefined
-    return typeof minDateValue === "string" ? new Date(minDateValue) : minDateValue
+    const d = typeof minDateValue === "string" ? new Date(minDateValue) : new Date(minDateValue)
+    // Reset time to start of day in local timezone to ensure proper date comparison
+    d.setHours(0, 0, 0, 0)
+    return d
   }, [minDateValue])
 
   // Memoize disabled function to prevent unnecessary re-renders
   const disabledDates = React.useMemo(() => {
     if (!minDateObj) return undefined
-    return (date) => date < minDateObj
+    return (date) => {
+      // Compare only date parts by resetting time to start of day
+      const compareDate = new Date(date)
+      compareDate.setHours(0, 0, 0, 0)
+      return compareDate < minDateObj
+    }
   }, [minDateObj])
 
   // Memoize onSelect callback

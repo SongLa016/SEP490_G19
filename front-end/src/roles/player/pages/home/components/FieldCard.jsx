@@ -114,10 +114,10 @@ export const FieldCard = ({ field, index = 0, hoveredCardId, setHoveredCardId })
                                    <span className="inline-flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border text-[11px]">Số lượng: <span className="font-semibold text-teal-700">{field.availableSlots}</span></span>
                               </div>
                               <Button
-                                   onClick={() => navigate('/search')}
+                                   onClick={() => navigate(`/field/${field.id}`)}
                                    className="rounded-full h-8 px-3 text-xs bg-teal-500 hover:bg-teal-600 text-white"
                               >
-                                   Đặt nhanh
+                                   Xem chi tiết
                               </Button>
                          </div>
                     </div>

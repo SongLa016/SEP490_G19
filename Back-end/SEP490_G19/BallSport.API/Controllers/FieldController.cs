@@ -92,25 +92,30 @@ namespace BallSport.API.Controllers
 
         // xóa - owner
         [Authorize(Roles = "Owner")]
-        [HttpDelete("{fieldId}")]
-        public async Task<IActionResult> DeleteField(int fieldId)
-        {
-            var ownerIdClaim = User.FindFirst("UserID");
-            if (ownerIdClaim == null) return Unauthorized("Không tìm thấy OwnerId trong token.");
-            int ownerId = int.Parse(ownerIdClaim.Value);
+[HttpDelete("{fieldId}")]
+public async Task<IActionResult> DeleteField(int fieldId)
+{
+    var ownerIdClaim = User.FindFirst("UserID");
+    if (ownerIdClaim == null) return Unauthorized("Không tìm thấy OwnerId trong token.");
+    int ownerId = int.Parse(ownerIdClaim.Value);
 
-            try
-            {
-                var deleted = await _fieldService.DeleteFieldAsync(fieldId, ownerId);
-                if (!deleted) return NotFound("Field không tồn tại.");
+    try
+    {
+        var deleted = await _fieldService.DeleteFieldAsync(fieldId, ownerId);
+        if (!deleted) return NotFound("Field không tồn tại.");
 
-                return Ok("Xóa field thành công.");
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Forbid(ex.Message);
-            }
-        }
+        return Ok("Xóa field thành công.");
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        return Forbid(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        // Log ex nếu cần
+        return StatusCode(500, "Đã xảy ra lỗi server: " + ex.Message);
+    }
+}
 
         // lấy ra sân của owner 
         [Authorize(Roles = "Owner")]

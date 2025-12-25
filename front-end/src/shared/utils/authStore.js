@@ -1,12 +1,11 @@
-// Simple localStorage-based auth and OTP store (no backend)
-
 const USERS_KEY = "users";
 const SESSION_KEY = "session_user";
-
+// hàm tạo ID ngẫu nhiên
 function generateId() {
   return "u_" + Math.random().toString(36).slice(2, 10);
 }
 
+// hàm lấy danh sách người dùng
 export function getUsers() {
   try {
     const raw = localStorage.getItem(USERS_KEY);
@@ -16,10 +15,12 @@ export function getUsers() {
   }
 }
 
+// hàm lưu danh sách người dùng
 export function saveUsers(users) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
+// hàm lấy người dùng hiện tại
 export function getCurrentUser() {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
@@ -29,11 +30,13 @@ export function getCurrentUser() {
   }
 }
 
+// hàm lưu người dùng hiện tại
 export function setCurrentUser(user) {
   if (user) localStorage.setItem(SESSION_KEY, JSON.stringify(user));
   else localStorage.removeItem(SESSION_KEY);
 }
 
+// hàm tìm người dùng theo email
 export function findUserByEmail(email) {
   const users = getUsers();
   return users.find(
@@ -41,6 +44,7 @@ export function findUserByEmail(email) {
   );
 }
 
+// hàm tìm người dùng theo tên đăng nhập
 export function findUserByUsername(username) {
   const users = getUsers();
   return users.find(
@@ -48,6 +52,7 @@ export function findUserByUsername(username) {
   );
 }
 
+// hàm lưu người dùng
 function saveUser(updatedUser) {
   const users = getUsers();
   const idx = users.findIndex((u) => u.id === updatedUser.id);
@@ -59,25 +64,29 @@ function saveUser(updatedUser) {
   saveUsers(users);
 }
 
+// hàm tạo OTP ngẫu nhiên
 function generateOtp() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
+// hàm tạo key OTP
 function otpKey(email) {
   return `otp:${email.toLowerCase()}`;
 }
 
+// hàm tạo OTP cho email
 export function createOtpForEmail(email) {
   const code = generateOtp();
   const payload = {
     code,
     createdAt: Date.now(),
-    expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
+    expiresAt: Date.now() + 5 * 60 * 1000,
   };
   localStorage.setItem(otpKey(email), JSON.stringify(payload));
   return code;
 }
 
+// hàm kiểm tra OTP cho email
 export function verifyOtpForEmail(email, code) {
   const raw = localStorage.getItem(otpKey(email));
   if (!raw) return { ok: false, reason: "OTP không tồn tại" };
@@ -89,6 +98,7 @@ export function verifyOtpForEmail(email, code) {
   return { ok: true };
 }
 
+// hàm đăng ký người dùng
 export function registerUser({
   username,
   password,
@@ -102,7 +112,6 @@ export function registerUser({
     return { ok: false, reason: "Tên đăng nhập đã tồn tại" };
   }
 
-  // Check email only if provided
   if (email && findUserByEmail(email)) {
     return { ok: false, reason: "Email đã tồn tại" };
   }
@@ -110,25 +119,25 @@ export function registerUser({
   const user = {
     id: generateId(),
     username,
-    password, // For demo only (no hashing in mock)
+    password,
     role:
       role === "FieldOwner"
         ? "FieldOwner"
         : role === "Admin"
         ? "Admin"
         : "User",
-    status: "active", // Active immediately for username-based login
+    status: "active",
     ownerDocs: role === "FieldOwner" ? ownerDocs || null : null,
-    name: name || null, // Optional name, can be added later in profile
+    name: name || null,
     phone: phone || null,
-    email: email || null, // Optional email
-    emailVerified: false, // Email verification status
+    email: email || null,
+    emailVerified: false,
     avatar: null,
     createdAt: Date.now(),
   };
   saveUser(user);
 
-  // Only create OTP if email is provided
+  // chỉ tạo OTP nếu email được cung cấp
   if (email) {
     const otp = createOtpForEmail(email);
     return { ok: true, user, otp, requiresEmailVerification: true };
@@ -137,6 +146,7 @@ export function registerUser({
   return { ok: true, user, requiresEmailVerification: false };
 }
 
+// hàm hoàn thành đăng ký với OTP
 export function completeRegistrationWithOtp({ email, code }) {
   const verify = verifyOtpForEmail(email, code);
   if (!verify.ok) return verify;
@@ -158,6 +168,7 @@ export function completeRegistrationWithOtp({ email, code }) {
   return { ok: true, user };
 }
 
+// hàm đăng nhập với mật khẩu
 export function loginWithPassword({ username, password }) {
   const user = findUserByUsername(username);
   if (!user) return { ok: false, reason: "Sai tên đăng nhập hoặc mật khẩu" };
@@ -167,6 +178,7 @@ export function loginWithPassword({ username, password }) {
   return { ok: true, user };
 }
 
+// hàm đăng nhập với Google
 export function mockGoogleLogin({ email, name }) {
   // If user exists, login; else create as User active
   let user = findUserByEmail(email);
@@ -182,7 +194,7 @@ export function mockGoogleLogin({ email, name }) {
       createdAt: Date.now(),
       name: name || email.split("@")[0],
       phone: null,
-      emailVerified: true, // Google login is pre-verified
+      emailVerified: true,
       avatar: null,
     };
     saveUser(user);
@@ -191,6 +203,7 @@ export function mockGoogleLogin({ email, name }) {
   return { ok: true, user };
 }
 
+// hàm chuyển file thành URL dữ liệu
 export async function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -204,7 +217,7 @@ export function logout() {
   setCurrentUser(null);
 }
 
-// Demo users for testing
+// người dùng demo để test
 export function createDemoUsers() {
   const demoUsers = [
     {
@@ -262,7 +275,7 @@ export function createDemoUsers() {
   return demoUsers;
 }
 
-// Profile helpers
+// hàm cập nhật thông tin người dùng
 export function updateUserProfile({
   userId,
   name,
@@ -289,6 +302,7 @@ export function updateUserProfile({
   return { ok: true, user: updated };
 }
 
+// hàm đổi mật khẩu
 export function changePassword({ userId, oldPassword, newPassword }) {
   const users = getUsers();
   const idx = users.findIndex((u) => u.id === userId);
@@ -302,6 +316,7 @@ export function changePassword({ userId, oldPassword, newPassword }) {
   return { ok: true };
 }
 
+// hàm nâng cấp người dùng thành chủ sân
 export function upgradeUserToFieldOwner({ userId, ownerDocs }) {
   const users = getUsers();
   const idx = users.findIndex((u) => u.id === userId);
@@ -316,7 +331,7 @@ export function upgradeUserToFieldOwner({ userId, ownerDocs }) {
   return { ok: true, user };
 }
 
-// Helper functions for role-based access
+// hàm kiểm tra quyền truy cập
 export function hasRole(user, requiredRole) {
   if (!user) return false;
   return user.role === requiredRole;
@@ -330,7 +345,7 @@ export function hasAnyRole(user, roles) {
 export function isActiveUser(user) {
   return user && user.status === "active";
 }
-
+// hàm kiểm tra quyền truy cập
 export function canAccessFeature(user, feature) {
   if (!user) return false;
 

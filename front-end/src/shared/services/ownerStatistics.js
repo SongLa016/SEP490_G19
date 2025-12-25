@@ -48,6 +48,7 @@ const ensureAuthenticated = () => {
   }
 };
 
+// hàm lấy dữ liệu từ response
 const unwrapData = (response) => {
   if (!response) return null;
   if (response.data?.data !== undefined) {
@@ -56,6 +57,7 @@ const unwrapData = (response) => {
   return response.data ?? null;
 };
 
+// hàm xử lý lỗi
 const extractErrorMessage = (error, fallbackMessage) => {
   if (error.response?.data?.message) {
     return error.response.data.message;
@@ -69,7 +71,7 @@ const extractErrorMessage = (error, fallbackMessage) => {
   return fallbackMessage;
 };
 
-// OwnerDailyRevenue
+// hàm lấy thống kê doanh thu theo ngày
 export async function fetchOwnerDailyRevenue(params = {}) {
   try {
     ensureAuthenticated();
@@ -101,7 +103,7 @@ export async function fetchOwnerDailyRevenue(params = {}) {
   }
 }
 
-// OwnerFieldPerformance
+// hàm lấy thống kê hiệu suất sân
 export async function fetchOwnerFieldPerformance(params = {}) {
   try {
     ensureAuthenticated();
@@ -133,7 +135,7 @@ export async function fetchOwnerFieldPerformance(params = {}) {
   }
 }
 
-// OwnerFillRate
+// hàm lấy thống kê tỷ lệ lấp đầy
 export async function fetchOwnerFillRate(params = {}) {
   try {
     ensureAuthenticated();
@@ -162,7 +164,7 @@ export async function fetchOwnerFillRate(params = {}) {
   }
 }
 
-// OwnerStatistics - Recent Bookings
+// hàm lấy danh sách booking gần đây
 export async function fetchOwnerRecentBookings(params = {}) {
   try {
     ensureAuthenticated();
@@ -197,7 +199,7 @@ export async function fetchOwnerRecentBookings(params = {}) {
   }
 }
 
-// OwnerSummary - Total Revenue
+// hàm lấy tổng doanh thu
 export async function fetchOwnerTotalRevenue(params = {}) {
   try {
     ensureAuthenticated();
@@ -226,7 +228,7 @@ export async function fetchOwnerTotalRevenue(params = {}) {
   }
 }
 
-// OwnerSummary - Total Bookings
+// hàm lấy tổng số booking
 export async function fetchOwnerTotalBookings(params = {}) {
   try {
     ensureAuthenticated();

@@ -12,23 +12,7 @@ import {
 import { fetchFieldScheduleById, updateFieldScheduleStatus, fetchFieldSchedulesByField } from "../../../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
 
-/**
- * Component hiển thị bảng danh sách gói đặt sân cố định của Owner
- * 
- * Chức năng:
- * - Hiển thị danh sách gói đặt sân cố định (booking packages)
- * - Xác nhận thanh toán gói
- * - Hoàn thành gói (tự động khi hết hạn)
- * - Xem chi tiết gói và danh sách buổi đặt (sessions)
- * - Hủy buổi đặt trong gói
- * 
- * @param {Object} props - Props của component
- * @param {Function} props.getStatusColor - Lấy màu theo trạng thái
- * @param {Function} props.getStatusText - Lấy text theo trạng thái
- * @param {Function} props.getPaymentStatusColor - Lấy màu theo trạng thái thanh toán
- * @param {Function} props.getPaymentStatusText - Lấy text theo trạng thái thanh toán
- * @param {number} props.ownerId - ID của owner (fallback nếu không có token)
- */
+// component hiển thị bảng danh sách gói đặt sân cố định của Owner
 export default function OwnerPackagesTable({
   getStatusColor = () => "bg-gray-100 text-gray-800",
   getStatusText = (s) => s || "—",
@@ -44,19 +28,15 @@ export default function OwnerPackagesTable({
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isSessionsModalOpen, setIsSessionsModalOpen] = useState(false);
   const [selectedPackageForSessions, setSelectedPackageForSessions] = useState(null);
-  const [userMap, setUserMap] = useState({}); // Map userId -> user info
-  const [sessionScheduleDataMap, setSessionScheduleDataMap] = useState({}); // Map scheduleId -> schedule data for sessions
-  const [sessionUserMap, setSessionUserMap] = useState({}); // Map userId -> user info for sessions
+  const [userMap, setUserMap] = useState({});
+  const [sessionScheduleDataMap, setSessionScheduleDataMap] = useState({});
+  const [sessionUserMap, setSessionUserMap] = useState({});
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString("vi-VN");
   };
 
-  /**
-   * Lấy icon tương ứng với trạng thái booking
-   * @param {string} status - Trạng thái (pending, confirmed, completed, cancelled)
-   * @returns {JSX.Element} Icon component
-   */
+  // hàm lấy icon tương ứng với trạng thái booking
   const getStatusIcon = (status) => {
     switch (status) {
       case "pending":
@@ -71,11 +51,7 @@ export default function OwnerPackagesTable({
     }
   };
 
-  /**
-   * Dịch booking status sang tiếng Việt
-   * @param {string} status - Trạng thái tiếng Anh
-   * @returns {string} Trạng thái tiếng Việt
-   */
+  // hàm dịch trạng thái booking sang
   const getBookingStatusText = (status) => {
     const statusLower = (status || "").toLowerCase();
     if (statusLower.includes("pending")) return "Chờ xác nhận";
@@ -84,7 +60,7 @@ export default function OwnerPackagesTable({
     if (statusLower.includes("cancel")) return "Đã hủy";
     return status || "—";
   };
-
+  // hàm lấy màu tương ứng với trạng thái booking
   const getBookingStatusColor = (status) => {
     const statusLower = (status || "").toLowerCase();
     if (statusLower.includes("pending")) return "bg-yellow-100 text-yellow-800 border-yellow-200";
@@ -94,11 +70,7 @@ export default function OwnerPackagesTable({
     return "bg-gray-100 text-gray-800 border-gray-200";
   };
 
-  /**
-   * Dịch payment status sang tiếng Việt
-   * @param {string} status - Trạng thái thanh toán tiếng Anh
-   * @returns {string} Trạng thái thanh toán tiếng Việt
-   */
+  // hàm dịch trạng thái thanh toán sang tiếng Việt
   const getPaymentStatusTextVi = (status) => {
     const statusLower = (status || "").toLowerCase();
     if (statusLower.includes("paid")) return "Đã thanh toán";
@@ -132,13 +104,7 @@ export default function OwnerPackagesTable({
     }
   };
 
-  /**
-   * Tải danh sách gói đặt sân cố định từ API
-   * - Fetch danh sách packages
-   * - Fetch thông tin user cho mỗi package
-   * - Fetch sessions cho mỗi package
-   * - Tự động hoàn thành các gói đã hết hạn
-   */
+  // hàm tải danh sách gói đặt sân cố định từ API
   const loadBookingPackages = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -174,8 +140,6 @@ export default function OwnerPackagesTable({
         userId: pkg.userId || pkg.userID || pkg.UserId || pkg.UserID || null,
       }));
       setBookingPackages(normalized);
-
-      // Fetch user info for all unique userIds
       const uniqueUserIds = [...new Set(normalized.filter(pkg => pkg.userId).map(pkg => pkg.userId))];
       if (uniqueUserIds.length > 0) {
         const fetchUsers = async () => {
@@ -222,7 +186,6 @@ export default function OwnerPackagesTable({
         fetchUsers();
       }
 
-      // Fetch sessions for all packages
       try {
         const sessionsResult = await fetchBookingPackageSessionsByOwnerToken();
         if (sessionsResult.success && sessionsResult.data) {
@@ -250,7 +213,6 @@ export default function OwnerPackagesTable({
         const isConfirmed = status.includes("confirm");
         const isCompleted = status.includes("complete");
         const endDate = pkg.endDate ? new Date(pkg.endDate) : null;
-
         if (endDate && isConfirmed && !isCompleted && endDate < now) {
           packagesToComplete.push(pkg.bookingPackageId);
         }
@@ -331,7 +293,7 @@ export default function OwnerPackagesTable({
     }
   }, [isDetailModalOpen, selectedPackage]);
 
-  // Fetch sessions khi mở modal danh sách buổi đặt
+  // hàm tải sessions khi mở modal danh sách buổi đặt
   useEffect(() => {
     if (isSessionsModalOpen && selectedPackageForSessions) {
       const fetchSessions = async () => {
@@ -351,7 +313,7 @@ export default function OwnerPackagesTable({
             });
             setPackageSessions(prev => ({ ...prev, ...sessionsMap }));
 
-            // Fetch schedule data for all sessions
+            // hàm tải schedule data cho tất cả sessions
             const scheduleIds = [...new Set(sessionsArray.filter(s => s.scheduleId || s.scheduleID).map(s => s.scheduleId || s.scheduleID))];
             if (scheduleIds.length > 0) {
               const schedulePromises = scheduleIds.map(async (scheduleId) => {
@@ -375,7 +337,7 @@ export default function OwnerPackagesTable({
               setSessionScheduleDataMap(scheduleMap);
             }
 
-            // Fetch user data for all sessions
+            // hàm tải user data cho tất cả sessions
             const userIds = [...new Set(sessionsArray.filter(s => s.userId || s.userID).map(s => s.userId || s.userID))];
             if (userIds.length > 0) {
               const userPromises = userIds.map(async (userId) => {
@@ -427,15 +389,8 @@ export default function OwnerPackagesTable({
     }
   }, [isSessionsModalOpen, selectedPackageForSessions]);
 
-  /**
-   * Xử lý xác nhận thanh toán gói đặt sân cố định
-   * - Hiển thị dialog xác nhận với thông tin gói
-   * - Gọi API xác nhận package
-   * - Cập nhật tất cả FieldSchedule của sessions thành "Booked"
-   * @param {number} pkgId - ID của booking package
-   */
+  // hàm xử lý xác nhận thanh toán gói đặt sân cố định
   const handleConfirmPackage = async (pkgId) => {
-    // Tìm package để lấy thông tin
     const pkg = bookingPackages.find(p => (p.bookingPackageId || p.id) === pkgId);
 
     const result = await Swal.fire({
@@ -478,12 +433,8 @@ export default function OwnerPackagesTable({
     if (!resp.success) {
       await Swal.fire("Lỗi", resp.error || "Không thể xác nhận gói.", "error");
     } else {
-      // Cập nhật FieldSchedule status thành "Booked" cho tất cả sessions trong package
       try {
-        // Sử dụng packageSessions đã có sẵn hoặc fetch lại nếu chưa có
         let sessionsToUpdate = packageSessions[pkgId] || [];
-
-        // Nếu chưa có sessions trong state, fetch lại
         if (!sessionsToUpdate || sessionsToUpdate.length === 0) {
           const sessionsResult = await fetchBookingPackageSessionsByOwnerToken();
           if (sessionsResult.success && sessionsResult.data) {
@@ -492,18 +443,11 @@ export default function OwnerPackagesTable({
             );
           }
         }
-
-        console.log(`📝 [UPDATE SCHEDULE] Found ${sessionsToUpdate.length} sessions for package ${pkgId}`);
-        console.log(`📝 [UPDATE SCHEDULE] Sample session data:`, sessionsToUpdate[0]);
-
         if (sessionsToUpdate.length === 0) {
-          console.log(`📝 [UPDATE SCHEDULE] No sessions found for package ${pkgId}`);
         } else {
-          // Helper function để normalize date
           const normalizeDate = (dateValue) => {
             if (!dateValue) return null;
             if (typeof dateValue === 'string') {
-              // Lấy phần YYYY-MM-DD nếu có time
               const dateMatch = dateValue.match(/^\d{4}-\d{2}-\d{2}/);
               return dateMatch ? dateMatch[0] : dateValue.split('T')[0];
             }
@@ -515,23 +459,17 @@ export default function OwnerPackagesTable({
             }
             return null;
           };
-
-          // Lấy fieldId từ package (vì sessions có thể không có fieldId)
           const fieldId = pkg?.fieldId || pkg?.fieldID || pkg?.FieldID;
 
           if (!fieldId) {
-            console.error(`❌ [UPDATE SCHEDULE] No fieldId found in package ${pkgId}`);
-            console.error(`❌ [UPDATE SCHEDULE] Package data:`, pkg);
+            console.error(` No fieldId found in package ${pkgId}`);
+            console.error(` Package data:`, pkg);
           } else {
-            console.log(`📝 [UPDATE SCHEDULE] Using fieldId ${fieldId} from package`);
-
-            // Chuẩn bị thông tin sessions với fieldId, slotId, và date
+            // hàm chuẩn bị thông tin sessions với fieldId, slotId, và date
             const sessionsInfo = sessionsToUpdate.map((session, index) => {
-              // Lấy slotId từ session hoặc từ scheduleId (cần fetch schedule để lấy slotId)
               const slotId = session.slotId || session.slotID || session.SlotID;
               const sessionDate = normalizeDate(session.sessionDate || session.date);
               const scheduleId = session.scheduleId || session.scheduleID || session.ScheduleID;
-
               return {
                 sessionIndex: index,
                 scheduleId: scheduleId ? Number(scheduleId) : null,
@@ -541,21 +479,12 @@ export default function OwnerPackagesTable({
               };
             });
 
-            console.log(`📝 [UPDATE SCHEDULE] Prepared ${sessionsInfo.length} sessions info:`, sessionsInfo.map(s => ({
-              scheduleId: s.scheduleId,
-              slotId: s.slotId,
-              date: s.date
-            })));
-
-            // Fetch tất cả schedules của field này
+            // hàm tải tất cả schedules của field này
             const schedulesResult = await fetchFieldSchedulesByField(Number(fieldId));
-
             if (!schedulesResult.success || !schedulesResult.data) {
-              console.error(`❌ [UPDATE SCHEDULE] Failed to fetch schedules for field ${fieldId}`);
+              console.error(` Failed to fetch schedules for field ${fieldId}`);
             } else {
               const allSchedules = schedulesResult.data;
-              console.log(`📝 [UPDATE SCHEDULE] Found ${allSchedules.length} schedules for field ${fieldId}`);
-
               // Tìm schedule cho từng session dựa trên scheduleId hoặc (slotId + date)
               const sessionsToUpdateList = sessionsInfo.map(sessionInfo => {
                 let targetSchedule = null;
@@ -572,15 +501,10 @@ export default function OwnerPackagesTable({
                     // Lấy slotId từ schedule này
                     slotIdToUse = scheduleByScheduleId.slotId || scheduleByScheduleId.SlotId || scheduleByScheduleId.slotID || scheduleByScheduleId.SlotID;
                     const scheduleDate = normalizeDate(scheduleByScheduleId.date || scheduleByScheduleId.Date);
-
-                    // Kiểm tra xem date có khớp không
                     if (scheduleDate === sessionInfo.date) {
-                      // Date khớp, dùng schedule này
                       targetSchedule = scheduleByScheduleId;
-                      console.log(`✅ [UPDATE SCHEDULE] Session ${sessionInfo.sessionIndex}: Found schedule ${sessionInfo.scheduleId} with matching date ${sessionInfo.date}`);
                     } else {
                       // Date không khớp, sẽ tìm lại bằng slotId + date
-                      console.log(`📝 [UPDATE SCHEDULE] Session ${sessionInfo.sessionIndex}: ScheduleId ${sessionInfo.scheduleId} date mismatch (schedule: ${scheduleDate}, session: ${sessionInfo.date}). Will find by slotId ${slotIdToUse} + date ${sessionInfo.date}`);
                     }
                   }
                 }
@@ -595,7 +519,6 @@ export default function OwnerPackagesTable({
                   });
 
                   if (targetSchedule) {
-                    console.log(`✅ [UPDATE SCHEDULE] Session ${sessionInfo.sessionIndex}: Found schedule by slotId ${slotIdToUse} + date ${sessionInfo.date}`);
                   }
                 }
 
@@ -610,22 +533,10 @@ export default function OwnerPackagesTable({
                   };
                 }
 
-                console.warn(`⚠️ [UPDATE SCHEDULE] No matching schedule found for session ${sessionInfo.sessionIndex}:`, {
-                  scheduleId: sessionInfo.scheduleId,
-                  slotId: sessionInfo.slotId,
-                  slotIdFromSchedule: slotIdToUse,
-                  date: sessionInfo.date
-                });
-
                 return null;
               }).filter(item => item !== null);
-
-              console.log(`📝 [UPDATE SCHEDULE] Found ${sessionsToUpdateList.length} matching schedules to update`);
-
               if (sessionsToUpdateList.length > 0) {
-                console.log(`📝 [UPDATE SCHEDULE] Owner confirmed package ${pkgId}, updating ${sessionsToUpdateList.length} FieldSchedules to Booked`);
-
-                // Cập nhật từng schedule với delay nhỏ để tránh rate limiting
+                // hàm cập nhật từng schedule với delay nhỏ để tránh rate limiting
                 const updatePromises = sessionsToUpdateList.map(async (item, index) => {
                   const { scheduleId, date, slotId } = item;
 
@@ -635,27 +546,18 @@ export default function OwnerPackagesTable({
                   }
 
                   try {
-                    console.log(`📝 [UPDATE SCHEDULE] [${index + 1}/${sessionsToUpdateList.length}] Updating schedule ${scheduleId} (slot: ${slotId}, date: ${date}) to Booked`);
                     const updateResult = await updateFieldScheduleStatus(Number(scheduleId), "Booked");
                     if (updateResult.success) {
-                      console.log(`✅ [UPDATE SCHEDULE] [${index + 1}/${sessionsToUpdateList.length}] Successfully updated schedule ${scheduleId} to Booked`);
                       return { success: true, scheduleId, date, slotId };
                     } else {
-                      console.error(`❌ [UPDATE SCHEDULE] [${index + 1}/${sessionsToUpdateList.length}] Failed to update schedule ${scheduleId}:`, updateResult.error);
                       return { success: false, scheduleId, date, slotId, error: updateResult.error };
                     }
                   } catch (error) {
-                    console.error(`❌ [UPDATE SCHEDULE] [${index + 1}/${sessionsToUpdateList.length}] Exception updating schedule ${scheduleId}:`, error);
-                    console.error(`❌ [UPDATE SCHEDULE] Error details:`, {
-                      message: error.message,
-                      response: error.response?.data,
-                      status: error.response?.status
-                    });
                     return { success: false, scheduleId, date, slotId, error: error.message };
                   }
                 });
 
-                // Chờ tất cả updates hoàn thành
+                // hàm chờ tất cả updates hoàn thành
                 const results = await Promise.allSettled(updatePromises);
 
                 const successResults = results
@@ -665,38 +567,23 @@ export default function OwnerPackagesTable({
                   .filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value?.success))
                   .map(r => r.status === 'rejected' ? r.reason : r.value);
 
-                console.log(`✅ [UPDATE SCHEDULE] ========================================`);
-                console.log(`✅ [UPDATE SCHEDULE] Update Summary for package ${pkgId}:`);
-                console.log(`✅ [UPDATE SCHEDULE] Total: ${sessionsToUpdateList.length} schedules`);
-                console.log(`✅ [UPDATE SCHEDULE] Success: ${successResults.length}`);
-                console.log(`✅ [UPDATE SCHEDULE] Failed: ${failedResults.length}`);
-
-                if (successResults.length > 0) {
-                  console.log(`✅ [UPDATE SCHEDULE] Successfully updated schedules:`, successResults.map(r => ({
-                    scheduleId: r.scheduleId,
-                    slotId: r.slotId,
-                    date: r.date
-                  })));
-                }
-
                 if (failedResults.length > 0) {
-                  console.error(`❌ [UPDATE SCHEDULE] Failed schedules:`, failedResults.map(r => ({
+                  console.error(` Failed schedules:`, failedResults.map(r => ({
                     scheduleId: r?.scheduleId,
                     slotId: r?.slotId,
                     date: r?.date,
                     error: r?.error || r?.message
                   })));
                 }
-                console.log(`✅ [UPDATE SCHEDULE] ========================================`);
+                console.log(` ========================================`);
               } else {
-                console.warn(`⚠️ [UPDATE SCHEDULE] No matching schedules found for any sessions`);
+                console.warn(` No matching schedules found for any sessions`);
               }
             }
           }
         }
       } catch (error) {
-        console.error(`❌ [UPDATE SCHEDULE] Error updating FieldSchedules for package:`, error);
-        // Không block success message nếu update schedule thất bại
+        console.error(` Error updating FieldSchedules for package:`, error);
       }
 
       const amountText = pkg ? `<br/><br/><p class="text-sm"><strong>Số tiền:</strong> <span class="font-bold text-green-600">${(pkg.totalPrice || 0).toLocaleString("vi-VN")}₫</span></p>` : '';
@@ -709,7 +596,7 @@ export default function OwnerPackagesTable({
       loadBookingPackages();
     }
   };
-
+  // hàm xử lý xác nhận hoàn thành gói đặt sân cố định
   const handleCompletePackage = async (pkgId) => {
     const result = await Swal.fire({
       icon: "question",
@@ -729,6 +616,7 @@ export default function OwnerPackagesTable({
     }
   };
 
+  // hàm xử lý xác nhận hủy buổi đặt sân cố định
   const handleCancelSession = async (session) => {
     const sessionPrice = session.pricePerSession || session.price || 0;
     const result = await Swal.fire({
@@ -750,17 +638,15 @@ export default function OwnerPackagesTable({
       if (!resp.success) {
         await Swal.fire("Lỗi", resp.error || "Không thể hủy buổi đặt.", "error");
       } else {
-        // Cập nhật FieldSchedule status về "Available" khi hủy package session
         if (scheduleId && Number(scheduleId) > 0) {
           try {
             const updateResult = await updateFieldScheduleStatus(Number(scheduleId), "Available");
             if (updateResult.success) {
-              console.log(`✅ [UPDATE SCHEDULE] Updated schedule ${scheduleId} to Available after canceling session`);
             } else {
-              console.warn(`⚠️ [UPDATE SCHEDULE] Failed to update schedule ${scheduleId}:`, updateResult.error);
+              console.warn(` Failed to update schedule ${scheduleId}:`, updateResult.error);
             }
           } catch (error) {
-            console.error(`❌ [UPDATE SCHEDULE] Error updating schedule ${scheduleId}:`, error);
+            console.error(` Error updating schedule ${scheduleId}:`, error);
           }
         }
         // Lấy refundQr từ response - có thể ở nhiều vị trí
@@ -817,7 +703,6 @@ export default function OwnerPackagesTable({
 
         // Reload schedule và user data nếu modal đang mở
         if (isSessionsModalOpen && selectedPackageForSessions) {
-          // Trigger reload bằng cách fetch lại
           const fetchSessions = async () => {
             try {
               const sessionsResult = await fetchBookingPackageSessionsByOwnerToken();
@@ -865,8 +750,6 @@ export default function OwnerPackagesTable({
           };
           fetchSessions();
         }
-
-        // Reload packages để cập nhật trạng thái
         loadBookingPackages();
       }
     } catch (error) {

@@ -1,9 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchComplexes, fetchFields } from "../services/fields";
 
-/**
- * Lấy danh sách khu sân (FieldComplex) có cache
- */
+// lấy danh sách khu sân
 export function useFieldComplexes(enabled = true) {
   return useQuery({
     queryKey: ["fieldComplexes"],
@@ -22,12 +20,15 @@ export function useFieldComplexes(enabled = true) {
   });
 }
 
-/**
- * Lấy danh sách sân (Field) có cache theo bộ lọc.
- * params: { query, date, slotId, sortBy, useApi }
- */
+// tìm kiếm sân nhỏ theo bộ lọc
 export function useFieldsSearch(params = {}, enabled = true) {
-  const { query = "", date = "", slotId = "", sortBy = "relevance", useApi = true } = params;
+  const {
+    query = "",
+    date = "",
+    slotId = "",
+    sortBy = "relevance",
+    useApi = true,
+  } = params;
 
   return useQuery({
     queryKey: ["fields", { query, date, slotId, sortBy, useApi }],
@@ -51,4 +52,3 @@ export function useFieldsSearch(params = {}, enabled = true) {
     retry: 1,
   });
 }
-

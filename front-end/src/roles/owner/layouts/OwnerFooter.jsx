@@ -28,7 +28,7 @@ export default function OwnerFooter() {
                               </div>
                               <p className="text-gray-300 mb-4">
                                    Nền tảng quản lý sân bóng đá hàng đầu Việt Nam.
-                                   Quản lý sân, booking, doanh thu và khách hàng một cách chuyên nghiệp.
+                                   Quản lý sân, đặt sân, doanh thu và khách hàng một cách chuyên nghiệp.
                               </p>
                               <div className="flex space-x-4">
                                    <Link to="#" className="text-gray-400 hover:text-white transition-colors">
@@ -58,7 +58,7 @@ export default function OwnerFooter() {
                               <ul className="space-y-2">
                                    <li><Link to="/owner/dashboard" className="text-gray-300 hover:text-white transition-colors">Dashboard</Link></li>
                                    <li><Link to="/owner/fields" className="text-gray-300 hover:text-white transition-colors">Quản lý sân</Link></li>
-                                   <li><Link to="/owner/bookings" className="text-gray-300 hover:text-white transition-colors">Quản lý booking</Link></li>
+                                   <li><Link to="/owner/đặt sâns" className="text-gray-300 hover:text-white transition-colors">Quản lý đặt sân</Link></li>
                                    <li><Link to="/owner/reports" className="text-gray-300 hover:text-white transition-colors">Báo cáo doanh thu</Link></li>
                               </ul>
                          </div>
@@ -93,7 +93,7 @@ export default function OwnerFooter() {
                                         <Users className="w-4 h-4 mr-2" />
                                         Cộng đồng chủ sân
                                    </Link>
-                                   <Link to="#" className="text-gray-300 hover:text-white transition-colors flex items-center">
+                                   <Link to="/privacy-policy" className="text-gray-300 hover:text-white transition-colors flex items-center">
                                         <Shield className="w-4 h-4 mr-2" />
                                         Chính sách bảo mật
                                    </Link>
@@ -107,17 +107,11 @@ export default function OwnerFooter() {
                                    © 2025 BallSpot Owner Panel. Tất cả quyền được bảo lưu.
                               </p>
                               <div className="flex space-x-6 mt-4 md:mt-0">
-                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
-                                        Điều khoản sử dụng
+                                   <Link to="/terms-of-service" className="text-gray-400 hover:text-white text-sm transition-colors">
+                                        Điều khoản dịch vụ
                                    </Link>
-                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
+                                   <Link to="/privacy-policy" className="text-gray-400 hover:text-white text-sm transition-colors">
                                         Chính sách bảo mật
-                                   </Link>
-                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
-                                        Chính sách hủy
-                                   </Link>
-                                   <Link to="#" className="text-gray-400 hover:text-white text-sm transition-colors">
-                                        Liên hệ hỗ trợ
                                    </Link>
                               </div>
                          </div>

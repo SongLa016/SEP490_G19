@@ -26,7 +26,7 @@ import {
      deleteFieldSchedule
 } from "../../../shared/services/fieldSchedules";
 import Swal from "sweetalert2";
-import { DateSelector, MonthlyCalendar, FieldList, ComplexAndFieldSelector, ScheduleGrid, ScheduleModal, TimeSlotModal, TimeSlotsTab, ManageSchedulesTab, StatisticsCards } from "./components/scheduleManagement";
+import { DateSelector, MonthlyCalendar, FieldList, ComplexAndFieldSelector, ScheduleGrid, ScheduleModal, TimeSlotModal, TimeSlotsTab, ManageSchedulesTab } from "./components/scheduleManagement";
 import { formatTime, formatDateToLocalString, normalizeDateString, getAllDatesForPeriod, getWeekDates, getFieldColor } from "./utils/scheduleUtils";
 import { useBookingData } from "./hooks/useBookingData";
 

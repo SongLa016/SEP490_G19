@@ -1,4 +1,4 @@
-// Service for managing favorite fields (yêu thích sân)
+// yêu thích sân
 import axios from "axios";
 
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
@@ -12,7 +12,6 @@ const apiClient = axios.create({
   },
 });
 
-// Attach auth token if available
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -24,6 +23,7 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// hàm xử lý lỗi API
 const handleApiError = (error) => {
   let message = "Có lỗi xảy ra khi gọi API yêu thích";
 
@@ -47,10 +47,7 @@ const handleApiError = (error) => {
   throw err;
 };
 
-/**
- * Lấy danh sách sân yêu thích của người chơi hiện tại
- * GET /api/FavoriteFields
- */
+// hàm lấy danh sách sân yêu thích của người chơi hiện tại
 export async function fetchFavoriteFields() {
   try {
     const response = await apiClient.get("/api/FavoriteFields");
@@ -68,11 +65,7 @@ export async function fetchFavoriteFields() {
 
     return list.map((item) => {
       const rawId =
-        item.fieldId ??
-        item.FieldID ??
-        item.fieldID ??
-        item.id ??
-        item.FieldId;
+        item.fieldId ?? item.FieldID ?? item.fieldID ?? item.id ?? item.FieldId;
       const fieldId = Number.isNaN(Number(rawId)) ? rawId : Number(rawId);
 
       return {
@@ -84,10 +77,7 @@ export async function fetchFavoriteFields() {
   }
 }
 
-/**
- * Thêm 1 sân vào danh sách yêu thích
- * POST /api/FavoriteFields
- */
+// hàm thêm 1 sân vào danh sách yêu thích
 export async function addFavoriteField(fieldId) {
   try {
     const payload = {
@@ -101,10 +91,7 @@ export async function addFavoriteField(fieldId) {
   }
 }
 
-/**
- * Xóa 1 sân khỏi danh sách yêu thích
- * DELETE /api/FavoriteFields/{fieldId}
- */
+// hàm xóa 1 sân khỏi danh sách yêu thích
 export async function removeFavoriteField(fieldId) {
   try {
     const id = Number(fieldId);
@@ -115,15 +102,10 @@ export async function removeFavoriteField(fieldId) {
   }
 }
 
-/**
- * Toggle yêu thích 1 sân, dùng POST hoặc DELETE tùy theo trạng thái hiện tại
- */
+// hàm toggle yêu thích 1 sân, dùng POST hoặc DELETE tùy theo trạng thái hiện tại
 export async function toggleFavoriteField(fieldId, isCurrentlyFavorite) {
   if (isCurrentlyFavorite) {
     return removeFavoriteField(fieldId);
   }
   return addFavoriteField(fieldId);
 }
-
-
-

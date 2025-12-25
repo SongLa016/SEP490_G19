@@ -116,7 +116,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                          Swal.fire({
                               icon: 'success',
                               title: 'Đăng ký thành công!',
-                              text: 'Yêu cầu đăng ký chủ sân đã được gửi đến admin để duyệt. Vui lòng kiểm tra email để lấy mã OTP.',
+                              text: 'Bạn đã đăng kí thành công với vai trò chủ sân. Vui lòng kiểm tra email để lấy mã OTP.',
                               confirmButtonText: 'Đóng',
                               confirmButtonColor: '#10b981'
                          });
@@ -491,7 +491,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
 
                                    <FadeIn delay={1000} duration={0.4}>
                                         <div className="space-y-1.5 lg:col-span-2">
-                                             <label className="text-sm font-medium text-gray-700">Ảnh đại diện (tùy chọn)</label>
+                                             <label className="text-sm font-medium text-gray-700">Ảnh đại diện</label>
                                              <div className="flex items-center gap-3">
                                                   <div className="w-12 h-12 rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center">
                                                        {avatarPreview ? (
@@ -520,7 +520,7 @@ export default function Register({ onDone, onGoLogin, compact = false }) {
                                    <FadeIn delay={1100} duration={0.4}>
                                         <div className="flex items-center gap-2 text-xs text-gray-600 lg:col-span-2">
                                              <input type="checkbox" className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 w-4 h-4 transition-all duration-200 hover:scale-110" required />
-                                             <span>Tôi đồng ý với <Button type="button" className="text-teal-600 underline p-0 h-auto bg-transparent border-0 hover:bg-transparent transition-all hover:text-teal-800 duration-200 text-sm">Điều khoản</Button></span>
+                                             <span>Tôi đồng ý với <Button type="button" className="text-teal-600 underline p-0 h-auto bg-transparent border-0 hover:bg-transparent transition-all hover:text-teal-800 duration-200 text-sm"><Link to="/terms-of-service">Điều khoản</Link></Button></span>
                                         </div>
                                    </FadeIn>
 

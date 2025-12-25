@@ -15,31 +15,7 @@ import {
 } from "lucide-react";
 import { Card, Table, TableHeader, TableHead, TableRow, TableBody, TableCell, Button, Pagination } from "../../../../../shared/components/ui";
 
-/**
- * Component hiển thị bảng danh sách booking của Owner
- * 
- * Chức năng:
- * - Hiển thị danh sách booking với thông tin khách hàng, sân, thời gian
- * - Hiển thị trạng thái booking và thanh toán
- * - Các nút thao tác: Xem chi tiết, Xác nhận thanh toán, Hủy booking
- * - Phân trang danh sách
- * 
- * @param {Object} props - Props của component
- * @param {boolean} props.loading - Trạng thái đang tải dữ liệu
- * @param {string} props.error - Thông báo lỗi (nếu có)
- * @param {number} props.filteredCount - Số lượng booking sau khi lọc
- * @param {Object} props.bookingsPagination - Object chứa thông tin phân trang
- * @param {Function} props.formatDate - Hàm format ngày tháng
- * @param {Function} props.isBookingPassed - Hàm kiểm tra booking đã qua chưa
- * @param {Function} props.handleViewDetails - Xử lý xem chi tiết booking
- * @param {Function} props.handleConfirmBooking - Xử lý xác nhận thanh toán/hoàn thành booking
- * @param {Function} props.handleCancelBooking - Xử lý hủy booking
- * @param {Function} props.formatCurrency - Hàm format tiền tệ
- * @param {Function} props.getStatusColor - Lấy màu theo trạng thái booking
- * @param {Function} props.getStatusText - Lấy text theo trạng thái booking
- * @param {Function} props.getPaymentStatusColor - Lấy màu theo trạng thái thanh toán
- * @param {Function} props.getPaymentStatusText - Lấy text theo trạng thái thanh toán
- */
+// component hiển thị bảng danh sách booking của Owner
 export default function OwnerBookingsTable({
   loading,
   error,
@@ -56,11 +32,7 @@ export default function OwnerBookingsTable({
   getPaymentStatusColor,
   getPaymentStatusText,
 }) {
-  /**
-   * Lấy icon tương ứng với trạng thái booking
-   * @param {string} status - Trạng thái booking (pending, confirmed, completed, cancelled)
-   * @returns {JSX.Element} Icon component
-   */
+  // hàm lấy icon tương ứng với trạng thái booking
   const getStatusIcon = (status) => {
     switch (status) {
       case "pending":
@@ -75,11 +47,7 @@ export default function OwnerBookingsTable({
     }
   };
 
-  /**
-   * Lấy icon tương ứng với trạng thái thanh toán
-   * @param {string} status - Trạng thái thanh toán (paid, unpaid, pending, refunded, failed)
-   * @returns {JSX.Element} Icon component
-   */
+  // hàm lấy icon tương ứng với trạng thái thanh toán
   const getPaymentIcon = (status) => {
     switch (status) {
       case "paid":
@@ -101,21 +69,21 @@ export default function OwnerBookingsTable({
       <div className="bg-gradient-to-r from-teal-500 to-emerald-700 p-4">
         <h3 className="text-lg font-semibold text-white flex items-center">
           <Calendar className="w-5 h-5 mr-2" />
-          Danh sách booking ({filteredCount})
+          Danh sách đặt sân ({filteredCount})
         </h3>
       </div>
       {loading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
-          <p className="text-gray-600 mt-4">Đang tải danh sách booking...</p>
+          <p className="text-gray-600 mt-4">Đang tải danh sách đặt sân...</p>
         </div>
       ) : error ? (
         <div className="p-4 text-sm text-red-700 bg-red-50 border border-red-200">{error}</div>
       ) : bookingsPagination.currentItems.length === 0 ? (
         <div className="text-center py-12">
           <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Không có booking nào</h3>
-          <p className="text-gray-500">Không tìm thấy booking nào phù hợp với bộ lọc hiện tại.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Không có đặt sân nào</h3>
+          <p className="text-gray-500">Không tìm thấy đặt sân nào phù hợp với bộ lọc hiện tại.</p>
         </div>
       ) : (
         <>
@@ -139,10 +107,14 @@ export default function OwnerBookingsTable({
                       <div className="text-sm font-semibold flex items-center text-gray-900">
                         <User className="w-3 h-3 mr-1" />
                         {booking.customer}</div>
-                      <div className="text-xs text-teal-600 font-medium flex items-center">
-                        <Phone className="w-3 h-3 mr-1" />
-                        {booking.phone}
-                      </div>
+
+                      {booking.phone && (
+                        <div className="text-xs text-teal-600 font-medium flex items-center">
+                          <Phone className="w-3 h-3 mr-1" />
+                          {booking.phone}
+                        </div>
+                      )}
+
                       <div className="text-xs text-gray-500 font-medium flex items-center">
                         <Mail className="w-3 h-3 mr-1" />
                         {booking.email}

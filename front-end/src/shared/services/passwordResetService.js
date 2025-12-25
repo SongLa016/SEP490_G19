@@ -1,6 +1,5 @@
 import axios from "axios";
 
-// Create axios instance for password reset API calls
 const apiClient = axios.create({
   timeout: 10000,
   headers: {
@@ -8,12 +7,10 @@ const apiClient = axios.create({
   },
 });
 
-// Helper function to handle API errors
 const handleApiError = (error) => {
   let errorMessage = "Có lỗi xảy ra khi thực hiện yêu cầu";
 
   if (error.response) {
-    // Server responded with error status
     const { status, data } = error.response;
     console.error("API Error:", { status, data, url: error.config?.url });
 
@@ -39,7 +36,6 @@ const handleApiError = (error) => {
         errorMessage = data?.message || errorMessage;
     }
   } else if (error.request) {
-    // Request was made but no response received
     errorMessage =
       "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet";
     console.error("Network Error:", {
@@ -47,7 +43,6 @@ const handleApiError = (error) => {
       errorMessage: errorMessage,
     });
   } else {
-    // Something else happened
     errorMessage = error.message || errorMessage;
     console.error("Request Error:", error);
   }
@@ -56,14 +51,15 @@ const handleApiError = (error) => {
 };
 
 export const passwordResetService = {
-  // Send OTP for password reset
+  // hàm gửi mã OTP để reset password
   async sendResetOtp(email) {
     try {
       const response = await apiClient.post(
         "http://localhost:8080/api/ResertPass/send-otp",
         {
-        email: email,
-      });
+          email: email,
+        }
+      );
       return {
         ok: true,
         data: response.data,
@@ -79,14 +75,15 @@ export const passwordResetService = {
     }
   },
 
-  // Verify OTP for password reset
+  // hàm xác thực mã OTP để reset password
   async verifyResetOtp(otp) {
     try {
       const response = await apiClient.post(
         "http://localhost:8080/api/ResertPass/verify-otp",
         {
-        otp: otp,
-      });
+          otp: otp,
+        }
+      );
       return {
         ok: true,
         data: response.data,

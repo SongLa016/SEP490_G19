@@ -9,12 +9,7 @@ import {
 import { profileService } from "../services/profileService";
 import Swal from "sweetalert2";
 
-/**
- * Modal đổi mật khẩu dùng chung cho Owner và Admin
- * @param {boolean} isOpen - Trạng thái mở/đóng modal
- * @param {function} onClose - Callback khi đóng modal
- * @param {string} accentColor - Màu chủ đạo (teal cho owner, red cho admin)
- */
+// modal đổi mật khẩu dùng chung cho Owner và Admin
 export default function ChangePasswordModal({ isOpen, onClose, accentColor = "teal" }) {
      const [isLoading, setIsLoading] = useState(false);
      const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -27,35 +22,26 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
      });
      const [errors, setErrors] = useState({});
 
-     // Validation rules
      const validateForm = () => {
           const newErrors = {};
-
-          // Current password validation
           if (!formData.currentPassword.trim()) {
                newErrors.currentPassword = "Vui lòng nhập mật khẩu hiện tại";
           }
-
-          // New password validation
           if (!formData.newPassword) {
                newErrors.newPassword = "Vui lòng nhập mật khẩu mới";
-          } else if (formData.newPassword.length < 6) {
-               newErrors.newPassword = "Mật khẩu mới phải có ít nhất 6 ký tự";
-          } else if (formData.newPassword.length > 100) {
-               newErrors.newPassword = "Mật khẩu không được vượt quá 100 ký tự";
+          } else if (formData.newPassword.length < 8) {
+               newErrors.newPassword = "Mật khẩu mới phải có ít nhất 8 ký tự";
+          } else if (formData.newPassword.length > 64) {
+               newErrors.newPassword = "Mật khẩu không được vượt quá 64 ký tự";
           } else if (!/[A-Z]/.test(formData.newPassword)) {
                newErrors.newPassword = "Mật khẩu phải chứa ít nhất 1 chữ hoa";
           } else if (!/[a-z]/.test(formData.newPassword)) {
                newErrors.newPassword = "Mật khẩu phải chứa ít nhất 1 chữ thường";
           } else if (!/[0-9]/.test(formData.newPassword)) {
                newErrors.newPassword = "Mật khẩu phải chứa ít nhất 1 số";
-          } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.newPassword)) {
-               newErrors.newPassword = "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt";
           } else if (formData.newPassword === formData.currentPassword) {
                newErrors.newPassword = "Mật khẩu mới không được trùng với mật khẩu hiện tại";
           }
-
-          // Confirm password validation
           if (!formData.confirmPassword) {
                newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu mới";
           } else if (formData.confirmPassword !== formData.newPassword) {
@@ -65,13 +51,11 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
           setErrors(newErrors);
           return Object.keys(newErrors).length === 0;
      };
-
      const handleInputChange = (field, value) => {
           setFormData((prev) => ({
                ...prev,
                [field]: value,
           }));
-          // Clear error when user starts typing
           if (errors[field]) {
                setErrors((prev) => ({
                     ...prev,
@@ -82,8 +66,6 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
 
      const handleSubmit = async (e) => {
           e.preventDefault();
-
-          // Check token before calling API
           const token = localStorage.getItem("token");
           if (!token) {
                Swal.fire({
@@ -94,20 +76,16 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
                });
                return;
           }
-
           if (!validateForm()) {
                return;
           }
-
           setIsLoading(true);
-
           try {
                const result = await profileService.changePassword(
                     formData.currentPassword,
                     formData.newPassword,
                     formData.confirmPassword
                );
-
                if (result.ok) {
                     Swal.fire({
                          icon: "success",
@@ -151,18 +129,15 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
           onClose();
      };
 
-     // Password strength indicator
+     // Password strength 
      const getPasswordStrength = (password) => {
           if (!password) return { strength: 0, label: "", color: "gray" };
-
           let strength = 0;
-          if (password.length >= 6) strength++;
-          if (password.length >= 10) strength++;
+          if (password.length >= 8) strength++;
+          if (password.length >= 12) strength++;
           if (/[A-Z]/.test(password)) strength++;
           if (/[a-z]/.test(password)) strength++;
           if (/[0-9]/.test(password)) strength++;
-          if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
-
           if (strength <= 2) return { strength: 1, label: "Yếu", color: "red" };
           if (strength <= 4) return { strength: 2, label: "Trung bình", color: "yellow" };
           return { strength: 3, label: "Mạnh", color: "green" };
@@ -170,10 +145,10 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
 
      const passwordStrength = getPasswordStrength(formData.newPassword);
 
-     const MAX_LENGTH = 100;
-     const WARNING_THRESHOLD = 90;
+     const MAX_LENGTH = 64;
+     const WARNING_THRESHOLD = 40; // 
 
-     // Helper function to get character count warning
+     // hàm trả về class cho độ dài ký tự
      const getCharCountClass = (length) => {
           if (length >= MAX_LENGTH) return "text-red-500 font-medium";
           if (length >= WARNING_THRESHOLD) return "text-yellow-600";
@@ -194,7 +169,6 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
      };
 
      const colors = colorClasses[accentColor] || colorClasses.teal;
-
      if (!isOpen) return null;
 
      return (
@@ -233,7 +207,7 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
                                    value={formData.currentPassword}
                                    onChange={(e) => handleInputChange("currentPassword", e.target.value)}
                                    placeholder="Nhập mật khẩu hiện tại"
-                                   maxLength={100}
+                                   maxLength={64}
                                    className={`w-full pr-10 ${errors.currentPassword ? "border-red-500" : ""}`}
                               />
                               <button
@@ -266,7 +240,7 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
                                    value={formData.newPassword}
                                    onChange={(e) => handleInputChange("newPassword", e.target.value)}
                                    placeholder="Nhập mật khẩu mới"
-                                   maxLength={100}
+                                   maxLength={64}
                                    className={`w-full pr-10 ${errors.newPassword ? "border-red-500" : ""}`}
                               />
                               <button
@@ -320,9 +294,9 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
                          <div className="mt-2 text-xs text-gray-500 space-y-1">
                               <p className="font-medium">Yêu cầu mật khẩu:</p>
                               <ul className="space-y-0.5 ml-2">
-                                   <li className={`flex items-center gap-1 ${formData.newPassword.length >= 6 ? "text-green-600" : ""}`}>
-                                        {formData.newPassword.length >= 6 ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
-                                        Ít nhất 6 ký tự
+                                   <li className={`flex items-center gap-1 ${formData.newPassword.length >= 8 ? "text-green-600" : ""}`}>
+                                        {formData.newPassword.length >= 8 ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
+                                        8-64 ký tự
                                    </li>
                                    <li className={`flex items-center gap-1 ${/[A-Z]/.test(formData.newPassword) ? "text-green-600" : ""}`}>
                                         {/[A-Z]/.test(formData.newPassword) ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
@@ -335,10 +309,6 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
                                    <li className={`flex items-center gap-1 ${/[0-9]/.test(formData.newPassword) ? "text-green-600" : ""}`}>
                                         {/[0-9]/.test(formData.newPassword) ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
                                         Ít nhất 1 số
-                                   </li>
-                                   <li className={`flex items-center gap-1 ${/[!@#$%^&*(),.?":{}|<>]/.test(formData.newPassword) ? "text-green-600" : ""}`}>
-                                        {/[!@#$%^&*(),.?":{}|<>]/.test(formData.newPassword) ? <Check className="w-3 h-3" /> : <span className="w-3 h-3">•</span>}
-                                        Ít nhất 1 ký tự đặc biệt
                                    </li>
                               </ul>
                          </div>
@@ -355,7 +325,7 @@ export default function ChangePasswordModal({ isOpen, onClose, accentColor = "te
                                    value={formData.confirmPassword}
                                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                                    placeholder="Nhập lại mật khẩu mới"
-                                   maxLength={100}
+                                   maxLength={64}
                                    className={`w-full pr-10 ${errors.confirmPassword ? "border-red-500" : ""}`}
                               />
                               <button

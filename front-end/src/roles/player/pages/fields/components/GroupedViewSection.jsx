@@ -75,32 +75,34 @@ export default function GroupedViewSection({
                                                   />
                                              )}
                                              {type === 'field' && (
-                                                  <div className={`absolute top-3 ${title === 'Giá tốt' || title === 'Đánh giá cao' ? 'left-3' : 'right-3'} flex items-center gap-2`}>
-                                                       <Button
-                                                            type="button"
-                                                            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                                            onClick={(e) => {
-                                                                 e.preventDefault();
-                                                                 e.stopPropagation();
-                                                                 if (!user && handleLoginRequired) {
-                                                                      handleLoginRequired('Bạn cần đăng nhập để sử dụng danh sách yêu thích.');
-                                                                      return;
-                                                                 }
-                                                                 if (onToggleFavoriteField) onToggleFavoriteField(item.fieldId);
-                                                            }}
-                                                            className={`h-8 w-8 p-0 rounded-full shadow-sm transition-all duration-200 border hover:scale-110 hover:text-pink-600 ${item.isFavorite ? 'bg-teal-500 text-teal-50 border-teal-500' : 'bg-white text-teal-700 border-teal-200 hover:bg-teal-50'}`}
-                                                       >
-                                                            <Heart className="w-4 h-4" />
-                                                       </Button>
-                                                  </div>
-                                             )}
-                                             {type === 'field' && (
-                                                  <div className="absolute top-4 right-4 flex space-x-2">
-                                                       <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1">
-                                                            <User size={16} />
-                                                            <p>{slotId ? (item.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : item.typeName}</p>
+                                                  <>
+                                                       {/* Button yêu thích - góc trái */}
+                                                       <div className="absolute top-3 left-3">
+                                                            <Button
+                                                                 type="button"
+                                                                 onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                                                 onClick={(e) => {
+                                                                      e.preventDefault();
+                                                                      e.stopPropagation();
+                                                                      if (!user && handleLoginRequired) {
+                                                                           handleLoginRequired('Bạn cần đăng nhập để sử dụng danh sách yêu thích.');
+                                                                           return;
+                                                                      }
+                                                                      if (onToggleFavoriteField) onToggleFavoriteField(item.fieldId);
+                                                                 }}
+                                                                 className={`h-8 w-8 p-0 rounded-full shadow-md transition-all duration-200 border hover:scale-110 ${item.isFavorite ? 'bg-pink-500 text-white border-pink-500 hover:bg-pink-600' : 'bg-white/90 text-gray-600 border-white hover:bg-pink-50 hover:text-pink-500 hover:border-pink-200'}`}
+                                                            >
+                                                                 <Heart className={`w-4 h-4 ${item.isFavorite ? 'fill-current' : ''}`} />
+                                                            </Button>
                                                        </div>
-                                                  </div>
+                                                       {/* Badge type sân - góc phải */}
+                                                       <div className="absolute top-3 right-3">
+                                                            <div className="bg-white/95 backdrop-blur-md border border-teal-100 px-2 py-1 rounded-full text-xs font-semibold text-teal-600 shadow-sm flex items-center gap-1">
+                                                                 <User size={14} />
+                                                                 <span>{slotId ? (item.isAvailableForSelectedSlot ? "Còn chỗ" : "Hết chỗ") : item.typeName}</span>
+                                                            </div>
+                                                       </div>
+                                                  </>
                                              )}
                                         </div>
                                         <div className="px-2 py-3 flex-1 flex flex-col">

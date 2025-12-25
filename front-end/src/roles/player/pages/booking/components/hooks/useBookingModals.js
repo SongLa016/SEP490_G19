@@ -1,12 +1,23 @@
 import { useState, useCallback } from "react";
 import Swal from "sweetalert2";
 import { fetchBookingsByPlayer } from "../../../../../../shared/index";
-import { extractRequestId, extractParticipants, normalizeApiBookings, buildRecurringGroups } from "../utils";
+import {
+  extractRequestId,
+  extractParticipants,
+  normalizeApiBookings,
+  buildRecurringGroups,
+} from "../utils";
 
-/**
- * Hook quản lý các modal trong BookingHistory
- */
-export function useBookingModals(playerId, bookings, setBookings, setGroupedBookings, setBookingIdToRequest, setRequestJoins, loadMatchRequestsForBookings) {
+//Hook quản lý các modal trong BookingHistory
+export function useBookingModals(
+  playerId,
+  bookings,
+  setBookings,
+  setGroupedBookings,
+  setBookingIdToRequest,
+  setRequestJoins,
+  loadMatchRequestsForBookings
+) {
   const [showFindOpponentModal, setShowFindOpponentModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -29,16 +40,24 @@ export function useBookingModals(playerId, bookings, setBookings, setGroupedBook
         const requestId = extractRequestId(matchRequest);
         const booking = selectedBooking || result.booking;
         const bookingDisplayId = booking?.id;
-        const matchRequestBookingId = matchRequest.bookingId || matchRequest.bookingID || matchRequest.BookingID;
+        const matchRequestBookingId =
+          matchRequest.bookingId ||
+          matchRequest.bookingID ||
+          matchRequest.BookingID;
 
         if (requestId && bookingDisplayId) {
           setBookingIdToRequest((prev) => {
             const updated = { ...prev };
             updated[bookingDisplayId] = matchRequest;
             if (matchRequestBookingId) {
-              const normalizedMatchRequestBookingId = String(matchRequestBookingId);
+              const normalizedMatchRequestBookingId = String(
+                matchRequestBookingId
+              );
               bookings.forEach((b) => {
-                if (String(b.bookingId) === normalizedMatchRequestBookingId && b.id) {
+                if (
+                  String(b.bookingId) === normalizedMatchRequestBookingId &&
+                  b.id
+                ) {
                   updated[b.id] = matchRequest;
                 }
               });
@@ -56,12 +75,17 @@ export function useBookingModals(playerId, bookings, setBookings, setGroupedBook
       const preservedMatchRequest = result.matchRequest;
       const preservedRequestId = extractRequestId(preservedMatchRequest);
       const preservedBooking = selectedBooking || result.booking;
-      const preservedBookingId = preservedBooking?.id || preservedBooking?.bookingId;
+      const preservedBookingId =
+        preservedBooking?.id || preservedBooking?.bookingId;
       const preservedBookingDatabaseId = preservedBooking?.bookingId;
       const maxRetries = 3;
       let bookingUpdated = false;
 
-      for (let retryCount = 0; retryCount < maxRetries && !bookingUpdated; retryCount++) {
+      for (
+        let retryCount = 0;
+        retryCount < maxRetries && !bookingUpdated;
+        retryCount++
+      ) {
         const delay = retryCount === 0 ? 2000 : 1000;
         await new Promise((resolve) => setTimeout(resolve, delay));
 
@@ -72,19 +96,33 @@ export function useBookingModals(playerId, bookings, setBookings, setGroupedBook
               const bookingList = normalizeApiBookings(apiResult.data);
               const updatedBooking = bookingList.find(
                 (b) =>
-                  (preservedBookingDatabaseId && b.bookingId && String(b.bookingId) === String(preservedBookingDatabaseId)) ||
+                  (preservedBookingDatabaseId &&
+                    b.bookingId &&
+                    String(b.bookingId) ===
+                      String(preservedBookingDatabaseId)) ||
                   b.id === preservedBookingId ||
-                  (b.bookingId && String(b.bookingId) === String(preservedBookingId)) ||
+                  (b.bookingId &&
+                    String(b.bookingId) === String(preservedBookingId)) ||
                   (b.id && String(b.id) === String(preservedBookingId))
               );
 
               if (updatedBooking) {
-                const hasMatchRequestId = updatedBooking.matchRequestId || updatedBooking.matchRequestID || updatedBooking.MatchRequestID;
+                const hasMatchRequestId =
+                  updatedBooking.matchRequestId ||
+                  updatedBooking.matchRequestID ||
+                  updatedBooking.MatchRequestID;
                 if (hasMatchRequestId || retryCount === maxRetries - 1) {
                   setBookings(bookingList);
                   setGroupedBookings(buildRecurringGroups(bookingList));
-                  if (preservedMatchRequest && preservedRequestId && updatedBooking.id) {
-                    setBookingIdToRequest((prev) => ({ ...prev, [updatedBooking.id]: preservedMatchRequest }));
+                  if (
+                    preservedMatchRequest &&
+                    preservedRequestId &&
+                    updatedBooking.id
+                  ) {
+                    setBookingIdToRequest((prev) => ({
+                      ...prev,
+                      [updatedBooking.id]: preservedMatchRequest,
+                    }));
                   }
                   bookingUpdated = true;
                 }
@@ -92,14 +130,28 @@ export function useBookingModals(playerId, bookings, setBookings, setGroupedBook
             }
           }
         } catch (error) {
-          console.error("Error reloading bookings (retry", retryCount + 1, "):", error);
+          console.error(
+            "Error reloading bookings (retry",
+            retryCount + 1,
+            "):",
+            error
+          );
         }
       }
 
       await loadMatchRequestsForBookings();
       Swal.fire("Đã gửi!", "Yêu cầu tìm đối đã được tạo.", "success");
     },
-    [selectedBooking, playerId, bookings, setBookings, setGroupedBookings, setBookingIdToRequest, setRequestJoins, loadMatchRequestsForBookings]
+    [
+      selectedBooking,
+      playerId,
+      bookings,
+      setBookings,
+      setGroupedBookings,
+      setBookingIdToRequest,
+      setRequestJoins,
+      loadMatchRequestsForBookings,
+    ]
   );
 
   // Mở modal đánh giá
@@ -110,16 +162,13 @@ export function useBookingModals(playerId, bookings, setBookings, setGroupedBook
   }, []);
 
   // Xử lý khi đánh giá thành công
-  const handleRatingSuccess = useCallback(
-    async (loadBookings) => {
-      setShowRatingModal(false);
-      setSelectedBooking(null);
-      setEditingRating(null);
-      Swal.fire("Thành công!", "Đánh giá của bạn đã được lưu.", "success");
-      if (loadBookings) await loadBookings();
-    },
-    []
-  );
+  const handleRatingSuccess = useCallback(async (loadBookings) => {
+    setShowRatingModal(false);
+    setSelectedBooking(null);
+    setEditingRating(null);
+    Swal.fire("Thành công!", "Đánh giá của bạn đã được lưu.", "success");
+    if (loadBookings) await loadBookings();
+  }, []);
 
   // Mở modal xem hóa đơn
   const handleViewInvoice = useCallback((bookingPayload) => {

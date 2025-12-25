@@ -22,54 +22,44 @@ export default function FindOpponentModal({
      const [scheduleData, setScheduleData] = useState(null);
      const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
 
-     // Calculate expiresInHours based on schedule data from API (12 hours before match)
+     // tính toán thời gian hết hạn dựa trên dữ liệu lịch sân
      const calculateExpiresInHours = (schedule) => {
           if (!schedule || !schedule.date || !schedule.startTime) {
-               return 24; // Default fallback
+               return 24;
           }
 
           try {
-               // Parse date from schedule (format: "2025-12-01")
                const [year, month, day] = schedule.date.split('-').map(Number);
                if (!year || !month || !day) {
                     return 24;
                }
 
-               // Parse startTime from schedule (format: "06:00")
                const [hours, minutes] = schedule.startTime.split(':').map(Number);
                if (isNaN(hours) || isNaN(minutes)) {
                     return 24;
                }
 
-               // Create match start time
+               // tạo thời gian bắt đầu trận đấu
                const matchStartTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
 
                if (isNaN(matchStartTime.getTime())) {
                     return 24;
                }
 
-               // Calculate hours until match starts
+               // tính toán số giờ từ bây giờ đến lúc trận đấu bắt đầu
                const now = new Date();
                const hoursUntilMatch = (matchStartTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-               // Expires 12 hours before match
+               // thời gian hết hạn là 12 giờ trước trận đấu
                const calculatedHours = Math.max(1, Math.floor(hoursUntilMatch - 12));
 
-               // If calculated time is too short (less than 1 hour) or too long (more than 168 hours = 7 days), use defaults
+               // kiểm tra xem thời gian hết hạn có phải là quá ngắn (ít hơn 1 giờ) hoặc quá dài (hơn 168 giờ = 7 ngày)
                if (calculatedHours < 1) {
-                    return 24; // Minimum 24 hours if match is too soon
+                    return 24;
                }
                if (calculatedHours > 168) {
-                    return 168; // Maximum 7 days
+                    return 168;
                }
-
-               console.log("⏰ [FindOpponentModal] Calculated expiresInHours:", {
-                    scheduleDate: schedule.date,
-                    scheduleStartTime: schedule.startTime,
-                    matchStartTime: matchStartTime.toISOString(),
-                    hoursUntilMatch: hoursUntilMatch,
-                    calculatedHours: calculatedHours
-               });
 
                return calculatedHours;
           } catch (e) {
@@ -78,7 +68,7 @@ export default function FindOpponentModal({
           }
      };
 
-     // Fetch schedule data when modal opens
+     // lấy dữ liệu lịch sân khi modal mở
      useEffect(() => {
           if (!isOpen || !booking) return;
 
@@ -92,20 +82,17 @@ export default function FindOpponentModal({
                               setExpiresInHours(calculatedHours);
                          } else {
                               console.warn("Could not fetch schedule data:", result.error);
-                              // Default to "auto" mode (24h fallback)
                               setExpiresInHours(24);
                          }
                     })
                     .catch(error => {
                          console.error("Error fetching schedule:", error);
-                         // Default to "auto" mode (24h fallback)
                          setExpiresInHours(24);
                     })
                     .finally(() => {
                          setIsLoadingSchedule(false);
                     });
           } else {
-               // Fallback: calculate from booking data if no scheduleId
                const calculatedHours = calculateExpiresInHours({
                     date: booking.date,
                     startTime: booking.time?.split(' - ')[0] || booking.slotName?.split(' - ')[0] || "00:00"
@@ -114,7 +101,6 @@ export default function FindOpponentModal({
           }
      }, [isOpen, booking]);
 
-     // Reset form when modal opens
      useEffect(() => {
           if (isOpen && booking) {
                setLevel("Intermediate");
@@ -123,44 +109,33 @@ export default function FindOpponentModal({
                setTermsAccepted(false);
                setErrors({});
                setScheduleData(null);
-               // expiresInHours will be set by schedule fetch effect
           }
      }, [isOpen, booking]);
 
      const handleSubmit = async () => {
-          // Validation
           const newErrors = {};
-
-          // Validate ghi chú
           const trimmedNote = note?.trim() || "";
           if (!trimmedNote) {
                newErrors.note = "Vui lòng nhập ghi chú";
           } else if (trimmedNote.length < 10) {
                newErrors.note = "Ghi chú phải có ít nhất 10 ký tự";
-          } else if (trimmedNote.length > 500) {
-               newErrors.note = "Ghi chú không được quá 500 ký tự";
+          } else if (trimmedNote.length > 100) {
+               newErrors.note = "Ghi chú không được quá 100 ký tự";
           }
-
-          // Validate số người chơi
           const numPlayerCount = Number(playerCount);
           if (!playerCount || isNaN(numPlayerCount)) {
                newErrors.playerCount = "Vui lòng nhập số người chơi";
           } else if (numPlayerCount < 1 || numPlayerCount > 22) {
                newErrors.playerCount = "Số người phải từ 1 đến 22";
           }
-
-          // Validate expiresInHours - should be calculated automatically from schedule
           if (!expiresInHours || expiresInHours < 1) {
                newErrors.expiresInHours = "Thời gian hết hạn không hợp lệ. Vui lòng kiểm tra lại lịch sân.";
           } else if (expiresInHours > 168) {
                newErrors.expiresInHours = "Thời gian hết hạn không được vượt quá 168 giờ (7 ngày)";
           }
-
-          // Validate điều khoản
           if (!termsAccepted) {
                newErrors.terms = "Bạn cần đồng ý quy tắc cộng đồng";
           }
-
           if (Object.keys(newErrors).length > 0) {
                setErrors(newErrors);
                return;
@@ -168,7 +143,7 @@ export default function FindOpponentModal({
 
           setIsProcessing(true);
           try {
-               // Removed: recurring opponent feature - check for recurring booking
+               // tạo yêu cầu tìm đối
                const payload = {
                     bookingId: booking.bookingId || booking.id || 0,
                     description: note.trim(),
@@ -196,8 +171,6 @@ export default function FindOpponentModal({
      };
 
      if (!isOpen || !booking) return null;
-
-     // Removed: isRecurring check - recurring opponent feature
 
      return (
           <Modal

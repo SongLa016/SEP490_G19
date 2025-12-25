@@ -1,22 +1,15 @@
 import { useState, useCallback } from "react";
 import { User, Phone, Mail } from "lucide-react";
 import { Input, PhoneInput, Textarea } from "../../../../../shared/components/ui";
+import { validateVietnamPhone } from "../../../../../shared/services/authService";
 
 // validate số điện thoại Việt Nam
 const validatePhone = (phone) => {
      if (!phone?.trim()) return null;
      const phoneDigits = phone.replace(/\D/g, '');
      if (phoneDigits.length === 0) return null;
-     if (phoneDigits.length !== 10) {
-          return "Số điện thoại phải có đúng 10 chữ số";
-     }
-     if (!phoneDigits.startsWith('0')) {
-          return "Số điện thoại phải bắt đầu bằng số 0";
-     }
-     if (!/^(03|05|07|08|09)\d{8}$/.test(phoneDigits)) {
-          return "Số điện thoại không hợp lệ";
-     }
-     return null;
+     const validation = validateVietnamPhone(phoneDigits);
+     return validation.isValid ? null : validation.message;
 };
 
 // validate định dạng email
@@ -104,7 +97,7 @@ export default function ContactFormSection({
                               value={bookingData.customerEmail}
                               onChange={handleEmailChange}
                               className={emailError ? "border-red-500" : "border border-teal-200 rounded-lg"}
-                              placeholder={bookingData.requiresEmail ? "Nhập email (VD: example@gmail.com)" : "Nhập email (tùy chọn)"}
+                              placeholder={bookingData.requiresEmail ? "Nhập email (VD: example@gmail.com)" : "Nhập email "}
                          />
                          {emailError && (
                               <p className="text-red-500 text-sm mt-1">{emailError}</p>

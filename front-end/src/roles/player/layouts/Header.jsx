@@ -7,6 +7,7 @@ import { useModal } from "../../../contexts/ModalContext";
 import { NotificationBell, NotificationDropdown } from "../../../shared/components/NotificationsDisplay";
 import { roleMapping } from "../../../shared/index";
 import { getUserAvatarAndName } from "../pages/community/components/utils";
+import { usePrefetchPageData } from "../../../shared/hooks/usePageData";
 /**
  * Component Header cho trang Player
  * Vị trí: Fixed top, hiển thị trên tất cả các trang của Player
@@ -117,6 +118,16 @@ export default function Header({ user, onLoggedOut }) {
      };
 
      const navigationItems = getNavigationItems();
+     const { prefetchHome, prefetchSearch } = usePrefetchPageData();
+
+     // Prefetch data khi hover vào navigation links
+     const handleNavHover = (itemId) => {
+          if (itemId === "home") {
+               prefetchHome();
+          } else if (itemId === "search") {
+               prefetchSearch();
+          }
+     };
 
      return (
           <header className={`${(isScrolled && !isMenuOpen) ? 'bg-transparent border-0 shadow-none backdrop-blur-0' : 'bg-white/30 backdrop-blur-sm'} fixed top-0 rounded-[35px] my-6 mx-32 left-0 right-0 z-50 transition-all duration-300 ${isBookingModalOpen ? '-translate-y-full' : 'translate-y-0'}`}>
@@ -145,6 +156,7 @@ export default function Header({ user, onLoggedOut }) {
                                         <Link
                                              key={item.id}
                                              to={`/${item.id}`}
+                                             onMouseEnter={() => handleNavHover(item.id)}
                                              className={`flex items-center px-3 py-2 rounded-xl text-sm truncate font-semibold transition-colors ${location.pathname === `/${item.id}`
                                                   ? `${isScrolled ? 'text-teal-600  border-b-teal-600' : 'text-white border-b-teal-500'} border-b-2`
                                                   : `${isScrolled ? 'text-white hover:text-teal-600' : 'text-teal-800 hover:text-gray-700'} hover:border-b-2 hover:border-teal-500`

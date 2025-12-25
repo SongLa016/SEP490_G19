@@ -3,24 +3,7 @@ import { XCircle, RefreshCw, CheckCircle, Eye, QrCode } from "lucide-react";
 import { Card, Table, TableHeader, TableHead, TableRow, TableBody, TableCell, Button, Pagination } from "../../../../../shared/components/ui";
 import Swal from "sweetalert2";
 
-/**
- * Component hiển thị bảng danh sách yêu cầu hủy booking của Owner
- * 
- * Chức năng:
- * - Hiển thị danh sách yêu cầu hủy với thông tin booking, lý do, ngày tạo
- * - Hiển thị QR code hoàn tiền (nếu có)
- * - Các nút thao tác: Xem chi tiết, Xác nhận hủy, Xóa yêu cầu
- * - Phân trang danh sách
- * 
- * @param {Object} props - Props của component
- * @param {Array} props.cancellationRequests - Danh sách yêu cầu hủy
- * @param {boolean} props.loading - Trạng thái đang tải
- * @param {Object} props.pagination - Object chứa thông tin phân trang
- * @param {Function} props.onRefresh - Callback làm mới danh sách
- * @param {Function} props.onViewDetails - Callback xem chi tiết yêu cầu
- * @param {Function} props.onConfirm - Callback xác nhận yêu cầu hủy
- * @param {Function} props.onDelete - Callback xóa yêu cầu hủy
- */
+// component hiển thị bảng danh sách yêu cầu hủy booking của Owner
 export default function OwnerCancellationsTable({
   cancellationRequests = [],
   loading,
@@ -35,7 +18,7 @@ export default function OwnerCancellationsTable({
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-xl font-bold text-gray-900 flex items-center">
           <XCircle className="w-6 h-6 mr-2 text-red-600" />
-          Yêu cầu hủy booking
+          Yêu cầu hủy đặt sân
         </h3>
         <Button onClick={onRefresh} variant="outline" className="rounded-xl">
           <RefreshCw className="w-4 h-4 mr-2" />

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { Container, Section, LoadingPage, LoadingSpinner } from "../../../../shared/components/ui";
-import { fetchComplexDetail, fetchTimeSlotsByField, fetchFieldDetail, fetchPublicFieldSchedulesByField, fetchFieldTypes, fetchDepositPolicyByField, fetchFavoriteFields, toggleFavoriteField as toggleFavoriteFieldApi } from "../../../../shared/index";
+import { fetchComplexDetail, fetchTimeSlotsByField, fetchFieldDetail, fetchPublicFieldSchedulesByField, fetchFieldTypes, fetchDepositPolicyByField, fetchFavoriteFields, toggleFavoriteField as toggleFavoriteFieldApi, fetchBookingsByPlayer } from "../../../../shared/index";
 import { fetchRatingsByComplex, fetchRatingsByField } from "../../../../shared/services/ratings";
 import { normalizeFieldType } from "../../../../shared/services/fieldTypes";
 import { useFieldSchedules } from "../../../../shared/hooks";
@@ -299,6 +299,7 @@ export default function ComplexDetail({ user }) {
      const reviewsPerPage = 6;
      const [fieldRatings, setFieldRatings] = useState([]); // đánh giá sân 
      const [isLoadingRatings, setIsLoadingRatings] = useState(false);
+     const [hasCompletedBooking, setHasCompletedBooking] = useState(false); // User có booking completed cho complex này không
 
      // Lấy đánh giá sân
      useEffect(() => {
@@ -990,6 +991,54 @@ export default function ComplexDetail({ user }) {
           const average = total === 0 ? 0 : (complexReviews.reduce((s, r) => s + (r.rating || 0), 0) / total);
           return { total, counts, average };
      }, [complexReviews]);
+
+     // Kiểm tra user có booking completed cho complex/field này không
+     // Chỉ user có booking completed mới được phép trả lời đánh giá
+     useEffect(() => {
+          const checkCompletedBooking = async () => {
+               if (!user) {
+                    setHasCompletedBooking(false);
+                    return;
+               }
+
+               const playerId = user?.userID || user?.UserID || user?.id || user?.Id || user?.userId;
+               if (!playerId) {
+                    setHasCompletedBooking(false);
+                    return;
+               }
+
+               try {
+                    const result = await fetchBookingsByPlayer(playerId);
+                    if (result.success && Array.isArray(result.data)) {
+                         // Lấy danh sách fieldIds của complex hiện tại
+                         const currentFieldIds = new Set(
+                              fields.map(f => String(f.fieldId || f.FieldID || f.id))
+                         );
+
+                         // Nếu đang xem field cụ thể, thêm fieldId đó vào set
+                         if (selectedFieldId) {
+                              currentFieldIds.add(String(selectedFieldId));
+                         }
+
+                         // Kiểm tra có booking nào completed cho các field này không
+                         const hasCompleted = result.data.some(booking => {
+                              const bookingFieldId = String(booking.fieldId || booking.FieldID || booking.fieldID || "");
+                              const bookingStatus = String(booking.status || booking.Status || "").toLowerCase();
+                              return currentFieldIds.has(bookingFieldId) && bookingStatus === "completed";
+                         });
+
+                         setHasCompletedBooking(hasCompleted);
+                    } else {
+                         setHasCompletedBooking(false);
+                    }
+               } catch (error) {
+                    console.error("Error checking completed bookings:", error);
+                    setHasCompletedBooking(false);
+               }
+          };
+
+          checkCompletedBooking();
+     }, [user, fields, selectedFieldId]);
      // Thư viện ảnh bao gồm ảnh khu sân (complex) và tất cả ảnh sân nhỏ (fields)
      const galleryImages = [];
      // Thêm ảnh của complex (khu sân) - imageUrl từ Cloudinary
@@ -1191,6 +1240,7 @@ export default function ComplexDetail({ user }) {
                                         fieldId={null}
                                         isLoadingRatings={isLoadingRatings}
                                         canWriteReview={false}
+                                        hasCompletedBooking={hasCompletedBooking}
                                    />
                               )}
 
@@ -1225,7 +1275,11 @@ export default function ComplexDetail({ user }) {
                                    selectedSlotPrice={selectedSlotPrice}
                                    minPrice={minPrice}
                                    calculateTotalSessions={calculateTotalSessions}
-                                   onDateChange={setSelectedDate}
+                                   onDateChange={(newDate) => {
+                                        setSelectedDate(newDate);
+                                        // Reset slot đã chọn khi chuyển ngày
+                                        setSelectedSlotId("");
+                                   }}
                                    onSlotChange={setSelectedSlotId}
                                    onToggleRecurring={() => setIsRecurring(v => !v)}
                                    onRangeStartChange={setRangeStart}

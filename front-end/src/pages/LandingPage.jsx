@@ -8,8 +8,6 @@ import TypewriterText from '../shared/components/TypewriterText';
 import {
      ArrowRight,
      CheckCircle,
-     Star,
-     Users,
      Calendar,
      MapPin,
      Clock,
@@ -30,7 +28,7 @@ const LandingPage = () => {
      const containerRef = useRef(null);
      const gradientRef = useRef(null);
 
-     // Animated particles for background
+     // hiệu ứng particles cho background
      useEffect(() => {
           if (!containerRef.current) return;
 
@@ -69,10 +67,9 @@ const LandingPage = () => {
           };
      }, []);
 
-     // Continuous rotation for background gradient
+     // hiệu ứng continuous rotation cho background gradient
      useEffect(() => {
           if (!gradientRef.current) return;
-
           gsap.to(gradientRef.current, {
                rotation: 360,
                duration: 20,
@@ -83,7 +80,7 @@ const LandingPage = () => {
 
      return (
           <div ref={containerRef} className="min-h-screen bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900 text-white relative overflow-hidden">
-               {/* Animated Background with parallax effect */}
+               {/* hiệu ứng parallax cho background */}
                <motion.div
                     className="absolute inset-0 opacity-80"
                     style={{
@@ -411,46 +408,7 @@ const LandingPage = () => {
 
                                    </motion.div>
 
-                                   {/* Animated Social Proof */}
-                                   <motion.div
-                                        className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-8 text-slate-400"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ delay: 1.2, duration: 0.6 }}
-                                   >
-                                        {[
-                                             { Icon: Users, text: "10,000+ người dùng", color: "text-blue-400" },
-                                             { Icon: Calendar, text: "50,000+ lượt đặt", color: "text-green-400" },
-                                             { Icon: Star, text: "4.8/5 đánh giá", color: "text-yellow-400" },
-                                        ].map((item, index) => (
-                                             <motion.div
-                                                  key={index}
-                                                  className="flex items-center gap-2"
-                                                  animate={{
-                                                       y: [0, -5, 0],
-                                                  }}
-                                                  transition={{
-                                                       duration: 2 + index * 0.5,
-                                                       repeat: Infinity,
-                                                       ease: "easeInOut",
-                                                       delay: index * 0.3,
-                                                  }}
-                                             >
-                                                  <motion.div
-                                                       animate={{ rotate: [0, 10, -10, 0] }}
-                                                       transition={{
-                                                            duration: 3,
-                                                            repeat: Infinity,
-                                                            ease: "easeInOut",
-                                                            delay: index * 0.2,
-                                                       }}
-                                                  >
-                                                       <item.Icon className={`w-5 h-5 ${item.color}`} />
-                                                  </motion.div>
-                                                  <span>{item.text}</span>
-                                             </motion.div>
-                                        ))}
-                                   </motion.div>
+
                               </motion.div>
 
                               {/* Right Content - Features Preview with Continuous Animations */}
@@ -577,16 +535,7 @@ const LandingPage = () => {
                                                        >
                                                             <motion.div
                                                                  className="text-white mb-3"
-                                                                 animate={{
-                                                                      scale: [1, 1.2, 1],
-                                                                      rotate: [0, 15, -15, 0],
-                                                                 }}
-                                                                 transition={{
-                                                                      duration: 2,
-                                                                      repeat: Infinity,
-                                                                      ease: "easeInOut",
-                                                                      delay: index * 0.3,
-                                                                 }}
+
                                                             >
                                                                  {feature.icon}
                                                             </motion.div>
@@ -642,16 +591,7 @@ const LandingPage = () => {
                                                        >
                                                             <motion.div
                                                                  className="text-white mb-3"
-                                                                 animate={{
-                                                                      scale: [1, 1.2, 1],
-                                                                      rotate: [0, 15, -15, 0],
-                                                                 }}
-                                                                 transition={{
-                                                                      duration: 2,
-                                                                      repeat: Infinity,
-                                                                      ease: "easeInOut",
-                                                                      delay: index * 0.3,
-                                                                 }}
+
                                                             >
                                                                  {feature.icon}
                                                             </motion.div>
@@ -752,7 +692,7 @@ const LandingPage = () => {
                                         },
                                         {
                                              Icon: CheckCircle,
-                                             text: 'Hỗ trợ 24/7',
+                                             text: 'Minh bạch',
                                              delay: 0.1,
                                         },
                                         {

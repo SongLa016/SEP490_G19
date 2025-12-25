@@ -72,7 +72,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
     }
   };
 
-  // Helper function to extract address components from Goong API response
+  //chuyển đổi address components từ Goong API thành ward, district, province
   const extractAddressComponents = (addressComponents) => {
     let ward = '';
     let district = '';
@@ -94,7 +94,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
     return { ward, district, province };
   };
 
-  // Helper function to update popup content
+  // cập nhật nội dung popup
   const updatePopupContent = useCallback((popupInstance, location, addressText) => {
     if (!popupInstance || !location) return;
 
@@ -128,15 +128,15 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
     popupInstance.setHTML(popupHTML);
   }, [selectedAddressInfo]);
 
-  // Helper function to add/update circle on map
+  // thêm hoặc cập nhật vòng tròn trên bản đồ
   const addCircle = (mapInstance, location) => {
     if (!mapInstance || !location) return;
 
     const updateCircleData = () => {
       try {
-        // Check if source exists
+        // kiểm tra nếu source đã tồn tại
         if (mapInstance.getSource('circle-source')) {
-          // Update existing source data
+          // cập nhật dữ liệu source
           const source = mapInstance.getSource('circle-source');
           if (source) {
             source.setData({
@@ -148,7 +148,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
             });
           }
         } else {
-          // Create new source and layer
+          // tạo source và layer mới
           mapInstance.addSource('circle-source', {
             type: 'geojson',
             data: {
@@ -160,7 +160,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
             }
           });
 
-          // Only add layer if it doesn't exist
+          // chỉ thêm layer nếu nó không tồn tại
           if (!mapInstance.getLayer('circle-layer')) {
             mapInstance.addLayer({
               id: 'circle-layer',
@@ -182,21 +182,19 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
       }
     };
 
-    // If map is already loaded, update immediately
+    // nếu map đã tải xong, cập nhật ngay lập tức
     if (mapInstance.loaded()) {
       updateCircleData();
     } else {
-      // Wait for map to load
       mapInstance.once('load', () => {
         updateCircleData();
       });
     }
   };
 
-  // Handle suggestion selection
+  // gợi ý
   const handleSuggestionClick = async (placeId) => {
     try {
-      // Get place details from Goong API
       const response = await fetch(
         `${GOONG_PLACE_DETAIL_URL}?api_key=${GOONG_REST_API_KEY}&place_id=${placeId}`
       );
@@ -210,7 +208,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
         };
         const formattedAddress = place.formatted_address || place.name || place.address;
 
-        // Extract address components
+        // lấy thông tin địa chỉ từ Goong API
         const addressComponents = place.address_components || [];
         const { ward, district, province } = extractAddressComponents(addressComponents);
 
@@ -239,7 +237,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
     }
   };
 
-  // Reverse geocode (convert lat/lng to address) using Goong API
+  // reverse geocode (chuyển đổi lat/lng thành địa chỉ) sử dụng Goong API
   const reverseGeocode = async (location) => {
     setIsGeocoding(true);
     try {
@@ -252,7 +250,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
         const result = data.results[0];
         const formattedAddress = result.formatted_address;
 
-        // Extract address components
+        // lấy thông tin địa chỉ từ Goong API
         const addressComponents = result.address_components || [];
         const { ward, district, province } = extractAddressComponents(addressComponents);
 
@@ -264,13 +262,13 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
           province,
         });
 
-        // Update popup if map is open
+        // cập nhật popup nếu map đang mở
         if (map && popupRef.current) {
           updatePopupContent(popupRef.current, location, formattedAddress);
           popupRef.current.setLngLat([location.lng, location.lat]).addTo(map);
         }
 
-        // Update circle
+        // cập nhật vòng tròn
         if (map) {
           addCircle(map, location);
         }
@@ -298,7 +296,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
     }
   };
 
-  // Handle map search input change
+  //thay đổi input của map search
   const handleMapSearchChange = async (e) => {
     const query = e.target.value;
     setMapSearchQuery(query);
@@ -328,7 +326,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
     }
   };
 
-  // Handle map search suggestion click
+  // click gợi ý của map search
   const handleMapSuggestionClick = async (placeId) => {
     try {
       const response = await fetch(
@@ -344,7 +342,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
         };
         const formattedAddress = place.formatted_address || place.name || place.address;
 
-        // Extract address components
+        // lấy thông tin địa chỉ từ Goong API
         const addressComponents = place.address_components || [];
         const { ward, district, province } = extractAddressComponents(addressComponents);
 
@@ -359,7 +357,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
           province,
         });
 
-        // Fly to location on map
+        // chuyển đến vị trí trên map
         if (map) {
           map.flyTo({
             center: [location.lng, location.lat],
@@ -367,11 +365,9 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
             duration: 1000,
           });
 
-          // Update or create marker
+          // cập nhật hoặc tạo marker
           if (markerRef.current) {
             markerRef.current.setLngLat([location.lng, location.lat]);
-
-            // Update marker click handler
             const markerElement = markerRef.current.getElement();
             if (markerElement) {
               markerElement.onclick = () => {
@@ -384,7 +380,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
             el.className = 'custom-marker';
             el.style.width = '32px';
             el.style.height = '32px';
-            // Use inline SVG for marker instead of external image
+            // sử dụng SVG cho marker
             el.innerHTML = `
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ef4444"/>
@@ -400,7 +396,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
               .setLngLat([location.lng, location.lat])
               .addTo(map);
 
-            // Add click event to marker
+            // thêm event click cho marker
             el.addEventListener('click', () => {
               updatePopupContent(popupRef.current, location, formattedAddress);
               popupRef.current.setLngLat([location.lng, location.lat]).addTo(map);
@@ -414,7 +410,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
               };
               setSelectedLocation(newLocation);
               reverseGeocode(newLocation);
-              // Update popup and circle
+              // cập nhật popup và vòng tròn
               if (popupRef.current) {
                 updatePopupContent(popupRef.current, newLocation, address);
                 popupRef.current.setLngLat([newLocation.lng, newLocation.lat]).addTo(map);
@@ -426,7 +422,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
             setMarker(newMarker);
           }
 
-          // Update circle and popup
+          // cập nhật vòng tròn và popup
           addCircle(map, location);
           if (popupRef.current) {
             updatePopupContent(popupRef.current, location, formattedAddress);
@@ -455,11 +451,9 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
     }
   };
 
-  // Initialize Goong Map when shown
+  // khởi tạo bản đồ Goong khi hiển thị
   useEffect(() => {
-    if (!showMap || map) return; // Don't initialize if modal is closed or map already exists
-
-    // Wait a bit for the container to render
+    if (!showMap || map) return;
     const timer = setTimeout(() => {
       const initMap = () => {
         if (!mapRef.current) {
@@ -467,14 +461,14 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
           return;
         }
 
-        // Check container dimensions
+        // kiểm tra kích thước của container
         const rect = mapRef.current.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) {
           console.warn('Map container has no dimensions:', rect);
           return;
         }
 
-        // Check if Maptiles Key is configured
+        // kiểm tra nếu Maptiles Key 
         if (!GOONG_API_KEY || GOONG_API_KEY === "YOUR_GOONG_API_KEY_HERE") {
           console.error('Goong Maptiles Key chưa được cấu hình! Vui lòng thêm REACT_APP_GOONG_API_KEY vào file .env hoặc cập nhật trong code.');
           alert('Goong Maptiles Key chưa được cấu hình! Vui lòng cấu hình API key để sử dụng bản đồ.');
@@ -482,17 +476,10 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
         }
 
         try {
-          console.log('Initializing Goong Map...');
-          console.log('API Key (first 10 chars):', GOONG_API_KEY.substring(0, 10));
-          console.log('Container element:', mapRef.current);
-          console.log('Container dimensions:', rect);
-          console.log('Goong JS:', typeof goongjs, goongjs);
-
-          // Set access token globally for Goong GL JS
+          // cấu hình access token cho Goong GL JS
           if (goongjs && typeof goongjs !== 'undefined') {
             if (typeof goongjs.accessToken !== 'undefined') {
               goongjs.accessToken = GOONG_API_KEY;
-              console.log('Access token set globally');
             } else {
               console.warn('goongjs.accessToken is not available');
             }
@@ -508,27 +495,17 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
             zoom: selectedLocation ? 15 : 13,
           };
 
-          // Add accessToken to options if not set globally
+          // thêm accessToken vào options nếu nó không được cấu hình
           if (!goongjs.accessToken) {
             mapOptions.accessToken = GOONG_API_KEY;
-            console.log('Access token added to map options');
           }
-
-          console.log('Creating map with options:', { ...mapOptions, accessToken: '***' });
           const mapInstance = new goongjs.Map(mapOptions);
-
-          // Wait for map to load
           mapInstance.on('load', () => {
             console.log('✅ Goong Map loaded successfully');
           });
 
           mapInstance.on('error', (e) => {
             console.error('❌ Goong Map error:', e);
-            console.error('Error details:', {
-              error: e.error,
-              message: e.error?.message,
-              type: e.error?.type
-            });
           });
 
           mapInstance.on('style.load', () => {
@@ -537,13 +514,13 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
 
           setMap(mapInstance);
 
-          // Add marker if location is selected
+          // thêm marker nếu vị trí đã được chọn
           if (selectedLocation) {
             const el = document.createElement('div');
             el.className = 'custom-marker';
             el.style.width = '32px';
             el.style.height = '32px';
-            // Use inline SVG for marker instead of external image
+            // sử dụng SVG cho marker
             el.innerHTML = `
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ef4444"/>
@@ -562,7 +539,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
             setMarker(markerInstance);
           }
 
-          // Add click listener to map
+          // thêm event click cho map
           mapInstance.on('click', (event) => {
             const clickedLocation = {
               lat: event.lngLat.lat,
@@ -571,11 +548,11 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
             setSelectedLocation(clickedLocation);
             reverseGeocode(clickedLocation);
 
-            // Update or create marker
+            // cập nhật hoặc tạo marker
             if (markerRef.current) {
               markerRef.current.setLngLat([clickedLocation.lng, clickedLocation.lat]);
 
-              // Update marker click handler
+              // cập nhật event click cho marker
               const markerElement = markerRef.current.getElement();
               if (markerElement) {
                 markerElement.onclick = () => {
@@ -588,7 +565,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
               el.className = 'custom-marker';
               el.style.width = '32px';
               el.style.height = '32px';
-              // Use inline SVG for marker instead of external image
+              // sử dụng SVG cho marker
               el.innerHTML = `
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ef4444"/>
@@ -604,7 +581,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
                 .setLngLat([clickedLocation.lng, clickedLocation.lat])
                 .addTo(mapInstance);
 
-              // Add click event to marker
+              // thêm event click cho marker
               el.addEventListener('click', () => {
                 updatePopupContent(popupRef.current, clickedLocation, address);
                 popupRef.current.setLngLat([clickedLocation.lng, clickedLocation.lat]).addTo(mapInstance);
@@ -618,7 +595,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
                 };
                 setSelectedLocation(newLocation);
                 reverseGeocode(newLocation);
-                // Update popup position
+                // cập nhật vị trí popup
                 if (popupRef.current) {
                   updatePopupContent(popupRef.current, newLocation, address);
                   popupRef.current.setLngLat([newLocation.lng, newLocation.lat]).addTo(mapInstance);
@@ -629,18 +606,14 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
               setMarker(newMarker);
             }
 
-            // Update circle position
+            // cập nhật vị trí vòng tròn
             addCircle(mapInstance, clickedLocation);
 
-            // Close map search suggestions when clicking on map
+            // đóng gợi ý của map search khi click vào map
             setShowMapSuggestions(false);
           });
-
-          // Make marker draggable if it exists
           if (markerRef.current) {
             markerRef.current.setDraggable(true);
-
-            // Add click event to existing marker
             const markerElement = markerRef.current.getElement();
             if (markerElement) {
               markerElement.addEventListener('click', () => {
@@ -662,7 +635,6 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
               };
               setSelectedLocation(newLocation);
               reverseGeocode(newLocation);
-              // Update popup and circle
               if (popupRef.current) {
                 updatePopupContent(popupRef.current, newLocation, address);
                 popupRef.current.setLngLat([newLocation.lng, newLocation.lat]).addTo(mapInstance);
@@ -676,22 +648,20 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
           alert('Không thể khởi tạo bản đồ. Vui lòng kiểm tra API key và kết nối mạng. Chi tiết: ' + error.message);
         }
       };
-
-      // Initialize map after a short delay to ensure container is ready
-      initMap();
-    }, 100); // Small delay to ensure container is rendered
+      initMap(); // khởi tạo bản đồ
+    }, 100);
 
     return () => {
       clearTimeout(timer);
     };
-  }, [showMap, selectedLocation]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [showMap, selectedLocation]);
 
-  // Cleanup map when modal closes
+  // xóa bản đồ khi modal đóng
   useEffect(() => {
     if (!showMap) {
       if (map) {
         try {
-          // Remove circle layer and source safely
+          // xóa layer và source
           if (map.getLayer && map.getLayer('circle-layer')) {
             try {
               map.removeLayer('circle-layer');
@@ -710,7 +680,6 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
           console.warn('Error during circle cleanup:', error);
         }
 
-        // Remove popup
         if (popupRef.current) {
           try {
             popupRef.current.remove();
@@ -740,7 +709,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
     }
   }, [showMap, map, marker]);
 
-  // Update marker position when selectedLocation changes (after map is initialized)
+  // cập nhật vị trí marker
   useEffect(() => {
     if (map && markerRef.current && selectedLocation) {
       markerRef.current.setLngLat([selectedLocation.lng, selectedLocation.lat]);
@@ -748,11 +717,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
         center: [selectedLocation.lng, selectedLocation.lat],
         zoom: 15,
       });
-
-      // Update circle
       addCircle(map, selectedLocation);
-
-      // Update popup if exists
       if (popupRef.current) {
         updatePopupContent(popupRef.current, selectedLocation, address);
         popupRef.current.setLngLat([selectedLocation.lng, selectedLocation.lat]).addTo(map);
@@ -760,7 +725,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
     }
   }, [selectedLocation, map, address, updatePopupContent]);
 
-  // Handle confirm selection from map
+  // xác nhận vị trí từ map
   const handleConfirmLocation = () => {
     if (selectedLocation) {
       setShowMap(false);
@@ -783,7 +748,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
     }
   };
 
-  // Close map suggestions when clicking outside
+  // đóng gợi ý
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (
@@ -804,26 +769,7 @@ const AddressPicker = ({ value, onChange, placeholder = "Nhập địa chỉ ho�
     }
   }, [showMap]);
 
-  // Close suggestions when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        suggestionsRef.current &&
-        !suggestionsRef.current.contains(event.target) &&
-        inputRef.current &&
-        !inputRef.current.contains(event.target)
-      ) {
-        setShowSuggestions(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  // Sync value prop
+  // đồng bộ giá trị
   useEffect(() => {
     if (value !== undefined && value !== address) {
       setAddress(value);

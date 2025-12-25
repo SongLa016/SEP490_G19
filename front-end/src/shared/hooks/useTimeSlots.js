@@ -1,10 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchTimeSlots, fetchTimeSlotsByField } from "../services/timeSlots";
 
-/**
- * Custom hook to fetch and cache all time slots
- * @param {boolean} enabled - Whether to enable the query
- */
+// lấy danh sách thời gian sân
 export function useTimeSlots(enabled = true) {
   return useQuery({
     queryKey: ["timeSlots"],
@@ -23,11 +20,7 @@ export function useTimeSlots(enabled = true) {
   });
 }
 
-/**
- * Custom hook to fetch and cache time slots by field
- * @param {number|string} fieldId - The field ID
- * @param {boolean} enabled - Whether to enable the query
- */
+// lấy danh sách thời gian sân theo sân
 export function useTimeSlotsByField(fieldId, enabled = true) {
   return useQuery({
     queryKey: ["timeSlots", "field", fieldId],

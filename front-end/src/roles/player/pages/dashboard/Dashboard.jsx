@@ -7,7 +7,6 @@ import Footer from "../../layouts/Footer";
 import HomePage from "../home/HomePage";
 import FieldSearch from "../fields/FieldSearch";
 import BookingHistory from "../booking/BookingHistory";
-import Invoice from "../booking/Invoice";
 
 import { Button, Section, FadeIn, SlideIn, PhoneInput } from "../../../../shared/components/ui";
 import { NotificationsDisplay } from "../../../../shared";
@@ -34,7 +33,6 @@ export default function Dashboard({ currentView, navigateTo }) {
           return () => clearTimeout(loadingTimeout);
      }, [currentView]);
 
-     // Render nội dung dựa trên currentView
      const renderContent = () => {
           switch (currentView) {
                case "home":
@@ -54,8 +52,6 @@ export default function Dashboard({ currentView, navigateTo }) {
                     );
                case "bookings":
                     return <BookingHistory user={user} navigateTo={navigateTo} />;
-               case "invoice":
-                    return <Invoice user={user} navigateTo={navigateTo} />;
                case "community":
                     return renderCommunityContent();
                case "my-fields":
@@ -188,8 +184,6 @@ export default function Dashboard({ currentView, navigateTo }) {
                </div>
           </FadeIn>
      );
-
-     // bookings content moved to BookingHistory component
 
      const renderCommunityContent = () => (
           <div className="max-w-6xl mx-auto p-6">

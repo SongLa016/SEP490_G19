@@ -15,7 +15,6 @@ import {
      Avatar,
      AvatarImage,
      AvatarFallback,
-     DatePicker,
      Modal
 } from "../../../shared/components/ui";
 import {
@@ -37,13 +36,10 @@ import {
      Calendar,
      Users,
      X,
-     Bell,
-     Send,
      Lock,
      Unlock
 } from "lucide-react";
 import { fetchAllUserStatistics, fetchPlayerProfile, lockUserAccount } from "../../../shared/services/adminStatistics";
-import { createNotification, createBulkNotifications } from "../../../shared/services/notifications";
 import Swal from "sweetalert2";
 import { useAuth } from "../../../contexts/AuthContext";
 
@@ -57,7 +53,6 @@ export default function UserManagement() {
      const [selectedUser, setSelectedUser] = useState(null);
      const [userProfileDetails, setUserProfileDetails] = useState(null);
      const [showUserModal, setShowUserModal] = useState(false);
-     const [showCreateModal, setShowCreateModal] = useState(false);
      const [loading, setLoading] = useState(false);
      const [loadingProfile, setLoadingProfile] = useState(false);
      const [error, setError] = useState(null);
@@ -68,34 +63,29 @@ export default function UserManagement() {
           loadUsers();
           fetchOwnerProfile();
      }, []);
-
+     // lấy danh sách người dùng
      const loadUsers = async () => {
           try {
                setLoading(true);
                setError(null);
                const result = await fetchAllUserStatistics();
                if (result.ok && result.data) {
-                    // Check if data is an array or needs to be extracted
                     const usersData = Array.isArray(result.data) ? result.data :
                          (result.data.users || result.data.data || []);
 
-                    // Transform API data to match component structure
-                    // API returns: { userId, fullName, email, phone, roleName }
+                    // chuyển đổi dữ liệu API để phù hợp với cấu trúc component
                     const transformedUsers = await Promise.all(
                          usersData.map(async (user) => {
-                              // Fetch status và createdAt từ PlayerProfile API cho mỗi user
                               let userStatus = user.status || "Active";
                               let userCreatedAt = user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : "N/A";
                               let avatarUrl = user.avatar || user.profile?.avatar || user.profile?.avatarUrl || null;
-
+                              // lấy status và createdAt từ PlayerProfile API cho mỗi user
                               try {
                                    const profileResult = await fetchPlayerProfile(user.userId);
                                    if (profileResult.ok && profileResult.data) {
-                                        // Lấy status từ PlayerProfile
                                         if (profileResult.data.status) {
                                              userStatus = profileResult.data.status;
                                         }
-                                        // Lấy createdAt từ PlayerProfile (chính xác hơn)
                                         if (profileResult.data.createdAt) {
                                              userCreatedAt = new Date(profileResult.data.createdAt).toLocaleDateString('vi-VN', {
                                                   year: 'numeric',
@@ -103,7 +93,7 @@ export default function UserManagement() {
                                                   day: '2-digit'
                                              });
                                         }
-                                        // Avatar từ PlayerProfile (ưu tiên Cloudinary URL)
+                                        // Avatar từ PlayerProfile
                                         avatarUrl =
                                              profileResult.data.avatar ||
                                              profileResult.data.avatarUrl ||
@@ -151,6 +141,7 @@ export default function UserManagement() {
           }
      };
 
+     // lấy thông tin owner profile
      const fetchOwnerProfile = async () => {
           setOwnerLoading(true);
           try {
@@ -165,10 +156,9 @@ export default function UserManagement() {
           }
      };
 
+     // lọc người dùng theo từ khóa tìm kiếm
      useEffect(() => {
           let filtered = users;
-
-          // Filter by search term
           if (searchTerm) {
                filtered = filtered.filter(user =>
                     user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -195,12 +185,11 @@ export default function UserManagement() {
           setFilteredUsers(filtered);
      }, [users, searchTerm, roleFilter, statusFilter]);
 
+     // hàm xem chi tiết người dùng
      const handleViewUser = async (user) => {
           setSelectedUser(user);
           setShowUserModal(true);
           setUserProfileDetails(null);
-
-          // Fetch detailed profile information
           try {
                setLoadingProfile(true);
                const result = await fetchPlayerProfile(user.id);
@@ -216,7 +205,6 @@ export default function UserManagement() {
                     }
                } else {
                     console.error("Failed to fetch profile:", result.reason);
-                    // Still show modal with basic info even if profile fetch fails
                }
           } catch (err) {
                console.error("Error fetching profile:", err);
@@ -226,9 +214,8 @@ export default function UserManagement() {
      };
 
 
-
+     // hàm khóa/mở khóa tài khoản
      const handleLockAccount = async (targetUser) => {
-          // Kiểm tra quyền admin trước khi thực hiện (user từ useAuth là user hiện tại đang đăng nhập)
           if (!user) {
                await Swal.fire({
                     icon: "error",

@@ -1,4 +1,5 @@
-﻿using BallSport.Application.DTOs.Community;
+﻿// File: BallSport.Application/Services/Community/NotificationService.cs
+using BallSport.Application.DTOs.Community;
 using BallSport.Infrastructure.Data;
 using BallSport.Infrastructure.Models;
 using BallSport.Infrastructure.Repositories.Community;
@@ -12,7 +13,6 @@ namespace BallSport.Application.Services.Community
         private readonly INotificationRepository _notificationRepository;
         private readonly Sep490G19v1Context _context;
         private readonly ILogger<NotificationService> _logger;
-
         private const string SYSTEM_TYPE = "System";
 
         public NotificationService(
@@ -26,13 +26,11 @@ namespace BallSport.Application.Services.Community
         }
 
         // ===================== USER METHODS =====================
-
         public async Task<(IEnumerable<NotificationDTO> Notifications, int TotalCount)>
             GetNotificationsByUserIdAsync(int userId, int pageNumber = 1, int pageSize = 20, bool? isRead = null)
         {
             var (notifications, totalCount) =
                 await _notificationRepository.GetNotificationsByUserIdAsync(userId, pageNumber, pageSize, isRead);
-
             return (MapToNotificationDTOs(notifications), totalCount);
         }
 
@@ -52,8 +50,7 @@ namespace BallSport.Application.Services.Community
             if (dto.Type == SYSTEM_TYPE && dto.UserId == null)
             {
                 throw new InvalidOperationException(
-                    "Không thể gửi thông báo hệ thống bằng API này. " +
-                    "Vui lòng dùng POST /admin/bulk.");
+                    "Không thể gửi thông báo hệ thống bằng API này. Vui lòng dùng POST /admin/bulk.");
             }
 
             var notification = new Notification
@@ -91,8 +88,7 @@ namespace BallSport.Application.Services.Community
                         .FirstOrDefaultAsync();
 
                     var userIds = await _context.Users
-                        .Where(u => adminRoleId == 0 ||
-                                   !u.UserRoles.Any(ur => ur.RoleId == adminRoleId))
+                        .Where(u => adminRoleId == 0 || !u.UserRoles.Any(ur => ur.RoleId == adminRoleId))
                         .Select(u => u.UserId)
                         .ToListAsync();
 
@@ -108,7 +104,6 @@ namespace BallSport.Application.Services.Community
                             IsRead = false
                         });
                     }
-
                     totalExpected += userIds.Count;
                 }
                 // ===== PERSONAL NOTIFICATION =====
@@ -126,7 +121,6 @@ namespace BallSport.Application.Services.Community
                         CreatedAt = DateTime.UtcNow,
                         IsRead = false
                     });
-
                     totalExpected++;
                 }
             }
@@ -142,8 +136,7 @@ namespace BallSport.Application.Services.Community
         public async Task<bool> MarkAsReadAsync(int notificationId, int userId)
         {
             var noti = await _notificationRepository.GetNotificationByIdAsync(notificationId);
-            return noti?.UserId == userId &&
-                   await _notificationRepository.MarkAsReadAsync(notificationId);
+            return noti?.UserId == userId && await _notificationRepository.MarkAsReadAsync(notificationId);
         }
 
         public Task<bool> MarkAllAsReadAsync(int userId)
@@ -152,8 +145,7 @@ namespace BallSport.Application.Services.Community
         public async Task<bool> DeleteNotificationAsync(int notificationId, int userId)
         {
             var noti = await _notificationRepository.GetNotificationByIdAsync(notificationId);
-            return noti?.UserId == userId &&
-                   await _notificationRepository.DeleteNotificationAsync(notificationId);
+            return noti?.UserId == userId && await _notificationRepository.DeleteNotificationAsync(notificationId);
         }
 
         public Task<bool> DeleteAllNotificationsAsync(int userId)
@@ -163,15 +155,12 @@ namespace BallSport.Application.Services.Community
             => _notificationRepository.CountUnreadNotificationsAsync(userId);
 
         public async Task<IEnumerable<NotificationDTO>> GetNotificationsByTypeAsync(int userId, string type)
-            => MapToNotificationDTOs(
-                await _notificationRepository.GetNotificationsByTypeAsync(userId, type));
+            => MapToNotificationDTOs(await _notificationRepository.GetNotificationsByTypeAsync(userId, type));
 
         public Task<int> CleanupOldNotificationsAsync(int daysOld = 30)
             => _notificationRepository.DeleteOldNotificationsAsync(daysOld);
 
         // ===================== ADMIN METHODS =====================
-        // ADMIN CHỈ XEM + XÓA SYSTEM NOTIFICATION
-
         public async Task<(IEnumerable<NotificationDTO> Notifications, int TotalCount)>
             GetAllNotificationsAdminAsync(
                 int pageNumber = 1,
@@ -183,13 +172,7 @@ namespace BallSport.Application.Services.Community
         {
             var (notifications, totalCount) =
                 await _notificationRepository.GetAllNotificationsAdminAsync(
-                    pageNumber,
-                    pageSize,
-                    search,
-                    SYSTEM_TYPE,
-                    null,
-                    isRead
-                );
+                    pageNumber, pageSize, search, SYSTEM_TYPE, null, isRead);
 
             return (MapToNotificationDTOs(notifications), totalCount);
         }
@@ -197,20 +180,16 @@ namespace BallSport.Application.Services.Community
         public async Task<NotificationDTO?> GetNotificationByIdAdminAsync(int notificationId)
         {
             var noti = await _notificationRepository.GetNotificationByIdAdminAsync(notificationId);
-
             if (noti == null || noti.Type != SYSTEM_TYPE)
                 return null;
-
             return MapToNotificationDTO(noti);
         }
 
         public async Task<bool> DeleteNotificationAdminAsync(int notificationId)
         {
             var noti = await _notificationRepository.GetNotificationByIdAdminAsync(notificationId);
-
             if (noti == null || noti.Type != SYSTEM_TYPE)
                 return false;
-
             return await _notificationRepository.DeleteNotificationAdminAsync(notificationId);
         }
 
@@ -231,15 +210,12 @@ namespace BallSport.Application.Services.Community
         }
 
         // ===================== PRIVATE HELPERS =====================
-
         private static string BuildFullMessage(string? title, string? message)
         {
             if (string.IsNullOrWhiteSpace(title))
                 return message ?? "Bạn có thông báo mới";
-
             if (string.IsNullOrWhiteSpace(message))
                 return $"[{title}]";
-
             return $"[{title}] {message}";
         }
 

@@ -4,10 +4,7 @@ import {
   fetchFieldsByComplex,
 } from "../services/fields";
 
-/**
- * Custom hook to fetch and cache all field complexes with their fields
- * @param {boolean} enabled - Whether to enable the query
- */
+// lấy danh sách sân
 export function useFieldComplexes(enabled = true) {
   return useQuery({
     queryKey: ["fieldComplexes"],
@@ -19,18 +16,14 @@ export function useFieldComplexes(enabled = true) {
       return result.data || [];
     },
     enabled,
-    staleTime: 3 * 60 * 1000, // Cache for 3 minutes
-    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    staleTime: 3 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
     retry: 1,
     refetchOnWindowFocus: false,
   });
 }
 
-/**
- * Custom hook to fetch and cache fields by complex ID
- * @param {number|string} complexId - The complex ID
- * @param {boolean} enabled - Whether to enable the query
- */
+// lấy danh sách sân nhỏ
 export function useFieldsByComplex(complexId, enabled = true) {
   return useQuery({
     queryKey: ["fields", "complex", complexId],
@@ -45,8 +38,8 @@ export function useFieldsByComplex(complexId, enabled = true) {
       return result.data || [];
     },
     enabled: enabled && !!complexId,
-    staleTime: 3 * 60 * 1000, // Cache for 3 minutes
-    cacheTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
+    staleTime: 3 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
     retry: 1,
     refetchOnWindowFocus: false,
   });

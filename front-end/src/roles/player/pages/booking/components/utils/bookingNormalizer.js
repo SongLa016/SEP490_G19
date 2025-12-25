@@ -32,8 +32,9 @@ export const normalizeApiBookings = (items = []) =>
         item.matchRequestID ??
         item.MatchRequestID ??
         null,
-      qrCode: item.qrCode ?? item.QRCode ?? null,
-      qrExpiresAt: item.qrExpiresAt ?? item.QRExpiresAt ?? null,
+      qrCode: item.qrCode ?? item.QRCode ?? item.qrCodeUrl ?? item.QRCodeUrl ?? item.depositQrCode ?? item.DepositQrCode ?? null,
+      qrCodeUrl: item.qrCodeUrl ?? item.QRCodeUrl ?? item.qrCode ?? item.QRCode ?? item.depositQrCode ?? item.DepositQrCode ?? null,
+      qrExpiresAt: item.qrExpiresAt ?? item.QRExpiresAt ?? item.qrExpiry ?? item.QRExpiry ?? item.qrCodeExpiresAt ?? item.QRCodeExpiresAt ?? null,
       createdAt: item.createdAt ?? item.CreatedAt ?? item.startTime,
       confirmedAt: item.confirmedAt ?? item.ConfirmedAt ?? null,
       cancelledAt: item.cancelledAt ?? item.CancelledAt ?? null,

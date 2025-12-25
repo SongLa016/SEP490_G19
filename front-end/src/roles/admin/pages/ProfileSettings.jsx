@@ -13,6 +13,7 @@ import {
   LoadingSpinner,
 } from "../../../shared/components/ui";
 import { profileService } from "../../../shared/index";
+import { validateVietnamPhone } from "../../../shared/services/authService";
 import ChangePasswordModal from "../../../shared/components/ChangePasswordModal";
 import Swal from "sweetalert2";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -146,11 +147,26 @@ export default function AdminProfileSettings() {
       return;
     }
 
+    // Validate số điện thoại Việt Nam
+    if (formData.phone) {
+      const phoneValidation = validateVietnamPhone(formData.phone);
+      if (!phoneValidation.isValid) {
+        Swal.fire({
+          icon: "warning",
+          title: "Số điện thoại không hợp lệ",
+          text: phoneValidation.message,
+          confirmButtonText: "Đóng",
+        });
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
       const updateData = {
         fullName: formData.fullName || "",
+        phone: formData.phone || "",
       };
 
       // Gọi API update cho owner/admin
@@ -403,18 +419,24 @@ export default function AdminProfileSettings() {
               <p className="text-xs text-gray-500 mt-1">Email không thể thay đổi</p>
             </div>
 
-            {/* Phone (Read-only) */}
+            {/* Phone */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Phone className="w-4 h-4 inline mr-2" />
                 Số điện thoại
               </label>
-              <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
-                {profileData.phone || "Chưa cập nhật"}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Số điện thoại không thể thay đổi
-              </p>
+              {isEditing ? (
+                <Input
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  placeholder="Nhập số điện thoại"
+                  className="w-full"
+                />
+              ) : (
+                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">
+                  {profileData.phone || "Chưa cập nhật"}
+                </p>
+              )}
             </div>
 
             {/* Change Password Button */}

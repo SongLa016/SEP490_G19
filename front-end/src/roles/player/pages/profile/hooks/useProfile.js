@@ -5,79 +5,74 @@ import {
   formatProfileForAPI,
 } from "../services/profileService";
 
-/* ============================================================================
-   PROFILE INFO HOOK
-============================================================================ */
 export const useProfile = (userId) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // Load profile
+  // lay thong tin profile
   const loadProfile = async () => {
     if (!userId) return;
 
-    setLoading(true);
-    setError(null);
-
     try {
-      const result = await profileService.getProfile(userId);
-      setProfile(result);
-    } catch (ex) {
-      setError(ex?.message);
+      setLoading(true);
+      setError(null);
+      const profileData = await profileService.getProfile(userId);
+      setProfile(profileData);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // Save profile
-  const saveProfile = async (incoming) => {
+  // luu thong tin profile
+  const saveProfile = async (profileData) => {
     if (!userId) return;
-
-    setSaving(true);
-    setError(null);
-
     try {
-      const validation = validateProfileData(incoming);
-
+      setSaving(true);
+      setError(null);
+      const validation = validateProfileData(profileData);
       if (!validation.isValid) {
         throw new Error(JSON.stringify(validation.errors));
       }
 
-      const dataToSend = formatProfileForAPI(incoming);
-      const updated = await profileService.updateProfile(userId, dataToSend);
+      const formattedData = formatProfileForAPI(profileData);
+      const savedProfile = await profileService.updateProfile(
+        userId,
+        formattedData
+      );
+      setProfile(savedProfile);
 
-      setProfile(updated);
-      return updated;
-    } catch (ex) {
-      setError(ex?.message);
-      throw ex;
+      return savedProfile;
+    } catch (err) {
+      setError(err.message);
+      throw err;
     } finally {
       setSaving(false);
     }
   };
 
-  // Upload avatar
+  // upload avatar
   const uploadAvatar = async (file) => {
     if (!userId || !file) return;
 
-    setSaving(true);
-    setError(null);
-
     try {
-      const res = await profileService.uploadAvatar(userId, file);
+      setSaving(true);
+      setError(null);
 
-      setProfile((prev) =>
-        prev
-          ? { ...prev, avatar: res.avatarUrl }
-          : { avatar: res.avatarUrl }
-      );
+      const result = await profileService.uploadAvatar(userId, file);
 
-      return res;
-    } catch (ex) {
-      setError(ex?.message);
-      throw ex;
+      setProfile((prev) => ({
+        ...prev,
+        avatar: result.avatarUrl,
+      }));
+
+      return result;
+    } catch (err) {
+      setError(err.message);
+      throw err;
     } finally {
       setSaving(false);
     }
@@ -98,9 +93,7 @@ export const useProfile = (userId) => {
   };
 };
 
-/* ============================================================================
-   PROFILE STATS HOOK
-============================================================================ */
+// lay thong tin thong ke profile
 export const useProfileStats = (userId) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -109,14 +102,13 @@ export const useProfileStats = (userId) => {
   const loadStats = async () => {
     if (!userId) return;
 
-    setLoading(true);
-    setError(null);
-
     try {
-      const res = await profileService.getStats(userId);
-      setStats(res);
-    } catch (ex) {
-      setError(ex?.message);
+      setLoading(true);
+      setError(null);
+      const statsData = await profileService.getStats(userId);
+      setStats(statsData);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -134,9 +126,7 @@ export const useProfileStats = (userId) => {
   };
 };
 
-/* ============================================================================
-   PROFILE SETTINGS HOOK
-============================================================================ */
+// lay thong tin cai dat profile
 export const useProfileSettings = (userId) => {
   const [settings, setSettings] = useState({
     notifications: {
@@ -152,40 +142,45 @@ export const useProfileSettings = (userId) => {
       showAddress: false,
     },
   });
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
+  // lay thong tin cai dat profile
   const loadSettings = async () => {
     if (!userId) return;
 
-    setLoading(true);
-    setError(null);
-
     try {
-      const result = await profileService.getSettings(userId);
-      setSettings(result);
-    } catch (ex) {
-      setError(ex?.message);
+      setLoading(true);
+      setError(null);
+
+      const settingsData = await profileService.getSettings(userId);
+      setSettings(settingsData);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const saveSettings = async (incoming) => {
+  // luu thong tin cai dat profile
+  const saveSettings = async (newSettings) => {
     if (!userId) return;
 
-    setSaving(true);
-    setError(null);
-
     try {
-      const result = await profileService.updateSettings(userId, incoming);
-      setSettings(result);
-      return result;
-    } catch (ex) {
-      setError(ex?.message);
-      throw ex;
+      setSaving(true);
+      setError(null);
+
+      const savedSettings = await profileService.updateSettings(
+        userId,
+        newSettings
+      );
+      setSettings(savedSettings);
+
+      return savedSettings;
+    } catch (err) {
+      setError(err.message);
+      throw err;
     } finally {
       setSaving(false);
     }

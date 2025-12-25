@@ -198,7 +198,6 @@ const enrichNotificationsWithActors = async (notifications) => {
      if (!Array.isArray(notifications) || notifications.length === 0) {
           return notifications || [];
      }
-
      const commentCache = new Map();
      const userCache = new Map();
 
@@ -209,15 +208,9 @@ const enrichNotificationsWithActors = async (notifications) => {
                if (existingActor) {
                     return { ...notification, actorName: existingActor };
                }
-
-               // Handle Like notifications - fetch user profile
+               // lấy thông tin user cho thông báo like
                if (isLikeNotification(notification)) {
                     const actorId = getActorIdFromNotification(notification);
-                    console.log("[NotificationsDisplay] Like notification:", {
-                         type: notification?.type,
-                         actorId,
-                         notification: JSON.stringify(notification, null, 2)
-                    });
                     if (!actorId) {
                          return notification;
                     }
@@ -251,7 +244,7 @@ const enrichNotificationsWithActors = async (notifications) => {
                     }
                }
 
-               // Handle Comment notifications
+               // lấy thông tin user cho thông báo comment
                if (!isCommentNotification(notification)) {
                     return notification;
                }
@@ -395,6 +388,7 @@ export default function NotificationsDisplay({ userId, className = "" }) {
           }
      };
 
+     // xử lý xóa thông báo
      const handleDeleteNotification = async (notificationId, messagePreview = "") => {
           if (!notificationId) return;
 
@@ -446,7 +440,7 @@ export default function NotificationsDisplay({ userId, className = "" }) {
           }
      };
 
-     // Xử lý xóa nội dung bị báo cáo (bài viết/comment) - cho component chính
+     // xử lý xóa nội dung bị báo cáo (bài viết/comment)
      const handleDeleteReportedContentMain = async (notification) => {
           const targetId = notification.targetId || notification.targetID || notification.TargetId;
           const message = notification.message || "";
@@ -533,6 +527,7 @@ export default function NotificationsDisplay({ userId, className = "" }) {
           }
      };
 
+     // xử lý xóa tất cả thông báo
      const handleDeleteAllNotifications = async () => {
           if (!notifications.length) return;
 

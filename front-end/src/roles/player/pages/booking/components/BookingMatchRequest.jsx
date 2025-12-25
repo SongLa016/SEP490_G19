@@ -5,10 +5,10 @@ import { Badge, Button } from "../../../../../shared/components/ui";
 
 export default function BookingMatchRequest({ booking, user, matchRequestData, handlers }) {
      const {
-          bookingIdToRequest,           // Map bookingId -> matchRequest data
+          bookingIdToRequest,
           refreshingRequests,
-          refreshRequestForBooking,     // Hàm refresh danh sách đội tham gia - Nút "Tải đội tham gia"
-          extractRequestId              // Hàm lấy requestId từ matchRequest object
+          refreshRequestForBooking,
+          extractRequestId
      } = matchRequestData;
      const { hasExistingMatchRequest } = handlers;  // Kiểm tra booking có yêu cầu tìm đối không
 
@@ -16,7 +16,6 @@ export default function BookingMatchRequest({ booking, user, matchRequestData, h
      const hasRequest = hasExistingMatchRequest(booking);  // Kiểm tra có yêu cầu tìm đối không
 
      if (!hasRequest) return null;
-
      const currentRequestId = extractRequestId(req) || booking.matchRequestId || booking.matchRequestID || booking.MatchRequestID;
      const isPlaceholder = req?.placeholder === true;
      const badgeConfig = req ? handlers.getRequestBadgeConfig(req) : {
