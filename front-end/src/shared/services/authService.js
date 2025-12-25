@@ -122,7 +122,7 @@ export const authService = {
         formData.append("Avatar", userData.avatar);
       }
       const response = await apiClient.post(
-        "https://sep490-g19-zxph.onrender.com/api/Register/send-otp",
+        "http://localhost:8080/api/Register/send-otp",
         formData,
         {
           headers: {
@@ -151,7 +151,7 @@ export const authService = {
   async verifyOtp(email, otp) {
     try {
       const response = await apiClient.post(
-        "https://sep490-g19-zxph.onrender.com/api/Register/verify-otp",
+        "http://localhost:8080/api/Register/verify-otp",
         {
           email: email,
           otp: otp,
@@ -177,7 +177,7 @@ export const authService = {
     try {
       // Call API to get user role information
       const response = await apiClient.get(
-        `https://sep490-g19-zxph.onrender.com/api/Users/get-role/${userID}`
+        `http://localhost:8080/api/Users/get-role/${userID}`
       );
       return response.data;
     } catch (error) {
@@ -190,7 +190,7 @@ export const authService = {
   async loginUser(credentials) {
     try {
       const response = await apiClient.post(
-        "https://sep490-g19-zxph.onrender.com/api/Login/login",
+        "http://localhost:8080/api/Login/login",
         {
           phone: credentials.phone,
           password: credentials.password,
@@ -332,7 +332,7 @@ export const authService = {
   async loginWithGoogle(email, name) {
     try {
       const response = await apiClient.post(
-        "https://sep490-g19-zxph.onrender.com/api/Login/login-google",
+        "http://localhost:8080/api/Login/login-google",
         {
           email: email,
           name: name,
@@ -420,7 +420,7 @@ export const authService = {
   async resendOtp(email) {
     try {
       const response = await apiClient.post(
-        "https://sep490-g19-zxph.onrender.com/api/Register/resend-otp",
+        "http://localhost:8080/api/Register/resend-otp",
         { email }
       );
 

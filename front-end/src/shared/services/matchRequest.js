@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE = "https://sep490-g19-zxph.onrender.com/api/match-requests/";
+const API_BASE = "http://localhost:8080/api/match-requests/";
 
 const apiClient = axios.create({
   baseURL: API_BASE,

@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "https://sep490-g19-zxph.onrender.com";
+  process.env.REACT_APP_API_BASE_URL || "http://localhost:8080";
 
 // Create axios instance with base config
 const api = axios.create({

@@ -23,7 +23,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-const BASE_URL = "https://sep490-g19-zxph.onrender.com/api";
+const BASE_URL = "http://localhost:8080/api";
 
 // Normalize API response
 const normalizePricing = (item) => {

@@ -147,7 +147,7 @@ export const validateFieldData = (data, isEdit = false) => {
   };
 };
 
-const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+const DEFAULT_API_BASE_URL = "http://localhost:8080";
 // Always use full URL to avoid proxy issues
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 

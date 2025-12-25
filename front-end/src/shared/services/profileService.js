@@ -68,7 +68,7 @@ const handleApiError = (error) => {
 export const profileService = {
   async getPlayerProfile(userId) {
     try {
-      const API_URL = `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`;
+      const API_URL = `http://localhost:8080/api/PlayerProfile/${userId}`;
 
       const response = await apiClient.get(API_URL);
 
@@ -90,7 +90,7 @@ export const profileService = {
   async changePassword(oldPassword, newPassword, confirmNewPassword) {
     try {
       const API_URL =
-        "https://sep490-g19-zxph.onrender.com/api/UserProfile/change-password";
+        "http://localhost:8080/api/UserProfile/change-password";
 
       const response = await apiClient.post(API_URL, {
         oldPassword,
@@ -156,7 +156,7 @@ export const profileService = {
   async updateProfile(userId, profileData, avatarFile = null) {
     try {
       const API_URL =
-        "https://sep490-g19-zxph.onrender.com/api/UserProfile/profile/player";
+        "http://localhost:8080/api/UserProfile/profile/player";
 
       // Format dateOfBirth to YYYY-MM-DD format
       let formattedDateOfBirth = "";
@@ -249,7 +249,7 @@ export const profileService = {
     try {
       // Lấy profile theo token, không cần userId trong URL
       const response = await apiClient.get(
-        "https://sep490-g19-zxph.onrender.com/api/UserProfile/profile"
+        "http://localhost:8080/api/UserProfile/profile"
       );
 
       // Xử lý response data - có thể có nhiều format khác nhau
@@ -291,7 +291,7 @@ export const profileService = {
   async updateOwnerAdminProfile(profileData, avatarFile = null) {
     try {
       const API_URL =
-        "https://sep490-g19-zxph.onrender.com/api/UserProfile/profile/admin-owner";
+        "http://localhost:8080/api/UserProfile/profile/admin-owner";
 
       // Format dateOfBirth to YYYY-MM-DD format if provided
       let formattedDateOfBirth = "";

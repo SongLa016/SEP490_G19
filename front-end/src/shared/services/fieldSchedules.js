@@ -1,7 +1,7 @@
 // Service layer for FieldSchedule API
 import axios from "axios";
 
-const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+const DEFAULT_API_BASE_URL = "http://localhost:8080";
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
 // Create axios instance with base configuration
@@ -242,7 +242,7 @@ export async function fetchPublicFieldSchedulesByField(fieldId) {
 
     // Create a separate axios instance without auth token for public endpoint
     // Use the same baseURL as other services
-    const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+    const DEFAULT_API_BASE_URL = "http://localhost:8080";
     const API_BASE_URL =
       process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
@@ -296,7 +296,7 @@ export async function fetchPublicFieldSchedulesByDate(date) {
     // Try different endpoint variations
     const endpoints = [`/FieldSchedule/public?date=${date}`];
 
-    const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+    const DEFAULT_API_BASE_URL = "http://localhost:8080";
     const API_BASE_URL =
       process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
@@ -887,7 +887,7 @@ export async function fetchFieldScheduleById(scheduleId) {
     const endpoint = `/FieldSchedule/public/${scheduleId}`;
 
     // Create a separate axios instance without auth token for public endpoint
-    const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+    const DEFAULT_API_BASE_URL = "http://localhost:8080";
     const API_BASE_URL =
       process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 

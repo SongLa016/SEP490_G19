@@ -60,7 +60,7 @@ export const passwordResetService = {
   async sendResetOtp(email) {
     try {
       const response = await apiClient.post(
-        "https://sep490-g19-zxph.onrender.com/api/ResertPass/send-otp",
+        "http://localhost:8080/api/ResertPass/send-otp",
         {
         email: email,
       });
@@ -83,7 +83,7 @@ export const passwordResetService = {
   async verifyResetOtp(otp) {
     try {
       const response = await apiClient.post(
-        "https://sep490-g19-zxph.onrender.com/api/ResertPass/verify-otp",
+        "http://localhost:8080/api/ResertPass/verify-otp",
         {
         otp: otp,
       });

@@ -4,7 +4,7 @@ module.exports = function (app) {
   app.use(
     "/api",
     createProxyMiddleware({
-      target: "https://sep490-g19-zxph.onrender.com",
+      target: "http://localhost:8080",
       changeOrigin: true,
       secure: true,
       logLevel: "debug",

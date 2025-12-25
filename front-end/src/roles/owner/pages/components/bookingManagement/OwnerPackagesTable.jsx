@@ -184,7 +184,7 @@ export default function OwnerPackagesTable({
             uniqueUserIds.map(async (userId) => {
               try {
                 const token = localStorage.getItem("token");
-                const response = await fetch(`https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`, {
+                const response = await fetch(`http://localhost:8080/api/PlayerProfile/${userId}`, {
                   headers: {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
@@ -381,7 +381,7 @@ export default function OwnerPackagesTable({
               const userPromises = userIds.map(async (userId) => {
                 try {
                   const token = localStorage.getItem("token");
-                  const response = await fetch(`https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`, {
+                  const response = await fetch(`http://localhost:8080/api/PlayerProfile/${userId}`, {
                     headers: {
                       Authorization: `Bearer ${token}`,
                       "Content-Type": "application/json",

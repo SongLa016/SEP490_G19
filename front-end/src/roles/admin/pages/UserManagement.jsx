@@ -154,7 +154,7 @@ export default function UserManagement() {
      const fetchOwnerProfile = async () => {
           setOwnerLoading(true);
           try {
-               const res = await fetch('https://sep490-g19-zxph.onrender.com/api/PlayerProfile/3');
+               const res = await fetch('http://localhost:8080/api/PlayerProfile/3');
                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                const data = await res.json();
                setOwnerProfile(data);

@@ -111,7 +111,7 @@ const PostDetailModal = ({
                               try {
                                    const token = localStorage.getItem("token");
                                    const profileResponse = await fetch(
-                                        `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${comment.userId}`,
+                                        `http://localhost:8080/api/PlayerProfile/${comment.userId}`,
                                         {
                                              headers: {
                                                   "Content-Type": "application/json",

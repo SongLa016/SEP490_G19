@@ -52,7 +52,7 @@ const handleApiError = (error) => {
 export async function fetchDepositPolicies() {
   try {
     const response = await apiClient.get(
-      "https://sep490-g19-zxph.onrender.com/api/DepositPolicy"
+      "http://localhost:8080/api/DepositPolicy"
     );
     // Handle both array and single object responses
     const policies = Array.isArray(response.data)
@@ -79,7 +79,7 @@ export async function fetchDepositPolicies() {
 export async function fetchDepositPolicy(policyId) {
   try {
     const response = await apiClient.get(
-      `https://sep490-g19-zxph.onrender.com/api/DepositPolicy/${policyId}`
+      `http://localhost:8080/api/DepositPolicy/${policyId}`
     );
     const policy = response.data;
     return {
@@ -105,7 +105,7 @@ export async function fetchDepositPolicyByField(fieldId) {
       return null;
     }
     // Use the specific endpoint for field-based query
-    const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+    const DEFAULT_API_BASE_URL = "http://localhost:8080";
     const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
     const endpoint = `${API_BASE_URL}/api/DepositPolicy/field/${fieldIdNum}`;
     const response = await apiClient.get(endpoint);
@@ -150,7 +150,7 @@ export async function createDepositPolicy(policyData) {
       maxDeposit: policyData.maxDeposit || null,
     };
     const response = await apiClient.post(
-      "https://sep490-g19-zxph.onrender.com/api/DepositPolicy",
+      "http://localhost:8080/api/DepositPolicy",
       payload
     );
     return response.data;
@@ -169,7 +169,7 @@ export async function updateDepositPolicy(policyId, policyData) {
       maxDeposit: policyData.maxDeposit || null,
     };
     const response = await apiClient.put(
-      `https://sep490-g19-zxph.onrender.com/api/DepositPolicy/${policyId}`,
+      `http://localhost:8080/api/DepositPolicy/${policyId}`,
       payload
     );
     return response.data;
@@ -182,7 +182,7 @@ export async function updateDepositPolicy(policyId, policyData) {
 export async function deleteDepositPolicy(policyId) {
   try {
     const response = await apiClient.delete(
-      `https://sep490-g19-zxph.onrender.com/api/DepositPolicy/${policyId}`
+      `http://localhost:8080/api/DepositPolicy/${policyId}`
     );
     return response.data;
   } catch (error) {

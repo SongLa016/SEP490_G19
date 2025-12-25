@@ -64,7 +64,7 @@ export default function ProfileStats({ user }) {
                          // lấy dữ liệu user 
                          if (userId) {
                               const response = await fetch(
-                                   `https://sep490-g19-zxph.onrender.com/api/User/${userId}`,
+                                   `http://localhost:8080/api/User/${userId}`,
                                    {
                                         headers: {
                                              'Authorization': `Bearer ${token || localStorage.getItem('token')}`,

@@ -74,7 +74,7 @@ export const bankingService = {
   getBankAccounts: async (userID) => {
     try {
       const response = await apiClient.get(
-        `https://sep490-g19-zxph.onrender.com/api/PlayerBankAccount/user/${userID}`
+        `http://localhost:8080/api/PlayerBankAccount/user/${userID}`
       );
       const accounts = Array.isArray(response.data)
         ? response.data
@@ -106,7 +106,7 @@ export const bankingService = {
   getBankAccount: async (accountID) => {
     try {
       const response = await apiClient.get(
-        `https://sep490-g19-zxph.onrender.com/api/PlayerBankAccount/${accountID}`
+        `http://localhost:8080/api/PlayerBankAccount/${accountID}`
       );
       return {
         ok: true,
@@ -141,7 +141,7 @@ export const bankingService = {
             : false,
       };
       const response = await apiClient.post(
-        "https://sep490-g19-zxph.onrender.com/api/PlayerBankAccount/create",
+        "http://localhost:8080/api/PlayerBankAccount/create",
         requestData
       );
       return {
@@ -177,7 +177,7 @@ export const bankingService = {
             : false,
       };
       const response = await apiClient.put(
-        `https://sep490-g19-zxph.onrender.com/api/PlayerBankAccount/update/${accountID}`,
+        `http://localhost:8080/api/PlayerBankAccount/update/${accountID}`,
         requestData
       );
       return {
@@ -200,7 +200,7 @@ export const bankingService = {
   deleteBankAccount: async (accountID) => {
     try {
       await apiClient.delete(
-        `https://sep490-g19-zxph.onrender.com/api/PlayerBankAccount/delete/${accountID}`
+        `http://localhost:8080/api/PlayerBankAccount/delete/${accountID}`
       );
       return {
         ok: true,

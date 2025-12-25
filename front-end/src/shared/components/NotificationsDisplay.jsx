@@ -30,7 +30,7 @@ const fetchUserProfile = async (userId) => {
      try {
           const token = localStorage.getItem("token");
           const response = await fetch(
-               `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${userId}`,
+               `http://localhost:8080/api/PlayerProfile/${userId}`,
                {
                     headers: {
                          "Content-Type": "application/json",

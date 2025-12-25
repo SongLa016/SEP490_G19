@@ -43,7 +43,7 @@ const fetchPlayerProfile = async (playerId) => {
      try {
           const token = localStorage.getItem("token");
           const response = await axios.get(
-               `https://sep490-g19-zxph.onrender.com/api/PlayerProfile/${playerId}`,
+               `http://localhost:8080/api/PlayerProfile/${playerId}`,
                {
                     headers: {
                          "Content-Type": "application/json",
@@ -184,7 +184,7 @@ const BookingManagement = ({ isDemo = false }) => {
                try {
                     const token = localStorage.getItem("token");
                     const qrResponse = await axios.get(
-                         `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${numericBookingId}`,
+                         `http://localhost:8080/api/Booking/generate-qr/${numericBookingId}`,
                          {
                               headers: {
                                    "Content-Type": "application/json",
@@ -295,7 +295,7 @@ const BookingManagement = ({ isDemo = false }) => {
                               const remainingAmount = Math.max(0, totalAmount - depositAmount);
 
                               // Tạo URL QR code để player thanh toán số tiền còn lại
-                              const qrCodeUrl = `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${numericBookingId}`;
+                              const qrCodeUrl = `http://localhost:8080/api/Booking/generate-qr/${numericBookingId}`;
 
                               // Hiển thị thông báo với QR code nếu còn số tiền cần thanh toán
                               if (remainingAmount > 0) {

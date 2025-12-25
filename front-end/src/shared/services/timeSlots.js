@@ -7,7 +7,7 @@ import {
   decodeTokenPayload,
 } from "../utils/tokenManager";
 
-const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
+const DEFAULT_API_BASE_URL = "http://localhost:8080";
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
 // Create axios instance with base configuration
@@ -190,7 +190,7 @@ export async function fetchTimeSlots(fieldId = null, date = null) {
     }
 
     // Build endpoint with optional date parameter
-    let endpoint = "https://sep490-g19-zxph.onrender.com/api/TimeSlot";
+    let endpoint = "http://localhost:8080/api/TimeSlot";
     const params = {};
 
     // Add date parameter if provided
@@ -330,7 +330,7 @@ export async function createTimeSlot(timeSlotData) {
     };
 
     // Try different endpoint variations
-    const endpoints = ["https://sep490-g19-zxph.onrender.com/api/TimeSlot"];
+    const endpoints = ["http://localhost:8080/api/TimeSlot"];
     let response = null;
     let lastError = null;
 
@@ -480,12 +480,12 @@ export async function updateTimeSlot(slotId, timeSlotData) {
 
     // Try different endpoint variations
     const endpoints = [
-      "https://sep490-g19-zxph.onrender.com/api/TimeSlot",
-      "https://sep490-g19-zxph.onrender.com/api/TimeSlots",
-      "https://sep490-g19-zxph.onrender.com/api/timeSlot",
-      "https://sep490-g19-zxph.onrender.com/api/timeSlots",
-      "https://sep490-g19-zxph.onrender.com/api/time-slot",
-      "https://sep490-g19-zxph.onrender.com/api/time-slots",
+      "http://localhost:8080/api/TimeSlot",
+      "http://localhost:8080/api/TimeSlots",
+      "http://localhost:8080/api/timeSlot",
+      "http://localhost:8080/api/timeSlots",
+      "http://localhost:8080/api/time-slot",
+      "http://localhost:8080/api/time-slots",
     ];
     let response = null;
     let lastError = null;
@@ -562,12 +562,12 @@ export async function deleteTimeSlot(slotId) {
 
     // Try different endpoint variations
     const endpoints = [
-      "https://sep490-g19-zxph.onrender.com/api/TimeSlot",
-      "https://sep490-g19-zxph.onrender.com/api/TimeSlots",
-      "https://sep490-g19-zxph.onrender.com/api/timeSlot",
-      "https://sep490-g19-zxph.onrender.com/api/timeSlots",
-      "https://sep490-g19-zxph.onrender.com/api/time-slot",
-      "https://sep490-g19-zxph.onrender.com/api/time-slots",
+      "http://localhost:8080/api/TimeSlot",
+      "http://localhost:8080/api/TimeSlots",
+      "http://localhost:8080/api/timeSlot",
+      "http://localhost:8080/api/timeSlots",
+      "http://localhost:8080/api/time-slot",
+      "http://localhost:8080/api/time-slots",
     ];
     let lastError = null;
     let success = false;
