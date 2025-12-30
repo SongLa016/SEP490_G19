@@ -609,23 +609,44 @@ export default function ComplexDetail({ user }) {
 
      const selectedSlotPriceFromSchedule = selectedScheduleEntry?.price || 0;
      const minPriceFromSchedule = cheapestScheduleEntry?.price || 0;
-     // Đồng bộ selectedDate và selectedSlotId vào query
+     // Đồng bộ state vào query params (Consolidated)
      useEffect(() => {
-          const next = new URLSearchParams(searchParams);
-          next.set("date", selectedDate);
-          if (selectedSlotId) next.set("slotId", String(selectedSlotId)); else next.delete("slotId");
-          setSearchParams(next, { replace: true });
-     }, [selectedDate, selectedSlotId, searchParams, setSearchParams]);
+          const params = new URLSearchParams(searchParams);
+          let changed = false;
 
-     // Đồng bộ activeTab vào query
-     useEffect(() => {
-          const currentTab = searchParams.get("tab");
+          // Sync activeTab
+          const currentTab = params.get("tab");
           if (currentTab !== activeTab) {
-               const next = new URLSearchParams(searchParams);
-               next.set("tab", activeTab);
-               setSearchParams(next, { replace: true });
+               params.set("tab", activeTab);
+               changed = true;
           }
-     }, [activeTab, searchParams, setSearchParams]);
+
+          // Sync selectedDate
+          const currentDate = params.get("date");
+          if (currentDate !== selectedDate) {
+               params.set("date", selectedDate);
+               changed = true;
+          }
+
+          // Sync selectedSlotId
+          const currentSlotId = params.get("slotId");
+          if (selectedSlotId) {
+               if (currentSlotId !== String(selectedSlotId)) {
+                    params.set("slotId", String(selectedSlotId));
+                    changed = true;
+               }
+          } else {
+               if (params.has("slotId")) {
+                    params.delete("slotId");
+                    changed = true;
+               }
+          }
+
+          if (changed) {
+               setSearchParams(params, { replace: true });
+          }
+     }, [activeTab, selectedDate, selectedSlotId, searchParams, setSearchParams]);
+
 
      // Xử lý chuyển đổi sân
      useEffect(() => {

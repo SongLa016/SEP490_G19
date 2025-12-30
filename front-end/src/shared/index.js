@@ -48,6 +48,8 @@ export * from "./services/fields";
 export * from "./services/notifications";
 export * from "./services/ownerBankAccount";
 export * from "./services/fieldSchedules";
+export * from "./hooks/useFieldSearchQuery";
+export * from "./hooks/useFieldRatings";
 export * from "./services/passwordResetService";
 export * from "./services/profileService";
 
