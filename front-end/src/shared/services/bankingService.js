@@ -1,8 +1,10 @@
 import axios from "axios";
 import { clearPersistedAuth, getValidToken } from "../utils/tokenManager";
+import { API_BASE_URL } from "../config/api";
 
 // tạo instance axios cho banking API
 const apiClient = axios.create({
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -73,7 +75,7 @@ export const bankingService = {
   getBankAccounts: async (userID) => {
     try {
       const response = await apiClient.get(
-        `https://sep490-g19-zxph.onrender.com/api/PlayerBankAccount/user/${userID}`
+        `${API_BASE_URL}/api/PlayerBankAccount/user/${userID}`
       );
       const accounts = Array.isArray(response.data)
         ? response.data
@@ -104,7 +106,7 @@ export const bankingService = {
   getBankAccount: async (accountID) => {
     try {
       const response = await apiClient.get(
-        `https://sep490-g19-zxph.onrender.com/api/PlayerBankAccount/${accountID}`
+        `${API_BASE_URL}/api/PlayerBankAccount/${accountID}`
       );
       return {
         ok: true,
@@ -137,7 +139,7 @@ export const bankingService = {
             : false,
       };
       const response = await apiClient.post(
-        "https://sep490-g19-zxph.onrender.com/api/PlayerBankAccount/create",
+        `${API_BASE_URL}/api/PlayerBankAccount/create`,
         requestData
       );
       return {
@@ -171,7 +173,7 @@ export const bankingService = {
             : false,
       };
       const response = await apiClient.put(
-        `https://sep490-g19-zxph.onrender.com/api/PlayerBankAccount/update/${accountID}`,
+        `${API_BASE_URL}/api/PlayerBankAccount/update/${accountID}`,
         requestData
       );
       return {
@@ -193,7 +195,7 @@ export const bankingService = {
   deleteBankAccount: async (accountID) => {
     try {
       await apiClient.delete(
-        `https://sep490-g19-zxph.onrender.com/api/PlayerBankAccount/delete/${accountID}`
+        `${API_BASE_URL}/api/PlayerBankAccount/delete/${accountID}`
       );
       return {
         ok: true,

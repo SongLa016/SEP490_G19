@@ -1,8 +1,10 @@
 // dịch vụ quản lý chính sách hủy
 import axios from "axios";
+import { API_BASE_URL } from "../config/api";
 
 // tạo instance axios với cấu hình cơ bản
 const apiClient = axios.create({
+  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
     "Content-Type": "application/json",
@@ -48,9 +50,6 @@ const handleApiError = (error) => {
   console.error("API Error:", error);
   throw new Error(errorMessage);
 };
-
-const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "https://sep490-g19-zxph.onrender.com";
 
 // lấy danh sách chính sách hủy
 export async function fetchCancellationPolicies(ownerId) {

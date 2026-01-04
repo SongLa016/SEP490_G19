@@ -1,8 +1,6 @@
 //lấy tất cả các lịch trình sân nhỏ
 import axios from "axios";
-
-const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
+import { API_BASE_URL } from "../config/api";
 
 const apiClient = axios.create({
   baseURL: `${API_BASE_URL}/api`,
@@ -231,9 +229,6 @@ export async function fetchFieldSchedulesByField(fieldId) {
 export async function fetchPublicFieldSchedulesByField(fieldId) {
   try {
     const endpoint = `/FieldSchedule/public/field/${fieldId}`;
-    const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
-    const API_BASE_URL =
-      process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
     const publicApiClient = axios.create({
       baseURL: `${API_BASE_URL}/api`,
@@ -277,10 +272,6 @@ export async function fetchPublicFieldSchedulesByField(fieldId) {
 export async function fetchPublicFieldSchedulesByDate(date) {
   try {
     const endpoints = [`/FieldSchedule/public?date=${date}`];
-
-    const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
-    const API_BASE_URL =
-      process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
     const publicApiClient = axios.create({
       baseURL: `${API_BASE_URL}/api`,
@@ -769,10 +760,6 @@ export async function fetchFieldScheduleById(scheduleId) {
     }
 
     const endpoint = `/FieldSchedule/public/${scheduleId}`;
-
-    const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
-    const API_BASE_URL =
-      process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
     const publicApiClient = axios.create({
       baseURL: `${API_BASE_URL}/api`,

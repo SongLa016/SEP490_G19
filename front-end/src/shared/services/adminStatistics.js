@@ -6,9 +6,7 @@ import {
   decodeTokenPayload,
 } from "../utils/tokenManager";
 import { ROLES } from "../constants/roles";
-
-const DEFAULT_API_BASE_URL = "https://sep490-g19-zxph.onrender.com";
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
+import { API_BASE_URL } from "../config/api";
 
 // tạo client axios
 const apiClient = axios.create({

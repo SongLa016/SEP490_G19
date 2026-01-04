@@ -2,6 +2,7 @@
 import axios from "axios";
 import { decodeTokenPayload, isTokenExpired } from "../utils/tokenManager";
 import { validateVietnamPhone } from "./authService";
+import { API_BASE_URL } from "../config/api";
 
 // pending holds trong bộ nhớ
 const pendingHolds = [];
@@ -142,7 +143,7 @@ export async function checkFieldAvailability(fieldId, date, slotId) {
     }
 
     // Gọi API backend để kiểm tra trạng thái schedule real-time
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/FieldSchedule/public/field/${fieldId}`;
+    const endpoint = `${API_BASE_URL}/api/FieldSchedule/public/field/${fieldId}`;
     const response = await axios.get(endpoint);
 
     const schedules = Array.isArray(response.data)
@@ -565,7 +566,7 @@ export async function createBooking(bookingData) {
       };
     }
 
-    const endpoint = "https://sep490-g19-zxph.onrender.com/api/Booking/create";
+    const endpoint = `${API_BASE_URL}/api/Booking/create`;
 
     // chuẩn bị payload theo specification API
     const payload = {
@@ -624,7 +625,7 @@ export async function createBookingPackage(packageData) {
     }
 
     const endpoint =
-      "https://sep490-g19-zxph.onrender.com/api/BookingPackage/create";
+      `${API_BASE_URL}/api/BookingPackage/create`;
 
     // chuyển đổi ngày thành DateTime format cho BE
     const formatDateForBackend = (dateStr) => {
@@ -702,7 +703,7 @@ export async function confirmPaymentAPI(bookingId, depositAmount) {
       };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-payment/${numericBookingId}`;
+    const endpoint = `${API_BASE_URL}/api/Booking/confirm-payment/${numericBookingId}`;
     const payload = {
       Amount: numericDepositAmount,
     };
@@ -745,7 +746,7 @@ export async function generateQRCode(bookingId, options = {}) {
       params.set("amount", Number(options.amount));
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${bookingId}${
+    const endpoint = `${API_BASE_URL}/api/Booking/generate-qr/${bookingId}${
       params.toString() ? `?${params.toString()}` : ""
     }`;
 
@@ -796,7 +797,7 @@ export async function generateQRCodeForRemaining(bookingId) {
       };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/generate-qr/${numericBookingId}`;
+    const endpoint = `${API_BASE_URL}/api/Booking/generate-qr/${numericBookingId}`;
 
     const response = await apiClient.get(endpoint);
 
@@ -839,7 +840,7 @@ export async function confirmByOwner(bookingId) {
       };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/confirm-by-owner/${numericBookingId}`;
+    const endpoint = `${API_BASE_URL}/api/Booking/confirm-by-owner/${numericBookingId}`;
     const response = await apiClient.put(endpoint);
 
     return {
@@ -895,7 +896,7 @@ export async function fetchBookingsByPlayer(playerId) {
       };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/player/${playerId}`;
+    const endpoint = `${API_BASE_URL}/api/Booking/player/${playerId}`;
 
     const response = await apiClient.get(endpoint);
 
@@ -924,7 +925,7 @@ export async function fetchBookingPackagesByPlayer(playerId) {
       };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/player/${playerId}`;
+    const endpoint = `${API_BASE_URL}/api/BookingPackage/player/${playerId}`;
     const response = await apiClient.get(endpoint);
 
     return {
@@ -946,7 +947,7 @@ export async function fetchBookingPackagesByPlayerToken() {
   try {
     ensureLoggedIn();
     const endpoint =
-      "https://sep490-g19-zxph.onrender.com/api/BookingPackage/player/packages";
+      `${API_BASE_URL}/api/BookingPackage/player/packages`;
     const response = await apiClient.get(endpoint);
     return {
       success: true,
@@ -968,7 +969,7 @@ export async function fetchBookingPackageSessionsByPlayerToken() {
   try {
     ensureLoggedIn();
     const endpoint =
-      "https://sep490-g19-zxph.onrender.com/api/BookingPackage/player/sessions";
+      `${API_BASE_URL}/api/BookingPackage/player/sessions`;
     const response = await apiClient.get(endpoint);
     return {
       success: true,
@@ -994,7 +995,7 @@ export async function fetchBookingsByOwner(ownerId) {
       };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/Booking/owner/${ownerId}`;
+    const endpoint = `${API_BASE_URL}/api/Booking/owner/${ownerId}`;
 
     const response = await apiClient.get(endpoint);
 
@@ -1023,7 +1024,7 @@ export async function fetchBookingPackagesByOwner(ownerId) {
       };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/owner/${ownerId}`;
+    const endpoint = `${API_BASE_URL}/api/BookingPackage/owner/${ownerId}`;
 
     const response = await apiClient.get(endpoint);
 
@@ -1046,7 +1047,7 @@ export async function fetchBookingPackagesByOwnerToken() {
   try {
     ensureLoggedIn();
     const endpoint =
-      "https://sep490-g19-zxph.onrender.com/api/BookingPackage/owner/packages";
+      `${API_BASE_URL}/api/BookingPackage/owner/packages`;
     const response = await apiClient.get(endpoint);
     return {
       success: true,
@@ -1067,7 +1068,7 @@ export async function fetchBookingPackageSessionsByOwnerToken() {
   try {
     ensureLoggedIn();
     const endpoint =
-      "https://sep490-g19-zxph.onrender.com/api/BookingPackage/owner/sessions";
+      `${API_BASE_URL}/api/BookingPackage/owner/sessions`;
     const response = await apiClient.get(endpoint);
     return {
       success: true,
@@ -1091,7 +1092,7 @@ export async function confirmBookingPackage(packageId) {
       return { success: false, error: "BookingPackageId không hợp lệ." };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/confirm/${numericId}`;
+    const endpoint = `${API_BASE_URL}/api/BookingPackage/confirm/${numericId}`;
     const response = await apiClient.post(endpoint);
     return {
       success: true,
@@ -1115,7 +1116,7 @@ export async function completeBookingPackage(packageId) {
       return { success: false, error: "BookingPackageId không hợp lệ." };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/complete/${numericId}`;
+    const endpoint = `${API_BASE_URL}/api/BookingPackage/complete/${numericId}`;
     const response = await apiClient.put(endpoint);
     return {
       success: true,
@@ -1139,7 +1140,7 @@ export async function cancelBookingPackageSession(sessionId) {
       return { success: false, error: "SessionId không hợp lệ." };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingPackage/cancel-session/${numericId}`;
+    const endpoint = `${API_BASE_URL}/api/BookingPackage/cancel-session/${numericId}`;
     const response = await apiClient.post(endpoint);
     return {
       success: true,
@@ -1173,7 +1174,7 @@ export async function cancelBooking(bookingId, reason) {
     }
 
     const endpoint =
-      "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe";
+      `${API_BASE_URL}/api/BookingCancellationRe`;
 
     const payload = {
       bookingId: Number(bookingId),
@@ -1216,7 +1217,7 @@ export async function fetchCancellationRequests() {
     }
 
     const endpoint =
-      "https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/owner/cancellations";
+      `${API_BASE_URL}/api/BookingCancellationRe/owner/cancellations`;
 
     const response = await apiClient.get(endpoint);
 
@@ -1254,7 +1255,7 @@ export async function fetchCancellationRequestById(cancellationId) {
       };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
+    const endpoint = `${API_BASE_URL}/api/BookingCancellationRe/${cancellationId}`;
 
     const response = await apiClient.get(endpoint);
 
@@ -1296,7 +1297,7 @@ export async function confirmCancellation(cancellationId) {
       };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/confirm/${cancellationId}`;
+    const endpoint = `${API_BASE_URL}/api/BookingCancellationRe/confirm/${cancellationId}`;
 
     const response = await apiClient.put(endpoint, {});
 
@@ -1338,7 +1339,7 @@ export async function deleteCancellationRequest(cancellationId) {
       };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/${cancellationId}`;
+    const endpoint = `${API_BASE_URL}/api/BookingCancellationRe/${cancellationId}`;
 
     await apiClient.delete(endpoint);
 
@@ -1397,9 +1398,9 @@ export async function updateBookingStatus(bookingId, status) {
 
     // thử các endpoint khác nhau để cập nhật trạng thái booking
     const endpoints = [
-      `https://sep490-g19-zxph.onrender.com/api/Booking/${numericBookingId}/status`,
-      `https://sep490-g19-zxph.onrender.com/api/Booking/update-status/${numericBookingId}`,
-      `https://sep490-g19-zxph.onrender.com/api/Booking/${numericBookingId}`,
+      `${API_BASE_URL}/api/Booking/${numericBookingId}/status`,
+      `${API_BASE_URL}/api/Booking/update-status/${numericBookingId}`,
+      `${API_BASE_URL}/api/Booking/${numericBookingId}`,
     ];
 
     const payload = {
@@ -1470,7 +1471,7 @@ export async function fetchCancellationRequestsByUser() {
       };
     }
 
-    const endpoint = `https://sep490-g19-zxph.onrender.com/api/BookingCancellationRe/by-user`;
+    const endpoint = `${API_BASE_URL}/api/BookingCancellationRe/by-user`;
 
     const response = await apiClient.get(endpoint);
 

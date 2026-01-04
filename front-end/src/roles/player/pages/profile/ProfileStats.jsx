@@ -5,6 +5,7 @@ import { playerStatisticsService } from "../../../../shared/services/playerStati
 import { profileService } from "../../../../shared/index";
 import { getStoredToken, isTokenExpired } from "../../../../shared/utils/tokenManager";
 import { useTranslation } from "../../../../shared/hooks/useTranslation";
+import { API_BASE_URL } from "../../../../shared/config/api";
 
 export default function ProfileStats({ user }) {
      const { t } = useTranslation();
@@ -64,7 +65,7 @@ export default function ProfileStats({ user }) {
                          // lấy dữ liệu user 
                          if (userId) {
                               const response = await fetch(
-                                   `https://sep490-g19-zxph.onrender.com/api/User/${userId}`,
+                                   `${API_BASE_URL}/api/User/${userId}`,
                                    {
                                         headers: {
                                              'Authorization': `Bearer ${token || localStorage.getItem('token')}`,

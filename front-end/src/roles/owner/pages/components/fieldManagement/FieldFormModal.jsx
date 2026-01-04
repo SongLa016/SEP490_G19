@@ -151,13 +151,11 @@ const FieldFormModal = ({
                               <Input
                                    name="size"
                                    value={formData.size}
-                                   onChange={onInputChange}
-                                   placeholder="Ví dụ: 20x40m"
-                                   maxLength={50}
+                                   readOnly
+                                   disabled
+                                   placeholder="Chọn loại sân để hiển thị kích thước"
+                                   className="bg-gray-100 cursor-not-allowed"
                               />
-                              <p className={`text-xs mt-1 text-right ${formData.size?.length >= 50 ? "text-red-500 font-medium" : formData.size?.length >= 45 ? "text-yellow-600" : "text-gray-400"}`}>
-                                   {formData.size?.length || 0}/50
-                              </p>
                          </div>
                          <div>
                               <label className="block text-sm font-medium text-gray-700 mb-1">

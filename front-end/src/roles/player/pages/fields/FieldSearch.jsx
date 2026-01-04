@@ -3,12 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Star } from "lucide-react";
 import { Section, Container, Card, CardContent, StaggerContainer } from "../../../../shared/components/ui";
 import { ScrollReveal } from "../../../../shared/components/ScrollReveal";
-import { LoginPromotionModal } from "../../../../shared/components/LoginPromotionModal";
 import { useNavigate, useLocation } from "react-router-dom";
-import { fetchComplexes, fetchFields, fetchTimeSlots, fetchFavoriteFields, toggleFavoriteField } from "../../../../shared/index";
+import { fetchComplexes, fetchFields, fetchTimeSlots, fetchFavoriteFields, toggleFavoriteField, useFieldSearchQuery, useFieldRatings } from "../../../../shared/index";
 import { usePublicFieldSchedulesByDate } from "../../../../shared/hooks/useFieldSchedules";
 import { fetchFieldTypes, normalizeFieldType } from "../../../../shared/services/fieldTypes";
-import { fetchRatingsByField } from "../../../../shared/services/ratings";
+// import { fetchRatingsByField } from "../../../../shared/services/ratings"; // Removed as it is handled by useFieldRatings
+
 import Swal from 'sweetalert2';
 import MapSearch from "./components/MapSearch";
 import SearchHeader from "./components/SearchHeader";
@@ -106,6 +106,7 @@ export default function FieldSearch({ user }) {
      const location = useLocation();
      const [entityTab, setEntityTab] = useState("fields");       // Tab hiển thị: complexes | fields
      const [searchQuery, setSearchQuery] = useState("");
+     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(""); // Debounced search query
      const [selectedLocation, setSelectedLocation] = useState("");
      const [selectedPrice, setSelectedPrice] = useState("all");
      const [selectedRating, setSelectedRating] = useState("all");
@@ -125,12 +126,13 @@ export default function FieldSearch({ user }) {
      const [slotId, setSlotId] = useState("");                   // Khung giờ đã chọn
      const [timeSlots, setTimeSlots] = useState([]);             // Danh sách khung giờ
      const [availableFieldIds, setAvailableFieldIds] = useState(null); // Set fieldIds có lịch cho ngày đã chọn
-     const [fields, setFields] = useState([]);                   // Danh sách sân nhỏ tải về
-     const [complexes, setComplexes] = useState([]);                  // Danh sách khu sân tải về
-     const [filteredFields, setFilteredFields] = useState([]);      // Danh sách sân nhỏ đã lọc     
+     // const [fields, setFields] = useState([]);                   // Removed: Managed by React Query
+     // const [complexes, setComplexes] = useState([]);                  // Removed: Managed by React Query
+     // const [filteredFields, setFilteredFields] = useState([]); // Removed state for performance
+
      const [selectedComplexId, setSelectedComplexId] = useState(null); // ComplexId được chọn từ bản đồ
      const [favoriteFieldIds, setFavoriteFieldIds] = useState(new Set()); // Set fieldIds yêu thích của user
-     const [isLoading, setIsLoading] = useState(false);               // Trạng thái tải dữ liệu
+     // const [isLoading, setIsLoading] = useState(false);               // Removed: Managed by React Query
      const [userLocation, setUserLocation] = useState(null);        //  Vị trí người dùng (nếu có)
      const [fieldTypeMap, setFieldTypeMap] = useState({});           // Ánh xạ typeId -> typeName
      const favoritesLoadedRef = useRef(false);                        // Đánh dấu đã tải danh sách yêu thích
@@ -193,6 +195,119 @@ export default function FieldSearch({ user }) {
      const getSlotValue = () => {
           return slotId === "" ? "all" : String(slotId);
      };
+
+     // Debounce searchQuery
+     useEffect(() => {
+          const timer = setTimeout(() => {
+               setDebouncedSearchQuery(searchQuery);
+          }, 500);
+          return () => clearTimeout(timer);
+     }, [searchQuery]);
+
+     // React Query hooks
+     const {
+          complexes: rawComplexes,
+          fields: rawFields,
+          isLoading: isQueryLoading,
+     } = useFieldSearchQuery({
+          searchQuery: debouncedSearchQuery,
+          date,
+          slotId,
+          sortBy
+     });
+
+     // Fetch ratings using useQueries (Parallel fetching)
+     const { ratingsMap, isLoading: isRatingsLoading } = useFieldRatings(rawFields);
+
+     const isLoading = isQueryLoading || isRatingsLoading;
+
+     // Helper function for distance
+     const haversineKm = (lat1, lng1, lat2, lng2) => {
+          if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return null;
+          const R = 6371;
+          const dLat = (lat2 - lat1) * Math.PI / 180;
+          const dLng = (lng2 - lng1) * Math.PI / 180;
+          const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+          const d = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          return R * d;
+     };
+
+     // Process complexes with distance
+     const complexes = useMemo(() => {
+          const list = Array.isArray(rawComplexes) ? rawComplexes : [];
+          if (!userLocation) return list;
+
+          return list.map(c => {
+               const lat = c.lat ?? c.latitude;
+               const lng = c.lng ?? c.longitude;
+               if (typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng)) {
+                    return { ...c, distanceKm: haversineKm(userLocation.lat, userLocation.lng, lat, lng) };
+               }
+               return c;
+          });
+     }, [rawComplexes, userLocation]);
+
+     // Update complexesRef for distance calculation
+     useEffect(() => {
+          if (complexes.length > 0) {
+               complexesRef.current = complexes;
+          }
+     }, [complexes]);
+
+
+
+
+
+
+
+
+
+
+
+     // Process fields with ratings and distance
+     const fields = useMemo(() => {
+          if (!Array.isArray(rawFields)) return [];
+          return rawFields.map(field => {
+               // Normalize typeName
+               let typeName = field.typeName;
+               const typeId = field.typeId ?? field.TypeID ?? field.typeID ?? null;
+               if (typeId != null && (!typeName || typeName.trim() === "")) {
+                    typeName = fieldTypeMap[String(typeId)] || "";
+               }
+
+               // Merge ratings
+               const fieldId = field.fieldId || field.FieldID;
+               const ratingInfo = ratingsMap[fieldId] || { rating: 0, reviewCount: 0 };
+
+               // Calculate distance
+               let distanceKm = field.distanceKm;
+               if (userLocation) {
+                    const complexId = field.complexId || field.ComplexId;
+                    // Find complex in the processed complexes list (which has distanceKm)
+                    const complex = complexes.find(c => c.complexId === complexId);
+
+                    if (complex && typeof complex.distanceKm === "number") {
+                         distanceKm = complex.distanceKm;
+                    } else {
+                         // Fallback to field coordinates if available
+                         const lat = field.lat ?? field.latitude;
+                         const lng = field.lng ?? field.longitude;
+                         if (typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng)) {
+                              distanceKm = haversineKm(userLocation.lat, userLocation.lng, lat, lng);
+                         }
+                    }
+               }
+
+               return {
+                    ...field,
+                    typeName,
+                    typeId,
+                    rating: ratingInfo.rating,
+                    reviewCount: ratingInfo.reviewCount,
+                    distanceKm
+               };
+          });
+     }, [rawFields, fieldTypeMap, ratingsMap, complexes, userLocation]);
 
      // Tạo danh sách tùy chọn quận/huyện từ dữ liệu khu sân
      const districtOptions = useMemo(() => {
@@ -433,97 +548,8 @@ export default function FieldSearch({ user }) {
           if (slotId) {
                setSlotId("");
           }
-     }, [date, slotId]);
-
-     // Load dữ liệu sân và khu sân khi bộ lọc thay đổi
-     useEffect(() => {
-          let ignore = false;
-          const debounceTimer = setTimeout(() => {
-               const loadData = async () => {
-                    try {
-                         // luôn luôn hiển thị loading
-                         setIsLoading(true);
-                         // bắt đầu tải dữ liệu sân và khu sân 
-                         const [cList, fList] = await Promise.all([
-                              fetchComplexes({ query: searchQuery, date, slotId, useApi: true }), // dữ liệu khu sân với bộ lọc
-                              fetchFields({ query: searchQuery, date, slotId, sortBy, useApi: true })
-                         ]);
-                         if (!ignore) {
-                              setComplexes(cList);
-                              complexesRef.current = cList;
-                              const sanitizedFields = Array.isArray(fList)
-                                   ? fList.filter(isFieldDisplayable).map(field => {
-                                        // Chuẩn hóa typeName nếu thiếu
-                                        const typeId = field.typeId ?? field.TypeID ?? field.typeID ?? null;
-                                        if (typeId != null && (!field.typeName || field.typeName.trim() === "")) {
-                                             const typeName = fieldTypeMap[String(typeId)];
-                                             if (typeName) {
-                                                  return { ...field, typeName, typeId };
-                                             }
-                                        }
-                                        return field;
-                                   })
-                                   : [];
-
-                              // Load đánh giá
-                              const fieldsWithRatings = await Promise.all(
-                                   sanitizedFields.map(async (field) => {
-                                        try {
-                                             const fieldId = field.fieldId || field.FieldID;
-                                             if (!fieldId) return field;
-                                             // tải dánh giá
-                                             const ratings = await fetchRatingsByField(fieldId);
-                                             if (Array.isArray(ratings) && ratings.length > 0) {
-                                                  // đánh giá trung bình
-                                                  const totalStars = ratings.reduce((sum, r) => sum + (r.stars || 0), 0);
-                                                  const averageRating = totalStars / ratings.length;
-                                                  return {
-                                                       ...field,
-                                                       rating: Number(averageRating.toFixed(1)),
-                                                       reviewCount: ratings.length
-                                                  };
-                                             }
-                                             return {
-                                                  ...field,
-                                                  rating: 0,
-                                                  reviewCount: 0
-                                             };
-                                        } catch (error) {
-                                             console.error(`Error loading ratings for field ${field.fieldId}:`, error);
-                                             return {
-                                                  ...field,
-                                                  rating: 0,
-                                                  reviewCount: 0
-                                             };
-                                        }
-                                   })
-                              );
-                              setFields(fieldsWithRatings);
-                         }
-                    } catch (error) {
-                         console.error("Error loading data:", error);
-                         if (!ignore) {
-                              setComplexes([]);
-                              setFields([]);
-                         }
-                    } finally {
-                         if (!ignore) {
-                              setIsLoading(false);
-                         }
-                    }
-               };
-               loadData();
-          }, 500);
-
-          // Sử dụng debounce để tránh gọi API quá nhiều
-          return () => {
-               ignore = true;
-               clearTimeout(debounceTimer);
-          };
-     }, [searchQuery, date, slotId, sortBy, fieldTypeMap]);
-
-     // Áp dụng bộ lọc cho danh sách sân khi dữ liệu hoặc bộ lọc thay đổi
-     useEffect(() => {
+     }, [date, slotId]);     // Tối ưu hóa: Sử dụng useMemo thay vì useEffect để tránh render thừa
+     const filteredFields = useMemo(() => {
           // Thêm thông tin isFavorite
           let filtered = Array.isArray(fields) ? fields.map(f => ({
                ...f,
@@ -665,9 +691,9 @@ export default function FieldSearch({ user }) {
                }
                return field;
           });
-          setFilteredFields(fieldsWithTypeName);
-          // Reset trang chỉ khi thực sự là thay đổi filter, không reset khi chỉ chuyển trang
+          return fieldsWithTypeName;
      }, [searchQuery, selectedLocation, selectedPrice, selectedRating, sortBy, activeTab, typeTab, fields, fieldTypeMap, date, availableFieldIds, favoriteFieldIds, selectedComplexId]);
+
 
      // Lưu tùy chọn người dùng vào localStorage khi thay đổi
      useEffect(() => {
@@ -677,9 +703,10 @@ export default function FieldSearch({ user }) {
           } catch { }
      }, [viewMode, activeTab, page, entityTab, date, slotId, typeTab]);
      const toggleFavoriteLocal = (fieldId, nextIsFavorite) => {
-          setFields(prev => prev.map(field =>
-               field.fieldId === fieldId ? { ...field, isFavorite: nextIsFavorite } : field
-          ));
+          // setFields(prev => prev.map(field =>
+          //      field.fieldId === fieldId ? { ...field, isFavorite: nextIsFavorite } : field
+          // ));
+          // No need to update fields state directly as it is derived from favoriteFieldIds
           setFavoriteFieldIds(prev => {
                const updated = new Set(prev);
                const idNum = Number(fieldId);
@@ -691,6 +718,7 @@ export default function FieldSearch({ user }) {
                return updated;
           });
      };
+
 
      // Thong báo 
      const showToastMessage = (message, type = 'info') => {
@@ -881,100 +909,7 @@ export default function FieldSearch({ user }) {
           return () => { cancelled = true; };
      }, []);
 
-     //người dùng thay đổi vị trí, cập nhật khoảng cách khu sân
-     useEffect(() => {
-          if (!userLocation) return;
-          function haversineKm(lat1, lng1, lat2, lng2) {
-               const R = 6371;                                   // Bán kính Trái Đất trong km
-               const dLat = (lat2 - lat1) * Math.PI / 180;
-               const dLng = (lng2 - lng1) * Math.PI / 180;
-               // Công thức Haversine
-               const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-               const d = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-               return R * d;
-          }
 
-          // cập nhật khoảng cách khu sân
-          setComplexes(prev => {
-               if (prev.length === 0) return prev;
-               const updated = prev.map(c => {
-                    const lat = c.lat ?? c.latitude;
-                    const lng = c.lng ?? c.longitude;
-                    // luôn tính toán lại khoảng cách khi vị trí người dùng thay đổi
-                    if (typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng)) {
-                         return { ...c, distanceKm: haversineKm(userLocation.lat, userLocation.lng, lat, lng) };
-                    }
-                    return c;
-               });
-               complexesRef.current = updated;
-               return updated;
-          });
-     }, [userLocation]);
-
-     // tính khoảng cách khu sân khi có vị trí người dùng mới
-     useEffect(() => {
-          if (!userLocation || complexes.length === 0) return;
-
-          function haversineKm(lat1, lng1, lat2, lng2) {
-               const R = 6371;
-               const dLat = (lat2 - lat1) * Math.PI / 180;
-               const dLng = (lng2 - lng1) * Math.PI / 180;
-               const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-               const d = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-               return R * d;
-          }
-
-          setComplexes(prev => {
-               if (prev.length === 0) return prev;
-               return prev.map(c => {
-                    const lat = c.lat ?? c.latitude;
-                    const lng = c.lng ?? c.longitude;
-                    if (typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng)) {
-                         if (typeof c.distanceKm !== "number" || isNaN(c.distanceKm)) {
-                              return { ...c, distanceKm: haversineKm(userLocation.lat, userLocation.lng, lat, lng) };
-                         }
-                    }
-                    return c;
-               });
-          });
-     }, [userLocation, complexes.length]);
-
-     // cập nhật khoảng cách sân khi có vị trí người dùng mới
-     useEffect(() => {
-          if (!userLocation || fields.length === 0 || complexes.length === 0) return;
-          let missingCoordinatesCount = 0;
-
-          setFields(prev => prev.map(f => {
-               const cx = complexesRef.current.find(cc => cc.complexId === f.complexId) || complexes.find(cc => cc.complexId === f.complexId);
-               //nếu khu sân có distanceKm, sử dụng nó; nếu không tính từ lat/lng khu sân
-               if (cx) {
-                    if (typeof cx.distanceKm === "number" && !isNaN(cx.distanceKm)) {
-                         return { ...f, distanceKm: cx.distanceKm };
-                    }
-                    // tính khoảng cách từ toạ độ khu sân
-                    const lat = cx.lat ?? cx.latitude;
-                    const lng = cx.lng ?? cx.longitude;
-                    if (typeof lat === "number" && typeof lng === "number" && !isNaN(lat) && !isNaN(lng)) {
-                         const R = 6371;
-                         const dLat = (lat - userLocation.lat) * Math.PI / 180;
-                         const dLng = (lng - userLocation.lng) * Math.PI / 180;
-                         // hàm tính haversine
-                         const a = Math.sin(dLat / 2) ** 2 + Math.cos(userLocation.lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-                         const d = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                         const distance = R * d;
-                         return { ...f, distanceKm: distance };
-                    } else {
-                         missingCoordinatesCount++;
-                    }
-               }
-               return f;
-          }));
-
-          if (missingCoordinatesCount > 0) {
-               console.warn(`⚠️ ${missingCoordinatesCount} field(s) have no coordinates.`);
-          }
-          // eslint-disable-next-line react-hooks/exhaustive-deps
-     }, [userLocation, complexes.length, fields.length]);
 
      // Lấy 4 khu sân gần nhất có toạ độ
      const nearGroup = [...complexes]
@@ -1445,9 +1380,6 @@ export default function FieldSearch({ user }) {
                     onClose={() => setShowMapSearch(false)}
                     onLocationSelect={handleMapLocationSelect}
                />
-
-               {/* Khuyến khích đăng nhập */}
-               <LoginPromotionModal user={user} />
           </Section >
      );
 }
