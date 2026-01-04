@@ -136,7 +136,7 @@ export async function createOwnerBankAccount(accountData) {
       isDefault: accountData.isDefault || false,
     };
     const response = await apiClient.post(
-      "${API_BASE_URL}/api/OwnerBankAccount",
+      `${API_BASE_URL}/api/OwnerBankAccount`,
       payload
     );
     return response.data;

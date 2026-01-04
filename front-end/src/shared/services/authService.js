@@ -105,7 +105,7 @@ export const authService = {
         formData.append("Avatar", userData.avatar);
       }
       const response = await apiClient.post(
-        "${API_BASE_URL}/api/Register/send-otp",
+        `${API_BASE_URL}/api/Register/send-otp`,
         formData,
         {
           headers: {
@@ -134,7 +134,7 @@ export const authService = {
   async verifyOtp(email, otp) {
     try {
       const response = await apiClient.post(
-        "${API_BASE_URL}/api/Register/verify-otp",
+        `${API_BASE_URL}/api/Register/verify-otp`,
         {
           email: email,
           otp: otp,
@@ -170,13 +170,10 @@ export const authService = {
   // đăng nhập người dùng
   async loginUser(credentials) {
     try {
-      const response = await apiClient.post(
-        `${API_BASE_URL}/api/Login/login`,
-        {
-          phone: credentials.phone,
-          password: credentials.password,
-        }
-      );
+      const response = await apiClient.post(`${API_BASE_URL}/api/Login/login`, {
+        phone: credentials.phone,
+        password: credentials.password,
+      });
       // giải mã JWT token để lấy thông tin người dùng
       const token = response.data.token || response.data.accessToken;
       if (!token) {
@@ -317,12 +314,6 @@ export const authService = {
             // Map role name to role ID
             roleID = roleMapping.getRoleID(payload.Role);
             roleName = payload.Role;
-            console.log(
-              "🔍 Google Login - Role from token (backend format):",
-              payload.Role,
-              "→ RoleID:",
-              roleID
-            );
           } else if (payload.RoleID && payload.RoleName) {
             // Fallback for old format
             roleID = payload.RoleID;

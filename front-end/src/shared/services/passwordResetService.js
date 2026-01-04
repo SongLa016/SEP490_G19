@@ -57,7 +57,7 @@ export const passwordResetService = {
   async sendResetOtp(email) {
     try {
       const response = await apiClient.post(
-        "${API_BASE_URL}/api/ResertPass/send-otp",
+        `${API_BASE_URL}/api/ResertPass/send-otp`,
         {
           email: email,
         }
@@ -81,7 +81,7 @@ export const passwordResetService = {
   async verifyResetOtp(otp) {
     try {
       const response = await apiClient.post(
-        "${API_BASE_URL}/api/ResertPass/verify-otp",
+        `${API_BASE_URL}/api/ResertPass/verify-otp`,
         {
           otp: otp,
         }
