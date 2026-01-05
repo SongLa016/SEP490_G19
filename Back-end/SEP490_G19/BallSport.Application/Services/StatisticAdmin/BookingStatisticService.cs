@@ -15,7 +15,7 @@ namespace BallSport.Application.Services.AdminStatistics
         {
             var total = await _repo.GetTotalBookingsAsync();
 
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
 
             int currentMonth = await _repo.GetBookingsInMonthAsync(now.Year, now.Month);
 

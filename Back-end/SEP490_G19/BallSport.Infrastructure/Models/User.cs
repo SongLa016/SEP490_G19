@@ -21,8 +21,6 @@ public partial class User
 
     public DateTime? CreatedAt { get; set; }
 
-    public virtual ICollection<BlogPost> BlogPosts { get; set; } = new List<BlogPost>();
-
     public virtual ICollection<BookingCancellationRequest> BookingCancellationRequestRequestedByUsers { get; set; } = new List<BookingCancellationRequest>();
 
     public virtual ICollection<BookingCancellationRequest> BookingCancellationRequestReversedByUsers { get; set; } = new List<BookingCancellationRequest>();
@@ -75,17 +73,7 @@ public partial class User
 
     public virtual ICollection<SystemNotification> SystemNotifications { get; set; } = new List<SystemNotification>();
 
-    public virtual ICollection<TeamJoinRequest> TeamJoinRequestRespondedByNavigations { get; set; } = new List<TeamJoinRequest>();
-
-    public virtual ICollection<TeamJoinRequest> TeamJoinRequestUsers { get; set; } = new List<TeamJoinRequest>();
-
-    public virtual ICollection<Team> Teams { get; set; } = new List<Team>();
-
     public virtual UserProfile? UserProfile { get; set; }
 
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
-
-    public virtual ICollection<ViolationReport> ViolationReportReportedUsers { get; set; } = new List<ViolationReport>();
-
-    public virtual ICollection<ViolationReport> ViolationReportReporters { get; set; } = new List<ViolationReport>();
 }

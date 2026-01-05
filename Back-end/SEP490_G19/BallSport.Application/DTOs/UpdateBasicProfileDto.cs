@@ -10,5 +10,7 @@ namespace BallSport.Application.DTOs
     {
         public string FullName { get; set; } = null!;
         public string? AvatarUrl { get; set; }
+        public string? Phone { get; set; }
+
     }
 }

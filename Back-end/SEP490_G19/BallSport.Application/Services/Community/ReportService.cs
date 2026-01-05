@@ -65,7 +65,7 @@ namespace BallSport.Application.Services.Community
                 TargetType = dto.TargetType,
                 TargetId = dto.TargetId,
                 Reason = dto.Reason.Trim(),
-                CreatedAt = DateTime.UtcNow, // DB lưu UTC → đúng chuẩn
+                CreatedAt = DateTime.Now, // DB lưu UTC → đúng chuẩn
                 Status = "Pending"
             };
 

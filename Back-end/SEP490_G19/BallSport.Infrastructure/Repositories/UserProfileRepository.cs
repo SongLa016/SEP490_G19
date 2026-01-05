@@ -70,6 +70,7 @@ namespace BallSport.Infrastructure.Repositories
             user.UserProfile.DateOfBirth = dto.DateOfBirth;
             user.UserProfile.Gender = dto.Gender;
             user.UserProfile.Address = dto.Address;
+            user.Phone = dto.Phone;
             user.UserProfile.PreferredPositions = dto.PreferredPositions;
             user.UserProfile.SkillLevel = dto.SkillLevel;
             user.UserProfile.Bio = dto.Bio;

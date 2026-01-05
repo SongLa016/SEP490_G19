@@ -43,8 +43,6 @@ public partial class Field
 
     public virtual ICollection<FieldImage> FieldImages { get; set; } = new List<FieldImage>();
 
-    public virtual ICollection<FieldPrice> FieldPrices { get; set; } = new List<FieldPrice>();
-
     public virtual ICollection<FieldSchedule> FieldSchedules { get; set; } = new List<FieldSchedule>();
 
     public virtual ICollection<Post> Posts { get; set; } = new List<Post>();

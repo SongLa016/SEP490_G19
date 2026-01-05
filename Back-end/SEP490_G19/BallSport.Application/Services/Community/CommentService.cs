@@ -149,7 +149,7 @@ namespace BallSport.Application.Services.Community
                 ParentCommentId = comment.ParentCommentId,
                 Content = comment.Content,
                 // DÒNG THẦN THÁNH – FIX +07:00 HOÀN TOÀN!
-                CreatedAt = comment.CreatedAt?.ToVietnamTime() ?? DateTimeExtensions.VietnamNow,
+                CreatedAt = DateTime.Now,
                 Status = comment.Status ?? "Active"
             };
         }

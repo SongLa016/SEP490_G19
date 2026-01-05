@@ -107,7 +107,35 @@ namespace BallSport.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-     
+        // lấy các sessesion hết thời gian đổi trạng thái 
+        public async Task<int> CompleteExpiredSessionsAsync(DateTime now)
+        {
+            var today = DateOnly.FromDateTime(now);
+            var nowTime = TimeOnly.FromDateTime(now);
+
+            var sessions = await _context.PackageSessions
+                .Include(ps => ps.Schedule)
+                    .ThenInclude(s => s.Slot)
+                .Where(ps =>
+                    ps.SessionStatus == "Booking" &&
+                    ps.SessionDate < today ||
+                    (ps.SessionDate == today &&
+                     ps.Schedule.Slot.EndTime <= nowTime)
+                )
+                .ToListAsync();
+
+            if (!sessions.Any())
+                return 0;
+
+            foreach (var s in sessions)
+            {
+                s.SessionStatus = "Completed";
+                s.UpdatedAt = now;
+            }
+
+            return await _context.SaveChangesAsync();
+        }
+
 
     }
 }
