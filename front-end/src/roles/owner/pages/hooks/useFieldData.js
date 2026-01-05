@@ -12,13 +12,28 @@ export const useFieldData = (currentUserId, isDemo = false, apiFieldTypes = []) 
   const [timeSlots, setTimeSlots] = useState([]);
   const [bankAccounts, setBankAccounts] = useState([]);
 
+  // Mapping kích thước theo loại sân
+  const getSizeByTypeName = (typeName) => {
+    if (!typeName) return "";
+    const name = typeName.toLowerCase();
+    if (name.includes("5") || name.includes("năm")) return "25m x 15m";
+    if (name.includes("7") || name.includes("bảy")) return "50m x 35m";
+    if (name.includes("11") || name.includes("mười một")) return "105m x 68m";
+    if (name.includes("9") || name.includes("chín")) return "75m x 55m";
+    return "";
+  };
+
   // loại sân - sử dụng useMemo để tránh tính toán lại không cần thiết
   const fieldTypes = useMemo(() => {
-    return apiFieldTypes.map(type => ({
-      value: String(type.typeId || type.TypeID),
-      label: type.typeName || type.TypeName,
-      typeId: type.typeId || type.TypeID
-    }));
+    return apiFieldTypes.map(type => {
+      const typeName = type.typeName || type.TypeName;
+      return {
+        value: String(type.typeId || type.TypeID),
+        label: typeName,
+        typeId: type.typeId || type.TypeID,
+        size: getSizeByTypeName(typeName)
+      };
+    });
   }, [apiFieldTypes]);
 
   // map để dễ truy xuất typeId

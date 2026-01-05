@@ -591,13 +591,60 @@ export const useBookingActions = ({
   }, [loadCancellationRequests]);
 
   // Xem chi tiết yêu cầu hủy
-  const handleViewCancellationDetails = useCallback(async (cancellationId, setSelectedCancellation, setIsCancellationDetailModalOpen, setLoadingCancellationDetail) => {
-    setLoadingCancellationDetail(true);
-    setIsCancellationDetailModalOpen(true);
+  const handleViewCancellationDetails = useCallback(async (cancellationId) => {
     try {
+      Swal.fire({
+        title: 'Đang tải...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
       const result = await fetchCancellationRequestById(cancellationId);
-      if (result.success) {
-        setSelectedCancellation(result.data);
+      
+      if (result.success && result.data) {
+        const data = result.data;
+        const requestDate = data.requestedAt || data.createdAt;
+        const formattedDate = requestDate 
+          ? new Date(requestDate).toLocaleString('vi-VN')
+          : 'N/A';
+        
+        const status = data.requestStatus || data.status || 'Pending';
+        const statusColor = status === 'Confirmed' ? 'green' : status === 'Pending' ? 'yellow' : 'gray';
+        const statusText = status === 'Confirmed' ? 'Đã xác nhận' : status === 'Pending' ? 'Chờ xử lý' : status;
+
+        await Swal.fire({
+          title: 'Chi tiết yêu cầu hủy',
+          html: `
+            <div class="text-left space-y-3">
+              <div class="bg-gray-50 p-3 rounded-lg">
+                <p class="text-sm text-gray-600">Mã yêu cầu</p>
+                <p class="font-semibold text-gray-900">#${data.requestId || data.id || cancellationId}</p>
+              </div>
+              <div class="bg-gray-50 p-3 rounded-lg">
+                <p class="text-sm text-gray-600">Booking ID</p>
+                <p class="font-semibold text-teal-600">#${data.bookingId || 'N/A'}</p>
+              </div>
+              <div class="bg-gray-50 p-3 rounded-lg">
+                <p class="text-sm text-gray-600">Lý do hủy</p>
+                <p class="font-medium text-gray-900">${data.requestReason?.split('|')[0]?.trim() || data.reason || 'Không có lý do'}</p>
+              </div>
+              <div class="bg-gray-50 p-3 rounded-lg">
+                <p class="text-sm text-gray-600">Ngày yêu cầu</p>
+                <p class="font-medium text-gray-900">${formattedDate}</p>
+              </div>
+              <div class="bg-gray-50 p-3 rounded-lg">
+                <p class="text-sm text-gray-600">Trạng thái</p>
+                <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-${statusColor}-100 text-${statusColor}-700">
+                  ${statusText}
+                </span>
+              </div>
+            </div>
+          `,
+          icon: 'info',
+          confirmButtonText: 'Đóng',
+          confirmButtonColor: '#0d9488',
+          width: '450px'
+        });
       } else {
         await Swal.fire({
           icon: 'error',
@@ -605,7 +652,6 @@ export const useBookingActions = ({
           text: result.error || 'Không thể tải chi tiết yêu cầu hủy',
           confirmButtonColor: '#ef4444'
         });
-        setIsCancellationDetailModalOpen(false);
       }
     } catch (error) {
       console.error('Error loading cancellation details:', error);
@@ -615,9 +661,6 @@ export const useBookingActions = ({
         text: 'Có lỗi xảy ra khi tải chi tiết',
         confirmButtonColor: '#ef4444'
       });
-      setIsCancellationDetailModalOpen(false);
-    } finally {
-      setLoadingCancellationDetail(false);
     }
   }, []);
 
