@@ -162,13 +162,51 @@ export function useBookingModals(
   }, []);
 
   // Xử lý khi đánh giá thành công
-  const handleRatingSuccess = useCallback(async (loadBookings) => {
+  const handleRatingSuccess = useCallback(async (result) => {
     setShowRatingModal(false);
+    
+    // Cập nhật booking với rating mới trong state
+    if (selectedBooking && result) {
+      const bookingId = selectedBooking.id || selectedBooking.bookingId;
+      
+      setBookings(prev => prev.map(b => {
+        if (b.id === bookingId || b.bookingId === bookingId) {
+          return {
+            ...b,
+            ratingId: result.ratingId,
+            ratingStars: result.rating,
+            ratingComment: result.comment
+          };
+        }
+        return b;
+      }));
+
+      // Cập nhật grouped bookings
+      setGroupedBookings(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(groupId => {
+          if (updated[groupId].bookings) {
+            updated[groupId].bookings = updated[groupId].bookings.map(b => {
+              if (b.id === bookingId || b.bookingId === bookingId) {
+                return {
+                  ...b,
+                  ratingId: result.ratingId,
+                  ratingStars: result.rating,
+                  ratingComment: result.comment
+                };
+              }
+              return b;
+            });
+          }
+        });
+        return updated;
+      });
+    }
+
     setSelectedBooking(null);
     setEditingRating(null);
     Swal.fire("Thành công!", "Đánh giá của bạn đã được lưu.", "success");
-    if (loadBookings) await loadBookings();
-  }, []);
+  }, [selectedBooking, setBookings, setGroupedBookings]);
 
   // Mở modal xem hóa đơn
   const handleViewInvoice = useCallback((bookingPayload) => {

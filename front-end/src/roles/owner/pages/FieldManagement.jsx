@@ -141,6 +141,8 @@ const FieldManagement = ({ isDemo = false }) => {
           totalPages: complexesTotalPages,
           currentItems: paginatedComplexes,
           handlePageChange: handleComplexesPageChange,
+          totalItems: complexesTotalItems,
+          itemsPerPage: complexesItemsPerPage,
      } = usePagination(complexes, 4);
 
      // Phân trang sân nhỏ (6)
@@ -149,6 +151,8 @@ const FieldManagement = ({ isDemo = false }) => {
           totalPages: fieldsTotalPages,
           currentItems: paginatedFields,
           handlePageChange: handleFieldsPageChange,
+          totalItems: fieldsTotalItems,
+          itemsPerPage: fieldsItemsPerPage,
      } = usePagination(activeFields, 6);
 
      if (loading) {
@@ -322,6 +326,8 @@ const FieldManagement = ({ isDemo = false }) => {
                                              currentPage={complexesPage}
                                              totalPages={complexesTotalPages}
                                              onPageChange={handleComplexesPageChange}
+                                             itemsPerPage={complexesItemsPerPage}
+                                             totalItems={complexesTotalItems}
                                         />
                                    </div>
                               )}
@@ -439,6 +445,8 @@ const FieldManagement = ({ isDemo = false }) => {
                                              currentPage={fieldsPage}
                                              totalPages={fieldsTotalPages}
                                              onPageChange={handleFieldsPageChange}
+                                             itemsPerPage={fieldsItemsPerPage}
+                                             totalItems={fieldsTotalItems}
                                         />
                                    </div>
                               )}
@@ -457,12 +465,21 @@ const FieldManagement = ({ isDemo = false }) => {
                     fieldTypes={fieldTypes}
                     fieldStatuses={fieldStatuses}
                     bankAccounts={bankAccounts}
-                    isEditing={isEditModalOpen}
-                    handleInputChange={handleInputChange}
-                    handleMainImageChange={handleMainImageChange}
-                    handleImageFilesChange={handleImageFilesChange}
-                    handleBankAccountChange={handleBankAccountChange}
-                    onRequestCreateComplex={handleRequestCreateComplex}
+                    isEdit={isEditModalOpen}
+                    onInputChange={handleInputChange}
+                    onSelectType={(value) => {
+                         const selectedType = fieldTypes.find(t => t.value === value);
+                         setFormData(prev => ({
+                              ...prev,
+                              typeId: value,
+                              size: selectedType?.size || ""
+                         }));
+                    }}
+                    onSelectStatus={(value) => handleInputChange({ target: { name: "status", value } })}
+                    onMainImageChange={handleMainImageChange}
+                    onImageFilesChange={handleImageFilesChange}
+                    onBankAccountChange={handleBankAccountChange}
+                    onAddComplex={handleRequestCreateComplex}
                     onNavigateBankAccounts={handleNavigateBankAccounts}
                />
 

@@ -123,11 +123,6 @@ export const validateFieldData = (data, isEdit = false) => {
     errors.pricePerHour = priceValidation.message;
   }
 
-  const sizeValidation = validateFieldSize(data.size);
-  if (!sizeValidation.isValid) {
-    errors.size = sizeValidation.message;
-  }
-
   if (!isEdit && !data.mainImage) {
     errors.mainImage = "Vui lòng chọn ảnh chính cho sân";
   }

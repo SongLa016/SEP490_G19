@@ -94,13 +94,28 @@ export default function ReviewTabContent({
                                    <MessageSquare className="w-5 h-5 text-teal-600" />
                                    <h4 className="font-semibold text-teal-800">Viết đánh giá</h4>
                               </div>
-                              {!canWriteReview ? (
+                              {!user ? (
+                                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                                        <p className="text-sm text-yellow-800 mb-3">Vui lòng đăng nhập để viết đánh giá.</p>
+                                        <Button
+                                             type="button"
+                                             onClick={onLoginPrompt}
+                                             className="bg-teal-600 hover:bg-teal-700 text-white text-sm px-4 py-2 rounded-lg font-semibold"
+                                        >
+                                             Đăng nhập ngay
+                                        </Button>
+                                   </div>
+                              ) : !canWriteReview ? (
                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
-                                        Bạn không thể đánh giá nếu chưa đặt sân. Vui lòng vào mục
+                                        Bạn cần có booking đã hoàn thành cho sân này để đánh giá. Vui lòng vào mục
                                         <span className="font-semibold"> "Lịch sử đặt sân" </span>
                                         và đánh giá sau khi sân đã hoàn thành.
                                    </div>
-                              ) : user ? (
+                              ) : !fieldId ? (
+                                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+                                        Vui lòng chọn một sân cụ thể ở tab <span className="font-semibold">"Thông tin"</span> để viết đánh giá.
+                                   </div>
+                              ) : (
                                    <>
                                         <div className="flex items-center gap-1 mb-3">
                                              {[...Array(5)].map((_, i) => (
@@ -166,17 +181,6 @@ export default function ReviewTabContent({
                                              </Button>
                                         </div>
                                    </>
-                              ) : (
-                                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-                                        <p className="text-sm text-yellow-800 mb-3">Vui lòng đăng nhập để viết đánh giá.</p>
-                                        <Button
-                                             type="button"
-                                             onClick={onLoginPrompt}
-                                             className="bg-teal-600 hover:bg-teal-700 text-white text-sm px-4 py-2 rounded-lg font-semibold"
-                                        >
-                                             Đăng nhập ngay
-                                        </Button>
-                                   </div>
                               )}
                          </div>
                          {isLoadingRatings ? (

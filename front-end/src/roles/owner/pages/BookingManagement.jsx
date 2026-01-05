@@ -34,9 +34,6 @@ const BookingManagement = ({ isDemo = false }) => {
      const [showDemoRestrictedModal, setShowDemoRestrictedModal] = useState(false);
      const [activeTab, setActiveTab] = useState("bookings");
      const [bookings, setBookings] = useState([]);
-     const [selectedCancellation, setSelectedCancellation] = useState(null);
-     const [isCancellationDetailModalOpen, setIsCancellationDetailModalOpen] = useState(false);
-     const [loadingCancellationDetail, setLoadingCancellationDetail] = useState(false);
 
      const ownerId = user?.userID || user?.UserID || user?.id || user?.userId;
 
@@ -316,16 +313,11 @@ const BookingManagement = ({ isDemo = false }) => {
                          <OwnerCancellationsTable
                               loading={loadingCancellations}
                               cancellationRequests={cancellationRequests}
-                              cancellationsPagination={cancellationsPagination}
-                              formatDate={formatDate}
-                              handleConfirmCancellation={handleConfirmCancellation}
-                              handleDeleteCancellation={handleDeleteCancellation}
-                              handleViewCancellationDetails={(id) => handleViewCancellationDetails(
-                                   id,
-                                   setSelectedCancellation,
-                                   setIsCancellationDetailModalOpen,
-                                   setLoadingCancellationDetail
-                              )}
+                              pagination={cancellationsPagination}
+                              onRefresh={loadCancellationRequests}
+                              onConfirm={handleConfirmCancellation}
+                              onDelete={handleDeleteCancellation}
+                              onViewDetails={handleViewCancellationDetails}
                          />
                     )}
 
