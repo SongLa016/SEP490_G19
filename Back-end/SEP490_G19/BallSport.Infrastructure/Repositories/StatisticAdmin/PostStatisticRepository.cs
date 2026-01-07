@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading.Tasks;
-using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 using BallSport.Infrastructure.Data;
 
@@ -24,7 +23,7 @@ namespace BallSport.Infrastructure.Repositories.AdminStatistics
 
         public async Task<int> GetPostsOfThisMonthAsync()
         {
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
             var start = new DateTime(now.Year, now.Month, 1);
             var end = start.AddMonths(1);
 
@@ -35,7 +34,7 @@ namespace BallSport.Infrastructure.Repositories.AdminStatistics
 
         public async Task<int> GetPostsOfLastMonthAsync()
         {
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
             var start = new DateTime(now.Year, now.Month, 1).AddMonths(-1);
             var end = start.AddMonths(1);
 

@@ -1,7 +1,9 @@
 //tải ảnh lên Cloudinary
 import axios from "axios";
 import { getStoredToken } from "../utils/tokenManager";
-import { API_BASE_URL } from "../config/api";
+
+const DEFAULT_API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
 // tải ảnh lên Cloudinary
 export async function uploadImageToCloudinary(imageFile, folder = "posts") {

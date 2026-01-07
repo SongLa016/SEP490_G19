@@ -1,10 +1,8 @@
 import axios from "axios";
 import { clearPersistedAuth, getValidToken } from "../utils/tokenManager";
-import { API_BASE_URL } from "../config/api";
 
 // tạo instance axios cho banking API
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -75,7 +73,7 @@ export const bankingService = {
   getBankAccounts: async (userID) => {
     try {
       const response = await apiClient.get(
-        `${API_BASE_URL}/api/PlayerBankAccount/user/${userID}`
+        `http://localhost:8080/api/PlayerBankAccount/user/${userID}`
       );
       const accounts = Array.isArray(response.data)
         ? response.data
@@ -106,7 +104,7 @@ export const bankingService = {
   getBankAccount: async (accountID) => {
     try {
       const response = await apiClient.get(
-        `${API_BASE_URL}/api/PlayerBankAccount/${accountID}`
+        `http://localhost:8080/api/PlayerBankAccount/${accountID}`
       );
       return {
         ok: true,
@@ -139,7 +137,7 @@ export const bankingService = {
             : false,
       };
       const response = await apiClient.post(
-        `${API_BASE_URL}/api/PlayerBankAccount/create`,
+        "http://localhost:8080/api/PlayerBankAccount/create",
         requestData
       );
       return {
@@ -173,7 +171,7 @@ export const bankingService = {
             : false,
       };
       const response = await apiClient.put(
-        `${API_BASE_URL}/api/PlayerBankAccount/update/${accountID}`,
+        `http://localhost:8080/api/PlayerBankAccount/update/${accountID}`,
         requestData
       );
       return {
@@ -195,7 +193,7 @@ export const bankingService = {
   deleteBankAccount: async (accountID) => {
     try {
       await apiClient.delete(
-        `${API_BASE_URL}/api/PlayerBankAccount/delete/${accountID}`
+        `http://localhost:8080/api/PlayerBankAccount/delete/${accountID}`
       );
       return {
         ok: true,

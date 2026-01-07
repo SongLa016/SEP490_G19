@@ -27,7 +27,6 @@ public class TimeSlotRepository : ITimeSlotRepository
             .Include(ts => ts.Field)
                 .ThenInclude(f => f.Complex)
             .Where(ts => ts.Field.Complex.OwnerId == ownerId)
-            .Include(ts => ts.FieldPrices)
             .ToListAsync();
     }
 
@@ -36,7 +35,6 @@ public class TimeSlotRepository : ITimeSlotRepository
         return await _context.TimeSlots
             .Include(ts => ts.Field)
                 .ThenInclude(f => f.Complex)
-            .Include(ts => ts.FieldPrices)
             .FirstOrDefaultAsync(ts => ts.SlotId == slotId && ts.Field.Complex.OwnerId == ownerId);
     }
 

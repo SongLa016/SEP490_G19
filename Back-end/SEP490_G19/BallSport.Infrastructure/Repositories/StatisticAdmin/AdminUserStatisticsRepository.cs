@@ -1,6 +1,4 @@
-﻿
-using BallSport.Infrastructure.Models;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using BallSport.Infrastructure.Data;
 
 namespace BallSport.Infrastructure.Repositories.AdminStatistics
@@ -31,7 +29,7 @@ namespace BallSport.Infrastructure.Repositories.AdminStatistics
         // Tổng người dùng tháng trước KHÔNG bao gồm Owner
         public async Task<int> GetTotalUsersLastMonthAsync()
         {
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
             var lastMonthStart = new DateTime(now.Year, now.Month, 1).AddMonths(-1);
             var lastMonthEnd = new DateTime(now.Year, now.Month, 1).AddDays(-1);
 

@@ -1,7 +1,6 @@
 //xác thực API
 import axios from "axios";
 import { roleMapping } from "../utils/roleMapping";
-import { API_BASE_URL } from "../config/api";
 
 // hàm lấy dữ liệu từ API
 function safeDecodeUTF8(str) {
@@ -105,7 +104,7 @@ export const authService = {
         formData.append("Avatar", userData.avatar);
       }
       const response = await apiClient.post(
-        `${API_BASE_URL}/api/Register/send-otp`,
+        "http://localhost:8080/api/Register/send-otp",
         formData,
         {
           headers: {
@@ -134,7 +133,7 @@ export const authService = {
   async verifyOtp(email, otp) {
     try {
       const response = await apiClient.post(
-        `${API_BASE_URL}/api/Register/verify-otp`,
+        "http://localhost:8080/api/Register/verify-otp",
         {
           email: email,
           otp: otp,
@@ -159,7 +158,7 @@ export const authService = {
   async getUserRoleFromDatabase(userID) {
     try {
       const response = await apiClient.get(
-        `${API_BASE_URL}/api/Users/get-role/${userID}`
+        `http://localhost:8080/api/Users/get-role/${userID}`
       );
       return response.data;
     } catch (error) {
@@ -170,10 +169,13 @@ export const authService = {
   // đăng nhập người dùng
   async loginUser(credentials) {
     try {
-      const response = await apiClient.post(`${API_BASE_URL}/api/Login/login`, {
-        phone: credentials.phone,
-        password: credentials.password,
-      });
+      const response = await apiClient.post(
+        "http://localhost:8080/api/Login/login",
+        {
+          phone: credentials.phone,
+          password: credentials.password,
+        }
+      );
       // giải mã JWT token để lấy thông tin người dùng
       const token = response.data.token || response.data.accessToken;
       if (!token) {
@@ -293,7 +295,7 @@ export const authService = {
   async loginWithGoogle(email, name) {
     try {
       const response = await apiClient.post(
-        `${API_BASE_URL}/api/Login/login-google`,
+        "http://localhost:8080/api/Login/login-google",
         {
           email: email,
           name: name,
@@ -314,6 +316,12 @@ export const authService = {
             // Map role name to role ID
             roleID = roleMapping.getRoleID(payload.Role);
             roleName = payload.Role;
+            console.log(
+              "🔍 Google Login - Role from token (backend format):",
+              payload.Role,
+              "→ RoleID:",
+              roleID
+            );
           } else if (payload.RoleID && payload.RoleName) {
             // Fallback for old format
             roleID = payload.RoleID;
@@ -375,7 +383,7 @@ export const authService = {
   async resendOtp(email) {
     try {
       const response = await apiClient.post(
-        `${API_BASE_URL}/api/Register/resend-otp`,
+        "http://localhost:8080/api/Register/resend-otp",
         { email }
       );
 

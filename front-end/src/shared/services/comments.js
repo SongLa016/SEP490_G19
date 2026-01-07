@@ -1,7 +1,9 @@
 // Service layer for Comment APIs
 import axios from "axios";
 import { getStoredToken, isTokenExpired } from "../utils/tokenManager";
-import { API_BASE_URL } from "../config/api";
+
+const DEFAULT_API_BASE_URL = "http://localhost:8080";
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
 
 // tạo instance axios với cấu hình base
 const apiClient = axios.create({

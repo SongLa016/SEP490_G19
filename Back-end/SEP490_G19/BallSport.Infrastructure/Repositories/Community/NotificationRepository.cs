@@ -104,7 +104,7 @@ namespace BallSport.Infrastructure.Repositories.Community
         {
             if (notification == null) throw new ArgumentNullException(nameof(notification));
 
-            notification.CreatedAt = DateTime.UtcNow;
+            notification.CreatedAt = DateTime.Now;
             notification.IsRead = false;
 
             await _context.Notifications.AddAsync(notification);
@@ -125,7 +125,7 @@ namespace BallSport.Infrastructure.Repositories.Community
                 return 0;
             }
 
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
             var count = 0;
 
             foreach (var n in notifications)
@@ -214,7 +214,7 @@ namespace BallSport.Infrastructure.Repositories.Community
         // ===================== MAINTENANCE =====================
         public async Task<int> DeleteOldNotificationsAsync(int daysOld = 30)
         {
-            var cutoff = DateTime.UtcNow.AddDays(-daysOld);
+            var cutoff = DateTime.Now.AddDays(-daysOld);
             var deletedCount = await _context.Notifications
                 .Where(n => n.CreatedAt < cutoff)
                 .ExecuteDeleteAsync();

@@ -79,6 +79,7 @@ namespace BallSport.Application.Services
                 DateOfBirth = user.UserProfile?.DateOfBirth,
                 Gender = user.UserProfile?.Gender,
                 Address = user.UserProfile?.Address,
+                Phone = user.Phone,
                 PreferredPositions = user.UserProfile?.PreferredPositions,
                 SkillLevel = user.UserProfile?.SkillLevel,
                 Bio = user.UserProfile?.Bio
@@ -106,7 +107,8 @@ namespace BallSport.Application.Services
             return new UpdateBasicProfileDto
             {
                 FullName = user.FullName,
-                AvatarUrl = user.Avatar
+                AvatarUrl = user.Avatar,
+                Phone = user.Phone
             };
         }
 

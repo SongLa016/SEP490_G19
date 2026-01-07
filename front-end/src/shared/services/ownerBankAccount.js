@@ -1,9 +1,7 @@
 // API tài khoản ngân hàng
 import axios from "axios";
-import { API_BASE_URL } from "../config/api";
 
 const apiClient = axios.create({
-  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
     "Content-Type": "application/json",
@@ -55,9 +53,9 @@ export async function fetchOwnerBankAccounts(ownerId) {
     const ownerIdNum = Number(ownerId);
     // thử các endpoint khác nhau
     const endpoints = [
-      `${API_BASE_URL}/api/OwnerBankAccount/${ownerIdNum}`,
-      `${API_BASE_URL}/api/OwnerBankAccount/owner/${ownerIdNum}`,
-      `${API_BASE_URL}/api/ownerBankAccount/${ownerIdNum}`,
+      `http://localhost:8080/api/OwnerBankAccount/${ownerIdNum}`,
+      `http://localhost:8080/api/OwnerBankAccount/owner/${ownerIdNum}`,
+      `http://localhost:8080/api/ownerBankAccount/${ownerIdNum}`,
     ];
 
     let response = null;
@@ -106,7 +104,7 @@ export async function fetchOwnerBankAccounts(ownerId) {
 export async function fetchBankAccount(bankAccountId) {
   try {
     const response = await apiClient.get(
-      `${API_BASE_URL}/api/OwnerBankAccount/${bankAccountId}`
+      `http://localhost:8080/api/OwnerBankAccount/${bankAccountId}`
     );
     const account = response.data;
     return {
@@ -136,7 +134,7 @@ export async function createOwnerBankAccount(accountData) {
       isDefault: accountData.isDefault || false,
     };
     const response = await apiClient.post(
-      `${API_BASE_URL}/api/OwnerBankAccount`,
+      "http://localhost:8080/api/OwnerBankAccount",
       payload
     );
     return response.data;
@@ -150,7 +148,7 @@ export async function createOwnerBankAccount(accountData) {
 export async function updateOwnerBankAccount(bankAccountId, accountData) {
   try {
     const response = await apiClient.put(
-      `${API_BASE_URL}/api/OwnerBankAccount/${bankAccountId}`,
+      `http://localhost:8080/api/OwnerBankAccount/${bankAccountId}`,
       {
         ownerId: accountData.ownerId,
         bankName: accountData.bankName,
@@ -170,7 +168,7 @@ export async function updateOwnerBankAccount(bankAccountId, accountData) {
 export async function deleteOwnerBankAccount(bankAccountId) {
   try {
     const response = await apiClient.delete(
-      `${API_BASE_URL}/api/OwnerBankAccount/${bankAccountId}`
+      `http://localhost:8080/api/OwnerBankAccount/${bankAccountId}`
     );
     return response.data;
   } catch (error) {

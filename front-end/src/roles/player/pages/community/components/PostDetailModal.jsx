@@ -6,7 +6,6 @@ import { fetchCommentsByPost, deleteComment, updateComment } from '../../../../.
 import { fetchFields } from '../../../../../shared/index';
 import { formatTimeAgo } from './utils/formatTime';
 import { createReport } from '../../../../../shared/services/reports';
-import { API_BASE_URL } from '../../../../../shared/config/api';
 import Swal from 'sweetalert2';
 import { getUserAvatarAndName } from "./utils";
 
@@ -112,7 +111,7 @@ const PostDetailModal = ({
                               try {
                                    const token = localStorage.getItem("token");
                                    const profileResponse = await fetch(
-                                        `${API_BASE_URL}/api/PlayerProfile/${comment.userId}`,
+                                        `http://localhost:8080/api/PlayerProfile/${comment.userId}`,
                                         {
                                              headers: {
                                                   "Content-Type": "application/json",

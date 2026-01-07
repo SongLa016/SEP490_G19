@@ -10,7 +10,7 @@ namespace BallSport.Application.Common.Extensions
             : TimeZoneInfo.FindSystemTimeZoneById("Asia/Ho_Chi_Minh");
 
         // Giờ hiện tại Việt Nam (UTC+7) - thay thế hoàn hảo cho DateTime.Now
-        public static DateTime VietnamNow => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, VietnamZone);
+        public static DateTime VietnamNow => TimeZoneInfo.ConvertTimeFromUtc(DateTime.Now, VietnamZone);
 
         /// <summary>
         /// Chuyển DateTime (UTC) → giờ Việt Nam (UTC+7)

@@ -6,7 +6,7 @@ namespace BallSport.Application.DTOs.MatchFinding
         public bool Success { get; set; } = true;
         public string Message { get; set; } = "Thành công";
         public T? Data { get; set; }
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public DateTime Timestamp { get; set; } = DateTime.Now;
 
         public static ApiResponse<T> Ok(T data, string message = "Thành công")
             => new() { Data = data, Message = message };
