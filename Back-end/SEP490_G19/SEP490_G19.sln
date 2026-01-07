@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BallSport.Application", "Ba
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BallSport.API", "BallSport.API\BallSport.API.csproj", "{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SEP490_Test", "SEP490_Test\SEP490_Test.csproj", "{BA0B4E1B-BA48-4C66-92F3-3AFF42FEFE1B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BBD370B5-220A-40A6-BEDC-AF19C604CAAB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA0B4E1B-BA48-4C66-92F3-3AFF42FEFE1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA0B4E1B-BA48-4C66-92F3-3AFF42FEFE1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA0B4E1B-BA48-4C66-92F3-3AFF42FEFE1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA0B4E1B-BA48-4C66-92F3-3AFF42FEFE1B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

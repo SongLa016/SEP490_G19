@@ -23,7 +23,7 @@ namespace BallSport.Application.Services
         }
 
         //  Upload ảnh lên Cloudinary
-        private async Task<string?> UploadToCloudinary(IFormFile file)
+        public virtual async Task<string?> UploadToCloudinary(IFormFile file)
         {
             if (file == null || file.Length == 0) return null;
 
@@ -43,7 +43,7 @@ namespace BallSport.Application.Services
         }
 
         //thêm
-        public async Task<FieldResponseDTO> AddFieldAsync(FieldDTO dto, int ownerId)
+        public virtual async Task<FieldResponseDTO> AddFieldAsync(FieldDTO dto, int ownerId)
         {
             if (dto.ComplexId == null)
                 throw new ArgumentException("ComplexId không được null.");

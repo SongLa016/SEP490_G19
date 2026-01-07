@@ -66,7 +66,18 @@ namespace BallSport.Application.Services
 
             return null;
         }
+        // Thêm vào trong class UserService
+        public async Task<User?> GetUserProfileAsync(int userId)
+        {
+            // Case 3: User chưa đăng nhập (hoặc token lỗi dẫn đến userId <= 0)
+            if (userId <= 0)
+                throw new UnauthorizedAccessException("Người dùng chưa đăng nhập.");
 
+            var user = await _userRepository.GetByIdAsync(userId);
+
+            // Case 4: User Id không tồn tại sẽ trả về null (Repo trả về null)
+            return user;
+        }
         ///////////////////////////////////////// Login Google ///////////////////////////////////////////////////
 
         public string HandleGoogleLogin(string email, string fullName)

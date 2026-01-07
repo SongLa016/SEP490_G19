@@ -14,12 +14,12 @@ namespace BallSport.Application.Services
             _bookingRepo = bookingRepo;
         }
 
-        public async Task<int> GetTotalBookingsAsync(int userId)
+        public  virtual async Task<int> GetTotalBookingsAsync(int userId)
         {
             return await _bookingRepo.GetTotalBookingsAsync(userId);
         }
 
-        public async Task<PlayerStatsDto> GetTotalPlayingHoursAsync(int userId)
+        public virtual async Task<PlayerStatsDto> GetTotalPlayingHoursAsync(int userId)
         {
             var totalHours = await _bookingRepo.GetTotalPlayingHoursAsync(userId);
 
@@ -28,7 +28,7 @@ namespace BallSport.Application.Services
                 TotalPlayingHours = totalHours
             };
         }
-        public async Task<PlayerSpendingDTO> GetTotalSpendingAsync(int userId)
+        public virtual async Task<PlayerSpendingDTO> GetTotalSpendingAsync(int userId)
         {
             var totalSpending = await _bookingRepo.GetTotalSpendingAsync(userId);
 
@@ -37,7 +37,7 @@ namespace BallSport.Application.Services
                 TotalSpending = totalSpending
             };
         }
-        public async Task<List<MonthlyPlayerStatsDto>> GetMonthlyStatsAsync(int userId)
+        public virtual async Task<List<MonthlyPlayerStatsDto>> GetMonthlyStatsAsync(int userId)
         {
             var repoStats = await _bookingRepo.GetMonthlyStatsAsync(userId);
             return repoStats.Select(s => new MonthlyPlayerStatsDto
@@ -49,7 +49,7 @@ namespace BallSport.Application.Services
             }).ToList();
         }
 
-        public async Task<double> GetAverageRatingAsync(int userId)
+        public virtual async Task<double> GetAverageRatingAsync(int userId)
         {
             return await _bookingRepo.GetAverageStarsByUserAsync(userId);
         }

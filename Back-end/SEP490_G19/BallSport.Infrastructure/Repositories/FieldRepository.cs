@@ -13,9 +13,9 @@ namespace BallSport.Infrastructure.Repositories
         {
             _context = context;
         }
-
+        public FieldRepository() { }
         // CREATE
-        public async Task<Field> AddFieldAsync(Field field)
+        public virtual async Task<Field> AddFieldAsync(Field field)
         {
             _context.Fields.Add(field);
             await _context.SaveChangesAsync();
@@ -27,7 +27,7 @@ namespace BallSport.Infrastructure.Repositories
         }
 
         // ADD FIELD IMAGES - URL BASED
-        public async Task AddFieldImagesAsync(int fieldId, List<string> imageUrls)
+        public virtual async Task AddFieldImagesAsync(int fieldId, List<string> imageUrls)
         {
             if (imageUrls == null || imageUrls.Count == 0) return;
 
@@ -51,7 +51,7 @@ namespace BallSport.Infrastructure.Repositories
                 .Include(f => f.FieldImages)
                 .ToListAsync();
         }
-        public async Task<FieldComplex?> GetComplexByIdAsync(int complexId)
+        public virtual async Task<FieldComplex?> GetComplexByIdAsync(int complexId)
         {
             return await _context.FieldComplexes
                 .FirstOrDefaultAsync(c => c.ComplexId == complexId);

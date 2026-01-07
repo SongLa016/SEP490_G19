@@ -18,7 +18,7 @@ namespace BallSport.Infrastructure.Repositories
         {
             _context = context;
         }
-
+        public OwnerBankAccountRepository() { }
         public async Task AddOwnerBankAccountAsync(OwnerBankAccount account)
         {
 
@@ -47,7 +47,7 @@ namespace BallSport.Infrastructure.Repositories
                 .ToList();
         }
 
-        public async Task<OwnerBankAccount?> GetByIdAsync(int bankAccountId)
+        public virtual async Task<OwnerBankAccount?> GetByIdAsync(int bankAccountId)
         {
             return await _context.OwnerBankAccounts
                                  .FirstOrDefaultAsync(b => b.BankAccountId == bankAccountId);

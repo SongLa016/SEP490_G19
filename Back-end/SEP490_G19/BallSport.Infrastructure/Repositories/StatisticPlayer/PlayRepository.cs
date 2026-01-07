@@ -12,13 +12,13 @@ namespace BallSport.Infrastructure.Repositories
             _db = db;
         }
         // tổng lượt đặt sân
-        public async Task<int> GetTotalBookingsAsync(int userId)
+        public virtual async Task<int> GetTotalBookingsAsync(int userId)
         {
             return await _db.Bookings
                 .CountAsync(b => b.UserId == userId);
         }
         // tổng giờ chơi
-        public async Task<double> GetTotalPlayingHoursAsync(int userId)
+        public virtual async Task<double> GetTotalPlayingHoursAsync(int userId)
         {
             var bookings = await _db.Bookings
                 .Where(b => b.UserId == userId && b.BookingStatus == "Completed")
@@ -42,14 +42,14 @@ namespace BallSport.Infrastructure.Repositories
             return totalHours;
         }
         // tổng tiền đã thanh toán
-        public async Task<decimal> GetTotalSpendingAsync(int userId)
+        public virtual async Task<decimal> GetTotalSpendingAsync(int userId)
         {
             return await _db.Bookings
                 .Where(b => b.UserId == userId && b.PaymentStatus == "Paid")
                 .SumAsync(b => b.TotalPrice);
         }
         // thống kê theo tháng
-        public async Task<List<MonthlyPlayerStatsDto>> GetMonthlyStatsAsync(int userId)
+        public virtual async Task<List<MonthlyPlayerStatsDto>> GetMonthlyStatsAsync(int userId)
         {
             var bookings = await _db.Bookings
         .Include(b => b.Schedule)
@@ -76,7 +76,7 @@ namespace BallSport.Infrastructure.Repositories
 
             return result;
         }
-        public async Task<double> GetAverageStarsByUserAsync(int userId)
+        public virtual async Task<double> GetAverageStarsByUserAsync(int userId)
         {
             var ratings = await _db.Ratings
                 .Where(r => r.UserId == userId)

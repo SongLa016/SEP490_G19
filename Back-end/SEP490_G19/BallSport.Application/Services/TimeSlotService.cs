@@ -157,7 +157,8 @@ namespace BallSport.Application.Services
 
             if (field == null)
                 throw new Exception("FieldId không tồn tại");
-
+            if (dto.Price < 0)
+                throw new ArgumentException("Giá không hợp lệ");
             if (field.Complex.OwnerId != ownerId)
                 throw new UnauthorizedAccessException("Bạn không có quyền sửa slot cho sân này.");
 

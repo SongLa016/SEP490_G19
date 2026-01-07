@@ -23,13 +23,13 @@ namespace BallSport.Infrastructure.Repositories.RatingBooking
             return await _db.Ratings.AnyAsync(r => r.BookingId == bookingId);
         }
 
-        public async Task AddRatingAsync(Rating rating)
+        public virtual async Task AddRatingAsync(Rating rating)
         {
             _db.Ratings.Add(rating);
             await _db.SaveChangesAsync();
         }
         // Cập nhật rating
-        public async Task<bool> UpdateRatingAsync(int ratingId, int stars, string? comment)
+        public virtual async Task<bool> UpdateRatingAsync(int ratingId, int stars, string? comment)
         {
             var existing = await _db.Ratings.FindAsync(ratingId);
             if (existing == null) return false;
@@ -51,7 +51,7 @@ namespace BallSport.Infrastructure.Repositories.RatingBooking
             return true;
         }
 
-        public async Task<List<FieldRatingWithRepliesDto>> GetRatingsByFieldIdWithRepliesAsync(int fieldId)
+        public virtual async Task<List<FieldRatingWithRepliesDto>> GetRatingsByFieldIdWithRepliesAsync(int fieldId)
         {
             var ratings = await _db.Ratings
                 .Include(r => r.User)
@@ -85,7 +85,7 @@ namespace BallSport.Infrastructure.Repositories.RatingBooking
 
 
         // Lấy tất cả đánh giá của toàn bộ sân thuộc một Complex
-        public async Task<List<FieldRatingWithRepliesDto>> GetRatingsByComplexIdWithRepliesAsync(int complexId)
+        public virtual async Task<List<FieldRatingWithRepliesDto>> GetRatingsByComplexIdWithRepliesAsync(int complexId)
         {
             var ratings = await _db.Ratings
                 .Include(r => r.Field)
