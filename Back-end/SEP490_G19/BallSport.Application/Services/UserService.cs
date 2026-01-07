@@ -36,7 +36,70 @@ namespace BallSport.Application.Services
             _cloudinaryService = cloudinaryService;
 
         }
+        //Admin CRUD
+        // Thêm vào UserService.cs
 
+        // 1. Create User (Admin tạo)
+        public async Task<User> CreateUserByAdminAsync(User newUser, string roleName)
+        {
+            if (_userRepository.IsEmailExists(newUser.Email))
+                throw new Exception("Email đã tồn tại.");
+
+            if (_userRepository.IsPhoneExists(newUser.Phone))
+                throw new Exception("Số điện thoại đã tồn tại.");
+
+            var role = _userRepository.GetRoleByName(roleName);
+            if (role == null) throw new Exception("Role không hợp lệ.");
+
+            // Hash password (giả sử dùng pass raw cho demo, thực tế nên hash)
+            if (string.IsNullOrEmpty(newUser.PasswordHash))
+            {
+                newUser.PasswordHash = _userRepository.GenerateRandomPassword();
+            }
+
+            newUser.CreatedAt = DateTime.Now;
+            newUser.Status = "Active";
+
+            _userRepository.AddUser(newUser);
+            _userRepository.AddUserRole(newUser.UserId, role.RoleId);
+
+            return newUser;
+        }
+
+        // 2. Update User Information
+        public async Task<bool> UpdateUserByAdminAsync(int userId, string fullName, string phone)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+
+            // Case 4: Update account does not exist
+            if (user == null)
+                throw new Exception("User not found.");
+
+            user.FullName = fullName;
+            user.Phone = phone;
+
+            _userRepository.UpdateUser(user);
+            return true;
+        }
+
+        // 3. Lock User (kèm logic check quyền)
+        public async Task<bool> LockUserAsync(int targetUserId, string currentAdminRole)
+        {
+            var targetUser = await _userRepository.GetByIdAsync(targetUserId);
+            if (targetUser == null) throw new Exception("User not found.");
+
+            // Case 5: Admin does not have the right to manage the account
+            // Logic: Admin thường không thể khóa tài khoản của 'SuperAdmin'
+            var targetRoles = _userRepository.GetRolesByUserId(targetUserId);
+            if (targetRoles.Contains("SuperAdmin") && currentAdminRole == "Admin")
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền khóa tài khoản SuperAdmin.");
+            }
+
+            targetUser.Status = "Locked";
+            _userRepository.UpdateUser(targetUser);
+            return true;
+        }
 
         ////////////////////////////////////// Login ////////////////////////////////////////////////
 

@@ -25,23 +25,23 @@ namespace BallSport.Infrastructure.Repositories
             return await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
         }
 
-        public User? GetUserByPhone(string phone)
+        public virtual User? GetUserByPhone(string phone)
         {
             return _context.Users.FirstOrDefault(u => u.Phone == phone);
         }
 
-        public User? GetUserByEmail(string email)
+        public virtual User? GetUserByEmail(string email)
         {
             return _context.Users.FirstOrDefault(u => u.Email == email);
         }
 
-        public void AddUser(User user)
+        public virtual void AddUser(User user)
         {
             _context.Users.Add(user);
             _context.SaveChanges();
         }
 
-        public string GenerateRandomPassword(int length = 12)
+        public virtual string GenerateRandomPassword(int length = 12)
         {
             const string validChars = "ABCDEFGHJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*?_-";
             var randomBytes = new byte[length];
@@ -54,12 +54,12 @@ namespace BallSport.Infrastructure.Repositories
             return new string(chars.ToArray());
         }
 
-        public Role? GetPlayerRole()
+        public virtual Role? GetPlayerRole()
         {
             return _context.Roles.FirstOrDefault(r => r.RoleName == "Player");
         }
 
-        public void UpdateUser(User user)
+        public virtual void UpdateUser(User user)
         {
             _context.Users.Update(user);
             _context.SaveChanges();
@@ -72,7 +72,7 @@ namespace BallSport.Infrastructure.Repositories
         }
 
 
-        public void AddUserRole(int userId, int roleId)
+        public virtual void AddUserRole(int userId, int roleId)
         {
             var userRole = new UserRole
             {
@@ -85,27 +85,27 @@ namespace BallSport.Infrastructure.Repositories
         }
 
 
-        public bool IsEmailExists(string email)
+        public virtual bool IsEmailExists(string email)
         {
             return _context.Users.Any(u => u.Email == email);
         }
 
-        public bool IsPhoneExists(string phone)
+        public virtual bool IsPhoneExists(string phone)
         {
             return _context.Users.Any(u => u.Phone == phone);
         }
 
-        public Role? GetRoleByName(string roleName)
+        public virtual Role? GetRoleByName(string roleName)
         {
             return _context.Roles.FirstOrDefault(r => r.RoleName == roleName);
         }
 
-        public UserProfile? GetUserProfileByUserId(int userId)
+        public virtual UserProfile? GetUserProfileByUserId(int userId)
         {
             return _context.UserProfiles.FirstOrDefault(p => p.UserId == userId);
         }
 
-        public void AddOrUpdateUserProfile(UserProfile profile)
+        public virtual void AddOrUpdateUserProfile(UserProfile profile)
         {
             var existing = _context.UserProfiles.FirstOrDefault(p => p.UserId == profile.UserId);
             if (existing == null)
@@ -124,7 +124,7 @@ namespace BallSport.Infrastructure.Repositories
             _context.SaveChanges();
         }
 
-        public List<string> GetRolesByUserId(int userId)
+        public virtual List<string> GetRolesByUserId(int userId)
         {
             return _context.UserRoles
                 .Where(ur => ur.UserId == userId)
