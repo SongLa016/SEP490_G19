@@ -6,8 +6,8 @@ export function Pagination({
      currentPage = 1,
      totalPages = 1,
      onPageChange,
-     itemsPerPage,
-     totalItems,
+     itemsPerPage = 10,
+     totalItems = 0,
 }) {
      // chuyển trang trước
      const handlePrevious = () => {
@@ -66,16 +66,21 @@ export function Pagination({
           return null;
      }
 
-     const startItem = (currentPage - 1) * itemsPerPage + 1;
-     const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+     const startItem = itemsPerPage && totalItems ? (currentPage - 1) * itemsPerPage + 1 : 0;
+     const endItem = itemsPerPage && totalItems ? Math.min(currentPage * itemsPerPage, totalItems) : 0;
+     const showItemInfo = itemsPerPage > 0 && totalItems > 0;
 
      return (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
-               <div className="text-sm text-gray-600">
-                    Hiển thị <span className="font-medium text-teal-600">{startItem}</span> đến{" "}
-                    <span className="font-medium text-teal-600">{endItem}</span> trong tổng số{" "}
-                    <span className="font-medium text-teal-600">{totalItems}</span>
-               </div>
+          <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+               {showItemInfo ? (
+                    <div className="text-sm text-gray-600">
+                         Hiển thị <span className="font-medium text-teal-600">{startItem}</span> đến{" "}
+                         <span className="font-medium text-teal-600">{endItem}</span> trong tổng số{" "}
+                         <span className="font-medium text-teal-600">{totalItems}</span>
+                    </div>
+               ) : (
+                    <div />
+               )}
 
                <div className="flex items-center gap-2">
                     <Button

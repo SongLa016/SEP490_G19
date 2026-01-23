@@ -6,9 +6,7 @@ import {
   isTokenExpired,
   decodeTokenPayload,
 } from "../utils/tokenManager";
-
-const DEFAULT_API_BASE_URL = "http://localhost:8080";
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || DEFAULT_API_BASE_URL;
+import { API_BASE_URL } from "../config/api";
 
 // Create axios instance with base configuration
 const apiClient = axios.create({
@@ -190,7 +188,7 @@ export async function fetchTimeSlots(fieldId = null, date = null) {
     }
 
     // Build endpoint with optional date parameter
-    let endpoint = "http://localhost:8080/api/TimeSlot";
+    let endpoint = `${API_BASE_URL}/api/TimeSlot`;
     const params = {};
 
     // Add date parameter if provided
@@ -330,7 +328,7 @@ export async function createTimeSlot(timeSlotData) {
     };
 
     // Try different endpoint variations
-    const endpoints = ["http://localhost:8080/api/TimeSlot"];
+    const endpoints = [`${API_BASE_URL}/api/TimeSlot`];
     let response = null;
     let lastError = null;
 
@@ -480,12 +478,12 @@ export async function updateTimeSlot(slotId, timeSlotData) {
 
     // Try different endpoint variations
     const endpoints = [
-      "http://localhost:8080/api/TimeSlot",
-      "http://localhost:8080/api/TimeSlots",
-      "http://localhost:8080/api/timeSlot",
-      "http://localhost:8080/api/timeSlots",
-      "http://localhost:8080/api/time-slot",
-      "http://localhost:8080/api/time-slots",
+      `${API_BASE_URL}/api/TimeSlot`,
+      `${API_BASE_URL}/api/TimeSlots`,
+      `${API_BASE_URL}/api/timeSlot`,
+      `${API_BASE_URL}/api/timeSlots`,
+      `${API_BASE_URL}/api/time-slot`,
+      `${API_BASE_URL}/api/time-slots`,
     ];
     let response = null;
     let lastError = null;
@@ -562,12 +560,12 @@ export async function deleteTimeSlot(slotId) {
 
     // Try different endpoint variations
     const endpoints = [
-      "http://localhost:8080/api/TimeSlot",
-      "http://localhost:8080/api/TimeSlots",
-      "http://localhost:8080/api/timeSlot",
-      "http://localhost:8080/api/timeSlots",
-      "http://localhost:8080/api/time-slot",
-      "http://localhost:8080/api/time-slots",
+      `${API_BASE_URL}/api/TimeSlot`,
+      `${API_BASE_URL}/api/TimeSlots`,
+      `${API_BASE_URL}/api/timeSlot`,
+      `${API_BASE_URL}/api/timeSlots`,
+      `${API_BASE_URL}/api/time-slot`,
+      `${API_BASE_URL}/api/time-slots`,
     ];
     let lastError = null;
     let success = false;

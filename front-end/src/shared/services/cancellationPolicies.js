@@ -1,15 +1,17 @@
-// Service for managing cancellation policies
+// dịch vụ quản lý chính sách hủy
 import axios from "axios";
+import { API_BASE_URL } from "../config/api";
 
-// Create axios instance with base configuration
+// tạo instance axios với cấu hình cơ bản
 const apiClient = axios.create({
+  baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Add request interceptor to include auth token if available
+// thêm interceptor request để bao gồm token auth nếu có
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -23,7 +25,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Helper function to handle API errors
+// hàm helper để xử lý lỗi API
 const handleApiError = (error) => {
   let errorMessage = "Có lỗi xảy ra khi gọi API";
 
@@ -39,7 +41,8 @@ const handleApiError = (error) => {
       errorMessage = `Lỗi ${status}: ${statusText}`;
     }
   } else if (error.request) {
-    errorMessage = "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
+    errorMessage =
+      "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.";
   } else {
     errorMessage = error.message || "Đã xảy ra lỗi không xác định.";
   }
@@ -48,16 +51,14 @@ const handleApiError = (error) => {
   throw new Error(errorMessage);
 };
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:8080";
-
-// API functions
+// lấy danh sách chính sách hủy
 export async function fetchCancellationPolicies(ownerId) {
   try {
     const url = ownerId
       ? `${API_BASE_URL}/api/CancellationPolicy/owner/${ownerId}`
       : `${API_BASE_URL}/api/CancellationPolicy`;
     const response = await apiClient.get(url);
-    // Handle both array and single object responses
+    // xử lý cả array và single object response
     const policies = Array.isArray(response.data)
       ? response.data
       : response.data
@@ -70,25 +71,34 @@ export async function fetchCancellationPolicies(ownerId) {
       complexId: policy.complexId || policy.ComplexID || policy.complexID,
       name: policy.name || policy.Name || "",
       description: policy.description || policy.Description || "",
-      freeCancellationHours: policy.freeCancellationHours || policy.FreeCancellationHours || 0,
-      cancellationFeePercentage: policy.cancellationFeePercentage || policy.CancellationFeePercentage || 0,
-      isActive: policy.isActive !== undefined ? policy.isActive : (policy.IsActive !== undefined ? policy.IsActive : true),
+      freeCancellationHours:
+        policy.freeCancellationHours || policy.FreeCancellationHours || 0,
+      cancellationFeePercentage:
+        policy.cancellationFeePercentage ||
+        policy.CancellationFeePercentage ||
+        0,
+      isActive:
+        policy.isActive !== undefined
+          ? policy.isActive
+          : policy.IsActive !== undefined
+          ? policy.IsActive
+          : true,
       createdAt: policy.createdAt || policy.CreatedAt,
       updatedAt: policy.updatedAt || policy.UpdatedAt,
     }));
   } catch (error) {
-    console.error("Error fetching cancellation policies:", error);
     handleApiError(error);
   }
 }
 
+// lấy chi tiết chính sách hủy theo ID
 export async function fetchCancellationPolicy(policyId) {
   try {
     const response = await apiClient.get(
       `${API_BASE_URL}/api/CancellationPolicy/${policyId}`
     );
     const policy = response.data;
-    
+
     if (!policy) return null;
 
     return {
@@ -97,15 +107,22 @@ export async function fetchCancellationPolicy(policyId) {
       complexId: policy.complexId || policy.ComplexID || policy.complexID,
       name: policy.name || policy.Name || "",
       description: policy.description || policy.Description || "",
-      freeCancellationHours: policy.freeCancellationHours || policy.FreeCancellationHours || 0,
-      cancellationFeePercentage: policy.cancellationFeePercentage || policy.CancellationFeePercentage || 0,
-      isActive: policy.isActive !== undefined ? policy.isActive : (policy.IsActive !== undefined ? policy.IsActive : true),
+      freeCancellationHours:
+        policy.freeCancellationHours || policy.FreeCancellationHours || 0,
+      cancellationFeePercentage:
+        policy.cancellationFeePercentage ||
+        policy.CancellationFeePercentage ||
+        0,
+      isActive:
+        policy.isActive !== undefined
+          ? policy.isActive
+          : policy.IsActive !== undefined
+          ? policy.IsActive
+          : true,
       createdAt: policy.createdAt || policy.CreatedAt,
       updatedAt: policy.updatedAt || policy.UpdatedAt,
     };
   } catch (error) {
-    console.error("Error fetching cancellation policy:", error);
-    // Return null if not found (404), otherwise throw error
     if (error.response?.status === 404) {
       return null;
     }
@@ -113,14 +130,15 @@ export async function fetchCancellationPolicy(policyId) {
   }
 }
 
+// lấy chi tiết chính sách hủy theo complexId
 export async function fetchCancellationPolicyByComplex(complexId) {
   try {
     const complexIdNum = Number(complexId);
-    // Use the specific endpoint for complex-based query
+    // sử dụng endpoint cụ thể cho query dựa trên complexId
     const response = await apiClient.get(
       `${API_BASE_URL}/api/CancellationPolicy/complex/${complexIdNum}`
     );
-    // Handle both array and single object responses
+    // xử lý cả array và single object response
     const policy = Array.isArray(response.data)
       ? response.data[0]
       : response.data;
@@ -135,23 +153,32 @@ export async function fetchCancellationPolicyByComplex(complexId) {
       ownerId: policy.ownerId || policy.OwnerID || policy.ownerID,
       name: policy.name || policy.Name || "",
       description: policy.description || policy.Description || "",
-      freeCancellationHours: policy.freeCancellationHours || policy.FreeCancellationHours || 0,
-      cancellationFeePercentage: policy.cancellationFeePercentage || policy.CancellationFeePercentage || 0,
-      isActive: policy.isActive !== undefined ? policy.isActive : (policy.IsActive !== undefined ? policy.IsActive : true),
+      freeCancellationHours:
+        policy.freeCancellationHours || policy.FreeCancellationHours || 0,
+      cancellationFeePercentage:
+        policy.cancellationFeePercentage ||
+        policy.CancellationFeePercentage ||
+        0,
+      isActive:
+        policy.isActive !== undefined
+          ? policy.isActive
+          : policy.IsActive !== undefined
+          ? policy.IsActive
+          : true,
       createdAt: policy.createdAt || policy.CreatedAt,
       updatedAt: policy.updatedAt || policy.UpdatedAt,
     };
   } catch (error) {
-    // Return null if not found (404) - this is normal, not all complexes have policies
-    // Don't log 404 errors to avoid console spam
+    // trả về null nếu không tìm thấy (404) - điều này là bình thường, không phải tất cả complexes đều có chính sách
+    // không log lỗi 404 để tránh spam console
     if (error.response?.status === 404) {
       return null;
     }
-    // Only log non-404 errors
+    // chỉ log lỗi không phải 404
     if (error.response?.status !== 404) {
       console.error("Error fetching cancellation policy by complex:", error);
     }
-    // Re-throw only non-404 errors
+    // ném lại chỉ lỗi không phải 404
     if (error.response?.status !== 404) {
       handleApiError(error);
     }
@@ -159,6 +186,7 @@ export async function fetchCancellationPolicyByComplex(complexId) {
   }
 }
 
+// tạo chính sách hủy
 export async function createCancellationPolicy(policyData) {
   try {
     const payload = {
@@ -181,18 +209,27 @@ export async function createCancellationPolicy(policyData) {
       ownerId: policy.ownerId || policy.OwnerID || policy.ownerID,
       name: policy.name || policy.Name || "",
       description: policy.description || policy.Description || "",
-      freeCancellationHours: policy.freeCancellationHours || policy.FreeCancellationHours || 0,
-      cancellationFeePercentage: policy.cancellationFeePercentage || policy.CancellationFeePercentage || 0,
-      isActive: policy.isActive !== undefined ? policy.isActive : (policy.IsActive !== undefined ? policy.IsActive : true),
+      freeCancellationHours:
+        policy.freeCancellationHours || policy.FreeCancellationHours || 0,
+      cancellationFeePercentage:
+        policy.cancellationFeePercentage ||
+        policy.CancellationFeePercentage ||
+        0,
+      isActive:
+        policy.isActive !== undefined
+          ? policy.isActive
+          : policy.IsActive !== undefined
+          ? policy.IsActive
+          : true,
       createdAt: policy.createdAt || policy.CreatedAt,
       updatedAt: policy.updatedAt || policy.UpdatedAt,
     };
   } catch (error) {
-    console.error("Error creating cancellation policy:", error);
     handleApiError(error);
   }
 }
 
+// cập nhật chính sách hủy
 export async function updateCancellationPolicy(policyId, policyData) {
   try {
     const payload = {
@@ -215,18 +252,27 @@ export async function updateCancellationPolicy(policyId, policyData) {
       ownerId: policy.ownerId || policy.OwnerID || policy.ownerID,
       name: policy.name || policy.Name || "",
       description: policy.description || policy.Description || "",
-      freeCancellationHours: policy.freeCancellationHours || policy.FreeCancellationHours || 0,
-      cancellationFeePercentage: policy.cancellationFeePercentage || policy.CancellationFeePercentage || 0,
-      isActive: policy.isActive !== undefined ? policy.isActive : (policy.IsActive !== undefined ? policy.IsActive : true),
+      freeCancellationHours:
+        policy.freeCancellationHours || policy.FreeCancellationHours || 0,
+      cancellationFeePercentage:
+        policy.cancellationFeePercentage ||
+        policy.CancellationFeePercentage ||
+        0,
+      isActive:
+        policy.isActive !== undefined
+          ? policy.isActive
+          : policy.IsActive !== undefined
+          ? policy.IsActive
+          : true,
       createdAt: policy.createdAt || policy.CreatedAt,
       updatedAt: policy.updatedAt || policy.UpdatedAt,
     };
   } catch (error) {
-    console.error("Error updating cancellation policy:", error);
     handleApiError(error);
   }
 }
 
+// xóa chính sách hủy
 export async function deleteCancellationPolicy(policyId) {
   try {
     const response = await apiClient.delete(
@@ -234,12 +280,11 @@ export async function deleteCancellationPolicy(policyId) {
     );
     return { success: true, data: response.data };
   } catch (error) {
-    console.error("Error deleting cancellation policy:", error);
     handleApiError(error);
   }
 }
 
-// Calculate cancellation fee based on policy and booking details
+// tính phí hủy dựa trên chính sách và chi tiết booking
 export function calculateCancellationFee(
   policy,
   bookingAmount,

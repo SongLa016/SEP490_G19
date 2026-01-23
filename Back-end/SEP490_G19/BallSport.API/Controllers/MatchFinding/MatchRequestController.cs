@@ -244,7 +244,7 @@ namespace BallSport.API.Controllers.MatchFinding
             {
                 success = true,
                 message = $"Đã dọn thành công {count} kèo quá hạn",
-                data = new { expiredCount = count, executedAt = DateTime.UtcNow }
+                data = new { expiredCount = count, executedAt = DateTime.Now }
             });
         }
     }

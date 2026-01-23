@@ -23,6 +23,7 @@ import { useNavigate } from "react-router-dom";
 import { deletePost } from "../services/posts";
 import { deleteComment, fetchCommentById } from "../services/comments";
 import Swal from "sweetalert2";
+import { API_BASE_URL } from "../config/api";
 
 // Helper function to fetch user profile by userId
 const fetchUserProfile = async (userId) => {
@@ -30,7 +31,7 @@ const fetchUserProfile = async (userId) => {
      try {
           const token = localStorage.getItem("token");
           const response = await fetch(
-               `http://localhost:8080/api/PlayerProfile/${userId}`,
+               `${API_BASE_URL}/api/PlayerProfile/${userId}`,
                {
                     headers: {
                          "Content-Type": "application/json",

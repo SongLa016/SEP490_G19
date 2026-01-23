@@ -1,6 +1,6 @@
-import { Star, MessageSquare, Send, MoreHorizontal } from "lucide-react";
+import { Star, MessageSquare, Send, MoreHorizontal, CheckCircle, Pencil, Trash2 } from "lucide-react";
 import { FadeIn, Button, Textarea, Popover, PopoverTrigger, PopoverContent } from "../../../../../../shared/components/ui";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { createRatingReply, updateRatingReply, deleteRatingReply } from "../../../../../../shared/services/ratingReplies";
 import { updateRating, deleteRating } from "../../../../../../shared/services/ratings";
 import { getStoredToken, isTokenExpired } from "../../../../../../shared/utils/tokenManager";
@@ -47,6 +47,17 @@ export default function ReviewTabContent({
                user.userId
           )
           : null;
+
+     // Kiểm tra user đã đánh giá cho sân này chưa
+     const userExistingRating = useMemo(() => {
+          if (!currentUserId || !complexReviews) return null;
+          return complexReviews.find(review =>
+               review.userId && Number(review.userId) === currentUserId
+          );
+     }, [currentUserId, complexReviews]);
+
+     const hasAlreadyRated = !!userExistingRating;
+
      return (
           <FadeIn delay={100}>
                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -94,13 +105,38 @@ export default function ReviewTabContent({
                                    <MessageSquare className="w-5 h-5 text-teal-600" />
                                    <h4 className="font-semibold text-teal-800">Viết đánh giá</h4>
                               </div>
-                              {!canWriteReview ? (
+                              {!user ? (
+                                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                                        <p className="text-sm text-yellow-800 mb-3">Vui lòng đăng nhập để viết đánh giá.</p>
+                                        <Button
+                                             type="button"
+                                             onClick={onLoginPrompt}
+                                             className="bg-teal-600 hover:bg-teal-700 text-white text-sm px-4 py-2 rounded-lg font-semibold"
+                                        >
+                                             Đăng nhập ngay
+                                        </Button>
+                                   </div>
+                              ) : hasAlreadyRated ? (
+                                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                             <CheckCircle className="w-5 h-5 text-green-600" />
+                                             <span className="font-semibold text-green-800">Bạn đã đánh giá sân này</span>
+                                        </div>
+                                        <p className="text-sm text-green-700">
+                                             Cảm ơn bạn đã chia sẻ trải nghiệm! Bạn có thể chỉnh sửa đánh giá của mình bên dưới bằng cách nhấn vào biểu tượng <MoreHorizontal className="w-4 h-4 inline" /> trên đánh giá của bạn.
+                                        </p>
+                                   </div>
+                              ) : !canWriteReview ? (
                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
-                                        Bạn không thể đánh giá nếu chưa đặt sân. Vui lòng vào mục
+                                        Bạn cần có booking đã hoàn thành cho sân này để đánh giá. Vui lòng vào mục
                                         <span className="font-semibold"> "Lịch sử đặt sân" </span>
                                         và đánh giá sau khi sân đã hoàn thành.
                                    </div>
-                              ) : user ? (
+                              ) : !fieldId ? (
+                                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+                                        Vui lòng chọn một sân cụ thể ở tab <span className="font-semibold">"Thông tin"</span> để viết đánh giá.
+                                   </div>
+                              ) : (
                                    <>
                                         <div className="flex items-center gap-1 mb-3">
                                              {[...Array(5)].map((_, i) => (
@@ -166,17 +202,6 @@ export default function ReviewTabContent({
                                              </Button>
                                         </div>
                                    </>
-                              ) : (
-                                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-                                        <p className="text-sm text-yellow-800 mb-3">Vui lòng đăng nhập để viết đánh giá.</p>
-                                        <Button
-                                             type="button"
-                                             onClick={onLoginPrompt}
-                                             className="bg-teal-600 hover:bg-teal-700 text-white text-sm px-4 py-2 rounded-lg font-semibold"
-                                        >
-                                             Đăng nhập ngay
-                                        </Button>
-                                   </div>
                               )}
                          </div>
                          {isLoadingRatings ? (
@@ -258,10 +283,12 @@ export default function ReviewTabContent({
                                                                                 <MoreHorizontal className="w-4 h-4" />
                                                                            </button>
                                                                       </PopoverTrigger>
-                                                                      <PopoverContent className="w-40 p-1 text-xs">
-                                                                           <button
+                                                                      <PopoverContent className="w-20 p-1 text-xs">
+                                                                           <Button
                                                                                 type="button"
-                                                                                className="w-full text-left px-2 py-1 rounded hover:bg-teal-50 text-teal-700"
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                className="w-full justify-start gap-2 px-2 py-1 h-auto text-teal-700 hover:bg-teal-50"
                                                                                 onClick={() => {
                                                                                      if (!hasValidToken || !currentUserId) {
                                                                                           onLoginPrompt?.();
@@ -272,11 +299,14 @@ export default function ReviewTabContent({
                                                                                      setEditingRatingComment(review.comment || "");
                                                                                 }}
                                                                            >
-                                                                                Sửa đánh giá
-                                                                           </button>
-                                                                           <button
+                                                                                <Pencil className="w-3.5 h-3.5" />
+                                                                                Sửa
+                                                                           </Button>
+                                                                           <Button
                                                                                 type="button"
-                                                                                className="w-full text-left px-2 py-1 rounded hover:bg-red-50 text-red-600"
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                className="w-full justify-start gap-2 px-2 py-1 h-auto text-red-600 hover:bg-red-50 hover:text-red-600"
                                                                                 onClick={async () => {
                                                                                      if (!hasValidToken || !currentUserId) {
                                                                                           onLoginPrompt?.();
@@ -309,8 +339,9 @@ export default function ReviewTabContent({
                                                                                      }
                                                                                 }}
                                                                            >
-                                                                                Xóa đánh giá
-                                                                           </button>
+                                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                                                Xóa
+                                                                           </Button>
                                                                       </PopoverContent>
                                                                  </Popover>
                                                             )}

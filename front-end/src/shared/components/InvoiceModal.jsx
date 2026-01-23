@@ -120,7 +120,7 @@ export default function InvoiceModal({ isOpen, booking, onClose }) {
                               </p>
                               <p className="text-gray-600">
                                    {isPaid
-                                        ? "Hóa đơn đã được thanh toán đầy đủ. Bạn có thể in hoặc lưu lại thông tin."
+                                        ? "Hóa đơn đã được thanh toán đầy đủ. Đã lưu lại thông tin."
                                         : "Vui lòng hoàn tất thanh toán để giữ chỗ. Hóa đơn chỉ được xác nhận sau khi thanh toán thành công."}
                               </p>
                          </div>

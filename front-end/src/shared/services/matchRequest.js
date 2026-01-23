@@ -1,9 +1,8 @@
 import axios from "axios";
-
-const API_BASE = "http://localhost:8080/api/match-requests/";
+import { API_BASE_URL } from "../config/api";
 
 const apiClient = axios.create({
-  baseURL: API_BASE,
+  baseURL: `${API_BASE_URL}/api/match-requests/`,
   timeout: 20000,
   headers: {
     "Content-Type": "application/json",

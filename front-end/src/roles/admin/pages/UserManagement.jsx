@@ -42,6 +42,7 @@ import {
 import { fetchAllUserStatistics, fetchPlayerProfile, lockUserAccount } from "../../../shared/services/adminStatistics";
 import Swal from "sweetalert2";
 import { useAuth } from "../../../contexts/AuthContext";
+import { API_BASE_URL } from "../../../shared/config/api";
 
 export default function UserManagement() {
      const { user, isAdmin: checkIsAdmin } = useAuth();
@@ -145,7 +146,7 @@ export default function UserManagement() {
      const fetchOwnerProfile = async () => {
           setOwnerLoading(true);
           try {
-               const res = await fetch('http://localhost:8080/api/PlayerProfile/3');
+               const res = await fetch('${API_BASE_URL}/api/PlayerProfile/3');
                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                const data = await res.json();
                setOwnerProfile(data);

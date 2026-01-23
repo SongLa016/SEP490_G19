@@ -1,6 +1,8 @@
 import axios from "axios";
+import { API_BASE_URL } from "../config/api";
 
 const apiClient = axios.create({
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -55,7 +57,7 @@ export const passwordResetService = {
   async sendResetOtp(email) {
     try {
       const response = await apiClient.post(
-        "http://localhost:8080/api/ResertPass/send-otp",
+        `${API_BASE_URL}/api/ResertPass/send-otp`,
         {
           email: email,
         }
@@ -79,7 +81,7 @@ export const passwordResetService = {
   async verifyResetOtp(otp) {
     try {
       const response = await apiClient.post(
-        "http://localhost:8080/api/ResertPass/verify-otp",
+        `${API_BASE_URL}/api/ResertPass/verify-otp`,
         {
           otp: otp,
         }

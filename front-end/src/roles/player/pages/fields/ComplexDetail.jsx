@@ -317,7 +317,9 @@ export default function ComplexDetail({ user }) {
                     if (isFieldRoute) {
                          fieldData = await fetchFieldDetail(id);
                          if (fieldData?.complexId) complexIdToUse = String(fieldData.complexId);
-                         if (fieldData?.fieldId) setSelectedFieldId(Number(fieldData.fieldId));
+                         // Set selectedFieldId từ fieldData hoặc từ URL id
+                         const fieldIdToSet = fieldData?.fieldId || id;
+                         if (fieldIdToSet) setSelectedFieldId(Number(fieldIdToSet));
                     }
 
                     // Lấy thông tin khu sân
@@ -609,23 +611,44 @@ export default function ComplexDetail({ user }) {
 
      const selectedSlotPriceFromSchedule = selectedScheduleEntry?.price || 0;
      const minPriceFromSchedule = cheapestScheduleEntry?.price || 0;
-     // Đồng bộ selectedDate và selectedSlotId vào query
+     // Đồng bộ state vào query params (Consolidated)
      useEffect(() => {
-          const next = new URLSearchParams(searchParams);
-          next.set("date", selectedDate);
-          if (selectedSlotId) next.set("slotId", String(selectedSlotId)); else next.delete("slotId");
-          setSearchParams(next, { replace: true });
-     }, [selectedDate, selectedSlotId, searchParams, setSearchParams]);
+          const params = new URLSearchParams(searchParams);
+          let changed = false;
 
-     // Đồng bộ activeTab vào query
-     useEffect(() => {
-          const currentTab = searchParams.get("tab");
+          // Sync activeTab
+          const currentTab = params.get("tab");
           if (currentTab !== activeTab) {
-               const next = new URLSearchParams(searchParams);
-               next.set("tab", activeTab);
-               setSearchParams(next, { replace: true });
+               params.set("tab", activeTab);
+               changed = true;
           }
-     }, [activeTab, searchParams, setSearchParams]);
+
+          // Sync selectedDate
+          const currentDate = params.get("date");
+          if (currentDate !== selectedDate) {
+               params.set("date", selectedDate);
+               changed = true;
+          }
+
+          // Sync selectedSlotId
+          const currentSlotId = params.get("slotId");
+          if (selectedSlotId) {
+               if (currentSlotId !== String(selectedSlotId)) {
+                    params.set("slotId", String(selectedSlotId));
+                    changed = true;
+               }
+          } else {
+               if (params.has("slotId")) {
+                    params.delete("slotId");
+                    changed = true;
+               }
+          }
+
+          if (changed) {
+               setSearchParams(params, { replace: true });
+          }
+     }, [activeTab, selectedDate, selectedSlotId, searchParams, setSearchParams]);
+
 
      // Xử lý chuyển đổi sân
      useEffect(() => {
@@ -922,42 +945,129 @@ export default function ComplexDetail({ user }) {
           return !isFieldRoute && id ? Number(id) : null;
      }, [complex, id, isFieldRoute]);
 
-     // Tải danh sách đánh giá khi selectedFieldId hoặc complexIdForRatings thay đổi
-     useEffect(() => {
-          const loadRatings = async () => {
-               // Nếu đang xem một field cụ thể, lấy ratings theo fieldId
-               if (selectedFieldId) {
-                    setIsLoadingRatings(true);
-                    try {
-                         const ratings = await fetchRatingsByField(selectedFieldId);
-                         setFieldRatings(ratings || []);
-                    } catch (error) {
-                         console.error("Error loading field ratings:", error);
-                         setFieldRatings([]);
-                    } finally {
-                         setIsLoadingRatings(false);
-                    }
-                    return;
-               }
-
-               // Nếu không có selectedFieldId, lấy ratings theo complexId
-               if (!complexIdForRatings) {
-                    setFieldRatings([]);
-                    return;
-               }
+     // Hàm tải đánh giá có thể tái sử dụng
+     const loadRatings = useCallback(async () => {
+          // Nếu đang xem một field cụ thể, lấy ratings theo fieldId
+          if (selectedFieldId) {
                setIsLoadingRatings(true);
                try {
-                    const ratings = await fetchRatingsByComplex(complexIdForRatings);
+                    const ratings = await fetchRatingsByField(selectedFieldId);
                     setFieldRatings(ratings || []);
                } catch (error) {
-                    console.error("Error loading complex ratings:", error);
+                    console.error("Error loading field ratings:", error);
                     setFieldRatings([]);
                } finally {
                     setIsLoadingRatings(false);
                }
-          };
-          loadRatings();
+               return;
+          }
+
+          // Nếu không có selectedFieldId, lấy ratings theo complexId
+          if (!complexIdForRatings) {
+               setFieldRatings([]);
+               return;
+          }
+          setIsLoadingRatings(true);
+          try {
+               const ratings = await fetchRatingsByComplex(complexIdForRatings);
+               setFieldRatings(ratings || []);
+          } catch (error) {
+               console.error("Error loading complex ratings:", error);
+               setFieldRatings([]);
+          } finally {
+               setIsLoadingRatings(false);
+          }
      }, [selectedFieldId, complexIdForRatings]);
+
+     // Hàm xử lý gửi đánh giá mới
+     const handleRatingSubmit = useCallback(async ({ fieldId, stars, comment }) => {
+          const { createRating } = await import("../../../../shared/services/ratings");
+
+          // Tìm booking completed cho field này để lấy bookingId
+          const playerId = user?.userID || user?.UserID || user?.id || user?.Id || user?.userId;
+          if (!playerId) {
+               throw new Error("Vui lòng đăng nhập để đánh giá");
+          }
+
+          const bookingsResult = await fetchBookingsByPlayer(playerId);
+          if (!bookingsResult.success || !Array.isArray(bookingsResult.data)) {
+               throw new Error("Không thể lấy thông tin booking");
+          }
+
+          // Lấy danh sách fieldIds của complex hiện tại
+          const currentFieldIds = new Set();
+          fields.forEach(f => {
+               const fid = f.fieldId || f.FieldID || f.id;
+               if (fid) currentFieldIds.add(String(fid));
+          });
+          if (fieldId) currentFieldIds.add(String(fieldId));
+          if (selectedFieldId) currentFieldIds.add(String(selectedFieldId));
+
+          // Lấy complexId hiện tại
+          const currentComplexId = complex?.complexId || complex?.id || (!isFieldRoute ? id : null);
+
+          // Tìm tất cả booking completed của user
+          const completedBookings = bookingsResult.data.filter(booking => {
+               const bookingStatus = String(booking.status || booking.Status || booking.bookingStatus || "").toLowerCase();
+               return bookingStatus === "completed";
+          });
+
+          // Tìm booking completed phù hợp nhất
+          let completedBooking = null;
+
+          // 1. Ưu tiên booking cho fieldId đang đánh giá
+          if (fieldId) {
+               completedBooking = completedBookings.find(booking => {
+                    const bookingFieldId = String(booking.fieldId || booking.FieldID || booking.fieldID || "");
+                    return bookingFieldId === String(fieldId);
+               });
+          }
+
+          // 2. Tìm booking cho bất kỳ field nào trong complex
+          if (!completedBooking && currentFieldIds.size > 0) {
+               completedBooking = completedBookings.find(booking => {
+                    const bookingFieldId = booking.fieldId || booking.FieldID || booking.fieldID;
+                    return bookingFieldId && currentFieldIds.has(String(bookingFieldId));
+               });
+          }
+
+          // 3. Tìm booking có cùng complexId
+          if (!completedBooking && currentComplexId) {
+               completedBooking = completedBookings.find(booking => {
+                    const bookingComplexId = booking.complexId || booking.ComplexID || booking.complexID;
+                    return bookingComplexId && String(bookingComplexId) === String(currentComplexId);
+               });
+          }
+
+          // 4. Nếu vẫn không tìm thấy, lấy booking completed đầu tiên (user đã có quyền đánh giá)
+          if (!completedBooking && completedBookings.length > 0) {
+               completedBooking = completedBookings[0];
+          }
+
+          if (!completedBooking) {
+               throw new Error("Bạn cần có booking đã hoàn thành cho sân này để đánh giá");
+          }
+
+          const bookingId = completedBooking.bookingId || completedBooking.BookingId || completedBooking.id || completedBooking.BookingID;
+
+          if (!bookingId) {
+               throw new Error("Không tìm thấy mã booking hợp lệ");
+          }
+
+          await createRating({
+               bookingId,
+               stars,
+               comment
+          });
+
+          // Reload ratings sau khi tạo thành công
+          await loadRatings();
+     }, [user, loadRatings, fields, selectedFieldId, complex, id, isFieldRoute]);
+
+     // Tải danh sách đánh giá khi selectedFieldId hoặc complexIdForRatings thay đổi
+     useEffect(() => {
+          loadRatings();
+     }, [loadRatings]);
 
      // Chuẩn hóa danh sách đánh giá từ fieldRatings thành complexReviews
      const complexReviews = useMemo(() => {
@@ -983,6 +1093,18 @@ export default function ComplexDetail({ user }) {
                     : []
           }));
      }, [fieldRatings]);
+
+     // Kiểm tra xem user hiện tại đã có rating trong danh sách chưa
+     // Nếu có nghĩa là họ đã có booking completed
+     const userHasExistingRating = useMemo(() => {
+          if (!user) return false;
+          const currentUserId = user?.userID || user?.UserID || user?.id || user?.Id || user?.userId;
+          if (!currentUserId) return false;
+          return complexReviews.some(review =>
+               review.userId && String(review.userId) === String(currentUserId)
+          );
+     }, [user, complexReviews]);
+
      // Tính toán thống kê đánh giá
      const reviewStats = useMemo(() => {
           const total = complexReviews.length || 0;
@@ -993,7 +1115,7 @@ export default function ComplexDetail({ user }) {
      }, [complexReviews]);
 
      // Kiểm tra user có booking completed cho complex/field này không
-     // Chỉ user có booking completed mới được phép trả lời đánh giá
+     // Chỉ user có booking completed mới được phép viết đánh giá
      useEffect(() => {
           const checkCompletedBooking = async () => {
                if (!user) {
@@ -1011,20 +1133,45 @@ export default function ComplexDetail({ user }) {
                     const result = await fetchBookingsByPlayer(playerId);
                     if (result.success && Array.isArray(result.data)) {
                          // Lấy danh sách fieldIds của complex hiện tại
-                         const currentFieldIds = new Set(
-                              fields.map(f => String(f.fieldId || f.FieldID || f.id))
-                         );
+                         const currentFieldIds = new Set();
+
+                         // Thêm các fieldId từ fields array
+                         fields.forEach(f => {
+                              const fid = f.fieldId || f.FieldID || f.id;
+                              if (fid) currentFieldIds.add(String(fid));
+                         });
 
                          // Nếu đang xem field cụ thể, thêm fieldId đó vào set
                          if (selectedFieldId) {
                               currentFieldIds.add(String(selectedFieldId));
                          }
 
-                         // Kiểm tra có booking nào completed cho các field này không
+                         // Lấy complexId hiện tại
+                         const currentComplexId = complex?.complexId || complex?.id || (!isFieldRoute ? id : null);
+
+                         // Kiểm tra có booking nào completed không
                          const hasCompleted = result.data.some(booking => {
-                              const bookingFieldId = String(booking.fieldId || booking.FieldID || booking.fieldID || "");
-                              const bookingStatus = String(booking.status || booking.Status || "").toLowerCase();
-                              return currentFieldIds.has(bookingFieldId) && bookingStatus === "completed";
+                              const bookingStatus = String(booking.status || booking.Status || booking.bookingStatus || "").toLowerCase();
+                              if (bookingStatus !== "completed") return false;
+
+                              // Kiểm tra theo fieldId
+                              const bookingFieldId = booking.fieldId || booking.FieldID || booking.fieldID;
+                              if (bookingFieldId && currentFieldIds.size > 0 && currentFieldIds.has(String(bookingFieldId))) {
+                                   return true;
+                              }
+
+                              // Kiểm tra theo complexId (nếu booking có complexId)
+                              const bookingComplexId = booking.complexId || booking.ComplexID || booking.complexID;
+                              if (currentComplexId && bookingComplexId && String(bookingComplexId) === String(currentComplexId)) {
+                                   return true;
+                              }
+
+                              // Nếu đang xem field cụ thể và booking có cùng fieldId
+                              if (selectedFieldId && bookingFieldId && String(bookingFieldId) === String(selectedFieldId)) {
+                                   return true;
+                              }
+
+                              return false;
                          });
 
                          setHasCompletedBooking(hasCompleted);
@@ -1038,7 +1185,7 @@ export default function ComplexDetail({ user }) {
           };
 
           checkCompletedBooking();
-     }, [user, fields, selectedFieldId]);
+     }, [user, fields, selectedFieldId, complex, id, isFieldRoute]);
      // Thư viện ảnh bao gồm ảnh khu sân (complex) và tất cả ảnh sân nhỏ (fields)
      const galleryImages = [];
      // Thêm ảnh của complex (khu sân) - imageUrl từ Cloudinary
@@ -1237,10 +1384,13 @@ export default function ComplexDetail({ user }) {
                                         setReviewPage={setReviewPage}
                                         onShowToast={showToastMessage}
                                         onLoginPrompt={() => navigate('/login')}
-                                        fieldId={null}
+                                        fieldId={selectedFieldId}
                                         isLoadingRatings={isLoadingRatings}
-                                        canWriteReview={false}
-                                        hasCompletedBooking={hasCompletedBooking}
+                                        canWriteReview={hasCompletedBooking || userHasExistingRating}
+                                        hasCompletedBooking={hasCompletedBooking || userHasExistingRating}
+                                        onRatingSubmit={handleRatingSubmit}
+                                        onRatingUpdated={loadRatings}
+                                        onRatingDeleted={loadRatings}
                                    />
                               )}
 

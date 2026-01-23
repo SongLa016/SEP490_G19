@@ -7,13 +7,11 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { fetchFieldComplexes, fetchFields } from "../../../../../shared/services/fields";
 import { fetchRatingsByComplex } from "../../../../../shared/services/ratings";
-import { fetchPromotionsByComplex } from "../../../../../shared/services/promotions";
 
 export const QuickBookingSection = ({ user }) => {
      const navigate = useNavigate();
      const [nearbyFields, setNearbyFields] = useState([]);
      const [topRatedFields, setTopRatedFields] = useState([]);
-     const [promotions, setPromotions] = useState([]);
      const [loading, setLoading] = useState(true);
 
      useEffect(() => {
@@ -23,7 +21,7 @@ export const QuickBookingSection = ({ user }) => {
                     // Fetch all complexes and fields
                     let complexes = [];
                     let allFields = [];
-                    
+
                     try {
                          let fetchedComplexes = await fetchFieldComplexes();
                          if (!Array.isArray(fetchedComplexes)) {
@@ -37,7 +35,7 @@ export const QuickBookingSection = ({ user }) => {
                          console.error("Error fetching complexes:", error);
                          complexes = [];
                     }
-                    
+
                     try {
                          allFields = await fetchFields();
                          if (!Array.isArray(allFields)) {
@@ -111,35 +109,11 @@ export const QuickBookingSection = ({ user }) => {
                          })
                          .slice(0, 2);
                     setTopRatedFields(ratedFields);
-
-                    // Fetch promotions from all complexes
-                    const promotionPromises = complexes.map(complex => 
-                         fetchPromotionsByComplex(complex.complexId).catch(() => [])
-                    );
-                    const allPromotions = await Promise.all(promotionPromises);
-                    const activePromotions = allPromotions
-                         .flat()
-                         .filter(promo => {
-                              const now = new Date();
-                              const startDate = new Date(promo.startDate);
-                              const endDate = new Date(promo.endDate);
-                              return promo.isActive && now >= startDate && now <= endDate;
-                         })
-                         .slice(0, 2)
-                         .map(promo => ({
-                              id: promo.promotionId,
-                              title: promo.name,
-                              description: promo.description || "Áp dụng cho các slot được chỉ định",
-                              discount: promo.type === "percentage" ? `${promo.value}%` : `${promo.value.toLocaleString('vi-VN')} VNĐ`,
-                              validUntil: `Áp dụng đến ${new Date(promo.endDate).toLocaleDateString('vi-VN')}`,
-                         }));
-                    setPromotions(activePromotions);
                } catch (error) {
                     console.error("Error loading data:", error);
                     // Fallback to empty arrays on error
                     setNearbyFields([]);
                     setTopRatedFields([]);
-                    setPromotions([]);
                } finally {
                     setLoading(false);
                }
@@ -311,7 +285,7 @@ export const QuickBookingSection = ({ user }) => {
                                    </Card>
                               </motion.div>
 
-                              {/* Ưu đãi đặt cố định */}
+                              {/* Đặt sân cố định */}
                               <motion.div variants={itemVariants}>
                                    <Card className="h-full p-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 text-white relative overflow-hidden">
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
@@ -322,35 +296,33 @@ export const QuickBookingSection = ({ user }) => {
                                                   <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
                                                        <Sparkles className="w-6 h-6 text-white" />
                                                   </div>
-                                                  <h3 className="text-xl font-bold">Ưu đãi đặt cố định</h3>
+                                                  <h3 className="text-xl font-bold">Đặt sân cố định</h3>
                                              </div>
-                                             <p className="text-white/90 mb-6 text-sm">Đặt lịch cố định để nhận mức giảm giá hấp dẫn</p>
+                                             <p className="text-white/90 mb-6 text-sm">Đặt lịch cố định hàng tuần để giữ chỗ yêu thích của bạn</p>
 
                                              <div className="space-y-4 mb-4">
-                                                  {loading ? (
-                                                       <div className="text-center py-4 text-white/80">Đang tải...</div>
-                                                  ) : promotions.length > 0 ? (
-                                                       promotions.map((promo) => (
-                                                            <motion.div
-                                                                 key={promo.id}
-                                                                 whileHover={{ scale: 1.05 }}
-                                                                 className="p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30"
-                                                            >
-                                                                 <div className="flex items-start justify-between mb-2">
-                                                                      <div>
-                                                                           <h4 className="font-bold text-base">{promo.title}</h4>
-                                                                           <p className="text-sm text-white/80">{promo.description}</p>
-                                                                      </div>
-                                                                      <span className="px-3 py-1 bg-white text-purple-600 rounded-full font-bold text-sm">
-                                                                           -{promo.discount}
-                                                                      </span>
-                                                                 </div>
-                                                                 <p className="text-xs text-white/70">{promo.validUntil}</p>
-                                                            </motion.div>
-                                                       ))
-                                                  ) : (
-                                                       <div className="text-center py-4 text-white/80">Hiện chưa có ưu đãi</div>
-                                                  )}
+                                                  <motion.div
+                                                       whileHover={{ scale: 1.05 }}
+                                                       className="p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30"
+                                                  >
+                                                       <div className="flex items-start justify-between mb-2">
+                                                            <div>
+                                                                 <h4 className="font-bold text-base">Tiện lợi & Nhanh chóng</h4>
+                                                                 <p className="text-sm text-white/80">Không cần đặt lại mỗi tuần</p>
+                                                            </div>
+                                                       </div>
+                                                  </motion.div>
+                                                  <motion.div
+                                                       whileHover={{ scale: 1.05 }}
+                                                       className="p-3 bg-white/20 backdrop-blur-sm rounded-xl border border-white/30"
+                                                  >
+                                                       <div className="flex items-start justify-between mb-2">
+                                                            <div>
+                                                                 <h4 className="font-bold text-base">Giữ chỗ ưu tiên</h4>
+                                                                 <p className="text-sm text-white/80">Đảm bảo có sân vào khung giờ yêu thích</p>
+                                                            </div>
+                                                       </div>
+                                                  </motion.div>
                                              </div>
 
                                              <div className="mt-2">
@@ -358,7 +330,7 @@ export const QuickBookingSection = ({ user }) => {
                                                        onClick={() => navigate("/search")}
                                                        className="w-full bg-white text-purple-600 hover:bg-gray-100 hover:text-purple-600 rounded-2xl font-semibold"
                                                   >
-                                                       Xem tất cả ưu đãi
+                                                       Tìm sân ngay
                                                        <ArrowRight className="w-4 h-4 ml-2" />
                                                   </Button>
                                              </div>
