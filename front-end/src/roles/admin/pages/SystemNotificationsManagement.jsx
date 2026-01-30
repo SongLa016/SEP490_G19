@@ -468,7 +468,6 @@ export default function SystemNotificationsManagement() {
 
      // Badge helpers: dùng variant "outline" + className để kiểm soát màu
      const getTypeBadgeVariant = () => "outline";
-
      const getTypeBadgeClass = (type) => {
           const actualType = type || "System";
           switch (actualType) {
@@ -936,7 +935,7 @@ export default function SystemNotificationsManagement() {
                                    <Bell className="w-4 h-4" />
                                    <span>Thông báo hệ thống</span>
                               </button>
-                              <button
+                              {/* <button
                                    type="button"
                                    onClick={() => {
                                         setCreateTab("user");
@@ -954,7 +953,7 @@ export default function SystemNotificationsManagement() {
                               >
                                    <Users className="w-4 h-4" />
                                    <span>Gửi cho người dùng</span>
-                              </button>
+                              </button> */}
                          </div>
                          {/* Message Content */}
                          <div>

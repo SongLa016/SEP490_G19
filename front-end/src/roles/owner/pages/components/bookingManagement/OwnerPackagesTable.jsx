@@ -15,10 +15,6 @@ import Swal from "sweetalert2";
 
 // component hiển thị bảng danh sách gói đặt sân cố định của Owner
 export default function OwnerPackagesTable({
-  getStatusColor = () => "bg-gray-100 text-gray-800",
-  getStatusText = (s) => s || "—",
-  getPaymentStatusColor = () => "bg-gray-100 text-gray-800",
-  getPaymentStatusText = (s) => s || "—",
   ownerId = null,
 }) {
   const [bookingPackages, setBookingPackages] = useState([]);
@@ -267,7 +263,7 @@ export default function OwnerPackagesTable({
     loadBookingPackages();
   }, [loadBookingPackages]);
 
-  // Fetch sessions khi mở modal chi tiết
+  // hàm tải sessions khi mở modal chi tiết gói đặt sân cố định
   useEffect(() => {
     if (isDetailModalOpen && selectedPackage) {
       const fetchSessions = async () => {
@@ -1053,8 +1049,8 @@ export default function OwnerPackagesTable({
                     <CheckCircle className="w-4 h-4 text-amber-600" />
                     Trạng thái booking
                   </div>
-                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor((selectedPackage.bookingStatus || "").toLowerCase())}`}>
-                    {getStatusText((selectedPackage.bookingStatus || "").toLowerCase())}
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${getBookingStatusColor((selectedPackage.bookingStatus || "").toLowerCase())}`}>
+                    {getBookingStatusText((selectedPackage.bookingStatus || "").toLowerCase())}
                   </span>
                 </div>
                 <div className="p-3 rounded-xl border border-white/70 bg-white flex items-center justify-between">

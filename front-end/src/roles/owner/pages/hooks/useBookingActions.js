@@ -315,16 +315,16 @@ export const useBookingActions = ({
       }
     }
 
-    const isConfirmed = booking?.status === 'confirmed';
+    const isPending = booking?.status === 'pending';
     const paymentStatusLower = String(booking?.paymentStatus || '').toLowerCase();
     const isPaid = paymentStatusLower === 'paid';
-    const isConfirmedAndPaid = isConfirmed && isPaid;
+    const isPendingAndPaid = isPending && isPaid;
 
-    const dialogTitle = isConfirmedAndPaid ? 'Hoàn thành booking' : 'Xác nhận thanh toán';
-    const dialogMessage = isConfirmedAndPaid
+    const dialogTitle = isPendingAndPaid ? 'Hoàn thành booking' : 'Xác nhận thanh toán';
+    const dialogMessage = isPendingAndPaid
       ? 'Bạn có chắc muốn hoàn thành booking này?'
       : 'Bạn có chắc muốn xác nhận thanh toán cho booking này?';
-    const confirmButtonText = isConfirmedAndPaid ? 'Hoàn thành' : 'Xác nhận thanh toán';
+    const confirmButtonText = isPendingAndPaid ? 'Hoàn thành' : 'Xác nhận thanh toán';
 
     const result = await Swal.fire({
       title: dialogTitle,
@@ -356,7 +356,7 @@ export const useBookingActions = ({
     if (result.isConfirmed) {
       try {
         let confirmResult;
-        if (isConfirmedAndPaid) {
+        if (isPendingAndPaid) {
           confirmResult = await confirmByOwner(numericBookingId);
         } else {
           const amount = booking?.amount || 0;
@@ -374,7 +374,7 @@ export const useBookingActions = ({
         if (confirmResult.success) {
           await Swal.fire({
             icon: 'success',
-            title: isConfirmedAndPaid ? 'Đã hoàn thành!' : 'Đã xác nhận thanh toán!',
+            title: isPendingAndPaid ? 'Đã hoàn thành!' : 'Đã xác nhận thanh toán!',
             text: confirmResult.message || 'Thao tác thành công.',
             confirmButtonColor: '#10b981'
           });

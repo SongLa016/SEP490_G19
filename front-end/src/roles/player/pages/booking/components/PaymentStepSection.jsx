@@ -225,12 +225,18 @@ export default function PaymentStepSection({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                <div className="space-y-2">
                     <h3 className="text-lg font-semibold text-gray-900">Thanh toán</h3>
-                    {isPaymentLocked && (
+                    {isPaymentLocked && depositAvailable && (
                          <div className="p-3 border border-amber-200 bg-amber-50 rounded-2xl text-xs text-amber-800">
                               <p className="font-semibold">QR thanh toán đang hoạt động</p>
                               <p>Vui lòng giữ cửa sổ mở trong <span className="font-semibold text-blue-600">{formatCountdown(lockCountdownSeconds)}</span>
                                    {/* hoặc sử dụng nút <span className="font-semibold text-red-600 underline">Hủy đặt sân</span> nếu muốn thoát. */}
                               </p>
+                         </div>
+                    )}
+                    {isPaymentLocked && !depositAvailable && (
+                         <div className="p-3 border border-green-200 bg-green-50 rounded-2xl text-xs text-green-800">
+                              <p className="font-semibold">✅ Đặt sân thành công - Không cần đặt cọc</p>
+                              <p>Sân này không yêu cầu đặt cọc trước. Cửa sổ sẽ tự động đóng sau <span className="font-semibold text-blue-600">{formatCountdown(lockCountdownSeconds)}</span></p>
                          </div>
                     )}
                     <div className="p-4 border border-teal-400 rounded-2xl bg-white shadow-sm space-y-2">
@@ -263,7 +269,12 @@ export default function PaymentStepSection({
                                         </p>
                                    </>
                               ) : (
-                                   <p className="text-sm text-gray-500">Sân này chưa cấu hình tiền cọc. Vui lòng liên hệ chủ sân.</p>
+                                   <div className="p-3 border border-green-200 bg-green-50 rounded-2xl">
+                                        <p className="text-sm text-green-800 font-medium mb-2">✅ Không cần đặt cọc</p>
+                                        <p className="text-xs text-green-700">
+                                             Sân này không yêu cầu đặt cọc trước. Bạn có thể đến sân và thanh toán trực tiếp tại chỗ.
+                                        </p>
+                                   </div>
                               )}
                               {errors.payment && (
                                    <p className="text-xs text-red-500">{errors.payment}</p>
@@ -466,20 +477,12 @@ export default function PaymentStepSection({
                     <div className="flex flex-col lg:flex-row gap-3 mt-4">
                          <Button
                               onClick={onConfirmPayment}
-                              disabled={isProcessing || !bookingInfo?.qrCodeUrl}
-                              className={`w-full py-3 rounded-2xl text-white font-semibold ${(isProcessing || !bookingInfo?.qrCodeUrl) ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
+                              disabled={isProcessing || (depositAvailable && !bookingInfo?.qrCodeUrl)}
+                              className={`w-full py-3 rounded-2xl text-white font-semibold ${(isProcessing || (depositAvailable && !bookingInfo?.qrCodeUrl)) ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"}`}
                          >
-                              {isProcessing ? "Đang xử lý..." : "Hoàn tất đặt sân"}
+                              {isProcessing ? "Đang xử lý..." : depositAvailable ? "Hoàn tất đặt sân" : "Xác nhận đặt sân"}
                          </Button>
-                         {/* <Button
-                              type="button"
-                              variant="destructive"
-                              disabled={isProcessing}
-                              onClick={onCancelBooking}
-                              className="w-full py-3 rounded-2xl font-semibold"
-                         >
-                              Hủy đặt sân
-                         </Button> */}
+
                     </div>
                </div>
           </div>

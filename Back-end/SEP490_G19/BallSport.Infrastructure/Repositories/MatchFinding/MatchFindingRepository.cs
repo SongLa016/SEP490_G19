@@ -14,12 +14,12 @@ namespace BallSport.Infrastructure.Repositories.MatchFinding
             _context = context;
         }
 
-        // ĐÃ THÊM METHOD BỊ THIẾU – SIÊU CHUẨN, SIÊU NHANH!
+        
         public async Task<List<MatchRequest>> GetActiveRequestsExcludeMineAsync(int currentUserId)
         {
             return await _context.MatchRequests
                 .Where(m => m.Status == "Open"
-                         && (m.ExpiresAt == null || m.ExpiresAt > DateTime.UtcNow)
+                         && (m.ExpiresAt == null || m.ExpiresAt > DateTime.Now)
                          && m.CreatedBy != currentUserId) // LOẠI BỎ KÈO CỦA CHÍNH MÌNH
                 .Include(m => m.Booking!)
                     .ThenInclude(b => b.Schedule!)
@@ -57,7 +57,7 @@ namespace BallSport.Infrastructure.Repositories.MatchFinding
         {
             return await _context.MatchRequests
                 .Where(m => m.Status == "Open" &&
-                           (m.ExpiresAt == null || m.ExpiresAt > DateTime.UtcNow))
+                           (m.ExpiresAt == null || m.ExpiresAt > DateTime.Now))
                 .Include(m => m.Booking!)
                     .ThenInclude(b => b.Schedule!)
                         .ThenInclude(s => s.Slot!)

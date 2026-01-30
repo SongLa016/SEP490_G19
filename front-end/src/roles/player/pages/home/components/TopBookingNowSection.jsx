@@ -4,8 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { FieldCard } from "./FieldCard";
 import { ScrollReveal } from "../../../../../shared/components/ScrollReveal";
 
-export const TopBookingNowSection = ({ featuredFields, hoveredCardId, setHoveredCardId }) => {
+export const TopBookingNowSection = ({ featuredFields = [], hoveredCardId, setHoveredCardId }) => {
      const navigate = useNavigate();
+
+     // Ensure featuredFields is always an array
+     const safeFields = Array.isArray(featuredFields) ? featuredFields : [];
 
      return (
           <ScrollReveal direction="up" delay={0.1}>
@@ -26,8 +29,8 @@ export const TopBookingNowSection = ({ featuredFields, hoveredCardId, setHovered
                                    {hoveredCardId !== null && (
                                         <div className="pointer-events-none absolute inset-0 rounded-xl backdrop-blur-[1px] transition-opacity" />
                                    )}
-                                   {featuredFields.map((field, index) => (
-                                        <FieldCard key={field.id} field={field} index={index} hoveredCardId={hoveredCardId} setHoveredCardId={setHoveredCardId} />
+                                   {safeFields.map((field, index) => (
+                                        <FieldCard key={field.fieldId || field.id || index} field={field} index={index} hoveredCardId={hoveredCardId} setHoveredCardId={setHoveredCardId} />
                                    ))}
                               </div>
 

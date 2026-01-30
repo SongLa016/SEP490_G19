@@ -22,7 +22,7 @@ namespace BallSport.Infrastructure.Repositories
 
         public async Task<Booking> AddAsync(Booking booking)
         {
-            booking.CreatedAt = DateTime.UtcNow;
+            booking.CreatedAt = DateTime.Now;
             booking.BookingStatus ??= "Pending";
             booking.PaymentStatus ??= "Unpaid";
 

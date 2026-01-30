@@ -77,24 +77,7 @@ const InteractionButtons = ({
                     </Button>
                </motion.div>
 
-               <motion.div
-                    whileHover={{ scale: user ? 1.1 : 1 }}
-                    whileTap={{ scale: user ? 0.9 : 1 }}
-               >
-                    <Button
-                         variant="ghost"
-                         size="sm"
-                         onClick={() => handleInteraction('share', onRepost)}
-                         disabled={!user}
-                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors ${user
-                              ? 'text-gray-500 hover:text-blue-500 hover:bg-blue-50'
-                              : 'text-gray-400 cursor-not-allowed opacity-60'
-                              }`}
-                    >
-                         <Share className="w-5 h-5" />
-                         <span className="text-sm font-medium">{post.shares || 0}</span>
-                    </Button>
-               </motion.div>
+              
                {user && (
                     <motion.div
                          whileHover={{ scale: 1.1 }}

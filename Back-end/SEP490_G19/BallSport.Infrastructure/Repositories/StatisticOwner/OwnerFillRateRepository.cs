@@ -1,6 +1,5 @@
 ﻿
 using BallSport.Infrastructure.Data;
-using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Threading.Tasks;

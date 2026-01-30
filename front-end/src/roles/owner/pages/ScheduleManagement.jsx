@@ -143,7 +143,7 @@ export default function ScheduleManagement({ isDemo = false }) {
           { name: 'Slot 12', start: '22:30', end: '23:59' },
      ];
 
-     // Check if a time slot already exists for a field (using modal's separate state)
+     // kiểm tra slot đã tồn tại cho sân chưa (dùng trong modal)
      const isSlotExistsForField = useCallback((fieldId, startTime, endTime) => {
           if (!fieldId) return false;
 

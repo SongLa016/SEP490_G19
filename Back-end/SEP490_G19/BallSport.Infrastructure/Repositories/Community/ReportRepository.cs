@@ -37,7 +37,7 @@ namespace BallSport.Infrastructure.Repositories.Community
 
         public async Task<Report> CreateReportAsync(Report report)
         {
-            report.CreatedAt = DateTime.UtcNow;
+            report.CreatedAt = DateTime.Now;
             report.Status ??= "Pending";
             _context.Reports.Add(report);
             await _context.SaveChangesAsync();

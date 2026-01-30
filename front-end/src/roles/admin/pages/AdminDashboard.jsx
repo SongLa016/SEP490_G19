@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "../../../shared/components/ui";
+import { Card, CardContent, CardHeader, CardTitle, Button } from "../../../shared/components/ui";
 import { Users, Building2, ClipboardList, AlertTriangle, FileText, TrendingUp, Calendar, Shield, Activity, Server, Eye, Settings, Clock, Bell } from "lucide-react";
 import { decodeTokenPayload, getStoredToken } from "../../../shared/utils/tokenManager";
 import {
@@ -57,7 +57,6 @@ export default function AdminDashboard() {
           try {
                setLoading(true);
                setError(null);
-
                // Kiểm tra token và role admin
                const token = getStoredToken();
                if (!token) {
@@ -65,14 +64,12 @@ export default function AdminDashboard() {
                     setLoading(false);
                     return;
                }
-
                const payload = decodeTokenPayload(token);
                if (!payload) {
                     setError("Token không hợp lệ.");
                     setLoading(false);
                     return;
                }
-
                // Kiểm tra role admin (roleID = 3 hoặc role = "Admin")
                const userRole = payload.roleID || payload.role || payload.RoleID || payload.Role;
                const isAdmin = userRole === 3 || userRole === "Admin" || userRole === "admin";

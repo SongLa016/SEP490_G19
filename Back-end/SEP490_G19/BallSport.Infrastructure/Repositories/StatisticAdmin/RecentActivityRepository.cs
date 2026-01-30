@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
 using static BallSport.Infrastructure.Repositories.AdminStatistics.RecentActivityRepository;
 using BallSport.Infrastructure.Data;

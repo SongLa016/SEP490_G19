@@ -127,7 +127,7 @@ export async function confirmPayment(bookingId, method) {
     throw err;
   }
   pendingHolds.splice(idx, 1);
-  return { bookingId, status: "Confirmed", paymentStatus: "Paid", method };
+  return { bookingId, status: "Pending", paymentStatus: "Paid", method };
 }
 
 // kiểm tra sân có săn

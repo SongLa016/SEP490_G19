@@ -20,15 +20,17 @@ export const useScheduleData = (currentUserId, isDemo = false) => {
 
   // Maintenance fields
   const maintenanceFields = useMemo(
-    () => fields.filter(field => 
-      (field.status || field.Status || '').toLowerCase() === 'maintenance'
-    ),
+    () =>
+      fields.filter(
+        (field) =>
+          (field.status || field.Status || "").toLowerCase() === "maintenance"
+      ),
     [fields]
   );
 
   const maintenanceFieldIds = useMemo(() => {
     const ids = new Set();
-    maintenanceFields.forEach(field => {
+    maintenanceFields.forEach((field) => {
       const numericId = Number(field.fieldId);
       if (!Number.isNaN(numericId)) {
         ids.add(numericId);
@@ -48,19 +50,21 @@ export const useScheduleData = (currentUserId, isDemo = false) => {
   );
 
   const hasActiveFields = useMemo(
-    () => fields.some(field => 
-      (field.status || field.Status || '').toLowerCase() !== 'maintenance'
-    ),
+    () =>
+      fields.some(
+        (field) =>
+          (field.status || field.Status || "").toLowerCase() !== "maintenance"
+      ),
     [fields]
   );
 
   const maintenanceNoticeText = useMemo(() => {
-    if (!maintenanceFields.length) return '';
-    const names = maintenanceFields.map(field => field.name).filter(Boolean);
+    if (!maintenanceFields.length) return "";
+    const names = maintenanceFields.map((field) => field.name).filter(Boolean);
     if (names.length <= 3) {
-      return names.join(', ');
+      return names.join(", ");
     }
-    return `${names.slice(0, 3).join(', ')} và ${names.length - 3} sân khác`;
+    return `${names.slice(0, 3).join(", ")} và ${names.length - 3} sân khác`;
   }, [maintenanceFields]);
 
   // Load timeslots for a specific field (for modal only)
@@ -81,21 +85,24 @@ export const useScheduleData = (currentUserId, isDemo = false) => {
     }
   }, []);
 
-  // Check if a time slot already exists for a field
-  const isSlotExistsForField = useCallback((fieldId, startTime, endTime) => {
-    if (!fieldId) return false;
-    return modalTimeSlots.some(slot => {
-      const slotFieldId = slot.fieldId ?? slot.FieldId;
-      if (!slotFieldId || Number(slotFieldId) !== Number(fieldId)) {
-        return false;
-      }
-      const slotStart = slot.startTime?.substring(0, 5) || '';
-      const slotEnd = slot.endTime?.substring(0, 5) || '';
-      return startTime < slotEnd && endTime > slotStart;
-    });
-  }, [modalTimeSlots]);
+  // Kiểm tra xem đã có khung thời gian nào dành cho trường đó chưa.
+  const isSlotExistsForField = useCallback(
+    (fieldId, startTime, endTime) => {
+      if (!fieldId) return false;
+      return modalTimeSlots.some((slot) => {
+        const slotFieldId = slot.fieldId ?? slot.FieldId;
+        if (!slotFieldId || Number(slotFieldId) !== Number(fieldId)) {
+          return false;
+        }
+        const slotStart = slot.startTime?.substring(0, 5) || "";
+        const slotEnd = slot.endTime?.substring(0, 5) || "";
+        return startTime < slotEnd && endTime > slotStart;
+      });
+    },
+    [modalTimeSlots]
+  );
 
-  // Load data
+  // tải dữ liệu sân lớn và sân con
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -103,8 +110,9 @@ export const useScheduleData = (currentUserId, isDemo = false) => {
 
       // Filter only owner's complexes that are Active
       const ownerComplexes = allComplexesWithFields.filter(
-        complex =>
-          (complex.ownerId === currentUserId || complex.ownerId === Number(currentUserId)) &&
+        (complex) =>
+          (complex.ownerId === currentUserId ||
+            complex.ownerId === Number(currentUserId)) &&
           (complex.status || complex.Status || "Active") === "Active"
       );
 
@@ -116,19 +124,19 @@ export const useScheduleData = (currentUserId, isDemo = false) => {
         setFields(ownerComplexes[0].fields || []);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error("Error loading data:", error);
       Swal.fire({
-        icon: 'error',
-        title: 'Lỗi tải dữ liệu',
-        text: error.message || 'Không thể tải dữ liệu',
-        confirmButtonColor: '#ef4444'
+        icon: "error",
+        title: "Lỗi tải dữ liệu",
+        text: error.message || "Không thể tải dữ liệu",
+        confirmButtonColor: "#ef4444",
       });
     } finally {
       setLoading(false);
     }
   }, [currentUserId, selectedComplex]);
 
-  // Process expired schedules
+  // lịch trình đã hết hạn xử lý
   const processExpiredSchedules = useCallback(async (schedules) => {
     if (!schedules || schedules.length === 0) return;
 
@@ -138,29 +146,40 @@ export const useScheduleData = (currentUserId, isDemo = false) => {
 
     for (const schedule of schedules) {
       try {
-        const scheduleId = schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
+        const scheduleId =
+          schedule.scheduleId ?? schedule.ScheduleID ?? schedule.id;
         if (!scheduleId) continue;
 
         let scheduleDate = null;
-        if (typeof schedule.date === 'string') {
+        if (typeof schedule.date === "string") {
           scheduleDate = new Date(schedule.date);
         } else if (schedule.date && schedule.date.year) {
-          scheduleDate = new Date(schedule.date.year, schedule.date.month - 1, schedule.date.day);
+          scheduleDate = new Date(
+            schedule.date.year,
+            schedule.date.month - 1,
+            schedule.date.day
+          );
         }
 
         if (!scheduleDate) continue;
 
-        let endTime = schedule.endTime || schedule.EndTime || '23:59:59';
-        if (typeof endTime === 'object' && endTime.hour !== undefined) {
-          endTime = `${String(endTime.hour).padStart(2, '0')}:${String(endTime.minute).padStart(2, '0')}:00`;
+        let endTime = schedule.endTime || schedule.EndTime || "23:59:59";
+        if (typeof endTime === "object" && endTime.hour !== undefined) {
+          endTime = `${String(endTime.hour).padStart(2, "0")}:${String(
+            endTime.minute
+          ).padStart(2, "0")}:00`;
         }
 
-        const [hours, minutes] = endTime.split(':').map(Number);
+        const [hours, minutes] = endTime.split(":").map(Number);
         const scheduleEndDateTime = new Date(scheduleDate);
         scheduleEndDateTime.setHours(hours || 23, minutes || 59, 0, 0);
 
         if (scheduleEndDateTime < now) {
-          const status = (schedule.status || schedule.Status || '').toLowerCase();
+          const status = (
+            schedule.status ||
+            schedule.Status ||
+            ""
+          ).toLowerCase();
 
           if (scheduleEndDateTime < twoDaysAgo) {
             try {
@@ -168,12 +187,15 @@ export const useScheduleData = (currentUserId, isDemo = false) => {
             } catch (error) {
               // ignore best-effort delete
             }
-          } else if (status !== 'maintenance') {
+          } else if (status !== "maintenance") {
             try {
-              const updateResult = await updateFieldScheduleStatus(scheduleId, 'Maintenance');
+              const updateResult = await updateFieldScheduleStatus(
+                scheduleId,
+                "Maintenance"
+              );
               if (updateResult.success) {
-                schedule.status = 'Maintenance';
-                schedule.Status = 'Maintenance';
+                schedule.status = "Maintenance";
+                schedule.Status = "Maintenance";
               }
             } catch (error) {
               // ignore best-effort update
@@ -186,121 +208,133 @@ export const useScheduleData = (currentUserId, isDemo = false) => {
     }
   }, []);
 
-  // Load time slots for table based on selected field
-  const loadTimeSlotsForTable = useCallback(async (selectedFieldForSchedule = 'all') => {
-    try {
-      if (!selectedComplex || !fields.length) {
-        setTimeSlots([]);
-        return;
-      }
-
-      if (selectedFieldForSchedule !== 'all') {
-        const fieldId = Number(selectedFieldForSchedule);
-        const slotsResponse = await fetchTimeSlotsByField(fieldId);
-        if (slotsResponse.success && slotsResponse.data) {
-          const enrichedSlots = (slotsResponse.data || []).map(slot => ({
-            ...slot,
-            slotIdsByField: {
-              [fieldId]: slot.slotId || slot.SlotID
-            }
-          }));
-          setTimeSlots(enrichedSlots);
-        } else {
+  // tải khung thời gian cho bảng
+  const loadTimeSlotsForTable = useCallback(
+    async (selectedFieldForSchedule = "all") => {
+      try {
+        if (!selectedComplex || !fields.length) {
           setTimeSlots([]);
+          return;
         }
-      } else {
-        // Fetch time slots for ALL fields in the complex
-        const allSlots = [];
-        const slotMap = new Map();
 
-        for (const field of fields) {
-          const fieldId = field.fieldId || field.FieldId;
-          if (!fieldId) continue;
+        if (selectedFieldForSchedule !== "all") {
+          const fieldId = Number(selectedFieldForSchedule);
+          const slotsResponse = await fetchTimeSlotsByField(fieldId);
+          if (slotsResponse.success && slotsResponse.data) {
+            const enrichedSlots = (slotsResponse.data || []).map((slot) => ({
+              ...slot,
+              slotIdsByField: {
+                [fieldId]: slot.slotId || slot.SlotID,
+              },
+            }));
+            setTimeSlots(enrichedSlots);
+          } else {
+            setTimeSlots([]);
+          }
+        } else {
+          // Fetch time slots for ALL fields in the complex
+          const allSlots = [];
+          const slotMap = new Map();
 
-          try {
-            const slotsResponse = await fetchTimeSlotsByField(fieldId);
-            if (slotsResponse.success && slotsResponse.data) {
-              for (const slot of slotsResponse.data) {
-                const slotKey = `${slot.startTime}-${slot.endTime}`;
-                if (slotMap.has(slotKey)) {
-                  const existingSlot = slotMap.get(slotKey);
-                  existingSlot.slotIdsByField[fieldId] = slot.slotId || slot.SlotID;
-                } else {
-                  const newSlot = {
-                    ...slot,
-                    slotIdsByField: {
-                      [fieldId]: slot.slotId || slot.SlotID
-                    }
-                  };
-                  slotMap.set(slotKey, newSlot);
-                  allSlots.push(newSlot);
+          for (const field of fields) {
+            const fieldId = field.fieldId || field.FieldId;
+            if (!fieldId) continue;
+
+            try {
+              const slotsResponse = await fetchTimeSlotsByField(fieldId);
+              if (slotsResponse.success && slotsResponse.data) {
+                for (const slot of slotsResponse.data) {
+                  const slotKey = `${slot.startTime}-${slot.endTime}`;
+                  if (slotMap.has(slotKey)) {
+                    const existingSlot = slotMap.get(slotKey);
+                    existingSlot.slotIdsByField[fieldId] =
+                      slot.slotId || slot.SlotID;
+                  } else {
+                    const newSlot = {
+                      ...slot,
+                      slotIdsByField: {
+                        [fieldId]: slot.slotId || slot.SlotID,
+                      },
+                    };
+                    slotMap.set(slotKey, newSlot);
+                    allSlots.push(newSlot);
+                  }
                 }
               }
+            } catch (error) {
+              console.error(`Error loading slots for field ${fieldId}:`, error);
             }
-          } catch (error) {
-            console.error(`Error loading slots for field ${fieldId}:`, error);
+          }
+
+          allSlots.sort((a, b) => {
+            const startA = a.startTime || "";
+            const startB = b.startTime || "";
+            return startA.localeCompare(startB);
+          });
+
+          setTimeSlots(allSlots);
+        }
+      } catch (error) {
+        console.error("Error loading time slots:", error);
+        setTimeSlots([]);
+      }
+    },
+    [selectedComplex, fields]
+  );
+
+  // tải lịch trình cho bảng
+  const loadSchedulesForTable = useCallback(
+    async (scheduleFilterField = "all") => {
+      try {
+        setLoadingSchedules(true);
+
+        if (!selectedComplex || !fields.length) {
+          setFieldSchedules([]);
+          return;
+        }
+
+        let allSchedules = [];
+
+        if (scheduleFilterField !== "all") {
+          const fieldId = Number(scheduleFilterField);
+          const schedulesResponse = await fetchFieldSchedulesByField(fieldId);
+          if (schedulesResponse.success && schedulesResponse.data) {
+            allSchedules = schedulesResponse.data;
+          }
+        } else {
+          for (const field of fields) {
+            const fieldId = field.fieldId || field.FieldId;
+            if (!fieldId) continue;
+
+            try {
+              const schedulesResponse = await fetchFieldSchedulesByField(
+                fieldId
+              );
+              if (schedulesResponse.success && schedulesResponse.data) {
+                allSchedules.push(...schedulesResponse.data);
+              }
+            } catch (error) {
+              console.error(
+                `Error loading schedules for field ${fieldId}:`,
+                error
+              );
+            }
           }
         }
 
-        allSlots.sort((a, b) => {
-          const startA = a.startTime || '';
-          const startB = b.startTime || '';
-          return startA.localeCompare(startB);
-        });
+        // Process expired schedules
+        await processExpiredSchedules(allSchedules);
 
-        setTimeSlots(allSlots);
-      }
-    } catch (error) {
-      console.error('Error loading time slots:', error);
-      setTimeSlots([]);
-    }
-  }, [selectedComplex, fields]);
-
-  // Load schedules for table
-  const loadSchedulesForTable = useCallback(async (scheduleFilterField = 'all') => {
-    try {
-      setLoadingSchedules(true);
-
-      if (!selectedComplex || !fields.length) {
+        setFieldSchedules(allSchedules);
+      } catch (error) {
+        console.error("Error loading schedules:", error);
         setFieldSchedules([]);
-        return;
+      } finally {
+        setLoadingSchedules(false);
       }
-
-      let allSchedules = [];
-
-      if (scheduleFilterField !== 'all') {
-        const fieldId = Number(scheduleFilterField);
-        const schedulesResponse = await fetchFieldSchedulesByField(fieldId);
-        if (schedulesResponse.success && schedulesResponse.data) {
-          allSchedules = schedulesResponse.data;
-        }
-      } else {
-        for (const field of fields) {
-          const fieldId = field.fieldId || field.FieldId;
-          if (!fieldId) continue;
-
-          try {
-            const schedulesResponse = await fetchFieldSchedulesByField(fieldId);
-            if (schedulesResponse.success && schedulesResponse.data) {
-              allSchedules.push(...schedulesResponse.data);
-            }
-          } catch (error) {
-            console.error(`Error loading schedules for field ${fieldId}:`, error);
-          }
-        }
-      }
-
-      // Process expired schedules
-      await processExpiredSchedules(allSchedules);
-
-      setFieldSchedules(allSchedules);
-    } catch (error) {
-      console.error('Error loading schedules:', error);
-      setFieldSchedules([]);
-    } finally {
-      setLoadingSchedules(false);
-    }
-  }, [selectedComplex, fields, processExpiredSchedules]);
+    },
+    [selectedComplex, fields, processExpiredSchedules]
+  );
 
   useEffect(() => {
     if (currentUserId) {

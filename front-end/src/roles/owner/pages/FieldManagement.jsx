@@ -283,27 +283,29 @@ const FieldManagement = ({ isDemo = false }) => {
                                                                  <Edit className="w-3 h-3 mr-1" />
                                                                  Sửa
                                                             </Button>
-                                                            <Button
-                                                                 variant="outline"
-                                                                 size="sm"
-                                                                 onClick={() => handleToggleComplexStatus(complex)}
-                                                                 className={`flex-1 text-xs rounded-xl ${complex.status === "Active"
-                                                                      ? "text-orange-600 border-orange-200 hover:bg-orange-50"
-                                                                      : "text-green-600 border-green-200 hover:bg-green-50"
-                                                                      }`}
-                                                            >
-                                                                 {complex.status === "Active" ? (
-                                                                      <>
-                                                                           <PowerOff className="w-3 h-3 mr-1" />
-                                                                           Tắt
-                                                                      </>
-                                                                 ) : (
-                                                                      <>
-                                                                           <Power className="w-3 h-3 mr-1" />
-                                                                           Bật
-                                                                      </>
-                                                                 )}
-                                                            </Button>
+                                                            {complex.status !== "Pending" && (
+                                                                 <Button
+                                                                      variant="outline"
+                                                                      size="sm"
+                                                                      onClick={() => handleToggleComplexStatus(complex)}
+                                                                      className={`flex-1 text-xs rounded-xl ${complex.status === "Active"
+                                                                           ? "text-orange-600 border-orange-200 hover:bg-orange-50"
+                                                                           : "text-green-600 border-green-200 hover:bg-green-50"
+                                                                           }`}
+                                                                 >
+                                                                      {complex.status === "Active" ? (
+                                                                           <>
+                                                                                <PowerOff className="w-3 h-3 mr-1" />
+                                                                                Tắt
+                                                                           </>
+                                                                      ) : (
+                                                                           <>
+                                                                                <Power className="w-3 h-3 mr-1" />
+                                                                                Bật
+                                                                           </>
+                                                                      )}
+                                                                 </Button>
+                                                            )}
                                                             <Button
                                                                  variant="outline"
                                                                  size="sm"
@@ -488,16 +490,16 @@ const FieldManagement = ({ isDemo = false }) => {
                     onClose={handleCloseComplexModal}
                     onSubmit={handleComplexSubmit}
                     formData={complexFormData}
-                    setFormData={setComplexFormData}
-                    isEditing={isEditComplexModalOpen}
-                    handleFieldChange={handleComplexFieldChange}
-                    handleImageUpload={handleComplexImageUpload}
-                    removeImage={removeComplexImage}
-                    triggerImagePicker={triggerComplexImagePicker}
-                    handleUploadAreaKeyDown={handleComplexUploadAreaKeyDown}
+                    isEdit={isEditComplexModalOpen}
+                    onFieldChange={handleComplexFieldChange}
+                    onImageUpload={handleComplexImageUpload}
+                    onRemoveImage={removeComplexImage}
+                    onTriggerImagePicker={triggerComplexImagePicker}
+                    onUploadAreaKeyDown={handleComplexUploadAreaKeyDown}
                     imageInputRef={complexImageInputRef}
-                    imageUploading={complexImageUploading}
-                    onAddressSelect={handleComplexAddressSelect}
+                    isUploadingImage={complexImageUploading}
+                    onAddressChange={(value) => handleComplexFieldChange("address", value)}
+                    onLocationSelect={handleComplexAddressSelect}
                />
 
                {/* Demo Restricted Modal */}

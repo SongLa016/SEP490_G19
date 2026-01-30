@@ -97,23 +97,7 @@ export default function Header({ user, onLoggedOut }) {
                     { id: "bookings", label: "Đặt sân", icon: Calendar },
                     { id: "community", label: "Cộng đồng", icon: Users },
                ];
-          } else if (user.roleName === "Owner") {
-               return [
-                    ...baseItems,
-                    { id: "owner", label: "Sân của tôi", icon: MapPin },
-                    { id: "owner/bookings", label: "Đặt sân", icon: Calendar },
-                    { id: "owner/reports", label: "Báo cáo", icon: BarChart3 },
-                    { id: "community", label: "Cộng đồng", icon: Users },
-               ];
-          } else if (user.roleName === "Admin") {
-               return [
-                    ...baseItems,
-                    { id: "admin/users", label: "Người dùng", icon: Users },
-                    { id: "admin", label: "Trang quản trị", icon: MapPin },
-                    { id: "community", label: "Cộng đồng", icon: Users },
-               ];
           }
-
           return baseItems;
      };
 

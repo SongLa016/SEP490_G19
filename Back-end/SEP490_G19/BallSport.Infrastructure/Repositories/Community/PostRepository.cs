@@ -64,7 +64,7 @@ namespace BallSport.Infrastructure.Repositories.Community
         // 3. TẠO BÀI MỚI → TỰ ĐỘNG PENDING
         public async Task<Post> CreatePostAsync(Post post)
         {
-            post.CreatedAt = DateTime.UtcNow;
+            post.CreatedAt = DateTime.Now;
             post.Status = "Pending"; // ← BẮT BUỘC CHỜ DUYỆT
             _context.Posts.Add(post);
             await _context.SaveChangesAsync();
@@ -81,7 +81,7 @@ namespace BallSport.Infrastructure.Repositories.Community
             existing.Content = post.Content;
             existing.MediaUrl = post.MediaUrl;
             existing.FieldId = post.FieldId;
-            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedAt = DateTime.Now;
 
             await _context.SaveChangesAsync();
             return existing;
@@ -132,7 +132,7 @@ namespace BallSport.Infrastructure.Repositories.Community
             if (post == null || post.Status != "Pending") return false;
 
             post.Status = newStatus;
-            post.UpdatedAt = DateTime.UtcNow;
+            post.UpdatedAt = DateTime.Now;
             await _context.SaveChangesAsync();
             return true;
         }
@@ -204,7 +204,7 @@ namespace BallSport.Infrastructure.Repositories.Community
 
         public async Task<IEnumerable<Post>> GetTrendingPostsAsync(int topCount = 10, int daysBack = 7)
         {
-            var fromDate = DateTime.UtcNow.AddDays(-daysBack);
+            var fromDate = DateTime.Now.AddDays(-daysBack);
             return await _context.Posts
                 .Include(p => p.User)
                 .Include(p => p.Field)

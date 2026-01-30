@@ -1,10 +1,10 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using BallSport.API.BackgroundJobs;
 using BallSport.API.Controllers.DistanceCalculator;
 using BallSport.Application.CloudinarySettings;
 using BallSport.Application.Services;
 using BallSport.Application.Services.AdminStatistics;
-using BallSport.Application.Services.AISeoContent;
 using BallSport.Application.Services.Community;
 using BallSport.Application.Services.DistanceCalculator;
 using BallSport.Application.Services.GoongMap;
@@ -30,9 +30,11 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -48,14 +50,9 @@ public class Program
         Host.CreateDefaultBuilder(args)
             .ConfigureAppConfiguration((hostingContext, config) =>
             {
-                // Xóa tất cả config mặc định
                 config.Sources.Clear();
-
-                // Load JSON + environment variables, không tạo watcher
                 config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
-                      .AddJsonFile(
-                          $"appsettings.{hostingContext.HostingEnvironment.EnvironmentName}.json",
-                          optional: true, reloadOnChange: false)
+                      .AddJsonFile($"appsettings.{hostingContext.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: false)
                       .AddEnvironmentVariables();
             })
             .ConfigureWebHostDefaults(webBuilder =>
@@ -63,11 +60,22 @@ public class Program
                 webBuilder.ConfigureServices((context, services) =>
                 {
                     var config = context.Configuration;
-                    
+
+                    // ===================== LOGGING (Fix crash EventLog) =====================
+                    services.AddLogging(logging =>
+                    {
+                        logging.ClearProviders(); // Xóa EventLog mặc định để tránh crash
+                        logging.AddConsole();
+                        logging.AddDebug();
+
+                        logging.SetMinimumLevel(LogLevel.Information);
+                        logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning); // Giảm noise EF
+                    });
+
                     // ===================== SETTINGS =====================
                     services.Configure<CloudinarySettings>(config.GetSection("CloudinarySettings"));
 
-                    // ===================== CONTROLLERS + SWAGGER =====================
+                    // ===================== CONTROLLERS + JSON + SWAGGER =====================
                     services.AddControllers()
                         .AddJsonOptions(options =>
                         {
@@ -78,8 +86,7 @@ public class Program
                     services.AddEndpointsApiExplorer();
                     services.AddSwaggerGen(c =>
                     {
-                        c.SwaggerDoc("v1", new() { Title = "BallSport API", Version = "v1" });
-
+                        c.SwaggerDoc("v1", new OpenApiInfo { Title = "BallSport API", Version = "v1" });
                         c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                         {
                             Name = "Authorization",
@@ -89,18 +96,10 @@ public class Program
                             In = ParameterLocation.Header,
                             Description = "Nhập token JWT dạng: Bearer {token}"
                         });
-
                         c.AddSecurityRequirement(new OpenApiSecurityRequirement
                         {
                             {
-                                new OpenApiSecurityScheme
-                                {
-                                    Reference = new OpenApiReference
-                                    {
-                                        Type = ReferenceType.SecurityScheme,
-                                        Id = "Bearer"
-                                    }
-                                },
+                                new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } },
                                 Array.Empty<string>()
                             }
                         });
@@ -111,28 +110,28 @@ public class Program
                     {
                         options.AddPolicy("AllowFrontend", builder =>
                         {
-                            builder
-                                .WithOrigins(
+                            builder.WithOrigins(
                                     "http://localhost:3000",
                                     "https://localhost:3000",
                                     "https://sep490-g19-zxph.onrender.com",
-                                    "https://sep490-g19.vercel.app"
-                                )
-
-                                .AllowAnyHeader()
-                                .AllowAnyMethod()
-                                .AllowCredentials();
+                                    "https://sep490-g19.vercel.app")
+                                   .AllowAnyHeader()
+                                   .AllowAnyMethod()
+                                   .AllowCredentials();
                         });
                     });
 
-                    // ===================== DATABASE =====================
+                    // ===================== DATABASE + EF CORE (Fix warning Multiple Include) =====================
                     services.AddDbContext<Sep490G19v1Context>(options =>
-                        options.UseSqlServer(config.GetConnectionString("MyCnn")));
+                        options.UseSqlServer(config.GetConnectionString("MyCnn"))
+                               .ConfigureWarnings(w => w.Ignore(RelationalEventId.MultipleCollectionIncludeWarning)) // Tắt warning Cartesian Explosion
+                    );
 
                     // ===================== DEPENDENCY INJECTION =====================
                     services.AddMemoryCache();
+                    services.AddHostedService<PackageSessionAutoCompleteJob>();
 
-                    // --- Statistic Owner ---
+                    // Statistic Owner
                     services.AddScoped<IOwnerRecentBookingRepository, OwnerRecentBookingRepository>();
                     services.AddScoped<OwnerRecentBookingService>();
                     services.AddScoped<IFieldPerformanceRepository, FieldPerformanceRepository>();
@@ -146,7 +145,7 @@ public class Program
                     services.AddScoped<OwnerTimeSlotStatisticRepository>();
                     services.AddScoped<OwnerTimeSlotStatisticService>();
 
-                    // --- Statistic Admin ---
+                    // Statistic Admin
                     services.AddScoped<IAdminUserStatisticRepository, AdminUserStatisticRepository>();
                     services.AddScoped<AdminUserStatisticService>();
                     services.AddScoped<IAdminOwnerStatisticRepository, AdminOwnerStatisticRepository>();
@@ -166,30 +165,30 @@ public class Program
                     services.AddScoped<IUserListRepository, UserListRepository>();
                     services.AddScoped<IUserListService, UserListService>();
 
-                    //--- Statistic Player ---
+                    // Statistic Player
                     services.AddScoped<PlayRepository>();
                     services.AddScoped<PlayerStatisticService>();
                     services.AddScoped<IPlayerRecentActivityRepository, PlayerRecentActivityRepository>();
                     services.AddScoped<PlayerRecentActivityService>();
-                    //--- Rating Booking ---
+
+                    // Rating Booking
                     services.AddScoped<RatingRepository>();
                     services.AddScoped<RatingService>();
                     services.AddScoped<RatingReplyRepository>();
                     services.AddScoped<RatingReplyService>();
 
-                    // --- Core user / auth ---
+                    // Core user / auth
                     services.AddScoped<UserRepositories>();
                     services.AddScoped<UserService>();
                     services.AddScoped<JwtService>();
                     services.AddScoped<OTPService>();
                     services.AddScoped<UserProfileService>();
                     services.AddScoped<UserProfileRepository>();
-                    services.AddScoped<ICloudinaryService, CloudinaryService>();
-                    services.AddScoped<ICloudinaryService, CloudinaryService>();
+                    services.AddScoped<ICloudinaryService, CloudinaryService>(); // Chỉ 1 lần
                     services.AddScoped<IUserRepository, LockUserRepository>();
                     services.AddScoped<IUserService, LockUserService>();
 
-                    // --- Booking & Payment ---
+                    // Booking & Payment
                     services.AddScoped<BookingService>();
                     services.AddScoped<BookingFieldsRepoitory>();
                     services.AddScoped<BookingCancellationRepository>();
@@ -197,38 +196,32 @@ public class Program
                     services.AddScoped<BookingCancellationReService>();
                     services.AddScoped<PaymentRepository>();
 
-                    // === Phần mới từ nhánh Trung ===
+                    // Phần mới từ nhánh Trung
                     services.AddScoped<BookingPackageRepository>();
                     services.AddScoped<MonthlyPackagePaymentRepo>();
                     services.AddScoped<PackageSessionRepository>();
                     services.AddScoped<BookingPackageSessionDraftRepository>();
                     services.AddScoped<MonthlyBookingService>();
 
-                    // --- Bank accounts ---
+                    // Bank accounts
                     services.AddScoped<PlayerBankAccountRepository>();
                     services.AddScoped<OwnerBankAccountRepository>();
                     services.AddScoped<OwnerBankAccountService>();
                     services.AddScoped<PlayerBankAccountService>();
 
-                    // --- Field-related ---
+                    // Field-related
                     services.AddScoped<FieldRepository>();
                     services.AddScoped<FieldService>();
                     services.AddScoped<IFieldTypeRepository, FieldTypeRepository>();
-                    services.AddScoped<IFieldTypeService, FieldTypeService>();
-                    services.AddScoped<FieldTypeService>();
+                    services.AddScoped<IFieldTypeService, FieldTypeService>(); // Chỉ scoped interface
                     services.AddScoped<FieldComplexRepository>();
                     services.AddScoped<FieldComplexService>();
                     services.AddScoped<DepositPolicyRepository>();
                     services.AddScoped<DepositPolicyService>();
-                    services.AddScoped<FieldPriceRepository>();
-                    services.AddScoped<FieldPriceService>();
                     services.AddScoped<ITimeSlotRepository, TimeSlotRepository>();
                     services.AddScoped<ITimeSlotService, TimeSlotService>();
-                    services.AddScoped<IFieldPriceRepository, FieldPriceRepository>();
-                    services.AddScoped<IFieldPriceService, FieldPriceService>();
                     services.AddScoped<IFieldScheduleRepository, FieldScheduleRepository>();
                     services.AddScoped<IFieldScheduleService, FieldScheduleService>();
-                    services.AddScoped<TimeSlotService>();
                     services.AddScoped<ITopFieldRepository, TopFieldRepository>();
                     services.AddScoped<ITopFieldService, TopFieldService>();
                     services.AddScoped<IPlayerProfileRepository, PlayerProfileRepository>();
@@ -236,12 +229,7 @@ public class Program
                     services.AddScoped<IFavoriteFieldRepository, FavoriteFieldRepository>();
                     services.AddScoped<IFavoriteFieldService, FavoriteFieldService>();
 
-
-                    // 1. Tăng giới hạn upload (100MB)
-                    services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = 100_000_000);
-                    services.Configure<IISServerOptions>(options => options.MaxRequestBodySize = 100_000_000);
-
-                    // --- Community module ---
+                    // Community module
                     services.AddScoped<IPostRepository, PostRepository>();
                     services.AddScoped<ICommentRepository, CommentRepository>();
                     services.AddScoped<IPostLikeRepository, PostLikeRepository>();
@@ -253,23 +241,22 @@ public class Program
                     services.AddScoped<INotificationService, NotificationService>();
                     services.AddScoped<IReportService, ReportService>();
 
-                    // --- Match Finding module ---
+                    // Match Finding module
                     services.AddScoped<IMatchFindingRepository, MatchFindingRepository>();
                     services.AddScoped<IMatchFindingService, MatchFindingService>();
-                    // --- Goong Map Service ---
+
+                    // Goong Map & Distance
                     services.AddHttpClient();
                     services.AddScoped<GoongMapService>();
                     services.AddScoped<IDistanceCalculator, HaversineDistanceCalculator>();
                     services.AddScoped<ILocationCacheService, LocationMemoryCacheService>();
                     services.AddScoped<FieldComplexNearbyService>();
-                    // --- AI tạo SEO ---
-                    services.AddScoped<AiDataService>();
-                    services.AddScoped<AiContentService>();
-                    services.AddScoped<AiPostService>();
-                    services.AddScoped<AiAutoPostService>();
-                    services.AddScoped<AiAutoPostBackgroundService>();
 
-                    // --- Settings ---
+                    // ===================== UPLOAD LIMIT =====================
+                    services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = 100_000_000);
+                    services.Configure<IISServerOptions>(options => options.MaxRequestBodySize = 100_000_000);
+
+                    // ===================== SETTINGS =====================
                     services.Configure<CommunitySettings>(config.GetSection("CommunitySettings"));
                     services.Configure<NotificationSettings>(config.GetSection("NotificationSettings"));
                     services.Configure<ReportSettings>(config.GetSection("ReportSettings"));
@@ -278,6 +265,8 @@ public class Program
                     var smtpSettings = config.GetSection("SmtpSettings").Get<SmtpSettings>();
                     services.AddSingleton(smtpSettings);
                     services.AddTransient<EmailService>();
+
+                    // ===================== Cloudinary =====================
                     services.AddSingleton(sp =>
                     {
                         var settings = sp.GetRequiredService<IOptions<CloudinarySettings>>().Value;
@@ -302,8 +291,7 @@ public class Program
                             ValidateIssuerSigningKey = true,
                             ValidIssuer = config["JwtSettings:Issuer"],
                             ValidAudience = config["JwtSettings:Audience"],
-                            IssuerSigningKey = new SymmetricSecurityKey(
-                                Encoding.UTF8.GetBytes(config["JwtSettings:SecretKey"])),
+                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["JwtSettings:SecretKey"])),
                             RoleClaimType = "Role"
                         };
                     })
@@ -318,20 +306,16 @@ public class Program
                         options.ClientSecret = googleSection["ClientSecret"];
                         options.CallbackPath = "/signin-google";
                     });
-
-                    // ===================== KESTREL UPLOAD LIMIT =====================
-                    services.Configure<KestrelServerOptions>(options => options.Limits.MaxRequestBodySize = 100_000_000);
                 });
-                
+
                 webBuilder.Configure((context, app) =>
                 {
-                    var env = context.HostingEnvironment;   
+                    var env = context.HostingEnvironment;
 
-                    app.UseRouting();
-                    app.UseCors("AllowFrontend");
-
-                    app.UseAuthentication();
-                    app.UseAuthorization();
+                    if (env.IsDevelopment())
+                    {
+                        app.UseDeveloperExceptionPage();
+                    }
 
                     app.UseSwagger();
                     app.UseSwaggerUI(c =>
@@ -340,18 +324,20 @@ public class Program
                         c.RoutePrefix = "swagger";
                     });
 
+                    app.UseRouting();
+                    app.UseCors("AllowFrontend");
+                    app.UseAuthentication();
+                    app.UseAuthorization();
+
                     app.UseEndpoints(endpoints =>
                     {
                         endpoints.MapControllers();
                         endpoints.MapGet("/", context =>
-                        {
-                            return context.Response.WriteAsync("✅ BallSport API is running with JWT + CORS + Swagger + Community!");
-                        });
+                            context.Response.WriteAsync("✅ BallSport API is running with JWT + CORS + Swagger + Community!"));
                     });
-
                 });
 
-                // Khai báo URL cho Render / Docker
-                webBuilder.UseUrls("http://+:8080");
+                // URL cho local + Render/Docker
+                webBuilder.UseUrls("http://0.0.0.0:8080", "http://localhost:8080");
             });
 }

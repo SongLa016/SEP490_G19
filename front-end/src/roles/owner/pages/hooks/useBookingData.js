@@ -12,7 +12,7 @@ export const useBookingData = (currentUserId) => {
   const [packageSessions, setPackageSessions] = useState([]);
   const [bookingPackages, setBookingPackages] = useState([]);
   const packageSessionsRef = useRef([]);
-  // hàm hydrate package sessions với schedules
+  // hàm gọi lại các buổi trong gói với lịch
   const hydratePackageSessionsWithSchedules = useCallback(
     (packageSessionsList = [], schedules = []) => {
       if (!packageSessionsList.length) return packageSessionsList;
@@ -50,7 +50,7 @@ export const useBookingData = (currentUserId) => {
     },
     []
   );
-  // hàm mark schedules với package sessions
+  // hàm gọi lại đánh dấu lịch với các buổi trong gói
   const markSchedulesWithPackageSessions = useCallback(
     (schedules = [], packageSessionsList = []) => {
       if (!schedules.length || !packageSessionsList.length) return schedules;
@@ -73,7 +73,7 @@ export const useBookingData = (currentUserId) => {
           schedule.slotID;
         const scheduleDateStr = normalizeDateString(schedule.date);
 
-        // Check if there's an active (non-cancelled) package session for this schedule AND date
+        // kiểm tra nếu có buổi nào khớp với lịch và ngày
         const matched = hydratedSessions.some((ps) => {
           const statusLower = (
             ps.sessionStatus ||
@@ -112,7 +112,7 @@ export const useBookingData = (currentUserId) => {
           );
         });
 
-        // Check if there's a cancelled session for this schedule AND date (to reset status)
+        // kiểm tra nếu có buổi đã hủy khớp với lịch và ngày
         const hasCancelledSession = hydratedSessions.some((ps) => {
           const statusLower = (
             ps.sessionStatus ||

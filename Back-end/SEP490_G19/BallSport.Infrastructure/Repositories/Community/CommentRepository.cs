@@ -43,7 +43,7 @@ namespace BallSport.Infrastructure.Repositories.Community
 
         public async Task<Comment> CreateCommentAsync(Comment comment)
         {
-            comment.CreatedAt = DateTime.UtcNow;
+            comment.CreatedAt = DateTime.Now;
             comment.Status = "Active";
 
             await _context.Comments.AddAsync(comment);

@@ -485,7 +485,6 @@ export default function PostManagement() {
      const getPostTitle = (post) => post?.Title ?? post?.title ?? "Không có tiêu đề";
      const getPostContent = (post) => post?.Content ?? post?.content ?? "";
      const getPostStatus = (post) => {
-
           let status = post?.status ?? post?.Status ?? post?.PostStatus ?? post?.postStatus ?? null;
 
           // Kiểm tra các flag để xác định status thực tế

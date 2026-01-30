@@ -58,8 +58,8 @@ namespace BallSport.Application.Services.Community
                 Content = dto.Content,
                 MediaUrl = imageUrls.Any() ? string.Join(",", imageUrls) : null,
                 FieldId = dto.FieldId,
-                CreatedAt = DateTime.UtcNow,     // LƯU UTC TRONG DB – CHUẨN QUỐC TẾ
-                UpdatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.Now,     // LƯU UTC TRONG DB – CHUẨN QUỐC TẾ
+                UpdatedAt = DateTime.Now,
                 Status = "Pending"
             };
 
@@ -195,7 +195,7 @@ namespace BallSport.Application.Services.Community
                 post.MediaUrl = string.Join(",", newImageUrls);
             }
 
-            post.UpdatedAt = DateTime.UtcNow; // LƯU UTC TRONG DB
+            post.UpdatedAt = DateTime.Now; // LƯU UTC TRONG DB
             await _postRepository.UpdatePostAsync(post);
             return await MapToPostDTOAsync(post, userId);
         }

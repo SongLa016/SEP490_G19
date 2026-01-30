@@ -1,7 +1,5 @@
 ﻿using BallSport.Infrastructure.Data;
-using BallSport.Infrastructure.Models;
 using Microsoft.EntityFrameworkCore;
-using BallSport.Infrastructure.Data;
 using static BallSport.Infrastructure.Repositories.AdminStatistics.UserListRepository;
 
 namespace BallSport.Infrastructure.Repositories.AdminStatistics

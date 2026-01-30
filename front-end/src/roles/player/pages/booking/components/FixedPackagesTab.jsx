@@ -92,6 +92,9 @@ export default function FixedPackagesTab({
     if (statusLower.includes("booking") || statusLower.includes("pending") || statusLower.includes("waiting")) {
       return { label: "Đã đặt", badge: "bg-green-100 text-green-700 border-green-200", icon: CheckCircle };
     }
+     if (statusLower.includes("completed") || statusLower.includes("finished")) {
+      return { label: "Hoàn thành", badge: "bg-green-600 text-white border-green-500", icon: CheckCircle };
+    }
     if (statusLower.includes("cancelled") || statusLower.includes("canceled")) {
       return { label: "Đã hủy", badge: "bg-red-100 text-red-700 border-red-200", icon: XCircle };
     }

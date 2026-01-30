@@ -64,6 +64,9 @@ export const formatPaymentCountdown = (remainingMs) => {
 // kiểm tra đặt sân chưa thanh toán và còn trong thời gian cho phép (10 phút từ createdAt)
 export const isPendingUnpaidWithin10Minutes = (booking) => {
   if (!booking) return false;
+  
+  // Nếu player đã hoàn tất đặt sân (nhấn nút "Hoàn tất đặt sân"), không hiển thị nút tiếp tục thanh toán
+  if (booking.playerConfirmed) return false;
 
   const statusLower = String(
     booking.status || booking.bookingStatus || ""
@@ -105,13 +108,14 @@ export const shouldShowFindOpponentButton = (booking) => {
     booking.status || booking.bookingStatus || ""
   ).toLowerCase();
   const paymentLower = String(booking.paymentStatus || "").toLowerCase();
-  // phải được xác nhận hoặc hoàn thành
+  // phải được xác nhận hoặc hoàn thành hoặc pending đã thanh toán
+  const isPending = statusLower === "pending";
   const isConfirmed = statusLower === "confirmed";
   const isCompleted = statusLower === "completed";
 
   // phải được thanh toán
   const isPaid = paymentLower === "paid" || paymentLower === "đã thanh toán";
-  return (isConfirmed || isCompleted) && isPaid;
+  return (isPending || isConfirmed || isCompleted) && isPaid;
 };
 
 // kiểm tra yêu cầu tham gia trận đấu
