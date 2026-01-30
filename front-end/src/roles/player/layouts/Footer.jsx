@@ -22,7 +22,7 @@ export default function Footer() {
                          {/* Company Info */}
                          <div className="col-span-1 md:col-span-2">
                               <div className="flex items-center mb-4">
-                                   <img src={logo} alt="Logo" className=" hover:scale-105 transition-all duration-300 w-36" />
+                                   <img src={logo} alt="Logo" className=" hover:scale-105 transition-all duration-300 w-40" />
                               </div>
                               <p className="text-gray-300 mb-4">
                                    Nền tảng kết nối và đặt sân bóng đá hàng đầu Việt Nam.
@@ -52,11 +52,10 @@ export default function Footer() {
                          <div>
                               <h3 className="text-lg font-semibold mb-4">Liên kết nhanh</h3>
                               <ul className="space-y-2">
-                                   <li><Link to="#" className="text-gray-300 hover:text-white transition-colors">Tìm sân</Link></li>
-                                   <li><Link to="#" className="text-gray-300 hover:text-white transition-colors">Đăng ký chủ sân</Link></li>
-                                   <li><Link to="#" className="text-gray-300 hover:text-white transition-colors">Giải đấu</Link></li>
-                                   <li><Link to="#" className="text-gray-300 hover:text-white transition-colors">Cộng đồng</Link></li>
-                                   <li><Link to="#" className="text-gray-300 hover:text-white transition-colors">Blog</Link></li>
+                                   <li><Link to="/search" className="text-gray-300 hover:text-white transition-colors">Tìm sân</Link></li>
+                                   <li><Link to="/auth" className="text-gray-300 hover:text-white transition-colors">Đăng ký chủ sân</Link></li>
+                                   <li><Link to="/community" className="text-gray-300 hover:text-white transition-colors">Cộng đồng</Link></li>
+                                   <li><Link to="/home" className="text-gray-300 hover:text-white transition-colors">Trang chủ</Link></li>
                               </ul>
                          </div>
 
@@ -66,7 +65,7 @@ export default function Footer() {
                               <div className="space-y-3">
                                    <div className="flex items-center">
                                         <MapPin className="w-4 h-4 mr-2 text-teal-500" />
-                                        <span className="text-gray-300">Khu CNC Hòa lạc, Thạch Thất, Hà Nội</span>
+                                        <span className="text-gray-300 truncate">Khu CNC Hòa lạc, Thạch Thất, Hà Nội</span>
                                    </div>
                                    <div className="flex items-center">
                                         <Phone className="w-4 h-4 mr-2 text-teal-500" />

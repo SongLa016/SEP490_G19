@@ -177,7 +177,7 @@ export default function DepositPolicies({ isDemo = false }) {
                });
                return;
           }
-          // Tải giá slot từ API
+          // Tải giá slot từ API và tính toán giá min/max
           let isMounted = true;
           const loadSlotPrices = async () => {
                setSlotPriceInfo((prev) => ({

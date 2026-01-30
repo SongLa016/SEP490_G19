@@ -1308,9 +1308,9 @@ export default function BookingHistory({ user }) {
                                              // Role badge
                                              const getRoleBadge = (role) => {
                                                   const roleLower = (role || "").toLowerCase();
-                                                  if (roleLower === "creator") {
+                                                  if (roleLower === "host") {
                                                        return <Badge className="bg-blue-500 hover:bg-blue-600 text-white border-blue-200">Người tạo</Badge>;
-                                                  } else if (roleLower === "joiner") {
+                                                  } else if (roleLower === "guest") {
                                                        return <Badge className="bg-purple-500 hover:bg-purple-600 text-white border-purple-200">Người tham gia</Badge>;
                                                   }
                                                   return <Badge className="bg-gray-500 hover:bg-gray-600 text-white border-gray-200">{role || "Không rõ"}</Badge>;

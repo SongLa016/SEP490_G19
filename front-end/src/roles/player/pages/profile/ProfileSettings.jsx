@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, Shield, Trash2, AlertTriangle, Phone, Mail, User, Calendar, CheckCircle, AlertCircle, Key, Eye, EyeOff, Check } from "lucide-react";
+import { Settings, Shield, Phone, Mail, User, CheckCircle, AlertCircle, Key, Eye, EyeOff, Check } from "lucide-react";
 import { Container, Card, CardContent, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, FadeIn, SlideIn, LoadingSpinner } from "../../../../shared/components/ui";
 import ErrorDisplay from "../../../../shared/components/ErrorDisplay";
 import { useTranslation } from "../../../../shared/hooks/useTranslation";
@@ -35,26 +35,6 @@ export default function ProfileSettings({ user }) {
      const [originalPhone, setOriginalPhone] = useState(user?.phone || "");
      const [isSavingPhone, setIsSavingPhone] = useState(false);
 
-     const formatDate = (dateString) => {
-          if (!dateString) return "";
-
-          // Ưu tiên parse trực tiếp từ chuỗi YYYY-MM-DD để tránh lệch ngày theo múi giờ
-          const match = String(dateString).match(/^(\d{4})-(\d{2})-(\d{2})/);
-          if (match) {
-               const [, year, month, day] = match;
-               return `${day}-${month}-${year}`;
-          }
-
-          // Fallback: dùng Date nếu chuỗi không theo định dạng trên
-          const date = new Date(dateString);
-          if (isNaN(date.getTime())) return "";
-
-          const day = String(date.getDate()).padStart(2, "0");
-          const month = String(date.getMonth() + 1).padStart(2, "0");
-          const year = date.getFullYear();
-
-          return `${day}-${month}-${year}`;
-     };
 
      // Tải thông tin tài khoản 
      useEffect(() => {
@@ -287,18 +267,8 @@ export default function ProfileSettings({ user }) {
           }
      };
 
-     /**
-      * Xử lý khi nhấn nút "Xóa tài khoản"
-      * Hiển thị popup xác nhận trước khi xóa
-      */
-     const handleDeleteAccount = () => {
-          if (window.confirm("Bạn có chắc chắn muốn xóa tài khoản? Hành động này không thể hoàn tác!")) {
-               // API call to delete account
-          }
-     };
-
      const renderAccountSettings = () => (
-          <div className="space-y-4 ">
+          <div className="space-y-4">
                <FadeIn delay={100}>
                     <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
                          <CardHeader className="flex flex-col gap-2 border-b border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
@@ -355,6 +325,7 @@ export default function ProfileSettings({ user }) {
                                              <Input
                                                   value={accountInfo.phone || ""}
                                                   onChange={(e) => setAccountInfo(prev => ({ ...prev, phone: e.target.value }))}
+                                                  disabled
                                                   placeholder={t("profileSettings.notUpdated")}
                                                   className="rounded-2xl border-teal-100 bg-white text-teal-900 focus:border-teal-500 focus:ring-teal-500"
                                              />
@@ -391,74 +362,6 @@ export default function ProfileSettings({ user }) {
                                         </Select>
                                    </div>
                               </div>
-                         </CardContent>
-                    </Card>
-               </FadeIn>
-
-               <FadeIn delay={160}>
-                    <Card className="rounded-3xl border border-teal-200/70 bg-white/90 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
-                         <CardHeader className="border-b border-teal-100/60 bg-gradient-to-r from-teal-50 via-white to-white rounded-t-3xl">
-                              <CardTitle className="flex items-center gap-2 text-teal-900">
-                                   <Shield className="w-5 h-5 text-teal-600" />
-                                   {t("profileSettings.accountStatus")}
-                              </CardTitle>
-                         </CardHeader>
-                         <CardContent className="space-y-4 p-6">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                   <div className="flex items-center justify-between rounded-2xl border border-green-200 bg-green-50/90 px-4 py-3">
-                                        <div className="flex items-center">
-                                             <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
-                                             <span className="text-sm font-semibold text-green-800">{t("profileSettings.accountActive")}</span>
-                                        </div>
-                                        <div className="text-xs font-semibold text-green-600">
-                                             {accountInfo.status || "Active"}
-                                        </div>
-                                   </div>
-                                   <div className="rounded-2xl border border-gray-200 bg-gray-50/90 px-4 py-3">
-                                        <div className="flex flex-wrap items-center justify-between gap-3">
-                                             <div className="flex items-center text-gray-700">
-                                                  <Calendar className="w-5 h-5 text-gray-600 mr-2" />
-                                                  <span className="text-sm font-semibold">{t("profileSettings.memberSince")}</span>
-                                             </div>
-                                             <span className="text-sm text-gray-600">
-                                                  {formatDate(accountInfo.createdAt)}
-                                             </span>
-                                        </div>
-                                   </div>
-                              </div>
-
-                         </CardContent>
-                    </Card>
-               </FadeIn>
-
-               <FadeIn delay={260}>
-                    <Card className="rounded-3xl border border-red-200/70 bg-white/95 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl backdrop-blur">
-                         <CardHeader className="border-b border-red-100/70 bg-gradient-to-r from-red-50 via-white to-white rounded-t-3xl">
-                              <CardTitle className="flex items-center gap-2 text-red-700">
-                                   <Trash2 className="w-5 h-5" />
-                                   Xóa tài khoản
-                              </CardTitle>
-                         </CardHeader>
-                         <CardContent className="space-y-4 p-6">
-                              <div className="rounded-2xl border border-red-100 bg-red-50/80 p-4">
-                                   <div className="flex items-start gap-3">
-                                        <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5" />
-                                        <div>
-                                             <h4 className="text-base font-semibold text-red-700">{t("profileSettings.deleteAccountWarning")}</h4>
-                                             <p className="mt-1 text-sm text-red-600">
-                                                  {t("profileSettings.deleteAccountDescription")}
-                                             </p>
-                                        </div>
-                                   </div>
-                              </div>
-                              <Button
-                                   variant="destructive"
-                                   className="rounded-2xl shadow-md hover:shadow-lg"
-                                   onClick={handleDeleteAccount}
-                              >
-                                   <Trash2 className="w-4 h-4 mr-2" />
-                                   {t("profileSettings.deleteAccount")}
-                              </Button>
                          </CardContent>
                     </Card>
                </FadeIn>

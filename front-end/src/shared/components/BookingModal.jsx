@@ -56,6 +56,10 @@ export default function BookingModal({
      const lockCountdownSeconds = lockRemainingMs > 0 ? Math.ceil(lockRemainingMs / 1000) : 0;
      const isPaymentLockActive = step === "payment" && paymentLockExpiresAt !== null;
 
+     // Auto-close timer cho trường hợp sân chưa có chính sách đặt cọc
+     const [autoCloseExpiresAt, setAutoCloseExpiresAt] = useState(null);
+     const [autoCloseRemainingMs, setAutoCloseRemainingMs] = useState(0);
+
      // Tính số tuần từ ngày bắt đầu đến ngày kết thúc
      const recurringWeeks = (() => {
           if (!isRecurring || !recurringStartDate || !recurringEndDate) return 0;
@@ -720,6 +724,8 @@ export default function BookingModal({
           if (step !== "payment") {
                setPaymentLockExpiresAt(null);
                setLockRemainingMs(0);
+               setAutoCloseExpiresAt(null);
+               setAutoCloseRemainingMs(0);
                return;
           }
      }, [step]);
@@ -756,6 +762,40 @@ export default function BookingModal({
           const timer = setInterval(updateRemaining, 1000);
           return () => clearInterval(timer);
      }, [paymentLockExpiresAt, step, onClose]);
+
+     // Auto-close timer cho trường hợp sân chưa có chính sách đặt cọc
+     useEffect(() => {
+          if (!autoCloseExpiresAt || step !== "payment") {
+               setAutoCloseRemainingMs(0);
+               return;
+          }
+
+          const updateAutoCloseRemaining = async () => {
+               const remaining = autoCloseExpiresAt - Date.now();
+               if (remaining <= 0) {
+                    setAutoCloseRemainingMs(0);
+                    setAutoCloseExpiresAt(null);
+                    setBookingInfo(null);
+                    setStep("details");
+                    onClose?.();
+
+                    const Swal = (await import('sweetalert2')).default;
+                    Swal.fire({
+                         icon: 'success',
+                         title: 'Đặt sân thành công',
+                         text: 'Bạn đã đặt sân thành công! Sân này không yêu cầu đặt cọc trước, vui lòng đến sân đúng giờ.',
+                         confirmButtonColor: '#10b981',
+                         confirmButtonText: 'Đã hiểu'
+                    });
+               } else {
+                    setAutoCloseRemainingMs(remaining);
+               }
+          };
+
+          updateAutoCloseRemaining();
+          const timer = setInterval(updateAutoCloseRemaining, 1000);
+          return () => clearInterval(timer);
+     }, [autoCloseExpiresAt, step, onClose]);
 
      useEffect(() => {
           if (typeof window === "undefined") return;
@@ -1864,6 +1904,13 @@ export default function BookingModal({
                // Chuyển sang bước thanh toán và khóa thao tác trong 5 phút hoặc đến khi hủy
                setStep("payment");
                setPaymentLockExpiresAt(Date.now() + PAYMENT_LOCK_DURATION_MS);
+
+               // Nếu sân chưa có chính sách đặt cọc, khởi tạo auto-close timer
+               const currentDepositAmount = bookingData.depositAmount || 0;
+               const isDepositAvailable = currentDepositAmount > 0;
+               if (!isDepositAvailable) {
+                    setAutoCloseExpiresAt(Date.now() + PAYMENT_LOCK_DURATION_MS);
+               }
           } catch (error) {
 
                const code = error?.code;
@@ -1994,6 +2041,7 @@ export default function BookingModal({
                          bookingId: bookingInfo.bookingId,
                          status: "pending",
                          paymentMethod: "deposit",
+                         playerConfirmed: true, // Đánh dấu player đã hoàn tất đặt sân
                          createdAt: new Date().toISOString()
                     }
                });
@@ -2159,7 +2207,7 @@ export default function BookingModal({
                                    errors={errors}
                                    onConfirmPayment={handleConfirmPayment}
                                    isPaymentLocked={isPaymentLockActive}
-                                   lockCountdownSeconds={lockCountdownSeconds}
+                                   lockCountdownSeconds={autoCloseRemainingMs > 0 ? Math.ceil(autoCloseRemainingMs / 1000) : lockCountdownSeconds}
                                    startDate={recurringStartDate}
                                    endDate={recurringEndDate}
                                    fieldSchedules={bookingData.fieldSchedules || []}

@@ -186,7 +186,7 @@ export default function OwnerBookingsTable({
                       {!isBookingPassed(booking) && (
                         <>
                           {(booking.status === "pending" ||
-                            (booking.status === "confirmed" && booking.paymentStatus === "paid")) && (
+                            (booking.status === "pending" && booking.paymentStatus === "paid")) && (
                               <Button
                                 variant="ghost"
                                 size="sm"

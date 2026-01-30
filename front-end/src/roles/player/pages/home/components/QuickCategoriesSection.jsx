@@ -3,8 +3,11 @@ import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ScrollReveal } from "../../../../../shared/components/ScrollReveal";
 
-export const QuickCategoriesSection = ({ featuredFields }) => {
+export const QuickCategoriesSection = ({ featuredFields = [] }) => {
      const navigate = useNavigate();
+
+     // Ensure featuredFields is always an array
+     const safeFields = Array.isArray(featuredFields) ? featuredFields : [];
 
      return (
           <ScrollReveal direction="up" delay={0.1}>
@@ -30,9 +33,9 @@ export const QuickCategoriesSection = ({ featuredFields }) => {
                               <div className="relative -mx-1 overflow-x-auto  scrollbar-none w-2/3">
                                    <div className="px-1 grid grid-cols-3 gap-5 max-w-3xl">
                                         {[
-                                             { id: "san5", label: "Sân 5 người", image: featuredFields[0]?.image, preset: { typeTab: "5vs5" } },
-                                             { id: "san7", label: "Sân 7 người", image: featuredFields[1]?.image, preset: { typeTab: "7vs7" } },
-                                             { id: "san11", label: "Sân 11 người", image: featuredFields[2]?.image, preset: { typeTab: "11vs11" } },
+                                             { id: "san5", label: "Sân 5 người", image: safeFields[0]?.imageUrl || safeFields[0]?.image, preset: { typeTab: "5vs5" } },
+                                             { id: "san7", label: "Sân 7 người", image: safeFields[1]?.imageUrl || safeFields[1]?.image, preset: { typeTab: "7vs7" } },
+                                             { id: "san11", label: "Sân 11 người", image: safeFields[2]?.imageUrl || safeFields[2]?.image, preset: { typeTab: "11vs11" } },
                                         ].map((c) => (
                                              <Button
                                                   key={c.id}

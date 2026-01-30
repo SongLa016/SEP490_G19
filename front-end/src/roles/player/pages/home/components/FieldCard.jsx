@@ -28,7 +28,7 @@ export const FieldCard = ({ field, index = 0, hoveredCardId, setHoveredCardId })
      return (
           <motion.div
                ref={cardRef}
-               className={`group/card rounded-xl ease-out hover:cursor-pointer border border-gray-100 shadow-md bg-white/90 backdrop-blur ${hoveredCardId === field.id ? 'ring-2 ring-teal-500/80 shadow-lg' : ''}`}
+               className={`group/card rounded-xl ease-out hover:cursor-pointer border border-gray-100 shadow-md bg-white/90 backdrop-blur ${hoveredCardId === (field.fieldId || field.id) ? 'ring-2 ring-teal-500/80 shadow-lg' : ''}`}
                initial={{ opacity: 0, y: 50, rotateY: -15 }}
                animate={isInView ? {
                     opacity: 1,
@@ -58,7 +58,7 @@ export const FieldCard = ({ field, index = 0, hoveredCardId, setHoveredCardId })
                }}
                onMouseEnter={() => {
                     if (collapseTimeoutRef.current) { clearTimeout(collapseTimeoutRef.current); collapseTimeoutRef.current = null; }
-                    setHoveredCardId(field.id);
+                    setHoveredCardId(field.fieldId || field.id);
                     setIsHovered(true);
                }}
                onMouseLeave={() => {
@@ -83,7 +83,7 @@ export const FieldCard = ({ field, index = 0, hoveredCardId, setHoveredCardId })
                     </div>
                     <div className="absolute top-4 right-5 flex items-center gap-1 bg-black/70 text-white text-[11px] px-2 py-1 rounded-full">
                          <Star className="w-3.5 h-3.5 text-yellow-400" />
-                         <span className="font-semibold">{field.rating}</span>
+                         <span className="font-semibold">{field.rating || '4.5'}</span>
                     </div>
                     <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-1.5">
                          {Array.from({ length: images.length }).map((_, i) => (
@@ -93,8 +93,8 @@ export const FieldCard = ({ field, index = 0, hoveredCardId, setHoveredCardId })
                </div>
                <div className="px-4 pb-3">
                     <div className="flex items-center justify-between">
-                         <h3 className="text-sm md:text-base text-teal-600 font-semibold truncate">{field.name}</h3>
-                         <div className="text-xs md:text-sm font-extrabold border border-teal-600 rounded-full p-1 text-teal-600">{field.price}</div>
+                         <h3 className="text-sm md:text-base text-teal-600 font-semibold truncate">{field.fieldName || field.name}</h3>
+                         <div className="text-xs md:text-sm font-extrabold border border-teal-600 rounded-full p-1 text-teal-600">{field.pricePerHour ? `${field.pricePerHour.toLocaleString()}đ/h` : field.price}</div>
                     </div>
                     <div className="mt-1 flex items-center text-xs md:text-sm text-gray-600">
                          <MapPin className="w-3.5 h-3.5 mr-1" />
@@ -111,10 +111,10 @@ export const FieldCard = ({ field, index = 0, hoveredCardId, setHoveredCardId })
                          </div>
                          <div className="mt-3 flex items-center justify-between">
                               <div className="flex items-center gap-2 text-gray-700">
-                                   <span className="inline-flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border text-[11px]">Số lượng: <span className="font-semibold text-teal-700">{field.availableSlots}</span></span>
+                                   <span className="inline-flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full border text-[11px]">Lượt đặt: <span className="font-semibold text-teal-700">{field.bookingCount || field.availableSlots || 0}</span></span>
                               </div>
                               <Button
-                                   onClick={() => navigate(`/field/${field.id}`)}
+                                   onClick={() => navigate(`/field/${field.fieldId || field.id}`)}
                                    className="rounded-full h-8 px-3 text-xs bg-teal-500 hover:bg-teal-600 text-white"
                               >
                                    Xem chi tiết
@@ -133,10 +133,10 @@ const getFieldImages = (field) => {
           "https://images.unsplash.com/photo-1509021436665-8f07dbf5bf1d?w=1200&h=800&fit=crop",
           "https://images.unsplash.com/photo-1471295253337-3ceaaedca402?w=1200&h=800&fit=crop",
      ];
-     const offset = (field.id || 0) % common.length;
+     const offset = (field.fieldId || field.id || 0) % common.length;
      const rotated = [...common.slice(offset), ...common.slice(0, offset)];
 
-     const primary = field?.image || field?.mainImageUrl || null;
+     const primary = field?.imageUrl || field?.image || field?.mainImageUrl || null;
      const extraImages = Array.isArray(field?.imageUrls)
           ? field.imageUrls.filter((url) => typeof url === "string" && url.trim() !== "")
           : [];

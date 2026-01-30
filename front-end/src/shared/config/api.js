@@ -16,12 +16,12 @@ export const API_ENDPOINTS = {
 
 // Helper function để build full API URL
 export const buildApiUrl = (endpoint) => {
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   return `${API_BASE_URL}/api${cleanEndpoint}`;
 };
 
 // Log môi trường hiện tại (chỉ trong development)
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === "development") {
   console.log(`[API Config] Base URL: ${API_BASE_URL}`);
 }
 

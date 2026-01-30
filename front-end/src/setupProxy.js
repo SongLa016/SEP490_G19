@@ -1,7 +1,8 @@
 const { createProxyMiddleware } = require("http-proxy-middleware");
 
 // API URL - có thể thay đổi qua biến môi trường
-const API_TARGET = process.env.REACT_APP_API_BASE_URL || "http://localhost:8080";
+const API_TARGET =
+  process.env.REACT_APP_API_BASE_URL || "http://localhost:8080";
 
 // hàm setup proxy
 module.exports = function (app) {

@@ -14,7 +14,7 @@ namespace BallSport.Infrastructure.Repositories.MatchFinding
             _context = context;
         }
 
-        // ĐÃ THÊM METHOD BỊ THIẾU – SIÊU CHUẨN, SIÊU NHANH!
+        
         public async Task<List<MatchRequest>> GetActiveRequestsExcludeMineAsync(int currentUserId)
         {
             return await _context.MatchRequests

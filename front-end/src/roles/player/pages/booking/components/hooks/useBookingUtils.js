@@ -12,6 +12,10 @@ export function useBookingUtils(bookingIdToRequest, scheduleDataMap) {
   // Kiểm tra nếu đặt sân chưa thanh toán
   const isPendingUnpaidWithin2Hours = useCallback((booking) => {
     if (!booking) return false;
+    
+    // Nếu player đã hoàn tất đặt sân (nhấn nút "Hoàn tất đặt sân"), không hiển thị nút tiếp tục thanh toán
+    if (booking.playerConfirmed) return false;
+    
     const statusLower = String(
       booking.status || booking.bookingStatus || ""
     ).toLowerCase();
@@ -24,7 +28,9 @@ export function useBookingUtils(bookingIdToRequest, scheduleDataMap) {
       paymentLower === "";
     const isPaid = paymentLower === "paid" || paymentLower === "đã thanh toán";
 
+    // Nếu đã thanh toán, không hiển thị nút tiếp tục thanh toán
     if (isPaid) return false;
+    
     if (
       statusLower === "cancelled" ||
       statusLower === "expired" ||

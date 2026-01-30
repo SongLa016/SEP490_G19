@@ -58,7 +58,7 @@ export default function ConfirmationStepSection({
                               onClose();
                               onSuccess?.();
                          }}
-                         className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-lg font-semibold"
+                         className="bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-xl font-semibold"
                     >
                          Đóng
                     </Button>
@@ -74,7 +74,7 @@ export default function ConfirmationStepSection({
                               }
                          }}
                          variant="outline"
-                         className="px-6 py-3 rounded-lg"
+                         className="px-6 py-3 rounded-xl"
                     >
                          {hasOpponent === "no" ? "Xem bài tìm đối" : "Xem lịch sử đặt sân"}
                     </Button>

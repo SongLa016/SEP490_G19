@@ -48,7 +48,7 @@ export default function Community() {
                displayName
           )}&background=0ea5e9&color=fff&size=100`;
 
-     // Submot bài viết 
+     // Submit bài viết 
      const handlePostSubmit = async (title, content, field, imageFile) => {
           if (!user) {
                Swal.fire({
